@@ -33,6 +33,6 @@ Once the above packages have been downloaded and installed, the following steps 
   * Make sure the directory containing python.exe is in your %PATH%
 
 Once the above setup is complete:
-  * Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
-  * Navigate to the 'Omaha-Base' directory, which is the root directory of the installed Omaha source code.
-  * From the above directory, just type `hammer` to build Omaha. Note: more advanced Hammer options can be found *here*.
+  # Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
+  # Navigate to the 'Omaha-Base' directory, which is the root directory of the installed Omaha source code.
+  # From the above directory, just type `hammer` to build Omaha! (Note: more advanced Hammer options can be found [http://code.google.com/p/omaha/wiki/HammerOptions here].)
