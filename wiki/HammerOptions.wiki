@@ -1,0 +1,19 @@
+#summary Advanced command line option details for Hammer
+
+= Command line options =
+
+Omaha uses Google's open-sourced [http://code.google.com/p/swtoolkit/ Software Construction Toolkit] (codename: Hammer) to build. This page covers some of the command line options that may be useful for building.
+
+||hammer||Default build (debug, using precompiled headers, signed with the test cert)||
+||hammer MODE=dbg-win||Do a Debug build||
+||hammer MODE=opt-win||Do an Optimized build||
+||hammer MODE=all||Do both a debug & an optimized build||
+||hammer --clean||Clean intermediate files||
+||hammer --verbose||Verbose output||
+||hammer --use_precompiled_headers||Enable precompiled header support (default)||
+||hammer --no-use_precompiled_headers||Disable precompiled header support||
+||hammer --min||Minimum build||
+||hammer --all||Complete build (all subdirs)||
+||*code* *signing* *options*||
+
+Command line options can be combined, so the command `hammer MODE=opt-win --min --verbose` will do a minimum optimized build, producing verbose output.
