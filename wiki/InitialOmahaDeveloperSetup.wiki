@@ -5,7 +5,7 @@
 These instructions are intended to assist the would-be Omaha developer with setting up an environment in which to successfully build the Omaha source code.
 
 
-= Details =
+= Required Downloads =
 
 The following packages are required to build Omaha:
   * Omaha source code
@@ -22,3 +22,19 @@ The following packages are required to build Omaha:
     * You can get WTL from [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5&displaylang=en here].
   * Python 2.4 or greater (but not Python 3 or above!)
     * Download Python from [http://www.python.org/download/ here].
+
+
+= Details =
+
+Once the above packages have been downloaded and installed, the following steps are required prior to building:
+  * Create the following environment variables:
+    * %MSVCDIR% - set this to the root of the Visual C directory (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC`)
+    * %SDKDIR% - set to the root of the Vista SDK directory (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
+    * %ATLMFCDIR% - set to the root of the ATL/MFC directory (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC`)
+    * %WTLDIR% - set to the root of the WTL directory (e.g. `C:\Program Files\WTL`)
+  * Make sure the directory containing python.exe is in your %PATH%
+
+Once the above setup is complete:
+  * Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
+  * Navigate to the 'Omaha-Base' directory, which is the root directory of the installed Omaha source code.
+  * From the above directory, just type `hammer` to build Omaha. Note: more advanced Hammer options can be found *here*.
