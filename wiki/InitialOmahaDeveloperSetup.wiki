@@ -13,11 +13,9 @@ The following packages are required to build Omaha:
       * Download a full source package from the [http://code.google.com/p/omaha/downloads/list Downloads area].
       * See *this* wiki page for setting up access to the subversion repository
   * Microsoft Visual C++
-    * The free Express Edition that you can get from [http://www.microsoft.com/exPress/download/ here] is perfectly sufficient.
+    * You will need to have at least the Standard Edition of Visual C or Visual Studio. (Note: the Express Editions are not sufficient, because they do not include ATL/MFC, which Omaha requires.)
   * Microsoft Vista SDK
     * You can get the SDK from [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065&displaylang=en here].
-  * ATL/MFC
-    * Will need non-express edition of MSVS!
   * WTL
     * You can get WTL from [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5&displaylang=en here].
   * Python 2.4 or greater (but not Python 3 or above!)
