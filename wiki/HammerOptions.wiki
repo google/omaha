@@ -14,6 +14,8 @@ Omaha uses Google's open-sourced [http://code.google.com/p/swtoolkit/ Software C
 ||hammer --no-use_precompiled_headers||Disable precompiled header support||
 ||hammer --min||Minimum build||
 ||hammer --all||Complete build (all subdirs)||
-||*code* *signing* *options*||
+*code* *signing* *options*
 
-Command line options can be combined, so the command `hammer MODE=opt-win --min --verbose` will do a minimum optimized build, producing verbose output.
+Command line options can be combined, so the command:
+`hammer MODE=opt-win --min --verbose`
+will do a minimum optimized build, producing verbose output.
