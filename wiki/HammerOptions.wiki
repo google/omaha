@@ -14,7 +14,9 @@ Omaha uses Google's open-sourced [http://code.google.com/p/swtoolkit/ Software C
 ||hammer --no-use_precompiled_headers||Disable precompiled header support||
 ||hammer --min||Minimum build||
 ||hammer --all||Complete build (all subdirs)||
-*code* *signing* *options*
+||hammer --authenticode_file=<file>||Use <file> as signing key. Must use .pfx file.||
+||hammer --authenticode_password=<password>||<password> is the password for the signing key.||
+
 
 Command line options can be combined, so the command:
 `hammer MODE=opt-win --min --verbose`
