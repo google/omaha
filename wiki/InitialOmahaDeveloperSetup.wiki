@@ -1,0 +1,24 @@
+#summary Instructions for how to set up a build environment for Omaha
+
+= Introduction =
+
+These instructions are intended to assist the would-be Omaha developer with setting up an environment in which to successfully build the Omaha source code.
+
+
+= Details =
+
+The following packages are required to build Omaha:
+  * Omaha source code
+    * You can either:
+      * Download a full source package from the [http://code.google.com/p/omaha/downloads/list Downloads area].
+      * See *this* wiki page for setting up access to the subversion repository
+  * Microsoft Visual C++
+    * The free Express Edition that you can get from [http://www.microsoft.com/exPress/download/ here] is perfectly sufficient.
+  * Microsoft Vista SDK
+    * You can get the SDK from [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065&displaylang=en here].
+  * ATL/MFC
+    * Will need non-express edition of MSVS!
+  * WTL
+    * You can get WTL from [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5&displaylang=en here].
+  * Python 2.4 or greater (but not Python 3 or above!)
+    * Download Python from [http://www.python.org/download/ here].
