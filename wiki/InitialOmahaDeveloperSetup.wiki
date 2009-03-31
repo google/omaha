@@ -20,7 +20,12 @@ The following packages are required to build Omaha:
     * You can get WTL from [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5&displaylang=en here].
   * Python 2.4 or greater (but not Python 3 or above!)
     * Download Python from [http://www.python.org/download/ here].
-
+    * You'll also need the [http://sourceforge.net/projects/pywin32 pywin32 extensions].
+  * SCons
+    * Download this from [http://www.scons.org/download.php here].
+  * Software Construction Toolkit
+    * Get this [http://code.google.com/p/swtoolkit/ here].
+    * The swtoolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions] are very helpful, and you should follow them.
 
 = Details =
 
