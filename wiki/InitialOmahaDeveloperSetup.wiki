@@ -16,8 +16,8 @@ The following packages are required to build Omaha:
     * You will need to have at least the Standard Edition of Visual C or Visual Studio. (Note: the Express Editions are not sufficient, because they do not include ATL/MFC, which Omaha requires.)
   * Microsoft Vista SDK
     * You can get the SDK from [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065&displaylang=en here].
-  * Microsoft .NET Framework 2.0 SDK
-    * Get it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
+  * Microsoft .NET Framework 2.0
+    * This is pre-installed on Windows Vista machines, but if you're running XP, then download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
   * WTL
     * You can get WTL from [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5&displaylang=en here].
   * WiX
