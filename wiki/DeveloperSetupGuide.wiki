@@ -29,19 +29,33 @@ The following packages are required to build Omaha:
     * Download this from [http://www.scons.org/download.php here].
   * Software Construction Toolkit
     * Get this [http://code.google.com/p/swtoolkit/ here].
-    * The swtoolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions] are very helpful, and you should follow them.
+
 
 = Details =
 
-Once the above packages have been downloaded and installed, the following steps are required prior to building:
-  * Create the following environment variables:
-    * %MSVCDIR% - set this to the root of the Visual C directory (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC`)
-    * %SDKDIR% - set to the root of the Vista SDK directory (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
-    * %ATLMFCDIR% - set to the root of the ATL/MFC directory (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC`)
-    * %WTLDIR% - set to the root of the WTL directory (e.g. `C:\Program Files\WTL`)
-  * Make sure the directory containing python.exe is in your %PATH%
+== Installation ==
+
+Install each of the above software packages that comes with an installer, which is all of them except Omaha and the Software Construction Toolkit.
+
+Follow the swtoolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
+
+Extract or checkout the Omaha source code to a directory of your choice, perhaps something like "C:\Omaha-Dev"
+
+== Environment Variables ==
+
+Create the following environment variables:
+  * %SCT_DIR% - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
+  * %OMAHA_NET_DIR% - This will depend on your OS:
+    * For XP, set it to the directory where the .NET framework is installed (eg. `C:\Program Files\Microsoft.NET\Framework\v2.0.50727`)
+    * For Vista, set it to the pre-installed framework directory (this will be something like: `C:\Windows\Microsoft.NET\Framework\v2.0.50727`)
+  * %OMAHA_PYTHON_DIR% - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`)
+  * %OMAHA_VISTASDK_DIR% - set to the directory where the Vista SDK was installed (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
+  * %OMAHA_WIX_DIR% - set to the directory where WiX was installed (eg. `C:\Program Files\WiX`)
+  * %OMAHA_WTL_DIR% - set to the directory where WTL was installed (eg. `C:\Program Files\WTL`)
+
+== Conclusion ==
 
 Once the above setup is complete:
   # Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
-  # Navigate to the 'Omaha-Base' directory, which is the root directory of the installed Omaha source code.
+  # Navigate to the 'Omaha-Dev' directory, or whatever you called it.
   # From the above directory, just type `hammer` to build Omaha! (Note: more advanced Hammer options can be found [http://code.google.com/p/omaha/wiki/HammerOptions here].)
