@@ -11,7 +11,7 @@ The following packages are required to build Omaha:
   * Omaha source code
     * You can either:
       * Download a full source package from the [http://code.google.com/p/omaha/downloads/list Downloads area].
-      * See *this* wiki page for setting up access to the subversion repository
+      * See [omaha source/browse] for setting up access to the subversion repository
   * Microsoft Visual C++
     * You will need to have at least the Standard Edition of Visual C or Visual Studio. (Note: the Express Editions are not sufficient, because they do not include ATL/MFC, which Omaha requires.)
   * Microsoft Vista SDK
