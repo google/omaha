@@ -11,7 +11,7 @@ The following packages are required to build Omaha:
   * Omaha source code
     * You can either:
       * Download a full source package from the [http://code.google.com/p/omaha/downloads/list Downloads area].
-      * See [omaha source/browse] for setting up access to the subversion repository
+      * See [http://code.google.com/p/omaha/source/checkout source checkout] for setting up access to the subversion repository.
   * Microsoft Visual C++
     * You will need to have at least the Standard Edition of Visual C or Visual Studio. (Note: the Express Editions are not sufficient, because they do not include ATL/MFC, which Omaha requires.)
   * Microsoft Vista SDK
@@ -60,4 +60,4 @@ Create the following environment variables:
 Once the above setup is complete:
   # Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
   # Navigate to the 'Omaha-Dev' directory, or whatever you called it.
-  # From the above directory, just type `hammer` to build Omaha! (Note: more advanced Hammer options can be found [http://code.google.com/p/omaha/wiki/HammerOptions here].)
+  # From the above directory, just type `hammer` to build Omaha! (Note: more advanced Hammer options can be found [HammerOptions here].)
