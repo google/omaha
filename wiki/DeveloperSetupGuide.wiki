@@ -41,6 +41,7 @@ Follow the swtoolkit [http://code.google.com/p/swtoolkit/wiki/Introduction insta
 
 Extract or checkout the Omaha source code to a directory of your choice, perhaps something like "C:\Omaha-Dev"
 
+
 == Environment Variables ==
 
 Create the following environment variables:
@@ -52,6 +53,7 @@ Create the following environment variables:
   * %OMAHA_VISTASDK_DIR% - set to the directory where the Vista SDK was installed (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
   * %OMAHA_WIX_DIR% - set to the directory where WiX was installed (eg. `C:\Program Files\WiX`)
   * %OMAHA_WTL_DIR% - set to the directory where WTL was installed (eg. `C:\Program Files\WTL`)
+
 
 == Conclusion ==
 
