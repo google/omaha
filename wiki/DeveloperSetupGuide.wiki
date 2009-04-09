@@ -11,7 +11,7 @@ The following packages are required to build Omaha:
   * Omaha source code
     * You can either:
       * Download a full source package from the [http://code.google.com/p/omaha/downloads/list Downloads area].
-      * See [http://code.google.com/p/omaha/source/checkout source checkout] for setting up access to the subversion repository.
+      * See [http://code.google.com/p/omaha/source/checkout source checkout] for setting up access to the subversion repository. This will also require [http://subversion.tigris.org/ SVN] itself.
   * Microsoft Visual C++
     * You will need to have at least the Standard Edition of Visual C++ or Visual Studio. (Note: The Express Editions are not sufficient because they do not include ATL/MFC, which Omaha requires.)
     * Omaha currently builds with Microsoft Visual C++ 2005. You are welcome to contribute changes to make it build with newer versions.
@@ -24,7 +24,7 @@ The following packages are required to build Omaha:
     * Download WTL [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5%26displaylang=en here].
   * WiX
     * Download any of the v3 binaries packages [http://sourceforge.net/project/showfiles.php?group_id=105970%26package_id=168888 here].
-  * Python 2.4 or greater (but not Python 3 or above!)
+  * Python (2.4 is strongly recommended, 3.0 and above will not work)
     * Download Python [http://www.python.org/download/ here].
     * You'll also need the [http://sourceforge.net/projects/pywin32 pywin32 extensions].
   * SCons
