@@ -13,30 +13,32 @@ The following packages are required to build Omaha:
       * Download a full source package from the [http://code.google.com/p/omaha/downloads/list Downloads area].
       * See [http://code.google.com/p/omaha/source/checkout source checkout] for setting up access to the subversion repository.
   * Microsoft Visual C++
-    * You will need to have at least the Standard Edition of Visual C or Visual Studio. (Note: the Express Editions are not sufficient, because they do not include ATL/MFC, which Omaha requires.)
+    * You will need to have at least the Standard Edition of Visual C++ or Visual Studio. (Note: The Express Editions are not sufficient because they do not include ATL/MFC, which Omaha requires.)
+    * Omaha currently builds with Microsoft Visual C++ 2005. You are welcome to contribute changes to make it build with newer versions.
   * Microsoft Vista SDK
-    * You can get the SDK from [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065%26displaylang=en here].
+    * Download the SDK [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065%26displaylang=en here].
   * Microsoft .NET Framework 2.0
-    * This is pre-installed on Windows Vista machines, but if you're running XP, then download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
+    * This is pre-installed on Windows Vista machines.
+    * If you're running Windows XP, download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
   * WTL
-    * You can get WTL from [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5%26displaylang=en here].
+    * Download WTL [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5%26displaylang=en here].
   * WiX
     * Download any of the v3 binaries packages [http://sourceforge.net/project/showfiles.php?group_id=105970%26package_id=168888 here].
   * Python 2.4 or greater (but not Python 3 or above!)
-    * Download Python from [http://www.python.org/download/ here].
+    * Download Python [http://www.python.org/download/ here].
     * You'll also need the [http://sourceforge.net/projects/pywin32 pywin32 extensions].
   * SCons
-    * Download this from [http://www.scons.org/download.php here].
+    * Download SCons [http://www.scons.org/download.php here].
   * Software Construction Toolkit
-    * Get this [http://code.google.com/p/swtoolkit/ here].
+    * Get the Software Construction Toolkit [http://code.google.com/p/swtoolkit/ here].
 
 
 = Details =
 
 == Installation ==
 
-  # Install each of the above software packages that comes with an installer, which is all of them except Omaha and the Software Construction Toolkit.
-  # Follow the swtoolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
+  # Install each of the above software packages that comes with an installer, which is all of them except Omaha source code and the Software Construction Toolkit.
+  # Follow the Software Construction Toolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
   # Extract or checkout the Omaha source code to a directory of your choice, perhaps something like "C:\Omaha-Dev"
 
 
@@ -58,4 +60,4 @@ Create the following environment variables:
 Once the above setup is complete:
   # Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
   # Navigate to the 'Omaha-Dev' directory, or whatever you called it.
-  # From the above directory, just type `hammer` to build Omaha! (Note: more advanced Hammer options can be found [HammerOptions here].)
+  # From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions].)
