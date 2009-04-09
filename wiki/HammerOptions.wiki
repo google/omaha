@@ -2,21 +2,22 @@
 
 = Command line options =
 
-Omaha uses Google's open-sourced [http://code.google.com/p/swtoolkit/ Software Construction Toolkit] (codename: Hammer) to build. This page covers some of the command line options that may be useful for building.
+Omaha builds using Hammer from Google's open-sourced [http://code.google.com/p/swtoolkit/ Software Construction Toolkit]. This page covers some of the command line options that may be useful for building.
 
-||hammer||Default build (debug, using precompiled headers, signed with the test cert)||
-||hammer MODE=dbg-win||Do a Debug build||
-||hammer MODE=opt-win||Do an Optimized build||
-||hammer MODE=all||Do both a debug & an optimized build||
-||hammer --clean||Clean intermediate files||
+||hammer||Default build (debug, using precompiled headers, signed with test certificate, most subdirectories)||
+||hammer MODE=dbg-win||Debug build||
+||hammer MODE=opt-win||Optimized build||
+||hammer MODE=all||Both debug & optimized builds||
+||hammer --clean||Clean intermediate files (`hammer -c` also works)||
 ||hammer --verbose||Verbose output||
 ||hammer --use_precompiled_headers||Enable precompiled header support (default)||
 ||hammer --no-use_precompiled_headers||Disable precompiled header support||
-||hammer --min||Minimum build||
-||hammer --all||Complete build (all subdirs)||
+||hammer --min||Minimum build (useful for quickly testing changes in goopdate.dll)||
+||hammer --all||Complete build (all subdirectories)||
 ||hammer --authenticode_file=`<file>`||Use `<file>` as signing key. Must use .pfx file.||
 ||hammer --authenticode_password=`<password>`||`<password>` is the password for the signing key.||
-
+||hammer --msvs||Generate a Visual Studio solution and projects||
+||hammer omaha_unittest.exe||Build only the unit tests (useful for quickly unit-testing changes)||
 
 Command line options can be combined, so the command:
 `hammer MODE=opt-win --min --verbose`
