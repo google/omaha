@@ -35,11 +35,9 @@ The following packages are required to build Omaha:
 
 == Installation ==
 
-Install each of the above software packages that comes with an installer, which is all of them except Omaha and the Software Construction Toolkit.
-
-Follow the swtoolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
-
-Extract or checkout the Omaha source code to a directory of your choice, perhaps something like "C:\Omaha-Dev"
+  # Install each of the above software packages that comes with an installer, which is all of them except Omaha and the Software Construction Toolkit.
+  # Follow the swtoolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
+  # Extract or checkout the Omaha source code to a directory of your choice, perhaps something like "C:\Omaha-Dev"
 
 
 == Environment Variables ==
