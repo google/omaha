@@ -336,7 +336,7 @@ if env.Bit('build_server'):
   unsigned_inputs = [
       'save_arguments.cc',
       '$OBJ_ROOT/recovery/recovery_markup.res',
-      '$OBJ_ROOT/goopdate/resources/en/generated_resources_en.res',
+      '$OBJ_ROOT/goopdate/resources/generated_resources_en.res',
       ]
   if env.Bit('use_precompiled_headers'):
     unsigned_inputs += official_env.EnablePrecompile(target_name)
