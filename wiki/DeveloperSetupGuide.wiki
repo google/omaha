@@ -52,7 +52,7 @@ Create the following environment variables:
     * Otherwise, set it to the directory where the .NET framework is installed.  (eg. `C:\Program Files\Microsoft.NET\Framework\v2.0.50727`)
   * %OMAHA_PYTHON_DIR% - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`)
   * %OMAHA_VISTASDK_DIR% - set to the directory where the Vista SDK was installed (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
-  * %OMAHA_WIX_DIR% - set to the directory where WiX was installed (eg. `C:\Program Files\WiX`)
+  * %OMAHA_WIX_DIR% - set to the directory in WiX where 'candle.exe' and 'light.exe' are installed. This may be something like (eg. `C:\Program Files\WiX`)
   * %OMAHA_WTL_DIR% - set to the directory where WTL was installed (eg. `C:\Program Files\WTL`)
 
 
