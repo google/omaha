@@ -1,0 +1,101 @@
+#!/usr/bin/python2.4
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+Import('env')
+
+
+local_env = env.Clone(
+    PRECOMPILE_STOPFILE = '',
+    PRECOMPILE_BUILDER  = '',
+    COMPONENT_STATIC = False,
+)
+
+# We disable runtime stack check to avoid increasing the code size.
+# There is a compiler pragma to programmatically disable the stack checks
+# but for some reason it did not work.
+local_env.FilterOut(CPPFLAGS = ['/GS'])
+
+# Disable stack checks for VC80. Stack checks are on by default.
+if local_env['msc_ver'] >= 1400:
+  local_env['CCFLAGS'] += ['/GS-']
+
+
+_first = True
+for v in env['product_version']:
+
+  if _first:
+    _first = False
+    prefix = ''
+  else:
+    prefix = 'TEST_'
+
+  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+  for lang in env['languages']:
+    lang_env = local_env.Clone()
+    lang_env.Append(
+        RCFLAGS = [
+            '/DVERSION_MAJOR=%d' % v[0],
+            '/DVERSION_MINOR=%d' % v[1],
+            '/DVERSION_BUILD=%d' % v[2],
+            '/DVERSION_PATCH=%d' % v[3],
+            '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+            '/DLANGUAGE_STRING=\\"%s\\"' % lang
+            ],
+        CPPPATH = [
+            '$OBJ_ROOT/goopdate',  # Needed for the tlb
+            ],
+        LINKFLAGS = [
+            '/NODEFAULTLIB',
+            '/ENTRY:DllEntry',
+            '/MERGE:.rdata=.text',
+            '/BASE:0x19000000',
+            ],
+    )
+
+    # Avoid conflicts in obj targets
+    lang_env['OBJSUFFIX'] = '_' + lang + lang_env['OBJSUFFIX']
+    lang_env['OBJPREFIX'] = '%s/%s' % (lang, prefix) + lang_env['OBJPREFIX']
+
+    lang_base_name = 'generated_resources_' + lang
+    lang_res = lang_env.RES(
+        target='%s%s.res' % (prefix, lang_base_name),
+        source='goopdateres/%s.rc' % (lang_base_name),
+    )
+
+    # Force a rebuild when the version changes.
+    lang_env.Depends(lang_res, '$MAIN_DIR/VERSION')
+
+    lang_inputs = [
+        'resdll_main.cc',
+        lang_res,
+        # Needed to prevent rebuilding of the lib.
+        '$MAIN_DIR/installers/resource_only_dll.def'
+        ]
+
+    # Build the (unsigned) DLL
+    unsigned_dll = lang_env.ComponentLibrary(
+        lib_name='%s/%sgoopdateres_unsigned_%s.dll' % (lang, prefix, lang),
+        source=lang_inputs
+    )
+
+    signed_dll = lang_env.SignedBinary(
+        target='%s/%sgoopdateres_%s.dll' % (lang, prefix, lang),
+        source=unsigned_dll,
+    )
+
+    env.Replicate('$STAGING_DIR', signed_dll)
+

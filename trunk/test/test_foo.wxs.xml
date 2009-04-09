@@ -1,0 +1,179 @@
+<?xml version='1.0'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <?define UpgradeCode='96E1371A-A5A1-45cc-8E67-2EF6ABDE054D' ?>
+
+   <Product Id='$(var.FooProductGuid)' Name='!!! Test Foo' Language='1033'
+     Version='$(var.FooVersion)' Manufacturer='Google, Inc.'
+     UpgradeCode='$(var.UpgradeCode)'>
+
+        <!--
+        This file has all the values necessary to report success or failure.
+        It can also be made to report neither (for testing failure cases).
+        Note that the way failure is generated is NOT how it should be done for
+        real installers. See FooNotifyFailed for details.
+
+        This file supports several scenarios. Enabling each one is described below.
+        * Success (default)
+          - Do not specify any properties
+        * Success and tell Omaha to launch Foo
+          - Specify REGISTER_LAUNCH_COMMAND property (any value)
+        * Failure
+          - Specify the NOTIFY_FAILURE property (any value)
+        * No result reported (Omaha will use exit code)
+          - Specify the DO_NOT_NOTIFY_SUCCESS property (any value)
+
+        The registry value propbar can be written.
+          - Specify the PROPBAR property with value 7.
+
+        This file also supports failing product condtions. In this case, no
+        success or failure value is written, as would happen with real
+        installers.
+          - Specify the FAIL_PRODUCT_CONDITION property (any value)
+        -->
+
+        <Package Id='*'
+           Description='Test Foo' Comments='Test Foo'
+           Manufacturer='Google, Inc.' InstallerVersion='200' Compressed='yes' />
+
+        <Upgrade Id='$(var.UpgradeCode)'>
+          <UpgradeVersion Property='UPGRADING'
+                          OnlyDetect='no'
+                          Minimum='0.0.0.0' IncludeMinimum='yes'
+                          Maximum='$(var.FooVersion)' IncludeMaximum='no' />
+          <UpgradeVersion Property='NEWERVERSIONDETECTED'
+                          OnlyDetect='yes'
+                          Minimum='$(var.FooVersion)' IncludeMinimum='yes' />
+        </Upgrade>
+
+        <!-- Omaha id -->
+        <Property Id='UPDATE2_ID'>{D6B08267-B440-4c85-9F79-E195E80D9937}</Property>
+
+        <InstallExecuteSequence>
+          <!--  We can either put RemoveExistingProducts after InstallValidate
+            or InstallFinalize.
+            1) After InstallValidate
+               * The old verion goes away anyway no matter if the new version
+                 has been installed successfully.
+            2) After InstallFinalize
+               * Might leave both old version and new version in the system if
+                 MSI fails to uninstall the old version.
+               * Will remove files and registry entries, including Omaha
+                 registration, for the new version. Thus, we cannot use this
+                 option without adding complexity. Reference:
+                 http://blogs.msdn.com/astebner/archive/2007/09/06/4798334.aspx
+          -->
+          <RemoveExistingProducts After='InstallValidate'>UPGRADING</RemoveExistingProducts>
+          <Custom Action="NewerVersionError" After="FindRelatedProducts">NEWERVERSIONDETECTED</Custom>
+        </InstallExecuteSequence>
+
+        <CustomAction Id="NewerVersionError" Error="4000"/>
+
+        <Property Id="ALLUSERS"><![CDATA[1]]></Property>
+
+        <Media Id='1' Cabinet='product.cab' EmbedCab='yes' CompressionLevel='high' />
+
+        <Directory Id='TARGETDIR' Name='SourceDir'>
+          <Directory Id='ProgramFilesFolder'>
+            <Directory Id='FooDir' Name='Test Foo'>
+              <Directory Id='FooVersion' Name='$(var.FooVersion)'>
+                <Component Id='FooFiles' Guid='$(var.FooComponentGuid)'>
+                  <File Id='test_foo' Vital='yes' Name='test_foo.exe'
+                    DiskId='1' Source="$(var.FooExePath)"/>
+                </Component>
+              </Directory>
+              <Component Id='FooReg' Guid='$(var.FooComponentGuidRegistry)'>
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\Clients\[UPDATE2_ID]'
+                  Name='name' Value="test_foo"
+                  Action='write' Type='string' />
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\Clients\[UPDATE2_ID]'
+                  Name='pv' Value="$(var.FooVersion)"
+                  Action='write' Type='string' />
+              </Component>
+              <Component Id='FooNotifySuccess' Guid='$(var.FooComponentGuidNotifySuccess)'>
+                <!-- Controls whether to notify success. -->
+                <Condition>NOT NOTIFY_FAILURE AND NOT DO_NOT_NOTIFY_SUCCESS</Condition>
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\ClientState\[UPDATE2_ID]'
+                  Name='InstallerResult' Value="0"
+                  Action='write' Type='integer' />
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\ClientState\[UPDATE2_ID]'
+                  Name='InstallerError' Value="1234"
+                  Action='write' Type='integer' />
+              </Component>
+              <Component Id='FooRegisterLaunchCommand'
+                         Guid='$(var.FooComponentRegisterLaunchCommand)'>
+                <!-- Controls whether to notify success. -->
+                <Condition>REGISTER_LAUNCH_COMMAND AND NOT DO_NOT_NOTIFY_SUCCESS</Condition>
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\ClientState\[UPDATE2_ID]'
+                  Name='InstallerSuccessLaunchCmdLine' Value="&quot;[#test_foo]&quot;"
+                  Action='write' Type='string' />
+              </Component>
+              <!--
+              Writes the registry entries that indicate failure.
+              This method of writing the registry for failures is only useful
+              for simple testing.
+              Real installers will NOT report failure in this way.
+              They would report the failure in custom action code.
+              The reason is that this component will only get run and the
+              side effects left in place if success succeeds.
+              -->
+              <Component Id='FooNotifyFailed' Guid='$(var.FooComponentGuidNotifyFailed)'>
+                <!-- Controls whether to notify failure. -->
+                <Condition>NOTIFY_FAILURE</Condition>
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\ClientState\[UPDATE2_ID]'
+                  Name='InstallerResult' Value="1"
+                  Action='write' Type='integer' />
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\ClientState\[UPDATE2_ID]'
+                  Name='InstallerError' Value="99"
+                  Action='write' Type='integer' />
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\ClientState\[UPDATE2_ID]'
+                  Name='InstallerResultUIString' Value="&lt;b&gt;Test Foo&lt;/b&gt; installation failed because it wanted to! For more information visit &lt;a=http://labs.google.com/&gt;http://labs.google.com/&lt;/a&gt;."
+                  Action='write' Type='string' />
+              </Component>
+              <Component Id='FooPropBar' Guid='$(var.FooComponentGuidPropertyBar)'>
+                <!-- Controls whether to write propbar. -->
+                <Condition>PROPBAR=7</Condition>
+                <RegistryValue Root='HKLM'
+                  Key='Software\Google\Update\ClientState\[UPDATE2_ID]'
+                  Name='propbar' Value="7"
+                  Action='write' Type='integer' />
+              </Component>
+            </Directory>
+         </Directory>
+      </Directory>
+
+      <Feature Id='Foo' Title='Foo' Level='1'>
+        <ComponentRef Id='FooFiles' />
+        <ComponentRef Id='FooReg' />
+        <ComponentRef Id='FooNotifySuccess' />
+        <ComponentRef Id='FooRegisterLaunchCommand' />
+        <ComponentRef Id='FooNotifyFailed' />
+        <ComponentRef Id='FooPropBar' />
+<?if $(var.IsEnterprise) = 1 ?>
+        <ComponentRef Id='ComponentGoogleUpdate' />
+<?endif?>
+      </Feature>
+      <Property Id="UILevel"><![CDATA[1]]></Property>
+
+      <Condition Message='Test Foo runs only on Windows 2000 Service Pack 3 and later.'>
+        (VersionNT = 500 AND ServicePackLevel = 3) OR VersionNT >= 501
+      </Condition>
+
+     <Condition Message='The FAIL_PRODUCT_CONDITION property was specified.'>
+       NOT FAIL_PRODUCT_CONDITION
+     </Condition>
+
+     <UI>
+       <Error Id="4000">A newer version of this product is already installed.</Error>
+     </UI>
+
+   </Product>
+</Wix>
+

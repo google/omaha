@@ -1,0 +1,152 @@
+#!/usr/bin/python2.4
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+# We always build the shell as GoogleUpdate_built.exe.
+# For official builds, we copy the saved constant shell to the output directory.
+# For unofficial builds, we copy the built shell.
+# Otherwise, the goopdate.dll certificate check fails.
+#
+# Changes to this executable will not appear in offical builds until they are
+# included in an offical build and the resulting file is checked in to the
+# saved constant shell location.
+
+
+Import('env')
+
+# Only build the first version. We don't need a test version.
+v = env['product_version'][0]
+version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+# The shell contains languages not supported by the rest of Omaha.
+# This is intended to allow us to add languages in the future without releasing
+# a new shell.
+# 'userdefault' addresses apps that don't look up the resource for the OS
+# language. See http://b/1328652.
+
+shell_languages = list(env['languages'])
+
+additional_shell_languages = [
+    'userdefault',
+    'zh-HK',
+    ]
+
+if 1 < len(shell_languages):
+  shell_languages += additional_shell_languages
+
+
+exe_env = env.Clone()
+
+exe_env.Append(
+    CCFLAGS = [
+        '/wd4548',
+        '/wd4917',
+        '/wd4265',
+        '/FIgoogle_update/precompile.h',
+        ],
+    LIBS = [
+        'delayimp.lib',
+        'advapi32.lib',
+        'crypt32.lib',
+        'kernel32.lib',
+        'ole32.lib',
+        'shell32.lib',
+        'shlwapi.lib',
+        'user32.lib',
+        'wintrust.lib',
+        ('atls.lib', 'atlsd.lib')[exe_env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[exe_env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[exe_env.Bit('debug')],
+        ],
+    LINKFLAGS = [
+        '/NODEFAULTLIB',
+        '/MERGE:.rdata=.text'
+        '/DELAYLOAD:advapi32.dll',
+        '/DELAYLOAD:crypt32.dll',
+        '/DELAYLOAD:shell32.dll',
+        '/DELAYLOAD:shlwapi.dll',
+        '/DELAYLOAD:user32.dll',
+        '/DELAYLOAD:wintrust.dll',
+
+        # Forces the dependency on ole32.lib.
+        '/INCLUDE:_CoCreateGuid@4',
+        ],
+    RCFLAGS = [
+        '/DVERSION_MAJOR=%d' % v[0],
+        '/DVERSION_MINOR=%d' % v[1],
+        '/DVERSION_BUILD=%d' % v[2],
+        '/DVERSION_PATCH=%d' % v[3],
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+        ],
+)
+
+
+exe_inputs = [
+    'winmain.cc',
+     '../common/signaturevalidator.cc',
+     exe_env.RES('resource.rc'),
+     ]
+
+# Compile .rc files, then add the resulting .res files to the exe inputs.
+for language in shell_languages:
+  exe_inputs += exe_env.RES('generated_resources_%s.rc' % language)
+
+# Force a rebuild when the version changes. The en file should be enough to
+# rebuild all languages.
+Depends(exe_env['OBJ_ROOT'] + '/google_update/generated_resources_en.res',
+    exe_env['MAIN_DIR'] + '/VERSION')
+
+# Need to add custom suffix to avoid target conflict with
+# common/signaturevalidator.obj
+exe_env['OBJSUFFIX'] = '_gu' + exe_env['OBJSUFFIX']
+
+
+# We disable runtime stack check to avoid increasing the code size.
+# There is a compiler pragma to programmatically disable the stack checks
+# but for some reason it did not work.
+exe_env.FilterOut(CPPFLAGS = ['/GS'])
+
+# Disable stack checks for VC80. Stack checks are on by default.
+if exe_env['msc_ver'] >= 1400:
+  exe_env['CCFLAGS'] += ['/GS-']
+
+unsigned_exe_output = exe_env.ComponentProgram(
+    prog_name='GoogleUpdate_unsigned.exe',
+    source=exe_inputs,
+)
+
+sign_output = env.SignedBinary(
+    target='GoogleUpdate_signed.exe',
+    source=unsigned_exe_output,
+)
+
+env.Replicate('$STAGING_DIR', sign_output)
+
+# Official builds should always use the checked in constant shell unless they
+# are being built with the test certificate, in which case the saved constant
+# shell would fail to validate the certificates in the build.
+if env.Bit('build_server') and not env.Bit('test_certificate'):
+  # Copy the constant shell from its checked in location.
+  source_shell = ('$MAIN_DIR/google_update/bin/%s/GoogleUpdate.exe' %
+      ('opt', 'dbg')[env.Bit('debug')])
+else:
+  # Use the version we just built.
+  source_shell = sign_output[0]
+
+env.Replicate('$STAGING_DIR', source_shell, REPLICATE_REPLACE=[('_signed', '')])
+env.Replicate(target='$STAGING_DIR',
+              source=sign_output[0],
+              REPLICATE_REPLACE=[('GoogleUpdate_signed', 'GoogleCrashHandler')]
+)

@@ -1,0 +1,101 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+# Note: The localized ClickOnce deployment manifest is generated in
+# installers/build.scons.
+
+
+Import('env')
+
+clickonce_name = 'clickonce_bootstrap'
+clickonce_binary = clickonce_name + '.exe'
+clickonce_res = clickonce_name + '.res'
+
+
+#
+# Build the .res file.
+#
+env.RES(target=clickonce_res, source='clickonce_bootstrap.rc')
+
+
+#
+# Generate the executable.
+#
+exe_action = 'csc.exe /target:winexe /platform:x86 /out:$TARGET /win32res:%s '\
+    '$SOURCES' % (env.File(clickonce_res).path)
+
+exe_output = env.Command(
+    target=clickonce_binary,
+    source='clickonce_bootstrap.cs',
+    action=exe_action
+)
+
+# Inform Hammer that the .res file must be built before the executeable
+env.Requires(exe_output, clickonce_res)
+
+clickonce_deploy_dir = '$TARGET_ROOT/Clickonce_Deployment'
+clickonce_deploy_bin_dir = clickonce_deploy_dir + '/bin'
+
+# Copy executable into Clickonce deployment directory.
+replicate_output = env.Replicate(clickonce_deploy_bin_dir, exe_output)
+
+
+#
+# Generate the application manifest.
+#
+v = env['product_version'][0]
+version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+generate_manifest_action = ('@mage -New Application -ToFile $TARGET -Name %s'
+    ' -Version %s -FromDirectory %s -Processor x86 -TrustLevel FullTrust' % (
+    clickonce_name, version_string, env.Dir(clickonce_deploy_bin_dir).abspath))
+
+unsigned_manifest = env.Command(
+    target=clickonce_binary + '.manifest',
+    source=replicate_output,
+    action=generate_manifest_action
+)
+
+# Sign the application manifest.
+sign_manifest_cmd =('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
+                    'http://timestamp.verisign.com/scripts/timstamp.dll ')
+
+if env.Bit('build_server'):
+  sign_manifest_cmd += '-CertHash fe5008fe0da7a2033816752d6eafe95214f5a7e1'
+else:
+  sign_manifest_cmd += '-CertFile %s -Password %s' % (
+      GetOption('authenticode_file'), GetOption('authenticode_password'))
+
+signed_manifest = env.Command(
+    target='%s/%s.manifest' % (clickonce_deploy_dir, clickonce_binary),
+    source=unsigned_manifest,
+    action=sign_manifest_cmd
+)
+
+
+# Instruct Hammer to regenerate the manifests when either of these
+# executables change
+env.Depends(
+    target = [
+        unsigned_manifest,
+        signed_manifest,
+        ],
+    dependency = [
+        '%s/%s' % (clickonce_deploy_bin_dir, clickonce_binary),
+        '%s/GoogleUpdateSetup.exe' % (clickonce_deploy_bin_dir),
+        ]
+)

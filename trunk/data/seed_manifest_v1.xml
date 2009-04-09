@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<responses ver="1.0" signature="" xmlns="http://www.google.com/omaha/response">
+<install appguid="{D6B08267-B440-4c85-9F79-E195E80D9937}" needsadmin="false"/>
+<install appguid="{D6B08267-B440-4c85-9F79-E195E80D9938}" needsadmin="false"/>
+</responses>

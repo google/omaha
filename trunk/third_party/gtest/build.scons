@@ -1,0 +1,55 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+Import('env')
+
+gtest_env = env.Clone()
+gtest_env.Append(
+    CPPPATH = [
+        '$MAIN_DIR/third_party/gtest/include',
+        '$MAIN_DIR/third_party/gtest',
+        ],
+    CCFLAGS = [
+        '/wd4061',  # enumerator in switch is not handled by a case label
+        '/wd4100',  # unreferenced formal parameter
+        '/wd4640',  # construction of local static object is not thread-safe
+        '/wd4505',  # unreferenced local function has been removed
+        '/wd4548',  # expression before comma has no effect
+        ],
+    CPPDEFINES = [
+        '_CRT_NONSTDC_NO_DEPRECATE',
+        ],
+)
+
+target_name = 'gtest.lib'
+
+gtest_inputs = [
+    'src/gtest.cc',
+    'src/gtest-death-test.cc',
+    'src/gtest-filepath.cc',
+    'src/gtest-port.cc',
+    'src/gtest-test-part.cc',
+    'src/gtest-typed-test.cc',
+    ]
+if env.Bit('use_precompiled_headers'):
+  gtest_inputs += gtest_env.EnablePrecompile(target_name)
+
+gtest_env.ComponentLibrary(
+    lib_name=target_name,
+    source=gtest_inputs,
+)
+

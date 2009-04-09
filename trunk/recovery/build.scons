@@ -1,0 +1,87 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+#
+# Build google_update_recovery library for Google app consumption.
+#
+rec_env = env.Clone()
+recovery_inputs = [
+    '../common/google_update_recovery.cc',
+    '../common/signaturevalidator.cc',
+    ]
+
+# Need to add custom suffix to avoid target conflict with
+# common/signaturevalidator.obj
+rec_env['OBJSUFFIX'] = '_rec' + rec_env['OBJSUFFIX']
+
+rec_env.ComponentLibrary('google_update_recovery.lib', recovery_inputs)
+
+# Save the lib to the main build directory, so we have it saved with each
+# official build.
+env.Replicate('$STAGING_DIR', ['$LIB_DIR/google_update_recovery.lib',
+                               '$MAIN_DIR/common/google_update_recovery.h'])
+
+
+#
+# Build the test
+#
+test_env = env.Clone()
+test_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+test_env.Append(
+    LINKFLAGS = [
+        '/SUBSYSTEM:CONSOLE'
+        ],
+    LIBS = [
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/net.lib',
+        '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/security.lib',
+        ('atls.lib', 'atlsd.lib')[test_env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[test_env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[test_env.Bit('debug')],
+        'crypt32.lib',
+        'wintrust.lib',
+
+        # These are required by common_lib
+        'netapi32.lib',
+        'psapi.lib',
+        'rasapi32.lib',
+        'shlwapi.lib',
+        'userenv.lib',
+        'version.lib',
+        'wtsapi32.lib',
+
+        # net
+        'iphlpapi.lib',
+        ],
+)
+
+target_name = 'RecoveryTest.exe'
+
+test_inputs = [
+    'recovery_test.cc',
+    ]
+if env.Bit('use_precompiled_headers'):
+  test_inputs += test_env.EnablePrecompile(target_name)
+
+test_env.ComponentProgram(target_name, test_inputs)
+
+
+env.BuildSConscript('repair_exe')

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate protocol="9.0" signature="" xmlns="http://www.google.com/update2/install">
+<install appguid="{D6B08267-B440-4c85-9F79-E195E80D9937}" needsadmin="false" appname="Test App" language="en-US"/>
+<install appguid="{D6B08267-B440-4c85-9F79-E195E80D9938}" needsadmin="false" appname="Test App" language="en-US"/>
+</gupdate>

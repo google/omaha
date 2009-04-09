@@ -1,0 +1,46 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+import os
+from enterprise import public_apps
+from enterprise import generate_group_policy_template
+
+Import('env')
+
+# Build the Group Policy template (.adm) file.
+
+_adm_contents = generate_group_policy_template.GenerateGroupPolicyTemplate(
+    public_apps.EXTERNAL_APPS)
+
+def _WriteAdmFile(target, source, env):
+  f = open(env.File(target[0]).abspath, 'w')
+  f.write(env['write_data'])
+  f.close()
+  return 0
+
+adm_output = env.Command(
+    target='$STAGING_DIR/GoogleUpdate.adm',
+    source=[],
+    action=_WriteAdmFile,
+    write_data=_adm_contents
+)
+
+# Force the ADM file to rebuild whenever the script or public_apps data change.
+env.Depends(adm_output,
+            ['generate_group_policy_template.py', 'public_apps.py'])
+
+env.BuildSConscript('installer')

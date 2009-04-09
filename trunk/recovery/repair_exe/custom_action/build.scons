@@ -1,0 +1,112 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+
+#
+# Build executecustomaction.dll
+#
+dll_env = env.Clone(
+    # Build a dll, not a lib.
+    COMPONENT_STATIC = False,
+)
+
+dll_env.Append(
+    LIBS = [
+        ('atls.lib', 'atlsd.lib')[dll_env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[dll_env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[dll_env.Bit('debug')],
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/repair_goopdate.lib',
+        'crypt32.lib',
+        'msi.lib',
+        'wintrust.lib',
+
+        # These are required by common_lib
+        'netapi32.lib',
+        'psapi.lib',
+        'rasapi32.lib',
+        'shlwapi.lib',
+        'userenv.lib',
+        'version.lib',
+        'wtsapi32.lib',
+        ],
+
+    CPPDEFINES = [
+        '_USRDLL',
+        ],
+)
+
+target_name = 'executecustomaction.dll'
+
+dll_inputs = [
+    'execute_repair_file.cc',
+    'executecustomaction.cc',
+    'executecustomaction.def',
+    ]
+if env.Bit('use_precompiled_headers'):
+  dll_inputs += dll_env.EnablePrecompile(target_name)
+
+dll_env.ComponentLibrary(
+    lib_name=target_name,
+    source=dll_inputs,
+)
+
+
+#
+# Build testelevateusingmsp.exe
+#
+exe_env = env.Clone()
+
+exe_env['LIBS'] += [
+    ('atls.lib', 'atlsd.lib')[exe_env.Bit('debug')],
+    ('libcmt.lib', 'libcmtd.lib')[exe_env.Bit('debug')],
+    ('libcpmt.lib', 'libcpmtd.lib')[exe_env.Bit('debug')],
+    '$LIB_DIR/common.lib',
+    '$LIB_DIR/repair_goopdate.lib',
+    'crypt32.lib',
+    'msi.lib',
+    'wintrust.lib',
+    # These are required by common_lib
+    'netapi32.lib',
+    'psapi.lib',
+    'rasapi32.lib',
+    'shlwapi.lib',
+    'userenv.lib',
+    'version.lib',
+    'wtsapi32.lib',
+    ]
+
+# This is a console application.
+exe_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+exe_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+
+target_name = 'testelevateusingmsp.exe'
+
+exe_inputs = [
+    'testelevateusingmsp.cc',
+    ]
+if env.Bit('use_precompiled_headers'):
+  exe_inputs += exe_env.EnablePrecompile(target_name)
+
+exe_env.ComponentProgram(
+    prog_name=target_name,
+    source=exe_inputs,
+)

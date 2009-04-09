@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <PatchCreation Id="E0D0D2C9-5836-4023-AB1D-54EC3B90AD03"
+    AllowMajorVersionMismatches="no"
+    AllowProductCodeMismatches="no"
+    CleanWorkingFolder="yes"
+    WholeFilesOnly="yes">
+
+    <PatchInformation
+      Description="Patches Google Update"
+      Comments="Copyright 2007-2009 Google Inc."
+      Keywords="Installer"
+      Manufacturer="Google Inc."
+      ShortNames="no"
+      Languages="1033"
+      Compressed="no"
+      SummaryCodepage="1252" />
+
+    <PatchMetadata
+      Description="Patches Google Update"
+      DisplayName="Google Update patch"
+      TargetProductName="Google Update"
+      ManufacturerName="Google Inc."
+      MoreInfoURL="http://www.google.com/support/installer/?patch"
+      Classification="Service Pack"
+      AllowRemoval="yes" />
+
+    <Family DiskId="2" MediaSrcProp="GoogleUpdatePatchSrcPropName"
+            Name="GoogleUp" SequenceStart="1000">
+      <UpgradeImage Id="AfterImage" SourceFile="$(var.AfterImage)">
+        <TargetImage Id="BeforeImage" SourceFile="$(var.BeforeImage)"
+                     Order="2" IgnoreMissingFiles="no" />
+      </UpgradeImage>
+    </Family>
+
+    <TargetProductCode Id="A92DAB39-4E2C-4304-9AB6-BC44E68B55E2" />
+  </PatchCreation>
+</Wix>

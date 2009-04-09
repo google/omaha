@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <app appid="{D6B08267-B440-4C85-9F79-E195E80D9937}" status="ok">
+    <updatecheck status="ok"
+                 codebase="http://dl.google.com/foo/1.0.101.0/test_foo_v1.0.101.0.msi"
+                 size="80896"
+                 hash="6bPU7OnbKAGJ1LOw6fpIUuQl1FQ="
+                 needsadmin="true"
+                 successurl="http://testsuccessurl.com"
+                 terminateallbrowsers="true"
+                 onsuccess="exitsilently"/>
+    <ping status="ok"/>
+    <components>
+      <component appid="{65C42695-84A0-41C4-B70F-D2786F674592}" status="ok">
+        <updatecheck status="ok"
+                     codebase="http://dl.google.com/foo/set_comp1.msi"
+                     size="66324"
+                     hash="6bPU7OnbKAGJ1LOw6fpIUuQl1FQ="/>
+      </component>
+      <component appid="{B318029C-3607-48EB-8DBB-33E8BA17BAF1}" status="noupdate"/>
+      <component appid="{D76AE6FC-1633-4131-B782-896804795DCB}" status="ok">
+        <updatecheck status="ok"
+                     codebase="http://tools.google.com/happy/some_comp_inst.msi"
+                     size="829984"
+                     hash="6bPU7OnbKAGJ1LOw6fpIUuQl1FQ="/>
+      </component>
+      <component appid="{67A52AEE-6E9F-4411-B425-F210B962CD6F}" status="noupdate"/>
+    </components>
+  </app>
+  <app appid="{D6B08267-B440-4C85-9F79-E195E80D9936}" status="ok">
+    <updatecheck status="noupdate"/>
+    <components>
+      <component appid="{115493D4-6B38-4314-81B7-26B61F1766A9}" status="ok">
+        <updatecheck status="ok"
+                     codebase="http://foo.google.com/bar/something.exe"
+                     size="12345"
+                     hash="some_hash_value"/>
+      </component>
+    </components>
+    <rlz status="ok"/>
+    <ping status="ok"/>
+  </app>
+  <app appid="{104844D6-7DDA-460B-89F0-FBF8AFDD0A67}" status="ok">
+    <updatecheck status="ok"
+                 codebase="http://dl.google.com/foo/1.0.102.0/user_foo_v1.0.102.0.msi"
+                 size="630152"
+                 hash="/XzRh1rpwqrDr6ashpmQnYZIzDI="
+                 needsadmin="false"
+                 arguments="/install"/>
+    <rlz parameter="1O1GGLGN__"/>
+    <ping status="ok"/>
+  </app>
+  <app appid="{884a01d9-fb67-430a-b491-28f960dd7309}" status="restricted"></app>
+</gupdate>
+

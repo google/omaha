@@ -1,0 +1,1 @@
+('/installers/SampleApp_installers.txt', 'TestFoo', [('$STAGING_DIR/unittest_support/test_foo_v1.0.101.0.msi', '{D6B08267-B440-4C85-9F79-E195E80D9937}')])

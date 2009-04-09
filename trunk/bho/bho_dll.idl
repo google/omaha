@@ -1,0 +1,53 @@
+// Copyright 2007-2009 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+//
+// Template IDL file for the Bho DLL. This template is a complete IDL file in
+// all but one respect; it has one replaceable entry for the CLSID for
+// BhoEntrypointClass. This template is processed by generate_oneclick_idl.py,
+// which generates a GUID using UUIDGEN.EXE, and writes out a complete IDL
+// file with the new CLSID.
+//
+// Background Information:
+// We generate new CLSIDs for each fresh build of Omaha. This allows us to "hot
+// swap" the BHO, and we don't face the issue of IE using the older version of
+// the BHO unless it is restarted.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+// MK keeps rebuilding unless there is an interface in the IDL file. Adding in a
+// dummy interface.
+[
+  object,
+  uuid(A91B50B2-48B3-40b1-86A3-0FE0AF3AB5BF),
+]
+interface INotUsedInterface : IUnknown {
+  HRESULT NotUsedFunction([in] BSTR not_used);
+};
+
+
+[
+  uuid(B137D75E-D05F-4146-AD27-C106D89FB4F4),
+  version(1.0)
+]
+library BhoDllLib {
+  [
+    uuid(%s)
+  ]
+  coclass BhoEntrypointClass {
+    [default] interface IObjectWithSite;
+  };
+}
+

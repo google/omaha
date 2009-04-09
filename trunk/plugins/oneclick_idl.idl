@@ -1,0 +1,81 @@
+// Copyright 2005-2009 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+//
+// Template IDL file for the OneClick ActiveX control. This template is a
+// complete IDL file in all but one respect; It has one replaceable entry
+// for the CLSID for GoopdateOneClickControl. This template is processed by
+// generate_oneclick_idl.py, which generates a GUID using UUIDGEN.EXE, and
+// writes out a (now complete) IDL file with the new CLSID.
+//
+// Background Information:
+// We generate new CLSIDs for each fresh build of Omaha. But we keep the MIME
+// Type constant, as long as we do not change the interface for the control.
+// The control is created with an OBJECT tag of the form:
+//   <OBJECT ID="OneClickCtrl" TYPE="application/x-vnd.Google.OneClickCtrl.1">
+//   </OBJECT>
+// And we register under HKCR\MIME\Database\ContentType, where we keep the MIME
+// type constant, but change the CLSID with each build. This allows us to "hot
+// swap" the control, and we don't face the issue of IE always using the older
+// version of the control unless it is restarted.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+  object,
+  uuid(65CAE76D-A7FC-4629-A7C3-9AF61876894B),
+  dual,
+  helpstring("Google Update One Click Control Automation Interface"),
+  pointer_default(unique)
+]
+interface IGoogleUpdateOneClick : IDispatch
+{
+  // Deprecated. Will be removed in the next release of OneClick.
+  [id(1), helpstring("Install")] HRESULT Install(
+      [in] BSTR cmd_line_args,
+      [in] VARIANT* success_callback,
+      [in] VARIANT* failure_callback);
+
+  // New, easier way of calling Install. Use this for newer web pages.
+  [id(2), helpstring("Install2")] HRESULT Install2([in] BSTR extra_args);
+
+  [id(3), helpstring("GetInstalledVersion")] HRESULT GetInstalledVersion(
+      [in] BSTR guid_string,
+      [in] VARIANT_BOOL is_machine,
+      [out, retval] BSTR* version_string);
+
+  [id(4), helpstring("GetOneClickVersion")] HRESULT GetOneClickVersion(
+      [out, retval] long* version);
+};
+
+[
+  uuid(BBEFAF3A-5D73-4cc5-A2A1-34E5C55169B0),
+  version(1.0),
+  helpstring("Google Update One Click 1.0 Type Library")
+]
+library OneClickLib
+{
+  importlib("stdole2.tlb");
+  importlib("stdole32.tlb");
+
+  [
+    uuid(%s),
+    helpstring("Google Update One Click Control Class")
+  ]
+  coclass GoopdateOneClickControl
+  {
+    [default] interface IGoogleUpdateOneClick;
+  };
+};

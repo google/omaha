@@ -1,0 +1,95 @@
+// Copyright 2007-2009 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+//
+// This file contains the dialog templates for BIDI languages.
+// The file is used by GRIT to create the language specific resources, hence
+// we do not need to include any header files in here. GRIT automatically
+// generates the resource header.
+
+#include "afxres.h"
+#include "goopdateres/goopdate.grh"
+
+#ifndef APSTUDIO_INVOKED
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+ PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x0L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "[GRITVERLANGCHARSETHEX]"
+        BEGIN
+            VALUE "CompanyName", "Google Inc."
+            VALUE "FileDescription", "Google Update Resource DLL"
+            VALUE "FileVersion", VERSION_NUMBER_STRING
+            VALUE "InternalName", "Google Update Resource DLL"
+            VALUE "LegalCopyright", "Copyright 2007-2009 Google Inc."
+            VALUE "OriginalFilename", "Goopdateres.dll"
+            VALUE "ProductName", "Google Update"
+            VALUE "ProductVersion", VERSION_NUMBER_STRING
+            VALUE "LanguageId", LANGUAGE_STRING
+#ifdef _DEBUG
+            VALUE "Debug", ""
+#endif
+#if !OFFICIAL_BUILD
+            VALUE "Privatebuild", ""
+#endif
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", [GRITVERLANGID], [GRITVERCHARSETID]
+    END
+END
+
+#endif  // APSTUDIO_INVOKED
+
+IDD_PROGRESS DIALOGEX 0, 0, 325, 80
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_FIXEDSYS | WS_MINIMIZEBOX |
+    WS_POPUP | WS_CLIPSIBLINGS | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg 2", 0, 0, 0x0
+EXSTYLE WS_EX_LAYOUTRTL
+BEGIN
+    PUSHBUTTON  "",IDC_CLOSE,248,57,70,16,NOT WS_VISIBLE
+    PUSHBUTTON  "",IDC_BUTTON1,7,57,152,16,NOT WS_VISIBLE
+    PUSHBUTTON  "",IDC_BUTTON2,166,57,152,16,NOT WS_VISIBLE
+    CONTROL     "",IDC_PROGRESS,"msctls_progress32",NOT WS_VISIBLE,7,36,311,10
+    LTEXT       "",IDC_INSTALLER_STATE_TEXT,7,7,197,16,NOT WS_VISIBLE
+    LTEXT       "",IDC_INFO_TEXT,7,54,311,8,NOT WS_VISIBLE
+    LTEXT       "",IDC_PAUSE_RESUME_TEXT,234,25,33,8,SS_NOTIFY | NOT WS_VISIBLE
+    LTEXT       "",IDC_COMPLETE_TEXT,39,7,279,43,SS_NOTIFY | NOT WS_VISIBLE
+    LTEXT       "",IDC_ERROR_TEXT,7,7,311,42,SS_NOTIFY | NOT WS_VISIBLE
+    LTEXT       "",IDC_GET_HELP_TEXT,7,60,220,16,SS_NOTIFY | NOT WS_VISIBLE
+    ICON           IDI_SUCCEESS,IDC_IMAGE,7,7,17,17
+END
+
+IDD_INSTALL_STOPPED DIALOGEX 0, 0, 260, 70
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION
+FONT 8, "MS Shell Dlg 2", 400, 0, 0x1
+EXSTYLE WS_EX_LAYOUTRTL
+BEGIN
+    DEFPUSHBUTTON   "",IDOK,133,49,120,14
+    PUSHBUTTON      "",IDCANCEL,7,49,120,14
+    LTEXT           "",IDC_INSTALL_STOPPED_TEXT,7,7,246,34
+END

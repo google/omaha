@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <?define CompanyFullName = 'Google, Inc.'?>
+  <?define Copyright = 'Copyright 2007-2009 Google Inc.'?>
+
+  <Product
+    Id='$(var.MsiProductId)'
+    Name='$(var.ProductName)'
+    Language='1033'
+    Codepage='1252'
+    UpgradeCode='$(var.MsiUpgradeCode)'
+    Version='$(var.ProductVersion)'
+    Manufacturer='$(var.CompanyFullName)'>
+
+    <Package
+      Id='*'
+      Description='$(var.ProductName) Installer'
+      Comments='$(var.Copyright)'
+      Manufacturer='$(var.CompanyFullName)'
+      Languages='1033'
+      SummaryCodepage='1252'
+      InstallerVersion='150'
+      InstallPrivileges='elevated'
+      Compressed='yes' />
+
+    <Upgrade Id='$(var.MsiUpgradeCode)'>
+      <UpgradeVersion Property='UPGRADING'
+                      OnlyDetect='no'
+                      Minimum='0.0.0.0' IncludeMinimum='yes'
+                      Maximum='$(var.ProductVersion)' IncludeMaximum='no' />
+      <UpgradeVersion Property='NEWERVERSIONDETECTED' 
+                      OnlyDetect='yes'
+                      Minimum='$(var.ProductVersion)' IncludeMinimum='yes' />
+    </Upgrade>
+
+    <!-- Per-machine installation - make sure product appears for all users. -->
+    <Property Id='ALLUSERS' Value='1' />
+
+    <!-- Hide Add/Remove Programs entry -->
+    <Property Id='ARPSYSTEMCOMPONENT' Value='1' />
+
+    <UI>
+      <Error Id='4000'>A newer version of the $(var.ProductName) enterprise installer is already installed.</Error>
+    </UI>
+
+    <!-- Eliminates "warning LGHT1076 : ICE71: The Media table has no entries."
+    -->
+    <Media Id='1' />
+
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <Directory Id='ProgramFilesFolder'>
+      </Directory>
+    </Directory>
+
+
+    <Binary Id='$(var.ProductNameLegalIdentifier)Installer'
+            SourceFile='$(var.ProductInstallerPath)' />
+
+
+    <Feature Id='Complete' Level='1'>
+      <ComponentRef Id='ComponentGoogleUpdate' />
+    </Feature>
+
+    <CustomAction Id='NewerVersionError' Error='4000'/>
+
+    <CustomAction Id='SetInstallerInstallCommandProperty'
+      Property='FullProductInstallerInstallCommand'
+      Value='$(var.ProductInstallerInstallCommand)'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction 
+      Id='AppendDisableUpdateRegistrationArgToInstallerInstallCommandProperty'
+      Property='FullProductInstallerInstallCommand'
+      Value='[FullProductInstallerInstallCommand]
+             $(var.ProductInstallerDisableUpdateRegistrationArg)'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='Install$(var.ProductNameLegalIdentifier)'
+      BinaryKey='$(var.ProductNameLegalIdentifier)Installer'
+      Impersonate='no'
+      Execute='deferred'
+      ExeCommand='[FullProductInstallerInstallCommand]'
+      Return='check' />
+    <CustomAction Id='Uninstall$(var.ProductNameLegalIdentifier)'
+      BinaryKey='$(var.ProductNameLegalIdentifier)Installer'
+      Impersonate='no'
+      Execute='deferred'
+      ExeCommand='$(var.ProductInstallerUninstallCommand)'
+      Return='check' />
+
+    <InstallExecuteSequence>
+      <RemoveExistingProducts After='InstallValidate' />
+
+      <Custom Action='NewerVersionError' After='FindRelatedProducts'>
+        NEWERVERSIONDETECTED
+      </Custom>
+
+      <!-- Any operations that rely on values, such as brand and usagestats, in
+           ClientState should not run until after
+           InstallGoogleUpdateAndRegister. This is sequenced before InstallFiles
+           so that can be used as well. -->
+      <!-- TODO(omaha): Support Rollback? Need to determine whether Product
+           was installed before installing it and only add the rollback then.
+      <Custom Action='Rollback$(var.ProductNameLegalIdentifier)'
+              After='InstallFiles'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT $(var.ProductNameLegalIdentifier)_INSTALLED)
+      </Custom>
+      Change After='InstallFiles' below to
+      After='Rollback$(var.ProductNameLegalIdentifier)'. -->
+      <Custom Action='SetInstallerInstallCommandProperty'
+              After='InstallFiles'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL)
+      </Custom>
+      <Custom Action='AppendDisableUpdateRegistrationArgToInstallerInstallCommandProperty'
+              After='SetInstallerInstallCommandProperty'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL) AND DISABLE_UPDATES
+      </Custom>
+      <Custom Action='Install$(var.ProductNameLegalIdentifier)'
+              After='AppendDisableUpdateRegistrationArgToInstallerInstallCommandProperty'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL)
+      </Custom>
+
+      <Custom Action='Uninstall$(var.ProductNameLegalIdentifier)'
+              Before='RemoveFiles'>
+        $ComponentGoogleUpdate=2
+      </Custom>
+
+    </InstallExecuteSequence>
+
+  </Product>
+</Wix>

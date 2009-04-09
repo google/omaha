@@ -1,0 +1,106 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+
+local_env = env.Clone()
+
+v = local_env['product_version'][0]
+version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+local_env.FilterOut(LINKFLAGS = ['/NODEFAULTLIB'])
+
+local_env.Append(
+    CPPPATH = [
+        '$OBJ_ROOT',                    # Needed for the generated files
+        '$MAIN_DIR/goopdate/resources',
+        '$MAIN_DIR/third_party/gtest/include',
+        ],
+    CPPDEFINES = [
+        'UNITTEST',
+        '_ATL_APARTMENT_THREADED',
+        ],
+    LIBS = [
+        '$LIB_DIR/breakpad.lib',
+        '$LIB_DIR/core.lib',
+        '$LIB_DIR/goopdate_dll.lib',
+        '$LIB_DIR/google_update_ps.lib',
+        '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/logging.lib',
+        '$LIB_DIR/net.lib',
+        '$LIB_DIR/repair_goopdate.lib',
+        '$LIB_DIR/security.lib',
+        '$LIB_DIR/service.lib',
+        '$LIB_DIR/statsreport.lib',
+        '$LIB_DIR/setup.lib',
+        '$LIB_DIR/worker.lib',
+        '$LIB_DIR/gtest.lib',
+        '$LIB_DIR/common.lib',
+        ('atls.lib', 'atlsd.lib')[local_env.Bit('debug')],
+        'comctl32.lib',
+        'crypt32.lib',
+        'iphlpapi.lib',
+        'msi.lib',
+        'mstask.lib',
+        'netapi32.lib',
+        'psapi.lib',
+        'rasapi32.lib',
+        'rpcns4.lib',
+        'rpcrt4.lib',
+        'shlwapi.lib',
+        'urlmon.lib',
+        'userenv.lib',
+        'version.lib',
+        'wininet.lib',
+        'wintrust.lib',
+        'wtsapi32.lib',
+        ],
+    RCFLAGS = [
+        '/DVERSION_MAJOR=%d' % v[0],
+        '/DVERSION_MINOR=%d' % v[1],
+        '/DVERSION_BUILD=%d' % v[2],
+        '/DVERSION_PATCH=%d' % v[3],
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+        '/DLANGUAGE_STRING=\\"en\\"'
+        ],
+)
+
+unittest_res = local_env.RES('ui_unittest.rc'),
+
+local_env.Depends(unittest_res, '$MAIN_DIR/VERSION')
+
+# A test is a console application, so we tell mk to link to
+# main() as opposed to WinMain().
+local_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+
+# Do not name the output _unittest.exe or _test.exe to avoid the build machine
+# automatically running it after the build. See rut.py for details.
+target_name = 'ui_systemtest.exe'
+
+inputs = [
+    'ui_unittest.cc',
+    '../../worker/progresswnd_unittest.cc',
+    unittest_res,
+    ]
+if env.Bit('use_precompiled_headers'):
+  inputs += local_env.EnablePrecompile(target_name)
+
+local_env.ComponentProgram(target_name, inputs)
+

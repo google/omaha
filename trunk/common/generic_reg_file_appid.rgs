@@ -1,0 +1,18 @@
+HKLM
+{
+  NoRemove SOFTWARE
+  {
+    NoRemove Classes
+    {
+      NoRemove AppID
+      {
+        ForceRemove '%APPID%' = s '%DESCRIPTION%'
+        ForceRemove '%FILENAME%'
+        {
+          val AppID = s '%APPID%'
+        }
+      }
+    }
+  }
+}
+
