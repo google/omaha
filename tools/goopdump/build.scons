@@ -1,0 +1,139 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+# Builds goopdump.exe which is a utility for dumping config info for
+# googleupdate.
+
+
+Import('env')
+
+#
+# Build Goopdump.lib
+#
+lib_env = env.Clone()
+
+target_name = 'goopdump.lib'
+
+lib_inputs = [
+    'data_dumper.cc',
+    'data_dumper_app_manager.cc',
+    'data_dumper_goopdate.cc',
+    'data_dumper_network.cc',
+    'data_dumper_oneclick.cc',
+    'data_dumper_osdata.cc',
+    'dump_log.cc',
+    'goopdump.cc',
+    'goopdump_cmd_line_parser.cc',
+    'process_commandline.cc',
+    'process_monitor.cc',
+    ]
+if env.Bit('use_precompiled_headers'):
+  lib_inputs += lib_env.EnablePrecompile(target_name)
+
+lib_env.ComponentLibrary(
+    lib_name=target_name,
+    source=lib_inputs
+)
+
+
+#
+# Build Goopdump.exe
+#
+exe_env = env.Clone()
+
+v = exe_env['product_version'][0]
+version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+exe_env.Append(
+    RCFLAGS = [
+        '/DVERSION_MAJOR=%d' % v[0],
+        '/DVERSION_MINOR=%d' % v[1],
+        '/DVERSION_BUILD=%d' % v[2],
+        '/DVERSION_PATCH=%d' % v[3],
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+        '/DLANGAUGE_STRING=\\"en\\"',
+        ],
+
+    LIBS = [
+        'delayimp.lib',
+        'kernel32.lib',
+        'pdh.lib',
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/goopdate_dll.lib',
+        '$LIB_DIR/logging.lib',
+        '$LIB_DIR/net.lib',
+        '$LIB_DIR/statsreport.lib',
+        '$LIB_DIR/goopdump.lib',
+        '$LIB_DIR/worker.lib',
+        ('atls.lib', 'atlsd.lib')[exe_env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[exe_env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[exe_env.Bit('debug')],
+        'advapi32.lib',
+        'comctl32.lib',
+        'crypt32.lib',
+        'delayimp.lib',
+        'Iphlpapi.lib',
+        'msi.lib',
+        'mstask.lib',
+        'netapi32.lib',
+        'ole32.lib',
+        'oleaut32.lib',
+        'psapi.lib',
+        'rasapi32.lib',
+        'secur32.lib',
+        'shell32.lib',
+        'shlwapi.lib',
+        'user32.lib',
+        'version.lib',
+        'urlmon.lib',
+        'userenv.lib',
+        'uuid.lib',
+        'wininet.lib',
+        'wintrust.lib',
+        'wtsapi32.lib',
+        ],
+
+    LINKFLAGS = [
+        '/DELAYLOAD:ole32.dll',
+        '/DELAYLOAD:oleaut32.dll',
+        '/DELAYLOAD:psapi.dll',
+        '/DELAYLOAD:rasapi32.dll',
+        '/DELAYLOAD:shell32.dll',
+        '/DELAYLOAD:shlwapi.dll',
+        '/DELAYLOAD:userenv.dll',
+        '/DELAYLOAD:version.dll',
+        '/DELAYLOAD:wtsapi32.dll',
+        ],
+)
+
+exe_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+exe_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+
+target_name = 'goopdump.exe'
+
+exe_inputs = [
+    'goopdump_main.cc',
+    exe_env.RES('resource.rc'),
+    ]
+if env.Bit('use_precompiled_headers'):
+  exe_inputs += exe_env.EnablePrecompile(target_name)
+
+exe_env.ComponentProgram(
+    prog_name=target_name,
+    source=exe_inputs
+)
+

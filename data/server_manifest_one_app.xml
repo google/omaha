@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+<app appid="{CDABE316-39CD-43BA-8440-6D1E0547AEE6}" status="ok">
+  <updatecheck status="ok"
+               codebase="http://dl.google.com/foo/1.0.101.0/foo_installer.exe"
+               size="82128"
+               hash="U4gBMUVwIPQners8SriHpHaWEKk="
+               needsadmin="true"
+               successurl="http://testsuccessurl.com"
+               onsuccess="exitsilentlyonlaunchcmd"
+               terminateallbrowsers="true"/>
+  <data index="verboselogging" name="install" status="ok">
+  {
+    "distribution": {
+      "verbose_logging": true
+    }
+  }
+  </data>
+  <ping status="ok"/>
+</app>
+</gupdate>

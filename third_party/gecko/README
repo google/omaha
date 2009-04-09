@@ -1,0 +1,11 @@
+This directory contains IDL files from the Mozilla source tree (circa Mozilla
+1.7).  These IDL files are copied here because they do not exist in the Gecko
+SDK.  Eventually, the hope is that the Gecko SDK will expand to include these
+interfaces.  For now, we keep these in a separate directory, with the idea that
+this directory will some day go away.
+
+Some files have been modified slightly, usually to change the name of an
+interface to deal with cases where multiple versions of the same interface are
+needed.  Modified files should include a comment explaining what has changed.
+
+-darin

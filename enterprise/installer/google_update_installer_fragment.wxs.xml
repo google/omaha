@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <?define UpdateKeyPath = 'SOFTWARE\Google\Update' ?>
+
+  <!-- This fragment assumes machine install (ALLUSER=1). -->
+
+  <Fragment Id='FragmentGoogleUpdate' >
+    <!-- Detect whether product is already registered with Google Update. -->
+    <Property Id='PRODUCT_REGISTERED_VERSION'>
+      <RegistrySearch Id='$(var.ProductNameLegalIdentifier)RegistrationSearch'
+                      Root='HKLM'
+                      Key='$(var.UpdateKeyPath)\Clients\$(var.ProductGuid)'
+                      Name='pv' Type='raw' />
+    </Property>
+
+    <Binary Id='GoogleUpdateSetup'
+            SourceFile='$(var.GoogleUpdateMetainstallerPath)' />
+
+    <!-- This fragment needs a component that can be referenced.
+         Components must be in Directory[Ref] elements and cannot be empty.
+         Thus, we have a registry value write that has no effect.
+         To avoid multiple Directory elements with the 'ProgramFilesFolder' Id,
+         assume that the product MSI has defined a it and reference it here. -->
+    <DirectoryRef Id='ProgramFilesFolder'>
+      <Directory Id='GoogleProgramDir' Name='Google'>
+        <Directory Id='UpdateDir' Name='Update'>
+
+          <Component Id='ComponentGoogleUpdate'
+                     Guid='6B528A57-0CD8-4b26-85F8-1CA05523B8F1'>
+            <RegistryValue Id='NonEmptyComponent' Action='write'
+                           Root='HKLM' Key='$(var.UpdateKeyPath)'
+                           Name='EnterpriseInstall' Type='integer' Value='1' />
+          </Component>
+
+        </Directory>
+      </Directory>
+    </DirectoryRef>
+
+    <CustomAction Id='SetProductTagProperty'
+      Property='ProductTag'
+      Value='appguid=$(var.ProductGuid)&amp;appname=$(var.ProductName)&amp;needsAdmin=True'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='AppendCustomParamsToProductTagProperty'
+      Property='ProductTag'
+      Value='[ProductTag]$(var.ProductCustomParams)'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='AppendBrandToProductTagProperty'
+      Property='ProductTag'
+      Value='[ProductTag]&amp;brand=[BRAND]'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='RollbackGoogleUpdateRegistration'
+      BinaryKey='GoogleUpdateSetup'
+      Impersonate='no'
+      Execute='rollback'
+      ExeCommand='/unregisterproduct "[ProductTag]"'
+      Return='check' />
+    <CustomAction Id='InstallGoogleUpdateAndRegister'
+      BinaryKey='GoogleUpdateSetup'
+      Impersonate='no'
+      Execute='deferred'
+      ExeCommand='/registerproduct "[ProductTag]"'
+      Return='check' />
+
+    <InstallExecuteSequence>
+      <!-- Build tag property. -->
+      <Custom Action='SetProductTagProperty'
+              Before='AppendCustomParamsToProductTagProperty'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT DISABLE_UPDATES)
+      </Custom>
+      <Custom Action='AppendCustomParamsToProductTagProperty'
+              Before='AppendBrandToProductTagProperty'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT DISABLE_UPDATES)
+      </Custom>
+      <Custom Action='AppendBrandToProductTagProperty'
+              Before='RollbackGoogleUpdateRegistration'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT DISABLE_UPDATES) AND (BRAND &lt;&gt; "")
+      </Custom>
+
+      <!-- Install Google Update before 'InstallFiles' first so that brand, etc.
+           will be present when the product is installed. -->
+      <Custom Action='RollbackGoogleUpdateRegistration'
+              Before='InstallGoogleUpdateAndRegister'
+              >
+        (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT DISABLE_UPDATES) AND (PRODUCT_REGISTERED_VERSION = "")
+      </Custom>
+      <Custom Action='InstallGoogleUpdateAndRegister'
+              Before='InstallFiles'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT DISABLE_UPDATES)
+      </Custom>
+
+      <!-- Google Update will uninstall itself if the product is the only app it
+           so no need to have an uninstall operation. -->
+
+    </InstallExecuteSequence>
+
+  </Fragment>
+</Wix>

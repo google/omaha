@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" 
+           targetNamespace="http://www.google.com/omaha/response" 
+            xmlns:xs="http://www.w3.org/2001/XMLSchema"
+            xmlns:ts="http://www.google.com/omaha/response">
+  <xs:simpleType name="ResponseType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ok" />
+      <xs:enumeration value="noupdate" />
+      <xs:enumeration value="unknownapplication" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="NeedsAdminType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="true" />
+      <xs:enumeration value="false" />
+      <xs:enumeration value="prefers" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="GuidType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="{[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}}" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="responses">
+    <xs:complexType>
+      <xs:choice>
+        <xs:element minOccurs="0" maxOccurs="unbounded" name="response">
+          <xs:complexType>
+            <xs:sequence minOccurs="0">
+              <xs:element name="codebase" type="xs:string" />
+              <xs:element name="needsadmin" type="ts:NeedsAdminType" />
+              <xs:element name="hash" type="xs:string" />
+              <xs:element name="rlz" type="xs:string" />
+            </xs:sequence>
+            <xs:attribute name="status" type="ts:ResponseType" use="required" />
+            <xs:attribute name="appid" type="ts:GuidType" use="required" />
+          </xs:complexType>
+        </xs:element>
+        <xs:element minOccurs="0" maxOccurs="unbounded" name="install">
+          <xs:complexType>
+            <xs:attribute name="needsadmin" type="ts:NeedsAdminType" />
+            <xs:attribute name="appguid" type="ts:GuidType" />
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+      <xs:attribute name="ver" type="xs:decimal" use="required" />
+      <xs:attribute name="signature" type="xs:string" use="required" />
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

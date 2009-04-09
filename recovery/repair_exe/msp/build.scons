@@ -1,0 +1,156 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+#
+# Hammer file to create the stub .msi and .msp files
+#
+
+import os
+import stat
+
+Import('env')
+
+
+_custom_actions_path = (
+    '$OBJ_ROOT/recovery/repair_exe/custom_action/executecustomaction.dll')
+_cert_file = env.File(GetOption('authenticode_file')).abspath[:-3] + 'cer'
+_required_file = '$MAIN_DIR/recovery/repair_exe/msp/requiredfile.txt'
+
+google_update_version = env['product_version'][0]
+google_update_version_string = '%d.%d.%d.%d' % (google_update_version[0],
+                                                google_update_version[1],
+                                                google_update_version[2],
+                                                google_update_version[3])
+
+old_unsigned_env = env.Clone()
+old_unsigned_env.Append(
+    WIXCANDLEFLAGS = [
+        '-dFinalMsi=0',
+        '-dCertificateFile=' + _cert_file,
+        '-dRequiredFile=' + env.File(_required_file).abspath,
+        '-dGoogleUpdateVersion=' + google_update_version_string,
+        ],
+    WIXLIGHTFLAGS = [
+        '-dRequiredFile=' + env.File(_required_file).abspath,
+        ],
+)
+
+old_unsigned_output = old_unsigned_env.WiX('GoogleUpdateHelper_unsigned.msi',
+    'patchableinstaller.wxs')
+
+env.Depends(old_unsigned_output, [_custom_actions_path, _required_file])
+
+
+new_unsigned_env = env.Clone()
+new_unsigned_env.Append(
+    WIXCANDLEFLAGS = [
+        '-dFinalMsi=1',
+        '-dExecuteCustomActionDLL=' + env.File(_custom_actions_path).abspath,
+        '-dCertificateFile=' + _cert_file,
+        '-dRequiredFile=' + env.File(_required_file).abspath,
+        '-dGoogleUpdateVersion=' + google_update_version_string,
+        ],
+    WIXLIGHTFLAGS = [
+        '-dRequiredFile=' + env.File(_required_file).abspath,
+        ],
+)
+
+# Output to a subdirectory to avoid having
+# 2 intermediate wixobj files with the same name and path.
+new_unsigned_env['WIXOBJPREFIX'] = new_unsigned_env['WIXOBJPREFIX'] + 'new/'
+new_unsigned_env['WIXMSIPREFIX'] = new_unsigned_env['WIXMSIPREFIX'] + 'new/'
+
+new_unsigned_output = new_unsigned_env.WiX(
+    target='GoogleUpdateHelper_unsigned.msi',
+    source='patchableinstaller.wxs'
+)
+
+env.Depends(new_unsigned_output, [_custom_actions_path, _required_file])
+
+
+#
+# Create the MSP file
+#
+msp_env = env.Clone()
+
+patch_output = msp_env.Command(
+    target='patch.wixobj',
+    source='patch.wxs',
+    action=('@candle.exe -nologo -out $TARGET $SOURCE -dAfterImage=%s'
+            ' -dBeforeImage=%s' % (env.File(new_unsigned_output[0]).abspath,
+                                   env.File(old_unsigned_output[0]).abspath))
+)
+
+# Required because the before and after images are not in the source.
+Depends(patch_output, [new_unsigned_output, old_unsigned_output])
+
+pcp_output = msp_env.Command(
+    target='patch.pcp',
+    source=patch_output,
+    action='@light.exe -nologo -out $TARGET $SOURCE'
+)
+
+# The PCP, and thus the MSP, fail to rebuild when the MSI files change without
+# this explicit dependency, probably because the .wixobj hash does not change.
+Depends(pcp_output, [patch_output, old_unsigned_output, new_unsigned_output])
+
+# Delete temp dir that vista sdk version of msimsp.exe cannot remove for itself.
+_temp_dir = os.path.join(env['ENV']['TMP'], '~pcw_tmp.tmp')
+if os.path.exists(_temp_dir):
+  # Recursively delete subdirectories
+  def rm_rf(dir):
+    for file in os.listdir(dir):
+      path = os.path.join(dir, file)
+      if os.path.isdir(path):
+        rm_rf(path)
+      else:
+        os.chmod(path, stat.S_IWRITE)  # Make sure file is writeable.
+        os.remove(path)
+    os.rmdir(dir)
+
+  # Remove the temp dir.
+  rm_rf(_temp_dir)
+
+unsigned_msp_name = 'GoogleUpdateHelperPatch_unsigned.msp'
+unsigned_msp_path = '$OBJ_ROOT/recovery/repair_exe/msp/' + unsigned_msp_name
+
+msp_output = msp_env.Command(
+    target=unsigned_msp_name,
+    source=pcp_output,
+    action='@msimsp.exe -s $SOURCE -p $TARGET -l %s' % (
+        env.File(unsigned_msp_path + '.log').abspath),
+)
+
+# For unknown reasons, the PCP fails to rebuild and cause the MSP to rebuild
+# when the MSI files change without this explicit dependency.
+Depends(msp_output, pcp_output)
+
+
+#
+# Sign the old MSI and MSP
+#
+signed_msi = env.SignedBinary(
+    target='GoogleUpdateHelper.msi',
+    source=old_unsigned_output,
+)
+
+signed_msp = env.SignedBinary(
+    target='GoogleUpdateHelperPatch.msp',
+    source=msp_output,
+)
+
+env.Replicate('$STAGING_DIR', [signed_msi, signed_msp])

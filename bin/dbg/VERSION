@@ -1,0 +1,10 @@
+# -*- Python -*-
+
+# update these manually - don't autogenerate, autoincrement, etc.
+# REMEMBER TO INCREMENT BUILD BY TWO! BUILD SHOULD ALWAYS BE ODD!
+version_major = 1    # 1-65535
+version_minor = 2    # 0-65535
+version_build = 141  # 1-65535
+version_patch = 5    # 0-65535
+
+oneclick_plugin_version = '7'

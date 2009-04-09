@@ -1,0 +1,197 @@
+CLASS MACHINE
+  CATEGORY !!Cat_Google
+    CATEGORY !!Cat_GoogleUpdate
+      KEYNAME !!Key_BaseName
+      EXPLAIN !!Explain_GoogleUpdate
+
+      CATEGORY !!Cat_Preferences
+        KEYNAME !!Key_BaseName
+        EXPLAIN !!Explain_Preferences
+
+        POLICY !!Pol_AutoUpdateCheckPeriod
+          EXPLAIN !!Explain_AutoUpdateCheckPeriod
+          PART !!Part_AutoUpdateCheckPeriod NUMERIC
+            VALUENAME AutoUpdateCheckPeriodMinutes
+            DEFAULT 1400  ; 23 hours 20 minutes.
+            MIN 30
+            MAX 65535     ; 45.5 days.
+            SPIN 60       ; Increment in hour chunks.
+          END PART
+        END POLICY
+
+      END CATEGORY  ; Preferences
+
+      CATEGORY !!Cat_Applications
+        KEYNAME !!Key_BaseName
+        EXPLAIN !!Explain_Applications
+
+        POLICY !!Pol_DefaultAllowInstallation
+          EXPLAIN !!Explain_DefaultAllowInstallation
+          VALUENAME InstallDefault
+          VALUEOFF  NUMERIC 0
+          VALUEON   NUMERIC 1
+        END POLICY
+
+        POLICY !!Pol_DefaultUpdatePolicy
+          EXPLAIN !!Explain_DefaultUpdatePolicy
+          PART !!Part_UpdatePolicy DROPDOWNLIST
+            VALUENAME UpdateDefault
+            ITEMLIST
+              NAME  !!Name_AutomaticUpdates
+              VALUE NUMERIC 1
+              NAME  !!Name_ManualUpdates
+              VALUE NUMERIC 2
+              NAME  !!Name_UpdatesDisabled
+              VALUE NUMERIC 0
+            END ITEMLIST
+            REQUIRED
+          END PART
+        END POLICY
+
+        CATEGORY !!Cat_GoogleChrome
+          KEYNAME !!Key_BaseName
+
+          POLICY !!Pol_AllowInstallation
+            EXPLAIN !!Explain_InstallGoogleChrome
+            VALUENAME Install{8A69D345-D564-463C-AFF1-A69D9E530F96}
+            VALUEOFF  NUMERIC 0
+            VALUEON   NUMERIC 1
+          END POLICY
+
+          POLICY !!Pol_UpdatePolicy
+            EXPLAIN !!Explain_AutoUpdateGoogleChrome
+            PART !!Part_UpdatePolicy DROPDOWNLIST
+              VALUENAME Update{8A69D345-D564-463C-AFF1-A69D9E530F96}
+              ITEMLIST
+                NAME  !!Name_AutomaticUpdates
+                VALUE NUMERIC 1
+                NAME  !!Name_ManualUpdates
+                VALUE NUMERIC 2
+                NAME  !!Name_UpdatesDisabled
+                VALUE NUMERIC 0
+              END ITEMLIST
+              REQUIRED
+            END PART
+          END POLICY
+
+        END CATEGORY  ; Google Chrome
+
+        CATEGORY !!Cat_GoogleEarth
+          KEYNAME !!Key_BaseName
+
+          POLICY !!Pol_AllowInstallation
+            EXPLAIN !!Explain_InstallGoogleEarth
+            VALUENAME Install{74AF07D8-FB8F-4D51-8AC7-927721D56EBB}
+            VALUEOFF  NUMERIC 0
+            VALUEON   NUMERIC 1
+          END POLICY
+
+          POLICY !!Pol_UpdatePolicy
+            EXPLAIN !!Explain_AutoUpdateGoogleEarth
+            PART !!Part_UpdatePolicy DROPDOWNLIST
+              VALUENAME Update{74AF07D8-FB8F-4D51-8AC7-927721D56EBB}
+              ITEMLIST
+                NAME  !!Name_AutomaticUpdates
+                VALUE NUMERIC 1
+                NAME  !!Name_ManualUpdates
+                VALUE NUMERIC 2
+                NAME  !!Name_UpdatesDisabled
+                VALUE NUMERIC 0
+              END ITEMLIST
+              REQUIRED
+            END PART
+          END POLICY
+
+        END CATEGORY  ; Google Earth
+
+      END CATEGORY  ; Applications
+
+    END CATEGORY  ; GoogleUpdate
+
+  END CATEGORY  ; Google
+
+;------------------------------------------------------------------------------
+
+[strings]
+Key_BaseName=Software\Policies\Google\Update
+
+Cat_Google=Google
+Cat_GoogleUpdate=Google Update
+Cat_Preferences=Preferences
+Cat_Applications=Applications
+
+Pol_AutoUpdateCheckPeriod=Auto-update check period override
+Pol_DefaultAllowInstallation=Allow installation default
+Pol_AllowInstallation=Allow installation
+Pol_DefaultUpdatePolicy=Update policy override default
+Pol_UpdatePolicy=Update policy override
+
+Part_AutoUpdateCheckPeriod=Minutes between update checks
+Part_UpdatePolicy=Policy
+
+Name_AutomaticUpdates=Automatic silent updates (recommended)
+Name_ManualUpdates=Manual updates only
+Name_UpdatesDisabled=Updates disabled
+
+Cat_GoogleChrome=Google Chrome
+Cat_GoogleEarth=Google Earth
+
+Explain_GoogleUpdate=Policies to control the installation and updating of Google applications that use Google Update/Google Installer.
+
+;------------------------------------------------------------------------------
+; Preferences
+;------------------------------------------------------------------------------
+
+Explain_Preferences=General policies for Google Update.
+
+Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.
+
+;------------------------------------------------------------------------------
+; Applications
+;------------------------------------------------------------------------------
+
+Explain_Applications=Policies for individual applications.\
+    \n\nAn updated ADM template will be required to support Google applications released in the future.
+
+Explain_DefaultAllowInstallation=Specifies the default behavior for whether Google software can be installed using Google Update/Google Installer.\
+    \n\nCan be overridden by the "Allow installation" for individual applications.\
+    \n\nOnly affects installation of Google software using Google Update/Google Installer. Cannot prevent running the application installer directly or installation of Google software that does not use Google Update/Google Installer for installation.
+
+Explain_DefaultUpdatePolicy=Specifies the default policy for software updates from Google.\
+    \n\nCan be overridden by the "Update policy override" for individual applications.\
+    \n\nOptions:\
+    \n - Automatic silent updates: Updates are automatically applied when they are found via the periodic update check.\
+    \n - Manual updates only: Updates are only applied when the user does a manual update check. (Not all apps provide an interface for this.)\
+    \n - Updates disabled: Never apply updates.\
+    \n\nIf you select manual updates, you should periodically check for updates using each application's manual update mechanism if available. If you disable updates, you should periodically check for updates and distribute them to users.\
+    \n\nOnly affects updates for Google software that uses Google Update for updates. Does not prevent auto-updates of Google software that does not use Google Update for updates.\
+    \n\nUpdates for Google Update are not affected by this setting; Google Update will continue to update itself while it is installed.\
+    \n\nWARNING: Disabing updates will also prevent updates of any new Google applications released in the future, possibly including dependencies for future versions of installed applications.
+
+;------------------------------------------------------------------------------
+; Individual Applications
+;------------------------------------------------------------------------------
+
+; Google Chrome
+Explain_InstallGoogleChrome=Specifies whether Google Chrome can be installed using Google Update/Google Installer.\
+    \n\nIf this policy is not configured, Google Chrome can be installed as specified by "Allow installation default".
+
+Explain_AutoUpdateGoogleChrome=Specifies how Google Update handles available Google Chrome updates from Google.\
+    \n\nIf this policy is not configured, Google Update handles available updates as specified by "Update policy override default".\
+    \n\nOptions:\
+    \n - Automatic silent updates: Updates are automatically applied when they are found via the periodic update check.\
+    \n - Manual updates only: Updates are only applied when the user does a manual update check. (Not all apps provide an interface for this.)\
+    \n - Updates disabled: Never apply updates.\
+    \n\nIf you select manual updates, you should periodically check for updates using the application's manual update mechanism if available. If you disable updates, you should periodically check for updates and distribute them to users. Check http://www.google.com/chrome/.
+
+; Google Earth
+Explain_InstallGoogleEarth=Specifies whether Google Earth can be installed using Google Update/Google Installer.\
+    \n\nIf this policy is not configured, Google Earth can be installed as specified by "Allow installation default".
+
+Explain_AutoUpdateGoogleEarth=Specifies how Google Update handles available Google Earth updates from Google.\
+    \n\nIf this policy is not configured, Google Update handles available updates as specified by "Update policy override default".\
+    \n\nOptions:\
+    \n - Automatic silent updates: Updates are automatically applied when they are found via the periodic update check.\
+    \n - Manual updates only: Updates are only applied when the user does a manual update check. (Not all apps provide an interface for this.)\
+    \n - Updates disabled: Never apply updates.\
+    \n\nIf you select manual updates, you should periodically check for updates using the application's manual update mechanism if available. If you disable updates, you should periodically check for updates and distribute them to users. Check http://earth.google.com/.

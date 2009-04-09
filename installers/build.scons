@@ -1,0 +1,212 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+import codecs
+import os
+import re
+import string
+
+from installers import build_metainstaller
+
+_RECOVERY_MARKUP_DLL = 'recovery_markup.dll'
+
+
+# Generate a ClickOnce deployment manifest personalized with the localized
+# display name of 'Google Installer'.
+def _GenerateDeploymentForOneLanguage(language):
+  clickonce_deploy_dir = '$TARGET_ROOT/clickonce_deployment'
+
+  # This will be of the form 'GoogleInstaller_en.application'.
+  clickonce_deployment_name = 'GoogleInstaller_%s.application' % (language)
+
+  v = env['product_version'][0]
+  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+  clickonce_manifest_name = 'clickonce_bootstrap.exe.manifest'
+  clickonce_manifest = '%s/%s' % (clickonce_deploy_dir, clickonce_manifest_name)
+
+  # Generate the deployment manifest with a dummy name of 'xxxXXXxxx'. The
+  # Python commands module does not work with Unicode strings, so we will
+  # substitute the name in the add_trusturlparams_and_name_command below.
+  generate_deploy_manifest_command = (
+      '@mage -New Deployment -Install false -ToFile $TARGET -Name xxxXXXxxx'
+      ' -Version %s -Processor x86 -AppManifest $SOURCE -AppCodeBase %s' %
+      (version_string, clickonce_manifest_name))
+
+  # Have to set up a clear chain of source->target1->target2->target3->etc so
+  # that declarative Hammer will know the order in which to run each command.
+  clickonce_target_1 = env.Command(
+      target=clickonce_deployment_name + '.base',
+      source=clickonce_manifest,
+      action=generate_deploy_manifest_command,
+  )
+
+  # Get the localized 'Google Installer' string.
+  mi_generated_res = (
+      '$MAIN_DIR/mi_exe_stub/mi_generated_resources_%s.rc' % language)
+  f_in = codecs.open(env.File(mi_generated_res).abspath, 'r', 'utf16')
+  mi_resource_contents = f_in.read()
+  f_in.close()
+
+  # index() will throw and abort the build if there is no match.
+  display_name_start = (
+      mi_resource_contents.index('IDS_GENERIC_INSTALLER_DISPLAY_NAME'))
+  display_name_start = mi_resource_contents.index('"', display_name_start)
+  display_name_end = mi_resource_contents.index('"', display_name_start + 1)
+  display_name = mi_resource_contents[display_name_start:display_name_end + 1]
+
+  # display_name is utf8 encoded to allow the commands and the default codec to
+  # pass it through.
+  display_name = display_name.encode('utf8')
+
+  # mage.exe does not provide a way to add the trustURLParameters attribute to
+  # an application manifest. This script fills that gap. It also adds in the
+  # localized display name, to get around issues with the Python commands
+  # module.
+  add_trusturlparams_and_name_command = (
+      '@python %s --manifest_file=$SOURCE --output_file=$TARGET --display_name='
+      '%s' % (env.File('$MAIN_DIR/clickonce/add_trusturlparams.py').abspath,
+      display_name))
+
+  # This is the next step in the target chain
+  clickonce_target_2 = env.Command(
+      target=clickonce_deployment_name + '.unsigned',
+      source=clickonce_target_1,
+      action=add_trusturlparams_and_name_command,
+  )
+
+  # Sign the deployment manifest.
+  sign_manifest_cmd =('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
+                      'http://timestamp.verisign.com/scripts/timstamp.dll ')
+
+  if env.Bit('build_server'):
+    sign_manifest_cmd += '-CertHash fe5008fe0da7a2033816752d6eafe95214f5a7e1'
+  else:
+    sign_manifest_cmd += '-CertFile %s -Password %s' % (
+        GetOption('authenticode_file'), GetOption('authenticode_password'))
+
+  # This will be of the form
+  # 'scons-out\dbg-win\clickonce_deployment\GoogleInstaller_en.application'.
+  sign_target = env.Command(
+      target='%s/%s' % (clickonce_deploy_dir, clickonce_deployment_name),
+      source=clickonce_target_2,
+      action=sign_manifest_cmd
+  )
+
+
+
+def _BuildSetup(is_repair = False):
+  # Build the meta-installer for each version.
+  PRODUCT_NAME = 'GoogleUpdate'
+  first = True
+  for v in env['product_version']:
+    if first:
+      first = False
+      prefix = ''
+    else:
+      prefix = 'TEST_'
+
+    source_binary = '$OBJ_ROOT/mi_exe_stub/%smi_exe_stub.exe' % (prefix)
+
+    if is_repair:
+      _BuildSetupRepairVersion(source_binary, PRODUCT_NAME, prefix)
+    else:
+      _BuildSetupVersion(source_binary, PRODUCT_NAME, prefix)
+
+
+
+def _BuildSetupRepairVersion(source_binary, product_name, prefix = ''):
+  # Build the target setup executable by merging the empty metafile
+  # with the resource dll built earlier
+  merged_output = env.Command(
+      target='%smi_exe_stub_repair.exe' % (prefix),
+      source=[source_binary, '$OBJ_ROOT/installers/' + _RECOVERY_MARKUP_DLL],
+      action='@$MAIN_DIR/tools/resmerge --copyappend $SOURCES $TARGET',
+  )
+
+  build_metainstaller.BuildMetaInstaller(
+      env=env,
+      target_name='%s%sSetup_repair.exe' % (prefix, product_name),
+      empty_metainstaller_path=merged_output,
+      google_update_files_path='$STAGING_DIR',
+      prefix = prefix,
+      suffix = '_repair',
+      additional_payload_contents = [
+          '$OBJ_ROOT/recovery/repair_exe/msp/GoogleUpdateHelperPatch.msp',
+          ],
+  )
+
+
+
+def _BuildSetupVersion(source_binary, product_name, prefix = ''):
+  target_name = '%s%sSetup.exe' % (prefix, product_name)
+
+  build_metainstaller.BuildMetaInstaller(
+      env=env,
+      target_name=target_name,
+      empty_metainstaller_path=source_binary,
+      google_update_files_path='$STAGING_DIR',
+      prefix=prefix
+  )
+
+  # Generate the i18n ClickOnce deployment manifest for languages that we
+  # support.
+  if env.Bit('build_server') or 'OMAHA_BUILD_CLICKONCE' in os.environ.keys():
+    for language in env['languages']:
+      _GenerateDeploymentForOneLanguage(language)
+
+
+
+if not env.Bit('official_installers'):
+  # The logic:
+  # - Set OMAHA_BUILD_TWO_VERSIONS environment variable to create the Test_
+  #   versions of the meta-installers, which can be used to test over-installs
+  #   and updates.
+  #
+  # Legacy Note:
+  # QA_* meta-installers are not longer being produced by the build.
+  # OMAHA_BUILD_ALLSETUPS is no longer being used.
+
+  # Build the normal tagged installers.
+  _BuildSetup()
+
+  env.Replicate(
+      target=[
+          '$TARGET_ROOT/clickonce_deployment/bin/',
+          '$STAGING_DIR',
+          ],
+      source='$OBJ_ROOT/installers/GoogleUpdateSetup.exe',
+  )
+
+  # Build the repair installer.
+  _BuildSetup(is_repair = True)
+
+  # Build a resource DLL containing the recovery markup resource.
+  dll_env = env.Clone(COMPONENT_STATIC=False)
+  dll_env['LINKFLAGS'] += ['/noentry']
+
+  dll_inputs = [
+      '../installers/resource_only_dll.def',
+      dll_env.RES('../recovery/recovery_markup.rc')
+      ]
+
+  dll_env.ComponentLibrary(_RECOVERY_MARKUP_DLL, dll_inputs)
+
+

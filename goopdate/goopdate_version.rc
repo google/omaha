@@ -1,0 +1,75 @@
+// Copyright 2007-2009 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+
+#include <afxres.h>
+
+// TODO(omaha): using this as a common resource for the activex/nsplugin as
+// well as goopdate. Need to clean this up a bit.
+// For example, I've changed the FILEFLAGSMASK to 0x3FL (which appears to be
+// "standard" at least amongst plugins), not sure why it's 0x17L in here.
+// Also, the "040904e4" (for codepage 1252 Ansi Latin) is required for
+// the netscape plugin stuff to see the MIMETYPE value in the resource block.
+// However, this resource file WAS using "040904B0" (codepage 1200 which is
+// unicode little endian).  Not sure why we're using that or if we really
+// need it to be that value.
+
+// TODO(omaha): FileDescription is what shows up in "about:plugins" for
+// Mozilla. Format the description to include the url of the project.
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+ PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+// FILEFLAGSMASK 0x17L
+ FILEFLAGSMASK 0x3FL
+// #ifdef _DEBUG
+// FILEFLAGS 0x1L
+//#else
+ FILEFLAGS 0x0L
+//#endif
+ FILEOS 0x4L
+ FILETYPE 0x0L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "CompanyName", "Google Inc."
+            VALUE "FileDescription", "Google Update"
+            VALUE "FileVersion", VERSION_NUMBER_STRING
+            VALUE "InternalName", "Google Update"
+            VALUE "LegalCopyright", "Copyright 2007-2009 Google Inc."
+            VALUE "OriginalFilename", "GoogleUpdate"
+            VALUE "ProductName", "Google Update"
+            VALUE "ProductVersion", VERSION_NUMBER_STRING
+#ifdef _DEBUG
+            VALUE "Debug", ""
+#endif
+#if !OFFICIAL_BUILD
+            VALUE "Privatebuild", ""
+#endif
+
+    #ifdef MIME_TYPE
+            VALUE "MIMEType",         MIME_TYPE
+    #endif
+
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END

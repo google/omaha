@@ -1,0 +1,10 @@
+HKCR
+{
+  NoRemove CLSID
+  {
+    ForceRemove %CLSID% = s '%DESCRIPTION%'
+    {
+      'TypeLib' = s '%LIBID%'
+    }
+  }
+}

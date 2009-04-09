@@ -1,0 +1,239 @@
+// Copyright 2007-2009 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+//
+// The proxy clsid #defined as PROXY_CLSID_IS in mk_common needs to be changed
+// anytime any interface below changes, or if a new interface is added.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+  object,
+  uuid(5B25A8DC-1780-4178-A629-6BE8B8DEFAA2),
+  oleautomation,
+  nonextensible,
+  pointer_default(unique)
+]
+interface IBrowserHttpRequest2 : IUnknown {
+  // This method will send request/data from the browser process.
+  // @param url                     URL where request will be send.
+  // @param post_data               POST data, if any. Can be NULL.
+  // @param request_headers         HTTP request headers, if any. Can be NULL.
+  // @param response_headers_needed HTTP response headers that are needed.
+  //                                Should be one of the values listed here:
+  //                                    http://msdn.microsoft.com/aa385351.aspx
+  //                                The input is a SAFEARRAY of DWORD. Can be a
+  //                                VT_EMPTY.
+  // @param response_headers        HTTP response headers, returned as SAFEARRAY
+  //                                of BSTR. The values corresponding one-to-one
+  //                                with the response_headers_needed values. Can
+  //                                be NULL if response_headers_needed==VT_EMPTY
+  // @param response_code           HTTP response code.
+  // @param cache_filename          Cache file that contains the response data.
+  HRESULT Send([in] BSTR url,
+               [in] BSTR post_data,
+               [in] BSTR request_headers,
+               [in] VARIANT response_headers_needed,
+               [out] VARIANT* response_headers,
+               [out] DWORD* response_code,
+               [out] BSTR* cache_filename);
+};
+
+[
+  object,
+  oleautomation,
+  uuid(128C2DA6-2BC0-44c0-B3F6-4EC22E647964),
+  helpstring("Google Update IProcessLauncher Interface"),
+  pointer_default(unique)
+]
+interface IProcessLauncher : IUnknown {
+  // @param cmd_line The full command line to execute.
+  HRESULT LaunchCmdLine([in, string] const WCHAR* cmd_line);
+
+  // @param browser_type The browser to start.
+  // @param url The url to launch the browser with.
+  HRESULT LaunchBrowser([in] DWORD browser_type,
+                        [in, string] const WCHAR* url);
+
+  // @param app_id Unique id to identify the calling client application
+  // @param event_id Unique id for the command
+  // @param caller_proc_id The process id of the calling process
+  // @param proc_handle The process handle valid in the caller's context
+  HRESULT LaunchCmdElevated([in, string] const WCHAR* app_guid,
+                            [in, string] const WCHAR* cmd_id,
+                            [in] DWORD caller_proc_id,
+                            [out] ULONG_PTR* proc_handle);
+};
+
+typedef enum {
+  COMPLETION_CODE_SUCCESS = 1,
+  COMPLETION_CODE_SUCCESS_CLOSE_UI,
+  COMPLETION_CODE_ERROR,
+  COMPLETION_CODE_RESTART_ALL_BROWSERS,
+  COMPLETION_CODE_REBOOT,
+  COMPLETION_CODE_RESTART_BROWSER,
+  COMPLETION_CODE_RESTART_ALL_BROWSERS_NOTICE_ONLY,
+  COMPLETION_CODE_REBOOT_NOTICE_ONLY,
+  COMPLETION_CODE_RESTART_BROWSER_NOTICE_ONLY,
+  COMPLETION_CODE_RUN_COMMAND,
+} CompletionCodes;
+
+[
+  object,
+  oleautomation,
+  uuid(1C642CED-CA3B-4013-A9DF-CA6CE5FF6503),
+  helpstring("GoogleUpdate UI-specific events Interface"),
+  pointer_default(unique)
+]
+interface IProgressWndEvents : IUnknown {
+  // The UI is closing down. The user has clicked on either the "X" or the
+  // other buttons of the UI to close the window.
+  HRESULT DoClose();
+
+  // Pause has been clicked on.
+  HRESULT DoPause();
+
+  // Resume has been clicked on.
+  HRESULT DoResume();
+
+  // RestartBrowsers button has been clicked on.
+  HRESULT DoRestartBrowsers();
+
+  // Reboot button has been clicked on.
+  HRESULT DoReboot();
+
+  // Launch Browser.
+  HRESULT DoLaunchBrowser([in, string] const WCHAR* url);
+};
+
+
+[
+  object,
+  oleautomation,
+  uuid(49D7563B-2DDB-4831-88C8-768A53833837),
+  helpstring("IJobObserver Interface"),
+  pointer_default(unique)
+]
+interface IJobObserver : IUnknown {
+  HRESULT OnShow();
+  HRESULT OnCheckingForUpdate();
+  HRESULT OnUpdateAvailable([in, string] const WCHAR* version_string);
+  HRESULT OnWaitingToDownload();
+  HRESULT OnDownloading([in] int time_remaining_ms, [in] int pos);
+  HRESULT OnWaitingToInstall();
+  HRESULT OnInstalling();
+  HRESULT OnPause();
+  HRESULT OnComplete([in] CompletionCodes code,
+                     [in, string] const WCHAR* reserved);
+  HRESULT SetEventSink([in] IProgressWndEvents* ui_sink);
+};
+
+[
+  object,
+  oleautomation,
+  uuid(31AC3F11-E5EA-4a85-8A3D-8E095A39C27B),
+  helpstring("IGoogleUpdate Interface"),
+  pointer_default(unique)
+]
+interface IGoogleUpdate : IUnknown {
+  // @param guid The guid for the app to be updated.
+  // @param observer The eventing interface.
+  HRESULT CheckForUpdate([in, string] const WCHAR* guid,
+                         [in] IJobObserver* observer);
+
+  // @param guid The guid for the app to be updated.
+  // @param observer The eventing interface.
+  HRESULT Update([in, string] const WCHAR* guid,
+                 [in] IJobObserver* observer);
+};
+
+// IGoogleUpdateCore is an internal Omaha interface.
+[
+  object,
+  oleautomation,
+  uuid(909489C2-85A6-4322-AA56-D25278649D67),
+  helpstring("Google Update Core Interface"),
+  pointer_default(unique)
+]
+interface IGoogleUpdateCore : IUnknown
+{
+  // Runs a command elevated.
+  //
+  // @param app_id Unique id to identify the calling client application
+  // @param event_id Unique id for the command
+  // @param caller_proc_id The process id of the calling process
+  // @param proc_handle The process handle valid in the caller's context
+  HRESULT LaunchCmdElevated([in, string] const WCHAR* app_guid,
+                            [in, string] const WCHAR* cmd_id,
+                            [in] DWORD caller_proc_id,
+                            [out] ULONG_PTR* proc_handle);
+};
+
+[
+  uuid(7E6CD20B-8688-4960-96D9-B979471577B8),
+  version(1.0),
+  helpstring("Google Update Type Library")
+]
+library GoogleUpdateLib {
+  importlib("stdole2.tlb");
+  [
+    uuid(ABC01078-F197-4b0b-ADBC-CFE684B39C82),
+    helpstring("ProcessLauncherClass Class")
+  ]
+  coclass ProcessLauncherClass {
+    [default] interface IProcessLauncher;
+  }
+
+  // This coclass declaration exists only for the purpose of forcing
+  // ::RegisterTypeLib() to register the interfaces within. This is
+  // required so that we can marshal/unmarshal the interfaces using the TypeLib
+  // marshaler.
+  [
+    uuid(9564861C-3469-4c9a-956A-74D5690790E6),
+    helpstring("InterfaceRegistrar Class")
+  ]
+  coclass InterfaceRegistrar {
+    [default] interface IBrowserHttpRequest2;
+    interface IJobObserver;
+    interface IProgressWndEvents;
+  }
+
+  [
+    uuid(2F0E2680-9FF5-43c0-B76E-114A56E93598),
+    helpstring("OnDemand updates for per-user applications.")
+  ]
+  coclass OnDemandUserAppsClass {
+    [default] interface IGoogleUpdate;
+  }
+
+  [
+    uuid(6F8BD55B-E83D-4a47-85BE-81FFA8057A69),
+    helpstring("OnDemand updates for per-machine applications.")
+  ]
+  coclass OnDemandMachineAppsClass {
+    [default] interface IGoogleUpdate;
+  }
+
+  [
+    uuid(E225E692-4B47-4777-9BED-4FD7FE257F0E),
+    helpstring("GoogleUpdateCore Class")
+  ]
+  coclass GoogleUpdateCoreClass
+  {
+    [default] interface IGoogleUpdateCore;
+  }
+
+};
+

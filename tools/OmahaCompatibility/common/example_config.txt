@@ -1,0 +1,22 @@
+; NOTE TO ALL COPYING THIS FILE FOR MODIFICATIONS.
+; 1. Please do not add spaces in the AppName. This tool does not support
+;    it although omaha itself does.
+; 2. For now we only support one application and two versions.
+; 3. Please note that for now we only support this exact format
+;    and nothing else. ONLY change the values below i.e. the 
+;    value part of key=value.
+; 4. The AppName, Appguid, NeedsAdmin, and Language are self explanatory,
+;    Version1, and Version2 indicate the versions that the installers 
+;    pointed by Installer1 and Installer2 Install.
+
+[Application]
+AppName=YouTubeUploader
+AppGuid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}
+NeedsAdmin=False
+Language=en
+
+Version1=1.0.24.0
+Installer1=c:\Builds\youtubeuploader.msi
+
+Version2=2.0.0.0
+Installer2=c:\Builds\youtubeuploader.msi

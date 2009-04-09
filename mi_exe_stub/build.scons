@@ -1,0 +1,111 @@
+# Copyright 2008-2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+Import('env')
+
+def AddCommonOptions(env):
+  # Make the target compile mbcs by removing the UNICODE define and defining
+  # MBCS instead.
+  env.FilterOut(CPPDEFINES=['UNICODE', '_UNICODE'])
+  env.Append(
+      CPPDEFINES = [
+          '_MBCS',
+          '_ATL_MIN_CRT',
+          '_ATL_SECURE_NO_WARNINGS',
+          '_CRT_SECURE_NO_WARNINGS',
+          ],
+      CCFLAGS = [
+          '/D_SECURE_SCL=0',
+          '/D_SECURE_ATL=0',
+          ],
+  )
+
+
+first = 1
+for v in env['product_version']:
+  temp_env = env.Clone()
+  AddCommonOptions(temp_env)
+
+  if first:
+    first = 0
+    prefix = ''
+  else:
+    prefix = 'TEST_'
+    temp_env['OBJPREFIX'] = temp_env['OBJPREFIX'] + 'test/'
+
+  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+  # MI stub links with the minicrt.lib in the non-debug builds.
+  # This gets its size down to about 27K and it saves about 40K in library code
+  temp_env.Append(
+      LIBS = [
+          'lzma.lib',
+          'mi_exe_stub.lib',
+          ('atls.lib',  'atlsd.lib')[temp_env.Bit('debug')],
+          ('minicrt.lib', 'libcmtd.lib')[temp_env.Bit('debug')],
+          ('',          'libcpmtd.lib')[temp_env.Bit('debug')],
+          'shlwapi.lib',
+          'version.lib',
+          ],
+      RCFLAGS = [
+          '/DVERSION_MAJOR=%d' % v[0],
+          '/DVERSION_MINOR=%d' % v[1],
+          '/DVERSION_BUILD=%d' % v[2],
+          '/DVERSION_PATCH=%d' % v[3],
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+          '/DLANGUAGE_STRING=\\"%s\\"' % 'en'
+          ],
+
+      # This avoids missing __load_config_used
+      LINKFLAGS = [
+          '/SAFESEH:NO'
+          ],
+  )
+
+
+  exe_inputs = temp_env.RES(
+      target=prefix + 'mi.res',
+      source='mi.rc'
+  )
+
+  # Force a rebuild when the version changes.
+  temp_env.Depends(exe_inputs, '$MAIN_DIR/VERSION')
+
+  for language in env['languages']:
+    base_name = 'mi_generated_resources_' + language
+    exe_inputs += temp_env.RES(
+        target=prefix + base_name + '.res',
+        source=base_name + '.rc',
+    )
+
+  temp_env.ComponentProgram(prefix + 'mi_exe_stub.exe', exe_inputs)
+
+
+local_env = env.Clone()
+AddCommonOptions(local_env)
+
+# Avoid target conflicts over extractor.obj
+local_env['OBJSUFFIX'] = '_mi' + local_env['OBJSUFFIX']
+
+local_inputs = [
+    # "../test/step_test.cc",  # This is commented until dependencies of libs
+                                # are sorted out, such as printf.
+    'mi.cc',
+    'process.cc',
+    'tar.cc',
+    '../common/extractor.cc'
+    ]
+
+local_env.ComponentLibrary('mi_exe_stub', local_inputs)

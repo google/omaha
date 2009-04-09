@@ -1,0 +1,515 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+
+def _AddCommonOptions(local_env):
+  local_env['CPPDEFINES'] += [
+      '_ATL_APARTMENT_THREADED',
+      'UNITTEST',
+      ]
+
+  # A test is a console application, so we tell mk to link to
+  # main() as opposed to WinMain().
+  local_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+  local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+
+
+#env.BuildSconscript('runtime')
+env.BuildSConscript('ui')
+
+#=============UnitTests========================================================
+
+
+v = env['product_version'][0]
+version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+#
+# Builds omaha_unittest
+#
+omaha_unittest_env = env.Clone()
+_AddCommonOptions(omaha_unittest_env)
+
+omaha_unittest_env.FilterOut(LINKFLAGS = ['/NODEFAULTLIB'])
+
+omaha_unittest_env.Append(
+    CPPPATH = [
+        '$OBJ_ROOT',                        # Needed for the generated files
+        '$MAIN_DIR/goopdate/resources',     # Needed for success.ico
+        '$MAIN_DIR/third_party/breakpad/src',
+        '$MAIN_DIR/third_party/c99/include',  # C99 inttypes.h for security
+        '$MAIN_DIR/third_party/gtest/include',
+        ],
+    CCFLAGS = [
+        '/wd4389',        # signed/unsigned mismatch
+        '/wd4510',        # default constructor could not be generated
+        '/wd4610',        # object 'class' can never be instantiated
+        ],
+    CPPDEFINES = [
+        'OMAHA_BUILD_VERSION=0x%.4x%.4x%.4x%.4x' % (v[0], v[1], v[2], v[3]),
+        'OMAHA_BUILD_VERSION_STRING=_T(\\"%s\\")' % version_string,
+        ],
+    LIBS = [
+        ('atls.lib', 'atlsd.lib')[omaha_unittest_env.Bit('debug')],
+
+        '$LIB_DIR/breakpad.lib',
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/core.lib',
+        '$LIB_DIR/goopdate_dll.lib',
+        '$LIB_DIR/google_update_ps.lib',
+        '$LIB_DIR/logging.lib',
+        '$LIB_DIR/net.lib',
+        '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/repair_goopdate.lib',
+        '$LIB_DIR/security.lib',
+        '$LIB_DIR/service.lib',
+        '$LIB_DIR/setup.lib',
+        '$LIB_DIR/statsreport.lib',
+        '$LIB_DIR/gtest.lib',
+        '$LIB_DIR/worker.lib',
+        '$LIB_DIR/goopdump.lib',
+
+        'advapi32.lib',
+        'comctl32.lib',
+        'crypt32.lib',
+        'dbghelp.lib',
+        'delayimp.lib',       # For delay loading
+        'iphlpapi.lib',
+        'msi.lib',
+        'mstask.lib',
+        'netapi32.lib',
+        'ole32.lib',
+        'oleaut32.lib',
+        'psapi.lib',
+        'rasapi32.lib',
+        'rpcns4.lib',
+        'rpcrt4.lib',
+        'shlwapi.lib',
+        'urlmon.lib',
+        'userenv.lib',
+        'version.lib',
+        'wbemuuid.lib',
+        'wininet.lib',
+        'ws2_32.lib',
+        'wtsapi32.lib',
+        'wintrust.lib',
+        ],
+    LINKFLAGS = [
+        '/DELAYLOAD:shlwapi.dll',
+        '/DELAYLOAD:shell32.dll',
+        '/DELAYLOAD:psapi.dll',
+        '/DELAYLOAD:netapi32.dll',
+        '/DELAYLOAD:Wtsapi32.dll',
+        ],
+    RCFLAGS = [
+        '/DVERSION_MAJOR=%d' % v[0],
+        '/DVERSION_MINOR=%d' % v[1],
+        '/DVERSION_BUILD=%d' % v[2],
+        '/DVERSION_PATCH=%d' % v[3],
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+        '/DLANGUAGE_STRING=\\"en\\"'
+        ],
+)
+
+omaha_unittest_inputs = [
+    'omaha_unittest.cc',
+    '../common/app_util_unittest.cc',
+    '../common/apply_tag.cc',
+    '../common/atlassert_unittest.cc',
+    '../common/atl_regexp_unittest.cc',
+    '../common/browser_utils_unittest.cc',
+    '../common/cgi_unittest.cc',
+    '../common/commands_unittest.cc',
+    '../common/disk_unittest.cc',
+    '../common/dynamic_link_kernel32_unittest.cc',
+    '../common/encrypt_test.cc',
+    '../common/error_unittest.cc',
+    '../common/extractor_unittest.cc',
+    '../common/file_reader_unittest.cc',
+    '../common/file_store_unittest.cc',
+    '../common/file_unittest.cc',
+    '../common/firewall_product_detection_unittest.cc',
+    '../common/highres_timer_unittest.cc',
+    '../common/localization_unittest.cc',
+    '../common/lock_ptr_unittest.cc',
+    '../common/logging_unittest.cc',
+    '../common/md5_unittest.cc',
+    '../common/module_utils_unittest.cc',
+    '../common/omaha_version_unittest.cc',
+    '../common/path_unittest.cc',
+    '../common/pe_utils_unittest.cc',
+    '../common/proc_utils_unittest.cc',
+    '../common/process_unittest.cc',
+    '../common/queue_timer_unittest.cc',
+    '../common/reactor_unittest.cc',
+    '../common/reg_key_unittest.cc',
+    '../common/registry_monitor_manager_unittest.cc',
+    '../common/registry_store_unittest.cc',
+    '../common/scoped_impersonation_unittest.cc',
+    '../common/scoped_ptr_cotask_unittest.cc',
+    '../common/serializable_object_unittest.cc',
+    '../common/service_utils_unittest.cc',
+    '../common/sha_unittest.cc',
+    '../common/shell_unittest.cc',
+    '../common/signatures_unittest.cc',
+    '../common/signaturevalidator_unittest.cc',
+    '../common/sta_unittest.cc',
+    '../common/string_unittest.cc',
+    '../common/system_unittest.cc',
+    '../common/system_info_unittest.cc',
+    '../common/thread_pool_unittest.cc',
+    '../common/time_unittest.cc',
+    '../common/timer_unittest.cc',
+    '../common/tr_rand_unittest.cc',
+    '../common/user_info_unittest.cc',
+    '../common/user_rights_unittest.cc',
+    '../common/utils_unittest.cc',
+    '../common/vistautil_unittest.cc',
+    '../common/vista_utils_unittest.cc',
+    '../common/wmi_query_unittest.cc',
+    '../common/xml_utils_unittest.cc',
+
+    # Core unit tests
+    '../core/core_unittest.cc',
+    '../core/system_monitor_unittest.cc',
+    '../core/google_update_core_unittest.cc',
+
+    # Google Update unit tests.
+    '../google_update/google_update_unittest.cc',
+
+    # Goopdate unit tests.
+    '../goopdate/command_line_builder_unittest.cc',
+    '../goopdate/command_line_unittest.cc',
+    '../goopdate/command_line_parser_unittest.cc',
+    '../goopdate/command_line_validator_unittest.cc',
+    '../goopdate/config_manager_unittest.cc',
+    '../goopdate/crash_unittest.cc',
+    '../goopdate/extra_args_parser_unittest.cc',
+    '../goopdate/event_logger_unittest.cc',
+    '../goopdate/goopdate_unittest.cc',
+    '../goopdate/goopdate_utils_unittest.cc',
+    '../goopdate/goopdate_xml_parser_unittest.cc',
+    '../goopdate/main_unittest.cc',
+    '../goopdate/resource_manager_unittest.cc',
+    '../goopdate/stats_uploader_unittest.cc',
+    '../goopdate/webplugin_utils_unittest.cc',
+
+    # Net unit tests
+    '../net/bits_request_unittest.cc',
+    '../net/bits_utils_unittest.cc',
+    '../net/browser_request_unittest.cc',
+    '../net/cup_request_unittest.cc',
+    '../net/cup_utils_unittest.cc',
+    '../net/detector_unittest.cc',
+    '../net/http_client_unittest.cc',
+    '../net/net_utils_unittest.cc',
+    '../net/network_config_unittest.cc',
+    '../net/network_request_unittest.cc',
+    '../net/simple_request_unittest.cc',
+    '../net/winhttp_vtable_unittest.cc',
+
+    # Code Red-related unit tests.
+    '../common/google_update_recovery_unittest.cc',
+    '../recovery/repair_exe/mspexecutableelevator_unittest.cc',
+    '../recovery/repair_exe/repair_goopdate_unittest.cc',
+    '../recovery/repair_exe/custom_action/execute_repair_file_unittest.cc',
+    '../recovery/repair_exe/custom_action/execute_repair_file.cc',
+
+    # Setup unit tests.
+    '../setup/msi_test_utils.cc',
+    '../setup/setup_unittest.cc',
+    '../setup/setup_files_unittest.cc',
+    '../setup/setup_google_update_unittest.cc',
+    '../setup/setup_service_unittest.cc',
+
+    # Statsreport unit tests.
+    '../statsreport/aggregator_unittest.cc',
+    '../statsreport/aggregator-win32_unittest.cc',
+    '../statsreport/formatter_unittest.cc',
+    '../statsreport/metrics_unittest.cc',
+    '../statsreport/persistent_iterator-win32_unittest.cc',
+
+    # Resource files.
+    omaha_unittest_env.RES('../testing/omaha_unittest.rc'),
+
+    # Testing unit tests
+    '../testing/unit_test.cc',
+    '../testing/unittest_debug_helper_unittest.cc',
+
+    # Worker unit tests.
+    '../worker/application_data_unittest.cc',
+    '../worker/application_manager_unittest.cc',
+    '../worker/application_usage_data_unittest.cc',
+    '../worker/download_manager_unittest.cc',
+    '../worker/install_manager_unittest.cc',
+    '../worker/job_creator_unittest.cc',
+    '../worker/job_unittest.cc',
+    '../worker/ping_unittest.cc',
+    '../worker/ping_utils_unittest.cc',
+    '../worker/worker_job_unittest.cc',
+    '../worker/worker_unittest.cc',
+
+    # Goopdump unit tests
+    # TODO(Omaha): This unit test is failing for some reason. Fix and uncomment.
+    # '../tools/goopdump/process_monitor_unittest.cc',
+    '../tools/goopdump/process_commandline_unittest.cc',
+    ]
+
+# Force a rebuild when the version changes.
+# Also force a dependency on the RC files included in omaha_unittest.rc as these
+# do not appear to be picked up automatically.
+omaha_unittest_env.Depends('$OBJ_ROOT/testing/omaha_unittest.res', [
+    '$MAIN_DIR/VERSION',
+    '$MAIN_DIR/goopdate/goopdate.rc',
+    '$MAIN_DIR/goopdate/resources/goopdateres/generated_resources_en.rc',
+    ]
+)
+
+# Ensure that obj files don't collide with ones from non-test build
+omaha_unittest_env['OBJPREFIX'] = omaha_unittest_env['OBJPREFIX'] + 'testing/'
+
+target_name = 'omaha_unittest.exe'
+
+if env.Bit('use_precompiled_headers'):
+  omaha_unittest_inputs += omaha_unittest_env.EnablePrecompile(target_name)
+
+
+omaha_unittest_env.ComponentProgram(target_name, omaha_unittest_inputs)
+
+
+
+# This builds and signs an executable used by unit tests. Because the tests
+# require an official build signed by Google Inc we do not need to build it
+# at other times.
+if env.Bit('build_server'):
+  official_env = env.Clone()
+  official_env.Append(
+      CPPPATH = [
+          '$OBJ_ROOT',    # Needed for the generated files
+          ],
+      LIBS = [
+          ('atls.lib', 'atlsd.lib')[official_env.Bit('debug')],
+          ('libcmt.lib', 'libcmtd.lib')[official_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[official_env.Bit('debug')],
+          '$LIB_DIR/common.lib',
+
+          # These are required by common_lib
+          'netapi32.lib',
+          'psapi.lib',
+          'rasapi32.lib',
+          'shlwapi.lib',
+          'userenv.lib',
+          'version.lib',
+          'wtsapi32.lib',
+          ],
+      RCFLAGS = [
+          '/DVERSION_MAJOR=%d' % v[0],
+          '/DVERSION_MINOR=%d' % v[1],
+          '/DVERSION_BUILD=%d' % v[2],
+          '/DVERSION_PATCH=%d' % v[3],
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+          '/DLANGUAGE_STRING=\\"en\\"'
+          ],
+  )
+
+  official_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+  official_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+
+  target_name = 'SaveArguments_unsigned.exe'
+
+  unsigned_inputs = [
+      'save_arguments.cc',
+      '$OBJ_ROOT/recovery/recovery_markup.res',
+      '$OBJ_ROOT/goopdate/resources/en/generated_resources_en.res',
+      ]
+  if env.Bit('use_precompiled_headers'):
+    unsigned_inputs += official_env.EnablePrecompile(target_name)
+
+  # Build the *unsigned* executeable
+  unsigned_output = official_env.ComponentProgram(
+      prog_name=target_name,
+      source=unsigned_inputs,
+  )
+
+  signed_output = official_env.SignedBinary(
+      target='SaveArguments.exe',
+      source=unsigned_output,
+  )
+
+  official_env.Replicate('$STAGING_DIR', signed_output)
+
+
+# Copy a few test files needed by the unit test.
+# The files are installed side by side with the unit test executable
+# in the build directory.
+env.Replicate('$STAGING_DIR', [
+    # signatures_unittest files.
+    # (download_manager_unittest also uses declaration.txt.)
+    '$MAIN_DIR/data/declaration.txt',
+    '$MAIN_DIR/data/certificate-with-private-key.pfx',
+    '$MAIN_DIR/data/certificate-without-private-key.cer',
+
+    # xml_utils_unittest files.
+    '$MAIN_DIR/data/manifest.xml',
+
+    # goopdate_xml_parser_unittest files.
+    '$MAIN_DIR/data/seed_manifest_v1.xml',
+    '$MAIN_DIR/data/seed_manifest.xml',
+    '$MAIN_DIR/data/seed_manifest_v9.xml',
+    '$MAIN_DIR/data/server_manifest.xml',
+    '$MAIN_DIR/data/server_manifest_components.xml',
+
+    # goopdate_unittest files.
+    '$MAIN_DIR/data/seed_manifest_with_args.xml',
+    '$MAIN_DIR/data/server_manifest_one_app.xml',
+    '$MAIN_DIR/data/seed_manifest_with_argsV3.xml',
+    '$MAIN_DIR/data/server_manifest_one_app.xml'
+    ])
+
+# Install files from the testing/unittest_support/ directory.
+env.Replicate('$STAGING_DIR/unittest_support/', [
+    # Installer files used by the Install Manager unit tests.
+    'unittest_support/test_foo_v1.0.101.0.msi',
+
+    # Files used by the Recovery unit tests.
+    'unittest_support/GoogleUpdate_corrupted.exe',
+    'unittest_support/GoogleUpdate_now_expired_cert.exe',
+    'unittest_support/GoogleUpdate_old_signature.exe',
+    'unittest_support/GoogleUpdateHelper.msi',
+    'unittest_support/SaveArguments.exe',
+    'unittest_support/SaveArguments_OmahaTestSigned.exe',
+    'unittest_support/SaveArguments_unsigned_wrong_markup_size.exe',
+    'unittest_support/SaveArguments_unsigned_wrong_markup_value.exe',
+    'unittest_support/SaveArguments_unsigned_wrong_resource_name.exe',
+
+    # Minidump file for the crash unit test.
+    'unittest_support/minidump.dmp',
+    'unittest_support/minidump.txt',
+
+    # psexec for the Setup tests.
+    '$MAIN_DIR/internal/tools/psexec.exe',
+    ])
+
+# Saved versions of Google Update for the Setup tests.
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.0.x/', [
+    'unittest_support/omaha_1.0.x/GoogleUpdate.exe',
+    'unittest_support/omaha_1.0.x/goopdate.dll',
+    ])
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.1.x/', [
+    'unittest_support/omaha_1.1.x/GoogleUpdate.exe',
+    'unittest_support/omaha_1.1.x/goopdate.dll',
+    'unittest_support/omaha_1.1.x/goopdateres_en.dll',
+    ])
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.x/', [
+    'unittest_support/omaha_1.2.x/GoogleUpdate.exe',
+    'unittest_support/omaha_1.2.x/goopdate.dll',
+    'unittest_support/omaha_1.2.x/goopdateres_en.dll',
+    ])
+
+# Newer versions of Google Update for the Setup tests.
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.x_newer/',
+              'unittest_support/omaha_1.2.x_newer/GoogleUpdate.exe')
+
+# Copy longrunning.exe to GoogleUpdate.exe for use in Setup and WorkerJob tests.
+env.Replicate(
+    target='$STAGING_DIR/unittest_support/does_not_shutdown/',
+    source='$MAIN_DIR/testing/unittest_support/LongRunningSilent.exe',
+    REPLICATE_REPLACE=[('LongRunningSilent\\.exe', 'GoogleUpdate.exe')],
+)
+
+# Copy over the files for resource manager test.
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.x_resources/',
+              'unittest_support/omaha_1.2.x_resources/goopdateres_ar.dll')
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.x_resources/',
+              'unittest_support/omaha_1.2.x_resources/goopdateres_bg.dll')
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.x_resources/',
+              'unittest_support/omaha_1.2.x_resources/goopdateres_ca.dll')
+
+
+# download_cache test files
+loc_guid = 'download_cache_test/{7101D597-3481-4971-AD23-455542964072}'
+env.Replicate('$STAGING_DIR/unittest_support/' + loc_guid,
+              'unittest_support/%s/livelysetup.exe' % loc_guid)
+
+loc_guid = 'download_cache_test/{89640431-FE64-4da8-9860-1A1085A60E13}'
+env.Replicate('$STAGING_DIR/unittest_support/' + loc_guid,
+              'unittest_support/%s/gears-win32-opt.msi' % loc_guid)
+
+loc_guid = 'download_cache_test/{C5CC8735-9BE0-45c5-804C-F117E96047C7}'
+env.Replicate('$STAGING_DIR/unittest_support/' + loc_guid,
+              'unittest_support/%s/GoogleUpdateSetup.exe' % loc_guid)
+
+#
+# On Demand system level test.
+#
+ondemandsystem_unittest_env = env.Clone()
+_AddCommonOptions(ondemandsystem_unittest_env)
+
+ondemandsystem_unittest_env.FilterOut(LINKFLAGS = ['/NODEFAULTLIB'])
+ondemandsystem_unittest_env.Append(
+    CPPPATH = [
+        '$MAIN_DIR/third_party/gtest/include',
+        '$OBJ_ROOT',                # Needed for generated files
+        ],
+    CPPDEFINES = [
+        'UNICODE',
+        '_UNICODE'
+        ],
+    LIBS = [
+        ('atls.lib', 'atlsd.lib')[env.Bit('debug')],
+        'comctl32.lib',
+        'crypt32.lib',
+        'Iphlpapi.lib',
+        'mstask.lib',
+        'netapi32.lib',
+        'psapi.lib',
+        'rasapi32.lib',
+        'shlwapi.lib',
+        'urlmon.lib',
+        'userenv.lib',
+        'version.lib',
+        'wininet.lib',
+        'wtsapi32.lib',
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/goopdate_dll.lib',
+        '$LIB_DIR/logging.lib',
+        '$LIB_DIR/net.lib',
+        '$LIB_DIR/gtest.lib',
+        '$LIB_DIR/statsreport.lib',
+        ],
+)
+
+# Exe is console application
+ondemandsystem_unittest_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+ondemandsystem_unittest_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+
+target_name = 'ondemandsystem_unittest.exe'
+
+ondemandsystem_unittest_inputs = [
+    'ondemandsystem_unittest.cc',
+    ]
+if env.Bit('use_precompiled_headers'):
+  ondemandsystem_unittest_inputs += (
+      ondemandsystem_unittest_env.EnablePrecompile(target_name))
+
+
+ondemandsystem_unittest_env.ComponentProgram(
+    prog_name=target_name,
+    source=ondemandsystem_unittest_inputs,
+)

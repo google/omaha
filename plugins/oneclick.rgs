@@ -1,0 +1,97 @@
+%HKROOT%
+{
+  NoRemove SOFTWARE
+  {
+    NoRemove MozillaPlugins
+    {
+      ForceRemove '@%PLUGINDOMAIN%/%PLUGINPRODUCT%;version=%PLUGINVERSION%'
+      {
+        val Path = s '%NPONECLICK.DLL%'
+        val Description = s '%PLUGINDESCRIPTION%'
+        val ProductName = s '%PLUGINPRODUCT%'
+        val Vendor = s '%PLUGINVENDOR%'
+        val Version = s '%PLUGINVERSION%'
+        MimeTypes
+        {
+          '%PLUGINMIMETYPE%'
+        }
+      }
+    }
+    NoRemove Microsoft
+    {
+      NoRemove Windows
+      {
+        NoRemove CurrentVersion
+        {
+          NoRemove Ext
+          {
+            NoRemove PreApproved
+            {
+              ForceRemove '%CLSID%'
+            }
+            NoRemove Stats
+            {
+              ForceRemove '%CLSID%'
+              {
+                iexplore
+                {
+                  AllowedDomains
+                  {
+                    '*'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      NoRemove 'Internet Explorer'
+      {
+        NoRemove 'Low Rights'
+        {
+          NoRemove 'ElevationPolicy'
+          {
+            ForceRemove '%CLSID%'
+            {
+              val AppName = s '%SHELLNAME%'
+              val AppPath = s '%SHELLPATH%'
+              val Policy = d '3'
+            }
+          }
+        }
+      }
+    }
+    NoRemove Classes
+    {
+      ForceRemove '%PROGID%' = s '%PLUGINPRODUCT% Plugin'
+      {
+        CLSID = s '%CLSID%'
+      }
+      NoRemove CLSID
+      {
+        ForceRemove '%CLSID%' = s '%PLUGINPRODUCT% Plugin'
+        {
+          ProgID = s '%PROGID%'
+          InprocServer32 = s '%MODULE%'
+          {
+            val ThreadingModel = s 'Apartment'
+          }
+        }
+      }
+      NoRemove MIME
+      {
+        NoRemove Database
+        {
+          NoRemove 'Content Type'
+          {
+            ForceRemove '%PLUGINMIMETYPE%'
+            {
+              val CLSID = s '%CLSID%'
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,28 @@
+HKCR {
+  NoRemove CLSID {
+    ForceRemove '%CLSID%' = s '%PRODUCT% Helper' {
+      InprocServer32 = s '%MODULE%' {
+        val ThreadingModel = s 'Apartment'
+      }
+    }
+  }
+}
+
+HKLM {
+  NoRemove SOFTWARE {
+    NoRemove Microsoft {
+      NoRemove Windows {
+        NoRemove CurrentVersion {
+          NoRemove Explorer {
+            NoRemove 'Browser Helper Objects' {
+              ForceRemove '%CLSID%' = s '%PRODUCT% Helper' {
+                val 'NoExplorer' = d '1'
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

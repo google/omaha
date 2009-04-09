@@ -1,0 +1,202 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+
+_first = True
+for v in env['product_version']:
+  temp_env = env.Clone(COMPONENT_STATIC=False)
+
+  if _first:
+    _first = False
+    prefix = ''
+  else:
+    prefix = 'TEST_'
+    temp_env['OBJPREFIX'] = temp_env['OBJPREFIX'] + 'test/'
+
+  temp_env.Append(
+      CPPPATH = [
+          '$OBJ_ROOT',    # Needed for generated files.
+          ],
+      CPPDEFINES = [
+          '_ATL_APARTMENT_THREADED',
+          ],
+      LIBS = [
+          '$LIB_DIR/bho_dll.lib',
+          '$LIB_DIR/bho_dll_no_pch.lib',
+          '$LIB_DIR/breakpad.lib',
+          '$LIB_DIR/common.lib',
+          '$LIB_DIR/google_update_recovery.lib',
+          '$LIB_DIR/goopdate_dll.lib',
+          '$LIB_DIR/logging.lib',
+          '$LIB_DIR/net.lib',
+          '$LIB_DIR/repair_goopdate.lib',
+          '$LIB_DIR/statsreport.lib',
+          ('atls.lib', 'atlsd.lib')[temp_env.Bit('debug')],
+          ('libcmt.lib', 'libcmtd.lib')[temp_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[temp_env.Bit('debug')],
+          'comctl32.lib',
+          'crypt32.lib',
+          'delayimp.lib',
+          'Iphlpapi.lib',
+          'msi.lib',
+          'Mstask.lib',
+          'Netapi32.lib',
+          'psapi.lib',
+          'rasapi32.lib',
+          'rpcrt4.lib',
+          'shlwapi.lib',
+          'Version.lib',
+          'userenv.lib',
+          'wininet.lib',
+          'urlmon.lib',
+          'Wintrust.lib',
+          'WtsApi32.lib',
+          ],
+      LINKFLAGS = [
+          '/DELAYLOAD:ole32.dll',
+          '/DELAYLOAD:oleaut32.dll',
+          '/DELAYLOAD:psapi.dll',
+          '/DELAYLOAD:shell32.dll',
+          '/DELAYLOAD:shlwapi.dll',
+          '/DELAYLOAD:userenv.dll',
+          '/DELAYLOAD:version.dll',
+          ],
+      RCFLAGS = [
+          '/DVERSION_MAJOR=%d' % v[0],
+          '/DVERSION_MINOR=%d' % v[1],
+          '/DVERSION_BUILD=%d' % v[2],
+          '/DVERSION_PATCH=%d' % v[3],
+          '/DVERSION_NUMBER_STRING=\\"%d.%d.%d.%d\\"' % (v[0],v[1],v[2],v[3]),
+          ],
+  )
+
+  bho_res = temp_env.RES(
+      target=prefix+'bho_dll.res',
+      source='bho_dll.rc'
+  )
+
+  # Force a rebuild when the version changes.
+  temp_env.Depends(bho_res, '$MAIN_DIR/VERSION')
+
+  target_name = prefix + temp_env['BHO_UNSIGNED_FILENAME']
+
+  temp_inputs = [
+      'bho_dll.cc',
+      'bho_dll.def',
+      bho_res,
+      ]
+  if env.Bit('use_precompiled_headers'):
+    temp_inputs += temp_env.EnablePrecompile(target_name)
+
+  unsigned_dll = temp_env.ComponentLibrary(
+      lib_name=target_name,
+      source=temp_inputs,
+  )
+
+  signed_dll = temp_env.SignedBinary(
+      target=prefix + temp_env['BHO_FILENAME'],
+      source=unsigned_dll,
+  )
+
+  env.Replicate('$STAGING_DIR', signed_dll)
+  env.Replicate('$STAGING_DIR', [f for f in unsigned_dll if f.suffix == '.pdb'])
+
+#
+# Build a new idl from the template *before* building the type library itself.
+#
+env.Command(
+    target='bho_dll.idl',
+    # Need to specify a path for the input, or Hammer gets confused by
+    # the identical file names.
+    source='$MAIN_DIR/bho/bho_dll.idl',
+    action=('@python %s/plugins/generate_oneclick_idl.py --idl_template_file'
+        ' $SOURCE --idl_output_file $TARGET' % (env.Dir('$MAIN_DIR').abspath))
+)
+
+
+#
+# Generate the type library
+#
+midl_env = env.Clone()
+
+midl_env.Tool('midl')
+
+midl_env.Append(
+  MIDLFLAGS = [
+    '/Oicf',  # Generate optimized stubless proxy/stub code.
+    ],
+)
+
+# Create the type library.
+midl_output = midl_env.TypeLibrary(source='$OBJ_ROOT/bho/bho_dll.idl')
+
+
+#
+# Build bho_dll_no_pch.lib
+# Need to generate the GUIDs with no precompile, otherwise we get an error.
+#
+env_no_precomp = env.Clone()
+
+env_no_precomp.Append(
+    CCFLAGS = [
+        '/wd4255',  # no function prototype given: converting '()' to '(void)'
+        ],
+)
+
+env_no_precomp.ComponentLibrary(
+    lib_name='bho_dll_no_pch.lib',
+    source=[
+        '$OBJ_ROOT/bho/bho_dll_i.c',
+        '$OBJ_ROOT/bho/bho_dll_p.c',
+        ]
+)
+
+
+#
+# Build bho_dll.lib.
+#
+env_main = env.Clone()
+
+env_main.Append(
+    CPPPATH = [
+        '$OBJ_ROOT',
+        ],
+    CPPDEFINES = [
+        '_ATL_APARTMENT_THREADED',
+        ],
+)
+
+target_name = 'bho_dll.lib'
+
+# Set up inputs. Note one of the inputs is a file generated by the midl
+# compiler in the previous step.
+env_main_inputs = [
+    'bho_entrypoint.cc',
+    'browser_http_request.cc',
+    ]
+if env.Bit('use_precompiled_headers'):
+  env_main_inputs += env_main.EnablePrecompile(target_name)
+
+main_output = env_main.ComponentLibrary(
+    lib_name=target_name,
+    source=env_main_inputs
+)
+
+

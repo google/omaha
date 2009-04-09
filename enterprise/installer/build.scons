@@ -1,0 +1,134 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+""" Build enterprise installers examples.
+
+  This file contains the product-specific information for building an
+  MSI for remote installation in the enterprise. Product teams should only
+  need to modify this file.
+  APPTEAMS:
+  There are two ways to build such an MSI depending on whether the product's
+  installer is or contains an MSI.
+"""
+
+Import('env')
+
+from enterprise.installer import build_enterprise_installer
+
+
+# APPTEAMS: Change this value to False.
+# Build the installer using build rules specific to Google Update builds.
+BUILDING_WITH_GOOGLE_UPDATE = True
+
+# APPTEAMS:
+# Note about versions: Each released build needs to have a different Build
+# number in the version "Major.Minor.Build.Qfe". The Qfe is ignored by MSI and
+# only increasing it may cause both the old and new versions of the this MSI
+# to exist side-by-side (http://msdn.microsoft.com/en-us/library/aa370859.aspx).
+
+# APPTEAMS: May be able to use this to get the version instead of explicitly
+# specifying it in the table below.
+# v = env['product_version'][0]
+# PRODUCT_VERSION = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+#
+# Applications with EXE installers
+#
+# Use this section to build an MSI that contains Google Update and a product's
+# EXE installer. The EXE may not use an MSI installer internally.
+# MSI installers cannot be wrapped in this way because nested MSI installs are
+# discouraged, problematic, and deprecated from WiX.
+
+# APPTEAMS: Make appropriate call to BuildEnterpriseInstaller(). Example below.
+
+# This sample:
+#  * Builds multiple "products" (each product is actually a different version).
+#    Products are specified in an array of structures, which specify the values
+#    for each product.
+#  * Builds multiple pre-tagged brands and ap values for each "product."
+def _BuildSampleForTest():
+  ENTERPRISE_INSTALLER_PRODUCTS = [
+    ('Save Arguments', '0.1.2.0', '{7DD1EF7B-D075-47c0-BD51-F624ED87CCF0}',
+     '&brand=mkfi',
+     '$MAIN_DIR/testing/unittest_support/SaveArguments.exe',
+     '/install 0.1.2.0', '/donotregister', '/uninstall 0.1.2.0',
+      'SaveArguments_Enterprise_Installer_0.1.2.0'),
+    ('Save Arguments', '0.1.3.0', '{7DD1EF7B-D075-47c0-BD51-F624ED87CCF0}',
+     '&brand=mkfi',
+     '$MAIN_DIR/testing/unittest_support/SaveArguments.exe',
+     '/install 0.1.3.0', '/donotregister', '/uninstall 0.1.3.0',
+     'SaveArguments_Enterprise_Installer_0.1.3.0'),
+    ]
+
+  # Example of calling BuildEnterpriseInstaller with multiple brands and ap
+  # value combinations for each product.
+  BRAND_AP_COMBINATIONS = [
+    ('FOOB', 'foobar'),
+    #('ENTA', 'enterprise'),
+    #('ENTB', 'enterprise'),
+  ]
+
+  # Omaha only: Build the enterprise installer for each version of Omaha.
+  first = True
+  for _ in env['product_version']:
+    if first:
+      first = False
+      prefix = ''
+    else:
+      prefix = 'TEST_'
+
+    for combo in BRAND_AP_COMBINATIONS:
+      for product in ENTERPRISE_INSTALLER_PRODUCTS:
+        (product_name, product_version, product_guid,
+         product_custom_params,
+         product_installer_path,
+         product_installer_install_command,
+         product_installer_disable_update_registration_arg,
+         product_installer_uninstall_command,
+         msi_base_name) = product
+
+        product_custom_params = '&brand=' + combo[0] + '&ap=' + combo[1]
+
+        build_enterprise_installer.BuildEnterpriseInstaller(
+            env,
+            product_name, product_version, product_guid,
+            product_custom_params,
+            product_installer_path,
+            product_installer_install_command,
+            product_installer_disable_update_registration_arg,
+            product_installer_uninstall_command,
+            prefix + msi_base_name + '_' + combo[0],
+            '$MAIN_DIR/enterprise/installer',
+            '$STAGING_DIR/%sGoogleUpdateSetup.exe' % prefix
+        )
+
+if BUILDING_WITH_GOOGLE_UPDATE:
+  _BuildSampleForTest()
+
+
+#
+# Applications with MSI installers
+#
+# To bundle Google Update with a product that has an MSI installer:
+#  * Build a .wixobj that contains the Google Update installation fragment
+#    by calling BuildGoogleUpdateFragment().
+#  * Include the ComponentGoogleUpdate component in the appropriate feature in
+#    the product's WiX code.
+#
+# For an example, see instances of "enterprise" in the following files:
+#  omaha/test/test_foo.wxs.xml
+#  omaha/test/build.scons

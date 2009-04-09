@@ -1,0 +1,60 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+#
+# Build BreakPad library
+#
+
+breakpad_env = env.Clone()
+breakpad_env.Append(
+    CPPPATH = [
+        '$MAIN_DIR/third_party/breakpad/src/',
+        ],
+    CCFLAGS = [
+        # Remove this after submitting breakpad fix.
+        '/wd4706',  # assignment within conditional expression
+        ],
+    CPPDEFINES = [
+        # Make breakpad not use a TerminateThread call to clean up one of its
+        # worker threads. This is required in order to pass App Verifier tests.
+        'BREAKPAD_NO_TERMINATE_THREAD',
+        ],
+)
+
+target_name = 'breakpad.lib'
+
+breakpad_inputs = [
+    'src/common/windows/guid_string.cc',
+    'src/common/windows/http_upload.cc',
+    'src/client/windows/crash_generation/client_info.cc',
+    'src/client/windows/crash_generation/crash_generation_client.cc',
+    'src/client/windows/crash_generation/crash_generation_server.cc',
+    'src/client/windows/crash_generation/minidump_generator.cc',
+    'src/client/windows/handler/exception_handler.cc',
+    'src/client/windows/sender/crash_report_sender.cc',
+    ]
+if env.Bit('use_precompiled_headers'):
+  breakpad_inputs += breakpad_env.EnablePrecompile(target_name)
+
+breakpad_env.ComponentLibrary(
+    lib_name=target_name,
+    source=breakpad_inputs,
+)
+
