@@ -1,4 +1,5 @@
 #summary Instructions for how to set up a build environment for Omaha
+#labels Featured
 
 = Introduction =
 
@@ -19,7 +20,7 @@ The following packages are required to build Omaha:
     * Download the SDK [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065%26displaylang=en here].
   * Microsoft .NET Framework 2.0
     * This is pre-installed on Windows Vista machines.
-    * If you're running Windows XP, download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
+    * If you're running Windows XP, you may need to download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
   * WTL
     * Download WTL [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5%26displaylang=en here].
   * WiX
@@ -47,8 +48,8 @@ The following packages are required to build Omaha:
 Create the following environment variables:
   * %SCT_DIR% - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
   * %OMAHA_NET_DIR% - This will depend on your OS:
-    * For XP, set it to the directory where the .NET framework is installed (eg. `C:\Program Files\Microsoft.NET\Framework\v2.0.50727`)
-    * For Vista, set it to the pre-installed framework directory (this will be something like: `C:\Windows\Microsoft.NET\Framework\v2.0.50727`)
+    * For Vista, or if it was pre-installed on XP, set it to the framework directory (this will be something like: `C:\Windows\Microsoft.NET\Framework\v2.0.50727`)
+    * Otherwise, set it to the directory where the .NET framework is installed.  (eg. `C:\Program Files\Microsoft.NET\Framework\v2.0.50727`)
   * %OMAHA_PYTHON_DIR% - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`)
   * %OMAHA_VISTASDK_DIR% - set to the directory where the Vista SDK was installed (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
   * %OMAHA_WIX_DIR% - set to the directory where WiX was installed (eg. `C:\Program Files\WiX`)
