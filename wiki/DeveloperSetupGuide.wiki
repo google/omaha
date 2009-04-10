@@ -60,7 +60,7 @@ Create the following environment variables:
 
 == Unit Test Setup ==
 
-If you want to make the unit tests work, there is one other piece of setup required. You must download SysInternal's PsExec (you can get it [http://technet.microsoft.com/en-us/sysinternals/bb897553.aspx here]), and save psexec.exe somewhere. Then you will need to set an environment variable (called OMAHA_PSEXEC_DIR) that points to the location of the executable.
+If you want to make the unit tests work, there is one other piece of setup required. You must download !SysInternal's !PsExec (you can get it [http://technet.microsoft.com/en-us/sysinternals/bb897553.aspx here]), and save psexec.exe somewhere. Then you will need to set an environment variable (called OMAHA_PSEXEC_DIR) that points to the location of the executable.
 
 
 == Conclusion ==
