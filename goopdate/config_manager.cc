@@ -610,10 +610,11 @@ HRESULT CreateAndSetVersionedNameInRegistry(bool is_machine,
 }
 
 CString ConfigManager::GetCurrentTaskNameCore(bool is_machine) {
-  CORE_LOG(L3, (_T("[ConfigManager::GetCurrentTaskNameCore]")));
+  CORE_LOG(L3, (_T("[GetCurrentTaskNameCore[%d]"), is_machine));
 
-  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(is_machine));
-  default_name += kScheduledTaskNameCoreSuffix;
+  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(
+                                           is_machine,
+                                           COMMANDLINE_MODE_CORE));
   return GetCurrentVersionedName(is_machine, kRegValueTaskNameC, default_name);
 }
 
@@ -622,26 +623,29 @@ HRESULT ConfigManager::CreateAndSetVersionedTaskNameCoreInRegistry(
   CORE_LOG(L3, (_T("CreateAndSetVersionedTaskNameCoreInRegistry[%d]"),
                 is_machine));
 
-  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(is_machine));
-  default_name += kScheduledTaskNameCoreSuffix;
+  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(
+                                           is_machine,
+                                           COMMANDLINE_MODE_CORE));
   return CreateAndSetVersionedNameInRegistry(is_machine,
                                              default_name,
                                              kRegValueTaskNameC);
 }
 
 CString ConfigManager::GetCurrentTaskNameUA(bool is_machine) {
-  CORE_LOG(L3, (_T("[ConfigManager::GetCurrentTaskNameUA]")));
+  CORE_LOG(L3, (_T("[GetCurrentTaskNameUA[%d]"), is_machine));
 
-  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(is_machine));
-  default_name += kScheduledTaskNameUASuffix;
+  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(
+                                           is_machine,
+                                           COMMANDLINE_MODE_UA));
   return GetCurrentVersionedName(is_machine, kRegValueTaskNameUA, default_name);
 }
 
 HRESULT ConfigManager::CreateAndSetVersionedTaskNameUAInRegistry(bool machine) {
   CORE_LOG(L3, (_T("CreateAndSetVersionedTaskNameUAInRegistry[%d]"), machine));
 
-  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(machine));
-  default_name += kScheduledTaskNameUASuffix;
+  CString default_name(goopdate_utils::GetDefaultGoopdateTaskName(
+                                           machine,
+                                           COMMANDLINE_MODE_UA));
   return CreateAndSetVersionedNameInRegistry(machine,
                                              default_name,
                                              kRegValueTaskNameUA);

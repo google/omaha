@@ -128,7 +128,8 @@ const TCHAR* const kLegacyServiceName           = _T("gupdate");
 const TCHAR* const kServicePrefix               = _T("gupdate");
 
 const TCHAR* const kScheduledTaskNameUserPrefix = _T("GoogleUpdateTaskUser");
-const TCHAR* const kScheduledTaskNameMachine    = _T("GoogleUpdateTaskMachine");
+const TCHAR* const kScheduledTaskNameMachinePrefix =
+    _T("GoogleUpdateTaskMachine");
 const TCHAR* const kScheduledTaskNameCoreSuffix = _T("Core");
 const TCHAR* const kScheduledTaskNameUASuffix   = _T("UA");
 

@@ -320,7 +320,20 @@ TEST_F(GoogleUpdateCoreTest, LaunchCmdElevated) {
                               CSecurityDesc());
   GoogleUpdateCoreProxy google_update_core_proxy(true, &attr);
   CComPtr<IGoogleUpdateCore> google_update_core;
-  EXPECT_SUCCEEDED(google_update_core_proxy.GetObject(&google_update_core));
+
+  HRESULT hr(google_update_core_proxy.GetObject(&google_update_core));
+  if (FAILED(hr) && vista_util::IsUserAdmin()) {
+    // This test is failing from time to time on pulse. A log of the core
+    // process might give us more information on what exactly is going wrong.
+    // Using goopdump.exe to dump this information, which should appear in the
+    // pulse log.
+    CString goopdump_path =
+        ConcatenatePath(app_util::GetCurrentModuleDirectory(),
+                        _T("GoopDump.exe"));
+    EXPECT_SUCCEEDED(RegisterOrUnregisterExe(goopdump_path, _T(" ")));
+  }
+
+  EXPECT_SUCCEEDED(hr);
   EXPECT_TRUE(google_update_core != NULL);
 
   DoLaunchCmdElevatedTests(google_update_core);

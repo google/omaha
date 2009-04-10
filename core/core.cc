@@ -131,7 +131,7 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   // and it keeps the core running. In addition, for the machine GoogleUpdate,
   // if the service is not installed, then Omaha uses the elevator interface
   // hosted by the core, and this keeps the core running.
-  if (goopdate_utils::IsInstalledGoopdateTaskCore(is_system_)) {
+  if (goopdate_utils::IsInstalledGoopdateTaskUA(is_system_)) {
     if (!is_system_) {
       return S_OK;
     }

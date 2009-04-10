@@ -224,11 +224,12 @@ HRESULT ConvertLegacyUsageStats(bool is_machine);
 
 // This method will return the default scheduled task name. This default value
 // is also used as the prefix for generating unique task names.
-CString GetDefaultGoopdateTaskName(bool is_machine);
+CString GetDefaultGoopdateTaskName(bool is_machine, CommandLineMode mode);
 HRESULT InstallGoopdateTasks(const TCHAR* task_path, bool is_machine);
 HRESULT UninstallGoopdateTasks(bool is_machine);
+HRESULT UninstallLegacyGoopdateTasks(bool is_machine);
 HRESULT StartGoopdateTaskCore(bool is_machine);
-bool IsInstalledGoopdateTaskCore(bool is_machine);
+bool IsInstalledGoopdateTaskUA(bool is_machine);
 
 // Gets the specified value from the registry for the application.
 HRESULT GetClientsStringValueFromRegistry(bool is_machine,

@@ -424,7 +424,7 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey, _T("Google Update"), &value));
   EXPECT_STREQ(expected_run_key_value_, value);
-  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskCore(false));
+  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
 
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, kRegValueInstalledVersion, &value));
@@ -437,7 +437,7 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   // overriding registry.
   UninstallLaunchMechanisms();
   EXPECT_FALSE(RegKey::HasValue(kRunKey, _T("Google Update")));
-  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskCore(false));
+  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
 }
 
 // TODO(omaha): Assumes GoogleUpdate.exe exists in the installed location, which
@@ -687,11 +687,11 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey, _T("Google Update"), &value));
   EXPECT_STREQ(expected_run_key_value_, value);
-  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskCore(false));
+  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
 
   UninstallLaunchMechanisms();
   EXPECT_FALSE(RegKey::HasValue(kRunKey, _T("Google Update")));
-  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskCore(false));
+  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
 }
 
 TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
@@ -703,11 +703,11 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey, _T("Google Update"), &value));
   EXPECT_STREQ(expected_run_key_value_, value);
-  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskCore(false));
+  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
 
   UninstallLaunchMechanisms();
   EXPECT_FALSE(RegKey::HasValue(kRunKey, _T("Google Update")));
-  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskCore(false));
+  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
 }
 
 // The helper can be installed when the test begins.

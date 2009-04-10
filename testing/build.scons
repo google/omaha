@@ -401,9 +401,6 @@ env.Replicate('$STAGING_DIR/unittest_support/', [
     # Minidump file for the crash unit test.
     'unittest_support/minidump.dmp',
     'unittest_support/minidump.txt',
-
-    # psexec for the Setup tests.
-    '$MAIN_DIR/internal/tools/psexec.exe',
     ])
 
 # Saved versions of Google Update for the Setup tests.

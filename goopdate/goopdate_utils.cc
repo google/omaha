@@ -462,6 +462,7 @@ HRESULT CreateScheduledTask(ITask* task,
   ASSERT1(task_parameters);
   ASSERT1(task_comment && *task_comment);
   ASSERT1(create_logon_trigger || create_periodic_trigger);
+  ASSERT1(!create_logon_trigger || (create_logon_trigger && is_machine));
 
   CORE_LOG(L3, (_T("CreateScheduledTask[%s][%s][%d]"),
                 task_path, task_parameters, is_machine));
@@ -758,6 +759,29 @@ HRESULT UninstallScheduledTasks(const TCHAR* task_prefix) {
   }
 
   return S_OK;
+}
+
+// Returns the task name Omaha used to install in Omaha 1.2.x.
+CString GetOmaha1LegacyTaskName(bool is_machine) {
+  const TCHAR* const kLegacyOmaha1TaskNameMachine = _T("GoogleUpdateTask");
+  const TCHAR* const kLegacyOmaha1TaskNameUser = _T("GoogleUpdateTaskUser");
+  return is_machine ? kLegacyOmaha1TaskNameMachine : kLegacyOmaha1TaskNameUser;
+}
+
+// Returns the task name Omaha used to install in Omaha 2 before the
+// "GoogleUpdate.exe does not run all the time" refactoring.
+CString GetOmaha2LegacyTaskName(bool is_machine) {
+  const TCHAR* kLegacyOmaha2TaskNameUserPrefix = _T("GoogleUpdateTaskUser");
+  const TCHAR* kLegacyOmaha2TaskNameMachine = _T("GoogleUpdateTaskMachine");
+  if (is_machine) {
+    return kLegacyOmaha2TaskNameMachine;
+  }
+
+  CString task_name_user = kLegacyOmaha2TaskNameUserPrefix;
+  CString user_sid;
+  VERIFY1(SUCCEEDED(user_info::GetCurrentUser(NULL, NULL, &user_sid)));
+  task_name_user += user_sid;
+  return task_name_user;
 }
 
 }  // namespace internal
@@ -1561,16 +1585,22 @@ HRESULT ConvertLegacyUsageStats(bool is_machine) {
   return S_OK;
 }
 
-CString GetDefaultGoopdateTaskName(bool is_machine) {
+CString GetDefaultGoopdateTaskName(bool is_machine, CommandLineMode mode) {
+  ASSERT1(mode == COMMANDLINE_MODE_CORE || mode == COMMANDLINE_MODE_UA);
+
+  CString task_name;
   if (is_machine) {
-    return kScheduledTaskNameMachine;
+    task_name = kScheduledTaskNameMachinePrefix;
+  } else {
+    task_name = kScheduledTaskNameUserPrefix;
+    CString user_sid;
+    VERIFY1(SUCCEEDED(user_info::GetCurrentUser(NULL, NULL, &user_sid)));
+    task_name += user_sid;
   }
 
-  CString task_name_user = kScheduledTaskNameUserPrefix;
-  CString user_sid;
-  VERIFY1(SUCCEEDED(user_info::GetCurrentUser(NULL, NULL, &user_sid)));
-  task_name_user += user_sid;
-  return task_name_user;
+  task_name += (mode == COMMANDLINE_MODE_CORE) ? kScheduledTaskNameCoreSuffix :
+                                                 kScheduledTaskNameUASuffix;
+  return task_name;
 }
 
 HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
@@ -1623,39 +1653,53 @@ HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
 }
 
 HRESULT InstallGoopdateTasks(const TCHAR* task_path, bool is_machine) {
-  HRESULT hr = InstallGoopdateTaskForMode(task_path,
-                                          is_machine,
-                                          COMMANDLINE_MODE_CORE);
-  if (FAILED(hr)) {
-    return hr;
+  if (is_machine) {
+    HRESULT hr = InstallGoopdateTaskForMode(task_path,
+                                            is_machine,
+                                            COMMANDLINE_MODE_CORE);
+    if (FAILED(hr)) {
+      return hr;
+    }
   }
 
   return InstallGoopdateTaskForMode(task_path, is_machine, COMMANDLINE_MODE_UA);
 }
 
 HRESULT UninstallGoopdateTasks(bool is_machine) {
-  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
-      ConfigManager::GetCurrentTaskNameCore(is_machine))));
+  if (is_machine) {
+    VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
+        ConfigManager::GetCurrentTaskNameCore(is_machine))));
+  }
   VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
       ConfigManager::GetCurrentTaskNameUA(is_machine))));
 
-  // Delete any other previous task versions.
+  // Try to uninstall any tasks that we failed to update during a previous
+  // overinstall. It is possible that we fail to uninstall these again here.
   if (is_machine) {
-    const TCHAR* const kLegacyTaskNameMachine = _T("GoogleUpdateTask");
-    if (internal::IsInstalledScheduledTask(kLegacyTaskNameMachine)) {
-      VERIFY1(SUCCEEDED(
-          internal::UninstallScheduledTask(kLegacyTaskNameMachine)));
-    }
-  } else {
-    const TCHAR* const kLegacyTaskNameUser = _T("GoogleUpdateTaskUser");
-    if (internal::IsInstalledScheduledTask(kLegacyTaskNameUser)) {
-      VERIFY1(SUCCEEDED(
-          internal::UninstallScheduledTask(kLegacyTaskNameUser)));
-    }
+    VERIFY1(SUCCEEDED(internal::UninstallScheduledTasks(
+        goopdate_utils::GetDefaultGoopdateTaskName(is_machine,
+                                                   COMMANDLINE_MODE_CORE))));
+  }
+  VERIFY1(SUCCEEDED(internal::UninstallScheduledTasks(
+      goopdate_utils::GetDefaultGoopdateTaskName(is_machine,
+                                                 COMMANDLINE_MODE_UA))));
+  return S_OK;
+}
+
+HRESULT UninstallLegacyGoopdateTasks(bool is_machine) {
+  const CString& legacy_omaha1_task =
+      internal::GetOmaha1LegacyTaskName(is_machine);
+  if (internal::IsInstalledScheduledTask(legacy_omaha1_task)) {
+    VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha1_task)));
   }
 
-  return internal::UninstallScheduledTasks(
-             goopdate_utils::GetDefaultGoopdateTaskName(is_machine));
+  const CString& legacy_omaha2_task =
+      internal::GetOmaha2LegacyTaskName(is_machine);
+  if (internal::IsInstalledScheduledTask(legacy_omaha2_task)) {
+    VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha2_task)));
+  }
+
+  return S_OK;
 }
 
 HRESULT StartGoopdateTaskCore(bool is_machine) {
@@ -1663,9 +1707,9 @@ HRESULT StartGoopdateTaskCore(bool is_machine) {
              ConfigManager::GetCurrentTaskNameCore(is_machine));
 }
 
-bool IsInstalledGoopdateTaskCore(bool is_machine) {
+bool IsInstalledGoopdateTaskUA(bool is_machine) {
   return internal::IsInstalledScheduledTask(
-                             ConfigManager::GetCurrentTaskNameCore(is_machine));
+                             ConfigManager::GetCurrentTaskNameUA(is_machine));
 }
 
 HRESULT GetClientsStringValueFromRegistry(bool is_machine,
