@@ -13,6 +13,7 @@ The following packages are required to build Omaha:
     * You can either:
       * Download a full source package from the [http://code.google.com/p/omaha/downloads/list Downloads area].
       * See [http://code.google.com/p/omaha/source/checkout source checkout] for setting up access to the subversion repository. This will also require [http://subversion.tigris.org/ SVN] itself.
+    * However you get the source code, the parent directory you store it in will need to be named "omaha" exactly.
   * Microsoft Visual C++
     * You will need to have at least the Standard Edition of Visual C++ or Visual Studio. (Note: The Express Editions are not sufficient because they do not include ATL/MFC, which Omaha requires.)
     * Omaha currently builds with Microsoft Visual C++ 2005. You are welcome to contribute changes to make it build with newer versions.
@@ -39,26 +40,32 @@ The following packages are required to build Omaha:
 == Installation ==
 
   # Install each of the above software packages that comes with an installer, which is all of them except Omaha source code and the Software Construction Toolkit.
+  # Make sure you add the installed python directory to your path environment variable.
   # Follow the Software Construction Toolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
-  # Extract or checkout the Omaha source code to a directory of your choice, perhaps something like "C:\Omaha-Dev"
+  # Extract or checkout the Omaha source code to a location of your choice, perhaps something like "C:\Omaha"
 
 
 == Environment Variables ==
 
 Create the following environment variables:
-  * %SCT_DIR% - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
-  * %OMAHA_NET_DIR% - This will depend on your OS:
+  * SCT_DIR - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
+  * OMAHA_NET_DIR - This will depend on your OS:
     * For Vista, or if it was pre-installed on XP, set it to the framework directory (this will be something like: `C:\Windows\Microsoft.NET\Framework\v2.0.50727`)
     * Otherwise, set it to the directory where the .NET framework is installed.  (eg. `C:\Program Files\Microsoft.NET\Framework\v2.0.50727`)
-  * %OMAHA_PYTHON_DIR% - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`)
-  * %OMAHA_VISTASDK_DIR% - set to the directory where the Vista SDK was installed (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
-  * %OMAHA_WIX_DIR% - set to the directory in WiX where 'candle.exe' and 'light.exe' are installed. This may be something like (eg. `C:\Program Files\WiX`)
-  * %OMAHA_WTL_DIR% - set to the directory where WTL was installed (eg. `C:\Program Files\WTL`)
+  * OMAHA_PYTHON_DIR - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`)
+  * OMAHA_VISTASDK_DIR - set to the directory where the Vista SDK was installed (e.g. `C:\Program Files\Microsoft Visual Studio 9.0\VC\PlatformSDK`)
+  * OMAHA_WIX_DIR - set to the directory in WiX where 'candle.exe' and 'light.exe' are installed. This may be something like (eg. `C:\Program Files\Windows Installer XML v3\bin`)
+  * OMAHA_WTL_DIR - set to the include directory in the WTL installation (eg. `C:\Program Files\WTL`)
+
+
+== Unit Test Setup ==
+
+If you want to make the unit tests work, there is one other piece of setup required. You must download SysInternal's PsExec (you can get it [http://technet.microsoft.com/en-us/sysinternals/bb897553.aspx here]), and save psexec.exe somewhere. Then you will need to set an environment variable (called OMAHA_PSEXEC_DIR) that points to the location of the executable.
 
 
 == Conclusion ==
 
 Once the above setup is complete:
   # Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
-  # Navigate to the 'Omaha-Dev' directory, or whatever you called it.
+  # Navigate to the 'Omaha' directory, or whatever you called it.
   # From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions].)
