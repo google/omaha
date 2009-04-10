@@ -20,19 +20,19 @@ The following packages are required to build Omaha:
   * Microsoft Vista SDK
     * Download the SDK [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065%26displaylang=en here].
   * Microsoft .NET Framework 2.0
-    * This is pre-installed on Windows Vista machines.
-    * If you're running Windows XP, you may need to download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
+    * This is pre-installed on Windows Vista machines and most Windows XP SP2 machines.
+    * If you do not see %WINDIR%\Microsoft.NET\Framework\v2.0.50727\csc.exe, you may need to download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
   * WTL
     * Download WTL [http://sourceforge.net/projects/wtl here].
   * WiX
-    * Download any of the v3 binaries packages [http://sourceforge.net/project/showfiles.php?group_id=105970%26package_id=168888 here].
+    * Download any of the v3 binaries packages [http://sourceforge.net/project/showfiles.php?group_id=105970&package_id=168888&release_id=645083 here].
   * Python 2.4 (Be sure to use *2.4*, other versions have been seen to break the build)
     * Download Python [http://www.python.org/download/releases/2.4.4/ here].
-    * You'll also need the [http://sourceforge.net/project/downloading.php?group_id=78018&filename=pywin32-212.win32-py2.4.exe pywin32 extensions].
+    * You'll also need the [http://sourceforge.net/project/downloading.php?group_id=78018&filename=pywin32-212.win32-py2.4.exe pywin32 extensions for Python 2.4].
   * SCons
     * Download SCons [http://www.scons.org/download.php here].
-  * Software Construction Toolkit
-    * Get the Software Construction Toolkit [http://code.google.com/p/swtoolkit/ here].
+  * Software Construction Toolkit Source (needs [http://subversion.tigris.org/ SVN])
+    * Get the Software Construction Toolkit Source [http://code.google.com/p/swtoolkit/source/checkout here].
 
 
 = Details =
