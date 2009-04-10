@@ -80,6 +80,10 @@ execfile('VERSION')
 # environment for Windows.
 win_env = Environment()
 
+# Make sure we use the Vista SDK.
+# NOTE: This must be set before the 'component_setup' tool is used.
+win_env['PLATFORM_SDK_DIR'] = '$PLATFORM_SDK_VISTA_6_0_DIR'
+
 win_env.Tool('component_setup')
 win_env.Tool('target_platform_windows')
 

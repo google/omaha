@@ -124,7 +124,7 @@ TEST(GoopdateUtilsTest, ScheduledTasks) {
                                         _T(""),
                                         kSchedTestTaskComment,
                                         vista_util::IsUserAdmin(),
-                                        true,
+                                        vista_util::IsUserAdmin(),
                                         true));
   EXPECT_SUCCEEDED(UninstallScheduledTask(kSchedTestTaskName));
 
@@ -135,7 +135,7 @@ TEST(GoopdateUtilsTest, ScheduledTasks) {
                                           _T(""),
                                           kSchedTestTaskComment,
                                           vista_util::IsUserAdmin(),
-                                          true,
+                                          vista_util::IsUserAdmin(),
                                           true));
   }
 
@@ -145,7 +145,7 @@ TEST(GoopdateUtilsTest, ScheduledTasks) {
                                         kScheduledTaskParameters,
                                         kSchedTestTaskComment,
                                         vista_util::IsUserAdmin(),
-                                        true,
+                                        vista_util::IsUserAdmin(),
                                         true));
 
   // Start and stop.
@@ -3982,16 +3982,44 @@ TEST(GoopdateUtilsTest, WriteInstallerDataToTempFile) {
   }
 }
 
-TEST(GoopdateUtilsTest, GetDefaultGoopdateTaskName) {
-  EXPECT_STREQ(kScheduledTaskNameMachine,
-               goopdate_utils::GetDefaultGoopdateTaskName(true));
+TEST(GoopdateUtilsTest, GetDefaultGoopdateTaskName_Core_Machine) {
+  CString expected_task_name(kScheduledTaskNameMachinePrefix);
+  expected_task_name += kScheduledTaskNameCoreSuffix;
 
-  CString task_name_user = kScheduledTaskNameUserPrefix;
+  EXPECT_STREQ(
+      expected_task_name,
+      goopdate_utils::GetDefaultGoopdateTaskName(true, COMMANDLINE_MODE_CORE));
+}
+
+TEST(GoopdateUtilsTest, GetDefaultGoopdateTaskName_Core_User) {
+  CString expected_task_name_user = kScheduledTaskNameUserPrefix;
   CString user_sid;
   EXPECT_SUCCEEDED(user_info::GetCurrentUser(NULL, NULL, &user_sid));
-  task_name_user += user_sid;
-  EXPECT_STREQ(task_name_user,
-               goopdate_utils::GetDefaultGoopdateTaskName(false));
+  expected_task_name_user += user_sid;
+  expected_task_name_user += kScheduledTaskNameCoreSuffix;
+  EXPECT_STREQ(
+      expected_task_name_user,
+      goopdate_utils::GetDefaultGoopdateTaskName(false, COMMANDLINE_MODE_CORE));
+}
+
+TEST(GoopdateUtilsTest, GetDefaultGoopdateTaskName_UA_Machine) {
+  CString expected_task_name(kScheduledTaskNameMachinePrefix);
+  expected_task_name += kScheduledTaskNameUASuffix;
+
+  EXPECT_STREQ(
+      expected_task_name,
+      goopdate_utils::GetDefaultGoopdateTaskName(true, COMMANDLINE_MODE_UA));
+}
+
+TEST(GoopdateUtilsTest, GetDefaultGoopdateTaskName_UA_User) {
+  CString expected_task_name_user = kScheduledTaskNameUserPrefix;
+  CString user_sid;
+  EXPECT_SUCCEEDED(user_info::GetCurrentUser(NULL, NULL, &user_sid));
+  expected_task_name_user += user_sid;
+  expected_task_name_user += kScheduledTaskNameUASuffix;
+  EXPECT_STREQ(
+      expected_task_name_user,
+      goopdate_utils::GetDefaultGoopdateTaskName(false, COMMANDLINE_MODE_UA));
 }
 
 }  // namespace goopdate_utils

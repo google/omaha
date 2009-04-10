@@ -210,7 +210,7 @@ class ConfigManager {
   // value if there is no registration.
   static CString GetCurrentTaskNameCore(bool is_machine);
 
-  // Creates a unique name, say "GoogleUpdateTaskMachine1c9b3d6baf90df3Core", of
+  // Creates a unique name, say "GoogleUpdateTaskMachineCore1c9b3d6baf90df3", of
   // the GoogleUpdateCore scheduled task, and stores it in the registry.
   // Subsequent invocations of GetCurrentTaskNameCore() will return this new
   // value.
@@ -221,7 +221,7 @@ class ConfigManager {
   // if there is no registration.
   static CString GetCurrentTaskNameUA(bool is_machine);
 
-  // Creates a unique name, say "GoogleUpdateTaskMachine1c9b3d6baf90df3UA", of
+  // Creates a unique name, say "GoogleUpdateTaskMachineUA1c9b3d6baf90df3", of
   // the GoogleUpdateUA scheduled task, and stores it in the registry.
   // Subsequent invocations of GetCurrentTaskNameUA() will return this new
   // value.

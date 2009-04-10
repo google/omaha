@@ -165,10 +165,14 @@ void TerminateAllGoogleUpdateProcesses() {
 void LaunchProcessAsSystem(const CString& launch_cmd, HANDLE* process) {
   ASSERT_TRUE(process);
 
-  CString app_launcher = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                                         _T("unittest_support\\psexec.exe"));
+  TCHAR psexec_path[MAX_PATH] = {0};
+  EXPECT_TRUE(::GetEnvironmentVariable(_T("OMAHA_PSEXEC_DIR"),
+                                       psexec_path,
+                                       arraysize(psexec_path)));
+
+  CString app_launcher = ConcatenatePath(psexec_path, _T("psexec.exe"));
   CString cmd_line_args;
-  cmd_line_args.Format(_T("/accepteula -s -d %s"), launch_cmd);
+  cmd_line_args.Format(_T("-s -d %s"), launch_cmd);
 
   PROCESS_INFORMATION pi = {0};
   EXPECT_SUCCEEDED(System::StartProcessWithArgsAndInfo(app_launcher,

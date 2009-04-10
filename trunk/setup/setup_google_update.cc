@@ -604,6 +604,8 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
   have_called_uninstall_previous_versions_ = true;
 #endif
 
+  VERIFY1(SUCCEEDED(goopdate_utils::UninstallLegacyGoopdateTasks(is_machine_)));
+
   CString install_path(
       is_machine_ ? ConfigManager::Instance()->GetMachineGoopdateInstallDir() :
                     ConfigManager::Instance()->GetUserGoopdateInstallDir());

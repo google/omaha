@@ -58,9 +58,12 @@ STDMETHODIMP ProcessLauncher::LaunchBrowser(DWORD type, const TCHAR* url) {
   return ShellExecuteBrowser(static_cast<BrowserType>(type), url);
 }
 
-// This method delegates to the internal interface exposed by the core.
-// When starting, the core registers a proxy for its interface in shared
-// memory. Non elevated callers can request a command to be run elevated.
+// This method delegates to the internal interface exposed by the system
+// service, and if the service cannot be installed, exposed by the core.
+// When starting, if the service is not installed, the core registers a proxy
+// for its interface in shared memory.
+//
+// Non elevated callers can request a command to be run elevated.
 // The command must be registered before by elevated code to prevent
 // launching untrusted commands. The security of the command is based on
 // having the correct registry ACLs for the machine Omaha registry.
@@ -78,17 +81,19 @@ STDMETHODIMP ProcessLauncher::LaunchCmdElevated(const WCHAR* app_guid,
   ASSERT1(cmd_id);
   ASSERT1(proc_handle);
 
-  SharedMemoryAttributes attr(kGoogleUpdateCoreSharedMemoryName,
-                              CSecurityDesc());
-  GoogleUpdateCoreProxy google_update_core_proxy(true, &attr);
   CComPtr<IGoogleUpdateCore> google_update_core;
-  HRESULT hr = google_update_core_proxy.GetObject(&google_update_core);
-  if (FAILED(hr)) {
-    CORE_LOG(L3, (_T("[GetObject for IGoogleUpdateCore failed][0x%08x]"), hr));
+  HRESULT hr =
+      google_update_core.CoCreateInstance(__uuidof(GoogleUpdateCoreClass));
 
-    hr = google_update_core.CoCreateInstance(__uuidof(GoogleUpdateCoreClass));
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[CoCreate GoogleUpdateCoreClass failed][0x%x]"), hr));
+
+    SharedMemoryAttributes attr(kGoogleUpdateCoreSharedMemoryName,
+                                CSecurityDesc());
+    GoogleUpdateCoreProxy google_update_core_proxy(true, &attr);
+    hr = google_update_core_proxy.GetObject(&google_update_core);
     if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[CoCreate GoogleUpdateCoreClass failed][0x%08x]"), hr));
+      CORE_LOG(LE, (_T("[GetObject for IGoogleUpdateCore failed][0x%x]"), hr));
       return hr;
     }
   }
