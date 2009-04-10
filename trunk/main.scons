@@ -724,7 +724,8 @@ windows_coverage_env.Append(
 BuildEnvironments(
     [ windows_debug_env,
       windows_optimized_env,
-      windows_coverage_env,
+      # Coverage builds are disabled for now.
+      # windows_coverage_env,
     ]
 )
 
