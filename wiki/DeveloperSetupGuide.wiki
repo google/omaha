@@ -23,7 +23,7 @@ The following packages are required to build Omaha:
     * This is pre-installed on Windows Vista machines.
     * If you're running Windows XP, you may need to download it [http://msdn.microsoft.com/en-us/netframework/aa731542.aspx here].
   * WTL
-    * Download WTL [http://www.microsoft.com/downloads/details.aspx?FamilyID=1be1eb52-aa96-4685-99a5-4256737781c5%26displaylang=en here].
+    * Download WTL [http://sourceforge.net/projects/wtl here].
   * WiX
     * Download any of the v3 binaries packages [http://sourceforge.net/project/showfiles.php?group_id=105970%26package_id=168888 here].
   * Python 2.4 (Be sure to use *2.4*, other versions have been seen to break the build)
