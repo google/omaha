@@ -66,6 +66,7 @@ When running unit tests:
   * You must be connected to the Internet for some tests to pass.
   * We recommend running them with administrator privileges as some tests do not run otherwise.
 
+Some tests do not run by default because they take a long time or are otherwise inconvenient to run all the time. To run these tests, define the `OMAHA_RUN_ALL_TESTS` environment variable. For example, `set OMAHA_RUN_ALL_TESTS=1`.
 
 
 == Conclusion ==
