@@ -7,7 +7,7 @@ Omaha builds using Hammer from Google's open-sourced [http://code.google.com/p/s
 ||hammer||Default build (debug, using precompiled headers, signed with test certificate, most subdirectories)||
 ||hammer MODE=dbg-win||Debug build||
 ||hammer MODE=opt-win||Optimized build||
-||hammer MODE=all||Both debug & optimized builds||
+||hammer MODE=all||Debug, optimized, and coverage builds||
 ||hammer --clean||Clean intermediate files (`hammer -c` also works)||
 ||hammer --verbose||Verbose output||
 ||hammer --use_precompiled_headers||Enable precompiled header support (default)||
