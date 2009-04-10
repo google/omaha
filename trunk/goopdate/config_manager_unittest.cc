@@ -584,7 +584,7 @@ TEST_F(ConfigManagerTest, CanOverInstall) {
 #ifdef DEBUG
   EXPECT_TRUE(cm_->CanOverInstall());
 #else
-  EXPECT_EQ(cm_->CanOverInstall(), !OFFICIAL_BUILD);
+  EXPECT_EQ(!OFFICIAL_BUILD, cm_->CanOverInstall());
 #endif
 
   val = 0;
@@ -594,37 +594,39 @@ TEST_F(ConfigManagerTest, CanOverInstall) {
 #ifdef DEBUG
   EXPECT_FALSE(cm_->CanOverInstall());
 #else
-  EXPECT_EQ(cm_->CanOverInstall(), !OFFICIAL_BUILD);
+  EXPECT_EQ(!OFFICIAL_BUILD, cm_->CanOverInstall());
 #endif
 }
 
 // Tests AuCheckPeriodMs override.
 TEST_F(ConfigManagerTest, GetAutoUpdateTimerIntervalMs) {
-  EXPECT_EQ(cm_->GetAutoUpdateTimerIntervalMs(), kAUCheckPeriodGooglerMs);
+  EXPECT_EQ(cm_->IsGoogler() ? kAUCheckPeriodGooglerMs :
+                               kAUCheckPeriodMs,
+            cm_->GetAutoUpdateTimerIntervalMs());
 
   DWORD val = 0;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueAuCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetAutoUpdateTimerIntervalMs(), kMinAUCheckPeriodMs);
+  EXPECT_EQ(kMinAUCheckPeriodMs, cm_->GetAutoUpdateTimerIntervalMs());
 
   val = kMinAUCheckPeriodMs - 1;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueAuCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetAutoUpdateTimerIntervalMs(), kMinAUCheckPeriodMs);
+  EXPECT_EQ(kMinAUCheckPeriodMs, cm_->GetAutoUpdateTimerIntervalMs());
 
   val = 30000;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueAuCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetAutoUpdateTimerIntervalMs(), val);
+  EXPECT_EQ(val, cm_->GetAutoUpdateTimerIntervalMs());
 
   val = INT_MAX;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueAuCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetAutoUpdateTimerIntervalMs(), val);
+  EXPECT_EQ(val, cm_->GetAutoUpdateTimerIntervalMs());
 
   // Tests overflow with large positive numbers.
   val = INT_MAX;
@@ -632,42 +634,42 @@ TEST_F(ConfigManagerTest, GetAutoUpdateTimerIntervalMs) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueAuCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetAutoUpdateTimerIntervalMs(), INT_MAX);
+  EXPECT_EQ(INT_MAX, cm_->GetAutoUpdateTimerIntervalMs());
 
   val = UINT_MAX;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueAuCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetAutoUpdateTimerIntervalMs(), INT_MAX);
+  EXPECT_EQ(INT_MAX, cm_->GetAutoUpdateTimerIntervalMs());
 }
 
 // Tests CrCheckPeriodMs override.
 TEST_F(ConfigManagerTest, GetCodeRedTimerIntervalMs) {
-  EXPECT_EQ(cm_->GetCodeRedTimerIntervalMs(), kCodeRedCheckPeriodMs);
+  EXPECT_EQ(kCodeRedCheckPeriodMs, cm_->GetCodeRedTimerIntervalMs());
 
   DWORD val = 0;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueCrCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetCodeRedTimerIntervalMs(), kMinCodeRedCheckPeriodMs);
+  EXPECT_EQ(kMinCodeRedCheckPeriodMs, cm_->GetCodeRedTimerIntervalMs());
 
   val = kMinCodeRedCheckPeriodMs - 1;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueCrCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetCodeRedTimerIntervalMs(), kMinCodeRedCheckPeriodMs);
+  EXPECT_EQ(kMinCodeRedCheckPeriodMs, cm_->GetCodeRedTimerIntervalMs());
 
   val = 60000;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueCrCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetCodeRedTimerIntervalMs(), val);
+  EXPECT_EQ(val, cm_->GetCodeRedTimerIntervalMs());
 
   val = INT_MAX;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueCrCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetCodeRedTimerIntervalMs(), val);
+  EXPECT_EQ(val, cm_->GetCodeRedTimerIntervalMs());
 
   // Tests overflow with large positive numbers.
   val = INT_MAX;
@@ -675,13 +677,13 @@ TEST_F(ConfigManagerTest, GetCodeRedTimerIntervalMs) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueCrCheckPeriodMs,
                                     val));
-  EXPECT_EQ(cm_->GetCodeRedTimerIntervalMs(), INT_MAX);
+  EXPECT_EQ(INT_MAX, cm_->GetCodeRedTimerIntervalMs());
 
   val = UINT_MAX;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                       kRegValueCrCheckPeriodMs,
                                       val));
-  EXPECT_EQ(cm_->GetCodeRedTimerIntervalMs(), INT_MAX);
+  EXPECT_EQ(INT_MAX, cm_->GetCodeRedTimerIntervalMs());
 }
 
 // Tests CanLogEvents override.
@@ -1256,8 +1258,9 @@ TEST_F(ConfigManagerTest, IsOemInstalling_User_OemInstallTimeNow_AuditMode) {
   EXPECT_FALSE(cm_->IsOemInstalling(false));
 }
 
+// TODO(omaha): Figure out a way to test the result.
 TEST_F(ConfigManagerTest, IsGoogler) {
-  EXPECT_TRUE(cm_->IsGoogler());
+  cm_->IsGoogler();
 }
 
 TEST_F(ConfigManagerTest, IsWindowsInstalling_Normal) {

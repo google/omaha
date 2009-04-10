@@ -380,9 +380,10 @@ TEST(UtilsTest, PinModuleIntoProcess) {
   EXPECT_NE(kNullModule, ::GetModuleHandle(module_name));
 }
 
+// Assumes Windows is installed on the C: drive.
 TEST(UtilsTest, GetEnvironmentVariableAsString) {
   EXPECT_STREQ(_T("C:"), GetEnvironmentVariableAsString(_T("SystemDrive")));
-  EXPECT_STREQ(_T("GOOGLE"), GetEnvironmentVariableAsString(_T("USERDOMAIN")));
+  EXPECT_STREQ(_T("Windows_NT"), GetEnvironmentVariableAsString(_T("OS")));
   EXPECT_STREQ(_T(""), GetEnvironmentVariableAsString(_T("FOO")));
 }
 

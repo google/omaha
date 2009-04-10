@@ -703,10 +703,16 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_HashFails) {
   EXPECT_EQ(TRUST_E_BAD_DIGEST, VerifyFileSignature(executable_full_path));
 }
 
+// The file for Windows Vista and later may not exist on all systems.
 TEST_F(GoogleUpdateRecoveryTest,
        VerifyFileSignature_NonGoogleSignature) {
   CString file_path = SystemInfo::IsRunningOnVistaOrLater() ?
       _T("%SYSTEM%\\rcagent.exe") : _T("%SYSTEM%\\wuauclt.exe");
+  if (!File::Exists(file_path) && SystemInfo::IsRunningOnVistaOrLater()) {
+    std::wcout << _T("\tTest did not run because '") << file_path
+               << _T("' was not found.") << std::endl;
+    return;
+  }
   ASSERT_HRESULT_SUCCEEDED(ExpandStringWithSpecialFolders(&file_path));
   ASSERT_TRUE(File::Exists(file_path));
   ASSERT_TRUE(SignatureIsValid(file_path, false));
