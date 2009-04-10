@@ -80,10 +80,6 @@ execfile('VERSION')
 # environment for Windows.
 win_env = Environment()
 
-# Make sure we use the Vista SDK.
-# NOTE: This must be set before the 'component_setup' tool is used.
-win_env['PLATFORM_SDK_DIR'] = '$PLATFORM_SDK_VISTA_6_0_DIR'
-
 win_env.Tool('component_setup')
 win_env.Tool('target_platform_windows')
 
@@ -538,6 +534,16 @@ win_env['languages'] = [
 # Make sure python.exe can be located.
 win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])
 
+# Make sure Vista SDK in all the important paths earlier in path than VC80.
+_sdk_path = os.environ['OMAHA_VISTASDK_DIR']
+for mid_dir in ['', 'vc']:
+  for env_var, sub_dir in [('PATH', 'bin'),
+                           ('INCLUDE', 'include'),
+                           ('LIB', 'lib')]:
+    var_path = os.path.join(_sdk_path, mid_dir, sub_dir)
+    if os.path.exists(var_path):
+      win_env.PrependENVPath(env_var, var_path)
+
 if not win_env.Bit('official_installers'):
   win_env.Append(CPPPATH = os.environ['OMAHA_WTL_DIR'])
 
@@ -547,11 +553,6 @@ if not win_env.Bit('official_installers'):
   # WiX path has to be added before the WiX tool can be called.
   win_env.AppendENVPath('PATH', os.environ['OMAHA_WIX_DIR'])
   win_env.Tool('wix')
-
-  # Make sure Vista SDK MIDL compiler is earlier in path than VC80 MIDL
-  # compiler. This is necessary because the VC80 MIDL compiler breaks when
-  # used with the vista sdk idl files.
-  win_env.PrependENVPath('PATH', os.environ['OMAHA_VISTASDK_DIR'])
 
 
 _base_dirs = [

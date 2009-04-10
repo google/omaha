@@ -23,7 +23,7 @@ def AddCommonOptions(env):
       CPPDEFINES = [
           '_MBCS',
           '_ATL_MIN_CRT',
-          '_ATL_SECURE_NO_WARNINGS',
+          '_ATL_SECURE_NO_DEPRECATE',
           '_CRT_SECURE_NO_WARNINGS',
           ],
       CCFLAGS = [
