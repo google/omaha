@@ -44,8 +44,7 @@ The following packages are required to build Omaha:
   # Follow the Software Construction Toolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
   # Extract or checkout the Omaha source code to a location of your choice, perhaps something like "C:\Omaha"
 
-
-== Environment Variables ==
+== EnvironmentVariables ==
 
 Create the following environment variables:
   * SCT_DIR - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
@@ -57,6 +56,16 @@ Create the following environment variables:
   * OMAHA_WIX_DIR - set to the directory in WiX where 'candle.exe' and 'light.exe' are installed. This may be something like (eg. `C:\Program Files\Windows Installer XML v3\bin`)
   * OMAHA_WTL_DIR - set to the include directory in the WTL installation (eg. `C:\Program Files\WTL\include`)
 
+== Setup the environment variable for the installed version of Visual Studio ==
+
+For the build script to pick up the correct version of Visual Studio, it is usually necessary to call a script provided with Visual Studio. For instance, in the case of Visual Studio 2005, the name of the script is vcvarsall.bat.
+
+== Build ==
+
+Once the above setup is complete:
+  # Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
+  # Navigate to the 'Omaha' directory, or whatever you called it.
+  # From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions].)
 
 == Running Unit Tests ==
 
@@ -68,10 +77,3 @@ When running unit tests:
 
 Some tests do not run by default because they take a long time or are otherwise inconvenient to run all the time. To run these tests, define the `OMAHA_RUN_ALL_TESTS` environment variable. For example, `set OMAHA_RUN_ALL_TESTS=1`.
 
-
-== Conclusion ==
-
-Once the above setup is complete:
-  # Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
-  # Navigate to the 'Omaha' directory, or whatever you called it.
-  # From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions].)
