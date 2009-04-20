@@ -23,6 +23,7 @@
 #include "omaha/common/omaha_version.h"
 #include "omaha/common/file.h"
 #include "omaha/common/path.h"
+#include "omaha/common/time.h"
 #include "omaha/common/utils.h"
 #include "omaha/common/vistautil.h"
 #include "omaha/goopdate/command_line.h"
@@ -459,6 +460,7 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
     RegKey::SetValue(profile_path_key, _T("ProfileImagePath"), profile_path));
 
   EXPECT_SUCCEEDED(InstallRegistryValues());
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   EXPECT_TRUE(RegKey::HasKey(USER_REG_GOOGLE));
   EXPECT_TRUE(RegKey::HasKey(USER_REG_UPDATE));
@@ -510,6 +512,13 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
   EXPECT_FALSE(
       RegKey::HasValue(USER_REG_CLIENT_STATE_GOOPDATE, _T("referral")));
 
+  DWORD install_time(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                    _T("InstallTime"),
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
   CString product_version;
   EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE,
                                     _T("pv"),
@@ -523,6 +532,7 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
 TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
        InstallRegistryValues) {
   EXPECT_SUCCEEDED(InstallRegistryValues());
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   EXPECT_TRUE(RegKey::HasKey(MACHINE_REG_GOOGLE));
   EXPECT_TRUE(RegKey::HasKey(MACHINE_REG_UPDATE));
@@ -581,6 +591,13 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
 
   EXPECT_FALSE(
       RegKey::HasValue(MACHINE_REG_CLIENT_STATE_GOOPDATE, _T("referral")));
+
+  DWORD install_time(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                                    _T("InstallTime"),
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 
   CString product_version;
   EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,

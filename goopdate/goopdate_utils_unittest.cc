@@ -3131,6 +3131,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_AllEmpty) {
                                                   _T(""),
                                                   _T(""),
                                                   _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3145,6 +3146,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_AllEmpty) {
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_BrandCodeOnly) {
@@ -3154,6 +3161,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_BrandCodeOnly) {
                                                   _T("ABCD"),
                                                   _T(""),
                                                   _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3168,6 +3176,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_BrandCodeOnly) {
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_BrandCodeTooLong) {
@@ -3185,6 +3199,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_ClientIdOnly) {
                                                   _T(""),
                                                   _T("some_partner"),
                                                   _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3199,6 +3214,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_ClientIdOnly) {
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_AllValid) {
@@ -3208,6 +3229,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_AllValid) {
                                                   _T("ABCD"),
                                                   _T("some_partner"),
                                                   _T("referrer")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3222,6 +3244,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_AllValid) {
                                     kRegValueReferralId,
                                     &value));
   EXPECT_STREQ(_T("referrer"), value);
+  DWORD install_time(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3244,6 +3272,15 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueClientId,
                              &value));
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueReferralId,
+                             &value));
+  DWORD dword_value(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueInstallTimeSec,
+                             &dword_value));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3266,6 +3303,15 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueClientId,
                              &value));
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueReferralId,
+                             &value));
+  DWORD dword_value(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueInstallTimeSec,
+                             &dword_value));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3288,6 +3334,15 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueClientId,
                              &value));
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueReferralId,
+                             &value));
+  DWORD dword_value(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueInstallTimeSec,
+                             &dword_value));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3310,6 +3365,15 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueClientId,
                              &value));
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueReferralId,
+                             &value));
+  DWORD dword_value(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueInstallTimeSec,
+                             &dword_value));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3336,6 +3400,11 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD dword_value(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueInstallTimeSec,
+                             &dword_value));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3348,6 +3417,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                                   _T(""),
                                                   _T(""),
                                                   _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3362,6 +3432,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3374,6 +3450,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                                   _T("ABCE"),
                                                   _T(""),
                                                   _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3388,6 +3465,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3400,6 +3483,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                                   _T(""),
                                                   _T("some_partner"),
                                                   _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3414,6 +3498,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3426,6 +3516,7 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                                   _T("ABCD"),
                                                   _T("some_partner"),
                                                   _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -3440,6 +3531,12 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueReferralId,
                              &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3453,6 +3550,10 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
   ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
                                     kRegValueReferralId,
                                     __T("existingreferrerid")));
+  const DWORD kInstallTime = 1234567890;
+  ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    kInstallTime));
 
   EXPECT_SUCCEEDED(goopdate_utils::SetAppBranding(kAppMachineClientStatePath,
                                                   _T(""),
@@ -3472,6 +3573,8 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                     kRegValueReferralId,
                                     &value));
   EXPECT_STREQ(__T("existingreferrerid"), value);
+  EXPECT_EQ(kInstallTime,
+            GetDwordValue(kAppMachineClientStatePath, kRegValueInstallTimeSec));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3485,6 +3588,10 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
   ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
                                     kRegValueReferralId,
                                     __T("existingreferrerid")));
+  const DWORD kInstallTime = 1234567890;
+  ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    kInstallTime));
 
   EXPECT_SUCCEEDED(goopdate_utils::SetAppBranding(kAppMachineClientStatePath,
                                                   _T("ABCD"),
@@ -3504,6 +3611,8 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                     kRegValueReferralId,
                                     &value));
   EXPECT_STREQ(__T("existingreferrerid"), value);
+  EXPECT_EQ(kInstallTime,
+            GetDwordValue(kAppMachineClientStatePath, kRegValueInstallTimeSec));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3536,6 +3645,11 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                     kRegValueReferralId,
                                     &value));
   EXPECT_STREQ(__T("existingreferrerid"), value);
+  DWORD dword_value(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueInstallTimeSec,
+                             &dword_value));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3568,6 +3682,46 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
                                     kRegValueReferralId,
                                     &value));
   EXPECT_STREQ(_T("existingreferrerid"), value);
+  DWORD dword_value(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueInstallTimeSec,
+                             &dword_value));
+}
+
+TEST_F(GoopdateUtilsRegistryProtectedTest,
+       SetAppBranding_InstallTimeAlreadyExistsBrandCodeOnly) {
+  const DWORD kExistingInstallTime = 1234567890;
+  ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    kExistingInstallTime));
+
+  EXPECT_SUCCEEDED(goopdate_utils::SetAppBranding(kAppMachineClientStatePath,
+                                                  _T("ABCE"),
+                                                  _T(""),
+                                                  _T("")));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+
+  CString value;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueBrandCode,
+                                    &value));
+  EXPECT_STREQ(_T("ABCE"), value);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueClientId,
+                             &value));
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueReferralId,
+                             &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_NE(kExistingInstallTime, install_time);
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 }
 
 //

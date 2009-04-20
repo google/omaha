@@ -17,10 +17,10 @@
 #define OMAHA_WORKER_UI_H__
 
 #include <atlbase.h>
-#include <atlapp.h>
 #include <vector>
 #include "base/scoped_ptr.h"
 #include "omaha/common/scoped_any.h"
+#include "omaha/common/wtl_atlapp_wrapper.h"
 #include "omaha/goopdate/resource.h"
 #include "omaha/worker/job_observer.h"
 #include "omaha/worker/uilib/static_ex.h"

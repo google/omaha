@@ -350,12 +350,13 @@ TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_Default) {
 }
 
 TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_UpdateDevOverride) {
+  // Zero is a special value meaning disabled.
   DWORD val = 0;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueLastCheckPeriodSec,
                                     val));
   bool is_overridden = false;
-  EXPECT_EQ(60, cm_->GetLastCheckPeriodSec(&is_overridden));
+  EXPECT_EQ(0, cm_->GetLastCheckPeriodSec(&is_overridden));
   EXPECT_TRUE(is_overridden);
 
   val = kMinLastCheckPeriodSec - 1;
@@ -363,7 +364,7 @@ TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_UpdateDevOverride) {
                                     kRegValueLastCheckPeriodSec,
                                     val));
   is_overridden = false;
-  EXPECT_EQ(60, cm_->GetLastCheckPeriodSec(&is_overridden));
+  EXPECT_EQ(kMinLastCheckPeriodSec, cm_->GetLastCheckPeriodSec(&is_overridden));
   EXPECT_TRUE(is_overridden);
 
   val = INT_MAX + static_cast<uint32>(1);
@@ -405,11 +406,20 @@ TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride) {
 }
 
 TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride_TooLow) {
+  const DWORD kOverrideMinutes = 1;
+  EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
+                             kOverrideMinutes));
+  bool is_overridden = false;
+  EXPECT_EQ(kMinLastCheckPeriodSec, cm_->GetLastCheckPeriodSec(&is_overridden));
+  EXPECT_TRUE(is_overridden);
+}
+
+TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride_Zero) {
   const DWORD kOverrideMinutes = 0;
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes));
   bool is_overridden = false;
-  EXPECT_EQ(60, cm_->GetLastCheckPeriodSec(&is_overridden));
+  EXPECT_EQ(0, cm_->GetLastCheckPeriodSec(&is_overridden));
   EXPECT_TRUE(is_overridden);
 }
 

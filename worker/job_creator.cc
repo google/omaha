@@ -505,6 +505,10 @@ HRESULT JobCreator::HandleUpdateNotAvailable(
         result_type = PingEvent::EVENT_RESULT_NOUPDATE;
         info.status = COMPLETION_SUCCESS;
         info.error_code = NOERROR;
+
+        AppManager app_manager(is_machine_);
+        app_manager.RecordSuccessfulUpdateCheck(app_data.parent_app_guid(),
+                                                app_data.app_guid());
       }
       break;
     case static_cast<DWORD>(GOOPDATE_E_RESTRICTED_SERVER_RESPONSE):

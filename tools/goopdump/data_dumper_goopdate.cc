@@ -234,21 +234,9 @@ void DataDumperGoopdate::DumpUpdateDevKeys(const DumpLog& dump_log) {
 void DataDumperGoopdate::DumpLogFile(const DumpLog& dump_log) {
   DumpHeader header(dump_log, _T("Debug Log File Contents"));
 
-  TCHAR appdata_path[MAX_PATH] = {0};
-  HRESULT hr = ::SHGetFolderPath(NULL,
-                                 CSIDL_COMMON_APPDATA,
-                                 NULL,
-                                 SHGFP_TYPE_CURRENT,
-                                 appdata_path);
-  if (FAILED(hr)) {
-    dump_log.WriteLine(_T("Can't get AppData folder: 0x%x"), hr);
-    return;
-  }
-
-  CPath full_path = appdata_path;
-  full_path.Append(_T("google\\update\\log\\googleupdate.log"));
-
-  DumpFileContents(dump_log, full_path, 500);
+  Logging logger;
+  CString log_file_path(logger.GetLogFilePath());
+  DumpFileContents(dump_log, log_file_path, 500);
 }
 
 CString EventLogTypeToString(WORD event_log_type) {
@@ -570,7 +558,7 @@ void DataDumperGoopdate::DumpFileContents(const DumpLog& dump_log,
     FileReader reader;
     HRESULT hr = reader.Init(file_path, 2048);
     if (FAILED(hr)) {
-      dump_log.WriteLine(_T("Unable to open %s."), file_path);
+      dump_log.WriteLine(_T("Unable to open %s: 0x%x."), file_path, hr);
       return;
     }
 

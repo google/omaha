@@ -71,7 +71,9 @@ HRESULT FinishGoogleUpdateInstall(const CommandLineArgs& args,
 
   if (SUCCEEDED(hr)) {
     CORE_LOG(L1, (_T("[Setup successfully completed]")));
-    app_manager.ClearUpdateAvailableStats(GUID_NULL, kGoopdateGuid);
+    app_manager.RecordSuccessfulInstall(GUID_NULL,
+                                        kGoopdateGuid,
+                                        is_self_update);
 
     if (is_self_update) {
       ++metric_worker_self_updates_succeeded;

@@ -18,7 +18,6 @@
 
 #include <atlbase.h>
 #include <atlstr.h>
-#include <atlapp.h>
 #include <atlsecurity.h>
 #include "omaha/common/error.h"
 #include "omaha/common/exception_barrier.h"

@@ -53,7 +53,8 @@ import os
 
 # To switch the build, simply change the value of the msc_ver variable below.
 # VC2003/VC71 is 1310 but not supported by the current build.
-# VC2005/VC80 is 1400
+# VC2005/VC80 is 1400.
+# VC2008/VC90 is 1500.
 _msc_ver = 1400
 
 # TODO(Omaha) - Change this to match the official product name
@@ -93,7 +94,12 @@ win_env.Tool('masm')
 
 win_env.Tool('atlmfc_vc80')
 
+# Visual Studio 2008 does not ship the sign tool. Use the sign tool from
+# the Platform SDK.
 win_env.Tool('code_signing')
+_signtool_path = os.path.join(os.environ['OMAHA_VISTASDK_DIR'],
+                             'bin\\signtool.exe')
+win_env['SIGNTOOL'] = '"' + _signtool_path + '"'
 
 # Remove this value because it conflicts with a #define
 # in shlwapi.h in the Vista SDK
@@ -302,7 +308,6 @@ win_env.SetProductVersion(version_major, version_minor, version_build, version_p
 
 
 win_env['msc_ver'] = _msc_ver;
-print 'Using compiler version: ', _msc_ver
 
 
 # Plug-in versioning. Firefox Plug-in needs a different filename for each
@@ -334,7 +339,6 @@ win_env.Append(
         '/J',
         '/DSTL_MSVC',
         '/GR-',
-        # '/Oi',    # Use intrinsics
         '/D_CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1',
@@ -408,7 +412,10 @@ win_env.Append(
         '_WIN32_WINNT=0x0501',
         '_WIN32_IE=0x0600',
         '_RICHEDIT_VER=0x0010',
-        'NOMINMAX',         # don't define min and max in windef.h
+
+        # don't define min and max in windef.h
+        'NOMINMAX',
+
         # Logging is enabled in all modes for
         # diagnostics purposes.
         'LOGGING',
@@ -648,7 +655,6 @@ windows_debug_env.Append(
         '_DEBUG',
         'DEBUG',
         ],
-    BUILD_GROUPS = ['default'],   # this is the default build
 )
 
 
@@ -692,7 +698,9 @@ windows_coverage_env = windows_debug_env.Clone(
     BUILD_TYPE = 'coverage-win',
     BUILD_TYPE_DESCRIPTION = 'Windows coverage build',
 )
-windows_coverage_env.FilterOut(BUILD_GROUPS=['default'])
+# The Coverage build require additional tools that not everyone has. Therefore,
+# it should build as part of the all group.
+windows_coverage_env.FilterOut(BUILD_GROUPS=['all'])
 
 windows_coverage_env.Tool('code_coverage')
 
@@ -713,8 +721,8 @@ windows_coverage_env.Append(
     COVERAGE_INSTRUMENTATION_PATHS=['$STAGING_DIR'],
 )
 
-
-
+# Make debug the default build after any copies of it have been made.
+windows_debug_env.Append(BUILD_GROUPS = ['default'])
 
 # ----------------------------------------------------------
 
@@ -724,8 +732,7 @@ windows_coverage_env.Append(
 BuildEnvironments(
     [ windows_debug_env,
       windows_optimized_env,
-      # Coverage builds are disabled for now.
-      # windows_coverage_env,
+      windows_coverage_env,
     ]
 )
 

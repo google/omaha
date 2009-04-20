@@ -78,12 +78,6 @@ class AppManager {
   // Call each time an update is available.
   void UpdateUpdateAvailableStats(const GUID& parent_app_guid,
                                   const GUID& app_guid);
-
-  // Clears the stored information about update available events for the app.
-  // Call when an update has succeeded.
-  void ClearUpdateAvailableStats(const GUID& parent_app_guid,
-                                 const GUID& app_guid);
-
   // Clears the OEM-installed flag for the app.
   void ClearOemInstalled(const GUID& parent_app_guid, const GUID& app_guid);
 
@@ -93,6 +87,16 @@ class AppManager {
                                 const GUID& app_guid,
                                 DWORD* update_responses,
                                 DWORD64* time_since_first_response_ms);
+
+  // Updates the application state after a successful install or update.
+  void RecordSuccessfulInstall(const GUID& parent_app_guid,
+                               const GUID& app_guid,
+                               bool is_update);
+
+  // Updates the application state after a successful update check event, which
+  // is either a "noupdate" response or a successful online update.
+  void RecordSuccessfulUpdateCheck(const GUID& parent_app_guid,
+                                   const GUID& app_guid);
 
   // Removes all the registration entries under the client state for the
   // application.
@@ -139,6 +143,11 @@ class AppManager {
   CString GetComponentClientStateKeyName(const GUID& parent_app_guid,
                                          const GUID& app_guid);
 
+  // Clears the stored information about update available events for the app.
+  // Call when an update has succeeded.
+  void ClearUpdateAvailableStats(const GUID& parent_app_guid,
+                                 const GUID& app_guid);
+
   HRESULT ClearInstallationId(AppData* app_data,
                               const RegKey& client_state_key);
   HRESULT CopyVersionAndLanguageToClientState(AppData* app_data,
@@ -146,6 +155,8 @@ class AppManager {
                                               const RegKey& client_key);
 
   const bool is_machine_;
+
+  friend class AppManagerTest;
 
   DISALLOW_EVIL_CONSTRUCTORS(AppManager);
 };

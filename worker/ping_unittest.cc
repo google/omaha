@@ -81,16 +81,16 @@ class PingTest : public testing::Test {
 
   void CreateTestAppData(AppData* expected_app) {
     ASSERT_TRUE(expected_app != NULL);
-    expected_app->version_ = _T("1.1.1.3");
-    expected_app->previous_version_ = _T("1.0.0.0");
-    expected_app->language_ = _T("abc");
-    expected_app->did_run_ = AppData::ACTIVE_RUN;
-    expected_app->ap_ = _T("Test ap");
-    expected_app->tt_token_ = _T("Test TT Token");
-    expected_app->iid_ =
-        StringToGuid(_T("{F723495F-8ACF-4746-8240-643741C797B5}"));
-    expected_app->brand_code_ =_T("GOOG");
-    expected_app->client_id_ =_T("someclient");
+    expected_app->set_version(_T("1.1.1.3"));
+    expected_app->set_previous_version(_T("1.0.0.0"));
+    expected_app->set_language(_T("abc"));
+    expected_app->set_did_run(AppData::ACTIVE_RUN);
+    expected_app->set_ap(_T("Test ap"));
+    expected_app->set_tt_token(_T("Test TT Token"));
+    expected_app->set_iid(
+        StringToGuid(_T("{F723495F-8ACF-4746-8240-643741C797B5}")));
+    expected_app->set_brand_code(_T("GOOG"));
+    expected_app->set_client_id(_T("someclient"));
   }
 
   Request* CreateRequest(bool is_machine,

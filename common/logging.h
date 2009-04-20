@@ -330,8 +330,11 @@ class Logging {
   void LogMessageVA(LogCategory cat, LogLevel level, const wchar_t* fmt,
                     va_list args);
 
-  // Retrieves log directory.
-  CString GetLogDirectory() const;
+  // Retrieves the default location of the log directory.
+  CString GetDefaultLogDirectory() const;
+
+  // Computes and returns the complete path of the log file.
+  CString GetLogFilePath() const;
 
   // Retrieves in-memory history buffer.
   CString GetHistory();

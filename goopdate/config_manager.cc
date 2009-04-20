@@ -339,12 +339,16 @@ HRESULT ConfigManager::GetWebPluginCheckUrl(CString* url) const {
 // returns the default value.
 // Default value is different value for Googlers, to make update checks more
 // aggresive.
-// Ensures returned value is between kMinLastCheckPeriodSec and INT_MAX.
+// Ensures returned value is between kMinLastCheckPeriodSec and INT_MAX except
+// when the override is 0, which indicates updates are disabled.
 int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
   ASSERT1(is_overridden);
   DWORD registry_period_sec = 0;
   *is_overridden = GetLastCheckPeriodSecFromRegistry(&registry_period_sec);
   if (*is_overridden) {
+    if (0 == registry_period_sec) {
+      return 0;
+    }
     const int period_sec = registry_period_sec > INT_MAX ?
                            INT_MAX :
                            static_cast<int>(registry_period_sec);

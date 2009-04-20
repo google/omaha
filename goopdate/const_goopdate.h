@@ -94,6 +94,13 @@ const TCHAR* const kRegValueInstallationId   = _T("iid");
 const TCHAR* const kRegValueOemInstall       = _T("oeminstall");
 const TCHAR* const kRegValueReferralId       = _T("referral");
 
+// Registry values stored in the ClientState key related to Omaha's actions.
+// A "successful check" means "noupdate" received from the server or an update
+// was successfully applied.
+const TCHAR* const kRegValueInstallTimeSec          = _T("InstallTime");
+const TCHAR* const kRegValueLastSuccessfulCheckSec  = _T("LastCheckSuccess");
+const TCHAR* const kRegValueLastUpdateTimeSec       = _T("UpdateTime");
+
 // Registry values stored in the ClientState or ClientStateMedium keys.
 // Use accessor methods rather than reading them directly.
 const TCHAR* const kRegValueEulaAccepted     = _T("eulaaccepted");

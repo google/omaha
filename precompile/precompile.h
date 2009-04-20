@@ -39,7 +39,6 @@
 #pragma warning(disable : 4061 4265 4510 4610 4548 4826)
 #include <atlbase.h>
 #include <atlstr.h>
-#include <atlapp.h>   // atlbase.h and atlstr.h must be included before atlapp.h
 #include <atlcoll.h>
 #include <atlcom.h>
 #include <atlhost.h>

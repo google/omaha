@@ -188,7 +188,8 @@ void AppManager::ConvertCommandLineToProductData(const CommandLineArgs& args,
     app_data.set_brand_code(args.extra.brand_code);
     app_data.set_client_id(args.extra.client_id);
     app_data.set_referral_id(args.extra.referral_id);
-    // Do not set is_oem_install because it is not based on the command line.
+    // Do not set install_time_diff_sec or is_oem_install because they are not
+    // based on the command line.
     app_data.set_is_eula_accepted(!args.is_eula_required_set);
     app_data.set_display_name(extra_arg.app_name);
     app_data.set_browser_type(args.extra.browser_type);
@@ -456,6 +457,16 @@ HRESULT AppManager::ReadAppDataFromStore(const GUID& parent_app_guid,
   temp_data.set_client_id(client_id);
 
   // We do not need the referral_id.
+
+  // Get the install time and calculate the elapsed time since then if is valid.
+  DWORD install_time(0);
+  if (SUCCEEDED(client_state_key.GetValue(kRegValueInstallTimeSec,
+                                          &install_time))) {
+    const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+    if (0 != install_time && now >= install_time) {
+      temp_data.set_install_time_diff_sec(now - install_time);
+    }
+  }
 
   temp_data.set_is_oem_install(client_state_key.HasValue(kRegValueOemInstall));
 
@@ -776,6 +787,44 @@ void AppManager::ReadUpdateAvailableStats(
   }
 }
 
+// The update success and update check success times are not updated for
+// installs even if it is an over-install. At this point, we do not know for
+// sure that it was an online update.
+void AppManager::RecordSuccessfulInstall(const GUID& parent_app_guid,
+                                         const GUID& app_guid,
+                                         bool is_update) {
+  ClearUpdateAvailableStats(parent_app_guid, app_guid);
+
+  if (is_update) {
+    // Assumes that all updates are online.
+    RecordSuccessfulUpdateCheck(parent_app_guid, app_guid);
+
+    RegKey state_key;
+    HRESULT hr = CreateClientStateKey(parent_app_guid, app_guid, &state_key);
+    if (FAILED(hr)) {
+      ASSERT1(false);
+      return;
+    }
+
+    const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueLastUpdateTimeSec, now)));
+  }
+}
+
+void AppManager::RecordSuccessfulUpdateCheck(const GUID& parent_app_guid,
+                                             const GUID& app_guid) {
+  RegKey state_key;
+  HRESULT hr = CreateClientStateKey(parent_app_guid, app_guid, &state_key);
+  if (FAILED(hr)) {
+    ASSERT1(false);
+    return;
+  }
+
+  const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueLastSuccessfulCheckSec,
+                                       now)));
+}
+
 HRESULT AppManager::ClearInstallationId(AppData* app_data,
                                         const RegKey& client_state_key) {
   ASSERT1(app_data);
@@ -860,10 +909,16 @@ HRESULT AppManager::RemoveClientState(const AppData& app_data) {
 bool AppManager::ShouldCheckForUpdates() const {
   ConfigManager* cm = ConfigManager::Instance();
   bool is_period_overridden = false;
-  int update_interval = cm->GetLastCheckPeriodSec(&is_period_overridden);
-  int time_difference = cm->GetTimeSinceLastCheckedSec(is_machine_);
+  const int update_interval = cm->GetLastCheckPeriodSec(&is_period_overridden);
+  if (0 == update_interval) {
+    ASSERT1(is_period_overridden);
+    OPT_LOG(L1, (_T("[ShouldCheckForUpdates returned 0][checks disabled]")));
+    return false;
+  }
 
-  bool result = time_difference >= update_interval ? true : false;
+  const int time_difference = cm->GetTimeSinceLastCheckedSec(is_machine_);
+
+  const bool result = time_difference >= update_interval ? true : false;
   CORE_LOG(L3, (_T("[ShouldCheckForUpdates returned %d][%u]"),
                 result, is_period_overridden));
   return result;

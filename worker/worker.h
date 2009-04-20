@@ -17,7 +17,6 @@
 #define OMAHA_WORKER_WORKER_H__
 
 #include <atlbase.h>
-#include <atlapp.h>
 #include <atlstr.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
@@ -27,6 +26,7 @@
 #include "omaha/common/shutdown_callback.h"
 #include "omaha/common/shutdown_handler.h"
 #include "omaha/common/thread_pool.h"
+#include "omaha/common/wtl_atlapp_wrapper.h"
 #include "omaha/goopdate/command_line.h"
 #include "omaha/goopdate/const_goopdate.h"
 #include "omaha/goopdate/program_instance.h"
