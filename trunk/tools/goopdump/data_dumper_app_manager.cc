@@ -140,6 +140,8 @@ void DataDumperAppManager::DumpAppManagerData(const DumpLog& dump_log,
     dump_log.WriteLine(_T("brand:\t\t%s"), data.brand_code());
     dump_log.WriteLine(_T("client:\t\t%s"), data.client_id());
     dump_log.WriteLine(_T("referral:\t\t%s"), data.referral_id());
+    dump_log.WriteLine(_T("install_time_diff_sec:\t%u"),
+                       data.install_time_diff_sec());
     dump_log.WriteLine(_T("is_oem_install:\t%s"),
                        BoolToString(data.is_oem_install()));
     dump_log.WriteLine(_T("is_eula_accepted:\t%s"),

@@ -50,6 +50,7 @@
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <string.h>
+#include <atlpath.h>
 #include <atlsecurity.h>
 #include "base/basictypes.h"
 #include "omaha/common/app_util.h"
@@ -57,6 +58,7 @@
 #include "omaha/common/constants.h"
 #include "omaha/common/debug.h"
 #include "omaha/common/file.h"
+#include "omaha/common/path.h"
 #include "omaha/common/string.h"
 #include "omaha/common/time.h"
 #include "omaha/common/utils.h"
@@ -208,6 +210,9 @@ Logging::Logging()
   }
   proc_name_ = GetProcName();
   g_logging_valid = true;
+
+  // Read initial settings from the config file.
+  ReadLoggingSettings();
 }
 
 // TODO(omaha): why aren't we using a mutexscope and what if an the code
@@ -327,8 +332,7 @@ void Logging::ReadLoggingSettings() {
   g_last_category_check_time = GetCurrent100NSTime();
 }
 
-// Retrieve log directory
-CString Logging::GetLogDirectory() const {
+CString Logging::GetDefaultLogDirectory() const {
   CString path;
   CStrBuf buf(path, MAX_PATH);
   HRESULT hr = ::SHGetFolderPath(NULL,
@@ -345,21 +349,43 @@ CString Logging::GetLogDirectory() const {
   return path;
 }
 
+CString Logging::GetLogFilePath() const {
+  if (log_file_name_.IsEmpty()) {
+    return CString();
+  }
+
+  if (!ATLPath::IsRelative(log_file_name_)) {
+    return log_file_name_;
+  }
+
+  CString path = GetDefaultLogDirectory();
+  if (path.IsEmpty()) {
+    return CString();
+  }
+
+  if (!::PathAppend(CStrBuf(path, MAX_PATH), log_file_name_)) {
+    return CString();
+  }
+
+  return path;
+}
+
 // Configures/unconfigures the log writers for the current settings.
 bool Logging::ConfigureLogging() {
   // Create the logging file.
   if (log_to_file_ && file_log_writer_ == NULL) {
-    CString path = GetLogDirectory();
-    if (path.IsEmpty() || log_file_name_.IsEmpty()) {
+    CString path = GetLogFilePath();
+    if (path.IsEmpty()) {
       return false;
     }
-    if (!File::Exists(path)) {
-      if (FAILED(CreateDir(path, NULL))) {
+
+    // Extract the final target directory which will not be what
+    // GetDefaultLogDirectory() returns if log_file_name_ is an absolute path.
+    CString log_file_dir = GetDirectoryFromPath(path);
+    if (!File::Exists(log_file_dir)) {
+      if (FAILED(CreateDir(log_file_dir, NULL))) {
         return false;
       }
-    }
-    if (!::PathAppend(CStrBuf(path, MAX_PATH), log_file_name_)) {
-      return false;
     }
     file_log_writer_ = FileLogWriter::Create(path, append_to_file_);
     if (file_log_writer_ == NULL) {

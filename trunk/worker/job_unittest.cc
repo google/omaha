@@ -19,6 +19,7 @@
 #include "omaha/common/path.h"
 #include "omaha/common/scoped_ptr_address.h"
 #include "omaha/common/system.h"
+#include "omaha/common/time.h"
 #include "omaha/common/utils.h"
 #include "omaha/common/vistautil.h"
 #include "omaha/goopdate/config_manager.h"
@@ -29,12 +30,14 @@
 #include "omaha/worker/application_data.h"
 #include "omaha/worker/application_manager.h"
 #include "omaha/worker/job.h"
+#include "omaha/worker/job_observer_mock.h"
 #include "omaha/worker/ping.h"
 
 namespace omaha {
 
 namespace {
 
+/*
 void CreateTestAppData(AppData* app_data) {
   ASSERT_TRUE(app_data != NULL);
   app_data->set_version(_T("1.1.1.3"));
@@ -48,6 +51,7 @@ void CreateTestAppData(AppData* app_data) {
   app_data->set_did_run(AppData::ACTIVE_RUN);
   app_data->set_install_source(_T("twoclick"));
 }
+*/
 
 const TCHAR kFooGuid[] = _T("{D6B08267-B440-4C85-9F79-E195E80D9937}");
 const TCHAR kFullFooAppClientKeyPath[] =
@@ -68,6 +72,15 @@ const TCHAR kExecuteCommandAndTerminateSwitch[] = _T("/c %s");
 
 const TCHAR expected_iid_string[] =
     _T("{BF66411E-8FAC-4E2C-920C-849DF562621C}");
+
+CString CreateUniqueTempDir() {
+  GUID guid(GUID_NULL);
+  EXPECT_HRESULT_SUCCEEDED(::CoCreateGuid(&guid));
+  CString unique_dir_path =
+      ConcatenatePath(app_util::GetTempDir(), GuidToString(guid));
+  EXPECT_HRESULT_SUCCEEDED(CreateDir(unique_dir_path, NULL));
+  return unique_dir_path;
+}
 
 }  // namespace
 
@@ -94,12 +107,20 @@ class JobTest : public testing::Test {
     job_->is_background_ = false;
   }
 
+  HRESULT DoCompleteJob() {
+    return job_->DoCompleteJob();
+  }
+
   HRESULT SendStateChangePing(JobState previous_state) {
     return job_->SendStateChangePing(previous_state);
   }
 
   void SetUpdateResponseDataArguments(const CString& arguments) {
     job_->update_response_data_.set_arguments(arguments);
+  }
+
+  void SetUpdateResponseSuccessAction(SuccessfulInstallAction success_action) {
+    job_->update_response_data_.set_success_action(success_action);
   }
 
   void SetAppData(const AppData& app_data) {
@@ -118,12 +139,17 @@ class JobTest : public testing::Test {
     return job_->UpdateJob();
   }
 
-  const AppData& get_app_data() {
-    return job_->app_data();
-  }
-
   HRESULT DeleteJobDownloadDirectory() const {
     return job_->DeleteJobDownloadDirectory();
+  }
+
+  void set_launch_cmd_line(const CString launch_cmd_line) {
+    job_->launch_cmd_line_ = launch_cmd_line;
+  }
+
+  bool did_launch_cmd_fail() { return job_->did_launch_cmd_fail_; }
+  void set_did_launch_cmd_fail(bool did_launch_cmd_fail) {
+    job_->did_launch_cmd_fail_ = did_launch_cmd_fail;
   }
 
   scoped_ptr<Job> job_;
@@ -185,15 +211,22 @@ class JobInstallFooTest : public JobTest {
                                                 kRegValueClientId,
                                                 &str_value));
       EXPECT_STREQ(_T("_some_partner"), str_value);
+      const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+      DWORD install_time(0);
+      EXPECT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientStateKeyPath,
+                                        kRegValueInstallTimeSec,
+                                        &install_time));
+      EXPECT_GE(now, install_time);
+      EXPECT_GE(static_cast<uint32>(500), now - install_time);
     } else {
       EXPECT_HRESULT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientStateKeyPath,
                                                 kRegValueBrandCode,
                                                 &str_value));
       EXPECT_STREQ(_T("g00g"), str_value);
-      EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
-                RegKey::GetValue(kFullFooAppClientStateKeyPath,
-                                 kRegValueClientId,
-                                 &str_value));
+      EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
+                                    kRegValueClientId));
+      EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
+                                    kRegValueInstallTimeSec));
     }
 
     EXPECT_HRESULT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientStateKeyPath,
@@ -281,7 +314,8 @@ class JobInstallFooTest : public JobTest {
 
 // TODO(omaha): Test all methods of Job
 
-TEST_F(JobTest, DeleteJobDownloadDirectory_Goopdate_Test) {
+// No attempt is made to delete it the directory in this case.
+TEST_F(JobTest, DeleteJobDownloadDirectory_Omaha_Test) {
   const TCHAR* kNnonExistantDir = _T("testdirfoo");
   CompletionInfo info(COMPLETION_SUCCESS, 0, _T(""));
 
@@ -295,7 +329,7 @@ TEST_F(JobTest, DeleteJobDownloadDirectory_Goopdate_Test) {
   ASSERT_HRESULT_SUCCEEDED(DeleteJobDownloadDirectory());
 }
 
-// The download file name is not set and no attempt to delete it is made for 
+// The download file name is not set and no attempt to delete it is made for
 // update checks only.
 TEST_F(JobTest, DeleteJobDownloadDirectory_OnDemandUpdateCheckOnly) {
   job_.reset(new Job(true, &ping_));
@@ -316,14 +350,9 @@ TEST_F(JobTest, DeleteJobDownloadDirectory_OnDemandUpdateCheckOnly) {
 TEST_F(JobTest, DeleteJobDownloadDirectory_OnDemandUpdate) {
   job_.reset(new Job(true, &ping_));
 
-  GUID guid(GUID_NULL);
-  ASSERT_HRESULT_SUCCEEDED(::CoCreateGuid(&guid));
-  CString destination_path =
-      ConcatenatePath(app_util::GetTempDir(), GuidToString(guid));
-  ASSERT_HRESULT_SUCCEEDED(CreateDir(destination_path, NULL));
   CompletionInfo info(COMPLETION_SUCCESS, 0, _T(""));
-
   set_info(info);
+  const CString destination_path = CreateUniqueTempDir();
   set_download_file_name(ConcatenatePath(destination_path, _T("foo.msi")));
 
   AppData app_data;
@@ -336,14 +365,9 @@ TEST_F(JobTest, DeleteJobDownloadDirectory_OnDemandUpdate) {
 }
 
 TEST_F(JobTest, DeleteJobDownloadDirectory_Success) {
-  GUID guid(GUID_NULL);
-  ASSERT_HRESULT_SUCCEEDED(::CoCreateGuid(&guid));
-  CString destination_path =
-      ConcatenatePath(app_util::GetTempDir(), GuidToString(guid));
-  ASSERT_HRESULT_SUCCEEDED(CreateDir(destination_path, NULL));
   CompletionInfo info(COMPLETION_SUCCESS, 0, _T(""));
-
   set_info(info);
+  const CString destination_path = CreateUniqueTempDir();
   set_download_file_name(ConcatenatePath(destination_path, _T("foo.msi")));
 
   AppData app_data;
@@ -366,13 +390,12 @@ TEST_F(JobTest, SendStateChangePing) {
   AppData app_data(StringToGuid(_T("{4F1A02DC-E965-4518-AED4-E15A3E1B1219}")),
                    is_machine_);
 
-  app_data.set_brand_code(_T("GOOG"));
-  app_data.set_client_id(_T("otherclient"));
+  app_data.set_language(_T("abc"));
   app_data.set_ap(_T("Test ap"));
   app_data.set_tt_token(_T("Test TT Token"));
-  app_data.set_language(_T("abc"));
-  app_data.set_iid(
-      StringToGuid(_T("{C16050EA-6D4C-4275-A8EC-22D4C59E942A}")));
+  app_data.set_iid(StringToGuid(_T("{C16050EA-6D4C-4275-A8EC-22D4C59E942A}")));
+  app_data.set_brand_code(_T("GOOG"));
+  app_data.set_client_id(_T("otherclient"));
   app_data.set_display_name(_T("UnitTest"));
   app_data.set_browser_type(BROWSER_DEFAULT);
   job_->set_app_data(app_data);
@@ -423,8 +446,7 @@ TEST_F(JobTest, UpdateRegistry) {
   app_data.set_language(expected_lang);
   app_data.set_ap(_T("Test ap"));
   app_data.set_tt_token(_T("Test TT Token"));
-  app_data.set_iid(
-      StringToGuid(_T("{C16050EA-6D4C-4275-A8EC-22D4C59E942A}")));
+  app_data.set_iid(StringToGuid(_T("{C16050EA-6D4C-4275-A8EC-22D4C59E942A}")));
   app_data.set_brand_code(_T("GOOG"));
   app_data.set_client_id(_T("otherclient"));
   app_data.set_display_name(_T("UnitTest"));
@@ -455,8 +477,8 @@ TEST_F(JobTest, UpdateRegistry) {
   EXPECT_STREQ(expected_lang, actual_lang);
 
   // The job's previous version should not have changed.
-  EXPECT_STREQ(expected_version, get_app_data().version());
-  EXPECT_STREQ(previous_version, get_app_data().previous_version());
+  EXPECT_STREQ(expected_version, job_->app_data().version());
+  EXPECT_STREQ(previous_version, job_->app_data().previous_version());
 
   // new_app_data's previous_version should have been updated.
   EXPECT_STREQ(expected_version, new_app_data.version());
@@ -511,8 +533,8 @@ TEST_F(JobTest, UpdateJob) {
                                          &version));
 
   // The job's information should have been changed.
-  EXPECT_STREQ(expected_version, get_app_data().version());
-  EXPECT_STREQ(previous_version, get_app_data().previous_version());
+  EXPECT_STREQ(expected_version, job_->app_data().version());
+  EXPECT_STREQ(previous_version, job_->app_data().previous_version());
 
   RestoreRegistryHives();
   ASSERT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
@@ -606,13 +628,20 @@ TEST_F(JobTest, Install_SuccessfulOmahaUpdateDoesNotClearUpdateAvailableStats) {
                                             kRegValueLanguage,
                                             expected_lang));
 
-  // Set update available stats so can verify they are not modified or deleted.
+  // Set update values so we can verify they are not modified or deleted.
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE_GOOPDATE,
                                     _T("UpdateAvailableCount"),
                                     static_cast<DWORD>(123456)));
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE_GOOPDATE,
                                     _T("UpdateAvailableSince"),
                                     static_cast<DWORD64>(9876543210)));
+  const DWORD kExistingUpdateValues = 0x70123456;
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueLastSuccessfulCheckSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueLastUpdateTimeSec,
+                                    kExistingUpdateValues));
 
   set_job_state(JOBSTATE_DOWNLOADCOMPLETED);
   EXPECT_HRESULT_SUCCEEDED(job_->Install());
@@ -644,6 +673,12 @@ TEST_F(JobTest, Install_SuccessfulOmahaUpdateDoesNotClearUpdateAvailableStats) {
                                     _T("UpdateAvailableSince"),
                                     &update_available_since_time));
   EXPECT_EQ(9876543210, update_available_since_time);
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                          kRegValueLastSuccessfulCheckSec));
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                          kRegValueLastUpdateTimeSec));
 
   RestoreRegistryHives();
   ASSERT_HRESULT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
@@ -888,6 +923,8 @@ TEST(RequestTest, TestInitialized) {
 
 void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
                                                      bool is_first_install) {
+  const DWORD kExistingUpdateValues = 0x70123456;
+
   // TODO(omaha): Use UserFoo instead, change is_machine in the base class,
   // and remove all IsUserAdmin checks.
   if (!vista_util::IsUserAdmin()) {
@@ -931,6 +968,12 @@ void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
     EXPECT_SUCCEEDED(RegKey::SetValue(kFullFooAppClientStateKeyPath,
                                       _T("UpdateAvailableSince"),
                                       static_cast<DWORD64>(9876543210)));
+    EXPECT_SUCCEEDED(RegKey::SetValue(kFullFooAppClientStateKeyPath,
+                                      kRegValueLastSuccessfulCheckSec,
+                                      kExistingUpdateValues));
+    EXPECT_SUCCEEDED(RegKey::SetValue(kFullFooAppClientStateKeyPath,
+                                      kRegValueLastUpdateTimeSec,
+                                      kExistingUpdateValues));
   }
 
   AppData app_data(PopulateFooAppData());
@@ -939,6 +982,7 @@ void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
 
   set_job_state(JOBSTATE_DOWNLOADCOMPLETED);
   EXPECT_HRESULT_SUCCEEDED(job_->Install());
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   EXPECT_EQ(JOBSTATE_COMPLETED, job_->job_state());
 
@@ -962,6 +1006,29 @@ void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
                                 _T("UpdateAvailableCount")));
   EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
                                 _T("UpdateAvailableSince")));
+  if (is_update) {
+    // Verify update values updated.
+    const uint32 last_check_sec =
+        GetDwordValue(kFullFooAppClientStateKeyPath,
+                      kRegValueLastSuccessfulCheckSec);
+    EXPECT_NE(kExistingUpdateValues, last_check_sec);
+    EXPECT_GE(now, last_check_sec);
+    EXPECT_GE(static_cast<uint32>(200), now - last_check_sec);
+
+    const uint32 last_update_sec = GetDwordValue(kFullFooAppClientStateKeyPath,
+                                                 kRegValueLastUpdateTimeSec);
+    EXPECT_NE(kExistingUpdateValues, last_update_sec);
+    EXPECT_GE(now, last_update_sec);
+    EXPECT_GE(static_cast<uint32>(200), now - last_update_sec);
+  } else if (!is_first_install) {
+    // Verify update values not changed.
+    EXPECT_EQ(kExistingUpdateValues,
+              GetDwordValue(kFullFooAppClientStateKeyPath,
+                            kRegValueLastSuccessfulCheckSec));
+    EXPECT_EQ(kExistingUpdateValues,
+              GetDwordValue(kFullFooAppClientStateKeyPath,
+                            kRegValueLastUpdateTimeSec));
+  }
 
   CString uninstall_arguments;
   uninstall_arguments.Format(kMsiUninstallArguments, foo_installer_path_);
@@ -1086,6 +1153,13 @@ void JobInstallFooTest::Install_InstallerFailed_WhenExistingPreInstallData(
   EXPECT_SUCCEEDED(RegKey::SetValue(kFullFooAppClientStateKeyPath,
                                     _T("UpdateAvailableSince"),
                                     static_cast<DWORD64>(9876543210)));
+  const DWORD kExistingUpdateValues = 0x70123456;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kFullFooAppClientStateKeyPath,
+                                    kRegValueLastSuccessfulCheckSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kFullFooAppClientStateKeyPath,
+                                    kRegValueLastUpdateTimeSec,
+                                    kExistingUpdateValues));
 
   AppData app_data(PopulateFooAppData());
   job_->set_download_file_name(_T("DoesNotExist.exe"));
@@ -1103,7 +1177,8 @@ void JobInstallFooTest::Install_InstallerFailed_WhenExistingPreInstallData(
   EXPECT_EQ(is_update, RegKey::HasKey(kFullFooAppClientStateKeyPath));
   EXPECT_FALSE(RegKey::HasKey(kFullFooAppClientKeyPath));
 
-  // When an update fails, data remains. When an install fails, data is deleted.
+  // When an update fails, data remains. When an install fails, the entire
+  // ClientState key is deleted as verified above.
   if (is_update) {
     DWORD update_available_count(0);
     EXPECT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientStateKeyPath,
@@ -1116,6 +1191,12 @@ void JobInstallFooTest::Install_InstallerFailed_WhenExistingPreInstallData(
                                       _T("UpdateAvailableSince"),
                                       &update_available_since_time));
     EXPECT_EQ(9876543210, update_available_since_time);
+    EXPECT_EQ(kExistingUpdateValues,
+              GetDwordValue(kFullFooAppClientStateKeyPath,
+                            kRegValueLastSuccessfulCheckSec));
+    EXPECT_EQ(kExistingUpdateValues,
+              GetDwordValue(kFullFooAppClientStateKeyPath,
+                            kRegValueLastUpdateTimeSec));
   }
 
   RestoreRegistryHives();
@@ -1132,5 +1213,195 @@ TEST_F(JobInstallFooTest,
   Install_InstallerFailed_WhenExistingPreInstallData(true);
 }
 
+TEST_F(JobTest, LaunchCmdLine_EmptyCommand) {
+  SetIsInstallJob();
+  EXPECT_SUCCEEDED(job_->LaunchCmdLine());
+  EXPECT_FALSE(did_launch_cmd_fail());
+}
+
+TEST_F(JobTest, LaunchCmdLine_LaunchFails) {
+  SetIsInstallJob();
+  set_launch_cmd_line(_T("no_such_file.exe"));
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), job_->LaunchCmdLine());
+  EXPECT_TRUE(did_launch_cmd_fail());
+}
+
+TEST_F(JobTest, LaunchCmdLine_Succeeds) {
+  SetIsInstallJob();
+  set_launch_cmd_line(_T("cmd /c"));
+  EXPECT_SUCCEEDED(job_->LaunchCmdLine());
+  EXPECT_FALSE(did_launch_cmd_fail());
+}
+
+// LaunchCmdLine should not be called for update jobs.
+TEST_F(JobTest, LaunchCmdLine_IsUpdateJob) {
+  ExpectAsserts expect_asserts;
+  set_launch_cmd_line(_T("cmd /c"));
+  EXPECT_SUCCEEDED(job_->LaunchCmdLine());
+  EXPECT_FALSE(did_launch_cmd_fail());
+}
+
+class JobDoCompleteJobJobSuccessTest : public JobTest {
+ protected:
+  virtual void SetUp() {
+    JobTest::SetUp();
+
+    destination_path_ = CreateUniqueTempDir();
+    set_download_file_name(ConcatenatePath(destination_path_, _T("foo.msi")));
+    job_->set_job_observer(&job_observer_);
+
+    CompletionInfo info(COMPLETION_SUCCESS, 0, _T(""));
+    set_info(info);
+  }
+
+  CString destination_path_;
+  JobObserverMock job_observer_;
+};
+
+TEST_F(JobDoCompleteJobJobSuccessTest, DefaultSuccessAction) {
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+
+  EXPECT_FALSE(File::Exists(destination_path_));
+}
+
+// download_file_name_ is not set. No assert indicates that
+// DeleteJobDownloadDirectory is not called in error cases.
+TEST_F(JobTest, DefaultSuccessAction_Omaha) {
+  JobObserverMock job_observer;
+  job_->set_job_observer(&job_observer);
+
+  CompletionInfo info(COMPLETION_SUCCESS, 0, _T(""));
+  set_info(info);
+
+  AppData app_data;
+  app_data.set_app_guid(kGoopdateGuid);
+  SetAppData(app_data);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS, job_observer.completion_code);
+  EXPECT_TRUE(job_observer.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       DefaultSuccessAction_LaunchCmdNotFailed) {
+  SetIsInstallJob();
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       DefaultSuccessAction_LaunchCmdFailed) {
+  SetIsInstallJob();
+  set_did_launch_cmd_fail(true);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       SuccessActionExitSilently_NoLaunchCmd) {
+  SetIsInstallJob();
+  SetUpdateResponseSuccessAction(SUCCESS_ACTION_EXIT_SILENTLY);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS_CLOSE_UI, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       SuccessActionExitSilently_LaunchCmdNotFailed) {
+  SetIsInstallJob();
+  set_launch_cmd_line(_T("cmd /c"));
+  SetUpdateResponseSuccessAction(SUCCESS_ACTION_EXIT_SILENTLY);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS_CLOSE_UI, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       SuccessActionExitSilently_LaunchCmdFailed) {
+  SetIsInstallJob();
+  set_launch_cmd_line(_T("cmd /c"));
+  SetUpdateResponseSuccessAction(SUCCESS_ACTION_EXIT_SILENTLY);
+  set_did_launch_cmd_fail(true);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       SuccessActionExitSilentlyOnCmd_NoLaunchCmd) {
+  SetIsInstallJob();
+  SetUpdateResponseSuccessAction(SUCCESS_ACTION_EXIT_SILENTLY_ON_LAUNCH_CMD);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       SuccessActionExitSilentlyOnCmd_CmdNotFailed) {
+  SetIsInstallJob();
+  set_launch_cmd_line(_T("cmd /c"));
+  SetUpdateResponseSuccessAction(SUCCESS_ACTION_EXIT_SILENTLY_ON_LAUNCH_CMD);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS_CLOSE_UI, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+TEST_F(JobDoCompleteJobJobSuccessTest,
+       DefaultSuccessActionOnCmd_LaunchCmdFailed) {
+  SetIsInstallJob();
+  set_launch_cmd_line(_T("cmd /c"));
+  SetUpdateResponseSuccessAction(SUCCESS_ACTION_EXIT_SILENTLY_ON_LAUNCH_CMD);
+  set_did_launch_cmd_fail(true);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_SUCCESS, job_observer_.completion_code);
+  EXPECT_TRUE(job_observer_.completion_text.IsEmpty());
+  EXPECT_EQ(0, job_observer_.completion_error_code);
+}
+
+// download_file_name_ is not set. No assert indicates that
+// DeleteJobDownloadDirectory is not called in error cases.
+TEST_F(JobTest, DoCompleteJob_JobError) {
+  JobObserverMock job_observer_;
+  job_->set_job_observer(&job_observer_);
+  CompletionInfo info(COMPLETION_ERROR, static_cast<DWORD>(E_FAIL), _T("blah"));
+  set_info(info);
+
+  EXPECT_SUCCEEDED(DoCompleteJob());
+
+  EXPECT_EQ(COMPLETION_CODE_ERROR, job_observer_.completion_code);
+  EXPECT_STREQ(_T("blah"), job_observer_.completion_text);
+  EXPECT_EQ(E_FAIL, job_observer_.completion_error_code);
+}
 
 }  // namespace omaha

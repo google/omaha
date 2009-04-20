@@ -125,6 +125,7 @@ namespace Xml {
     const TCHAR* const kExtraCode1 = _T("extracode1");
     const TCHAR* const kHash = _T("hash");
     const TCHAR* const kIndex = _T("index");
+    const TCHAR* const kInstalledAgeDays = _T("installage");
     const TCHAR* const kIsMachine = _T("ismachine");
     const TCHAR* const kInstallationId = _T("iid");
     const TCHAR* const kInstallSource = _T("installsource");
@@ -1123,7 +1124,16 @@ HRESULT GoopdateXmlParser::CreateAppRequestElementHelper(
     }
   }
 
-  // Add the Installation ID if supplied.
+  if (0 != app_data.install_time_diff_sec()) {
+    const int kSecondsPerDay = 24 * kSecondsPerHour;
+    int installed_full_days = app_data.install_time_diff_sec() / kSecondsPerDay;
+    hr = AddXMLAttributeNode(*app_element,
+                             Xml::Namespace::kRequest,
+                             Xml::Attribute::kInstalledAgeDays,
+                             itostr(installed_full_days));
+    if (FAILED(hr)) { return hr; }
+  }
+
   if (GUID_NULL != app_data.iid()) {
     hr = AddXMLAttributeNode(*app_element,
                              Xml::Namespace::kRequest,
@@ -1132,7 +1142,6 @@ HRESULT GoopdateXmlParser::CreateAppRequestElementHelper(
     if (FAILED(hr)) { return hr; }
   }
 
-  // Add the Install Source if supplied.
   if (!app_data.install_source().IsEmpty()) {
     hr = AddXMLAttributeNode(*app_element,
                              Xml::Namespace::kRequest,

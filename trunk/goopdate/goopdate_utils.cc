@@ -123,35 +123,16 @@ bool IsMachineProcessWithoutPrivileges(bool is_machine_process) {
   return is_machine_process && !vista_util::IsUserAdmin();
 }
 
-// Search for user explorer.exe.
-// Get process token.
-// Impersonate.
-// CoCreate the COM local server.
-// Caller is responsible for calling ::RevertToSelf when done using the
-// launcher.
-HRESULT GetImpersonatedLauncher(IProcessLauncher** process_launcher) {
-  ASSERT1(process_launcher);
-
-  uint32 pid = 0;
-  HRESULT hr = vista::GetExplorerPidForCurrentUserOrSession(&pid);
+HRESULT LaunchImpersonatedCmdLine(const CString& cmd_line) {
+  scoped_handle impersonation_token;
+  HRESULT hr = vista::GetLoggedOnUserToken(address(impersonation_token));
   if (FAILED(hr)) {
     return hr;
   }
 
-  scoped_handle user_token;
-  hr = Process::GetImpersonationToken(pid, address(user_token));
+  scoped_impersonation impersonate_user(get(impersonation_token));
+  hr = HRESULT_FROM_WIN32(impersonate_user.result());
   if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[Process::GetImpersonationToken failed][0x%08x]"), hr));
-    return hr;
-  }
-
-  // The impersonation will fail if the user is running on a Win2K SP3 or
-  // earlier, or WinXP SP1 or earlier. This is because the
-  // SeImpersonatePrivilege is needed to call this method, and this privilege
-  // does not exist in these systems.
-  if (::ImpersonateLoggedOnUser(get(user_token)) == 0) {
-    hr = HRESULTFromLastError();
-    UTIL_LOG(LW, (_T("[::ImpersonateLoggedOnUser failed][0x%08x]"), hr));
     return hr;
   }
 
@@ -160,40 +141,34 @@ HRESULT GetImpersonatedLauncher(IProcessLauncher** process_launcher) {
                                  NULL,
                                  CLSCTX_LOCAL_SERVER);
   if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[CoCreate ProcessLauncherClass failed][0x%x]"), hr));
     return hr;
   }
-
-  *process_launcher = launcher.Detach();
-  return S_OK;
-}
-
-HRESULT LaunchImpersonatedCmdLine(const CString& cmd_line) {
-  CComPtr<IProcessLauncher> launcher;
-  HRESULT hr = GetImpersonatedLauncher(&launcher);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  ON_SCOPE_EXIT(::RevertToSelf);
 
   return launcher->LaunchCmdLine(cmd_line);
 }
 
 HRESULT LaunchImpersonatedBrowser(BrowserType type, const CString& url) {
+  scoped_handle impersonation_token;
+  HRESULT hr = vista::GetLoggedOnUserToken(address(impersonation_token));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  scoped_impersonation impersonate_user(get(impersonation_token));
+  hr = HRESULT_FROM_WIN32(impersonate_user.result());
+  if (FAILED(hr)) {
+    return hr;
+  }
+
   CComPtr<IProcessLauncher> launcher;
-  HRESULT hr = GetImpersonatedLauncher(&launcher);
+  hr = launcher.CoCreateInstance(CLSID_ProcessLauncherClass,
+                                 NULL,
+                                 CLSCTX_LOCAL_SERVER);
   if (FAILED(hr)) {
     return hr;
   }
-  ON_SCOPE_EXIT(::RevertToSelf);
 
-  hr = launcher->LaunchBrowser(type, url);
-  if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[LaunchBrowser failed][0x%x]"), hr));
-    return hr;
-  }
-
-  return S_OK;
+  return launcher->LaunchBrowser(type, url);
 }
 
 // Returns an ID stored in the key_name hive with the name value_name.
@@ -719,7 +694,7 @@ HRESULT UninstallScheduledTask(const TCHAR* task_name) {
 
   // delete the task.
   hr = scheduler->Delete(task_name);
-  if (FAILED(hr)) {
+  if (FAILED(hr) && COR_E_FILENOTFOUND != hr) {
     CORE_LOG(LE, (_T("GetScheduledTaskStatus: Delete failed[0x%x]"), hr));
     return hr;
   }
@@ -1689,15 +1664,11 @@ HRESULT UninstallGoopdateTasks(bool is_machine) {
 HRESULT UninstallLegacyGoopdateTasks(bool is_machine) {
   const CString& legacy_omaha1_task =
       internal::GetOmaha1LegacyTaskName(is_machine);
-  if (internal::IsInstalledScheduledTask(legacy_omaha1_task)) {
-    VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha1_task)));
-  }
+  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha1_task)));
 
   const CString& legacy_omaha2_task =
       internal::GetOmaha2LegacyTaskName(is_machine);
-  if (internal::IsInstalledScheduledTask(legacy_omaha2_task)) {
-    VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha2_task)));
-  }
+  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha2_task)));
 
   return S_OK;
 }
@@ -2610,6 +2581,9 @@ HRESULT SetAppBranding(const CString& client_state_key_path,
       return hr;
     }
   }
+
+  const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now)));
 
   return S_OK;
 }

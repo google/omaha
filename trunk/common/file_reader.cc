@@ -37,7 +37,8 @@ HRESULT FileReader::Init(const TCHAR* file_name, size_t buffer_size) {
   ASSERT1(buffer_size);
   file_buffer_size_ = buffer_size;
   file_buffer_.reset(new byte[file_buffer_size()]);
-  HRESULT hr = file_.OpenShareMode(file_name, false, false, FILE_SHARE_READ);
+  HRESULT hr = file_.OpenShareMode(file_name, false, false, FILE_SHARE_WRITE |
+                                                            FILE_SHARE_READ);
   file_is_open_ = SUCCEEDED(hr);
   is_unicode_ = false;
 

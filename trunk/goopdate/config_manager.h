@@ -152,6 +152,7 @@ class ConfigManager {
   HRESULT GetWebPluginCheckUrl(CString* url) const;
 
   // Returns the time interval between update checks in seconds.
+  // 0 indicates updates are disabled.
   int GetLastCheckPeriodSec(bool* is_overridden) const;
 
   // Returns the number of seconds since the last successful update check.

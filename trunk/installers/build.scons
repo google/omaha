@@ -27,20 +27,23 @@ from installers import build_metainstaller
 
 _RECOVERY_MARKUP_DLL = 'recovery_markup.dll'
 
+_CLICKONCE_DEPLOY_DIR = '$TARGET_ROOT/clickonce_deployment'
+
+# This will be of the form 'GoogleInstaller_en.application'.
+def _GetClickOnceDeploymentName(language):
+  return 'GoogleInstaller_%s.application' % (language)
 
 # Generate a ClickOnce deployment manifest personalized with the localized
 # display name of 'Google Installer'.
 def _GenerateDeploymentForOneLanguage(language):
-  clickonce_deploy_dir = '$TARGET_ROOT/clickonce_deployment'
-
-  # This will be of the form 'GoogleInstaller_en.application'.
-  clickonce_deployment_name = 'GoogleInstaller_%s.application' % (language)
+  clickonce_deployment_name = _GetClickOnceDeploymentName(language)
 
   v = env['product_version'][0]
   version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
 
   clickonce_manifest_name = 'clickonce_bootstrap.exe.manifest'
-  clickonce_manifest = '%s/%s' % (clickonce_deploy_dir, clickonce_manifest_name)
+  clickonce_manifest = '%s/%s' % (_CLICKONCE_DEPLOY_DIR,
+                                  clickonce_manifest_name)
 
   # Generate the deployment manifest with a dummy name of 'xxxXXXxxx'. The
   # Python commands module does not work with Unicode strings, so we will
@@ -105,7 +108,7 @@ def _GenerateDeploymentForOneLanguage(language):
   # This will be of the form
   # 'scons-out\dbg-win\clickonce_deployment\GoogleInstaller_en.application'.
   sign_target = env.Command(
-      target='%s/%s' % (clickonce_deploy_dir, clickonce_deployment_name),
+      target='%s/%s' % (_CLICKONCE_DEPLOY_DIR, clickonce_deployment_name),
       source=clickonce_target_2,
       action=sign_manifest_cmd
   )
@@ -168,11 +171,21 @@ def _BuildSetupVersion(source_binary, product_name, prefix = ''):
 
   # Generate the i18n ClickOnce deployment manifest for languages that we
   # support.
-  if env.Bit('build_server') or 'OMAHA_BUILD_CLICKONCE' in os.environ.keys():
+  if env.Bit('all') or 'OMAHA_BUILD_CLICKONCE' in os.environ.keys():
     for language in env['languages']:
       _GenerateDeploymentForOneLanguage(language)
-
-
+      
+    # zh-HK needs a deployment file, but it is not in env['languages'] and there
+    # is no mi_generated_resources_zh-HK.rc file. The few translations are
+    # inherited from zh-TW, and there are no language code-specific values in
+    # the deployment file, so just copy the zh-TW file to zh-HK.
+    env.Command(
+        target='%s/%s' % (_CLICKONCE_DEPLOY_DIR,
+                          _GetClickOnceDeploymentName('zh-HK')),
+        source='%s/%s' % (_CLICKONCE_DEPLOY_DIR,
+                          _GetClickOnceDeploymentName('zh-TW')),
+        action='@copy /y $SOURCES $TARGET'
+    )
 
 if not env.Bit('official_installers'):
   # The logic:

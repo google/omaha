@@ -515,8 +515,9 @@ HRESULT Job::DoInstall(CompletionInfo* completion_info,
   // We do not know whether Goopdate has succeeded because its installer has
   // not completed.
   if (!::IsEqualGUID(kGoopdateGuid, app_data_.app_guid())) {
-    app_manager.ClearUpdateAvailableStats(app_data_.parent_app_guid(),
-                                          app_data_.app_guid());
+    app_manager.RecordSuccessfulInstall(app_data_.parent_app_guid(),
+                                        app_data_.app_guid(),
+                                        is_update_);
   }
 
   return S_OK;

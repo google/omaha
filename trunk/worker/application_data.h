@@ -54,6 +54,7 @@ class AppData {
         parent_app_guid_(GUID_NULL),
         is_machine_app_(false),
         iid_(GUID_NULL),
+        install_time_diff_sec_(0),
         is_oem_install_(false),
         is_eula_accepted_(true),  // Safe default.
         browser_type_(BROWSER_UNKNOWN),
@@ -67,6 +68,7 @@ class AppData {
         parent_app_guid_(GUID_NULL),
         is_machine_app_(is_machine_app),
         iid_(GUID_NULL),
+        install_time_diff_sec_(0),
         is_oem_install_(false),
         is_eula_accepted_(true),  // Safe default.
         browser_type_(BROWSER_UNKNOWN),
@@ -115,6 +117,11 @@ class AppData {
   CString referral_id() const { return referral_id_; }
   void set_referral_id(const CString& referral_id) {
       referral_id_ = referral_id;
+  }
+
+  uint32 install_time_diff_sec() const { return install_time_diff_sec_; }
+  void set_install_time_diff_sec(uint32 install_time_diff_sec) {
+      install_time_diff_sec_ = install_time_diff_sec;
   }
 
   bool is_oem_install() const { return is_oem_install_; }
@@ -185,6 +192,7 @@ class AppData {
   CString brand_code_;
   CString client_id_;
   CString referral_id_;
+  uint32 install_time_diff_sec_;
   bool is_oem_install_;
   bool is_eula_accepted_;
 
@@ -199,10 +207,6 @@ class AppData {
 
   bool is_uninstalled_;
   bool is_update_disabled_;
-
- private:
-  friend class AppDataTest;
-  friend class PingTest;
 };
 
 typedef std::vector<AppData> AppDataVector;

@@ -141,6 +141,7 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test1) {
   app_data1.set_client_id(_T("_one_client"));
   app_data1.set_install_source(_T("oneclick"));
   app_data1.set_brand_code(_T("GGLG"));
+  app_data1.set_install_time_diff_sec(3123456789);
   app_data1.set_install_source(_T("oneclick"));
 
   AppRequestData app_request_data1(app_data1);
@@ -153,6 +154,7 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test1) {
   app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
   app_data2.set_client_id(_T("_another_client"));
   app_data2.set_brand_code(_T("GooG"));
+  app_data2.set_install_time_diff_sec(30);
   AppRequestData app_request_data2(app_data2);
   AppRequest app_request2(app_request_data2);
   req.AddAppRequest(app_request2);
@@ -285,6 +287,7 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test2) {
                        E_FAIL,
                        _T("Install error"));
   app_request_data1.AddPingEvent(ping_event);
+  EXPECT_EQ(0, app_data1.install_time_diff_sec());
   AppRequest app_request1(app_request_data1);
   req.AddAppRequest(app_request1);
 
@@ -295,6 +298,7 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test2) {
   app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
   app_data2.set_client_id(_T("_some_client"));
   app_data2.set_brand_code(_T("GooG"));
+  app_data2.set_install_time_diff_sec(7 * 24 * 60 * 60 - 1);
   AppRequestData app_request_data2(app_data2);
   AppRequest app_request2(app_request_data2);
   req.AddAppRequest(app_request2);
@@ -404,6 +408,7 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestInstallDataIndex) {
   app_data1.set_iid(StringToGuid(_T("{A972BB39-CCA3-4f25-9737-3308F5FA19B5}")));
   app_data1.set_brand_code(_T("GGLG"));
   app_data1.set_client_id(_T("_one_client"));
+  app_data1.set_install_time_diff_sec(7 * 24 * 60 * 60);
   app_data1.set_install_source(_T("oneclick"));
   app_data1.set_install_data_index(_T("foobar"));
 
@@ -417,6 +422,7 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestInstallDataIndex) {
   app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
   app_data2.set_client_id(_T("_another_client"));
   app_data2.set_brand_code(_T("GooG"));
+  app_data2.set_install_time_diff_sec(7 * 24 * 60 * 60 + 1);
   AppRequestData app_request_data2(app_data2);
   AppRequest app_request2(app_request_data2);
   req.AddAppRequest(app_request2);

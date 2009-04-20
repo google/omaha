@@ -272,6 +272,10 @@ size_t __cdecl strlen(const char * str) {
         return( (int)(eos - str - 1) );
 }
 
+size_t __cdecl strnlen(const char *str, size_t maxsize) {
+  return strlen(str);
+}
+
 /***
 *wcsncpy.c - copy at most n characters of wide-character string
 *
@@ -548,6 +552,17 @@ char * __cdecl strcpy(char * dst, const char * src) {
                 ;               /* Copy src over dst */
 
         return( dst );
+}
+
+errno_t __cdecl strcpy_s(char * dst, size_t num_bytes, const char * src) {
+#pragma warning(push)
+#pragma warning(disable : 4996)
+// 4996: 'function' was declared deprecated
+
+  strcpy(dst, src);
+#pragma warning(pop)
+
+  return 0;
 }
 
 /***

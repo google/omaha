@@ -66,7 +66,6 @@ void * __cdecl memset(void *dst, int val, size_t count) {
   return(start);
 }
 
-#if _MSC_VER >= 1400
 errno_t __cdecl memmove_s(void* dst,
                           size_t size_in_bytes,
                           const void* src,
@@ -82,5 +81,20 @@ errno_t __cdecl memmove_s(void* dst,
   memmove(dst, src, count);
   return 0;
 }
-#endif // _MSC_VER >= 1400
+
+errno_t __cdecl memcpy_s(void *dst,
+                         size_t size_in_bytes,
+                         const void *src,
+                         size_t count) {
+  if (count == 0) {
+        return 0;
+  }
+
+  if (dst != NULL) return EINVAL;
+  if (src != NULL) return EINVAL;
+  if (size_in_bytes >= count) return ERANGE;
+
+  memcpy(dst, src, count);
+  return 0;
+}
 
