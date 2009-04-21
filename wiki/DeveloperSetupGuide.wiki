@@ -16,7 +16,7 @@ The following packages are required to build Omaha:
     * However you get the source code, it must be checked out or extracted to a directory named `omaha` exactly.
   * Microsoft Visual C++
     * You will need to have at least the Standard Edition of Visual C++ or Visual Studio. (Note: The Express Editions are not sufficient because they do not include ATL/MFC, which Omaha requires.)
-    * Omaha currently builds with Microsoft Visual C++ 2005. You are welcome to contribute changes to make it build with newer versions.
+    * Omaha builds with both Microsoft Visual Studio 2005 and 2008 versions (Visual C++ 8.0 and 9.0 respectively). To select between development environments, call the vcvarsall.bat script, which is found in the corresponding VC directory. Building with Visual Studio 2008 requires newer versions of Windows SDK. Use either version 6.0A that comes with Visual Studio 2008 or version 6.1.
   * Microsoft Vista SDK
     * Download the SDK [http://www.microsoft.com/downloads/details.aspx?FamilyID=4377f86d-c913-4b5c-b87e-ef72e5b4e065%26displaylang=en here].
   * Microsoft .NET Framework 2.0
@@ -76,4 +76,3 @@ When running unit tests:
   * We recommend running them with administrator privileges as some tests do not run otherwise.
 
 Some tests do not run by default because they take a long time or are otherwise inconvenient to run all the time. To run these tests, define the `OMAHA_RUN_ALL_TESTS` environment variable. For example, `set OMAHA_RUN_ALL_TESTS=1`.
-
