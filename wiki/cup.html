@@ -1,0 +1,909 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html>
+
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<base target="_top">
+<style type="text/css">
+  
+
+/* default css */
+
+table {
+  font-size: 1em;
+  line-height: inherit;
+  border-collapse: collapse;
+}
+
+
+tr {
+  
+  text-align: left;
+  
+}
+
+
+div, address, ol, ul, li, option, select {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+p {
+  margin: 0px;
+}
+
+
+pre {
+  font-family: Courier New;
+  white-space: pre-wrap;
+  margin:0;
+}
+
+body {
+  margin: 6px;
+  padding: 0px;
+  font-family: Verdana, sans-serif;
+  font-size: 10pt;
+  background-color: #ffffff;
+}
+
+
+img {
+  -moz-force-broken-image-icon: 1;
+}
+
+@media screen {
+  html.pageview {
+    background-color: #f3f3f3 !important;
+  }
+
+  
+
+  body {
+    min-height: 1100px;
+    
+    counter-reset: __goog_page__;
+  }
+  * html body {
+    height: 1100px;
+  }
+  .pageview body {
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+    border-right: 2px solid #bbb;
+    border-bottom: 2px solid #bbb;
+    width: 648px !important;
+    margin: 15px auto 25px;
+    padding: 40px 50px;
+  }
+  /* IE6 */
+  * html {
+    overflow-y: scroll;
+  }
+  * html.pageview body {
+    overflow-x: auto;
+  }
+  /* Prevent repaint errors when scrolling in Safari. This "Star-7" css hack
+     targets Safari 3.1, but not WebKit nightlies and presumably Safari 4.
+     That's OK because this bug is fixed in WebKit nightlies/Safari 4 :-). */
+  html*#wys_frame::before {
+    content: '\A0';
+    position: fixed;
+    overflow: hidden;
+    width: 0;
+    height: 0;
+    top: 0;
+    left: 0;
+  }
+  
+  
+
+  
+    .writely-callout-data {
+      display: none;
+      *display: inline-block;
+      *width: 0;
+      *height: 0;
+      *overflow: hidden;
+    }
+    .writely-footnote-marker {
+      background-image: url('MISSING');
+      background-color: transparent;
+      background-repeat: no-repeat;
+      width: 7px;
+      overflow: hidden;
+      height: 16px;
+      vertical-align: top;
+
+      
+      -moz-user-select: none;
+    }
+    .editor .writely-footnote-marker {
+      cursor: move;
+    }
+    .writely-footnote-marker-highlight {
+      background-position: -15px 0;
+      -moz-user-select: text;
+    }
+    .writely-footnote-hide-selection ::-moz-selection, .writely-footnote-hide-selection::-moz-selection {
+      background: transparent;
+    }
+    .writely-footnote-hide-selection ::selection, .writely-footnote-hide-selection::selection {
+      background: transparent;
+    }
+    .writely-footnote-hide-selection {
+      cursor: move;
+    }
+
+    
+    .editor .writely-comment-yellow {
+      background-color: #FF9;
+      background-position: -240px 0;
+    }
+    .editor .writely-comment-yellow-hover {
+      background-color: #FF0;
+      background-position: -224px 0;
+    }
+    .editor .writely-comment-blue {
+      background-color: #C0D3FF;
+      background-position: -16px 0;
+    }
+    .editor .writely-comment-blue-hover {
+      background-color: #6292FE;
+      background-position: 0 0;
+    }
+    .editor .writely-comment-orange {
+      background-color: #FFDEAD;
+      background-position: -80px 0;
+    }
+    .editor .writely-comment-orange-hover {
+      background-color: #F90;
+      background-position: -64px 0;
+    }
+    .editor .writely-comment-green {
+      background-color: #99FBB3;
+      background-position: -48px 0;
+    }
+    .editor .writely-comment-green-hover {
+      background-color: #00F442;
+      background-position: -32px 0;
+    }
+    .editor .writely-comment-cyan {
+      background-color: #CFF;
+      background-position: -208px 0;
+    }
+    .editor .writely-comment-cyan-hover {
+      background-color: #0FF;
+      background-position: -192px 0;
+    }
+    .editor .writely-comment-purple {
+      background-color: #EBCCFF;
+      background-position: -144px 0;
+    }
+    .editor .writely-comment-purple-hover {
+      background-color: #90F;
+      background-position: -128px 0;
+    }
+    .editor .writely-comment-magenta {
+      background-color: #FCF;
+      background-position: -112px 0;
+    }
+    .editor .writely-comment-magenta-hover {
+      background-color: #F0F;
+      background-position: -96px 0;
+    }
+    .editor .writely-comment-red {
+      background-color: #FFCACA;
+      background-position: -176px 0;
+    }
+    .editor .writely-comment-red-hover {
+      background-color: #FF7A7A;
+      background-position: -160px 0;
+    }
+
+    .editor .writely-comment-marker {
+      background-image: url('MISSING');
+      background-color: transparent;
+      padding-right: 11px;
+      background-repeat: no-repeat;
+      width: 16px;
+      height: 16px;
+      -moz-user-select: none;
+    }
+
+    .editor .writely-comment-hidden {
+      padding: 0;
+      background: none;
+    }
+    .editor .writely-comment-marker-hidden {
+      background: none;
+      padding: 0;
+      width: 0;
+    }
+    .editor .writely-comment-none {
+      opacity: .2;
+      filter:progid:DXImageTransform.Microsoft.Alpha(opacity=20);
+      -moz-opacity: .2;
+    }
+    .editor .writely-comment-none-hover {
+      opacity: .2;
+      filter:progid:DXImageTransform.Microsoft.Alpha(opacity=20);
+      -moz-opacity: .2;
+    }
+  
+
+
+  
+  .br_fix br:not(:-moz-last-node):not(:-moz-first-node) {
+    
+    position:relative;
+    
+    left: -1ex
+    
+  }
+  
+  .br_fix br+br {
+    position: static !important
+  }
+
+  
+  #cb-p-tgt {
+    font-size: 8pt;
+    padding: .4em;
+    font-style: oblique;
+    background-color: #FFF1A8;
+    border: 1px solid #000;
+  }
+}
+
+h6 { font-size: 8pt }
+h5 { font-size: 8pt }
+h4 { font-size: 10pt }
+h3 { font-size: 12pt }
+h2 { font-size: 14pt }
+h1 { font-size: 18pt }
+
+blockquote {padding: 10px; border: 1px #DDD dashed }
+
+.webkit-indent-blockquote { border: none; }
+
+a img {border: 0}
+
+.pb {
+  border-width: 0;
+  page-break-after: always;
+  /* We don't want this to be resizeable, so enforce a width and height
+     using !important */
+  height: 1px !important;
+  width: 100% !important;
+}
+
+.editor .pb {
+  border-top: 1px dashed #C0C0C0;
+  border-bottom: 1px dashed #C0C0C0;
+}
+
+div.google_header, div.google_footer {
+  position: relative;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+
+/* Table of contents */
+.editor div.writely-toc {
+  background-color: #f3f3f3;
+  border: 1px solid #ccc;
+}
+.writely-toc > ol {
+  padding-left: 3em;
+  font-weight: bold;
+}
+ol.writely-toc-subheading {
+  padding-left: 1em;
+  font-weight: normal;
+}
+/* IE6 only */
+* html writely-toc ol {
+  list-style-position: inside;
+}
+.writely-toc-none {
+  list-style-type: none;
+}
+.writely-toc-decimal {
+  list-style-type: decimal;
+}
+.writely-toc-upper-alpha {
+  list-style-type: upper-alpha;
+}
+.writely-toc-lower-alpha {
+  list-style-type: lower-alpha;
+}
+.writely-toc-upper-roman {
+  list-style-type: upper-roman;
+}
+.writely-toc-lower-roman {
+  list-style-type: lower-roman;
+}
+.writely-toc-disc {
+  list-style-type: disc;
+}
+
+/* Ordered lists converted to numbered lists can preserve ordered types, and
+   vice versa. This is confusing, so disallow it */
+ul[type="i"], ul[type="I"], ul[type="1"], ul[type="a"], ul[type="A"] {
+  list-style-type: disc;
+}
+
+ol[type="disc"], ol[type="circle"], ol[type="square"] {
+  list-style-type: decimal;
+}
+
+/* end default css */
+
+
+  /* default print css */
+  
+  @media print {
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    div.google_header, div.google_footer {
+      display: block;
+      min-height: 0;
+      border: none;
+    }
+
+    div.google_header {
+      flow: static(header);
+    }
+
+    /* used to insert page numbers */
+    div.google_header::before, div.google_footer::before {
+      position: absolute;
+      top: 0;
+    }
+
+    div.google_footer {
+      flow: static(footer);
+    }
+
+    /* always consider this element at the start of the doc */
+    div#google_footer {
+      flow: static(footer, start);
+    }
+
+    span.google_pagenumber {
+      content: counter(page);
+    }
+
+    span.google_pagecount {
+      content: counter(pages);
+    }
+
+
+    callout.google_footnote {
+      
+      display: prince-footnote;
+      footnote-style-position: inside;
+      /* These styles keep the footnote from taking on the style of the text
+         surrounding the footnote marker. They can be overridden in the
+         document CSS. */
+      color: #000;
+      font-family: Verdana;
+      font-size: 10.0pt;
+      font-weight: normal;
+    }
+
+    /* Table of contents */
+    #WritelyTableOfContents a::after {
+      content: leader('.') target-counter(attr(href), page);
+    }
+
+    #WritelyTableOfContents a {
+      text-decoration: none;
+      color: black;
+    }
+  }
+
+  @page {
+    @top {
+      content: flow(header);
+    }
+    @bottom {
+      content: flow(footer);
+    }
+    @footnotes {
+      border-top: solid black thin;
+      padding-top: 8pt;
+    }
+  }
+  /* end default print css */
+
+
+/* custom css */
+
+
+/* end custom css */
+
+/* ui edited css */
+
+body {
+  font-family: Verdana;
+  
+  font-size: 10.0pt;
+  line-height: normal;
+  background-color: #ffffff;
+}
+/* end ui edited css */
+
+
+/* editor CSS */
+.editor a:visited {color: #551A8B}
+.editor table.zeroBorder {border: 1px dotted gray}
+.editor table.zeroBorder td {border: 1px dotted gray}
+.editor table.zeroBorder th {border: 1px dotted gray}
+
+
+.editor div.google_header, .editor div.google_footer {
+  border: 2px #DDDDDD dashed;
+  position: static;
+  width: 100%;
+  min-height: 2em;
+}
+
+.editor .misspell {background-color: yellow}
+
+.editor .writely-comment {
+  font-size: 9pt;
+  line-height: 1.4;
+  padding: 1px;
+  border: 1px dashed #C0C0C0
+}
+
+
+/* end editor CSS */
+
+</style>
+
+  
+  <title>Open Client Update Protocol</title>
+
+</head>
+
+<body 
+    
+    >
+    
+    
+    
+<h1 id=qzo4 style=TEXT-ALIGN:center>
+  <a id=qzo40 name=My_Project_>Client Update Protocol<br id=qzo41>
+  <br id=qzo42>
+  </a>
+</h1>
+<p id=qzo43 style=TEXT-ALIGN:center>
+  <a id=qzo44 name=My_Project_><b id=qzo45>Status:</b> Deployed</a><br id=qzo411>
+</p>
+<div id=qzo47 style=TEXT-ALIGN:right>
+  <br id=qzo412>
+</div>
+<br id=qzo414>
+<h2 id=objective>
+  Objective
+</h2>
+<p id=qzo415>
+  Omaha and various other client products ping our servers for updates on a periodic basis. SSL provides the freshness and authenticity needed but comes with substantial overhead, both on the server- and client-side. We have empirical evidence that some clients are able to ping for updates over HTTP, but fail to do so over HTTPS. For embedded devices, requiring a SSL stack just to perform secure updates might not be feasible.<br id=qzo416>
+  <br id=qzo417>
+  Client Update Protocol goals are:
+</p>
+<p id=qzo415>
+  <br>
+</p>
+<ul id=qzo426>
+  <li id=qzo427>
+    Provide more efficient yet secure alternative to SSL for update checks and similar client-server requests.
+  </li>
+  <li id=qzo427>
+    Use HTTP transport layer, including traversing proxies.<br>
+  </li>
+  <li id=qzo427>
+    Have a small, self-contained implementation suitable for resource constrained deployments.<br>
+  </li>
+</ul>
+<br>
+<p id=qzo434>
+  Non-goals:<br>
+</p>
+<p id=qzo434>
+  <br>
+</p>
+<ul id=qzo435>
+  <li id=qzo436>
+    Replace SSL everywhere.
+  </li>
+  <li id=qzo437>
+    Provide privacy of the communication.&nbsp;<br id=qzo438>
+  </li>
+  <li id=qzo439>
+    Authenticate clients / DRM.<br id=qzo440>
+  </li>
+</ul>
+<h2 id=background>
+  Background
+</h2>
+<p id=qzo446>
+  To securely check for and download updates we need to protect the communication. The protection needs to cover:<br>
+</p>
+<p id=qzo446>
+  <br>
+</p>
+<ul id=qzo447>
+  <li id=qzo448>
+    Authenticity. An attacker should not be able to replace or modify message content on the wire.<br id=qzo449>
+  </li>
+</ul>
+<ul id=qzo450>
+  <li id=qzo451>
+    Freshness. An attacker should not be able to trick a client into upgrading to an authentic but stale and vulnerable version.
+  </li>
+</ul>
+<br>
+<h2 id=overview>
+  Overview
+</h2>
+Observations leading to a alternate design are:<br>
+<br id=qzo455>
+<ul id=qzo456>
+  <li id=qzo457>
+    For fresh, authenticated update checks we do not need all of the SSL features:
+    <ul id=qzo458>
+      <li id=qzo463>
+        The PKI part is not needed since we control both the client and the server and need not confer trust with anyone else.<br>
+      </li>
+      <li id=qzo463>
+        Privacy of the download data is not needed since we do not intend to deliver private content; the downloads are free for all.
+      </li>
+      <li id=qzo464>
+        Integrity of requests and message meta-data (headers etc) might not be needed as long as the meta-data we act on is authentic.<br id=qzo465>
+      </li>
+      <li id=qzo466>
+        We only need a few of the cryptographic primitives and need not negotiate.
+      </li>
+      <li id=qzo467>
+        Request replay protection (request freshness from the server perspective) is not essential for update checks and similar idem-potent interactions.<br id=qzo468>
+      </li>
+    </ul>
+  </li>
+  <li id=qzo469>
+    We control all of the client code and communication stack, unlike the typical web-application scenario involving browsers.
+  </li>
+  <li id=qzo471>
+    For thin clients, the SSL requirement comes with a lot of code bloat.
+  </li>
+  <li id=qzo472>
+    We can achieve better handshake amortization than non-rfc5077 SSL stacks offer.
+  </li>
+  <li id=qzo473>
+    When relaxing request replay protection, we can achieve reply authenticity in a single round-trip.
+  </li>
+</ul>
+<h2 id=detailed_design>
+  Detailed Design
+</h2>
+<p id=qzo481>
+  There are two distinct parts that need to be designed:<br>
+</p>
+<p id=qzo481>
+  <br>
+</p>
+<ul id=qzo482>
+  <li id=qzo483>
+    A protocol.&nbsp;<br id=qzo484>
+  </li>
+  <li id=qzo485>
+    How to combine the protocol with the HTTP transport layer.
+  </li>
+</ul>
+<br id=qzo486>
+<h3 id=qzo487>
+  Protocol<br id=qzo488>
+</h3>
+<div id=qzo489>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <table border=1 cellpadding=3 cellspacing=0 height=59 id=h0-: width=1160>
+    <tbody id=qzo490>
+    <tr id=qzo491>
+      <td id=qzo492 style=TEXT-ALIGN:center>
+        Client<br id=qzo493>
+      </td>
+      <td id=qzo494 style=TEXT-ALIGN:center>
+        Messages<br id=qzo495>
+      </td>
+      <td id=qzo496 style=TEXT-ALIGN:center>
+        Server<br id=qzo497>
+      </td>
+    </tr>
+    <tr id=qzo498>
+      <td id=qzo499>
+        <div id=qzo4100 style=TEXT-ALIGN:center>
+          <i id=qzo4101>Knows a public key pk[v].<br id=qzo4102>
+          </i>
+        </div>
+        <div id=qzo4103 style=TEXT-ALIGN:center>
+          <i id=qzo4104>Might have opaque cookie c and associated shared key sk.</i>&nbsp;<br id=qzo4105>
+          <br id=qzo4106>
+        </div>
+      </td>
+      <td id=qzo4107>
+        <br id=qzo4108>
+      </td>
+      <td id=qzo4109>
+        <div id=qzo4110 style=TEXT-ALIGN:center>
+          <i id=qzo4111>Has private keys priv[].<br id=qzo4112>
+          </i>
+        </div>
+        <div id=qzo4113 style=TEXT-ALIGN:center>
+          <i id=qzo4114>Has server secret keys ss[].</i><br id=qzo4115>
+        </div>
+      </td>
+    </tr>
+    <tr id=qzo4116>
+      <td id=qzo4117>
+        <p id=qzo4118>
+          r := RSApad<sub id=qzo4119>|pk[v]|</sub>(<font color=#ff9900 id=qzo4120><font color=#000000 id=qzo4121>entropy)</font><br id=qzo4122>
+          </font>
+        </p>
+        <p id=qzo4123>
+          sk' := HASH(r)
+        </p>
+        <p id=qzo4124>
+          w := RSAencrypt<sub id=qzo4125>pk[v]</sub>(<font color=#ff9900 id=qzo4126><font color=#000000 id=qzo4127>r</font></font>)
+        </p>
+        <p id=qzo4128>
+          ƕw := HASH(HASH(v|w)|HASH(req)|HASH(body)?)
+        </p>
+        <p id=qzo4129>
+          Send v|w<br id=qzo4130>
+        </p>
+        If client has c, sk<br id=qzo4131>
+        &nbsp; cp := SYMsign<sub id=qzo4132>sk</sub>(0|ƕw|HASH(c))<br id=qzo4133>
+        &nbsp; Send c<br id=qzo4134>
+        <font color=#000000 id=qzo4135>else<br id=qzo4136>
+        &nbsp; cp := SYMsign<sub id=qzo4137>sk'</sub>(3|ƕ</font><font color=#ff0000 id=qzo4138><font color=#000000 id=qzo4139>w)<br id=qzo4140>
+        Send cp</font><br id=qzo4141>
+        </font>
+      </td>
+      <td id=qzo4142 style=TEXT-ALIGN:center>
+        &nbsp; req, v|w, cp, [c], [body] -&gt;<br id=qzo4143>
+      </td>
+      <td id=qzo4144>
+        <br id=qzo4145>
+      </td>
+    </tr>
+    <tr id=qzo4146>
+      <td id=qzo4147>
+        <br id=qzo4148>
+      </td>
+      <td id=qzo4149 style=TEXT-ALIGN:center>
+        <font color=#000000 id=qzo4150>&lt;- sp, [c'], rsp<br id=qzo4151>
+        </font>
+      </td>
+      <td id=qzo4152>
+        <font color=#000000 id=qzo4153>ƕw := HASH(HASH(v|w)|HASH(req)|HASH(body)?)<br id=qzo4154>
+        <br id=qzo4155>
+        If request contains c<br id=qzo4156>
+        &nbsp; cv,cd := parse c<br id=qzo4157>
+        &nbsp; sk := SYMdecrypt<sub id=qzo4158>ss[cv]</sub>(cd)<br id=qzo4159>
+        <br id=qzo4160>
+        </font>
+        <div id=qzo4161 style=TEXT-ALIGN:left>
+          <font color=#000000 id=qzo4162>If (sk &amp;&amp; cp == SYMsign<sub id=qzo4163>sk</sub>(0|ƕw|HASH(c)))<br id=qzo4164>
+          &nbsp; rsp := generate response for req<br id=qzo4165>
+          &nbsp; ƕm := HASH(rsp)<br id=qzo4166>
+          &nbsp; sp := SYMsign<sub id=qzo4167>sk</sub>(2|ƕw|ƕm)<br id=qzo4168>
+          &nbsp; Send sp, rsp<br id=qzo4169>
+          else<br id=qzo4170>
+          &nbsp; r := RSAdecrypt<sub id=qzo4171>priv[v]</sub>(w)<br id=qzo4172>
+          &nbsp; if (!RSAcheckpad(r))<br id=qzo4173>
+          &nbsp;&nbsp;&nbsp; LOG "Client does not know how to RSAencrypt!"<br id=qzo4174>
+          &nbsp; sk' := HASH(r)<br id=qzo4175>
+          &nbsp; </font><font color=#000000 id=qzo4176>If (cp != SYMsign<sub id=qzo4177>sk'</sub>(3|ƕw)<br id=qzo4178>
+          &nbsp;&nbsp;&nbsp; LOG "Client does not know how to SYMsign!"<br id=qzo4179>
+          &nbsp; csv := current server cookie encryption key version<br id=qzo4180>
+          &nbsp; c' := csv|SYMencrypt<sub id=qzo4181>ss[csv]</sub>(sk')<br id=qzo4182>
+          &nbsp; rsp := generate response for req<br id=qzo4183>
+          &nbsp; ƕm := HASH(rsp)<br id=qzo4184>
+          &nbsp; sp := SYMsign<sub id=qzo4185>sk'</sub>(1|ƕw|ƕm|HASH(c'))<br id=qzo4186>
+          &nbsp; Send sp, c', rsp<br id=qzo4187>
+          <br id=qzo4188>
+          </font>
+        </div>
+      </td>
+    </tr>
+    <tr id=qzo4189>
+      <td id=qzo4190>
+        ƕm := HASH(rsp)<br id=qzo4191>
+        <br id=qzo4192>
+        If (c' &amp;&amp;&nbsp; sp == SYMsign<sub id=qzo4193>sk'</sub>(1|ƕw|ƕm|HASH(c')))<br id=qzo4194>
+        &nbsp; Store sk := sk', c := c'<br id=qzo4195>
+        else<br id=qzo4196>
+        If (sp != SYMsign<sub id=qzo4197>sk</sub>(2|ƕw|ƕm))<br id=qzo4198>
+        &nbsp; FAIL<br id=qzo4199>
+      </td>
+      <td id=qzo4200>
+        <br id=qzo4201>
+      </td>
+      <td id=qzo4202>
+        <br id=qzo4203>
+      </td>
+    </tr>
+    </tbody>
+  </table>
+  <br id=qzo4204>
+</div>
+<h3 id=qzo4214>
+  Cryptographic primitives
+</h3>
+<br id=qzo4215>
+<ul id=qzo4216>
+  <li id=qzo4217>
+    SYMsign<sub id=qzo4218>key</sub>(data) := HMAC-SHA1
+  </li>
+</ul>
+<ul id=qzo4219>
+  <li id=qzo4220>
+    HASH(data) := SHA1
+  </li>
+</ul>
+<ul id=qzo4221>
+  <li id=qzo4222>
+    RSApad<sub id=qzo4223>|keybits|</sub>(data) := (r | SHA1(r))[0..keybits-1]; msb (keybits-1-160) bits random; lsb 160 bits SHA1 of the random bits.
+  </li>
+  <li id=qzo4224>
+    RSAencrypt<sub id=qzo4225>key</sub>(data) := Raw RSA encrypt; Public exponent 3.<br id=qzo4226>
+  </li>
+  <li id=qzo4227>
+    RSAdecrypt<sub id=qzo4228>key[]</sub>(data) := Raw RSA decrypt.
+  </li>
+  <li id=qzo4229>
+    RSAcheckpad(data) := Verify lsb 160 bits are SHA1 of remaining bits.<br id=qzo4230>
+  </li>
+  <li id=qzo4231>
+    SYMencrypt<sub id=qzo4232>key</sub>(data) := key version | HMAC | AES-CTR, using HMAC as IV.<br id=qzo4233>
+  </li>
+  <li id=qzo4234>
+    SYMdecrypt<sub id=qzo4235>key[]</sub>(data) := key version | HMAC | AES-CTR, using HMAC as IV.<br id=qzo4236>
+  </li>
+</ul>
+<br id=qzo4237>
+<h3 id=qzo4238>
+  Protocol observations<br id=qzo4239>
+</h3>
+<p id=qzo4240>
+  Freshness is achieved by having the client pick a fresh w for every request.<br id=qzo4243>
+  <br id=qzo4244>
+  The client operations are efficient enough to always both RSAencrypt and SYMsign. The client accepts authenticated responses for either sk or sk'.<br id=qzo4245>
+  <br id=qzo4246>
+  We can amortize the cost of RSAdecrypt on the server-side over many requests. Either the client or the server can initiate roll-over to a fresh shared secret by not sending or not honoring the cookie. Typically our client will always send the cookie and our server manages the length of the exposure.&nbsp;<br id=qzo4248>
+  <br id=qzo4249>
+  An attacker could replay a request to the server and would get a valid response; this could pollute server statistics. Care must be taken to make sure our request handling remains essentially idem-potent.&nbsp;<br id=qzo4250>
+  If idem-potency is not feasible, a server-side challenge, synchronous time or server-side bookkeeping can be used to make requests be one-time events. For the envisioned update protocols this is not required. Note this is due to the protocol not authenticating the client in any shape or form.&nbsp;&nbsp; &nbsp;&nbsp;<br id=qzo4251>
+  <br id=qzo4252>
+  RSApad / RSAcheckpad are not cryptographically required (compared to using |keybits| of random) but do provide a signal whether clients have the public key they claim they have and/or whether the client library is able to RSAencrypt properly.<br id=qzo4253>
+  <br id=qzo4254>
+  cp <i id=qzo4255>(client proof) </i>is used to tell whether the client knows the sk associated with cookie c. Having the server test this allows for more graceful fail over to a fresh sk in case the client state somehow got out of sync.<br id=qzo4256>
+  <br id=qzo4257>
+  If c nor w decrypts correctly the server could return a specific response which triggers a fall-back to a SSL update protocol.<br id=qzo4258>
+  <br id=qzo4259>
+  The server need not use the same ss[x] for every c' it hands out. And different servers could use different ss[x] as long as all servers in the server pool know all ss[] in circulation. Note there is no real security benefit to doing this.<br id=qzo4260>
+  <br id=qzo4261>
+  An attacker could try to DoS the update servers by triggering the expensive RSAdecrypt for many requests in parallel. When under attack, the servers could throttle or reject requests that do not offer valid c and cp. Note validating c and cp requires knowledge of ss[].<br id=qzo4262>
+  <br id=qzo4263>
+  <font color=#ff9900 id=qzo4264><font color=#000000 id=qzo4265>Whenever a cookie (c or c') is sent over the wire, the sender includes it in the cryptographic proof along with it (cp or sp). An intermediary stuffing or removing a cookie on the wire will not achieve anything beyond failing of the proofs. The client will not store a cookie that the server did not intend to be associated with the shared secret.</font></font>
+</p>
+<p id=qzo4266>
+  <br id=qzo4269>
+</p>
+<p id=qzo4270>
+  <font color=#ff9900 id=qzo4271><font color=#000000 id=qzo4272>The hash of the request <i id=qzo4273>(req) </i>is carried through the cryptographic proofs. Results from requests for resource A cannot be mistaken for results for requests for resource B.</font></font>
+</p>
+<p id=qzo4274>
+  <br id=qzo4275>
+</p>
+<p id=qzo4276>
+  RSAdecrypt takes about 3 msec on a single 32-bit core. Less than half that on a 64-bit core in 64-bit mode. All other primitives (SYMdecrypt, SYMsign) take orders of magnitude less time. RSAencrypt happens on the client but is a lot less computationally intensive to start with. Probably less than 0.1 msec.
+</p>
+<p id=qzo4276>
+  <br>
+</p>
+<h3 id=qzo4280>
+  HTTP transport mapping<br id=qzo4281>
+</h3>
+We propose the following mapping of the protocol message parts to the HTTP transport. All values are to be WebSafeBase64Encoded.<br id=qzo4282>
+<br id=qzo4283>
+<ul id=qzo4284>
+  <li id=qzo4285>
+    w is URL parameter (e.g. /update?w=hhrk2hkjh23r2rkjhfdkjhas)
+  </li>
+  <li id=qzo4286>
+    c is sent as a regular cookie (e.g. Cookie: c=kjdlkajdla; Set-Cookie: c=kjasldkjalksdj)
+  </li>
+  <li id=qzo4287>
+    cp is sent as If-Match field (e.g. If-Match: "jksdflsjfl2h23t2")
+  </li>
+  <li id=qzo4288>
+    p is sent as ETag field (e.g. ETag: "lkajsdlkajflkjg2iljt2tlkjsdflj12341")
+  </li>
+  <li id=qzo4289>
+    content gets sent using the regular Content-Length header and HTTP message body.<br id=qzo4290>
+  </li>
+</ul>
+<br id=qzo4291>
+Additional HTTP request / response headers (Connection: Keep-Alive, ..) are allowed but not relevant.<br>
+<br>
+<h3 id=qzo4280>
+  HTTP transport mapping observations<br>
+</h3>
+<br id=qzo4293>
+Sending w as URL parameter defeats all caching nicely. Server responses should still carry no-cache headers to relieve pressure on caches but at least mis-configured caching is less likely to cause trouble.<br>
+<br id=qzo4294>
+Sending c as Cookie makes it clear to the observer this value identifies the client / session, as normal HTTP cookies do. No expiration or domain attributes are relevant for CUP.<br>
+<br id=qzo4295>
+If-Match contains a check value which the server uses to verify whether the client actually knows the key which is embedded in the cookie.<br>
+<br id=qzo4296>
+ETag uniquely identifies the content for given w and shared key. Not alien to its envisioned use.<br id=qzo4297>
+<br id=qzo4298>
+Other mappings are possible and possibly desirable if overloading semantics of existing HTTP headers is deemed to risky / confusing.<br id=qzo4300>
+<br id=qzo4301>
+We believe the Cookie/Set-Cookie and URL parameter path choices are at low risk of getting disturbed at the HTTP transport layer; If-Match and ETag are believed to be propagated as expected as well.<br id=qzo4302>
+<br id=qzo4303>
+Since we are in effect hashing the content, any bit-level tampering / altering of the content during transport will make the checks fail.<br>
+<br id=qzo4304>
+Content-Type: application/octet-stream or some Content-Encoding headers might be needed to stop meddling proxies from tampering and hence invalidating content.<br id=qzo4305>
+<br id=qzo4307>
+A User-Agent string indicating the CUP library version might be present as well; the public key version as encoded in w is most likely already unique to a CUP library version.<br id=qzo4308>
+<br>
+<h2 id=code_location>
+  Code Location
+</h2>
+Omaha's implementation of this protocol is consists of cup_request module, available <a href=http://code.google.com/p/omaha/source/browse/#svn/trunk/net id=en4. title=here>here</a>. From a design perspective, cup_request features a <a href=http://en.wikipedia.org/wiki/Decorator_pattern id=uqdz title="decorator design pattern">decorator design pattern</a>, that allows CUP capabilities to be added to a simple HTTP request.<br>
+<br>
+<h2 id=caveats>
+  Caveats
+</h2>
+<br id=qzo4416>
+<br id=qzo4417>
+<br id=qzo4418>
+<br id=qzo4419>
+<br id=qzo4420>
+<br id=qzo4421>
+<br id=qzo4422>
+<br id=qzo4423>
+<br id=qzo4424>
+<br id=qzo4425>
+<br id=qzo4426>
+<br id=qzo4427>
+<br id=qzo4428>
+<br id=qzo4429>
+<br id=qzo4430>
+<br id=qzo4431>
+<br id=qzo4432>
+<br id=qzo4433>
+<br id=qzo4434>
+<br id=qzo4435>
+<br id=qzo4436>
+<br id=qzo4437>
+<br id=qzo4438>
+<br id=qzo4439>
+<br id=qzo4440>
+<br>
+<br></body>
+</html>
