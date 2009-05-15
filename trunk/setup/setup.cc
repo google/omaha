@@ -2193,8 +2193,7 @@ HRESULT Setup::SetOemInstallState() {
 // updates or allow updates that should not be.
 HRESULT Setup::SetEulaRequiredState() {
   ASSERT1(MODE_INSTALL == mode_ ||
-          MODE_SELF_INSTALL == mode_ ||
-          MODE_REPAIR == mode_);
+          MODE_SELF_INSTALL == mode_);
   ASSERT1(MODE_INSTALL == mode_ || !args_->is_eula_required_set);
 
   if (IsElevationRequired()) {

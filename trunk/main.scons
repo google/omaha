@@ -159,7 +159,7 @@ DeclareBit('msvs', 'Building Visual Studio solution files')
 # Build official installers if --official_installers is on the command line.
 win_env.SetBitFromOption('official_installers', False)
 
-# Build official installers if --official_installers is on the command line.
+# Build as a build server if --build_server is on the command line.
 win_env.SetBitFromOption('build_server', False)
 
 # Build from pre-built binaries if --bin is on the command line.
@@ -592,7 +592,8 @@ _normal_dirs = [
     'plugins',
     ]
 
-_installers_dirs = [
+_official_installers_dirs = [
+    'enterprise',
     'installers',
     ]
 
@@ -612,7 +613,7 @@ _dirs_to_build = set()
 
 if win_env.Bit('official_installers'):
   # Only want to build very specific subdirs.
-  _dirs_to_build.update(_installers_dirs)
+  _dirs_to_build.update(_official_installers_dirs)
 elif win_env.Bit('bin'):
   # Only build 'bin' subdir.
   _dirs_to_build.update(_bin_dirs)

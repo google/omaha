@@ -1153,13 +1153,6 @@ TEST_F(SetupFutureVersionInstalledUserTest,
   ASSERT_SUCCEEDED(File::Remove(dll_path));
   ASSERT_FALSE(File::Exists(dll_path));
 
-  scoped_event ui_displayed_event;
-  VERIFY1(SUCCEEDED(goopdate_utils::CreateUniqueEventInEnvironment(
-      kUiDisplayedEventEnvironmentVariableName,
-      is_machine_,
-      address(ui_displayed_event))));
-  VERIFY1(::SetEvent(get(ui_displayed_event)));
-
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
             setup_->InstallSelfSilently());
   EXPECT_EQ(0, setup_->extra_code1());
@@ -1189,13 +1182,6 @@ TEST_F(SetupFutureVersionInstalledUserTest,
   CString dll_path = ConcatenatePath(future_version_path_, _T("goopdate.dll"));
   ASSERT_SUCCEEDED(File::Remove(dll_path));
   ASSERT_FALSE(File::Exists(dll_path));
-
-  scoped_event ui_displayed_event;
-  VERIFY1(SUCCEEDED(goopdate_utils::CreateUniqueEventInEnvironment(
-      kUiDisplayedEventEnvironmentVariableName,
-      is_machine_,
-      address(ui_displayed_event))));
-  VERIFY1(::SetEvent(get(ui_displayed_event)));
 
   EXPECT_SUCCEEDED(setup_->InstallSelfSilently());
   EXPECT_EQ(0, setup_->extra_code1());
@@ -1832,6 +1818,13 @@ TEST_F(SetupRegistryProtectedUserTest,
                                                   &self_update_error_code,
                                                   &self_update_extra_code1,
                                                   &self_update_version));
+  // Clean up HKLM, which isn't overridden.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE,
+                                       kRegValueSelfUpdateErrorCode));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE,
+                                       kRegValueSelfUpdateExtraCode1));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE,
+                                       kRegValueSelfUpdateVersion));
 }
 
 TEST_F(SetupOfflineInstallerTest, ValidOfflineInstaller) {

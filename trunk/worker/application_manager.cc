@@ -954,15 +954,20 @@ HRESULT AppManager::ReadProductDataFromUserOrMachineStore(
   return app_manager_machine.ReadProductDataFromStore(guid, product_data);
 }
 
+// Writes 0.0.0.1 to pv. This value avoids any special cases, such as initial
+// install rules, for 0.0.0.0, while being unlikely to be higher than the
+// product's actual current version.
 HRESULT AppManager::RegisterProduct(const GUID& product_guid,
                                     const CString& product_name) {
+  const TCHAR* const kRegisterProductVersion = _T("0.0.0.1");
+
   RegKey client_key;
   HRESULT hr = client_key.Create(GetClientKeyName(GUID_NULL, product_guid));
   if (FAILED(hr)) {
     return hr;
   }
 
-  hr = client_key.SetValue(kRegValueProductVersion, _T("0.0.0.1"));
+  hr = client_key.SetValue(kRegValueProductVersion, kRegisterProductVersion);
   if (FAILED(hr)) {
     return hr;
   }
