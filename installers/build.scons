@@ -217,7 +217,8 @@ if not env.Bit('official_installers'):
 
   dll_inputs = [
       '../installers/resource_only_dll.def',
-      dll_env.RES('../recovery/recovery_markup.rc')
+      dll_env.RES('recovery_markup.res',
+                  '$MAIN_DIR/recovery/recovery_markup.rc')
       ]
 
   dll_env.ComponentLibrary(_RECOVERY_MARKUP_DLL, dll_inputs)
