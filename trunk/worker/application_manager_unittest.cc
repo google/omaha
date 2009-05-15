@@ -202,7 +202,8 @@ class AppManagerTest : public testing::Test {
 
  protected:
   AppManagerTest()
-      : hive_override_key_name_(kRegistryHiveOverrideRoot) {}
+      : hive_override_key_name_(kRegistryHiveOverrideRoot),
+        guid1_(StringToGuid(kGuid1)) {}
 
   virtual void SetUp() {
     RegKey::DeleteKey(hive_override_key_name_);
@@ -231,7 +232,7 @@ class AppManagerTest : public testing::Test {
 
   void InitializeApplicationStateTest(bool is_machine) {
     // Create the test data.
-    AppData expected_data(StringToGuid(kGuid1), is_machine);
+    AppData expected_data(guid1_, is_machine);
     expected_data.set_version(_T("4.5.6.7"));
     expected_data.set_language(_T("de"));
     CreateAppRegistryState(expected_data);
@@ -239,7 +240,7 @@ class AppManagerTest : public testing::Test {
     // Create the job that contains the test data.
 
     CommandLineAppArgs extra;
-    extra.app_guid = StringToGuid(kGuid1);
+    extra.app_guid = guid1_;
     extra.app_name = _T("foo");
     extra.ap = _T("test ap");
     extra.tt_token = _T("test TT Token");
@@ -520,11 +521,12 @@ class AppManagerTest : public testing::Test {
   }
 
   CString hive_override_key_name_;
+  const GUID guid1_;
 };
 
 TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   CommandLineAppArgs extra1;
-  extra1.app_guid = StringToGuid(kGuid1);
+  extra1.app_guid = guid1_;
   extra1.app_name = _T("foo");
   extra1.needs_admin = false;
   extra1.ap = _T("Test ap");
@@ -562,7 +564,7 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   args.extra.apps.push_back(extra1);
   args.extra.apps.push_back(extra2);
 
-  AppData expected_data1(StringToGuid(kGuid1), false);
+  AppData expected_data1(guid1_, false);
   PopulateExpectedAppData1(&expected_data1);
   expected_data1.set_version(_T(""));  // Clear value.
   expected_data1.set_previous_version(_T(""));  // Clear value.
@@ -606,7 +608,7 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
 }
 
 TEST_F(AppManagerTest, WritePreInstallData_Machine) {
-  AppData app_data(StringToGuid(kGuid1), true);
+  AppData app_data(guid1_, true);
   ASSERT1(app_data.is_eula_accepted());
   WritePreInstallDataTest(app_data);
 
@@ -632,7 +634,7 @@ TEST_F(AppManagerTest, WritePreInstallData_Machine_IsOem) {
                                       static_cast<DWORD>(1)));
   }
 
-  AppData app_data(StringToGuid(kGuid1), true);
+  AppData app_data(guid1_, true);
   ASSERT1(app_data.is_eula_accepted());
   WritePreInstallDataTest(app_data);
 
@@ -665,7 +667,7 @@ TEST_F(AppManagerTest,
       ConfigManager::Instance()->machine_registry_update()));
   CreateClientStateMediumKey();
 
-  AppData app_data(StringToGuid(kGuid1), true);
+  AppData app_data(guid1_, true);
   ASSERT1(app_data.is_eula_accepted());
   WritePreInstallDataTest(app_data);
 
@@ -690,7 +692,7 @@ TEST_F(AppManagerTest,
                                     _T("usagestats"),
                                     static_cast<DWORD>(1)));
 
-  AppData app_data(StringToGuid(kGuid1), true);
+  AppData app_data(guid1_, true);
   WritePreInstallDataTest(app_data);
 
   EXPECT_FALSE(RegKey::HasValue(client_state_key_name, _T("usagestats")));
@@ -698,7 +700,7 @@ TEST_F(AppManagerTest,
 
 // Tests the EULA accepted case too.
 TEST_F(AppManagerTest, WritePreInstallData_User) {
-  AppData app_data(StringToGuid(kGuid1), false);
+  AppData app_data(guid1_, false);
   ASSERT1(app_data.is_eula_accepted());
   WritePreInstallDataTest(app_data);
 
@@ -710,7 +712,7 @@ TEST_F(AppManagerTest, WritePreInstallData_User) {
 
 TEST_F(AppManagerTest,
        WritePreInstallData_User_EulaNotAcceptedAppNotRegistered) {
-  AppData app_data(StringToGuid(kGuid1), false);
+  AppData app_data(guid1_, false);
   app_data.set_is_eula_accepted(false);
 
   WritePreInstallDataTest(app_data);
@@ -731,7 +733,7 @@ TEST_F(AppManagerTest,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
-  AppData app_data(StringToGuid(kGuid1), false);
+  AppData app_data(guid1_, false);
   app_data.set_is_eula_accepted(false);
 
   WritePreInstallDataTest(app_data);
@@ -748,7 +750,7 @@ TEST_F(AppManagerTest,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
-  AppData app_data(StringToGuid(kGuid1), false);
+  AppData app_data(guid1_, false);
   app_data.set_is_eula_accepted(true);
 
   WritePreInstallDataTest(app_data);
@@ -768,7 +770,7 @@ TEST_F(AppManagerTest,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(1)));
 
-  AppData app_data(StringToGuid(kGuid1), false);
+  AppData app_data(guid1_, false);
   app_data.set_is_eula_accepted(true);
 
   WritePreInstallDataTest(app_data);
@@ -788,7 +790,7 @@ TEST_F(AppManagerTest,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
 
-  AppData app_data(StringToGuid(kGuid1), false);
+  AppData app_data(guid1_, false);
   app_data.set_is_eula_accepted(true);
 
   WritePreInstallDataTest(app_data);
@@ -802,36 +804,33 @@ TEST_F(AppManagerTest,
 TEST_F(AppManagerTest, ReadProductDataFromStore_MachineNoAppTest) {
   ProductData product_data;
   AppManager app_manager(true);
-  ASSERT_FAILED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                     &product_data));
+  ASSERT_FAILED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_UserAppTest) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedAppData1(&expected_data);
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(false);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
   ValidateExpectedValues(expected_data, product_data.app_data());
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_MachineAppTest) {
-  AppData expected_data(StringToGuid(kGuid1), true);
+  AppData expected_data(guid1_, true);
   PopulateExpectedAppData1(&expected_data);
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(true);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
   ValidateExpectedValues(expected_data, product_data.app_data());
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_UserAppTest_EulaNotAccepted) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedAppData1(&expected_data);
   CreateAppRegistryState(expected_data);
 
@@ -842,13 +841,12 @@ TEST_F(AppManagerTest, ReadProductDataFromStore_UserAppTest_EulaNotAccepted) {
 
   AppManager app_manager(false);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
   ValidateExpectedValues(expected_data, product_data.app_data());
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_UserAppTest_EulaAccepted) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedAppData1(&expected_data);
   CreateAppRegistryState(expected_data);
 
@@ -859,14 +857,13 @@ TEST_F(AppManagerTest, ReadProductDataFromStore_UserAppTest_EulaAccepted) {
 
   AppManager app_manager(false);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
   ValidateExpectedValues(expected_data, product_data.app_data());
 }
 
 TEST_F(AppManagerTest,
        ReadProductDataFromStore_MachineAppTest_EulaNotAccepted) {
-  AppData expected_data(StringToGuid(kGuid1), true);
+  AppData expected_data(guid1_, true);
   PopulateExpectedAppData1(&expected_data);
   CreateAppRegistryState(expected_data);
 
@@ -877,14 +874,13 @@ TEST_F(AppManagerTest,
 
   AppManager app_manager(true);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
   ValidateExpectedValues(expected_data, product_data.app_data());
 }
 
 TEST_F(AppManagerTest,
        ReadProductDataFromStore_MachineAppTest_EulaAccepted) {
-  AppData expected_data(StringToGuid(kGuid1), true);
+  AppData expected_data(guid1_, true);
   PopulateExpectedAppData1(&expected_data);
   CreateAppRegistryState(expected_data);
 
@@ -895,13 +891,12 @@ TEST_F(AppManagerTest,
 
   AppManager app_manager(true);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
   ValidateExpectedValues(expected_data, product_data.app_data());
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_TwoUserAppTest) {
-  AppData expected_data1(StringToGuid(kGuid1), false);
+  AppData expected_data1(guid1_, false);
   PopulateExpectedAppData1(&expected_data1);
   CreateAppRegistryState(expected_data1);
 
@@ -911,8 +906,7 @@ TEST_F(AppManagerTest, ReadProductDataFromStore_TwoUserAppTest) {
 
   AppManager app_manager(false);
   ProductData data1;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &data1));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &data1));
   ValidateExpectedValues(expected_data1, data1.app_data());
 
   ProductData data2;
@@ -922,52 +916,48 @@ TEST_F(AppManagerTest, ReadProductDataFromStore_TwoUserAppTest) {
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_UserAppNoClientStateTest) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedAppData1(&expected_data);
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(false);
   ProductData data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &data));
   ValidateExpectedValues(expected_data, data.app_data());
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_UninstalledUserApp) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedUninstalledAppData(&expected_data);
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(false);
   ProductData data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &data));
   ValidateExpectedValues(expected_data, data.app_data());
 }
 
 TEST_F(AppManagerTest, ReadProductDataFromStore_UninstalledMachineApp) {
-  AppData expected_data(StringToGuid(kGuid1), true);
+  AppData expected_data(guid1_, true);
   PopulateExpectedUninstalledAppData(&expected_data);
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(true);
   ProductData data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &data));
   ValidateExpectedValues(expected_data, data.app_data());
 }
 
 TEST_F(AppManagerTest,
        ReadProductDataFromStore_UninstalledUserApp_EulaNotAccepted) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedUninstalledAppData(&expected_data);
   expected_data.set_is_eula_accepted(false);
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(false);
   ProductData data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &data));
   ValidateExpectedValues(expected_data, data.app_data());
 }
 
@@ -977,15 +967,14 @@ TEST_F(AppManagerTest,
 // after CreateAppRegistryState to prevent Client key from being created.
 TEST_F(AppManagerTest,
        ReadProductDataFromStore_UserClientStateExistsWithoutPvOrClientKey) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedUninstalledAppData(&expected_data);
   expected_data.set_previous_version(_T(""));
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(false);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
 
   expected_data.set_is_uninstalled(false);
   ValidateExpectedValues(expected_data, product_data.app_data());
@@ -993,15 +982,14 @@ TEST_F(AppManagerTest,
 
 TEST_F(AppManagerTest,
        ReadProductDataFromStore_MachineClientStateExistsWithoutPvOrClientKey) {
-  AppData expected_data(StringToGuid(kGuid1), true);
+  AppData expected_data(guid1_, true);
   PopulateExpectedUninstalledAppData(&expected_data);
   expected_data.set_previous_version(_T(""));
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(true);
   ProductData data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &data));
   expected_data.set_is_uninstalled(false);
   ValidateExpectedValues(expected_data, data.app_data());
 }
@@ -1009,7 +997,7 @@ TEST_F(AppManagerTest,
 // An empty pv value is the same as a populated one for uninstall checks.
 TEST_F(AppManagerTest,
        ReadProductDataFromStore_UserClientStateExistsWithEmptyPvNoClientKey) {
-  AppData expected_data(StringToGuid(kGuid1), false);
+  AppData expected_data(guid1_, false);
   PopulateExpectedUninstalledAppData(&expected_data);
   expected_data.set_previous_version(_T(""));
   CreateAppRegistryState(expected_data);
@@ -1024,8 +1012,7 @@ TEST_F(AppManagerTest,
 
   AppManager app_manager(false);
   ProductData product_data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &product_data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &product_data));
 
   expected_data.set_is_uninstalled(true);
   ValidateExpectedValues(expected_data, product_data.app_data());
@@ -1065,7 +1052,7 @@ TEST_F(AppManagerTest, UpdateUpdateAvailableStats_NoExistingStats) {
   const time64 before_time_in_100ns(GetCurrent100NSTime());
 
   AppManager app_manager(false);
-  app_manager.UpdateUpdateAvailableStats(GUID_NULL, StringToGuid(kGuid1));
+  app_manager.UpdateUpdateAvailableStats(GUID_NULL, guid1_);
 
   const time64 after_time_in_100ns(GetCurrent100NSTime());
 
@@ -1095,7 +1082,7 @@ TEST_F(AppManagerTest, UpdateUpdateAvailableStats_WithExistingStats) {
                                     static_cast<DWORD64>(9876543210)));
 
   AppManager app_manager(false);
-  app_manager.UpdateUpdateAvailableStats(GUID_NULL, StringToGuid(kGuid1));
+  app_manager.UpdateUpdateAvailableStats(GUID_NULL, guid1_);
 
   DWORD update_available_count(0);
   EXPECT_SUCCEEDED(RegKey::GetValue(kGuid1ClientStateKeyPathUser,
@@ -1112,7 +1099,7 @@ TEST_F(AppManagerTest, UpdateUpdateAvailableStats_WithExistingStats) {
 
 TEST_F(AppManagerTest, ClearUpdateAvailableStats_KeyNotPresent) {
   AppManager app_manager(false);
-  ClearUpdateAvailableStats(GUID_NULL, StringToGuid(kGuid1), &app_manager);
+  ClearUpdateAvailableStats(GUID_NULL, guid1_, &app_manager);
 }
 
 TEST_F(AppManagerTest, ClearUpdateAvailableStats_DataPresent) {
@@ -1124,7 +1111,7 @@ TEST_F(AppManagerTest, ClearUpdateAvailableStats_DataPresent) {
                                     static_cast<DWORD64>(9876543210)));
 
   AppManager app_manager(false);
-  ClearUpdateAvailableStats(GUID_NULL, StringToGuid(kGuid1), &app_manager);
+  ClearUpdateAvailableStats(GUID_NULL, guid1_, &app_manager);
 
   EXPECT_TRUE(RegKey::HasKey(kGuid1ClientStateKeyPathUser));
   EXPECT_FALSE(RegKey::HasValue(kGuid1ClientStateKeyPathUser,
@@ -1140,7 +1127,7 @@ TEST_F(AppManagerTest, ReadUpdateAvailableStats_DataNotPresent) {
   DWORD64 time_since_first_response_ms(1);
   AppManager app_manager(false);
   app_manager.ReadUpdateAvailableStats(GUID_NULL,
-                                       StringToGuid(kGuid1),
+                                       guid1_,
                                        &update_responses,
                                        &time_since_first_response_ms);
 
@@ -1162,7 +1149,7 @@ TEST_F(AppManagerTest, ReadUpdateAvailableStats_DataPresent) {
   DWORD64 time_since_first_response_ms(0);
   AppManager app_manager(false);
   app_manager.ReadUpdateAvailableStats(GUID_NULL,
-                                       StringToGuid(kGuid1),
+                                       guid1_,
                                        &update_responses,
                                        &time_since_first_response_ms);
 
@@ -1174,7 +1161,7 @@ TEST_F(AppManagerTest, ReadUpdateAvailableStats_DataPresent) {
 // TODO(omaha): Add *UpdateAvailableStats tests with components when
 // component design is finalized and implemented
 
-TEST_F(AppManagerTest, RecordSuccessfulInstall_Install) {
+TEST_F(AppManagerTest, RecordSuccessfulInstall_Install_Online) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kGuid1ClientStateKeyPathUser,
                                     _T("UpdateAvailableCount"),
                                     static_cast<DWORD>(123456)));
@@ -1183,8 +1170,36 @@ TEST_F(AppManagerTest, RecordSuccessfulInstall_Install) {
                                     static_cast<DWORD64>(9876543210)));
 
   AppManager app_manager(false);
-  app_manager.RecordSuccessfulInstall(GUID_NULL, StringToGuid(kGuid1), false);
+  app_manager.RecordSuccessfulInstall(GUID_NULL, guid1_, false, false);
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+
+  // Verify ClearUpdateAvailableStats() was called.
+  EXPECT_TRUE(RegKey::HasKey(kGuid1ClientStateKeyPathUser));
+  EXPECT_FALSE(RegKey::HasValue(kGuid1ClientStateKeyPathUser,
+                                _T("UpdateAvailableCount")));
+  EXPECT_FALSE(RegKey::HasValue(kGuid1ClientStateKeyPathUser,
+                                _T("UpdateAvailableSince")));
+
+  // Verify update check value is written but update value is not.
+  const uint32 last_check_sec = GetDwordValue(kGuid1ClientStateKeyPathUser,
+                                              kRegValueLastSuccessfulCheckSec);
+  EXPECT_GE(now, last_check_sec);
+  EXPECT_GE(static_cast<uint32>(200), now - last_check_sec);
+
+  EXPECT_FALSE(RegKey::HasValue(kGuid1ClientStateKeyPathUser,
+                                kRegValueLastUpdateTimeSec));
+}
+
+TEST_F(AppManagerTest, RecordSuccessfulInstall_Install_Offline) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kGuid1ClientStateKeyPathUser,
+                                    _T("UpdateAvailableCount"),
+                                    static_cast<DWORD>(123456)));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kGuid1ClientStateKeyPathUser,
+                                    _T("UpdateAvailableSince"),
+                                    static_cast<DWORD64>(9876543210)));
+
+  AppManager app_manager(false);
+  app_manager.RecordSuccessfulInstall(GUID_NULL, guid1_, false, true);
 
   // Verify ClearUpdateAvailableStats() was called.
   EXPECT_TRUE(RegKey::HasKey(kGuid1ClientStateKeyPathUser));
@@ -1216,7 +1231,7 @@ TEST_F(AppManagerTest, RecordSuccessfulInstall_Update_ExistingTimes) {
                                     kExistingUpdateValues));
 
   AppManager app_manager(false);
-  app_manager.RecordSuccessfulInstall(GUID_NULL, StringToGuid(kGuid1), true);
+  app_manager.RecordSuccessfulInstall(GUID_NULL, guid1_, true, false);
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   // Verify ClearUpdateAvailableStats() was called.
@@ -1242,7 +1257,7 @@ TEST_F(AppManagerTest, RecordSuccessfulInstall_Update_ExistingTimes) {
 
 TEST_F(AppManagerTest, RecordSuccessfulInstall_Update_StateKeyDoesNotExist) {
   AppManager app_manager(false);
-  app_manager.RecordSuccessfulInstall(GUID_NULL, StringToGuid(kGuid1), true);
+  app_manager.RecordSuccessfulInstall(GUID_NULL, guid1_, true, false);
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   // Verify update values updated.
@@ -1264,7 +1279,7 @@ TEST_F(AppManagerTest, RecordSuccessfulUpdateCheck_ExistingTime) {
                                     kExistingUpdateValue));
 
   AppManager app_manager(false);
-  app_manager.RecordSuccessfulUpdateCheck(GUID_NULL, StringToGuid(kGuid1));
+  app_manager.RecordSuccessfulUpdateCheck(GUID_NULL, guid1_);
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   const uint32 last_check_sec = GetDwordValue(kGuid1ClientStateKeyPathUser,
@@ -1279,7 +1294,7 @@ TEST_F(AppManagerTest, RecordSuccessfulUpdateCheck_ExistingTime) {
 
 TEST_F(AppManagerTest, RecordSuccessfulUpdateCheck_StateKeyDoesNotExist) {
   AppManager app_manager(false);
-  app_manager.RecordSuccessfulUpdateCheck(GUID_NULL, StringToGuid(kGuid1));
+  app_manager.RecordSuccessfulUpdateCheck(GUID_NULL, guid1_);
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   const uint32 last_check_sec = GetDwordValue(kGuid1ClientStateKeyPathUser,
@@ -1292,14 +1307,13 @@ TEST_F(AppManagerTest, RecordSuccessfulUpdateCheck_StateKeyDoesNotExist) {
 }
 
 TEST_F(AppManagerTest, RemoveClientState_Uninstalled) {
-  AppData expected_data(StringToGuid(kGuid1), true);
+  AppData expected_data(guid1_, true);
   PopulateExpectedUninstalledAppData(&expected_data);
   CreateAppRegistryState(expected_data);
 
   AppManager app_manager(true);
   ProductData data;
-  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(StringToGuid(kGuid1),
-                                                        &data));
+  ASSERT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_, &data));
   ASSERT_SUCCEEDED(app_manager.RemoveClientState(data.app_data()));
   ASSERT_FALSE(IsClientStateKeyPresent(expected_data));
 }

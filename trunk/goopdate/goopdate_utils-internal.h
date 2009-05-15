@@ -23,15 +23,16 @@ namespace goopdate_utils {
 namespace internal {
 
 // Installs a scheduled task. The task will run as either as SYSTEM or the
-// current user. The task will be triggered at each user logon, and/or when
-// the task scheduler decides that the system is idle, and at fixed intervals.
+// current user. The task will be triggered at each user logon, and/or
+// fixed intervals.
 HRESULT InstallScheduledTask(const TCHAR* task_name,
                              const TCHAR* task_path,
                              const TCHAR* task_parameters,
                              const TCHAR* task_comment,
                              bool is_machine,
                              bool create_logon_trigger,
-                             bool create_periodic_trigger);
+                             bool create_daily_trigger,
+                             bool create_hourly_trigger);
 
 // Deletes a scheduled task.
 HRESULT UninstallScheduledTask(const TCHAR* task_name);

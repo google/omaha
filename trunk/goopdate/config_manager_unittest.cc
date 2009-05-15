@@ -97,6 +97,7 @@ class ConfigManagerTest : public ConfigManagerNoOverrideTest {
 
   void CanCollectStatsHelper(bool is_machine);
   void CanCollectStatsIgnoresOppositeHiveHelper(bool is_machine);
+  HRESULT SetFirstInstallTime(bool is_machine, DWORD time);
 
   CString hive_override_key_name_;
 };
@@ -157,6 +158,12 @@ void ConfigManagerTest::CanCollectStatsIgnoresOppositeHiveHelper(
                                     val));
   EXPECT_TRUE(cm_->CanCollectStats(is_machine));
   EXPECT_FALSE(cm_->CanCollectStats(!is_machine));
+}
+
+HRESULT ConfigManagerTest::SetFirstInstallTime(bool is_machine, DWORD time) {
+  return RegKey::SetValue(cm_->registry_client_state_goopdate(is_machine),
+                          kRegValueInstallTimeSec,
+                          time);
 }
 
 TEST_F(ConfigManagerNoOverrideTest, RegistryKeys) {
@@ -1811,6 +1818,27 @@ TEST_F(ConfigManagerTest, GetNetConfig) {
 
   EXPECT_HRESULT_SUCCEEDED(cm_->GetNetConfig(&actual_value));
   EXPECT_STREQ(expected_value, actual_value);
+}
+
+TEST_F(ConfigManagerTest, GetFirstInstallTime) {
+  DWORD time = 500;
+  EXPECT_SUCCEEDED(SetFirstInstallTime(false, time));
+  EXPECT_EQ(time, ConfigManager::GetFirstInstallTime(false));
+}
+
+TEST_F(ConfigManagerTest, Is24HoursSinceFirstInstall) {
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  const int k12HourPeriodSec = 12 * 60 * 60;
+  const int k48HourPeriodSec = 48 * 60 * 60;
+
+  const uint32 first_install_12 = now - k12HourPeriodSec;
+  const uint32 first_install_48 = now - k48HourPeriodSec;
+
+  EXPECT_SUCCEEDED(SetFirstInstallTime(false, first_install_12));
+  EXPECT_FALSE(ConfigManager::Is24HoursSinceFirstInstall(false));
+
+  EXPECT_SUCCEEDED(SetFirstInstallTime(false, first_install_48));
+  EXPECT_TRUE(ConfigManager::Is24HoursSinceFirstInstall(false));
 }
 
 }  // namespace omaha

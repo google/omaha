@@ -260,6 +260,7 @@ HRESULT CommandParsingSimple::SplitExeAndArgs(const TCHAR* cmd_line,
 
   RET_IF_FAILED(cmd_parsing_simple.ParseSimple(cmd_line));
   RET_IF_FAILED(cmd_parsing_simple.GetAt(0, exe));
+  exe->Trim();
   RET_IF_FAILED(cmd_parsing_simple.RemoveAt(0));
   return (cmd_parsing_simple.ToString(args));
 }
@@ -275,6 +276,7 @@ HRESULT CommandParsingSimple::SplitExeAndArgsGuess(const TCHAR* cmd_line,
     // Optimization for the single executable case.
     // Fill the [out] parameters and return.
     *exe = cmd_line;
+    exe->Trim();
     args->Empty();
     return S_OK;
   }
@@ -283,6 +285,9 @@ HRESULT CommandParsingSimple::SplitExeAndArgsGuess(const TCHAR* cmd_line,
   // Check if the command line is properly enclosed, or that it does not have
   // spaces
   if (command_line.GetAt(0) != _T('"') && command_line.Find(_T(' ')) != -1) {
+    // File::Exists() does not handle leading spaces so remove it.
+    command_line.Trim();
+
     // If not, need to find the executable, and if valid, enclose it in
     // double quotes
     const TCHAR* index_dot_exe = stristrW(command_line.GetString(), _T(".EXE"));

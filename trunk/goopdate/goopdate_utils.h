@@ -230,6 +230,8 @@ HRESULT UninstallGoopdateTasks(bool is_machine);
 HRESULT UninstallLegacyGoopdateTasks(bool is_machine);
 HRESULT StartGoopdateTaskCore(bool is_machine);
 bool IsInstalledGoopdateTaskUA(bool is_machine);
+bool IsDisabledGoopdateTaskUA(bool is_machine);
+HRESULT GetExitCodeGoopdateTaskUA(bool is_machine);
 
 // Gets the specified value from the registry for the application.
 HRESULT GetClientsStringValueFromRegistry(bool is_machine,

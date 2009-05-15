@@ -341,7 +341,7 @@ void EnclosePath(CString* path) {
 
   bool starts_with_quote = (_T('"') == path->GetAt(0));
   bool ends_with_quote = (_T('"') == path->GetAt(path->GetLength() - 1));
-  ASSERT1(starts_with_quote == ends_with_quote);
+  ASSERT(starts_with_quote == ends_with_quote, (_T("%s"), path->GetString()));
   bool is_enclosed = starts_with_quote && ends_with_quote;
   if (is_enclosed) {
     return;

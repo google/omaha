@@ -15,7 +15,9 @@
 
 // This unit test is hardcoded to run against production servers only.
 
+#include <iostream>
 #include <vector>
+#include "base/scoped_ptr.h"
 #include "omaha/common/constants.h"
 #include "omaha/common/vistautil.h"
 #include "omaha/net/browser_request.h"
@@ -58,22 +60,11 @@ class CupRequestTest : public testing::Test {
     network_config.Clear();
   }
 
-  virtual void SetUp() {}
-
-  virtual void TearDown() {
-    // After each test run we should have some {sk, c} persisted in the
-    // registry. The CUP credentials are written back when the CUP request
-    // that has created them is destroyed.
-    CupCredentials cup_creds;
-    NetworkConfig& network_config(NetworkConfig::Instance());
-    EXPECT_HRESULT_SUCCEEDED(network_config.GetCupCredentials(&cup_creds));
-  }
-
   void DoRequest(HttpRequestInterface* contained_request,
                  const CString& url,
                  const uint8* request_buffer,
                  size_t request_buffer_lenght) {
-    CupRequest http_request(contained_request);
+    scoped_ptr<CupRequest> http_request(new CupRequest(contained_request));
 
     // This will use Firefox or direct connection if FF is not installed.
     NetworkConfig& network_config(NetworkConfig::Instance());
@@ -85,30 +76,42 @@ class CupRequestTest : public testing::Test {
     network_config.SetCupCredentials(NULL);
 
     HINTERNET handle = NetworkConfig::Instance().session().session_handle;
-    http_request.set_session_handle(handle);
-    http_request.set_network_configuration(network_configurations[0]);
-    http_request.set_url(url);
+    http_request->set_session_handle(handle);
+    http_request->set_network_configuration(network_configurations[0]);
+    http_request->set_url(url);
     if (request_buffer) {
-      http_request.set_request_buffer(request_buffer, request_buffer_lenght);
+      http_request->set_request_buffer(request_buffer, request_buffer_lenght);
     }
 
     // First request goes with a fresh set of client credentials.
-    EXPECT_HRESULT_SUCCEEDED(http_request.Send());
-    EXPECT_EQ(http_request.GetHttpStatusCode(), HTTP_STATUS_OK);
-    std::vector<uint8> response(http_request.GetResponse());
+    EXPECT_HRESULT_SUCCEEDED(http_request->Send());
+    EXPECT_EQ(http_request->GetHttpStatusCode(), HTTP_STATUS_OK);
+    std::vector<uint8> response(http_request->GetResponse());
 
     // Second request goes with cached client credentials.
-    EXPECT_HRESULT_SUCCEEDED(http_request.Send());
-    EXPECT_EQ(http_request.GetHttpStatusCode(), HTTP_STATUS_OK);
-    response = http_request.GetResponse();
+    EXPECT_HRESULT_SUCCEEDED(http_request->Send());
+    EXPECT_EQ(http_request->GetHttpStatusCode(), HTTP_STATUS_OK);
+    response = http_request->GetResponse();
 
     // Check the request has a user agent.
     CString user_agent;
-    http_request.QueryHeadersString(
+    http_request->QueryHeadersString(
       WINHTTP_QUERY_FLAG_REQUEST_HEADERS | WINHTTP_QUERY_USER_AGENT,
       WINHTTP_HEADER_NAME_BY_INDEX,
       &user_agent);
-    EXPECT_STREQ(http_request.user_agent(), user_agent);
+    EXPECT_STREQ(http_request->user_agent(), user_agent);
+
+    // After each test run we should have some {sk, c} persisted in the
+    // registry. The CUP credentials are written back when the CUP request
+    // that has created them is destroyed.
+    http_request.reset();
+    CupCredentials cup_creds;
+    EXPECT_HRESULT_SUCCEEDED(network_config.GetCupCredentials(&cup_creds));
+    EXPECT_FALSE(cup_creds.sk.empty());
+    EXPECT_FALSE(cup_creds.c.IsEmpty());
+
+    network_config.SetCupCredentials(NULL);
+    EXPECT_HRESULT_FAILED(network_config.GetCupCredentials(&cup_creds));
   }
 
   bool are_browser_objects_available;
@@ -128,6 +131,9 @@ TEST_F(CupRequestTest, GetBrowserRequest) {
   if (are_browser_objects_available) {
     DoRequest(new BrowserRequest, kGetUrl, NULL, 0);
     DoRequest(new SimpleRequest, kGetUrlNoResponseBody, NULL, 0);
+  } else {
+    std::wcout << "\tTest did not run because no browser object was available"
+               << std::endl;
   }
 }
 
@@ -145,6 +151,9 @@ TEST_F(CupRequestTest, PostBrowserRequest) {
   if (are_browser_objects_available) {
     DoRequest(new BrowserRequest, kPostUrl,
               kRequestBuffer, arraysize(kRequestBuffer) - 1);
+  } else {
+    std::wcout << "\tTest did not run because no browser object was available"
+               << std::endl;
   }
 }
 

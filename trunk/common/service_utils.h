@@ -128,6 +128,16 @@ class ServiceInstall {
   DISALLOW_IMPLICIT_CONSTRUCTORS(ServiceInstall);
 };
 
+// Service utility functions for querying current state, and eventually more.
+class ServiceUtils {
+ public:
+  static bool IsServiceRunning(const TCHAR* service_name);
+  static bool IsServiceDisabled(const TCHAR* service_name);
+
+ private:
+  DISALLOW_IMPLICIT_CONSTRUCTORS(ServiceUtils);
+};
+
 }  // namespace omaha
 
 #endif  // OMAHA_COMMON_SERVICE_UTILS_H__

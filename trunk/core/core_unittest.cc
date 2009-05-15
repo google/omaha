@@ -18,9 +18,15 @@
 #include "omaha/common/error.h"
 #include "omaha/common/scoped_any.h"
 #include "omaha/common/thread.h"
+#include "omaha/common/time.h"
 #include "omaha/common/utils.h"
 #include "omaha/core/core.h"
+#include "omaha/goopdate/config_manager.h"
+#include "omaha/goopdate/const_goopdate.h"
+#include "omaha/goopdate/goopdate_utils.h"
+#include "omaha/setup/setup_service.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/worker/application_manager.h"
 
 namespace omaha {
 
@@ -99,6 +105,88 @@ TEST_F(CoreTest, Shutdown) {
     thread.Terminate(-1);
   }
   EXPECT_HRESULT_SUCCEEDED(ResetShutdownEvent());
+}
+
+class CoreUtilsTest : public testing::Test {
+ public:
+  CoreUtilsTest() : is_machine_(vista_util::IsUserAdmin()) {}
+
+  virtual void SetUp() {
+    core_.is_system_ = is_machine_;
+  }
+
+  virtual void TearDown() {
+  }
+
+  bool AreScheduledTasksHealthy() {
+    return core_.AreScheduledTasksHealthy();
+  }
+
+  bool IsServiceHealthy() {
+    return core_.IsServiceHealthy();
+  }
+
+  bool IsCheckingForUpdates() {
+    return core_.IsCheckingForUpdates();
+  }
+
+  static HRESULT DoInstallService(const TCHAR* service_cmd_line,
+                                  const TCHAR* desc) {
+    return SetupService::DoInstallService(service_cmd_line, desc);
+  }
+
+  static HRESULT DeleteServices() {
+    return SetupService::DeleteServices();
+  }
+
+  Core core_;
+  bool is_machine_;
+};
+
+TEST_F(CoreUtilsTest, AreScheduledTasksHealthy) {
+  EXPECT_SUCCEEDED(goopdate_utils::UninstallGoopdateTasks(is_machine_));
+  EXPECT_FALSE(AreScheduledTasksHealthy());
+
+  CString task_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
+                                      _T("LongRunningSilent.exe"));
+  EXPECT_SUCCEEDED(goopdate_utils::InstallGoopdateTasks(task_path,
+                                                        is_machine_));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  const int k12HourPeriodSec = 12 * 60 * 60;
+  const DWORD first_install_12 = now - k12HourPeriodSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(
+      ConfigManager::Instance()->registry_client_state_goopdate(is_machine_),
+      kRegValueInstallTimeSec,
+      first_install_12));
+  EXPECT_TRUE(AreScheduledTasksHealthy());
+
+  EXPECT_SUCCEEDED(goopdate_utils::UninstallGoopdateTasks(is_machine_));
+}
+
+TEST_F(CoreUtilsTest, IsServiceHealthy) {
+  if (!is_machine_) {
+    EXPECT_TRUE(IsServiceHealthy());
+    return;
+  }
+
+  EXPECT_SUCCEEDED(DeleteServices());
+  EXPECT_FALSE(IsServiceHealthy());
+
+  CString service_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
+                                         _T("LongRunningSilent.exe"));
+  EXPECT_SUCCEEDED(DoInstallService(service_path, _T(" ")));
+  EXPECT_TRUE(IsServiceHealthy());
+
+  EXPECT_SUCCEEDED(DeleteServices());
+}
+
+TEST_F(CoreUtilsTest, IsCheckingForUpdates) {
+  ConfigManager::Instance()->SetLastCheckedTime(is_machine_, 0);
+  EXPECT_FALSE(IsCheckingForUpdates());
+
+  AppManager app_manager(is_machine_);
+  EXPECT_SUCCEEDED(app_manager.UpdateLastChecked());
+  EXPECT_TRUE(IsCheckingForUpdates());
 }
 
 }  // namespace omaha

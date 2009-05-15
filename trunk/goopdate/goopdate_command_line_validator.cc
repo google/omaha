@@ -167,8 +167,10 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   cmd_line.Format(_T("/%s /%s repairfile"), kCmdLineRecover, kCmdLineMachine);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnRecoverMachine);
 
-  // gu.exe /registerproduct "extraargs"
-  cmd_line.Format(_T("/%s extraargs"), kCmdLineRegisterProduct);
+  // gu.exe /registerproduct "extraargs" [/installsource source
+  cmd_line.Format(_T("/%s extraargs [/%s source"),
+                  kCmdLineRegisterProduct,
+                  kCmdLineInstallSource);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnRegisterProduct);
 
   // gu.exe /unregisterproduct "extraargs"
@@ -515,6 +517,9 @@ HRESULT GoopdateCommandLineValidator::OnRecoverMachine() {
 
 HRESULT GoopdateCommandLineValidator::OnRegisterProduct() {
   args_->mode = COMMANDLINE_MODE_REGISTER_PRODUCT;
+  parser_->GetSwitchArgumentValue(kCmdLineInstallSource,
+                                  0,
+                                  &(args_->install_source));
   return GetExtraAndAppArgs(kCmdLineRegisterProduct);
 }
 

@@ -438,9 +438,6 @@ void WorkerJob::NotifyCompleted(JobCompletionStatus status,
 HRESULT WorkerJob::DoUpdateCheck(const ProductDataVector& products) {
   CORE_LOG(L2, (_T("[WorkerJob::DoUpdateCheck]")));
 
-  ASSERT(!ConfigManager::Instance()->IsOemInstalling(is_machine_),
-         (_T("Should not be doing an update check in OEM mode.")));
-
   if (!ConfigManager::Instance()->CanUseNetwork(is_machine_)) {
     CORE_LOG(L1, (_T("[Update check failed because network use prohibited]")));
     return GOOPDATE_E_CANNOT_USE_NETWORK;

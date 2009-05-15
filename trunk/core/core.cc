@@ -20,6 +20,7 @@
 // be running.
 
 #include "omaha/core/core.h"
+#include <lmsname.h>
 #include <atlsecurity.h>
 #include <algorithm>
 #include <map>
@@ -34,6 +35,7 @@
 #include "omaha/common/path.h"
 #include "omaha/common/reactor.h"
 #include "omaha/common/reg_key.h"
+#include "omaha/common/service_utils.h"
 #include "omaha/common/shutdown_handler.h"
 #include "omaha/common/system.h"
 #include "omaha/common/time.h"
@@ -77,6 +79,105 @@ HRESULT Core::Main(bool is_system, bool is_crash_handler_enabled) {
 
   return S_OK;
 }
+
+bool Core::AreScheduledTasksHealthy() {
+  if (!ServiceUtils::IsServiceRunning(SERVICE_SCHEDULE)) {
+    ++metric_core_run_task_scheduler_not_running;
+    CORE_LOG(LE, (_T("[Task Scheduler Service is not running]")));
+    return false;
+  }
+
+  if (!goopdate_utils::IsInstalledGoopdateTaskUA(is_system_)) {
+    ++metric_core_run_scheduled_task_missing;
+    CORE_LOG(LE, (_T("[UA Task not installed]")));
+    return false;
+  }
+
+  if (goopdate_utils::IsDisabledGoopdateTaskUA(is_system_)) {
+    ++metric_core_run_scheduled_task_disabled;
+    CORE_LOG(LE, (_T("[UA Task disabled]")));
+    return false;
+  }
+
+  HRESULT ua_task_last_exit_code =
+      goopdate_utils::GetExitCodeGoopdateTaskUA(is_system_);
+
+  if (ua_task_last_exit_code == SCHED_S_TASK_HAS_NOT_RUN &&
+      !ConfigManager::Is24HoursSinceFirstInstall(is_system_)) {
+    // Not 24 hours yet since first install. Let us give the UA task the benefit
+    // of the doubt, and assume all is well for right now.
+    ua_task_last_exit_code = S_OK;
+  }
+
+  metric_core_run_scheduled_task_exit_code = ua_task_last_exit_code;
+
+  if (S_OK != ua_task_last_exit_code) {
+    CORE_LOG(LE, (_T("[UA Task exit code][0x%x]"), ua_task_last_exit_code));
+    return false;
+  }
+
+  return true;
+}
+
+bool Core::IsServiceHealthy() {
+  if (!is_system_) {
+    return true;
+  }
+
+  if (!goopdate_utils::IsServiceInstalled()) {
+    ++metric_core_run_service_missing;
+    CORE_LOG(LE, (_T("[GoogleUpdate Service is not installed]")));
+    return false;
+  }
+
+  if (ServiceUtils::IsServiceDisabled(
+      ConfigManager::GetCurrentServiceName())) {
+    ++metric_core_run_service_disabled;
+    CORE_LOG(LE, (_T("[GoogleUpdate Service is disabled]")));
+    return false;
+  }
+
+  return true;
+}
+
+bool Core::IsCheckingForUpdates() {
+  ConfigManager* cm = ConfigManager::Instance();
+  const int k14DaysSec = 14 * 24 * 60 * 60;
+
+  if (cm->GetTimeSinceLastCheckedSec(is_system_) >= k14DaysSec) {
+    ++metric_core_run_not_checking_for_updates;
+    CORE_LOG(LE, (_T("[LastChecked older than 14 days]")));
+    return false;
+  }
+
+  return true;
+}
+
+// The Core will run all the time under the following conditions:
+//
+// * the task scheduler is not running, or
+// * the UA task is not installed, or
+// * the UA task is disabled, or
+// * the last exit code for the UA task is non-zero, or
+// * LastChecked time is older than 14 days.
+//
+// Under these conditions, Omaha uses the built-in scheduler hosted by the core
+// and it keeps the core running.
+//
+// In addition, for the machine GoogleUpdate, the Core will run all the time if
+// the service is not installed, or is disabled. In this case, Omaha uses the
+// elevator interface hosted by the core, and this keeps the core running.
+bool Core::ShouldRunForever() {
+  // The methods are being called individually to enable metrics capture.
+  bool are_scheduled_tasks_healthy(AreScheduledTasksHealthy());
+  bool is_service_healthy(IsServiceHealthy());
+  bool is_checking_for_updates(IsCheckingForUpdates());
+
+  return !are_scheduled_tasks_healthy ||
+         !is_service_healthy ||
+         !is_checking_for_updates;
+}
+
 
 HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   main_thread_id_ = ::GetCurrentThreadId();
@@ -126,22 +227,8 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
     }
   }
 
-  // The scheduled task will start the Update Worker at intervals. If the task
-  // is not installed, then Omaha uses the built-in scheduler hosted by the core
-  // and it keeps the core running. In addition, for the machine GoogleUpdate,
-  // if the service is not installed, then Omaha uses the elevator interface
-  // hosted by the core, and this keeps the core running.
-  if (goopdate_utils::IsInstalledGoopdateTaskUA(is_system_)) {
-    if (!is_system_) {
-      return S_OK;
-    }
-
-    if (goopdate_utils::IsServiceInstalled()) {
-      return S_OK;
-    }
-    ++metric_core_run_service_missing;
-  } else {
-    ++metric_core_run_scheduled_task_missing;
+  if (!ShouldRunForever()) {
+    return S_OK;
   }
 
   // Force the main thread to create a message queue so any future WM_QUIT

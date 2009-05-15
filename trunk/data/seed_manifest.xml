@@ -6,4 +6,5 @@
 <install appguid="{D6B08267-B440-4c85-9F79-E195E80D9940}" needsadmin="false" appname="Test App" lang="en-US" browser="2"/>
 <install appguid="{D6B08267-B440-4c85-9F79-E195E80D9941}" needsadmin="false" appname="Test App" lang="en-US" browser="3"/>
 <install appguid="{D6B08267-B440-4c85-9F79-E195E80D9942}" needsadmin="false" appname="Test App" lang="en-US" browser="4"/>
+<install appguid="{D6B08267-B440-4c85-9F79-E195E80D9943}" needsadmin="false" appname="Test App" lang="en-US" browser="5"/>
 </gupdate>

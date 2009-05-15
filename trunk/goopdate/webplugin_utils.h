@@ -27,11 +27,6 @@ namespace omaha {
 
 namespace webplugin_utils {
 
-// Calls google.com backend to verify the site that the web plugin was
-// called from and verifies command line parameters.
-HRESULT VerifyParamsViaWebService(CString webplugin_check_url,
-                                  const CommandLineArgs& args);
-
 // Verifies that the resource DLL we're going to load within googleupdate.exe is
 // available and loadable.
 HRESULT VerifyResourceLanguage(const CString& webplugin_args);
@@ -50,15 +45,6 @@ HRESULT BuildOneClickRequestString(const CommandLineArgs& args,
 // Builds up the command line arguments to re-launch google_update.exe
 // when called with /pi.
 HRESULT BuildOneClickWorkerArgs(const CommandLineArgs& args, CString* args_out);
-
-// Parses the response from the OneClick check web service.
-// Returns S_OK if we get a status="pass" and url_domain_requested equals the
-// domain in the response_xml.
-// Returns GOOPDATE_E_ONECLICK_HOSTCHECK_FAILED if status="fail" or
-// url_domain_requested doesn't match the domain in the response xml.
-// Returns E_INVALIDARG on parsing errors.
-HRESULT ProcessOneClickResponseXml(const CString& url_domain_requested,
-                                   CString response_xml);
 
 }  // namespace webplugin_utils
 

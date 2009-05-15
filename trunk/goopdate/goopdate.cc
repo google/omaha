@@ -109,10 +109,10 @@
 #include "omaha/service/service_main.h"
 #include "omaha/setup/setup.h"
 #include "omaha/setup/setup_service.h"
+#include "omaha/worker/app_request_data.h"
 #include "omaha/worker/application_data.h"
 #include "omaha/worker/application_manager.h"
 #include "omaha/worker/ping.h"
-#include "omaha/worker/ping_utils.h"
 #include "omaha/worker/product_data.h"
 #include "omaha/worker/worker.h"
 #include "omaha/worker/worker_com_wrapper.h"
@@ -197,6 +197,11 @@ class GoopdateImpl {
 
   // Register a product with Goopdate and install Goopdate.
   HRESULT DoRegisterProduct();
+
+  // Does the work for DoRegisterProduct().
+  HRESULT DoRegisterProductHelper(bool is_machine,
+                                  AppManager* app_manager,
+                                  AppData* app_data);
 
   // Unregister a product from Goopdate.
   HRESULT DoUnregisterProduct();
@@ -912,6 +917,9 @@ HRESULT GoopdateImpl::DoCompleteSelfUpdate() {
                                    NULL);
 }
 
+// Calls DoRegisterProductHelper and sends a ping with the result.
+// TODO(omaha): Use a more common code flow with normal installs or remove
+// registerproduct altogether when redesigning Omaha.
 HRESULT GoopdateImpl::DoRegisterProduct() {
   OPT_LOG(L1, (_T("[GoopdateImpl::DoRegisterProduct]")));
 
@@ -923,22 +931,56 @@ HRESULT GoopdateImpl::DoRegisterProduct() {
   ASSERT1(1 == args_.extra.apps.size());
   bool extra_needs_admin = args_.extra.apps[0].needs_admin;
 
+  AppManager app_manager(extra_needs_admin);
+  ProductDataVector products;
+  app_manager.ConvertCommandLineToProductData(args_, &products);
+  AppData app_data = products[0].app_data();
+
+  HRESULT hr = DoRegisterProductHelper(extra_needs_admin,
+                                       &app_manager,
+                                       &app_data);
+
+  const PingEvent::Results event_result = SUCCEEDED(hr) ?
+                                          PingEvent::EVENT_RESULT_SUCCESS :
+                                          PingEvent::EVENT_RESULT_ERROR;
+
+  AppRequestData app_request_data(app_data);
+  PingEvent ping_event(PingEvent::EVENT_REGISTER_PRODUCT_COMPLETE,
+                       event_result,
+                       hr,  // error code
+                       0,  // extra code 1
+                       app_data.previous_version());
+  app_request_data.AddPingEvent(ping_event);
+  AppRequest app_request(app_request_data);
+  Request request(extra_needs_admin);
+  request.AddAppRequest(app_request);
+
+  Ping ping;
+  ping.SendPing(&request);
+
+  return hr;
+}
+
+HRESULT GoopdateImpl::DoRegisterProductHelper(bool is_machine,
+                                              AppManager* app_manager,
+                                              AppData* app_data) {
+  ASSERT1(app_data);
+  ASSERT1(app_manager);
   // Ensure we're running as elevated admin if needs_admin is true.
-  if (extra_needs_admin && !vista_util::IsUserAdmin()) {
+  if (is_machine && !vista_util::IsUserAdmin()) {
     CORE_LOG(LE, (_T("[DoRegisterProduct][needs admin & user not admin]")));
     return GOOPDATE_E_NONADMIN_INSTALL_ADMIN_APP;
   }
 
   // Get product GUID from args and register it in CLIENTS.
-  AppManager app_manager(extra_needs_admin);
-  HRESULT hr = app_manager.RegisterProduct(args_.extra.apps[0].app_guid,
-                                           args_.extra.apps[0].app_name);
+  HRESULT hr = app_manager->RegisterProduct(args_.extra.apps[0].app_guid,
+                                            args_.extra.apps[0].app_name);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[AppManager::RegisterProduct failed][0x%08x]"), hr));
     return hr;
   }
 
-  Setup setup(extra_needs_admin, &args_);
+  Setup setup(is_machine, &args_);
   hr = setup.InstallSelfSilently();
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[Setup::InstallSelfSilently failed][0x%08x]"), hr));
@@ -946,11 +988,8 @@ HRESULT GoopdateImpl::DoRegisterProduct() {
   }
 
   // Populate the app's ClientState key.
-  ProductDataVector products;
-  app_manager.ConvertCommandLineToProductData(args_, &products);
-  AppData app_data = products[0].app_data();
-  VERIFY1(SUCCEEDED(app_manager.WritePreInstallData(app_data)));
-  VERIFY1(SUCCEEDED(app_manager.InitializeApplicationState(&app_data)));
+  VERIFY1(SUCCEEDED(app_manager->WritePreInstallData(*app_data)));
+  VERIFY1(SUCCEEDED(app_manager->InitializeApplicationState(app_data)));
 
   return S_OK;
 }
@@ -1034,6 +1073,15 @@ HRESULT GoopdateImpl::DoWorker() {
   omaha::Worker worker(is_machine_);
   HRESULT hr = worker.Main(goopdate_);
   has_uninstalled_ = worker.has_uninstalled();
+
+  // The UA worker always returns S_OK. UA can be launched by the scheduled task
+  // or the core, neither of which wait for a return code. On Vista, returning
+  // an error code from the scheduled task reportedly causes issues with the
+  // task scheduler in rare cases, so returning S_OK helps with that as well.
+  if (args_.mode == COMMANDLINE_MODE_UA) {
+    return S_OK;
+  }
+
   return hr;
 }
 

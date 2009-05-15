@@ -90,7 +90,6 @@ HRESULT GetLegacyDefaultBrowserInfo(CString* name, CString* path) {
   return S_OK;
 }
 
-
 HRESULT GetDefaultBrowserName(CString* name) {
   ASSERT1(name);
   name->Empty();
@@ -156,6 +155,8 @@ HRESULT GetDefaultBrowserType(BrowserType* type) {
     *type = BROWSER_IE;
   } else if (name.CompareNoCase(kFirefoxExeName) == 0) {
     *type = BROWSER_FIREFOX;
+  } else if (name.CompareNoCase(kChromeExeName) == 0) {
+    *type = BROWSER_CHROME;
   } else {
     *type = BROWSER_UNKNOWN;
   }
@@ -351,6 +352,9 @@ HRESULT BrowserTypeToProcessName(BrowserType type, CString* exe_name) {
     case BROWSER_FIREFOX:
       *exe_name = kFirefoxExeName;
       break;
+    case BROWSER_CHROME:
+      *exe_name = kChromeExeName;
+      break;
     case BROWSER_DEFAULT:
       return GetDefaultBrowserName(exe_name);
     case BROWSER_UNKNOWN:
@@ -379,9 +383,18 @@ HRESULT GetBrowserImagePath(BrowserType type, CString* path) {
     case BROWSER_FIREFOX: {
       hr = RegKey::GetValue(kRegKeyFirefox, kRegValueFirefox, path);
       if (SUCCEEDED(hr) && !path->IsEmpty()) {
-        // The FF reg key contains a -url %1 value, since we only want to return
-        // the path, we remove this.
+        // The Firefox registry key contains a -url %1 value. Remove this
+        // because we only want to return the path.
         ReplaceCString(*path, _T("-url \"%1\""), _T(""));
+      }
+      break;
+    }
+    case BROWSER_CHROME: {
+      hr = RegKey::GetValue(kRegKeyChrome, kRegValueChrome, path);
+      if (SUCCEEDED(hr) && !path->IsEmpty()) {
+        // The Chrome registry key contains a -- "%1" value. Remove this because
+        // we only want to return the path.
+        ReplaceCString(*path, _T("-- \"%1\""), _T(""));
       }
       break;
     }

@@ -122,12 +122,6 @@ class JobCreator {
                                    AppRequestData* ping_app_request_data,
                                    CString* event_log_text,
                                    CompletionInfo* completion_info);
-  HRESULT HandleComponents(const ProductData& product_data,
-                           const UpdateResponse& product_response,
-                           AppRequest* product_ping_request,
-                           CString* event_log_text,
-                           Job* product_job,
-                           CompletionInfo* completion_info);
   CompletionInfo UpdateResponseDataToCompletionInfo(
       const UpdateResponseData& response_data,
       const CString& display_name);

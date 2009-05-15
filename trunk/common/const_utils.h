@@ -37,6 +37,7 @@ namespace omaha {
 
 #define kIeExeName _T("IEXPLORE.EXE")
 #define kFirefoxExeName _T("FIREFOX.EXE")
+#define kChromeExeName _T("CHROME.EXE")
 
 // The regkey for proxy settings for IE.
 const TCHAR* const kRegKeyIESettings =
@@ -48,19 +49,23 @@ const TCHAR* const kRegValueIEProxyEnable = _T("ProxyEnable");
 const TCHAR* const kRegValueIEProxyServer = _T("ProxyServer");
 const TCHAR* const kRegValueIEAutoConfigURL = _T("AutoConfigURL");
 
-// IE regkeys.
+// Internet Explorer.
 #define kRegKeyIeClass \
     _T("HKCR\\CLSID\\{0002DF01-0000-0000-C000-000000000046}\\LocalServer32")
 #define kRegValueIeClass _T("")
 
-// Firefox regkeys and constants.
-#define kRegKeyFirefox    \
+// Firefox.
+#define kRegKeyFirefox \
     _T("HKCR\\Applications\\FIREFOX.EXE\\shell\\open\\command")
 #define kRegValueFirefox        _T("")
 #define kFullRegKeyFirefox      _T("HKLM\\SOFTWARE\\Mozilla\\Mozilla Firefox")
 #define kRegKeyFirefoxPlugins   _T("plugins")
 #define kFirefoxCurrentVersion  _T("CurrentVersion")
 #define kFirefoxInstallDir      _T("Install Directory")
+
+// Chrome.
+#define kRegKeyChrome _T("HKCR\\Applications\\chrome.exe\\shell\\open\\command")
+#define kRegValueChrome _T("")
 
 // Amount of disk space required for program files.
 #ifdef _DEBUG

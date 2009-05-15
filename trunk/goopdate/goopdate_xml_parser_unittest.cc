@@ -36,7 +36,7 @@
 namespace {
 
 const int kSeedManifestFileCount = 1;
-const int kSeedManifestResponseCount = 6;
+const int kSeedManifestResponseCount = 7;
 
 const TCHAR* const kPolicyKey =
     _T("HKLM\\Software\\Policies\\Google\\Update\\");
@@ -77,11 +77,15 @@ class GoopdateXmlParserTest : public testing::Test {
       EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                         kRegValueLastCheckPeriodSec,
                                         updatedev_check_period_override_));
+    } else {
+      RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueLastCheckPeriodSec);
     }
     if (is_policy_check_period_override_present_) {
       EXPECT_SUCCEEDED(RegKey::SetValue(kPolicyKey,
                                         _T("AutoUpdateCheckPeriodMinutes"),
                                         policy_check_period_override_));
+    } else {
+      RegKey::DeleteValue(kPolicyKey, _T("AutoUpdateCheckPeriodMinutes"));
     }
   }
 
@@ -474,7 +478,8 @@ TEST_F(GoopdateXmlParserTest, ParseManifestFile_SeedManifest) {
         StringToGuid(_T("{D6B08267-B440-4c85-9F79-E195E80D9939}")),
         StringToGuid(_T("{D6B08267-B440-4c85-9F79-E195E80D9940}")),
         StringToGuid(_T("{D6B08267-B440-4c85-9F79-E195E80D9941}")),
-        StringToGuid(_T("{D6B08267-B440-4c85-9F79-E195E80D9942}"))
+        StringToGuid(_T("{D6B08267-B440-4c85-9F79-E195E80D9942}")),
+        StringToGuid(_T("{D6B08267-B440-4C85-9F79-E195E80D9943}")),
     };
 
     BrowserType expected_types[] = {
@@ -483,6 +488,7 @@ TEST_F(GoopdateXmlParserTest, ParseManifestFile_SeedManifest) {
         BROWSER_DEFAULT,
         BROWSER_IE,
         BROWSER_FIREFOX,
+        BROWSER_CHROME,
         BROWSER_UNKNOWN
     };
 

@@ -1098,7 +1098,7 @@ TEST(ExtraArgsParserTest, InstallDataIndexValid) {
       _T("foobar"));
 }
 
-TEST(ExtraArgsParserTest, BrowserTypeValid1) {
+TEST(ExtraArgsParserTest, BrowserTypeValid_0) {
   CommandLineExtraArgs args;
   ExtraArgsParser parser;
   CString extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
@@ -1110,7 +1110,7 @@ TEST(ExtraArgsParserTest, BrowserTypeValid1) {
                     BROWSER_UNKNOWN);
 }
 
-TEST(ExtraArgsParserTest, BrowserTypeValid2) {
+TEST(ExtraArgsParserTest, BrowserTypeValid_1) {
   CommandLineExtraArgs args;
   ExtraArgsParser parser;
   CString extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
@@ -1122,7 +1122,7 @@ TEST(ExtraArgsParserTest, BrowserTypeValid2) {
                     BROWSER_DEFAULT);
 }
 
-TEST(ExtraArgsParserTest, BrowserTypeValid3) {
+TEST(ExtraArgsParserTest, BrowserTypeValid_2) {
   CommandLineExtraArgs args;
   ExtraArgsParser parser;
   CString extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
@@ -1134,7 +1134,7 @@ TEST(ExtraArgsParserTest, BrowserTypeValid3) {
                     BROWSER_IE);
 }
 
-TEST(ExtraArgsParserTest, BrowserTypeValid4) {
+TEST(ExtraArgsParserTest, BrowserTypeValid_3) {
   CommandLineExtraArgs args;
   ExtraArgsParser parser;
   CString extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
@@ -1146,14 +1146,40 @@ TEST(ExtraArgsParserTest, BrowserTypeValid4) {
                     BROWSER_FIREFOX);
 }
 
-TEST(ExtraArgsParserTest, BrowserTypeInvalid) {
+TEST(ExtraArgsParserTest, BrowserTypeValid_4) {
   CommandLineExtraArgs args;
   ExtraArgsParser parser;
   CString extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
-                       _T("browser=6");
+                       _T("browser=4");
 
   EXPECT_SUCCEEDED(parser.Parse(extra_args, NULL, &args));
   VerifyBrowserType(args,
+                    _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+                    BROWSER_CHROME);
+}
+
+TEST(ExtraArgsParserTest, BrowserTypeInvalid) {
+  EXPECT_EQ(5, BROWSER_MAX) <<
+      _T("Browser type may have been added. Add new Valid_n test and change ")
+      _T("browser values in extra args strings below.");
+
+  CommandLineExtraArgs args1;
+  ExtraArgsParser parser1;
+  CString extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
+                       _T("browser=5");
+
+  EXPECT_SUCCEEDED(parser1.Parse(extra_args, NULL, &args1));
+  VerifyBrowserType(args1,
+                    _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+                    BROWSER_UNKNOWN);
+
+  CommandLineExtraArgs args2;
+  ExtraArgsParser parser2;
+  extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
+               _T("browser=9");
+
+  EXPECT_SUCCEEDED(parser2.Parse(extra_args, NULL, &args2));
+  VerifyBrowserType(args2,
                     _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
                     BROWSER_UNKNOWN);
 }

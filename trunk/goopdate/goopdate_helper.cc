@@ -71,9 +71,11 @@ HRESULT FinishGoogleUpdateInstall(const CommandLineArgs& args,
 
   if (SUCCEEDED(hr)) {
     CORE_LOG(L1, (_T("[Setup successfully completed]")));
+    // All Omaha installs are "offline" because there is no update check.
     app_manager.RecordSuccessfulInstall(GUID_NULL,
                                         kGoopdateGuid,
-                                        is_self_update);
+                                        is_self_update,
+                                        !is_self_update);  // is_offline
 
     if (is_self_update) {
       ++metric_worker_self_updates_succeeded;

@@ -27,9 +27,10 @@ namespace omaha {
 // Do not move or remove existing elements as this is used by applications.
 enum BrowserType {
   BROWSER_UNKNOWN = 0,
-  BROWSER_DEFAULT,
-  BROWSER_IE,
-  BROWSER_FIREFOX,
+  BROWSER_DEFAULT = 1,
+  BROWSER_IE      = 2,
+  BROWSER_FIREFOX = 3,
+  BROWSER_CHROME  = 4,
   // Add all browsers above this.
   BROWSER_MAX
 };

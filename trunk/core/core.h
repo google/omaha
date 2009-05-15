@@ -71,6 +71,11 @@ class Core
 
   HRESULT DoMain(bool is_system, bool is_crash_handler_enabled);
 
+  bool AreScheduledTasksHealthy();
+  bool IsServiceHealthy();
+  bool IsCheckingForUpdates();
+  bool ShouldRunForever();
+
   // ShutdownCallback interface.
   // Signals the core to stop handling events and exit.
   virtual HRESULT Shutdown();
@@ -106,6 +111,8 @@ class Core
   scoped_ptr<Scheduler>             scheduler_;
   scoped_ptr<SystemMonitor>         system_monitor_;
   scoped_ptr<GoogleUpdateCoreProxy> google_update_core_proxy_;
+
+  friend class CoreUtilsTest;
 
   DISALLOW_EVIL_CONSTRUCTORS(Core);
 };

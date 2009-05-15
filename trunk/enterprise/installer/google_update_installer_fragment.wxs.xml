@@ -28,7 +28,8 @@
           <Component Id='ComponentGoogleUpdate'
                      Guid='6B528A57-0CD8-4b26-85F8-1CA05523B8F1'>
             <RegistryValue Id='NonEmptyComponent' Action='write'
-                           Root='HKLM' Key='$(var.UpdateKeyPath)'
+                           Root='HKLM'
+                           Key='$(var.UpdateKeyPath)\ClientState\$(var.ProductGuid)'
                            Name='EnterpriseInstall' Type='integer' Value='1' />
           </Component>
 
@@ -61,7 +62,7 @@
       BinaryKey='GoogleUpdateSetup'
       Impersonate='no'
       Execute='deferred'
-      ExeCommand='/registerproduct "[ProductTag]"'
+      ExeCommand='/registerproduct "[ProductTag]" /installsource enterprisemsi'
       Return='check' />
 
     <InstallExecuteSequence>
@@ -79,8 +80,8 @@
         (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT DISABLE_UPDATES) AND (BRAND &lt;&gt; "")
       </Custom>
 
-      <!-- Install Google Update before 'InstallFiles' first so that brand, etc.
-           will be present when the product is installed. -->
+      <!-- Install Google Update before 'InstallFiles' so that brand, etc. will
+           be present when the product is installed. -->
       <Custom Action='RollbackGoogleUpdateRegistration'
               Before='InstallGoogleUpdateAndRegister'
               >

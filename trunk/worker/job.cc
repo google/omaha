@@ -54,6 +54,7 @@ Job::Job(bool is_update, Ping* ping)
       bytes_total_(0),
       ping_(ping),
       is_update_(is_update),
+      is_offline_(false),
       is_background_(false),
       is_update_check_only_(false),
       did_launch_cmd_fail_(false) {
@@ -338,6 +339,13 @@ PingEvent::Types Job::JobStateToEventType() const {
 }
 
 void Job::RestartBrowsers() {
+  // CompletionStatusToCompletionCode does not set a restart completion code
+  // if the browser type is not a specific browser, so this method should never
+  // be called in those cases.
+  ASSERT1(app_data_.browser_type() != BROWSER_UNKNOWN &&
+          app_data_.browser_type() != BROWSER_DEFAULT &&
+          app_data_.browser_type() < BROWSER_MAX);
+
   CORE_LOG(L3, (_T("[Job::RestartBrowsers]")));
   TerminateBrowserResult browser_res;
   TerminateBrowserResult default_res;
@@ -358,19 +366,17 @@ void Job::RestartBrowsers() {
     return;
   }
 
-  BrowserType type = BROWSER_UNKNOWN;
+  BrowserType browser_type = BROWSER_UNKNOWN;
   if (!goopdate_utils::GetBrowserToRestart(app_data_.browser_type(),
                                            default_type,
                                            browser_res,
                                            default_res,
-                                           &type)) {
+                                           &browser_type)) {
+    CORE_LOG(LE, (_T("[GetBrowserToRestart returned false. Not launching.]")));
     return;
   }
 
-  BrowserType browser_type =
-      app_data_.browser_type() == BROWSER_UNKNOWN ?
-                                  BROWSER_DEFAULT :
-                                  app_data_.browser_type();
+  ASSERT1(BROWSER_UNKNOWN != browser_type);
   VERIFY1(SUCCEEDED(goopdate_utils::LaunchBrowser(
       browser_type,
       update_response_data_.success_url())));
@@ -517,7 +523,8 @@ HRESULT Job::DoInstall(CompletionInfo* completion_info,
   if (!::IsEqualGUID(kGoopdateGuid, app_data_.app_guid())) {
     app_manager.RecordSuccessfulInstall(app_data_.parent_app_guid(),
                                         app_data_.app_guid(),
-                                        is_update_);
+                                        is_update_,
+                                        is_offline_);
   }
 
   return S_OK;

@@ -27,6 +27,16 @@ namespace omaha {
 
 // TODO(omaha): test error-prone functions such as ReadLineAnsi
 
+namespace {
+
+#define kIEBrowserExe \
+  _T("C:\\PROGRAM FILES\\Internet Explorer\\iexplore.exe")
+
+#define kIEBrowserQuotedExe \
+  _T("\"") kIEBrowserExe _T("\"")
+
+}  // namespace
+
 void SimpleTest(bool async) {
   File f;
 
@@ -365,5 +375,44 @@ TEST(FileTest, FileChangeWatcher) {
   EXPECT_SUCCEEDED(DeleteDirectory(temp_dir));
 }
 
-}  // namespace omaha
+TEST(FileTest, Exists_UnQuoted) {
+  EXPECT_TRUE(File::Exists(kIEBrowserExe));
+  EXPECT_FALSE(File::Exists(_T("C:\\foo\\does not exist.exe")));
+  EXPECT_FALSE(File::Exists(_T("Z:\\foo\\does not exist.exe")));
+  if (ShouldRunLargeTest()) {
+    EXPECT_FALSE(File::Exists(_T("\\\\foo\\does not exist.exe")));
+  }
+}
 
+// File::Exists() expects unquoted paths.
+TEST(FileTest, Exists_Quoted) {
+  EXPECT_FALSE(File::Exists(kIEBrowserQuotedExe));
+  EXPECT_FALSE(File::Exists(_T("\"C:\\foo\\does not exist.exe\"")));
+  EXPECT_FALSE(File::Exists(_T("\"Z:\\foo\\does not exist.exe\"")));
+  if (ShouldRunLargeTest()) {
+    EXPECT_FALSE(File::Exists(_T("\"\\\\foo\\does not exist.exe\"")));
+  }
+}
+
+// File::Exists() handles trailing spaces but not leading whitespace, tabs, or
+// enclosed paths.
+TEST(FileTest, Exists_ExtraWhitespace) {
+  EXPECT_TRUE(File::Exists(kIEBrowserExe _T(" ")));
+  EXPECT_TRUE(File::Exists(kIEBrowserExe _T("    ")));
+  EXPECT_FALSE(File::Exists(_T(" ") kIEBrowserExe));
+  EXPECT_FALSE(File::Exists(kIEBrowserExe _T("\t")));
+
+  EXPECT_FALSE(File::Exists(kIEBrowserQuotedExe _T(" ")));
+  EXPECT_FALSE(File::Exists(kIEBrowserQuotedExe _T("    ")));
+  EXPECT_FALSE(File::Exists(_T(" ") kIEBrowserQuotedExe));
+  EXPECT_FALSE(File::Exists(kIEBrowserQuotedExe _T("\t")));
+
+  EXPECT_FALSE(File::Exists(_T("\"") kIEBrowserExe _T(" \"")));
+  EXPECT_FALSE(File::Exists(_T("\"") kIEBrowserExe _T("    \"")));
+  EXPECT_FALSE(File::Exists(_T("\" ") kIEBrowserExe _T("\"") ));
+  EXPECT_FALSE(File::Exists(_T("\"") kIEBrowserExe _T("\t\"")));
+
+  EXPECT_FALSE(File::Exists(_T("\"") kIEBrowserExe _T(" \" ")));
+}
+
+}  // namespace omaha

@@ -36,7 +36,8 @@
     <!-- Per-machine installation - make sure product appears for all users. -->
     <Property Id='ALLUSERS' Value='1' />
 
-    <!-- Hide Add/Remove Programs entry -->
+    <!-- Hide the Add/Remove Programs entry.
+         The application installer should have its own entry. -->
     <Property Id='ARPSYSTEMCOMPONENT' Value='1' />
 
     <UI>

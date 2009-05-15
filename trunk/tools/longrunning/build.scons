@@ -25,7 +25,7 @@ Import('env')
 
 inputs = [
     'long_running.cc',
-    env.RES('resource.rc'),
+    env.RES('$MAIN_DIR/common/run_as_invoker.rc'),
     ]
 
 base_env = env.Clone()

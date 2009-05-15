@@ -305,5 +305,56 @@ bool ServiceInstall::IsServiceInstalled(const TCHAR* service_name) {
   return valid(service);
 }
 
+// TODO(Omaha): Move all functions under a common ServiceUtils namespace.
+bool ServiceUtils::IsServiceRunning(const TCHAR* service_name) {
+  ASSERT1(service_name);
+
+  scoped_service scm(::OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT));
+  if (!scm) {
+    SERVICE_LOG(LE, (_T("[OpenSCManager fail][0x%x]"), HRESULTFromLastError()));
+    return false;
+  }
+
+  scoped_service service(::OpenService(get(scm),
+                                       service_name,
+                                       SERVICE_QUERY_STATUS));
+  if (!service) {
+    SERVICE_LOG(LE, (_T("[OpenService failed][%s][0x%x]"),
+                     service_name, HRESULTFromLastError()));
+    return false;
+  }
+
+  SERVICE_STATUS status = {0};
+  if (!::QueryServiceStatus(get(service), &status)) {
+    SERVICE_LOG(LE, (_T("[QueryServiceStatus failed][%s][0x%x]"),
+                     service_name, HRESULTFromLastError()));
+    return false;
+  }
+
+  return status.dwCurrentState == SERVICE_RUNNING ||
+         status.dwCurrentState == SERVICE_START_PENDING;
+}
+
+bool ServiceUtils::IsServiceDisabled(const TCHAR* service_name) {
+  ASSERT1(service_name);
+
+  scoped_service scm(::OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT));
+  if (!scm) {
+    SERVICE_LOG(LE, (_T("[OpenSCManager fail][0x%x]"), HRESULTFromLastError()));
+    return false;
+  }
+
+  scoped_service service(::OpenService(get(scm),
+                                       service_name,
+                                       SERVICE_QUERY_CONFIG));
+  if (!service) {
+    SERVICE_LOG(LE, (_T("[OpenService failed][%s][0x%x]"),
+                     service_name, HRESULTFromLastError()));
+    return false;
+  }
+
+  return ScmDatabase::IsServiceStateEqual(get(service), SERVICE_DISABLED);
+}
+
 }  // namespace omaha
 

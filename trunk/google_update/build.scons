@@ -49,6 +49,7 @@ if 1 < len(shell_languages):
 
 exe_env = env.Clone()
 
+# TODO(omaha): While there is a precompile.h, it does not actually use PCH.
 exe_env.Append(
     CCFLAGS = [
         '/wd4548',

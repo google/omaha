@@ -34,6 +34,7 @@
 #include "omaha/common/scope_guard.h"
 #include "omaha/common/utils.h"
 #include "omaha/common/vistautil.h"
+#include "omaha/enterprise/const_group_policy.h"
 #include "omaha/net/browser_request.h"
 #include "omaha/net/network_config.h"
 #include "omaha/net/network_request.h"
@@ -78,6 +79,10 @@ const TCHAR* const kInvalidFileAddress = _T("http://www.google.com/robots.txt");
 // These methods were copied from omaha/testing/omaha_unittest.cpp.
 const TCHAR kRegistryHiveOverrideRoot[] =
     _T("HKCU\\Software\\Google\\Update\\UnitTest\\");
+
+const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&machineid=&userid=&osversion=");  // NOLINT
+const int kExpectedUrlForDummyAppAndNoOmahaValuesLength =
+    arraysize(kExpectedUrlForDummyAppAndNoOmahaValues) - 1;
 
 // Overrides the HKLM and HKCU registry hives so that accesses go to the
 // specified registry key instead.
@@ -507,15 +512,14 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
 
 TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_NoOmahaRegKeys) {
-  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&machineid=&userid=&osversion=");  // NOLINT
-
   EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
                                                kDummyAppVersion,
                                                kDummyAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrl, saved_url_.Left(arraysize(kExpectedUrl) - 1));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -559,6 +563,150 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
                                           true,
                                           NULL,
                                           NULL));
+}
+
+// Setting kRegValueAutoUpdateCheckPeriodOverrideMinutes to zero disables
+// Code Red checks just as it does regular update checks.
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDword) {
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                       static_cast<DWORD>(0)));
+
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY),
+            FixGoogleUpdate(kDummyAppGuid,
+                            kDummyAppVersion,
+                            kDummyAppLang,
+                            true,
+                            DownloadFileNoFile,
+                            NULL));
+  EXPECT_TRUE(saved_url_.IsEmpty());
+}
+
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDwordInHkcu) {
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(USER_KEY GOOPDATE_POLICIES_RELATIVE,
+                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                       static_cast<DWORD>(0)));
+
+  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
+                                               kDummyAppVersion,
+                                               kDummyAppLang,
+                                               true,
+                                               DownloadFileNoFile,
+                                               NULL));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  CheckSavedUrlOSFragment();
+}
+
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsNonZeroDword) {
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                       static_cast<DWORD>(1400)));
+
+  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
+                                               kDummyAppVersion,
+                                               kDummyAppLang,
+                                               true,
+                                               DownloadFileNoFile,
+                                               NULL));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  CheckSavedUrlOSFragment();
+}
+
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDword64) {
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                       static_cast<DWORD64>(0)));
+
+  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
+                                               kDummyAppVersion,
+                                               kDummyAppLang,
+                                               true,
+                                               DownloadFileNoFile,
+                                               NULL));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  CheckSavedUrlOSFragment();
+}
+
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsNonZeroDword64) {
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                       static_cast<DWORD64>(1400)));
+
+  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
+                                               kDummyAppVersion,
+                                               kDummyAppLang,
+                                               true,
+                                               DownloadFileNoFile,
+                                               NULL));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  CheckSavedUrlOSFragment();
+}
+
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroAsString) {
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                       _T("0")));
+
+  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
+                                               kDummyAppVersion,
+                                               kDummyAppLang,
+                                               true,
+                                               DownloadFileNoFile,
+                                               NULL));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  CheckSavedUrlOSFragment();
+}
+
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroAsBinary) {
+  const byte zero = 0;
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                       &zero,
+                       sizeof(zero)));
+
+  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
+                                               kDummyAppVersion,
+                                               kDummyAppLang,
+                                               true,
+                                               DownloadFileNoFile,
+                                               NULL));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  CheckSavedUrlOSFragment();
+}
+
+TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+       FixGoogleUpdate_GroupPolicyKeyExistsButNoAutoUpdateCheckPeriodMinutes) {
+  EXPECT_HRESULT_SUCCEEDED(RegKey::CreateKey(kRegKeyGoopdateGroupPolicy));
+
+  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
+                                               kDummyAppVersion,
+                                               kDummyAppLang,
+                                               true,
+                                               DownloadFileNoFile,
+                                               NULL));
+  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  CheckSavedUrlOSFragment();
 }
 
 // Verifies that the file is saved even if the temp directory doesn't exist.

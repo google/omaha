@@ -61,16 +61,13 @@
 #endif
 
 #pragma warning(push)
-// C4100: unreferenced formal parameter
 // C4310: cast truncates constant value
-// C4548: expression before comma has no effect
-#pragma warning(disable : 4100 4310 4548)
+#pragma warning(disable : 4310)
 #include "base/basictypes.h"
+#pragma warning(pop)
 
 #ifdef UNITTEST
 #include "third_party/gtest/include/gtest/gtest.h"
 #endif  // UNITTEST
-
-#pragma warning(pop)
 
 #endif  // OMAHA_PRECOMPILE_PRECOMPILE_H__

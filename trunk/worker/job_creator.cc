@@ -250,6 +250,7 @@ HRESULT JobCreator::CreateOfflineJobs(const CString& offline_dir,
     }
 
     product_job->set_download_file_name(file_path);
+    product_job->set_is_offline(true);
     jobs->push_back(product_job);
   }
 
@@ -292,8 +293,7 @@ HRESULT JobCreator::CreateJobsFromResponsesInternal(
     AppManager app_manager(is_machine_);
     // If this is an update job, need to call
     // AppManager::UpdateApplicationState() to make sure the registry is
-    // initialized properly.  Need to do this within HandleComponents also
-    // for each of the components.
+    // initialized properly.
     if (is_update_) {
       app_manager.UpdateApplicationState(&product_app_data);
     }
@@ -302,22 +302,31 @@ HRESULT JobCreator::CreateJobsFromResponsesInternal(
     // may ask us to clear the token as well.
     app_manager.WriteTTToken(product_app_data, response.update_response_data());
 
-
     if (IsUpdateAvailable(response)) {
-      ProductData modified_product_data(product_data);
-      modified_product_data.set_app_data(product_app_data);
-      Job* product_job = NULL;
-      HRESULT hr = HandleProductUpdateIsAvailable(modified_product_data,
-                                                  response,
-                                                  &product_job,
-                                                  ping_request,
-                                                  event_log_text,
-                                                  completion_info);
-      if (FAILED(hr)) {
-        return hr;
-      }
+      if (product_data.app_data().is_update_disabled()) {
+        ASSERT1(is_update_);
+        ASSERT1(!fail_if_update_not_available_);
+        CORE_LOG(L1, (_T("[Update available for update-disabled app][%s]"),
+                      GuidToString(product_data.app_data().app_guid())));
+        app_manager.ClearUpdateAvailableStats(
+            GUID_NULL,
+            product_data.app_data().app_guid());
+      } else {
+        ProductData modified_product_data(product_data);
+        modified_product_data.set_app_data(product_app_data);
+        Job* product_job = NULL;
+        HRESULT hr = HandleProductUpdateIsAvailable(modified_product_data,
+                                                    response,
+                                                    &product_job,
+                                                    ping_request,
+                                                    event_log_text,
+                                                    completion_info);
+        if (FAILED(hr)) {
+          return hr;
+        }
 
-      jobs->push_back(product_job);
+        jobs->push_back(product_job);
+      }
     } else {
       AppRequest ping_app_request;
       AppRequestData ping_app_request_data(product_app_data);
@@ -379,16 +388,6 @@ HRESULT JobCreator::HandleProductUpdateIsAvailable(
   ASSERT1(*product_job);
   ping_app_request.set_request_data(ping_app_request_data);
 
-  HRESULT hr = HandleComponents(product_data,
-                                response,
-                                &ping_app_request,
-                                event_log_text,
-                                *product_job,
-                                completion_info);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
   ping_request->AddAppRequest(ping_app_request);
   return S_OK;
 }
@@ -424,12 +423,7 @@ void JobCreator::HandleUpdateIsAvailable(
   ASSERT1(ping_app_request_data);
   ASSERT1(event_log_text);
   ASSERT1(job);
-
   ASSERT1(!app_data.is_update_disabled());
-  if (app_data.is_update_disabled()) {
-    CORE_LOG(LW, (_T("[Update returned for update-disabled app][%s]"),
-                  GuidToString(app_data.app_guid())));
-  }
 
   if (is_auto_update_) {
     if (::IsEqualGUID(kGoopdateGuid, app_data.app_guid())) {
@@ -507,6 +501,8 @@ HRESULT JobCreator::HandleUpdateNotAvailable(
         info.error_code = NOERROR;
 
         AppManager app_manager(is_machine_);
+        app_manager.ClearUpdateAvailableStats(app_data.parent_app_guid(),
+                                              app_data.app_guid());
         app_manager.RecordSuccessfulUpdateCheck(app_data.parent_app_guid(),
                                                 app_data.app_guid());
       }
@@ -547,78 +543,6 @@ HRESULT JobCreator::HandleUpdateNotAvailable(
     return info.error_code;
   }
 
-  return S_OK;
-}
-
-HRESULT JobCreator::HandleComponents(
-    const ProductData& product_data,
-    const UpdateResponse& product_response,
-    AppRequest* product_ping_request,
-    CString* event_log_text,
-    Job* product_job,
-    CompletionInfo* completion_info) {
-  ASSERT1(product_ping_request);
-  ASSERT1(event_log_text);
-  ASSERT1(product_job);
-  ASSERT1(completion_info);
-  ASSERT1(product_data.num_components() == product_response.num_components());
-
-  UNREFERENCED_PARAMETER(product_job);
-
-  if (product_data.num_components() == 0) {
-    return S_OK;
-  }
-
-  AppDataVector::const_iterator component_it = product_data.components_begin();
-  for (; component_it != product_data.components_end(); ++component_it) {
-    AppData app_data_component = *component_it;
-    ASSERT1(!::IsEqualGUID(GUID_NULL, app_data_component.parent_app_guid()));
-    ASSERT1(::IsEqualGUID(product_data.app_data().app_guid(),
-                          app_data_component.parent_app_guid()));
-
-    // TODO(omaha): For now we are creating only the component request
-    // however this has to be populated with ping information.
-    AppRequestData ping_component_request_data(app_data_component);
-
-    if (!product_response.IsComponentPresent(app_data_component.app_guid())) {
-      HandleResponseNotFound(app_data_component,
-                             &ping_component_request_data,
-                             event_log_text);
-    }
-
-    const UpdateResponseData& component_response =
-        product_response.GetComponentData(app_data_component.app_guid());
-
-    // If this is an update job, need to call
-    // AppManager::UpdateApplicationState() to make sure the registry is
-    // initialized properly.
-    if (is_update_) {
-      AppManager app_manager(is_machine_);
-      app_manager.UpdateApplicationState(&app_data_component);
-    }
-
-    if (IsUpdateAvailable(component_response)) {
-      Job* component_job = NULL;
-      HandleUpdateIsAvailable(app_data_component,
-                              component_response,
-                              &ping_component_request_data,
-                              event_log_text,
-                              &component_job);
-
-      product_ping_request->AddComponentRequest(ping_component_request_data);
-      // TODO(omaha): product_job->add_child_job(component_job);
-    } else {
-      HRESULT hr = HandleUpdateNotAvailable(app_data_component,
-                                            component_response,
-                                            &ping_component_request_data,
-                                            event_log_text,
-                                            completion_info);
-      // TODO(omaha):  Do we need ping_request updated here with data?
-      if (FAILED(hr)) {
-        return hr;
-      }
-    }
-  }
   return S_OK;
 }
 

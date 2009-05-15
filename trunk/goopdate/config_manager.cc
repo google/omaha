@@ -402,6 +402,32 @@ HRESULT ConfigManager::SetLastCheckedTime(bool is_machine, DWORD time) const {
   return RegKey::SetValue(reg_update_key, kRegValueLastChecked, time);
 }
 
+DWORD ConfigManager::GetFirstInstallTime(bool is_machine) {
+  const CString client_state_key_name =
+      ConfigManager::Instance()->registry_client_state_goopdate(is_machine);
+  DWORD install_time(0);
+  if (SUCCEEDED(RegKey::GetValue(client_state_key_name,
+                                 kRegValueInstallTimeSec,
+                                 &install_time))) {
+    return install_time;
+  }
+
+  return 0;
+}
+
+bool ConfigManager::Is24HoursSinceFirstInstall(bool is_machine) {
+  const int kDaySec = 24 * 60 * 60;
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  const uint32 first_install = GetFirstInstallTime(is_machine);
+
+  if (now < first_install) {
+    CORE_LOG(LW, (_T("[Incorrect clock time detected]")
+                  _T("[now %u][first install %u]"), now, first_install));
+  }
+  const int time_difference = abs(static_cast<int>(now - first_install));
+  return time_difference >= kDaySec;
+}
+
 bool ConfigManager::CanCollectStats(bool is_machine) const {
   if (RegKey::HasValue(MACHINE_REG_UPDATE_DEV, kRegValueForceUsageStats)) {
     return true;
