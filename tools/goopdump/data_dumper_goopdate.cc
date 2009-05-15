@@ -268,27 +268,39 @@ CString EventLogTypeToString(WORD event_log_type) {
 void DataDumperGoopdate::DumpEventLog(const DumpLog& dump_log) {
   DumpHeader header(dump_log, _T("Google Update Event Log Entries"));
 
-  const int kBufferSize = 8192;
-
   HANDLE handle_event_log = ::OpenEventLog(NULL, _T("Application"));
   if (handle_event_log == NULL) {
     return;
   }
 
-  BYTE buffer[kBufferSize] = {0};
-  EVENTLOGRECORD* record = reinterpret_cast<EVENTLOGRECORD*>(&buffer);
-  DWORD num_bytes_read = 0;
-  DWORD bytes_needed = 0;
+  const int kInitialBufferSize = 8192;
+  int buffer_size = kInitialBufferSize;
+  scoped_array<TCHAR> buffer(new TCHAR[buffer_size]);
 
-  TCHAR message_buffer[kBufferSize] = {0};
-
-  while (::ReadEventLog(handle_event_log,
+  while (1) {
+    EVENTLOGRECORD* record = reinterpret_cast<EVENTLOGRECORD*>(buffer.get());
+    DWORD num_bytes_read = 0;
+    DWORD bytes_needed = 0;
+    if (!::ReadEventLog(handle_event_log,
                         EVENTLOG_FORWARDS_READ | EVENTLOG_SEQUENTIAL_READ,
                         0,
                         record,
-                        kBufferSize,
+                        buffer_size,
                         &num_bytes_read,
                         &bytes_needed)) {
+      const int err = ::GetLastError();
+      if (ERROR_INSUFFICIENT_BUFFER == err) {
+        buffer_size = bytes_needed;
+        buffer.reset(new TCHAR[buffer_size]);
+        continue;
+      } else {
+        if (ERROR_HANDLE_EOF != err) {
+          dump_log.WriteLine(_T("ReadEventLog failed: %d"), err);
+        }
+        break;
+      }
+    }
+
     while (num_bytes_read > 0) {
       const TCHAR* source_name = reinterpret_cast<const TCHAR*>(
           reinterpret_cast<BYTE*>(record) + sizeof(*record));
@@ -453,7 +465,7 @@ void DataDumperGoopdate::DumpScheduledTaskInfo(const DumpLog& dump_log,
                                           NULL,
                                           CLSCTX_INPROC_SERVER);
   if (FAILED(hr)) {
-    dump_log.WriteLine(_T("ITaskScheduler.CoCreateInstance failed [0x%x]"),
+    dump_log.WriteLine(_T("ITaskScheduler.CoCreateInstance failed: 0x%x"),
                        hr);
     return;
   }
@@ -464,7 +476,7 @@ void DataDumperGoopdate::DumpScheduledTaskInfo(const DumpLog& dump_log,
                            reinterpret_cast<IUnknown**>(&task));
 
   if (FAILED(hr)) {
-    dump_log.WriteLine(_T("ITaskScheduler.Activate failed [0x%x]"), hr);
+    dump_log.WriteLine(_T("ITaskScheduler.Activate failed: 0x%x"), hr);
     return;
   }
 

@@ -143,11 +143,14 @@ HRESULT OneClickWorker::DoOneClickInstall(
   if (SUCCEEDED(hr)) {
     browser_callback->DoSuccessCallback();
   } else {
-    CORE_LOG(LE, (_T("[DoOneClickInstall2 failed][0x%x]"), hr));
+    CORE_LOG(LE, (_T("[DoOneClickInstallInternal failed][0x%x]"), hr));
     browser_callback->DoFailureCallback(hr);
   }
 
-  return hr;
+  // Return success in all cases. The failure callback has already been called
+  // above, and we don't want to cause a failure path to be called again when
+  // the JavaScript catches the exception.
+  return S_OK;
 }
 
 HRESULT OneClickWorker::DoOneClickInstall2(const TCHAR* extra_args) {
@@ -158,7 +161,7 @@ HRESULT OneClickWorker::DoOneClickInstall2(const TCHAR* extra_args) {
 
 HRESULT OneClickWorker::DoOneClickInstallInternal(const TCHAR* cmd_line_args) {
   if (!InApprovedDomain()) {
-    return E_ACCESSDENIED;
+    return GOOPDATE_E_ONECLICK_HOSTCHECK_FAILED;
   }
 
 #ifdef _DEBUG
@@ -201,7 +204,7 @@ HRESULT OneClickWorker::DoOneClickInstallInternal(const TCHAR* cmd_line_args) {
   builder.set_install_source(kCmdLineInstallSource_OneClick);
   CString final_cmd_line_args = builder.GetCommandLineArgs();
 
-  CORE_LOG(L2, (_T("[OneClickWorker::DoOneClickInstall2]")
+  CORE_LOG(L2, (_T("[OneClickWorker::DoOneClickInstallInternal]")
                 _T("[Final command line params: %s]"),
                 final_cmd_line_args));
 
@@ -212,7 +215,7 @@ HRESULT OneClickWorker::DoOneClickInstallInternal(const TCHAR* cmd_line_args) {
           final_cmd_line_args,
           address(process_goopdate));
   if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[OneClickWorker::DoOneClickInstall2]")
+    CORE_LOG(LE, (_T("[OneClickWorker::DoOneClickInstallInternal]")
                   _T("[Failed StartGoogleUpdateWithArgs: 0x%x"),
                   hr));
     return hr;
@@ -227,7 +230,7 @@ HRESULT OneClickWorker::GetInstalledVersion(const TCHAR* guid_string,
   CORE_LOG(L2, (_T("[GoopdateCtrl::GetInstalledVersion][%s][%d]"),
                 guid_string, is_machine));
   if (!InApprovedDomain()) {
-    return E_ACCESSDENIED;
+    return GOOPDATE_E_ONECLICK_HOSTCHECK_FAILED;
   }
 
   ASSERT1(version_string);
@@ -243,17 +246,17 @@ HRESULT OneClickWorker::GetInstalledVersion(const TCHAR* guid_string,
   return S_OK;
 }
 
-HRESULT OneClickWorker::GetOneClickVersion(long* version) {
+HRESULT OneClickWorker::GetOneClickVersion(long* version) {   // NOLINT
   CORE_LOG(L2, (_T("[OneClickWorker::GetOneClickVersion]")));
   if (!InApprovedDomain()) {
-    return E_ACCESSDENIED;
+    return GOOPDATE_E_ONECLICK_HOSTCHECK_FAILED;
   }
 
   if (!version) {
     return E_POINTER;
   }
 
-  *version = atoi(ACTIVEX_VERSION_ANSI);
+  *version = atoi(ACTIVEX_VERSION_ANSI);  // NOLINT
   return S_OK;
 }
 

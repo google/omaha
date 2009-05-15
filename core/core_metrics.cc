@@ -39,7 +39,13 @@ DEFINE_METRIC_integer(core_cr_actual_timer_interval_ms);
 DEFINE_METRIC_count(core_start_crash_handler_total);
 DEFINE_METRIC_count(core_start_crash_handler_succeeded);
 
+DEFINE_METRIC_count(core_run_not_checking_for_updates);
+DEFINE_METRIC_count(core_run_task_scheduler_not_running);
 DEFINE_METRIC_count(core_run_scheduled_task_missing);
+DEFINE_METRIC_count(core_run_scheduled_task_disabled);
 DEFINE_METRIC_count(core_run_service_missing);
+DEFINE_METRIC_count(core_run_service_disabled);
+DEFINE_METRIC_integer(core_run_scheduled_task_exit_code);
+
 }  // namespace omaha
 

@@ -792,13 +792,18 @@ void AppManager::ReadUpdateAvailableStats(
 // sure that it was an online update.
 void AppManager::RecordSuccessfulInstall(const GUID& parent_app_guid,
                                          const GUID& app_guid,
-                                         bool is_update) {
+                                         bool is_update,
+                                         bool is_offline) {
+  ASSERT1(!is_update || !is_offline);
+
   ClearUpdateAvailableStats(parent_app_guid, app_guid);
 
-  if (is_update) {
+  if (!is_offline) {
     // Assumes that all updates are online.
     RecordSuccessfulUpdateCheck(parent_app_guid, app_guid);
+  }
 
+  if (is_update) {
     RegKey state_key;
     HRESULT hr = CreateClientStateKey(parent_app_guid, app_guid, &state_key);
     if (FAILED(hr)) {
@@ -821,8 +826,7 @@ void AppManager::RecordSuccessfulUpdateCheck(const GUID& parent_app_guid,
   }
 
   const DWORD now = Time64ToInt32(GetCurrent100NSTime());
-  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueLastSuccessfulCheckSec,
-                                       now)));
+  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueLastSuccessfulCheckSec, now)));
 }
 
 HRESULT AppManager::ClearInstallationId(AppData* app_data,

@@ -58,6 +58,7 @@ class SetupService {
                                 const TCHAR* description);
 
   friend class SetupServiceTest;
+  friend class CoreUtilsTest;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(SetupService);
 };

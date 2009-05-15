@@ -259,7 +259,7 @@ HRESULT GetScheduledTaskStatus(const TCHAR* task_name) {
     return hr;
   }
 
-  HRESULT task_status;
+  HRESULT task_status(S_OK);
   hr = task->GetStatus(&task_status);
   if (FAILED(hr)) {
     ASSERT(false, (_T("ITask.GetStatus failed 0x%x"), hr));
@@ -267,6 +267,38 @@ HRESULT GetScheduledTaskStatus(const TCHAR* task_name) {
   }
 
   return task_status;
+}
+
+HRESULT GetScheduledTaskExitCode(const TCHAR* task_name) {
+  ASSERT1(task_name && *task_name);
+
+  CComPtr<ITaskScheduler> scheduler;
+  HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
+                                          NULL,
+                                          CLSCTX_INPROC_SERVER);
+  if (FAILED(hr)) {
+    ASSERT(false, (_T("ITaskScheduler.CoCreateInstance failed 0x%x"), hr));
+    return hr;
+  }
+
+  CComPtr<ITask> task;
+  hr = scheduler->Activate(task_name,
+                           __uuidof(ITask),
+                           reinterpret_cast<IUnknown**>(&task));
+
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[ITask.Activate failed][0x%x]"), hr));
+    return hr;
+  }
+
+  DWORD exit_code(0);
+  hr = task->GetExitCode(&exit_code);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("ITask.GetExitCode failed 0x%x"), hr));
+    return hr;
+  }
+
+  return hr == SCHED_S_TASK_HAS_NOT_RUN ? hr : exit_code;
 }
 
 HRESULT StartScheduledTask(const TCHAR* task_name) {
@@ -371,13 +403,13 @@ HRESULT CreateLogonTrigger(ITask* task) {
   return S_OK;
 }
 
-HRESULT CreatePeriodicTrigger(ITask* task) {
+HRESULT CreatePeriodicTrigger(ITask* task, bool create_hourly_trigger) {
   ASSERT1(task);
 
   CComPtr<ITaskTrigger> trigger;
   WORD index = 0;
 
-  // Create a trigger to run at hourly intervals every day.
+  // Create a trigger to run every day.
   HRESULT hr = task->CreateTrigger(&index, &trigger);
   if (FAILED(hr)) {
     ASSERT(false, (_T("ITask.CreateTrigger failed 0x%x"), hr));
@@ -405,16 +437,19 @@ HRESULT CreatePeriodicTrigger(ITask* task) {
   trigger_config.TriggerType = TASK_TIME_TRIGGER_DAILY;
   trigger_config.Type.Daily.DaysInterval = 1;  // every 1 day
 
-  // The task will be run daily at 24 hour intervals. And the task will be
-  // repeated every au_timer_interval_minutes within a single 24 hour interval.
-  const DWORD kTaskTrigger24HoursDuration = 24 * 60;
-  int au_timer_interval_minutes =
-      ConfigManager::Instance()->GetAutoUpdateTimerIntervalMs() / (60 * 1000);
-  ASSERT1(au_timer_interval_minutes > 0 &&
-          au_timer_interval_minutes < kTaskTrigger24HoursDuration);
+  if (create_hourly_trigger) {
+    // The task will be run daily at 24 hour intervals. And the task will be
+    // repeated every au_timer_interval_minutes within a single 24 hour
+    // interval.
+    const DWORD kTaskTrigger24HoursDuration = 24 * 60;
+    int au_timer_interval_minutes =
+        ConfigManager::Instance()->GetAutoUpdateTimerIntervalMs() / (60 * 1000);
+    ASSERT1(au_timer_interval_minutes > 0 &&
+            au_timer_interval_minutes < kTaskTrigger24HoursDuration);
 
-  trigger_config.MinutesDuration = kTaskTrigger24HoursDuration;
-  trigger_config.MinutesInterval = au_timer_interval_minutes;
+    trigger_config.MinutesDuration = kTaskTrigger24HoursDuration;
+    trigger_config.MinutesInterval = au_timer_interval_minutes;
+  }
 
   hr = trigger->SetTrigger(&trigger_config);
   if (FAILED(hr)) {
@@ -431,13 +466,16 @@ HRESULT CreateScheduledTask(ITask* task,
                             const TCHAR* task_comment,
                             bool is_machine,
                             bool create_logon_trigger,
-                            bool create_periodic_trigger) {
+                            bool create_daily_trigger,
+                            bool create_hourly_trigger) {
   ASSERT1(task);
   ASSERT1(task_path && *task_path);
   ASSERT1(task_parameters);
   ASSERT1(task_comment && *task_comment);
-  ASSERT1(create_logon_trigger || create_periodic_trigger);
+  ASSERT1(create_logon_trigger || create_daily_trigger);
   ASSERT1(!create_logon_trigger || (create_logon_trigger && is_machine));
+  ASSERT1(!create_hourly_trigger ||
+          (create_hourly_trigger && create_daily_trigger));
 
   CORE_LOG(L3, (_T("CreateScheduledTask[%s][%s][%d]"),
                 task_path, task_parameters, is_machine));
@@ -511,9 +549,8 @@ HRESULT CreateScheduledTask(ITask* task,
     }
   }
 
-  if (create_periodic_trigger) {
-    // Create a trigger to run at hourly intervals every day.
-    hr = CreatePeriodicTrigger(task);
+  if (create_daily_trigger) {
+    hr = CreatePeriodicTrigger(task, create_hourly_trigger);
     if (FAILED(hr)) {
       return hr;
     }
@@ -529,7 +566,7 @@ HRESULT CreateScheduledTask(ITask* task,
 
   hr = persist->Save(NULL, TRUE);
   if (FAILED(hr)) {
-    ASSERT(false, (_T("IPersistFile.Save failed 0x%x"), hr));
+    CORE_LOG(LE, (_T("IPersistFile.Save failed 0x%x"), hr));
     return hr;
   }
 
@@ -579,7 +616,8 @@ HRESULT UpgradeScheduledTask(const TCHAR* task_name,
                              const TCHAR* task_comment,
                              bool is_machine,
                              bool create_logon_trigger,
-                             bool create_periodic_trigger) {
+                             bool create_daily_trigger,
+                             bool create_hourly_trigger) {
   ASSERT1(task_name && *task_name);
   ASSERT1(IsInstalledScheduledTask(task_name));
 
@@ -628,16 +666,19 @@ HRESULT UpgradeScheduledTask(const TCHAR* task_name,
                              task_comment,
                              is_machine,
                              create_logon_trigger,
-                             create_periodic_trigger);
+                             create_daily_trigger,
+                             create_hourly_trigger);
 }
 
+// TODO(Omaha): Change the apis to avoid specifying hourly and daily triggers.
 HRESULT InstallScheduledTask(const TCHAR* task_name,
                              const TCHAR* task_path,
                              const TCHAR* task_parameters,
                              const TCHAR* task_comment,
                              bool is_machine,
                              bool create_logon_trigger,
-                             bool create_periodic_trigger) {
+                             bool create_daily_trigger,
+                             bool create_hourly_trigger) {
   if (IsInstalledScheduledTask(task_name)) {
     return UpgradeScheduledTask(task_name,
                                 task_path,
@@ -645,7 +686,8 @@ HRESULT InstallScheduledTask(const TCHAR* task_name,
                                 task_comment,
                                 is_machine,
                                 create_logon_trigger,
-                                create_periodic_trigger);
+                                create_daily_trigger,
+                                create_hourly_trigger);
   }
 
   CComPtr<ITaskScheduler> scheduler;
@@ -674,7 +716,8 @@ HRESULT InstallScheduledTask(const TCHAR* task_name,
                              task_comment,
                              is_machine,
                              create_logon_trigger,
-                             create_periodic_trigger);
+                             create_daily_trigger,
+                             create_hourly_trigger);
 }
 
 HRESULT UninstallScheduledTask(const TCHAR* task_name) {
@@ -1596,7 +1639,9 @@ HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
                                                 builder.GetCommandLineArgs(),
                                                 task_description,
                                                 is_machine,
-                                                mode == COMMANDLINE_MODE_CORE,
+                                                mode == COMMANDLINE_MODE_CORE &&
+                                                is_machine,
+                                                true,
                                                 mode == COMMANDLINE_MODE_UA);
 
     if (SUCCEEDED(hr)) {
@@ -1623,38 +1668,34 @@ HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
                                         builder.GetCommandLineArgs(),
                                         task_description,
                                         is_machine,
-                                        mode == COMMANDLINE_MODE_CORE,
+                                        mode == COMMANDLINE_MODE_CORE &&
+                                        is_machine,
+                                        true,
                                         mode == COMMANDLINE_MODE_UA);
 }
 
 HRESULT InstallGoopdateTasks(const TCHAR* task_path, bool is_machine) {
-  if (is_machine) {
-    HRESULT hr = InstallGoopdateTaskForMode(task_path,
-                                            is_machine,
-                                            COMMANDLINE_MODE_CORE);
-    if (FAILED(hr)) {
-      return hr;
-    }
+  HRESULT hr = InstallGoopdateTaskForMode(task_path,
+                                          is_machine,
+                                          COMMANDLINE_MODE_CORE);
+  if (FAILED(hr)) {
+    return hr;
   }
 
   return InstallGoopdateTaskForMode(task_path, is_machine, COMMANDLINE_MODE_UA);
 }
 
 HRESULT UninstallGoopdateTasks(bool is_machine) {
-  if (is_machine) {
-    VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
-        ConfigManager::GetCurrentTaskNameCore(is_machine))));
-  }
+  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
+      ConfigManager::GetCurrentTaskNameCore(is_machine))));
   VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
       ConfigManager::GetCurrentTaskNameUA(is_machine))));
 
   // Try to uninstall any tasks that we failed to update during a previous
   // overinstall. It is possible that we fail to uninstall these again here.
-  if (is_machine) {
-    VERIFY1(SUCCEEDED(internal::UninstallScheduledTasks(
-        goopdate_utils::GetDefaultGoopdateTaskName(is_machine,
-                                                   COMMANDLINE_MODE_CORE))));
-  }
+  VERIFY1(SUCCEEDED(internal::UninstallScheduledTasks(
+      goopdate_utils::GetDefaultGoopdateTaskName(is_machine,
+                                                 COMMANDLINE_MODE_CORE))));
   VERIFY1(SUCCEEDED(internal::UninstallScheduledTasks(
       goopdate_utils::GetDefaultGoopdateTaskName(is_machine,
                                                  COMMANDLINE_MODE_UA))));
@@ -1681,6 +1722,16 @@ HRESULT StartGoopdateTaskCore(bool is_machine) {
 bool IsInstalledGoopdateTaskUA(bool is_machine) {
   return internal::IsInstalledScheduledTask(
                              ConfigManager::GetCurrentTaskNameUA(is_machine));
+}
+
+bool IsDisabledGoopdateTaskUA(bool is_machine) {
+  const CString& task_name(ConfigManager::GetCurrentTaskNameUA(is_machine));
+  return internal::GetScheduledTaskStatus(task_name) == SCHED_S_TASK_DISABLED;
+}
+
+HRESULT GetExitCodeGoopdateTaskUA(bool is_machine) {
+  const CString& task_name(ConfigManager::GetCurrentTaskNameUA(is_machine));
+  return internal::GetScheduledTaskExitCode(task_name);
 }
 
 HRESULT GetClientsStringValueFromRegistry(bool is_machine,
@@ -1722,57 +1773,67 @@ HRESULT TerminateAllBrowsers(
     return E_INVALIDARG;
   }
 
-  TerminateBrowserResult res_ie;
-  TerminateBrowserResult res_ff;
-
-  HRESULT hr = TerminateBrowserProcess(BROWSER_IE,
-                                       CString(),
-                                       0,
-                                       &res_ie.found);
-  if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[TerminateBrowserProcess IE failed][0x%08x]"), hr));
-  }
-
-  hr = TerminateBrowserProcess(BROWSER_FIREFOX,
-                               CString(),
-                               0,
-                               &res_ff.found);
-  if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[TerminateBrowserProcess Firefox failed][0x%08x]"), hr));
-  }
-
-  // Now wait for the IE and FF instances to die.
-  hr = WaitForBrowserToDie(BROWSER_IE,
-                           CString(),
-                           kTerminateBrowserTimeoutMs);
-  if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[WaitForBrowserToDie failed][0x%08x]"), hr));
-  } else {
-    res_ie.could_terminate = true;
-  }
-
-  hr = WaitForBrowserToDie(BROWSER_FIREFOX,
-                           CString(),
-                           kTerminateBrowserTimeoutMs);
-  if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[WaitForBrowserToDie failed][0x%08x]"), hr));
-  } else {
-    res_ff.could_terminate = true;
-  }
+  const BrowserType kFirstBrowser = BROWSER_IE;
+  const int kNumSupportedBrowsers = BROWSER_MAX - kFirstBrowser;
 
   BrowserType default_type = BROWSER_UNKNOWN;
-  hr = GetDefaultBrowserType(&default_type);
+  HRESULT hr = GetDefaultBrowserType(&default_type);
   if (FAILED(hr)) {
     UTIL_LOG(LW, (_T("[GetDefaultBrowserType failed][0x%08x]"), hr));
     return hr;
   }
 
-  *browser_res = type == BROWSER_IE ? res_ie : res_ff;
-  *default_res = default_type == BROWSER_IE ? res_ie : res_ff;
+  TerminateBrowserResult terminate_results[kNumSupportedBrowsers];
+
+  for (int browser = 0; browser < kNumSupportedBrowsers; ++browser) {
+    const BrowserType browser_type =
+        static_cast<BrowserType>(kFirstBrowser + browser);
+    hr = TerminateBrowserProcess(browser_type,
+                                 CString(),
+                                 0,
+                                 &terminate_results[browser].found);
+    if (FAILED(hr)) {
+      UTIL_LOG(LW, (_T("[TerminateBrowserProcess failed][%u][0x%08x]"),
+                    browser_type, hr));
+    }
+  }
+
+  // Now wait for the all browser instances to die.
+  // TODO(omaha): Wait for all processes at once rather than waiting for
+  // (kTerminateBrowserTimeoutMs * # supported browsers) ms.
+  for (int browser = 0; browser < kNumSupportedBrowsers; ++browser) {
+    const BrowserType browser_type =
+        static_cast<BrowserType>(kFirstBrowser + browser);
+    hr = WaitForBrowserToDie(browser_type,
+                             CString(),
+                             kTerminateBrowserTimeoutMs);
+    if (FAILED(hr)) {
+      UTIL_LOG(LW, (_T("[WaitForBrowserToDie failed][%u][0x%08x]"),
+                    browser_type, hr));
+    } else {
+      terminate_results[browser].could_terminate = true;
+    }
+  }
+
+  *browser_res = terminate_results[type - kFirstBrowser];
+  *default_res = terminate_results[default_type - kFirstBrowser];
 
   return S_OK;
 }
 
+// default_type can be BROWSER_UNKNOWN.
+// If browsers that must be closed could not be terminated, false is returned.
+// This method and TerminateBrowserProcesses assume the user did not shutdown
+// the specified browser. They restart and shutdown, respectively, the default
+// browser when the specified browser is not found. The reason for this may have
+// been that the the specified (stamped) browser could be in a bad state on the
+// machine and trying to start it would fail.
+// This may also be required to support hosted cases (i.e. AOL and Maxthon).
+// TODO(omaha): If we assume the stamped browser is okay, check whether the
+// specified browser is installed rather than relying on whether the browser was
+// running. It is perfectly valid for the browser to not be running.
+// TODO(omaha): Why not try the default browser if browsers that require
+// shutdown failed to terminate.
 bool GetBrowserToRestart(BrowserType type,
                          BrowserType default_type,
                          const TerminateBrowserResult& res,
@@ -1782,37 +1843,55 @@ bool GetBrowserToRestart(BrowserType type,
   ASSERT1(type != BROWSER_UNKNOWN &&
           type != BROWSER_DEFAULT &&
           type < BROWSER_MAX);
-  ASSERT1(default_type != BROWSER_UNKNOWN &&
-          default_type != BROWSER_DEFAULT &&
-          default_type < BROWSER_MAX);
+  ASSERT1(default_type != BROWSER_DEFAULT && default_type < BROWSER_MAX);
   UTIL_LOG(L3, (_T("[GetBrowserToRestart][%d]"), type));
 
   *browser_type = BROWSER_UNKNOWN;
-  if (type == BROWSER_IE && res.found) {
-    *browser_type = BROWSER_IE;
-    return true;
-  }
 
-  if (type == BROWSER_FIREFOX && res.found) {
-    *browser_type = res.could_terminate ? BROWSER_FIREFOX : BROWSER_UNKNOWN;
-    return res.could_terminate;
+  if (res.found) {
+    switch (type) {
+      case BROWSER_IE:
+        *browser_type = BROWSER_IE;
+        return true;
+      case BROWSER_FIREFOX:   // Only one process.
+      case BROWSER_CHROME:    // One process per plug-in, even for upgrades.
+        if (res.could_terminate) {
+          *browser_type = type;
+          return true;
+        }
+        return false;
+      case BROWSER_UNKNOWN:
+      case BROWSER_DEFAULT:
+      case BROWSER_MAX:
+      default:
+        break;
+    }
   }
 
   // We did not find the browser that we wanted to restart. Hence we need to
   // determine if we could shutdown the default browser.
-  if (default_type == BROWSER_IE) {
-    *browser_type = BROWSER_IE;
-    return true;
-  }
-
-  if (!def_res.found || def_res.found && def_res.could_terminate) {
-    *browser_type = BROWSER_FIREFOX;
-    return true;
+  switch (default_type) {
+    case BROWSER_IE:
+      *browser_type = BROWSER_IE;
+      return true;
+    case BROWSER_FIREFOX:
+    case BROWSER_CHROME:
+      if (!def_res.found || def_res.found && def_res.could_terminate) {
+        *browser_type = default_type;
+        return true;
+      }
+      break;
+    case BROWSER_UNKNOWN:
+    case BROWSER_DEFAULT:
+    case BROWSER_MAX:
+    default:
+      break;
   }
 
   return false;
 }
 
+// See the comments about the default browser above GetBrowserToRestart.
 HRESULT TerminateBrowserProcesses(BrowserType type,
                                   TerminateBrowserResult* browser_res,
                                   TerminateBrowserResult* default_res) {
@@ -2442,6 +2521,7 @@ HRESULT ConfigureNetwork(bool is_machine, bool is_local_system) {
   if (browser_type == BROWSER_FIREFOX) {
     network_config.Add(new FirefoxProxyDetector());
   }
+  // There is no Chrome detector because it uses the same proxy settings as IE.
   network_config.Add(new IEProxyDetector());
   network_config.Add(new DefaultProxyDetector);
 

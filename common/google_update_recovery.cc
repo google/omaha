@@ -23,6 +23,8 @@
 #include <atlstr.h>
 #include "omaha/common/const_addresses.h"
 #include "omaha/common/signaturevalidator.h"
+// TODO(omaha): Move this file to common.
+#include "omaha/enterprise/const_group_policy.h"
 #include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
@@ -272,7 +274,7 @@ HRESULT GetRegStringValue(bool is_machine_key,
   }
   if ((type != REG_SZ && type != REG_EXPAND_SZ) || (0 == byte_count)) {
     ::RegCloseKey(key);
-    return E_FAIL;
+    return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
   }
 
   CString local_value;
@@ -282,15 +284,52 @@ HRESULT GetRegStringValue(bool is_machine_key,
                           value_name,
                           NULL,
                           NULL,
-                          reinterpret_cast<byte*>(buffer),
+                          reinterpret_cast<BYTE*>(buffer),
                           &byte_count);
+  ::RegCloseKey(key);
   if (ERROR_SUCCESS == res) {
     local_value.ReleaseBufferSetLength(byte_count / sizeof(TCHAR));
     *value = local_value;
   }
 
-  ::RegCloseKey(key);
   return HRESULT_FROM_WIN32(res);
+}
+
+// Reads the specified DWORD value from the specified registry key.
+// Only supports value types REG_DWORD.
+// Assumes DWORD is sufficient buffer, which must be true for valid value type.
+HRESULT GetRegDwordValue(bool is_machine_key,
+                         const CString& relative_key_path,
+                         const CString& value_name,
+                         DWORD* value) {
+  if (!value) {
+    return E_INVALIDARG;
+  }
+
+  HKEY root_key = is_machine_key ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER;
+  HKEY key = NULL;
+  LONG res = ::RegOpenKeyEx(root_key, relative_key_path, 0, KEY_READ, &key);
+  if (res != ERROR_SUCCESS) {
+    return HRESULT_FROM_WIN32(res);
+  }
+
+  DWORD type = 0;
+  DWORD byte_count = sizeof(*value);
+  res = ::RegQueryValueEx(key,
+                          value_name,
+                          NULL,
+                          &type,
+                          reinterpret_cast<BYTE*>(value),
+                          &byte_count);
+  ::RegCloseKey(key);
+  if (ERROR_SUCCESS != res) {
+    return HRESULT_FROM_WIN32(res);
+  }
+  if ((type != REG_DWORD) || (0 == byte_count)) {
+    return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+  }
+
+  return S_OK;
 }
 
 // Obtains information about the current Omaha installation.
@@ -540,6 +579,8 @@ HRESULT VerifyIsValidRepairFile(const CString& filename) {
 
 // If a repair file is run, the file will not be deleted until reboot. Delete
 // after reboot will only succeed when executed by an admin or LocalSystem.
+// Returns HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY) if automatic
+// update checks are disabled.
 HRESULT FixGoogleUpdate(const TCHAR* app_guid,
                         const TCHAR* app_version,
                         const TCHAR* app_language,
@@ -550,10 +591,19 @@ HRESULT FixGoogleUpdate(const TCHAR* app_guid,
     return E_INVALIDARG;
   }
 
+  DWORD update_check_period_override_minutes(UINT_MAX);
+  HRESULT hr = omaha::GetRegDwordValue(
+                   true,
+                   GOOPDATE_POLICIES_RELATIVE,
+                   omaha::kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                   &update_check_period_override_minutes);
+  if (SUCCEEDED(hr) && (0 == update_check_period_override_minutes)) {
+    return HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY);
+  }
+
   CString download_target_path;
   CString temp_file_path;
-  HRESULT hr = omaha::GetDownloadTargetPath(&download_target_path,
-                                            &temp_file_path);
+  hr = omaha::GetDownloadTargetPath(&download_target_path, &temp_file_path);
   if (FAILED(hr)) {
     return hr;
   }

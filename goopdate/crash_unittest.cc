@@ -26,6 +26,9 @@
 #include "omaha/common/time.h"
 #include "omaha/testing/unit_test.h"
 
+// TODO(omaha): Modify the tests to avoid writing files to the staging
+// directory, which should not be modified after building.
+
 using google_breakpad::ClientInfo;
 using google_breakpad::CustomClientInfo;
 using google_breakpad::CustomInfoEntry;
@@ -125,6 +128,7 @@ TEST_F(CrashTest, Report_OmahaCrash) {
 }
 
 // Tests sending an out-of-process crash.
+// This test will write an entry with the source "Update2" in the Event Log.
 TEST_F(CrashTest, Report_ProductCrash) {
   CString crash_filename, custom_info_filename;
   crash_filename.Format(_T("%s\\%s"), module_dir_, _T("minidump.dmp"));
@@ -140,7 +144,7 @@ TEST_F(CrashTest, Report_ProductCrash) {
   CString test_dir;
   test_dir.Format(_T("%s\\unittest_support"), module_dir_);
   ASSERT_SUCCEEDED(File::CopyWildcards(test_dir,          // From.
-                                       module_dir_,        // To.
+                                       module_dir_,       // To.
                                        _T("minidump.*"),
                                        true));
 

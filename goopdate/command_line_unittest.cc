@@ -931,11 +931,26 @@ TEST_F(CommandLineTest, ParseCommandLine_RegisterProduct) {
   const TCHAR* kCmdLine =
       _T("goopdate.exe /registerproduct ")
       _T("\"appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
-      _T("appname=YouTubeUploader&needsadmin=False");
+      _T("appname=YouTubeUploader&needsadmin=False\"");
   EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
 
   expected_.mode = COMMANDLINE_MODE_REGISTER_PRODUCT;
+  expected_.extra_args_str = _T("appguid=")
+                            _T("{A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
+                            _T("appname=YouTubeUploader&needsadmin=False");
+  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, false);
+}
 
+// Parse: <path> /registerproduct /installsource enterprisemsi
+TEST_F(CommandLineTest, ParseCommandLine_RegisterProductWithInstallSource) {
+  const TCHAR* kCmdLine =
+      _T("goopdate.exe /registerproduct ")
+      _T("\"appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
+      _T("appname=YouTubeUploader&needsadmin=False\"")
+      _T(" /installsource enterprisemsi");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+  expected_.mode = COMMANDLINE_MODE_REGISTER_PRODUCT;
+  expected_.install_source = _T("enterprisemsi");
   expected_.extra_args_str = _T("appguid=")
                             _T("{A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
                             _T("appname=YouTubeUploader&needsadmin=False");
@@ -947,11 +962,10 @@ TEST_F(CommandLineTest, ParseCommandLine_UnregisterProduct) {
   const TCHAR* kCmdLine =
       _T("goopdate.exe /unregisterproduct ")
       _T("\"appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
-      _T("appname=YouTubeUploader&needsadmin=False");
+      _T("appname=YouTubeUploader&needsadmin=False\"");
   EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
 
   expected_.mode = COMMANDLINE_MODE_UNREGISTER_PRODUCT;
-
   expected_.extra_args_str = _T("appguid=")
                             _T("{A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
                             _T("appname=YouTubeUploader&needsadmin=False");

@@ -78,6 +78,11 @@ class AppManager {
   // Call each time an update is available.
   void UpdateUpdateAvailableStats(const GUID& parent_app_guid,
                                   const GUID& app_guid);
+  // Clears the stored information about update available events for the app.
+  // Call when an update has succeeded.
+  void ClearUpdateAvailableStats(const GUID& parent_app_guid,
+                                 const GUID& app_guid);
+
   // Clears the OEM-installed flag for the app.
   void ClearOemInstalled(const GUID& parent_app_guid, const GUID& app_guid);
 
@@ -91,7 +96,8 @@ class AppManager {
   // Updates the application state after a successful install or update.
   void RecordSuccessfulInstall(const GUID& parent_app_guid,
                                const GUID& app_guid,
-                               bool is_update);
+                               bool is_update,
+                               bool is_offline);
 
   // Updates the application state after a successful update check event, which
   // is either a "noupdate" response or a successful online update.
@@ -142,11 +148,6 @@ class AppManager {
   CString GetProductClientStateMediumKeyName(const GUID& app_guid);
   CString GetComponentClientStateKeyName(const GUID& parent_app_guid,
                                          const GUID& app_guid);
-
-  // Clears the stored information about update available events for the app.
-  // Call when an update has succeeded.
-  void ClearUpdateAvailableStats(const GUID& parent_app_guid,
-                                 const GUID& app_guid);
 
   HRESULT ClearInstallationId(AppData* app_data,
                               const RegKey& client_state_key);

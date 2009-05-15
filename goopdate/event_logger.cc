@@ -172,6 +172,7 @@ void GoogleUpdateLogEvent::WriteEvent() {
   ASSERT1(type_ != 0);
   ASSERT1(id_ != 0);
 
+  DWORD pid(::GetCurrentProcessId());
   CString ver;
   goopdate_utils::GetVerFromRegistry(is_machine_, kGoogleUpdateAppId, &ver);
 
@@ -179,8 +180,8 @@ void GoogleUpdateLogEvent::WriteEvent() {
 
   const ConfigManager& cm = *ConfigManager::Instance();
   CString msg;
-  msg.Format(_T("\n%s.\nver=%s, lang=%s, machine=%d, extern=%d"),
-             event_desc_, ver, lang, is_machine_, !cm.IsGoogler());
+  msg.Format(_T("\n%s.\npid=%d, ver=%s, lang=%s, machine=%d, extern=%d"),
+             event_desc_, pid, ver, lang, is_machine_, !cm.IsGoogler());
 #if DEBUG
   msg.Append(_T(", debug"));
 #endif

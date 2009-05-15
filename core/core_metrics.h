@@ -53,10 +53,15 @@ DECLARE_METRIC_count(core_start_crash_handler_total);
 // How many times StartCrashHandler() succeeded.
 DECLARE_METRIC_count(core_start_crash_handler_succeeded);
 
-// How many times core runs because the service and/or scheduled task is not
-// installed.
+// Service and scheduled task metrics.
+DECLARE_METRIC_count(core_run_not_checking_for_updates);
+DECLARE_METRIC_count(core_run_task_scheduler_not_running);
 DECLARE_METRIC_count(core_run_scheduled_task_missing);
+DECLARE_METRIC_count(core_run_scheduled_task_disabled);
 DECLARE_METRIC_count(core_run_service_missing);
+DECLARE_METRIC_count(core_run_service_disabled);
+DECLARE_METRIC_integer(core_run_scheduled_task_exit_code);
+
 }  // namespace omaha
 
 #endif  // OMAHA_CORE_CORE_METRICS_H_

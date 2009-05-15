@@ -43,4 +43,5 @@ adm_output = env.Command(
 env.Depends(adm_output,
             ['generate_group_policy_template.py', 'public_apps.py'])
 
-env.BuildSConscript('installer')
+if not env.Bit('official_installers'):
+  env.BuildSConscript('installer')

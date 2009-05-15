@@ -29,29 +29,45 @@ import sys
 
 
 HORIZONTAL_RULE = ';%s\n' % ('-' * 78)
+MAIN_POLICY_KEY = "Software\Policies\Google\Update"
 
 # pylint: disable-msg=C6004
 HEADER = """\
 CLASS MACHINE
   CATEGORY !!Cat_Google
     CATEGORY !!Cat_GoogleUpdate
-      KEYNAME !!Key_BaseName
+      KEYNAME \"""" + MAIN_POLICY_KEY + """\"
       EXPLAIN !!Explain_GoogleUpdate
 """
 
 PREFERENCES = """
       CATEGORY !!Cat_Preferences
-        KEYNAME !!Key_BaseName
+        KEYNAME \"""" + MAIN_POLICY_KEY + """\"
         EXPLAIN !!Explain_Preferences
 
         POLICY !!Pol_AutoUpdateCheckPeriod
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+          #endif
           EXPLAIN !!Explain_AutoUpdateCheckPeriod
           PART !!Part_AutoUpdateCheckPeriod NUMERIC
             VALUENAME AutoUpdateCheckPeriodMinutes
             DEFAULT 1400  ; 23 hours 20 minutes.
-            MIN 30
-            MAX 65535     ; 45.5 days.
+            MIN 60
+            MAX 43200     ; 30 days.
             SPIN 60       ; Increment in hour chunks.
+          END PART
+          PART !!Part_DisableAllAutoUpdateChecks CHECKBOX
+            VALUENAME DisableAutoUpdateChecksCheckboxValue  ; Required, unused.
+            ACTIONLISTON
+              ; Writes over Part_AutoUpdateCheckPeriod. Assumes this runs last.
+              VALUENAME AutoUpdateCheckPeriodMinutes VALUE NUMERIC 0
+            END ACTIONLISTON
+            ACTIONLISTOFF
+              ; Do nothing. Let Part_AutoUpdateCheckPeriod take effect.
+            END ACTIONLISTOFF
+            VALUEOFF  NUMERIC 0
+            VALUEON   NUMERIC 1
           END PART
         END POLICY
 
@@ -60,7 +76,7 @@ PREFERENCES = """
 
 APPLICATIONS_HEADER = """
       CATEGORY !!Cat_Applications
-        KEYNAME !!Key_BaseName
+        KEYNAME \"""" + MAIN_POLICY_KEY + """\"
         EXPLAIN !!Explain_Applications
 """
 
@@ -77,6 +93,9 @@ UPDATE_POLICY_ITEMLIST = """\
 
 APPLICATION_DEFAULTS = ("""
         POLICY !!Pol_DefaultAllowInstallation
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+          #endif
           EXPLAIN !!Explain_DefaultAllowInstallation
           VALUENAME InstallDefault
           VALUEOFF  NUMERIC 0
@@ -84,6 +103,9 @@ APPLICATION_DEFAULTS = ("""
         END POLICY
 
         POLICY !!Pol_DefaultUpdatePolicy
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+          #endif
           EXPLAIN !!Explain_DefaultUpdatePolicy
           PART !!Part_UpdatePolicy DROPDOWNLIST
             VALUENAME UpdateDefault
@@ -95,9 +117,12 @@ UPDATE_POLICY_ITEMLIST + """
 
 APP_POLICIES_TEMPLATE = ("""
         CATEGORY !!Cat_$AppLegalId$
-          KEYNAME !!Key_BaseName
+          KEYNAME \"""" + MAIN_POLICY_KEY + """\"
 
           POLICY !!Pol_AllowInstallation
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+            #endif
             EXPLAIN !!Explain_Install$AppLegalId$
             VALUENAME Install$AppGuid$
             VALUEOFF  NUMERIC 0
@@ -105,6 +130,9 @@ APP_POLICIES_TEMPLATE = ("""
           END POLICY
 
           POLICY !!Pol_UpdatePolicy
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+            #endif
             EXPLAIN !!Explain_AutoUpdate$AppLegalId$
             PART !!Part_UpdatePolicy DROPDOWNLIST
               VALUENAME Update$AppGuid$
@@ -145,7 +173,7 @@ STRINGS_HEADER_AND_COMMON = ('\n' +
 HORIZONTAL_RULE +
 """
 [strings]
-Key_BaseName=Software\\Policies\\Google\\Update
+Sup_GoogleUpdate1_2_145_5=At least Google Update 1.2.145.5
 
 Cat_Google=Google
 Cat_GoogleUpdate=Google Update
@@ -159,6 +187,7 @@ Pol_DefaultUpdatePolicy=""" + DEFAULT_UPDATE_POLICY + """
 Pol_UpdatePolicy=""" + UPDATE_POLICY + """
 
 Part_AutoUpdateCheckPeriod=Minutes between update checks
+Part_DisableAllAutoUpdateChecks=Disable all auto-update checks (not recommended)
 Part_UpdatePolicy=Policy
 
 Name_AutomaticUpdates=""" + AUTOMATIC_UPDATES + """ (recommended)

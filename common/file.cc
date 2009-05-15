@@ -151,6 +151,8 @@ HRESULT File::OpenShareMode(const TCHAR* file_name,
   return S_OK;
 }
 
+// The path must not be enclosed in quotes. This is the Windows standard.
+// ::GetFileAttributesEx() returns ERROR_INVALID_NAME for quoted paths.
 bool File::Exists(const TCHAR* file_name) {
   ASSERT1(file_name && *file_name);
   ASSERT1(lstrlen(file_name) > 0);

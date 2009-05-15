@@ -17,6 +17,7 @@
 
 #include <cstdio>
 #include "omaha/common/commands.h"
+#include "omaha/common/file.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -28,8 +29,11 @@ namespace omaha {
 #define kUintOption   _T("uint")
 #define kStrOption    _T("str")
 
+#define kIEBrowserExe \
+  _T("C:\\PROGRAM FILES\\Internet Explorer\\iexplore.exe")
+
 #define kIEBrowserQuotedExe \
-  _T("\"C:\\PROGRAM FILES\\Internet Explorer\\iexplore.exe\"")
+  _T("\"") kIEBrowserExe _T("\"")
 
 #define kIEBrowserQuotedArgs          _T("-h \"%1\"")
 #define kIEBrowserQuotedCommandLine \
@@ -235,8 +239,8 @@ TEST(CommandsTest, CommandParsingSimpleSplitTest) {
                                           &exe,
                                           &args));
 
-  EXPECT_STREQ(exe, kIEBrowserQuotedExeResult);
-  EXPECT_STREQ(args, kIEBrowserQuotedArgsResult);
+  EXPECT_STREQ(kIEBrowserQuotedExeResult, exe);
+  EXPECT_STREQ(kIEBrowserQuotedArgsResult, args);
 }
 
 TEST(CommandsTest, CommandParsingGuessSplitTest) {
@@ -250,8 +254,8 @@ TEST(CommandsTest, CommandParsingGuessSplitTest) {
                                                &exe,
                                                &args));
 
-  EXPECT_STREQ(exe, kIEBrowserQuotedExeResult);
-  EXPECT_STREQ(args, kIEBrowserQuotedArgsResult);
+  EXPECT_STREQ(kIEBrowserQuotedExeResult, exe);
+  EXPECT_STREQ(kIEBrowserQuotedArgsResult, args);
 
   // Test to make sure SplitExeAndArgsGuess correctly splits
   // an improperly constructed "Uninstall" command line
@@ -260,8 +264,8 @@ TEST(CommandsTest, CommandParsingGuessSplitTest) {
                                                &exe,
                                                &args));
 
-  EXPECT_STREQ(exe, kIEBrowserUnquotedExe);
-  EXPECT_STREQ(args, kIEBrowserUnquotedArgs);
+  EXPECT_STREQ(kIEBrowserUnquotedExe, exe);
+  EXPECT_STREQ(kIEBrowserUnquotedArgs, args);
 
   // Test to make sure SplitExeAndArgsGuess correctly splits
   // a properly constructed "Uninstall" command line, where
@@ -273,8 +277,153 @@ TEST(CommandsTest, CommandParsingGuessSplitTest) {
                                                &exe,
                                                &args));
 
-  EXPECT_STREQ(exe, kGEUninstallExe);
-  EXPECT_STREQ(args, kGEUninstallArgs);
+  EXPECT_STREQ(kGEUninstallExe, exe);
+  EXPECT_STREQ(kGEUninstallArgs, args);
+}
+
+TEST(CommandsTest, CommandParsingGuessSplit_ExtraWhiteSpace) {
+  CString exe;
+  CString args;
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+      kIEBrowserUnquotedCommandLine _T(" "),
+      &exe,
+      &args));
+  EXPECT_STREQ(kIEBrowserUnquotedExe, exe);
+  EXPECT_STREQ(kIEBrowserUnquotedArgs, args);
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+      kIEBrowserUnquotedCommandLine _T("\t"),
+      &exe,
+      &args));
+  EXPECT_STREQ(kIEBrowserUnquotedExe, exe);
+  EXPECT_STREQ(kIEBrowserUnquotedArgs, args);
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+      _T(" ") kIEBrowserUnquotedCommandLine,
+      &exe,
+      &args));
+  EXPECT_STREQ(kIEBrowserUnquotedExe, exe);
+  EXPECT_STREQ(kIEBrowserUnquotedArgs, args);
+
+  // The following cases have unexpected results.
+  // Quoting a command line with args is not handled correctly.
+  // The entire thing is interpreted as an EXE.
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+      _T("\" ") kIEBrowserUnquotedCommandLine _T("\""),
+      &exe,
+      &args));
+  EXPECT_STREQ(kIEBrowserUnquotedCommandLine, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+      _T("\"") kIEBrowserUnquotedCommandLine _T(" \""),
+      &exe,
+      &args));
+  EXPECT_STREQ(kIEBrowserUnquotedCommandLine, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+      _T("\"") kIEBrowserUnquotedCommandLine _T("\t\""),
+      &exe,
+      &args));
+  EXPECT_STREQ(kIEBrowserUnquotedCommandLine, exe);
+  EXPECT_TRUE(args.IsEmpty());
+}
+
+TEST(CommandsTest, CommandParsingGuessSplit_CommandLineIsExistingFile) {
+  CString exe;
+  CString args;
+
+  EXPECT_TRUE(File::Exists(kIEBrowserExe));
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(kIEBrowserExe, &exe, &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  // File::Exists does not handle enclosed paths.
+  EXPECT_FALSE(File::Exists(kIEBrowserQuotedExe));
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(kIEBrowserQuotedExe,
+                                               &exe,
+                                               &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+}
+
+TEST(CommandsTest,
+     CommandParsingGuessSplit_CommandLineIsExistingFileWithExtraWhiteSpace) {
+  CString exe;
+  CString args;
+
+  EXPECT_TRUE(File::Exists(kIEBrowserExe));
+  // File::Exists does not handle enclosed paths.
+  EXPECT_FALSE(File::Exists(kIEBrowserQuotedExe));
+
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(kIEBrowserExe _T(" "),
+                                               &exe,
+                                               &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(kIEBrowserQuotedExe _T(" "),
+                                               &exe,
+                                               &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(kIEBrowserExe _T("\t"),
+                                               &exe,
+                                               &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(kIEBrowserQuotedExe _T("\t"),
+                                               &exe,
+                                               &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  // SplitExeAndArgs does not treat tab like whitespace and args aren't trimmed.
+  EXPECT_STREQ(_T("\t"), args);
+
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(_T(" ") kIEBrowserExe,
+                                               &exe,
+                                               &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(
+    CommandParsingSimple::SplitExeAndArgsGuess(_T(" ") kIEBrowserQuotedExe,
+                                               &exe,
+                                               &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+                       _T("\" ") kIEBrowserExe _T("\""),
+                       &exe,
+                       &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+                       _T("\"") kIEBrowserExe _T(" \""),
+                       &exe,
+                       &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
+
+  EXPECT_SUCCEEDED(CommandParsingSimple::SplitExeAndArgsGuess(
+                       _T("\"") kIEBrowserExe _T("\t\""),
+                       &exe,
+                       &args));
+  EXPECT_STREQ(kIEBrowserExe, exe);
+  EXPECT_TRUE(args.IsEmpty());
 }
 
 }  // namespace omaha

@@ -66,6 +66,9 @@ class PingEvent {
     EVENT_SETUP_UPDATE_BEGIN = 16,
     EVENT_SETUP_UPDATE_COMPLETE = 17,
 
+    // Ping when installed via /registerproduct.
+    EVENT_REGISTER_PRODUCT_COMPLETE = 20,
+
     // Ping when an end user first boots a new system with an OEM-installed app.
     EVENT_INSTALL_OEM_FIRST_CHECK = 30,
 

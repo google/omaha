@@ -32,6 +32,8 @@ namespace {
 
 const TCHAR* kGuidApp1 = _T("{CDABE316-39CD-43BA-8440-6D1E0547AEE6}");
 const TCHAR* kGuidApp2 = _T("{28A93830-1746-4F0B-90F5-CF44B41169F3}");
+const TCHAR* kGuidApp3 = _T("{E5D3562E-BFAE-48c6-B9C5-4E293F695E0E}");
+const TCHAR* kGuidApp4 = _T("{F9346563-85DA-4dc1-A621-FAF6F869680A}");
 
 const TCHAR* const kApp1ClientStateKeyPathMachine =
     _T("HKLM\\Software\\Google\\Update\\ClientState\\")
@@ -39,6 +41,15 @@ const TCHAR* const kApp1ClientStateKeyPathMachine =
 const TCHAR* const kApp2ClientStateKeyPathMachine =
     _T("HKLM\\Software\\Google\\Update\\ClientState\\")
     _T("{28A93830-1746-4F0B-90F5-CF44B41169F3}");
+const TCHAR* const kApp3ClientStateKeyPathMachine =
+    _T("HKLM\\Software\\Google\\Update\\ClientState\\")
+    _T("{E5D3562E-BFAE-48c6-B9C5-4E293F695E0E}");
+const TCHAR* const kApp4ClientStateKeyPathMachine =
+    _T("HKLM\\Software\\Google\\Update\\ClientState\\")
+    _T("{F9346563-85DA-4dc1-A621-FAF6F869680A}");
+const TCHAR* const kApp1ClientsKeyPathMachine =
+    _T("HKLM\\Software\\Google\\Update\\Clients\\")
+    _T("{CDABE316-39CD-43BA-8440-6D1E0547AEE6}");
 const TCHAR* const kApp2ClientsKeyPathMachine =
     _T("HKLM\\Software\\Google\\Update\\Clients\\")
     _T("{28A93830-1746-4F0B-90F5-CF44B41169F3}");
@@ -49,7 +60,9 @@ class JobCreatorTest : public testing::Test {
  protected:
   JobCreatorTest()
       : app1_guid_(StringToGuid(kGuidApp1)),
-        app2_guid_(StringToGuid(kGuidApp2)) {
+        app2_guid_(StringToGuid(kGuidApp2)),
+        app3_guid_(StringToGuid(kGuidApp3)),
+        app4_guid_(StringToGuid(kGuidApp4)) {
   }
 
   virtual void SetUp() {
@@ -88,6 +101,8 @@ class JobCreatorTest : public testing::Test {
   Ping ping_;
   const GUID app1_guid_;
   const GUID app2_guid_;
+  const GUID app3_guid_;
+  const GUID app4_guid_;
 };
 
 TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
@@ -184,13 +199,12 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   // Should be a job for Resp2 since Resp1 was status "No Update".
-  EXPECT_EQ(1, jobs.size());
+  ASSERT_EQ(1, jobs.size());
   EXPECT_EQ(3, ping_request.get_request_count());
   EXPECT_EQ(COMPLETION_SUCCESS, completion_info.status);
   EXPECT_EQ(0, completion_info.error_code);
   EXPECT_TRUE(completion_info.text.IsEmpty());
-
-  // TODO(omaha):  Look at the job to check for components.
+  EXPECT_FALSE(jobs[0]->is_offline());
 
   // Sleep so that there is a time difference between the time written in the
   // registry and now.
@@ -198,8 +212,7 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
 
   // Omaha.
   // Update Stats should not have been set because there was no update.
-  // Successful update check is set for "noupdate" but successful update is not
-  // updated.
+  // Successful update check set for noupdate but successful update not updated.
   DWORD update_responses(1);
   DWORD64 time_since_first_response_ms(1);
   app_manager.ReadUpdateAvailableStats(GUID_NULL,
@@ -221,8 +234,7 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
 
   // App 1.
   // Update Stats should not have been set because there was no update.
-  // Successful update check is set for "noupdate" but successful update is not
-  // updated.
+  // Successful update check set for noupdate but successful update not updated.
   update_responses = 1;
   time_since_first_response_ms = 1;
   app_manager.ReadUpdateAvailableStats(GUID_NULL,
@@ -261,6 +273,344 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
                           kRegValueLastSuccessfulCheckSec));
   EXPECT_EQ(kExistingUpdateValues,
             GetDwordValue(kApp2ClientStateKeyPathMachine,
+                          kRegValueLastUpdateTimeSec));
+}
+
+TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateForUpdateDisabledApp) {
+  const CString version_goopdate = _T("1.2.75.3");
+  const CString version_app1 = _T("1.1.2.3");
+  const CString version_app2 = _T("2.0.0.5");
+  const CString version_app3 = _T("11.0.0.5");
+  const CString version_app4 = _T("5.0.6.7");
+
+  JobCreator job_creator(true, true, &ping_);
+  job_creator.set_is_auto_update(true);
+  AppManager app_manager(true);
+
+  const DWORD kExistingUpdateValues = 0x70123456;
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueLastSuccessfulCheckSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueLastUpdateTimeSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp1ClientStateKeyPathMachine,
+                                    kRegValueLastSuccessfulCheckSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp1ClientStateKeyPathMachine,
+                                    kRegValueLastUpdateTimeSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp2ClientStateKeyPathMachine,
+                                    kRegValueLastSuccessfulCheckSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp2ClientStateKeyPathMachine,
+                                    kRegValueLastUpdateTimeSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp3ClientStateKeyPathMachine,
+                                    kRegValueLastSuccessfulCheckSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp3ClientStateKeyPathMachine,
+                                    kRegValueLastUpdateTimeSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp4ClientStateKeyPathMachine,
+                                    kRegValueLastSuccessfulCheckSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp4ClientStateKeyPathMachine,
+                                    kRegValueLastUpdateTimeSec,
+                                    kExistingUpdateValues));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kApp1ClientsKeyPathMachine, _T("pv"), version_app1));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kApp2ClientsKeyPathMachine, _T("pv"), version_app2));
+
+  // Required for testing deletion of this data when updates are disabled (app1)
+  // and noupdate is returned (Omaha and app3).
+  const DWORD64 kUpdateAvailableSince =
+    GetCurrent100NSTime() - 200 * kMsPerSec * kMillisecsTo100ns;
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueUpdateAvailableCount,
+                                    static_cast<DWORD>(123456)));
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueUpdateAvailableSince,
+                                    kUpdateAvailableSince));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp1ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableCount,
+                                    static_cast<DWORD>(123)));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp1ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableSince,
+                                    kUpdateAvailableSince));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp2ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableCount,
+                                    static_cast<DWORD>(2345)));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp2ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableSince,
+                                    kUpdateAvailableSince));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp3ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableCount,
+                                    static_cast<DWORD>(456)));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp3ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableSince,
+                                    kUpdateAvailableSince));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp4ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableCount,
+                                    static_cast<DWORD>(98)));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kApp4ClientStateKeyPathMachine,
+                                    kRegValueUpdateAvailableSince,
+                                    kUpdateAvailableSince));
+  // Verify the data is set correctly.
+  DWORD update_responses(0);
+  DWORD64 time_since_first_response_ms(0);
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       kGoopdateGuid,
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(123456, update_responses);
+  EXPECT_LE(200000, time_since_first_response_ms);
+  update_responses = 0;
+  time_since_first_response_ms = 0;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       StringToGuid(kGuidApp1),
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(123, update_responses);
+  EXPECT_LE(200000, time_since_first_response_ms);
+  update_responses = 0;
+  time_since_first_response_ms = 0;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       StringToGuid(kGuidApp2),
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(2345, update_responses);
+  EXPECT_LE(200000, time_since_first_response_ms);
+  update_responses = 0;
+  time_since_first_response_ms = 0;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       StringToGuid(kGuidApp3),
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(456, update_responses);
+  EXPECT_LE(200000, time_since_first_response_ms);
+  update_responses = 0;
+  time_since_first_response_ms = 0;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       StringToGuid(kGuidApp4),
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(98, update_responses);
+  EXPECT_LE(200000, time_since_first_response_ms);
+
+  ProductDataVector products;
+
+  AppData app_data_omaha;
+  app_data_omaha.set_app_guid(kGoopdateGuid);
+  app_data_omaha.set_is_machine_app(true);
+  app_data_omaha.set_version(version_goopdate);
+  ProductData product_omaha(app_data_omaha);
+  products.push_back(product_omaha);
+
+  AppData app_data1;
+  app_data1.set_app_guid(app1_guid_);
+  app_data1.set_is_machine_app(true);
+  app_data1.set_version(version_app1);
+  app_data1.set_is_update_disabled(true);
+  ProductData product1(app_data1);
+  products.push_back(product1);
+
+  AppData app_data2;
+  app_data2.set_app_guid(app2_guid_);
+  app_data2.set_is_machine_app(true);
+  app_data2.set_version(version_app2);
+  ProductData product2(app_data2);
+  products.push_back(product2);
+
+  AppData app_data3;
+  app_data3.set_app_guid(app3_guid_);
+  app_data3.set_is_machine_app(true);
+  app_data3.set_version(version_app3);
+  app_data3.set_is_update_disabled(true);
+  ProductData product3(app_data3);
+  products.push_back(product3);
+
+  AppData app_data4;
+  app_data4.set_app_guid(app4_guid_);
+  app_data4.set_is_machine_app(true);
+  app_data4.set_version(version_app4);
+  ProductData product4(app_data4);
+  products.push_back(product4);
+
+  UpdateResponses responses;
+
+  UpdateResponseData resp_data_omaha;
+  resp_data_omaha.set_guid(kGoopdateGuid);
+  resp_data_omaha.set_needs_admin(NEEDS_ADMIN_YES);
+  resp_data_omaha.set_status(kResponseStatusNoUpdate);
+  UpdateResponse resp_omaha(resp_data_omaha);
+  responses.insert(std::pair<GUID, UpdateResponse>(kGoopdateGuid, resp_omaha));
+
+  UpdateResponseData resp_data1;
+  resp_data1.set_guid(app1_guid_);
+  resp_data1.set_needs_admin(NEEDS_ADMIN_YES);
+  resp_data1.set_status(kResponseStatusOkValue);
+  UpdateResponse resp1(resp_data1);
+  responses.insert(std::pair<GUID, UpdateResponse>(app1_guid_, resp1));
+
+  UpdateResponseData resp_data2;
+  resp_data2.set_guid(app2_guid_);
+  resp_data2.set_needs_admin(NEEDS_ADMIN_YES);
+  resp_data2.set_status(kResponseStatusOkValue);
+  UpdateResponse resp2(resp_data2);
+  responses.insert(std::pair<GUID, UpdateResponse>(app2_guid_, resp2));
+
+  UpdateResponseData resp_data3;
+  resp_data3.set_guid(app3_guid_);
+  resp_data3.set_needs_admin(NEEDS_ADMIN_YES);
+  resp_data3.set_status(kResponseStatusNoUpdate);
+  UpdateResponse resp3(resp_data3);
+  responses.insert(std::pair<GUID, UpdateResponse>(app3_guid_, resp3));
+
+  UpdateResponseData resp_data4;
+  resp_data4.set_guid(app4_guid_);
+  resp_data4.set_needs_admin(NEEDS_ADMIN_YES);
+  resp_data4.set_status(kResponseStatusInternalError);
+  UpdateResponse resp4(resp_data4);
+  responses.insert(std::pair<GUID, UpdateResponse>(app4_guid_, resp4));
+
+  Jobs jobs;
+  Request ping_request(true);
+  CString event_log_text;
+  CompletionInfo completion_info;
+
+  EXPECT_SUCCEEDED(job_creator.CreateJobsFromResponses(responses,
+                                                       products,
+                                                       &jobs,
+                                                       &ping_request,
+                                                       &event_log_text,
+                                                       &completion_info));
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+
+  // Should be a job for Resp2 only since Resp1 was had updates disabled.
+  ASSERT_EQ(1, jobs.size());
+  // Pings for the update available app, the error-internal app, and the
+  // noupdate apps. No ping for the disabled app with update available.
+  // Not sure why the noupdate apps get a ping.
+  EXPECT_EQ(4, ping_request.get_request_count());
+  EXPECT_EQ(COMPLETION_SUCCESS, completion_info.status);
+  EXPECT_EQ(0, completion_info.error_code);
+  EXPECT_TRUE(completion_info.text.IsEmpty());
+  EXPECT_FALSE(jobs[0]->is_offline());
+
+  // Sleep so that there is a time difference between the time written in the
+  // registry and now.
+  ::Sleep(20);
+
+  // Omaha.
+  // Update Stats should have been cleared because there was no update - we
+  // should not keep around old data if there is no update to apply.
+  // Successful update check set for noupdate but successful update not updated.
+  update_responses = 1;
+  time_since_first_response_ms = 1;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       kGoopdateGuid,
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(0, update_responses);
+  EXPECT_EQ(0, time_since_first_response_ms);
+
+  const uint32 last_check_sec_omaha =
+      GetDwordValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                    kRegValueLastSuccessfulCheckSec);
+  EXPECT_NE(kExistingUpdateValues, last_check_sec_omaha);
+  EXPECT_GE(now, last_check_sec_omaha);
+  EXPECT_GE(static_cast<uint32>(200), now - last_check_sec_omaha);
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                          kRegValueLastUpdateTimeSec));
+
+  // App 1.
+  // Update Stats should have been cleared because these values are used to
+  // anaylze the success of Omaha and disabled updates would break these stats.
+  // Successful update check and successful update are not set because and
+  // update is available but disabled.
+  update_responses = 1;
+  time_since_first_response_ms = 1;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       app1_guid_,
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(0, update_responses);
+  EXPECT_EQ(0, time_since_first_response_ms);
+
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(kApp1ClientStateKeyPathMachine,
+                          kRegValueLastSuccessfulCheckSec));
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(kApp1ClientStateKeyPathMachine,
+                          kRegValueLastUpdateTimeSec));
+
+  // App 2.
+  // Update Stats: responses should have been incremented and time since first
+  // response should be based on the value set above.
+  // Neither successful update check nor successful update are updated because
+  // the update has not been completed.
+  update_responses = 0;
+  time_since_first_response_ms = 0;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       app2_guid_,
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(2346, update_responses);
+  EXPECT_LT(200 * kMsPerSec + 20, time_since_first_response_ms);
+  EXPECT_GT(202 * kMsPerSec, time_since_first_response_ms);
+
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(kApp2ClientStateKeyPathMachine,
+                          kRegValueLastSuccessfulCheckSec));
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(kApp2ClientStateKeyPathMachine,
+                          kRegValueLastUpdateTimeSec));
+
+  // App 3.
+  // Update Stats should have been cleared because there was no update - we
+  // should not keep around old data if there is no update to apply.
+  // Successful update check set for noupdate but successful update not updated.
+  update_responses = 1;
+  time_since_first_response_ms = 1;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       app3_guid_,
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(0, update_responses);
+  EXPECT_EQ(0, time_since_first_response_ms);
+  const uint32 last_check_sec_app3 =
+      GetDwordValue(kApp3ClientStateKeyPathMachine,
+                    kRegValueLastSuccessfulCheckSec);
+  EXPECT_NE(kExistingUpdateValues, last_check_sec_app3);
+  EXPECT_GE(now, last_check_sec_app3);
+  EXPECT_GE(static_cast<uint32>(200), now - last_check_sec_app3);
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(kApp3ClientStateKeyPathMachine,
+                          kRegValueLastUpdateTimeSec));
+
+  // App 4.
+  // Update Stats: responses should have not been incremented and time since
+  // first response should be based on the value set above.
+  // Neither successful update check nor successful update are updated because
+  // the update has not been completed.
+  update_responses = 0;
+  time_since_first_response_ms = 0;
+  app_manager.ReadUpdateAvailableStats(GUID_NULL,
+                                       app4_guid_,
+                                       &update_responses,
+                                       &time_since_first_response_ms);
+  EXPECT_EQ(98, update_responses);
+  EXPECT_LT(200 * kMsPerSec + 20, time_since_first_response_ms);
+  EXPECT_GT(202 * kMsPerSec, time_since_first_response_ms);
+
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(kApp4ClientStateKeyPathMachine,
+                          kRegValueLastSuccessfulCheckSec));
+  EXPECT_EQ(kExistingUpdateValues,
+            GetDwordValue(kApp4ClientStateKeyPathMachine,
                           kRegValueLastUpdateTimeSec));
 }
 
@@ -411,11 +761,13 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_InstallSuccess) {
                                                        &event_log_text,
                                                        &completion_info));
 
-  EXPECT_EQ(2, jobs.size());
+  ASSERT_EQ(2, jobs.size());
   EXPECT_EQ(2, ping_request.get_request_count());
   EXPECT_EQ(COMPLETION_SUCCESS, completion_info.status);
   EXPECT_EQ(0, completion_info.error_code);
   EXPECT_TRUE(completion_info.text.IsEmpty());
+  EXPECT_FALSE(jobs[0]->is_offline());
+  EXPECT_FALSE(jobs[1]->is_offline());
 
   // Sleep so that there would be a time difference between the time written in
   // the registry and now.
@@ -511,8 +863,9 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateGoopdateUpdateAvailable) {
                                                        &completion_info));
 
   // Should be a job for Resp2 since Resp2 was for Goopdate.
-  EXPECT_EQ(1, jobs.size());
+  ASSERT_EQ(1, jobs.size());
   EXPECT_TRUE(::IsEqualGUID(jobs[0]->app_data().app_guid(), kGoopdateGuid));
+  EXPECT_FALSE(jobs[0]->is_offline());
 
   // Validate the ping data that is produced by the test method.
   EXPECT_EQ(2, ping_request.get_request_count());
@@ -648,8 +1001,9 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateGoopdateUpdateOnly) {
                                                        &completion_info));
 
   // Should be a job for Resp2 since Resp2 was for Goopdate.
-  EXPECT_EQ(1, jobs.size());
+  ASSERT_EQ(1, jobs.size());
   EXPECT_TRUE(::IsEqualGUID(jobs[0]->app_data().app_guid(), kGoopdateGuid));
+  EXPECT_FALSE(jobs[0]->is_offline());
 
   // Validate the ping data that is produced by the test method.
   EXPECT_EQ(1, ping_request.get_request_count());
@@ -852,13 +1206,14 @@ TEST_F(JobCreatorTest, CreateOfflineJobs_Success) {
       &event_log_text,
       &completion_info));
 
-  EXPECT_EQ(1, jobs.size());
+  ASSERT_EQ(1, jobs.size());
   EXPECT_EQ(1, ping_request.get_request_count());
   EXPECT_EQ(COMPLETION_SUCCESS, completion_info.status);
   EXPECT_EQ(0, completion_info.error_code);
   EXPECT_TRUE(completion_info.text.IsEmpty());
   EXPECT_EQ(SUCCESS_ACTION_EXIT_SILENTLY_ON_LAUNCH_CMD,
             jobs[0]->response_data().success_action());
+  EXPECT_TRUE(jobs[0]->is_offline());
 
   EXPECT_FALSE(RegKey::HasValue(kApp1ClientStateKeyPathMachine,
                                 kRegValueLastSuccessfulCheckSec));

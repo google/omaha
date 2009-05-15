@@ -125,6 +125,7 @@ TEST(GoopdateUtilsTest, ScheduledTasks) {
                                         kSchedTestTaskComment,
                                         vista_util::IsUserAdmin(),
                                         vista_util::IsUserAdmin(),
+                                        true,
                                         true));
   EXPECT_SUCCEEDED(UninstallScheduledTask(kSchedTestTaskName));
 
@@ -136,6 +137,7 @@ TEST(GoopdateUtilsTest, ScheduledTasks) {
                                           kSchedTestTaskComment,
                                           vista_util::IsUserAdmin(),
                                           vista_util::IsUserAdmin(),
+                                          true,
                                           true));
   }
 
@@ -146,6 +148,7 @@ TEST(GoopdateUtilsTest, ScheduledTasks) {
                                         kSchedTestTaskComment,
                                         vista_util::IsUserAdmin(),
                                         vista_util::IsUserAdmin(),
+                                        true,
                                         true));
 
   // Start and stop.
@@ -198,19 +201,28 @@ static void TestGetBrowserToRestart(BrowserType stamped,
 
   BrowserType type = BROWSER_UNKNOWN;
   if (expected == BROWSER_UNKNOWN) {
-    ASSERT_FALSE(goopdate_utils::GetBrowserToRestart(stamped,
+    EXPECT_FALSE(goopdate_utils::GetBrowserToRestart(stamped,
                                                      def_browser,
                                                      res,
                                                      def,
-                                                     &type));
+                                                     &type))
+        << _T("stamped: ") << stamped << _T(" ") << found1 << _T(" ") << killed1
+        << _T("   default: ") << def_browser << _T(" ") << found2 << _T(" ")
+        << killed2;
   } else {
-    ASSERT_TRUE(goopdate_utils::GetBrowserToRestart(stamped,
-                                                   def_browser,
-                                                   res,
-                                                   def,
-                                                   &type));
+    EXPECT_TRUE(goopdate_utils::GetBrowserToRestart(stamped,
+                                                    def_browser,
+                                                    res,
+                                                    def,
+                                                    &type))
+        << _T("stamped: ") << stamped << _T(" ") << found1 << _T(" ") << killed1
+        << _T("   default: ") << def_browser << _T(" ") << found2 << _T(" ")
+        << killed2;
   }
-  ASSERT_EQ(expected, type);
+  EXPECT_EQ(expected, type)
+      << _T("stamped: ") << stamped << _T(" ") << found1 << _T(" ") << killed1
+      << _T("   default: ") << def_browser << _T(" ") << found2 << _T(" ")
+      << killed2;
 }
 
 TEST(GoopdateUtilsTest, GetAppClientsKey) {
@@ -259,58 +271,168 @@ TEST(GoopdateUtilsTest, GetAppClientStateMediumKey_UserAndMachineAreSame) {
                goopdate_utils::GetAppClientStateMediumKey(false, kAppGuid));
 }
 
-TEST(GoopdateUtilsTest, GetBrowserToRestart) {
-  // case 1 - Stamp = IE, default = IE
-  TestGetBrowserToRestart(BROWSER_IE, false, false,
-                          BROWSER_IE, false, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, false, false,
-                          BROWSER_IE, false, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, false, false,
-                          BROWSER_IE, true, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, false, false,
-                          BROWSER_IE, true, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, false, true,
-                          BROWSER_IE, false, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, false, true,
-                          BROWSER_IE, false, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, false, true,
-                          BROWSER_IE, true, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, false, true,
-                          BROWSER_IE, true, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, false,
-                          BROWSER_IE, false, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, false,
-                          BROWSER_IE, false, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, false,
-                          BROWSER_IE, true, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, false,
-                          BROWSER_IE, true, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, true,
-                          BROWSER_IE, false, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, true,
-                          BROWSER_IE, false, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, true,
-                          BROWSER_IE, true, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_IE, true, true,
-                          BROWSER_IE, true, true,
-                          BROWSER_IE);
+TEST(GoopdateUtilsTest, TerminateAllBrowsers_BrowserUnknown) {
+  TerminateBrowserResult browser_res;
+  TerminateBrowserResult default_res;
+  ExpectAsserts expect_asserts;
+  EXPECT_EQ(E_INVALIDARG, goopdate_utils::TerminateAllBrowsers(BROWSER_UNKNOWN,
+                                                               &browser_res,
+                                                               &default_res));
+}
 
-  // case 2 - Stamp = IE, default = FireFox
+TEST(GoopdateUtilsTest, TerminateAllBrowsers_BrowserDefault) {
+  TerminateBrowserResult browser_res;
+  TerminateBrowserResult default_res;
+  ExpectAsserts expect_asserts;
+  EXPECT_EQ(E_INVALIDARG, goopdate_utils::TerminateAllBrowsers(BROWSER_DEFAULT,
+                                                               &browser_res,
+                                                               &default_res));
+}
+
+TEST(GoopdateUtilsTest, TerminateAllBrowsers_BrowserMax) {
+  TerminateBrowserResult browser_res;
+  TerminateBrowserResult default_res;
+  ExpectAsserts expect_asserts;
+  EXPECT_EQ(E_INVALIDARG, goopdate_utils::TerminateAllBrowsers(BROWSER_MAX,
+                                                               &browser_res,
+                                                               &default_res));
+}
+
+// TerminateAllBrowsers is not tested with valid browser values because the
+// tests would terminate developers' browsers.
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_StampedUnknown) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_UNKNOWN, false, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_UNKNOWN, true, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_DefaultUnknown) {
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_StampedAndDefaultUnknown) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_StampedDefault) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_DEFAULT, false, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_DEFAULT, true, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_DefaultDefault) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_DEFAULT, false, false,
+                          BROWSER_UNKNOWN);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_StampedAndDefaultDefault) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_DEFAULT, false, false,
+                          BROWSER_DEFAULT, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_DEFAULT, true, false,
+                          BROWSER_DEFAULT, false, false,
+                          BROWSER_UNKNOWN);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_StampedMax) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_MAX, false, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_MAX, true, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_DefaultMax) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_MAX, false, false,
+                          BROWSER_UNKNOWN);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_StampedAndDefaultMax) {
+  ExpectAsserts expect_asserts;
+  TestGetBrowserToRestart(BROWSER_MAX, false, false,
+                          BROWSER_MAX, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_MAX, true, false,
+                          BROWSER_MAX, false, false,
+                          BROWSER_UNKNOWN);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeIE_DefaultIE) {
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeIE_DefaultFirefox) {
   TestGetBrowserToRestart(BROWSER_IE, false, false,
                           BROWSER_FIREFOX, false, false,
                           BROWSER_FIREFOX);
@@ -359,59 +481,162 @@ TEST(GoopdateUtilsTest, GetBrowserToRestart) {
   TestGetBrowserToRestart(BROWSER_IE, true, true,
                           BROWSER_FIREFOX, true, true,
                           BROWSER_IE);
+}
 
-  // case 3 - Stamp = FireFox, default = IE
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
-                          BROWSER_IE, false, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
-                          BROWSER_IE, false, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
-                          BROWSER_IE, true, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
-                          BROWSER_IE, true, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
-                          BROWSER_IE, false, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
-                          BROWSER_IE, false, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
-                          BROWSER_IE, true, false,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
-                          BROWSER_IE, true, true,
-                          BROWSER_IE);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
-                          BROWSER_IE, false, false,
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeIE_DefaultChrome) {
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_CHROME, true, false,
                           BROWSER_UNKNOWN);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
-                          BROWSER_IE, false, true,
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_CHROME, true, false,
                           BROWSER_UNKNOWN);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
-                          BROWSER_IE, true, false,
-                          BROWSER_UNKNOWN);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
-                          BROWSER_IE, true, true,
-                          BROWSER_UNKNOWN);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
-                          BROWSER_IE, false, false,
-                          BROWSER_FIREFOX);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
-                          BROWSER_IE, false, true,
-                          BROWSER_FIREFOX);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
-                          BROWSER_IE, true, false,
-                          BROWSER_FIREFOX);
-  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
-                          BROWSER_IE, true, true,
-                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_IE);
+}
 
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeIE_DefaultUnknown) {
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, false, false,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, false, true,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, false,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_IE, true, true,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_IE);
+}
 
-  // case 4 - Stamp = FireFox, default = FireFox
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeFirefox_DefaultIE) {
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_IE, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_IE, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_IE, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_IE, false, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_IE, false, true,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_IE, true, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_IE, true, true,
+                          BROWSER_FIREFOX);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeFirefox_DefaultFirefox) {
   TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
                           BROWSER_FIREFOX, false, false,
                           BROWSER_FIREFOX);
@@ -462,6 +687,312 @@ TEST(GoopdateUtilsTest, GetBrowserToRestart) {
                           BROWSER_FIREFOX);
 }
 
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeFirefox_DefaultChrome) {
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_FIREFOX);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeFirefox_DefaultUnknown) {
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, false,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, false, true,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, false,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_FIREFOX, true, true,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_FIREFOX);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeChrome_DefaultIE) {
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_IE, false, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_IE, false, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_IE, true, false,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_IE, true, true,
+                          BROWSER_IE);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_IE, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_IE, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_IE, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_IE, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_IE, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_IE, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_IE, true, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_IE, true, true,
+                          BROWSER_CHROME);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeChrome_DefaultFirefox) {
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_FIREFOX, false, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_FIREFOX, false, true,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_FIREFOX, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_FIREFOX, true, true,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_FIREFOX, false, false,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_FIREFOX, false, true,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_FIREFOX, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_FIREFOX, true, true,
+                          BROWSER_FIREFOX);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_FIREFOX, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_FIREFOX, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_FIREFOX, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_FIREFOX, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_FIREFOX, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_FIREFOX, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_FIREFOX, true, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_FIREFOX, true, true,
+                          BROWSER_CHROME);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeChrome_DefaultChrome) {
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_CHROME, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_CHROME, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_CHROME, true, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_CHROME, true, true,
+                          BROWSER_CHROME);
+}
+
+TEST(GoopdateUtilsTest, GetBrowserToRestart_TypeChrome_DefaultUnknown) {
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, false,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, false, true,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, false,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_UNKNOWN);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_UNKNOWN, false, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_UNKNOWN, false, true,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_UNKNOWN, true, false,
+                          BROWSER_CHROME);
+  TestGetBrowserToRestart(BROWSER_CHROME, true, true,
+                          BROWSER_UNKNOWN, true, true,
+                          BROWSER_CHROME);
+}
+
 TEST(GoopdateUtilsTest, ConvertStringToBrowserType) {
   BrowserType type = BROWSER_UNKNOWN;
   ASSERT_SUCCEEDED(goopdate_utils::ConvertStringToBrowserType(_T("0"), &type));
@@ -476,7 +1007,10 @@ TEST(GoopdateUtilsTest, ConvertStringToBrowserType) {
   ASSERT_SUCCEEDED(goopdate_utils::ConvertStringToBrowserType(_T("3"), &type));
   ASSERT_EQ(BROWSER_FIREFOX, type);
 
-  ASSERT_FAILED(goopdate_utils::ConvertStringToBrowserType(_T("4"), &type));
+  ASSERT_SUCCEEDED(goopdate_utils::ConvertStringToBrowserType(_T("4"), &type));
+  ASSERT_EQ(BROWSER_CHROME, type);
+
+  ASSERT_FAILED(goopdate_utils::ConvertStringToBrowserType(_T("5"), &type));
   ASSERT_FAILED(goopdate_utils::ConvertStringToBrowserType(_T("asdf"), &type));
   ASSERT_FAILED(goopdate_utils::ConvertStringToBrowserType(_T("234"), &type));
   ASSERT_FAILED(goopdate_utils::ConvertStringToBrowserType(_T("-1"), &type));
@@ -668,6 +1202,38 @@ TEST(GoopdateUtilsTest, GoopdateTaskInUseOverinstall) {
 
   // Cleanup.
   file.Close();
+  EXPECT_SUCCEEDED(UninstallGoopdateTasks(vista_util::IsUserAdmin()));
+}
+
+TEST(GoopdateUtilsTest, GetExitCodeGoopdateTaskUA) {
+  CString task_path = ConcatenatePath(
+                          app_util::GetCurrentModuleDirectory(),
+                          _T("unittest_support\\SaveArguments.exe"));
+  EXPECT_SUCCEEDED(InstallGoopdateTasks(task_path,
+                                        vista_util::IsUserAdmin()));
+  EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN,
+            GetExitCodeGoopdateTaskUA(vista_util::IsUserAdmin()));
+
+  EXPECT_SUCCEEDED(internal::StartScheduledTask(
+      ConfigManager::GetCurrentTaskNameUA(vista_util::IsUserAdmin())));
+
+  ::Sleep(500);
+
+  HRESULT hr = SCHED_S_TASK_RUNNING;
+  for (int tries = 0;
+       tries < kMaxWaitForProcessIterations && SCHED_S_TASK_RUNNING == hr;
+       ++tries) {
+    ::Sleep(kWaitForProcessIntervalMs);
+    hr = internal::GetScheduledTaskStatus(
+        ConfigManager::GetCurrentTaskNameUA(vista_util::IsUserAdmin()));
+  }
+
+  EXPECT_NE(SCHED_S_TASK_RUNNING, hr);
+  EXPECT_EQ(S_OK, GetExitCodeGoopdateTaskUA(vista_util::IsUserAdmin()));
+
+  EXPECT_SUCCEEDED(File::Remove(
+      ConcatenatePath(app_util::GetCurrentModuleDirectory(),
+                      _T("unittest_support\\saved_arguments.txt"))));
   EXPECT_SUCCEEDED(UninstallGoopdateTasks(vista_util::IsUserAdmin()));
 }
 

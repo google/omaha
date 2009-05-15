@@ -243,6 +243,14 @@ class ConfigManager {
   // Returns the network configuration override as a string.
   static HRESULT GetNetConfig(CString* configuration_override);
 
+  // Gets the time when Goopdate was first installed. This value is not
+  // updated when Omaha is updated or overinstalled to a later version.
+  static DWORD GetFirstInstallTime(bool is_machine);
+
+  // Returns true if it has been more than 24 hours since Goopdate was first
+  // installed.
+  static bool Is24HoursSinceFirstInstall(bool is_machine);
+
   static ConfigManager* Instance();
   static void DeleteInstance();
 

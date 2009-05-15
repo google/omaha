@@ -1,31 +1,49 @@
 CLASS MACHINE
   CATEGORY !!Cat_Google
     CATEGORY !!Cat_GoogleUpdate
-      KEYNAME !!Key_BaseName
+      KEYNAME "Software\Policies\Google\Update"
       EXPLAIN !!Explain_GoogleUpdate
 
       CATEGORY !!Cat_Preferences
-        KEYNAME !!Key_BaseName
+        KEYNAME "Software\Policies\Google\Update"
         EXPLAIN !!Explain_Preferences
 
         POLICY !!Pol_AutoUpdateCheckPeriod
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+          #endif
           EXPLAIN !!Explain_AutoUpdateCheckPeriod
           PART !!Part_AutoUpdateCheckPeriod NUMERIC
             VALUENAME AutoUpdateCheckPeriodMinutes
             DEFAULT 1400  ; 23 hours 20 minutes.
-            MIN 30
-            MAX 65535     ; 45.5 days.
+            MIN 60
+            MAX 43200     ; 30 days.
             SPIN 60       ; Increment in hour chunks.
+          END PART
+          PART !!Part_DisableAllAutoUpdateChecks CHECKBOX
+            VALUENAME DisableAutoUpdateChecksCheckboxValue  ; Required, unused.
+            ACTIONLISTON
+              ; Writes over Part_AutoUpdateCheckPeriod. Assumes this runs last.
+              VALUENAME AutoUpdateCheckPeriodMinutes VALUE NUMERIC 0
+            END ACTIONLISTON
+            ACTIONLISTOFF
+              ; Do nothing. Let Part_AutoUpdateCheckPeriod take effect.
+            END ACTIONLISTOFF
+            VALUEOFF  NUMERIC 0
+            VALUEON   NUMERIC 1
           END PART
         END POLICY
 
       END CATEGORY  ; Preferences
 
       CATEGORY !!Cat_Applications
-        KEYNAME !!Key_BaseName
+        KEYNAME "Software\Policies\Google\Update"
         EXPLAIN !!Explain_Applications
 
         POLICY !!Pol_DefaultAllowInstallation
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+          #endif
           EXPLAIN !!Explain_DefaultAllowInstallation
           VALUENAME InstallDefault
           VALUEOFF  NUMERIC 0
@@ -33,6 +51,9 @@ CLASS MACHINE
         END POLICY
 
         POLICY !!Pol_DefaultUpdatePolicy
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+          #endif
           EXPLAIN !!Explain_DefaultUpdatePolicy
           PART !!Part_UpdatePolicy DROPDOWNLIST
             VALUENAME UpdateDefault
@@ -49,9 +70,12 @@ CLASS MACHINE
         END POLICY
 
         CATEGORY !!Cat_GoogleChrome
-          KEYNAME !!Key_BaseName
+          KEYNAME "Software\Policies\Google\Update"
 
           POLICY !!Pol_AllowInstallation
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+            #endif
             EXPLAIN !!Explain_InstallGoogleChrome
             VALUENAME Install{8A69D345-D564-463C-AFF1-A69D9E530F96}
             VALUEOFF  NUMERIC 0
@@ -59,6 +83,9 @@ CLASS MACHINE
           END POLICY
 
           POLICY !!Pol_UpdatePolicy
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+            #endif
             EXPLAIN !!Explain_AutoUpdateGoogleChrome
             PART !!Part_UpdatePolicy DROPDOWNLIST
               VALUENAME Update{8A69D345-D564-463C-AFF1-A69D9E530F96}
@@ -77,9 +104,12 @@ CLASS MACHINE
         END CATEGORY  ; Google Chrome
 
         CATEGORY !!Cat_GoogleEarth
-          KEYNAME !!Key_BaseName
+          KEYNAME "Software\Policies\Google\Update"
 
           POLICY !!Pol_AllowInstallation
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+            #endif
             EXPLAIN !!Explain_InstallGoogleEarth
             VALUENAME Install{74AF07D8-FB8F-4D51-8AC7-927721D56EBB}
             VALUEOFF  NUMERIC 0
@@ -87,6 +117,9 @@ CLASS MACHINE
           END POLICY
 
           POLICY !!Pol_UpdatePolicy
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_2_145_5
+            #endif
             EXPLAIN !!Explain_AutoUpdateGoogleEarth
             PART !!Part_UpdatePolicy DROPDOWNLIST
               VALUENAME Update{74AF07D8-FB8F-4D51-8AC7-927721D56EBB}
@@ -113,7 +146,7 @@ CLASS MACHINE
 ;------------------------------------------------------------------------------
 
 [strings]
-Key_BaseName=Software\Policies\Google\Update
+Sup_GoogleUpdate1_2_145_5=At least Google Update 1.2.145.5
 
 Cat_Google=Google
 Cat_GoogleUpdate=Google Update
@@ -127,6 +160,7 @@ Pol_DefaultUpdatePolicy=Update policy override default
 Pol_UpdatePolicy=Update policy override
 
 Part_AutoUpdateCheckPeriod=Minutes between update checks
+Part_DisableAllAutoUpdateChecks=Disable all auto-update checks (not recommended)
 Part_UpdatePolicy=Policy
 
 Name_AutomaticUpdates=Automatic silent updates (recommended)

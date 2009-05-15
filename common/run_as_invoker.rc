@@ -13,23 +13,9 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_GOOGLE_UPDATE_PRECOMPILE_H__
-#define OMAHA_GOOGLE_UPDATE_PRECOMPILE_H__
+#include "afxres.h"
 
-#pragma runtime_checks("", off)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#include <windows.h>
-#include <shlwapi.h>
-#include <tchar.h>
-
-#pragma warning(push)
-// C4310: cast truncates constant value
-#pragma warning(disable : 4310)
-#include "base/basictypes.h"
-#pragma warning(pop)
-
-#endif  // OMAHA_GOOGLE_UPDATE_PRECOMPILE_H__
+1 RT_MANIFEST "run_as_invoker.manifest"

@@ -716,10 +716,6 @@ void SetupGoogleUpdate::Uninstall() {
             HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
   }
 
-  // Remove everything under top level Google Update registry key.
-  hr = DeleteRegistryKeys();
-  ASSERT1(SUCCEEDED(hr) || HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
-
   hr = UninstallMsiHelper();
   if (FAILED(hr)) {
     SETUP_LOG(L1, (_T("[UninstallMsiHelper failed][0x%08x]"), hr));
@@ -727,11 +723,15 @@ void SetupGoogleUpdate::Uninstall() {
   }
 
   UninstallLaunchMechanisms();
+
+  // Remove everything under top level Google Update registry key.
+  hr = DeleteRegistryKeys();
+  ASSERT1(SUCCEEDED(hr) || HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
 }
 
 // Also deletes the main Google Update key if there is nothing in it.
 HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
-  OPT_LOG(L3, (_T("[SetupGoogleUpdate::RemoveRegistryKeys]")));
+  OPT_LOG(L3, (_T("[SetupGoogleUpdate::DeleteRegistryKeys]")));
 
   CString root_key = ConfigManager::Instance()->registry_update(is_machine_);
   ASSERT1(!root_key.IsEmpty());
@@ -771,6 +771,7 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
     DWORD type = 0;
     hr = root.GetValueNameAt(i, &value_name, &type);
     ASSERT1(hr == S_OK);
+    // TODO(omaha): Remove kRegValueLast* once we have an install API.
     if (SUCCEEDED(hr)) {
       if (value_name != kRegValueMachineId &&
           value_name != kRegValueUserId &&

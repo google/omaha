@@ -304,7 +304,9 @@ class JobInstallFooTest : public JobTest {
     EXPECT_STREQ(expected_iid_string, str_value);
   }
 
-  void Install_MsiInstallerSucceeds(bool is_update, bool is_first_install);
+  void Install_MsiInstallerSucceeds(bool is_update,
+                                    bool is_first_install,
+                                    bool is_offline);
   void Install_InstallerFailed_WhenNoExistingPreInstallData(bool is_update);
   void Install_InstallerFailed_WhenExistingPreInstallData(bool is_update);
 
@@ -600,6 +602,9 @@ TEST_F(JobTest, Install_UpdateOmahaSucceeds) {
   ASSERT_HRESULT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
 }
 
+// Update values should not be changed because we do not know whether
+// self-updates have succeeded yet.
+// Successful update and check values are not changed either.
 TEST_F(JobTest, Install_SuccessfulOmahaUpdateDoesNotClearUpdateAvailableStats) {
   is_machine_ = false;
 
@@ -922,7 +927,10 @@ TEST(RequestTest, TestInitialized) {
 */
 
 void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
-                                                     bool is_first_install) {
+                                                     bool is_first_install,
+                                                     bool is_offline) {
+  ASSERT_TRUE(!is_update || !is_offline);
+
   const DWORD kExistingUpdateValues = 0x70123456;
 
   // TODO(omaha): Use UserFoo instead, change is_machine in the base class,
@@ -976,6 +984,8 @@ void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
                                       kExistingUpdateValues));
   }
 
+  job_->set_is_offline(is_offline);
+
   AppData app_data(PopulateFooAppData());
   job_->set_download_file_name(foo_installer_path_);
   job_->set_app_data(app_data);
@@ -1020,14 +1030,33 @@ void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
     EXPECT_NE(kExistingUpdateValues, last_update_sec);
     EXPECT_GE(now, last_update_sec);
     EXPECT_GE(static_cast<uint32>(200), now - last_update_sec);
-  } else if (!is_first_install) {
-    // Verify update values not changed.
-    EXPECT_EQ(kExistingUpdateValues,
-              GetDwordValue(kFullFooAppClientStateKeyPath,
-                            kRegValueLastSuccessfulCheckSec));
-    EXPECT_EQ(kExistingUpdateValues,
-              GetDwordValue(kFullFooAppClientStateKeyPath,
-                            kRegValueLastUpdateTimeSec));
+  } else {
+    // LastSuccessfulCheckSec is written for online installs but never cleared.
+    if (!is_offline) {
+      const uint32 last_check_sec =
+          GetDwordValue(kFullFooAppClientStateKeyPath,
+                        kRegValueLastSuccessfulCheckSec);
+      EXPECT_NE(kExistingUpdateValues, last_check_sec);
+      EXPECT_GE(now, last_check_sec);
+      EXPECT_GE(static_cast<uint32>(200), now - last_check_sec);
+    } else if (!is_first_install) {
+      EXPECT_EQ(kExistingUpdateValues,
+                GetDwordValue(kFullFooAppClientStateKeyPath,
+                              kRegValueLastSuccessfulCheckSec));
+    } else {
+      EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
+                                    kRegValueLastSuccessfulCheckSec));
+    }
+
+    // kRegValueLastUpdateTimeSec is never written for installs.
+    if (!is_first_install) {
+      EXPECT_EQ(kExistingUpdateValues,
+                GetDwordValue(kFullFooAppClientStateKeyPath,
+                              kRegValueLastUpdateTimeSec));
+    } else {
+      EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
+                                    kRegValueLastUpdateTimeSec));
+    }
   }
 
   CString uninstall_arguments;
@@ -1038,25 +1067,34 @@ void JobInstallFooTest::Install_MsiInstallerSucceeds(bool is_update,
                                                        NULL));
 }
 
-TEST_F(JobInstallFooTest, Install_MsiInstallerSucceedsFirstInstall) {
-  Install_MsiInstallerSucceeds(false, true);
+TEST_F(JobInstallFooTest, Install_MsiInstallerSucceeds_FirstInstall_Online) {
+  Install_MsiInstallerSucceeds(false, true, false);
 }
 
-TEST_F(JobInstallFooTest, Install_MsiInstallerSucceedsOverInstall) {
-  Install_MsiInstallerSucceeds(false, false);
+TEST_F(JobInstallFooTest, Install_MsiInstallerSucceeds_OverInstall_Online) {
+  Install_MsiInstallerSucceeds(false, false, false);
+}
+
+TEST_F(JobInstallFooTest, Install_MsiInstallerSucceeds_FirstInstall_Offline) {
+  Install_MsiInstallerSucceeds(false, true, true);
+}
+
+TEST_F(JobInstallFooTest, Install_MsiInstallerSucceeds_OverInstall_Offline) {
+  Install_MsiInstallerSucceeds(false, false, true);
 }
 
 TEST_F(JobInstallFooTest,
-       Install_MsiInstallerSucceedsUpdate_WhenNoExistingPreInstallData) {
+       Install_MsiInstallerSucceeds_UpdateWhenNoExistingPreInstallData) {
   // AppManager::ClearUpdateAvailableStats() asserts that key open succeeds.
   EXPECT_SUCCEEDED(RegKey::CreateKey(kFullFooAppClientStateKeyPath));
-  Install_MsiInstallerSucceeds(true, true);
+  Install_MsiInstallerSucceeds(true, true, false);
 }
 
 TEST_F(JobInstallFooTest,
-       Install_MsiInstallerSucceedsUpdate_WhenExistingPreInstallData) {
-  Install_MsiInstallerSucceeds(true, false);
+       Install_MsiInstallerSucceeds_UpdateWhenExistingPreInstallData) {
+  Install_MsiInstallerSucceeds(true, false, false);
 }
+
 
 void JobInstallFooTest::Install_InstallerFailed_WhenNoExistingPreInstallData(
     bool is_update) {

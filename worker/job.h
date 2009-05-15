@@ -174,6 +174,12 @@ class Job : public NetworkRequestCallback {
   bool is_update() const {
     return is_update_;
   }
+  bool is_offline() const {
+    return is_offline_;
+  }
+  void set_is_offline(bool is_offline) {
+    is_offline_ = is_offline;
+  }
   bool is_background() const {
     return is_background_;
   }
@@ -226,6 +232,9 @@ class Job : public NetworkRequestCallback {
 
   // True if the job is any kind of update and false if it is an install.
   bool is_update_;
+
+  // True if the job is using offline data instead of an online update check.
+  bool is_offline_;
 
   // True if the job is running silently in the background but not if running
   // silently at the request of another process.

@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/common/service_utils.h"
+#include <lmsname.h>
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -41,9 +42,17 @@ TEST(ServiceUtilsTest, ScmDatabaseEnumerateServices) {
 }
 
 TEST(ServiceUtilsTest, IsServiceInstalled) {
-  ASSERT_TRUE(ServiceInstall::IsServiceInstalled(_T("BITS")));
-  ASSERT_TRUE(ServiceInstall::IsServiceInstalled(_T("NetLogon")));
-  ASSERT_FALSE(ServiceInstall::IsServiceInstalled(_T("FooBar")));
+  EXPECT_TRUE(ServiceInstall::IsServiceInstalled(SERVICE_SCHEDULE));
+  EXPECT_FALSE(ServiceInstall::IsServiceInstalled(_T("FooBar")));
+}
+
+TEST(ServiceUtilsTest, IsServiceRunning) {
+  EXPECT_TRUE(ServiceUtils::IsServiceRunning(SERVICE_SCHEDULE));
+  EXPECT_FALSE(ServiceUtils::IsServiceRunning(_T("FooBar")));
+}
+
+TEST(ServiceUtilsTest, IsServiceDisabled) {
+  EXPECT_FALSE(ServiceUtils::IsServiceDisabled(SERVICE_SCHEDULE));
 }
 
 }  // namespace omaha

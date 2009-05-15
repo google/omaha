@@ -48,6 +48,10 @@ CString ConsoleWriter::PingTypeToString(PingEvent::Types type)  {
     case PingEvent::EVENT_SETUP_INSTALL_COMPLETE:
       return _T("EVENT_SETUP_INSTALL_COMPLETE");
 
+    // Register Product Events.
+    case PingEvent::EVENT_REGISTER_PRODUCT_COMPLETE:
+      return _T("EVENT_REGISTER_PRODUCT_COMPLETE");
+
     // Update Events.
     case PingEvent::EVENT_UPDATE_APPLICATION_BEGIN:
       return _T("EVENT_UPDATE_APPLICATION_BEGIN");
