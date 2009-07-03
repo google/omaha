@@ -335,7 +335,8 @@ if env.Bit('build_server'):
 
   unsigned_inputs = [
       'save_arguments.cc',
-      env.RES('run_as_invoker.res', '$MAIN_DIR/common/run_as_invoker.rc'),
+      official_env.RES('run_as_invoker.res',
+                       '$MAIN_DIR/common/run_as_invoker.rc'),
       official_env.RES('recovery_markup.res',
                        '$MAIN_DIR/recovery/recovery_markup.rc'),
       '$OBJ_ROOT/goopdate/resources/generated_resources_en.res',

@@ -63,7 +63,10 @@ BOOL StaticEx::SubclassWindow(HWND window) {
   CString text;
   if (length > 0) {
     TCHAR* buffer = text.GetBufferSetLength(length);
-    ::SendMessage(window, WM_GETTEXT, length + 1, reinterpret_cast<LPARAM>(buffer));
+    ::SendMessage(window,
+                  WM_GETTEXT,
+                  length + 1,
+                  reinterpret_cast<LPARAM>(buffer));
     text.ReleaseBuffer(-1);
   }
 
@@ -108,7 +111,7 @@ LRESULT StaticEx::OnSetText(UINT msg, WPARAM wparam, LPARAM lparam,
   return 1;
 }
 
-LRESULT StaticEx::OnGetText(UINT, WPARAM wparam, LPARAM lparam, BOOL& handled) {
+LRESULT StaticEx::OnGetText(UINT, WPARAM wparam, LPARAM lparam, BOOL& handled) {  // NOLINT
   if (!lparam) return 0;
   unsigned size = static_cast<unsigned>(wparam);
   TCHAR* buffer = reinterpret_cast<TCHAR*>(lparam);
@@ -126,7 +129,7 @@ LRESULT StaticEx::OnGetText(UINT, WPARAM wparam, LPARAM lparam, BOOL& handled) {
   return size - 1;
 }
 
-LRESULT StaticEx::OnGetTextLength(UINT, WPARAM, LPARAM, BOOL& handled) {
+LRESULT StaticEx::OnGetTextLength(UINT, WPARAM, LPARAM, BOOL& handled) {  // NOLINT
   handled = TRUE;
   return text_.GetLength();
 }
@@ -189,7 +192,7 @@ LRESULT StaticEx::OnLButtonDown(UINT, WPARAM wparam, LPARAM lparam, BOOL&) {
 }
 
 
-LRESULT StaticEx::OnSetCursor(UINT, WPARAM, LPARAM lparam, BOOL& handled) {
+LRESULT StaticEx::OnSetCursor(UINT, WPARAM, LPARAM lparam, BOOL& handled) {  // NOLINT
   int hit_test = LOWORD(lparam);
   handled = FALSE;
   if (hit_test != HTCLIENT) {

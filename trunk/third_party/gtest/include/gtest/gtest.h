@@ -51,15 +51,8 @@
 #ifndef GTEST_INCLUDE_GTEST_GTEST_H_
 #define GTEST_INCLUDE_GTEST_GTEST_H_
 
-// The following platform macros are used throughout Google Test:
+// The following platform macro is used throughout Google Test:
 //   _WIN32_WCE      Windows CE     (set in project files)
-//
-// Note that even though _MSC_VER and _WIN32_WCE really indicate a compiler
-// and a Win32 implementation, respectively, we use them to indicate the
-// combination of compiler - Win 32 API - C library, since the code currently
-// only supports:
-// Windows proper with Visual C++ and MS C library (_MSC_VER && !_WIN32_WCE) and
-// Windows Mobile with Visual C++ and no C library (_WIN32_WCE).
 
 #include <limits>
 #include <gtest/internal/gtest-internal.h>
@@ -279,6 +272,13 @@ class Test {
   // Returns true iff the current test has a fatal failure.
   static bool HasFatalFailure();
 
+  // Returns true iff the current test has a non-fatal failure.
+  static bool HasNonfatalFailure();
+
+  // Returns true iff the current test has a (either fatal or
+  // non-fatal) failure.
+  static bool HasFailure() { return HasFatalFailure() || HasNonfatalFailure(); }
+
   // Logs a property for the current test.  Only the last value for a given
   // key is remembered.
   // These are public static so they can be called from utility functions
@@ -376,7 +376,12 @@ class TestInfo {
   // Returns the test comment.
   const char* comment() const;
 
-  // Returns true if this test should run.
+  // Returns true if this test matches the user-specified filter.
+  bool matches_filter() const;
+
+  // Returns true if this test should run, that is if the test is not disabled
+  // (or it is disabled but the also_run_disabled_tests flag has been specified)
+  // and its full name matches the user-specified filter.
   //
   // Google Test allows the user to filter the tests by their full names.
   // The full name of a test Bar in test case Foo is defined as

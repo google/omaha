@@ -15,6 +15,7 @@
 //
 // Implements metrics and metrics collections
 #include "omaha/statsreport/metrics.h"
+#include "omaha/common/debug.h"
 #include "omaha/common/synchronized.h"
 
 namespace stats_report {
@@ -88,12 +89,14 @@ MetricBase::~MetricBase() {
 
 void IntegerMetricBase::Set(uint64 value) {
   ObjectLock lock(this);
+  ASSERT1(value != kint64max);
   value_ = value;
 }
 
 uint64 IntegerMetricBase::value() const {
   ObjectLock lock(this);
   uint64 ret = value_;
+  ASSERT1(ret != kint64max);
   return ret;
 }
 

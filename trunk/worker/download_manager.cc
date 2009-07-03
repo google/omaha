@@ -260,7 +260,7 @@ HRESULT DownloadManager::BuildUniqueDownloadFilePath(CString* file) const {
     return hr;
   }
 
-  CString path(ConfigManager::Instance()->GetDownloadStorage());
+  CString path(ConfigManager::Instance()->GetTempDownloadDir());
   *file = ConcatenatePath(path, GuidToString(guid));
   if (file->IsEmpty()) {
     ASSERT1(false);

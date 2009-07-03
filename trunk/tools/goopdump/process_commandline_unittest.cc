@@ -22,6 +22,15 @@
 namespace omaha {
 
 TEST(GoopdumpProcessCommandLineTest, TestRunNotepad) {
+  // TODO(omaha): Can we use Process::GetCommandLine() instead of
+  // GetProcessCommandLine? Should be safer than injecting a thread and can
+  // be used in coverage builds.
+#ifdef COVERAGE_ENABLED
+  std::wcout << _T("\tTest does not run in coverage builds because the ")
+             << _T("instrumentation of InjectFunction results in references ")
+             << _T("to invalid memory locations in Notepad.exe.")
+             << std::endl;
+#else
   TCHAR notepad_path[MAX_PATH] = {0};
   TCHAR system_directory[MAX_PATH] = {0};
   ::GetSystemDirectory(system_directory, arraysize(system_directory));
@@ -41,6 +50,7 @@ TEST(GoopdumpProcessCommandLineTest, TestRunNotepad) {
   ::TerminateProcess(get(process_handle), 0);
 
   EXPECT_STREQ(notepad_path, command_line);
+#endif
 }
 
 }  // namespace omaha

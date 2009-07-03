@@ -80,7 +80,8 @@ class HoldLock : public Runnable {
     GLock setup_lock;
     NamedObjectAttributes setup_lock_attr;
     GetNamedObjectAttributes(omaha::kSetupMutex, is_machine_, &setup_lock_attr);
-    setup_lock.InitializeWithSecAttr(setup_lock_attr.name, &setup_lock_attr.sa);
+    EXPECT_TRUE(setup_lock.InitializeWithSecAttr(setup_lock_attr.name,
+                                                 &setup_lock_attr.sa));
     __mutexScope(setup_lock);
 
     EXPECT_TRUE(::SetEvent(get(lock_acquired_event_)));
@@ -103,6 +104,22 @@ class HoldLock : public Runnable {
   scoped_event stop_event_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(HoldLock);
+};
+
+class SetupFilesMockFailInstall : public SetupFiles {
+ public:
+  explicit SetupFilesMockFailInstall(bool is_machine)
+      : SetupFiles(is_machine) {
+  }
+
+  virtual HRESULT Install() {
+    return kExpetedError;
+  }
+
+  static const HRESULT kExpetedError = 0x86427531;
+
+ private:
+  DISALLOW_EVIL_CONSTRUCTORS(SetupFilesMockFailInstall);
 };
 
 }  // namespace
@@ -172,33 +189,57 @@ class SetupTest : public testing::Test {
 
   static bool HasXmlParser() { return Setup::HasXmlParser(); }
 
-  HRESULT SetEulaRequiredState() {
-    return setup_->SetEulaRequiredState();
-  }
-
   bool launched_offline_worker() { return setup_->launched_offline_worker_; }
 
   void SetModeInstall() { setup_->mode_ = Setup::MODE_INSTALL; }
+  void SetModeSelfInstall() { setup_->mode_ = Setup::MODE_SELF_INSTALL; }
   void SetModeSelfUpdate() { setup_->mode_ = Setup::MODE_SELF_UPDATE; }
 
   // Uses DoInstall() instead of Install() as necessary to avoid the elevation
   // check in Install().
-  void InstallLockTimedOutTest() {
+  HRESULT TestInstall() {
+    if (!is_machine_ || vista_util::IsUserAdmin()) {
+      return setup_->Install(_T("foo"));
+    } else {
+      setup_->mode_ = Setup::MODE_INSTALL;
+      return setup_->DoInstall();
+    }
+  }
+
+  // Acquires the Setup Lock in another thread then calls TestInstall().
+  void TestInstallWhileHoldingLock() {
     HoldLock hold_lock(is_machine_);
 
     Thread thread;
     thread.Start(&hold_lock);
     hold_lock.WaitForLockToBeAcquired();
 
-    if (!is_machine_ || vista_util::IsUserAdmin()) {
-      EXPECT_EQ(GOOPDATE_E_FAILED_TO_GET_LOCK, setup_->Install(_T("foo")));
-    } else {
-      setup_->mode_ = Setup::MODE_INSTALL;
-      EXPECT_EQ(GOOPDATE_E_FAILED_TO_GET_LOCK, setup_->DoInstall());
-    }
+    EXPECT_EQ(GOOPDATE_E_FAILED_TO_GET_LOCK, TestInstall());
 
     hold_lock.Stop();
     thread.WaitTillExit(1000);
+  }
+
+  // Acquires the Setup Lock in another thread then calls DoInstall().
+  // Useful for testing modes other than MODE_INSTALL.
+  void TestDoInstallWhileHoldingLock() {
+    HoldLock hold_lock(is_machine_);
+
+    Thread thread;
+    thread.Start(&hold_lock);
+    hold_lock.WaitForLockToBeAcquired();
+
+    EXPECT_EQ(GOOPDATE_E_FAILED_TO_GET_LOCK, setup_->DoInstall());
+
+    hold_lock.Stop();
+    thread.WaitTillExit(1000);
+  }
+
+  void TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles() {
+    SetupFilesMockFailInstall setup_files_mock(is_machine_);
+
+    EXPECT_EQ(SetupFilesMockFailInstall::kExpetedError,
+              setup_->DoProtectedGoogleUpdateInstall(&setup_files_mock));
   }
 
   void StopGoogleUpdateAndWaitSucceedsTestHelper(bool use_job_objects_only) {
@@ -976,6 +1017,11 @@ class SetupRegistryProtectedMachineTest : public SetupMachineTest {
   virtual void SetUp() {
     SetupMachineTest::SetUp();
 
+    // Prime the cache of CSIDL_PROGRAM_FILES so it is available even after
+    // we override HKLM.
+    CString program_files_path;
+    EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files_path));
+
     RegKey::DeleteKey(hive_override_key_name_, true);
     OverrideRegistryHives(hive_override_key_name_);
   }
@@ -1195,7 +1241,7 @@ TEST_F(SetupUserTest, HasXmlParser) {
 }
 
 TEST_F(SetupUserTest, Install_LockTimedOut) {
-  InstallLockTimedOutTest();
+  TestInstallWhileHoldingLock();
 }
 
 TEST_F(SetupMachineTest, Install_LockTimedOut) {
@@ -1205,7 +1251,7 @@ TEST_F(SetupMachineTest, Install_LockTimedOut) {
     return;
   }
 
-  InstallLockTimedOutTest();
+  TestInstallWhileHoldingLock();
 }
 
 TEST_F(SetupRegistryProtectedUserTest, Install_OEM) {
@@ -1227,6 +1273,10 @@ TEST_F(SetupRegistryProtectedUserTest, Install_OEM) {
   args_.is_oem_set = true;
   EXPECT_EQ(GOOPDATE_E_OEM_NOT_MACHINE_AND_PRIVILEGED_AND_AUDIT_MODE,
             setup_->Install(_T("foo")));
+
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, kRegValueOemInstallTimeSec));
+  EXPECT_FALSE(
+      RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemElevationRequired) {
@@ -1251,9 +1301,12 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemElevationRequired) {
   args_.is_oem_set = true;
   EXPECT_EQ(GOOPDATE_E_OEM_NOT_MACHINE_AND_PRIVILEGED_AND_AUDIT_MODE,
             setup_->Install(_T("foo")));
+
+  EXPECT_FALSE(
+      RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
 }
 
-TEST_F(SetupMachineTest, Install_OemNotAuditMode) {
+TEST_F(SetupRegistryProtectedMachineTest, Install_OemNotAuditMode) {
   if (!vista_util::IsUserAdmin()) {
     std::wcout << _T("\tTest did not run because the user is not an admin.")
                << std::endl;
@@ -1263,11 +1316,11 @@ TEST_F(SetupMachineTest, Install_OemNotAuditMode) {
   args_.is_oem_set = true;
   EXPECT_EQ(GOOPDATE_E_OEM_NOT_MACHINE_AND_PRIVILEGED_AND_AUDIT_MODE,
             setup_->Install(_T("foo")));
+  EXPECT_FALSE(
+      RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
 }
 
 // Prevents the install from continuing by holding the Setup Lock.
-// Would be nice to check that the OEM registry value gets set, but that's not
-// easily possible in the current design.
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemFails) {
   if (!vista_util::IsUserAdmin()) {
     std::wcout << _T("\tTest did not run because the user is not an admin.")
@@ -1301,6 +1354,8 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemFails) {
 
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueMachineId));
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueUserId));
+  EXPECT_TRUE(
+      RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
 
   hold_lock.Stop();
   thread.WaitTillExit(1000);
@@ -1940,8 +1995,8 @@ TEST_F(SetupOfflineInstallerTest, NoCopyOfflineFilesForGuid) {
             CallCopyOfflineFilesForGuid(guid_string, target_location));
 }
 
-// A few tests for the public method. The bulk of the cases are covered by
-// SetEulaRequiredState tests.
+// A few tests for the public method. The bulk of the EULA cases are covered by
+// Install() and DoProtectedGoogleUpdateInstall() tests.
 TEST_F(SetupRegistryProtectedMachineTest, SetEulaAccepted_KeyDoesNotExist) {
   EXPECT_EQ(S_OK, Setup::SetEulaAccepted(true));
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
@@ -2019,24 +2074,22 @@ TEST_F(SetupRegistryProtectedUserTest, SetEulaAccepted_ExistsZero) {
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_KeyDoesNotExist) {
-  SetModeInstall();
+       Install_EulaNotRequired_UpdateKeyDoesNotExist) {
   args_.is_eula_required_set = false;
-  EXPECT_EQ(S_OK, SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_ValueDoesNotExist) {
+       Install_EulaNotRequired_EulaValueDoesNotExist) {
   EXPECT_SUCCEEDED(RegKey::CreateKey(MACHINE_REG_UPDATE));
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_ExistsZero) {
+       Install_EulaNotRequired_EulaValueExistsZero) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2047,9 +2100,8 @@ TEST_F(SetupRegistryProtectedMachineTest,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
 
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 
   // ClientState for Google Update (never used) and other apps is not affected.
@@ -2066,51 +2118,47 @@ TEST_F(SetupRegistryProtectedMachineTest,
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_ExistsOne) {
+       Install_EulaNotRequired_EulaValueExistsOne) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
-                                    static_cast<DWORD>(0)));
-  SetModeInstall();
+                                    static_cast<DWORD>(1)));
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_ExistsOther) {
+       Install_EulaNotRequired_EulaValueExistsOther) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(8000)));
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_ExistsString) {
+       Install_EulaNotRequired_EulaValueExistsString) {
   EXPECT_SUCCEEDED(
       RegKey::SetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), _T("0")));
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_ValueDoesNotExistAlreadyInstalled) {
+       Install_EulaNotRequired_EulaValueDoesNotExistAlreadyInstalled) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_NotRequired_ExistsZeroAlreadyInstalled) {
+       Install_EulaNotRequired_EulaValueExistsZeroAlreadyInstalled) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2118,25 +2166,64 @@ TEST_F(SetupRegistryProtectedMachineTest,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_DoesNotExist) {
-  SetModeInstall();
-  args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+       DoInstall_SelfInstall_EulaNotRequired_EulaValueExistsZero) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
+                                    _T("eulaaccepted"),
+                                    static_cast<DWORD>(0)));
+
+  SetModeSelfInstall();
+  args_.is_eula_required_set = false;
+  TestDoInstallWhileHoldingLock();
+  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
+}
+
+// Self-update does not clear eulaaccepted. This case should never happen.
+TEST_F(SetupRegistryProtectedMachineTest,
+       DoInstall_SelfUpdate_EulaNotRequired_EulaValueExistsZero) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
+                                    _T("eulaaccepted"),
+                                    static_cast<DWORD>(0)));
+
+  SetModeSelfUpdate();
+  args_.is_eula_required_set = false;
+  TestDoInstallWhileHoldingLock();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
   EXPECT_EQ(0, value);
 }
 
+// EULA required is not handled by DoInstall(). It is handled later by
+// DoProtectedGoogleUpdateInstall().
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ExistsZero) {
+       Install_EulaRequired_EulaValueDoesNotExist) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(MACHINE_REG_UPDATE));
+  args_.is_eula_required_set = true;
+  TestInstallWhileHoldingLock();
+  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
+}
+
+TEST_F(SetupRegistryProtectedMachineTest,
+       DoProtectedGoogleUpdateInstall_EulaRequired_UpdateKeyDoesNotExist) {
+  SetModeInstall();
+  args_.is_eula_required_set = true;
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
+  DWORD value = UINT_MAX;
+  EXPECT_SUCCEEDED(
+      RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
+  EXPECT_EQ(0, value);
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
+}
+
+TEST_F(SetupRegistryProtectedMachineTest,
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsZero) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2149,7 +2236,7 @@ TEST_F(SetupRegistryProtectedMachineTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2168,14 +2255,16 @@ TEST_F(SetupRegistryProtectedMachineTest,
   EXPECT_EQ(0, value);
 }
 
+// The existing value is ignored if there are not two registered apps. This is
+// an artifact of the implementation and not a requirement.
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ExistsOne) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsOne) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
-                                    static_cast<DWORD>(0)));
+                                    static_cast<DWORD>(1)));
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2183,13 +2272,13 @@ TEST_F(SetupRegistryProtectedMachineTest,
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ExistsOther) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsOther) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(8000)));
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2197,12 +2286,12 @@ TEST_F(SetupRegistryProtectedMachineTest,
 }
 
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ExistsString) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsString) {
   EXPECT_SUCCEEDED(
       RegKey::SetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), _T("0")));
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2212,14 +2301,14 @@ TEST_F(SetupRegistryProtectedMachineTest,
 // One app is not sufficient for detecting that Google Update is already
 // installed.
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ValueDoesNotExistOneAppRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueDoesNotExistOneAppRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientsPath,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2229,14 +2318,14 @@ TEST_F(SetupRegistryProtectedMachineTest,
 // Even Google Update registered is not sufficient for detecting that Google
 // Update is already installed.
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ValueDoesNotExistGoogleUpdateRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueDoesNotExistGoogleUpdateRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_CLIENT_STATE,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2245,7 +2334,7 @@ TEST_F(SetupRegistryProtectedMachineTest,
 
 // Important: The existing state is not changed because two apps are registered.
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ValueDoesNotExistTwoAppsRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueDoesNotExistTwoAppsRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientsPath,
                                     _T("pv"),
                                     _T("1.2.3.4")));
@@ -2255,14 +2344,14 @@ TEST_F(SetupRegistryProtectedMachineTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
 }
 
 // The existing state is not changed because Google Update is already
 // installed, but there is no way to differentiate this from writing 0.
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ExistsZeroTwoAppsRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsZeroTwoAppsRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2275,7 +2364,7 @@ TEST_F(SetupRegistryProtectedMachineTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2284,7 +2373,7 @@ TEST_F(SetupRegistryProtectedMachineTest,
 
 // The existing state is not changed because Google Update is already installed.
 TEST_F(SetupRegistryProtectedMachineTest,
-       SetEulaRequiredState_Required_ExistsOneTwoAppsRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsOneTwoAppsRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(1)));
@@ -2297,32 +2386,69 @@ TEST_F(SetupRegistryProtectedMachineTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
   EXPECT_EQ(1, value);
 }
 
-TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_KeyDoesNotExist) {
+TEST_F(SetupRegistryProtectedMachineTest,
+       DoProtectedGoogleUpdateInstall_SelfInstall_EulaRequired_UpdateKeyDoesNotExist) {  // NOLINT
+  SetModeSelfInstall();
+  args_.is_eula_required_set = true;
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
+  DWORD value = UINT_MAX;
+  EXPECT_SUCCEEDED(
+      RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
+  EXPECT_EQ(0, value);
+}
+
+// Self-update does not set eulaaccepted. This case should never happen.
+TEST_F(SetupRegistryProtectedMachineTest,
+       DoProtectedGoogleUpdateInstall_SelfUpdate_EulaRequired_UpdateKeyDoesNotExist) {  // NOLINT
+  SetModeSelfUpdate();
+  args_.is_eula_required_set = true;
+  ExpectAsserts expect_asserts;
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
+  DWORD value = UINT_MAX;
+  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("eulaaccepted")));
+}
+
+// EULA not required is not handled by DoProtectedGoogleUpdateInstall(). It
+// would have already been handled by DoInstall().
+TEST_F(SetupRegistryProtectedMachineTest,
+       DoProtectedGoogleUpdateInstall_EulaNotRequired_EulaValueExistsZero) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
+                                    _T("eulaaccepted"),
+                                    static_cast<DWORD>(0)));
+
   SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_EQ(S_OK, SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
+  DWORD value = UINT_MAX;
+  EXPECT_SUCCEEDED(
+      RegKey::GetValue(MACHINE_REG_UPDATE, _T("eulaaccepted"), &value));
+  EXPECT_EQ(0, value);
+}
+
+TEST_F(SetupRegistryProtectedUserTest,
+       Install_EulaNotRequired_UpdateKeyDoesNotExist) {
+  args_.is_eula_required_set = false;
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_ValueDoesNotExist) {
+       Install_EulaNotRequired_EulaValueDoesNotExist) {
   EXPECT_SUCCEEDED(RegKey::CreateKey(USER_REG_UPDATE));
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_ExistsZero) {
+       Install_EulaNotRequired_EulaValueExistsZero) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2333,9 +2459,8 @@ TEST_F(SetupRegistryProtectedUserTest,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
 
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 
   // ClientState for Google Update (never used) and other apps is not affected.
@@ -2352,51 +2477,47 @@ TEST_F(SetupRegistryProtectedUserTest,
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_ExistsOne) {
+       Install_EulaNotRequired_EulaValueExistsOne) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
-                                    static_cast<DWORD>(0)));
-  SetModeInstall();
+                                    static_cast<DWORD>(1)));
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_ExistsOther) {
+       Install_EulaNotRequired_EulaValueExistsOther) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(8000)));
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_ExistsString) {
+       Install_EulaNotRequired_EulaValueExistsString) {
   EXPECT_SUCCEEDED(
       RegKey::SetValue(USER_REG_UPDATE, _T("eulaaccepted"), _T("0")));
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_ValueDoesNotExistAlreadyInstalled) {
+       Install_EulaNotRequired_EulaValueDoesNotExistAlreadyInstalled) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppUserClientStatePath,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_NotRequired_ExistsZeroAlreadyInstalled) {
+       Install_EulaNotRequired_EulaValueExistsZeroAlreadyInstalled) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2404,17 +2525,54 @@ TEST_F(SetupRegistryProtectedUserTest,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
-  SetModeInstall();
   args_.is_eula_required_set = false;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestInstallWhileHoldingLock();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_DoesNotExist) {
+       DoInstall_SelfInstall_EulaNotRequired_EulaValueExistsZero) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    _T("eulaaccepted"),
+                                    static_cast<DWORD>(0)));
+
+  SetModeSelfInstall();
+  args_.is_eula_required_set = false;
+  TestDoInstallWhileHoldingLock();
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
+}
+
+// Self-update does not clear eulaaccepted. This case should never happen.
+TEST_F(SetupRegistryProtectedUserTest,
+       DoInstall_SelfUpdate_EulaNotRequired_EulaValueExistsZero) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    _T("eulaaccepted"),
+                                    static_cast<DWORD>(0)));
+
+  SetModeSelfUpdate();
+  args_.is_eula_required_set = false;
+  TestDoInstallWhileHoldingLock();
+  DWORD value = UINT_MAX;
+  EXPECT_SUCCEEDED(
+      RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
+  EXPECT_EQ(0, value);
+}
+
+// EULA required is not handled by DoInstall(). It is handled later by
+// DoProtectedGoogleUpdateInstall().
+TEST_F(SetupRegistryProtectedUserTest,
+       Install_EulaRequired_EulaValueDoesNotExist) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(USER_REG_UPDATE));
+  args_.is_eula_required_set = true;
+  TestInstallWhileHoldingLock();
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
+}
+
+TEST_F(SetupRegistryProtectedUserTest,
+       DoProtectedGoogleUpdateInstall_EulaRequired_UpdateKeyDoesNotExist) {
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2422,7 +2580,7 @@ TEST_F(SetupRegistryProtectedUserTest,
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ExistsZero) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsZero) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2435,7 +2593,7 @@ TEST_F(SetupRegistryProtectedUserTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2454,14 +2612,16 @@ TEST_F(SetupRegistryProtectedUserTest,
   EXPECT_EQ(0, value);
 }
 
+// The existing value is ignored if there are not two registered apps. This is
+// an artifact of the implementation and not a requirement.
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ExistsOne) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsOne) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
-                                    static_cast<DWORD>(0)));
+                                    static_cast<DWORD>(1)));
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2469,13 +2629,13 @@ TEST_F(SetupRegistryProtectedUserTest,
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ExistsOther) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsOther) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(8000)));
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2483,12 +2643,12 @@ TEST_F(SetupRegistryProtectedUserTest,
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ExistsString) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsString) {
   EXPECT_SUCCEEDED(
       RegKey::SetValue(USER_REG_UPDATE, _T("eulaaccepted"), _T("0")));
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2498,14 +2658,14 @@ TEST_F(SetupRegistryProtectedUserTest,
 // One app is not sufficient for detecting that Google Update is already
 // installed.
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ValueDoesNotExistOneAppRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueDoesNotExistOneAppRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppUserClientsPath,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2515,14 +2675,14 @@ TEST_F(SetupRegistryProtectedUserTest,
 // Even Google Update registered is not sufficient for detecting that Google
 // Update is already installed.
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ValueDoesNotExistGoogleUpdateRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueDoesNotExistGoogleUpdateRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE,
                                     _T("pv"),
                                     _T("1.2.3.4")));
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2531,7 +2691,7 @@ TEST_F(SetupRegistryProtectedUserTest,
 
 // Important: The existing state is not changed because two apps are registered.
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ValueDoesNotExistTwoAppsRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueDoesNotExistTwoAppsRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppUserClientsPath,
                                     _T("pv"),
                                     _T("1.2.3.4")));
@@ -2541,14 +2701,14 @@ TEST_F(SetupRegistryProtectedUserTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
 }
 
 // The existing state is not changed because Google Update is already
 // installed, but there is no way to differentiate this from writing 0.
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ExistsZeroTwoAppsRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsZeroTwoAppsRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -2561,7 +2721,7 @@ TEST_F(SetupRegistryProtectedUserTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
@@ -2570,7 +2730,7 @@ TEST_F(SetupRegistryProtectedUserTest,
 
 // The existing state is not changed because Google Update is already installed.
 TEST_F(SetupRegistryProtectedUserTest,
-       SetEulaRequiredState_Required_ExistsOneTwoAppsRegistered) {
+       DoProtectedGoogleUpdateInstall_EulaRequired_EulaValueExistsOneTwoAppsRegistered) {  // NOLINT
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(1)));
@@ -2583,11 +2743,50 @@ TEST_F(SetupRegistryProtectedUserTest,
 
   SetModeInstall();
   args_.is_eula_required_set = true;
-  EXPECT_SUCCEEDED(SetEulaRequiredState());
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
   DWORD value = UINT_MAX;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
   EXPECT_EQ(1, value);
+}
+
+TEST_F(SetupRegistryProtectedUserTest,
+       DoProtectedGoogleUpdateInstall_SelfInstall_EulaRequired_UpdateKeyDoesNotExist) {  // NOLINT
+  SetModeSelfInstall();
+  args_.is_eula_required_set = true;
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
+  DWORD value = UINT_MAX;
+  EXPECT_SUCCEEDED(
+      RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
+  EXPECT_EQ(0, value);
+}
+
+// Self-update does not set eulaaccepted. This case should never happen.
+TEST_F(SetupRegistryProtectedUserTest,
+       DoProtectedGoogleUpdateInstall_SelfUpdate_EulaRequired_UpdateKeyDoesNotExist) {  // NOLINT
+  SetModeSelfUpdate();
+  args_.is_eula_required_set = true;
+  ExpectAsserts expect_asserts;
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
+  DWORD value = UINT_MAX;
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("eulaaccepted")));
+}
+
+// EULA not required is not handled by DoProtectedGoogleUpdateInstall(). It
+// would have already been handled by DoInstall().
+TEST_F(SetupRegistryProtectedUserTest,
+       DoProtectedGoogleUpdateInstall_EulaNotRequired_EulaValueExistsZero) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    _T("eulaaccepted"),
+                                    static_cast<DWORD>(0)));
+
+  SetModeInstall();
+  args_.is_eula_required_set = false;
+  TestDoProtectedGoogleUpdateInstallWithFailingSetupFiles();
+  DWORD value = UINT_MAX;
+  EXPECT_SUCCEEDED(
+      RegKey::GetValue(USER_REG_UPDATE, _T("eulaaccepted"), &value));
+  EXPECT_EQ(0, value);
 }
 
 }  // namespace omaha

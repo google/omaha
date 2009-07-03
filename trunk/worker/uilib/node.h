@@ -15,19 +15,19 @@
 //
 // node.h : Declaration of the Node
 
-#ifndef TACTICAL_PROTECTOR_UILIB_CONTROLS_NODE_H__
-#define TACTICAL_PROTECTOR_UILIB_CONTROLS_NODE_H__
+#ifndef OMAHA_WORKER_UILIB_NODE_H_
+#define OMAHA_WORKER_UILIB_NODE_H_
 
 #include "omaha/worker/uilib/node_state.h"
 
 class Node {
  public:
 
-  Node(HWND window) : node_state_(window) {}
+  explicit Node(HWND window) : node_state_(window) {}
   virtual ~Node() {}
 
   CString node_text() const { return node_text_; }
-  void AddText(const TCHAR* string) { node_text_ += string; }
+  void AddText(const TCHAR* text) { node_text_ += text; }
 
   void set_node_state(const NodeState& node_state) { node_state_ = node_state; }
   const NodeState& node_state() const { return node_state_; }
@@ -37,4 +37,4 @@ class Node {
   NodeState     node_state_;
 };
 
-#endif  // TACTICAL_PROTECTOR_UILIB_CONTROLS_NODE_H__
+#endif  // OMAHA_WORKER_UILIB_NODE_H_

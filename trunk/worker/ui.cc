@@ -44,10 +44,22 @@ InstallStoppedWnd::InstallStoppedWnd(CMessageLoop* message_loop, HWND parent)
 InstallStoppedWnd::~InstallStoppedWnd() {
   CORE_LOG(L3, (_T("[InstallStoppedWnd::~InstallStoppedWnd]")));
   if (IsWindow()) {
-    VERIFY1(DestroyWindow());
+    VERIFY1(SUCCEEDED(CloseWindow()));
   }
 }
 
+// Enables the parent window and destroys this window.
+// Enabling the parent window before destroying this one causes the parent
+// window to get the focus and avoids a visible momentary lack of focus if we
+// instead call SetFocus for the parent after the window is destroyed.
+HRESULT InstallStoppedWnd::CloseWindow() {
+  ASSERT1(IsWindow());
+  VERIFY1(::EnableWindow(parent_, true));
+
+  return DestroyWindow() ? S_OK : HRESULTFromLastError();
+}
+
+// Disables the parent window.
 LRESULT InstallStoppedWnd::OnInitDialog(UINT,
                                         WPARAM,
                                         LPARAM,
@@ -75,19 +87,16 @@ LRESULT InstallStoppedWnd::OnDestroy(UINT,
                                      LPARAM,
                                      BOOL& handled) {  // NOLINT
   VERIFY1(message_loop_->RemoveMessageFilter(this));
-  VERIFY1(::EnableWindow(parent_, true));
   handled = true;
   return 0;
 }
 
-// TODO(omaha): The instance member is being used for LoadString. This
-// member is not initialized when we create ProgressWnd through the COM
-// wrapper. Need to fix this.
 ProgressWnd::ProgressWnd(CMessageLoop* message_loop, HWND parent)
     : message_loop_(message_loop),
       parent_(parent),
       thread_id_(::GetCurrentThreadId()),
       cur_state_(STATE_INIT),
+      is_close_enabled_(true),
       events_sink_(NULL),
       is_machine_(false),
       product_guid_(GUID_NULL) {
@@ -333,10 +342,15 @@ LRESULT ProgressWnd::OnClickedButton(WORD,
 }
 
 // Called when esc key is hit.
+// If close is disabled, does nothing because we don't want the window to close.
 LRESULT ProgressWnd::OnCancel(WORD, WORD id,
                               HWND, BOOL& handled) {    // NOLINT
   ExceptionBarrier eb;
   VERIFY1(id == IDCANCEL);
+
+  if (!is_close_enabled_) {
+    return 0;
+  }
 
   ++metric_worker_ui_esc_key_total;
   MaybeCloseWindow();
@@ -494,15 +508,15 @@ void ProgressWnd::OnInstalling() {
 
   cur_state_ = STATE_INSTALLING;
 
-  // Close the 'Install Stop' window if it is on the screen. The user can't
-  // cancel an install anyway.
-  MaybeCloseInstallStoppedWindow();
+  // Close the 'Install Stop' window if it is on the screen because the user
+  // cannot cancel an install anyway.
+  CloseInstallStoppedWindow();
 
   CString s;
   s.FormatMessage(IDS_INSTALLING, product_name_);
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-  VERIFY1(SUCCEEDED(EnableSystemCloseButton(false)));
+  VERIFY1(SUCCEEDED(EnableClose(false)));
   VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
   VERIFY1(SUCCEEDED(ChangeControlState()));
 }
@@ -569,7 +583,7 @@ void ProgressWnd::OnComplete(CompletionCodes code,
   }
 
   // Close the 'Install Stop' window if it is on the screen.
-  MaybeCloseInstallStoppedWindow();
+  CloseInstallStoppedWindow();
 
   CString s;
   switch (code) {
@@ -655,7 +669,7 @@ void ProgressWnd::OnComplete(CompletionCodes code,
       break;
   }
 
-  VERIFY1(SUCCEEDED(EnableSystemCloseButton(true)));
+  VERIFY1(SUCCEEDED(EnableClose(true)));
   VERIFY1(SUCCEEDED(ChangeControlState()));
 }
 
@@ -723,6 +737,11 @@ HRESULT ProgressWnd::SetMarqueeMode(bool is_marquee) {
     }
     return S_OK;
   }
+}
+
+HRESULT ProgressWnd::EnableClose(bool enable) {
+  is_close_enabled_ = enable;
+  return EnableSystemCloseButton(is_close_enabled_);
 }
 
 HRESULT ProgressWnd::EnableSystemCloseButton(bool enable) {
@@ -808,9 +827,9 @@ HRESULT ProgressWnd::ShowGetHelpLink(HRESULT error_code) {
   return S_OK;
 }
 
-bool ProgressWnd::MaybeCloseInstallStoppedWindow() {
+bool ProgressWnd::CloseInstallStoppedWindow() {
   if (install_stopped_wnd_.get() && install_stopped_wnd_->IsWindow()) {
-    VERIFY1(install_stopped_wnd_->DestroyWindow());
+    VERIFY1(SUCCEEDED(install_stopped_wnd_->CloseWindow()));
     install_stopped_wnd_.reset();
     return true;
   } else {

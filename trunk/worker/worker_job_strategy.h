@@ -96,8 +96,9 @@ class UpdateAppsStrategy : public WorkerJobStrategy {
   virtual bool IsUpdate() const { return true; }
 
  private:
-  explicit UpdateAppsStrategy(bool is_machine)
-      : WorkerJobStrategy(is_machine, CString()) {
+  explicit UpdateAppsStrategy(bool is_machine, const CommandLineArgs& args)
+      : WorkerJobStrategy(is_machine, args.extra.language),
+        args_(args) {
   }
   virtual HRESULT PingUninstalledProducts() const;
 
@@ -106,6 +107,8 @@ class UpdateAppsStrategy : public WorkerJobStrategy {
   // deleted so the ping will not be sent again.
   virtual HRESULT SendInstalledByOemPing(
       const ProductDataVector& products) const;
+
+  const CommandLineArgs& args_;
 
   friend class WorkerJobStrategyFactory;
 };
@@ -181,7 +184,8 @@ class WorkerJobStrategyFactory {
   static WorkerJobStrategy* CreateInstallStrategy(bool is_machine,
                                                   const CommandLineArgs& args,
                                                   JobObserver* job_observer);
-  static WorkerJobStrategy* CreateUpdateAppsStrategy(bool is_machine);
+  static WorkerJobStrategy* CreateUpdateAppsStrategy(
+      bool is_machine, const CommandLineArgs& args);
   static OnDemandUpdateStrategy* CreateOnDemandStrategy(bool update_check_only,
                                                         const CString& lang,
                                                         bool is_machine);

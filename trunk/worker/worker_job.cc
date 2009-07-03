@@ -733,7 +733,7 @@ void WorkerJob::OnInstalling() {
   CORE_LOG(L2, (_T("[WorkerJob::OnInstalling]")));
   ASSERT1(cur_job_);
 
-  if (cur_job_ == jobs_.front() && job_observer_) {
+  if (cur_job_ == jobs_.back() && job_observer_) {
     job_observer_->OnInstalling();
   }
 }
@@ -870,7 +870,7 @@ WorkerJob* WorkerJobFactory::CreateWorkerJob(bool is_machine,
       break;
     case COMMANDLINE_MODE_UA:
       strategy =
-          WorkerJobStrategyFactory::CreateUpdateAppsStrategy(is_machine);
+          WorkerJobStrategyFactory::CreateUpdateAppsStrategy(is_machine, args);
       break;
     default:
       ASSERT(false, (_T("Invalid mode for a WorkerJob.")));

@@ -50,6 +50,7 @@
 #include "omaha/goopdate/event_logger.h"
 #include "omaha/goopdate/goopdate_utils.h"
 #include "omaha/goopdate/goopdate_metrics.h"
+#include "omaha/goopdate/stats_uploader.h"
 #include "third_party/breakpad/src/client/windows/common/ipc_protocol.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/crash_generation_server.h"
@@ -163,6 +164,13 @@ HRESULT Crash::CrashHandler(bool is_machine,
                             const CString& crash_filename) {
   // Count the number of crashes requested by applications.
   ++metric_oop_crashes_requested;
+
+  // GoogleCrashHandler.exe is only aggregating metrics at process exit. Since
+  // GoogleCrashHandler.exe is long-running however, we hardly ever exit. As a
+  // consequence, oop_crashes_requested will be reported very infrequently. This
+  // call below will do additional aggregation of metrics, so that we can report
+  // metric_oop_crashes_requested in a timely manner.
+  VERIFY1(SUCCEEDED(AggregateMetrics(is_machine)));
 
   DWORD pid = client_info.pid();
   OPT_LOG(L1, (_T("[client requested dump][pid %d]"), pid));

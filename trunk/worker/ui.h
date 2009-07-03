@@ -47,6 +47,9 @@ class InstallStoppedWnd
   InstallStoppedWnd(CMessageLoop* message_loop, HWND parent);
   ~InstallStoppedWnd();
 
+  // Closes the window, handling transition back to the parent window.
+  HRESULT CloseWindow();
+
   BOOL PreTranslateMessage(MSG* msg) {
     return CWindow::IsDialogMessage(msg);
   }
@@ -150,6 +153,7 @@ class ProgressWnd
   // Helpers.
   HRESULT ChangeControlState();
   HRESULT SetMarqueeMode(bool is_marquee);
+  HRESULT EnableClose(bool enable);
   HRESULT EnableSystemCloseButton(bool enable);
   HRESULT SetWindowIcon();
   HRESULT ShowGetHelpLink(HRESULT error_code);
@@ -157,8 +161,8 @@ class ProgressWnd
   // Returns true if the window is closed.
   bool MaybeCloseWindow();
 
-  // Returns true if the InstalledStopped window is closed.
-  bool MaybeCloseInstallStoppedWindow();
+  // Closes the Installation Stopped window if present. Returns true if closed.
+  bool CloseInstallStoppedWindow();
 
   // Closes the window.
   HRESULT CloseWindow();
@@ -215,6 +219,7 @@ class ProgressWnd
   scoped_ptr<StaticEx> get_help_text_;
 
   States cur_state_;
+  bool is_close_enabled_;
 
   ProgressWndEvents* events_sink_;
 

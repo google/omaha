@@ -59,6 +59,8 @@ class CoreTest : public testing::Test {
   virtual void SetUp() {
     ASSERT_HRESULT_SUCCEEDED(IsSystemProcess(&is_machine_));
 
+    ConfigManager::Instance()->SetLastCheckedTime(is_machine_, 10);
+
     NamedObjectAttributes attr;
     GetNamedObjectAttributes(kShutdownEvent, is_machine_, &attr);
     reset(shutdown_event_, ::CreateEvent(&attr.sa, true, false, attr.name));
@@ -181,12 +183,34 @@ TEST_F(CoreUtilsTest, IsServiceHealthy) {
 }
 
 TEST_F(CoreUtilsTest, IsCheckingForUpdates) {
-  ConfigManager::Instance()->SetLastCheckedTime(is_machine_, 0);
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  const int k12HourPeriodSec = 12 * 60 * 60;
+  const DWORD first_install_12_hours_back = now - k12HourPeriodSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(
+      ConfigManager::Instance()->registry_client_state_goopdate(is_machine_),
+      kRegValueInstallTimeSec,
+      first_install_12_hours_back));
+
+  ConfigManager::Instance()->SetLastCheckedTime(is_machine_, 10);
+  EXPECT_TRUE(IsCheckingForUpdates());
+
+  const int k48HourPeriodSec = 48 * 60 * 60;
+  const DWORD first_install_48_hours_back = now - k48HourPeriodSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(
+      ConfigManager::Instance()->registry_client_state_goopdate(is_machine_),
+      kRegValueInstallTimeSec,
+      first_install_48_hours_back));
   EXPECT_FALSE(IsCheckingForUpdates());
 
   AppManager app_manager(is_machine_);
   EXPECT_SUCCEEDED(app_manager.UpdateLastChecked());
   EXPECT_TRUE(IsCheckingForUpdates());
+
+  const int k15DaysPeriodSec = 15 * 24 * 60 * 60;
+  const DWORD last_checked_15_days_back = now - k15DaysPeriodSec;
+  ConfigManager::Instance()->SetLastCheckedTime(is_machine_,
+                                                last_checked_15_days_back);
+  EXPECT_FALSE(IsCheckingForUpdates());
 }
 
 }  // namespace omaha

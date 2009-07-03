@@ -122,8 +122,9 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   CreateScenario(cmd_line,
                  &GoopdateCommandLineValidator::OnInstallHandoffWorker);
 
-  // gu.exe /ua [/uninstall
-  cmd_line.Format(_T("/%s [/%s"), kCmdLineUpdateApps, kCmdLineUninstall);
+  // gu.exe /ua [/installsource source [/uninstall
+  cmd_line.Format(_T("/%s [/%s source [/%s"),
+                  kCmdLineUpdateApps, kCmdLineInstallSource, kCmdLineUninstall);
   CreateScenario(cmd_line,
                  &GoopdateCommandLineValidator::OnUpdateApps);
 
@@ -387,6 +388,9 @@ HRESULT GoopdateCommandLineValidator::OnInstallHandoffWorkerLegacy() {
 HRESULT GoopdateCommandLineValidator::OnUpdateApps() {
   args_->mode = COMMANDLINE_MODE_UA;
   args_->is_uninstall_set = parser_->HasSwitch(kCmdLineUninstall);
+  parser_->GetSwitchArgumentValue(kCmdLineInstallSource,
+                                  0,
+                                  &(args_->install_source));
   return S_OK;
 }
 

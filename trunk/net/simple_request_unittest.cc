@@ -217,10 +217,12 @@ TEST_F(SimpleRequestTest, Cancel_CannotReuse) {
 }
 
 // Http get request should follow redirects. The url below redirects to
-// https://www.google.com/service/update2/oneclick and then it returns
+// https://tools.google.com/service/update2/oneclick and then it returns
 // 200 OK and some xml body.
+// TODO(omaha): Pick a new URL since this service is now obsolete and could
+// be removed at some point.
 TEST_F(SimpleRequestTest, HttpGet_Redirect) {
-  SimpleGetRedirect(_T("http://www.google.com/service/update2/oneclick"),
+  SimpleGetRedirect(_T("http://tools.google.com/service/update2/oneclick"),
                     Config());
 }
 

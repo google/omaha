@@ -96,7 +96,8 @@ void CommandLineBuilder::set_install_source(const CString& install_source) {
   ASSERT1(mode_ == COMMANDLINE_MODE_WEBPLUGIN ||
           mode_ == COMMANDLINE_MODE_INSTALL ||
           mode_ == COMMANDLINE_MODE_HANDOFF_INSTALL ||
-          mode_ == COMMANDLINE_MODE_IG);
+          mode_ == COMMANDLINE_MODE_IG ||
+          mode_ == COMMANDLINE_MODE_UA);
   install_source_ = install_source;
 }
 
@@ -423,12 +424,18 @@ CString CommandLineBuilder::GetUG() const {
 }
 
 CString CommandLineBuilder::GetUA() const {
-  CString cmd_line;
-  if (is_uninstall_set_) {
-    cmd_line.Format(_T("/%s /%s"), kCmdLineUpdateApps, kCmdLineUninstall);
-  } else {
-    cmd_line = GetSingleSwitch(kCmdLineUpdateApps);
+  ASSERT1(!install_source_.IsEmpty());
+  if (install_source_.IsEmpty()) {
+    return CString();
   }
+
+  CString cmd_line(GetSingleSwitch(kCmdLineUpdateApps));
+  cmd_line.AppendFormat(_T(" /%s %s"), kCmdLineInstallSource, install_source_);
+
+  if (is_uninstall_set_) {
+    cmd_line.AppendFormat(_T(" /%s"), kCmdLineUninstall);
+  }
+
   return cmd_line;
 }
 

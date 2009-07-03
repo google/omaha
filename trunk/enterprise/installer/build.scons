@@ -113,11 +113,48 @@ def _BuildSampleForTest():
             product_installer_uninstall_command,
             prefix + msi_base_name + '_' + combo[0],
             '$MAIN_DIR/enterprise/installer',
-            '$STAGING_DIR/%sGoogleUpdateSetup.exe' % prefix
+            '$STAGING_DIR/%sGoogleUpdateSetup.exe' % prefix,
+            is_using_google_update_1_2_171_or_later=True
         )
+
+# Builds a sample enterprise installer based on a standalone installer.
+def _BuildSampleStandaloneForTest():
+  # Omaha only: Build the enterprise installer for each version of Omaha.
+  first = True
+  for _ in env['product_version']:
+    if first:
+      first = False
+      prefix = ''
+    else:
+      prefix = 'TEST_'
+
+    msi_base_name = 'TestFoo_Standalone_Enterprise_Installer_1.0.101.0'
+    BRAND = 'ENTC'
+    AP = 'enterprise-C'
+    product_custom_params = '&brand=' + BRAND + '&ap=' + AP
+
+    # TODO(omaha): Use a standalone installer that does not wrap an MSI. This
+    # mechanism is not intended to be used for apps that use MSI installers.
+    # As is, Omaha tries to install the MSI but fails because the Windows
+    # Installer is busy. It takes a long time to fail because Omaha retries.
+    # TODO(omaha): This is a bad example because it uses MSI. See above.
+    product_uninstall = 'msiexec /x {EE93BF87-0CDD-3F0B-A4D6-3B3A1C54E3FA}'
+
+    build_enterprise_installer.BuildEnterpriseInstallerFromStandaloneInstaller(
+        env,
+        'Test Foo',
+        '1.0.101.0',
+        '{D6B08267-B440-4c85-9F79-E195E80D9937}',
+        product_custom_params,
+        '$STAGING_DIR/%sUNOFFICIAL_TestFoo.exe' % prefix,
+        product_uninstall,
+        prefix + msi_base_name + '_' + BRAND,
+        '$MAIN_DIR/enterprise/installer'
+    )
 
 if BUILDING_WITH_GOOGLE_UPDATE:
   _BuildSampleForTest()
+  _BuildSampleStandaloneForTest()
 
 
 #

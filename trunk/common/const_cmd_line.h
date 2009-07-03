@@ -209,6 +209,9 @@ const TCHAR* const kCmdLineInstallSource_ClickOnce = _T("clickonce");
 
 const TCHAR* const kCmdLineInstallSource_Offline = _T("offline");
 
+const TCHAR* const kCmdLineInstallSourceScheduler = _T("scheduler");
+const TCHAR* const kCmdLineInstallSourceCore = _T("core");
+
 //
 // "Extra" arguments provided in the metainstaller tag.
 //

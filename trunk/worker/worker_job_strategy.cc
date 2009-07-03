@@ -225,6 +225,16 @@ HRESULT UpdateAppsStrategy::PreUpdateCheck(ProductDataVector* products) {
 
   hr = app_manager.GetRegisteredProducts(products);
 
+  if (FAILED(hr) || args_.install_source.IsEmpty()) {
+    return hr;
+  }
+
+  for (size_t i = 0; i < products->size(); ++i) {
+    AppData app_data = (*products)[i].app_data();
+    app_data.set_install_source(args_.install_source);
+    (*products)[i].set_app_data(app_data);
+  }
+
 #ifdef _DEBUG
   for (size_t i = 0; i < products->size(); ++i) {
     const GUID& app_guid = (*products)[i].app_data().app_guid();
@@ -237,7 +247,7 @@ HRESULT UpdateAppsStrategy::PreUpdateCheck(ProductDataVector* products) {
   }
 #endif
 
-  return hr;
+  return S_OK;
 }
 
 // Not being able to update one or more apps is not an error as long as there is
@@ -583,8 +593,8 @@ WorkerJobStrategy* WorkerJobStrategyFactory::CreateInstallStrategy(
 }
 
 WorkerJobStrategy* WorkerJobStrategyFactory::CreateUpdateAppsStrategy(
-    bool is_machine) {
-  WorkerJobStrategy* strategy = new UpdateAppsStrategy(is_machine);
+    bool is_machine, const CommandLineArgs& args) {
+  WorkerJobStrategy* strategy = new UpdateAppsStrategy(is_machine, args);
   strategy->set_network_strategy(new OnlineStrategy(strategy));
   return strategy;
 }

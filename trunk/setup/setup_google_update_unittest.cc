@@ -532,6 +532,11 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
 // TODO(omaha): Fails when run by itself on Windows Vista.
 TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
        InstallRegistryValues) {
+// TODO(omaha): Remove the ifdef when signing occurs after instrumentation or
+// the TODO above is addressed.
+#ifdef COVERAGE_ENABLED
+  std::wcout << _T("\tTest does not run in coverage builds.") << std::endl;
+#else
   EXPECT_SUCCEEDED(InstallRegistryValues());
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
@@ -617,6 +622,7 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
   EXPECT_SUCCEEDED(RegKey::CreateKey(app_client_state_medium_key_name));
 
   VerifyHklmKeyHasMediumIntegrity(app_client_state_medium_key_name);
+#endif
 }
 
 TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,

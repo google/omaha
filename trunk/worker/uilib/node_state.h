@@ -14,14 +14,14 @@
 // ========================================================================
 //
 
-#ifndef TACTICAL_PROTECTOR_UILIB_CONTROLS_NODE_STATE_H__
-#define TACTICAL_PROTECTOR_UILIB_CONTROLS_NODE_STATE_H__
+#ifndef OMAHA_WORKER_UILIB_NODE_STATE_H_
+#define OMAHA_WORKER_UILIB_NODE_STATE_H_
 
 #include <atlstr.h>
 
 class NodeState {
  public:
-  NodeState(HWND window);
+  explicit NodeState(HWND window);
   virtual ~NodeState();
 
   void SetStdFont(HFONT font);
@@ -78,4 +78,4 @@ class NodeState {
   CString        url_;
 };
 
-#endif  // TACTICAL_PROTECTOR_UILIB_CONTROLS_NODE_STATE_H__
+#endif  // OMAHA_WORKER_UILIB_NODE_STATE_H_
