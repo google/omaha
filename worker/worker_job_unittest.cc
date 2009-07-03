@@ -15,7 +15,6 @@
 
 #include <atlbase.h>
 #include <msxml2.h>
-#include "omaha/testing/unit_test.h"
 #include "omaha/common/app_util.h"
 #include "omaha/common/error.h"
 #include "omaha/common/omaha_version.h"
@@ -29,6 +28,7 @@
 #include "omaha/goopdate/stats_uploader.h"
 #include "omaha/net/cup_request.h"
 #include "omaha/net/simple_request.h"
+#include "omaha/testing/unit_test.h"
 #include "omaha/worker/i_job_observer_mock.h"
 #include "omaha/worker/job_creator.h"
 #include "omaha/worker/job_observer_mock.h"
@@ -257,6 +257,9 @@ void VerifyUpdateCheckInRequest(const std::vector<CString>& expected_app_guids,
   }
 
   EXPECT_NE(-1, request_utf8.Find("</o:app></o:gupdate>"));
+
+  EXPECT_FALSE(::testing::Test::HasFailure()) <<
+      _T("Actual Request: ") << request_utf8;
 }
 
 }  // namespace
@@ -609,10 +612,9 @@ class WorkerJobDoProcessUpdateMachineTest : public WorkerJobDoProcessTest {
                                       _T("pv"),
                                       _T("1.2.3.4")));
 
-    CommandLineArgs args;
-    args.mode = COMMANDLINE_MODE_UA;
+    args_.mode = COMMANDLINE_MODE_UA;
     worker_job_.reset(
-        WorkerJobFactory::CreateWorkerJob(true, args, &job_observer_));
+        WorkerJobFactory::CreateWorkerJob(true, args_, &job_observer_));
 
     ping_mock_ = new PingMock;
     SetWorkerJobPing(ping_mock_);
@@ -647,6 +649,7 @@ class WorkerJobDoProcessUpdateMachineTest : public WorkerJobDoProcessTest {
     StringToGuid(kAppGuid);
   }
 
+  CommandLineArgs args_;
   JobObserverMock job_observer_;
   PingMock* ping_mock_;
 };

@@ -20,18 +20,18 @@
 // Add a list item tag
 NodeState::Tags NodeState::tags_[] = {
 // name_to_match        length_name_to_match       action      no_parameters;
-  { _T("<b>"),       (int)_tcslen(_T("<b>")),      BOLD_ON,        true  },
-  { _T("</b>"),      (int)_tcslen(_T("</b>")),     BOLD_OFF,       true  },
-  { _T("<i>"),       (int)_tcslen(_T("<i>")),      ITALIC_ON,      true  },
-  { _T("</i>"),      (int)_tcslen(_T("</i>")),     ITALIC_OFF,     true  },
-  { _T("<u>"),       (int)_tcslen(_T("<u>")),      UNDERLINE_ON,   true  },
-  { _T("</u>"),      (int)_tcslen(_T("</u>")),     UNDERLINE_OFF,  true  },
-  { _T("<color="),   (int)_tcslen(_T("<color=")),  TEXTCOLOR_ON,   false },
-  { _T("</color>"),  (int)_tcslen(_T("</color>")), TEXTCOLOR_OFF,  true  },
-  { _T("<size="),    (int)_tcslen(_T("<size=")),   TEXTSIZE_ON,    false },
-  { _T("</size>"),   (int)_tcslen(_T("</size>")),  TEXTSIZE_OFF,   true  },
-  { _T("<a="),       (int)_tcslen(_T("<a=")),      URL_ON,         false },
-  { _T("</a>"),      (int)_tcslen(_T("</a>")),     URL_OFF,        true  },
+  { _T("<b>"),       static_cast<int>(_tcslen(_T("<b>"))),      BOLD_ON,        true  },  // NOLINT
+  { _T("</b>"),      static_cast<int>(_tcslen(_T("</b>"))),     BOLD_OFF,       true  },  // NOLINT
+  { _T("<i>"),       static_cast<int>(_tcslen(_T("<i>"))),      ITALIC_ON,      true  },  // NOLINT
+  { _T("</i>"),      static_cast<int>(_tcslen(_T("</i>"))),     ITALIC_OFF,     true  },  // NOLINT
+  { _T("<u>"),       static_cast<int>(_tcslen(_T("<u>"))),      UNDERLINE_ON,   true  },  // NOLINT
+  { _T("</u>"),      static_cast<int>(_tcslen(_T("</u>"))),     UNDERLINE_OFF,  true  },  // NOLINT
+  { _T("<color="),   static_cast<int>(_tcslen(_T("<color="))),  TEXTCOLOR_ON,   false },  // NOLINT
+  { _T("</color>"),  static_cast<int>(_tcslen(_T("</color>"))), TEXTCOLOR_OFF,  true  },  // NOLINT
+  { _T("<size="),    static_cast<int>(_tcslen(_T("<size="))),   TEXTSIZE_ON,    false },  // NOLINT
+  { _T("</size>"),   static_cast<int>(_tcslen(_T("</size>"))),  TEXTSIZE_OFF,   true  },  // NOLINT
+  { _T("<a="),       static_cast<int>(_tcslen(_T("<a="))),      URL_ON,         false },  // NOLINT
+  { _T("</a>"),      static_cast<int>(_tcslen(_T("</a>"))),     URL_OFF,        true  },  // NOLINT
 };
 
 NodeState::NodeState(HWND window)
@@ -69,7 +69,8 @@ HFONT NodeState::GetFont() const {
     log_font.lfWeight    = bold_ ? FW_BOLD : FW_NORMAL;
     log_font.lfItalic    = italic_;
     log_font.lfUnderline = underline_;
-    log_font.lfHeight    = -MulDiv(text_size_, GetDeviceCaps(dc, LOGPIXELSY), 72);
+    log_font.lfHeight    =
+        -MulDiv(text_size_, GetDeviceCaps(dc, LOGPIXELSY), 72);
     font_ = CreateFontIndirect(&log_font);
   }
 

@@ -132,6 +132,7 @@ class SetupFilesTest : public testing::Test {
     ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
   }
 
+  // Assumes the executable version has been changed to the future version.
   void InstallHelper(const CString& omaha_path) {
     const CString version_path = ConcatenatePath(omaha_path,
                                                  kFutureVersionString);
@@ -142,10 +143,6 @@ class SetupFilesTest : public testing::Test {
 
     DeleteDirectory(version_path);
     ASSERT_FALSE(File::IsDirectory(version_path));
-
-    // Fake the version
-    ULONGLONG module_version = GetVersion();
-    InitializeVersion(kFutureVersion);
 
     EXPECT_SUCCEEDED(setup_files_->Install());
 
@@ -220,8 +217,6 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(ACTIVEX_FILENAME, files[file_index++]);
 
     EXPECT_SUCCEEDED(DeleteDirectory(version_path));
-
-    InitializeVersion(module_version);
   }
 
   HRESULT ShouldCopyShell(const CString& shell_install_path,
@@ -352,7 +347,18 @@ TEST_F(SetupFilesUserTest,
 
 TEST_F(SetupFilesMachineTest, Install_NotOverInstall) {
   if (vista_util::IsUserAdmin()) {
+    // Fake the version
+    const ULONGLONG module_version = GetVersion();
+    InitializeVersion(kFutureVersion);
+
+// TODO(omaha): Remove the ifdef when signing occurs after instrumentation.
+#ifdef COVERAGE_ENABLED
+  std::wcout << _T("\tTest does not run in coverage builds.") << std::endl;
+#else
     InstallHelper(omaha_path_);
+#endif
+
+    InitializeVersion(module_version);
   } else {
     // This method expects to be called elevated for machine installs.
     ExpectAsserts expect_asserts;
@@ -362,7 +368,13 @@ TEST_F(SetupFilesMachineTest, Install_NotOverInstall) {
 }
 
 TEST_F(SetupFilesUserTest, Install_NotOverInstall) {
+  // Fake the version
+  const ULONGLONG module_version = GetVersion();
+  InitializeVersion(kFutureVersion);
+
   InstallHelper(omaha_path_);
+
+  InitializeVersion(module_version);
 }
 
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsNewer) {

@@ -69,9 +69,8 @@ const TCHAR* const kUrlCodeRedCheck =
 
 // Usage stats url.
 const TCHAR* const kUrlUsageStatsReport =
-    _T("http://tools.google.com/tbproxy/usagestats");
+    _T("http://clients5.google.com/tbproxy/usagestats");
 
 }  // namespace omaha
 
 #endif  // OMAHA_COMMON_CONST_ADDRESSES_H__
-

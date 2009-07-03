@@ -256,11 +256,6 @@ class Setup {
   // Sets values for OEM installs in the registry.
   HRESULT SetOemInstallState();
 
-  // Sets or clears the flag that prevents Google Update from using the network
-  // until the EULA has been accepted based on whether the eularequired flag
-  // appears on the command line.
-  HRESULT SetEulaRequiredState();
-
   // Marks Google Update EULA as not accepted if it is not already installed.
   // Does not touch apps' EULA state.
   static HRESULT SetEulaNotAccepted(bool is_machine);

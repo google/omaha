@@ -109,11 +109,13 @@ def BuildMSI(version, namespace, exe_name, wxs_template, msi_base_name,
             env,
             metainstaller_path,
             'Test Foo',
+            version,
             '{D6B08267-B440-4c85-9F79-E195E80D9937}',
             '&ap=enterprise',
             msi_base_name,
             ('$MAIN_DIR/enterprise/installer/'
-                'google_update_installer_fragment.wxs.xml')
+                'google_update_installer_fragment.wxs.xml'),
+            is_using_google_update_1_2_171_or_later=True
     )
 
     wix_inputs += [google_update_wixobj]

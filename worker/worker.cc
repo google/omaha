@@ -69,7 +69,7 @@
 // http creators with the factory. Not ideal but better then linker options.
 //
 // Design Notes:
-// Following are the mutexs that are taken by the worker
+// Following are the mutexes that are taken by the worker
 // 1. SingleUpdateWorker. Only taken by the update worker.
 // 2. SingleInstallWorker. This is application specific. Only taken by the
 //    install worker and for the specific application.
@@ -584,12 +584,8 @@ HRESULT Worker::QueueWorkerJob(WorkerJob* worker_job, bool delete_after_run) {
   return S_OK;
 }
 
-// Returns immediately if no error occurred. Otherwise, it launches a page on
-// the help center and tries to display an error in the Google Update UI.
-// If the UI fails, uses a system message box as a fallback.
-// error_ptr has to be a pointer because of the scope guards save the values of
-// the parameters in the macros and would cache the value of the error variable
-// before it is actually set to an error.
+// Displays an error in the Google Update UI if not silent then sends a ping if
+// allowed If the UI fails, uses a system message box as a fallback.
 HRESULT Worker::HandleSetupError(HRESULT error, int extra_code1) {
   ASSERT1(FAILED(error));
 
@@ -647,6 +643,12 @@ HRESULT Worker::HandleSetupError(HRESULT error, int extra_code1) {
     } else {
       DisplayErrorInMessageBox(error_text);
     }
+  }
+
+  // Do not ping. Cannot rely on the ping code to not send the ping because
+  // Setup may have failed before it could write eulaccepted=0 to the registry.
+  if (args().is_eula_required_set) {
+    return hr;
   }
 
   if (args().is_oem_set) {

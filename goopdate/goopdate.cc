@@ -113,7 +113,6 @@
 #include "omaha/worker/application_data.h"
 #include "omaha/worker/application_manager.h"
 #include "omaha/worker/ping.h"
-#include "omaha/worker/product_data.h"
 #include "omaha/worker/worker.h"
 #include "omaha/worker/worker_com_wrapper.h"
 #include "omaha/worker/worker_event_logger.h"
@@ -821,9 +820,6 @@ HRESULT GoopdateImpl::HandleCodeRedCheck() {
              (_T("[Code Red check not sent because network use prohibited]")));
     return GOOPDATE_E_CANNOT_USE_NETWORK;
   }
-
-  AppManager app_manager(is_machine);
-  ProductData product_data;
 
   HRESULT hr = FixGoogleUpdate(kGoogleUpdateAppId,
                                this_version_,

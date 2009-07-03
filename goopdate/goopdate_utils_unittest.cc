@@ -1217,9 +1217,16 @@ TEST(GoopdateUtilsTest, GetExitCodeGoopdateTaskUA) {
   EXPECT_SUCCEEDED(internal::StartScheduledTask(
       ConfigManager::GetCurrentTaskNameUA(vista_util::IsUserAdmin())));
 
-  ::Sleep(500);
+  HRESULT hr = SCHED_S_TASK_HAS_NOT_RUN;
+  for (int tries = 0;
+       tries < kMaxWaitForProcessIterations && SCHED_S_TASK_HAS_NOT_RUN == hr;
+       ++tries) {
+    ::Sleep(kWaitForProcessIntervalMs);
+    hr = internal::GetScheduledTaskStatus(
+        ConfigManager::GetCurrentTaskNameUA(vista_util::IsUserAdmin()));
+  }
 
-  HRESULT hr = SCHED_S_TASK_RUNNING;
+  hr = SCHED_S_TASK_RUNNING;
   for (int tries = 0;
        tries < kMaxWaitForProcessIterations && SCHED_S_TASK_RUNNING == hr;
        ++tries) {
@@ -3680,6 +3687,71 @@ TEST(GoopdateUtilsTest, ReadNameValuePairsFromFileTest_ReadManyPairs) {
                                                               &pairs_read));
 
   ValidateStringMapEquality(pairs_write, pairs_read);
+}
+
+// This test verifies that InstallTime is created afresh for Omaha if it does
+// not exist, and even if the brand code is already set.
+TEST_F(GoopdateUtilsRegistryProtectedTest,
+       SetGoogleUpdateBranding_BrandAlreadyExistsAllEmpty) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueBrandCode,
+                                    _T("EFGH")));
+
+  EXPECT_SUCCEEDED(
+      goopdate_utils::SetGoogleUpdateBranding(kAppMachineClientStatePath,
+                                              _T(""),
+                                              _T("")));
+
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+
+  CString value;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueBrandCode,
+                                    &value));
+  EXPECT_STREQ(_T("EFGH"), value);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueClientId,
+                             &value));
+  DWORD install_time = 0;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    &install_time));
+  EXPECT_GE(now, install_time);
+  EXPECT_GE(static_cast<uint32>(200), now - install_time);
+}
+
+// This test verifies that InstallTime remains unchanged for Omaha if it already
+// exists and the brand code is already set.
+TEST_F(GoopdateUtilsRegistryProtectedTest,
+       SetGoogleUpdateBranding_AllAlreadyExistAllEmpty) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueBrandCode,
+                                    _T("EFGH")));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueClientId,
+                                    _T("existing_partner")));
+  const DWORD kInstallTime = 1234567890;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    kInstallTime));
+
+  EXPECT_SUCCEEDED(
+      goopdate_utils::SetGoogleUpdateBranding(kAppMachineClientStatePath,
+                                              _T(""),
+                                              _T("")));
+
+  CString value;
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueBrandCode,
+                                    &value));
+  EXPECT_STREQ(_T("EFGH"), value);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueClientId,
+                                    &value));
+  EXPECT_STREQ(_T("existing_partner"), value);
+  EXPECT_EQ(kInstallTime,
+            GetDwordValue(kAppMachineClientStatePath, kRegValueInstallTimeSec));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest, SetAppBranding_KeyDoesNotExist) {

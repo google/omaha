@@ -250,10 +250,10 @@ CString ConfigManager::GetMachineSecureOfflineStorageDir() const {
   return path;
 }
 
-CString ConfigManager::GetDownloadStorage() const {
+CString ConfigManager::GetTempDownloadDir() const {
   CString path;
   VERIFY1(SUCCEEDED(GetDir(CSIDL_LOCAL_APPDATA,
-                           CString(OMAHA_REL_DOWNLOAD_STORAGE_DIR),
+                           CString(OMAHA_REL_TEMP_DOWNLOAD_DIR),
                            true,
                            &path)));
   return path;
@@ -402,9 +402,16 @@ HRESULT ConfigManager::SetLastCheckedTime(bool is_machine, DWORD time) const {
   return RegKey::SetValue(reg_update_key, kRegValueLastChecked, time);
 }
 
-DWORD ConfigManager::GetFirstInstallTime(bool is_machine) {
+DWORD ConfigManager::GetInstallTime(bool is_machine) {
   const CString client_state_key_name =
       ConfigManager::Instance()->registry_client_state_goopdate(is_machine);
+  DWORD update_time(0);
+  if (SUCCEEDED(RegKey::GetValue(client_state_key_name,
+                                 kRegValueLastUpdateTimeSec,
+                                 &update_time))) {
+    return update_time;
+  }
+
   DWORD install_time(0);
   if (SUCCEEDED(RegKey::GetValue(client_state_key_name,
                                  kRegValueInstallTimeSec,
@@ -415,16 +422,16 @@ DWORD ConfigManager::GetFirstInstallTime(bool is_machine) {
   return 0;
 }
 
-bool ConfigManager::Is24HoursSinceFirstInstall(bool is_machine) {
+bool ConfigManager::Is24HoursSinceInstall(bool is_machine) {
   const int kDaySec = 24 * 60 * 60;
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
-  const uint32 first_install = GetFirstInstallTime(is_machine);
 
-  if (now < first_install) {
+  const uint32 install_time = GetInstallTime(is_machine);
+  if (now < install_time) {
     CORE_LOG(LW, (_T("[Incorrect clock time detected]")
-                  _T("[now %u][first install %u]"), now, first_install));
+                  _T("[now %u][install_time %u]"), now, install_time));
   }
-  const int time_difference = abs(static_cast<int>(now - first_install));
+  const int time_difference = abs(static_cast<int>(now - install_time));
   return time_difference >= kDaySec;
 }
 

@@ -268,15 +268,24 @@ TEST(CommandLineBuilder, BuildRecoverWithMIPath) {
 
 TEST(CommandLineBuilder, BuildUA) {
   CommandLineBuilder builder(COMMANDLINE_MODE_UA);
+  ExpectAsserts expect_asserts;
   CString cmd_line = builder.GetCommandLineArgs();
-  EXPECT_STREQ(_T("/ua"), cmd_line);
+  EXPECT_STREQ(_T(""), cmd_line);
 }
 
-TEST(CommandLineBuilder, BuildUAWithUninstall) {
+TEST(CommandLineBuilder, BuildUAWithInstallSource) {
   CommandLineBuilder builder(COMMANDLINE_MODE_UA);
+  builder.set_install_source(_T("blah"));
+  CString cmd_line = builder.GetCommandLineArgs();
+  EXPECT_STREQ(_T("/ua /installsource blah"), cmd_line);
+}
+
+TEST(CommandLineBuilder, BuildUAWithInstallSourceAndUninstall) {
+  CommandLineBuilder builder(COMMANDLINE_MODE_UA);
+  builder.set_install_source(_T("blah"));
   builder.set_is_uninstall_set(true);
   CString cmd_line = builder.GetCommandLineArgs();
-  EXPECT_STREQ(_T("/ua /uninstall"), cmd_line);
+  EXPECT_STREQ(_T("/ua /installsource blah /uninstall"), cmd_line);
 }
 
 TEST(CommandLineBuilder, BuildUG) {

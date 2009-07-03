@@ -183,7 +183,7 @@ GTEST_DEFINE_string_(
     "Whether to use colors in the output.  Valid values: yes, no, "
     "and auto.  'auto' means to use colors if the output is "
     "being sent to a terminal and the TERM environment variable "
-    "is set to xterm or xterm-color.");
+    "is set to xterm, xterm-color, xterm-256color or cygwin.");
 
 GTEST_DEFINE_string_(
     filter,
@@ -211,7 +211,7 @@ GTEST_DEFINE_string_(
 
 GTEST_DEFINE_bool_(
     print_time,
-    internal::BoolFromGTestEnv("print_time", false),
+    internal::BoolFromGTestEnv("print_time", true),
     "True iff " GTEST_NAME_
     " should display elapsed time in text output.");
 
@@ -735,10 +735,11 @@ String UnitTestImpl::CurrentOsStackTraceExceptTop(int skip_count) {
 }
 
 static TimeInMillis GetTimeInMillis() {
-#ifdef _WIN32_WCE  // We are on Windows CE
+#if defined(_WIN32_WCE) || defined(__BORLANDC__)
   // Difference between 1970-01-01 and 1601-01-01 in miliseconds.
   // http://analogous.blogspot.com/2005/04/epoch.html
-  const TimeInMillis kJavaEpochToWinFileTimeDelta = 11644473600000UL;
+  const TimeInMillis kJavaEpochToWinFileTimeDelta =
+    static_cast<TimeInMillis>(116444736UL) * 100000UL;
   const DWORD kTenthMicrosInMilliSecond = 10000;
 
   SYSTEMTIME now_systime;
@@ -803,7 +804,7 @@ static char* CloneString(const char* str, size_t length) {
     return NULL;
   } else {
     char* const clone = new char[length + 1];
-    posix::strncpy(clone, str, length);
+    posix::StrNCpy(clone, str, length);
     clone[length] = '\0';
     return clone;
   }
@@ -1443,7 +1444,7 @@ char* CodePointToUtf8(UInt32 code_point, char* str) {
     // the terminating nul character). We are asking for 32 character
     // buffer just in case. This is also enough for strncpy to
     // null-terminate the destination string.
-    posix::strncpy(
+    posix::StrNCpy(
         str, String::Format("(Invalid Unicode 0x%X)", code_point).c_str(), 32);
     str[31] = '\0';  // Makes sure no change in the format to strncpy leaves
                      // the result unterminated.
@@ -1586,7 +1587,7 @@ bool String::CaseInsensitiveCStringEquals(const char * lhs, const char * rhs) {
     return rhs == NULL;
   if (rhs == NULL)
     return false;
-  return posix::strcasecmp(lhs, rhs) == 0;
+  return posix::StrCaseCmp(lhs, rhs) == 0;
 }
 
   // Compares two wide C strings, ignoring case.  Returns true iff they
@@ -1710,16 +1711,16 @@ String String::Format(const char * format, ...) {
   char buffer[4096];
   // MSVC 8 deprecates vsnprintf(), so we want to suppress warning
   // 4996 (deprecated function) there.
-#if GTEST_OS_WINDOWS  // We are on Windows.
+#ifdef _MSC_VER  // We are using MSVC.
 #pragma warning(push)          // Saves the current warning state.
 #pragma warning(disable:4996)  // Temporarily disables warning 4996.
   const int size =
     vsnprintf(buffer, sizeof(buffer)/sizeof(buffer[0]) - 1, format, args);
 #pragma warning(pop)           // Restores the warning state.
-#else  // We are on Linux or Mac OS.
+#else  // We are not using MSVC.
   const int size =
     vsnprintf(buffer, sizeof(buffer)/sizeof(buffer[0]) - 1, format, args);
-#endif  // GTEST_OS_WINDOWS
+#endif  // _MSC_VER
   va_end(args);
 
   return String(size >= 0 ? buffer : "<buffer exceeded>");
@@ -1852,13 +1853,23 @@ int TestResult::failed_part_count() const {
 }
 
 // Returns true iff the test part fatally failed.
-static bool TestPartFatallyFailed(const TestPartResult & result) {
+static bool TestPartFatallyFailed(const TestPartResult& result) {
   return result.fatally_failed();
 }
 
 // Returns true iff the test fatally failed.
 bool TestResult::HasFatalFailure() const {
   return test_part_results_.CountIf(TestPartFatallyFailed) > 0;
+}
+
+// Returns true iff the test part non-fatally failed.
+static bool TestPartNonfatallyFailed(const TestPartResult& result) {
+  return result.nonfatally_failed();
+}
+
+// Returns true iff the test has a non-fatal failure.
+bool TestResult::HasNonfatalFailure() const {
+  return test_part_results_.CountIf(TestPartNonfatallyFailed) > 0;
 }
 
 // Gets the number of all test parts.  This is the sum of the number
@@ -2003,8 +2014,8 @@ void Test::Run() {
   if (!HasSameFixtureClass()) return;
 
   internal::UnitTestImpl* const impl = internal::GetUnitTestImpl();
-#if GTEST_OS_WINDOWS
-  // We are on Windows.
+#if GTEST_HAS_SEH
+  // Catch SEH-style exceptions.
   impl->os_stack_trace_getter()->UponLeavingGTest();
   __try {
     SetUp();
@@ -2035,7 +2046,7 @@ void Test::Run() {
     AddExceptionThrownFailure(GetExceptionCode(), "TearDown()");
   }
 
-#else  // We are on Linux or Mac - exceptions are disabled.
+#else  // We are on a compiler or platform that doesn't support SEH.
   impl->os_stack_trace_getter()->UponLeavingGTest();
   SetUp();
 
@@ -2050,13 +2061,19 @@ void Test::Run() {
   // failed.
   impl->os_stack_trace_getter()->UponLeavingGTest();
   TearDown();
-#endif  // GTEST_OS_WINDOWS
+#endif  // GTEST_HAS_SEH
 }
 
 
 // Returns true iff the current test has a fatal failure.
 bool Test::HasFatalFailure() {
   return internal::GetUnitTestImpl()->current_test_result()->HasFatalFailure();
+}
+
+// Returns true iff the current test has a non-fatal failure.
+bool Test::HasNonfatalFailure() {
+  return internal::GetUnitTestImpl()->current_test_result()->
+      HasNonfatalFailure();
 }
 
 // class TestInfo
@@ -2156,6 +2173,9 @@ const char* TestInfo::comment() const {
 // Returns true if this test should run.
 bool TestInfo::should_run() const { return impl_->should_run(); }
 
+// Returns true if this test matches the user-specified filter.
+bool TestInfo::matches_filter() const { return impl_->matches_filter(); }
+
 // Returns the result of the test.
 const internal::TestResult* TestInfo::result() const { return impl_->result(); }
 
@@ -2237,8 +2257,8 @@ void TestInfoImpl::Run() {
   const TimeInMillis start = GetTimeInMillis();
 
   impl->os_stack_trace_getter()->UponLeavingGTest();
-#if GTEST_OS_WINDOWS
-  // We are on Windows.
+#if GTEST_HAS_SEH
+  // Catch SEH-style exceptions.
   Test* test = NULL;
 
   __try {
@@ -2250,7 +2270,7 @@ void TestInfoImpl::Run() {
                               "the test fixture's constructor");
     return;
   }
-#else  // We are on Linux or Mac OS - exceptions are disabled.
+#else  // We are on a compiler or platform that doesn't support SEH.
 
   // TODO(wan): If test->Run() throws, test won't be deleted.  This is
   // not a problem now as we don't use exceptions.  If we were to
@@ -2259,7 +2279,7 @@ void TestInfoImpl::Run() {
 
   // Creates the test object.
   Test* test = factory_->CreateTest();
-#endif  // GTEST_OS_WINDOWS
+#endif  // GTEST_HAS_SEH
 
   // Runs the test only if the constructor of the test fixture didn't
   // generate a fatal failure.
@@ -2494,10 +2514,11 @@ bool ShouldUseColor(bool stdout_is_tty) {
     return stdout_is_tty;
 #else
     // On non-Windows platforms, we rely on the TERM variable.
-    const char* const term = posix::getenv("TERM");
+    const char* const term = posix::GetEnv("TERM");
     const bool term_supports_color =
         String::CStringEquals(term, "xterm") ||
         String::CStringEquals(term, "xterm-color") ||
+        String::CStringEquals(term, "xterm-256color") ||
         String::CStringEquals(term, "cygwin");
     return stdout_is_tty && term_supports_color;
 #endif  // GTEST_OS_WINDOWS
@@ -2524,7 +2545,7 @@ void ColoredPrintf(GTestColor color, const char* fmt, ...) {
   const bool use_color = false;
 #else
   static const bool in_color_mode =
-      ShouldUseColor(posix::isatty(posix::fileno(stdout)) != 0);
+      ShouldUseColor(posix::IsATTY(posix::FileNo(stdout)) != 0);
   const bool use_color = in_color_mode && (color != COLOR_DEFAULT);
 #endif  // defined(_WIN32_WCE) || GTEST_OS_SYMBIAN || GTEST_OS_ZOS
   // The '!= 0' comparison is necessary to satisfy MSVC 7.1.
@@ -2606,8 +2627,8 @@ void PrettyUnitTestResultPrinter::OnUnitTestStart(
   if (internal::ShouldShard(kTestTotalShards, kTestShardIndex, false)) {
     ColoredPrintf(COLOR_YELLOW,
                   "Note: This is test shard %s of %s.\n",
-                  internal::posix::getenv(kTestShardIndex),
-                  internal::posix::getenv(kTestTotalShards));
+                  internal::posix::GetEnv(kTestShardIndex),
+                  internal::posix::GetEnv(kTestTotalShards));
   }
 
   const internal::UnitTestImpl* const impl = unit_test->impl();
@@ -2925,7 +2946,7 @@ void XmlUnitTestResultPrinter::OnUnitTestEnd(const UnitTest* unit_test) {
   internal::FilePath output_dir(output_file.RemoveFileName());
 
   if (output_dir.CreateDirectoriesRecursively()) {
-    xmlout = internal::posix::fopen(output_file_.c_str(), "w");
+    xmlout = internal::posix::FOpen(output_file_.c_str(), "w");
   }
   if (xmlout == NULL) {
     // TODO(wan): report the reason of the failure.
@@ -3202,13 +3223,18 @@ UnitTest * UnitTest::GetInstance() {
   // different implementation in this case to bypass the compiler bug.
   // This implementation makes the compiler happy, at the cost of
   // leaking the UnitTest object.
-#if _MSC_VER == 1310 && !defined(_DEBUG)  // MSVC 7.1 and optimized build.
+
+  // CodeGear C++Builder insists on a public destructor for the
+  // default implementation.  Use this implementation to keep good OO
+  // design with private destructor.
+
+#if (_MSC_VER == 1310 && !defined(_DEBUG)) || defined(__BORLANDC__)
   static UnitTest* const instance = new UnitTest;
   return instance;
 #else
   static UnitTest instance;
   return &instance;
-#endif  // _MSC_VER==1310 && !defined(_DEBUG)
+#endif  // (_MSC_VER == 1310 && !defined(_DEBUG)) || defined(__BORLANDC__)
 }
 
 // Registers and returns a global test environment.  When a test
@@ -3240,7 +3266,7 @@ Environment* UnitTest::AddEnvironment(Environment* env) {
 class GoogleTestFailureException : public ::std::runtime_error {
  public:
   explicit GoogleTestFailureException(const TestPartResult& failure)
-      : runtime_error(PrintTestPartResultToString(failure).c_str()) {}
+      : ::std::runtime_error(PrintTestPartResultToString(failure).c_str()) {}
 };
 #endif
 
@@ -3281,13 +3307,20 @@ void UnitTest::AddTestPartResult(TestPartResultType result_type,
       ReportTestPartResult(result);
 
   if (result_type != TPRT_SUCCESS) {
-    // gunit_break_on_failure takes precedence over
-    // gunit_throw_on_failure.  This allows a user to set the latter
+    // gtest_break_on_failure takes precedence over
+    // gtest_throw_on_failure.  This allows a user to set the latter
     // in the code (perhaps in order to use Google Test assertions
     // with another testing framework) and specify the former on the
     // command line for debugging.
     if (GTEST_FLAG(break_on_failure)) {
+#if GTEST_OS_WINDOWS
+      // Using DebugBreak on Windows allows gtest to still break into a debugger
+      // when a failure happens and both the --gtest_break_on_failure and
+      // the --gtest_catch_exceptions flags are specified.
+      DebugBreak();
+#else
       *static_cast<int*>(NULL) = 1;
+#endif  // GTEST_OS_WINDOWS
     } else if (GTEST_FLAG(throw_on_failure)) {
 #if GTEST_HAS_EXCEPTIONS
       throw GoogleTestFailureException(result);
@@ -3314,7 +3347,8 @@ void UnitTest::RecordPropertyForCurrentTest(const char* key,
 // We don't protect this under mutex_, as we only support calling it
 // from the main thread.
 int UnitTest::Run() {
-#if GTEST_OS_WINDOWS
+#if GTEST_HAS_SEH
+  // Catch SEH-style exceptions.
 
   const bool in_death_test_child_process =
       internal::GTEST_FLAG(internal_run_death_test).GetLength() > 0;
@@ -3330,17 +3364,20 @@ int UnitTest::Run() {
                  SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
 #endif  // _WIN32_WCE
 
+#if defined(_MSC_VER) || defined(__MINGW32__)
     // Death test children can be terminated with _abort().  On Windows,
     // _abort() can show a dialog with a warning message.  This forces the
     // abort message to go to stderr instead.
     _set_error_mode(_OUT_TO_STDERR);
+#endif
 
+#if _MSC_VER >= 1400
     // In the debug version, Visual Studio pops up a separate dialog
     // offering a choice to debug the aborted program. We need to suppress
     // this dialog or it will pop up for every EXPECT/ASSERT_DEATH statement
     // executed. Google Test will notify the user of any unexpected
     // failure via stderr.
-#if _MSC_VER >= 1400
+    //
     // VC++ doesn't define _set_abort_behavior() prior to the version 8.0.
     // Users of prior VC versions shall suffer the agony and pain of
     // clicking through the countless debug dialogs.
@@ -3362,11 +3399,10 @@ int UnitTest::Run() {
     return 1;
   }
 
-#else
-  // We are on Linux or Mac OS.  There is no exception of any kind.
+#else  // We are on a compiler or platform that doesn't support SEH.
 
   return impl_->RunAllTests();
-#endif  // GTEST_OS_WINDOWS
+#endif  // GTEST_HAS_SEH
 }
 
 // Returns the working directory when the first TEST() or TEST_F() was
@@ -3575,13 +3611,6 @@ int UnitTestImpl::RunAllTests() {
   // protocol.
   internal::WriteToShardStatusFileIfNeeded();
 
-  // Lists all the tests and exits if the --gtest_list_tests
-  // flag was specified.
-  if (GTEST_FLAG(list_tests)) {
-    ListAllTests();
-    return 0;
-  }
-
   // True iff we are in a subprocess for running a thread-safe-style
   // death test.
   bool in_subprocess_for_death_test = false;
@@ -3601,6 +3630,13 @@ int UnitTestImpl::RunAllTests() {
   const bool has_tests_to_run = FilterTests(should_shard
                                               ? HONOR_SHARDING_PROTOCOL
                                               : IGNORE_SHARDING_PROTOCOL) > 0;
+
+  // List the tests and exit if the --gtest_list_tests flag was specified.
+  if (GTEST_FLAG(list_tests)) {
+    // This must be called *after* FilterTests() has been called.
+    ListTestsMatchingFilter();
+    return 0;
+  }
 
   // True iff at least one test has failed.
   bool failed = false;
@@ -3662,9 +3698,9 @@ int UnitTestImpl::RunAllTests() {
 // function will write over it. If the variable is present, but the file cannot
 // be created, prints an error and exits.
 void WriteToShardStatusFileIfNeeded() {
-  const char* const test_shard_file = posix::getenv(kTestShardStatusFile);
+  const char* const test_shard_file = posix::GetEnv(kTestShardStatusFile);
   if (test_shard_file != NULL) {
-    FILE* const file = posix::fopen(test_shard_file, "w");
+    FILE* const file = posix::FOpen(test_shard_file, "w");
     if (file == NULL) {
       ColoredPrintf(COLOR_RED,
                     "Could not write to the test shard status file \"%s\" "
@@ -3729,7 +3765,7 @@ bool ShouldShard(const char* total_shards_env,
 // returns default_val. If it is not an Int32, prints an error
 // and aborts.
 Int32 Int32FromEnvOrDie(const char* const var, Int32 default_val) {
-  const char* str_val = posix::getenv(var);
+  const char* str_val = posix::GetEnv(var);
   if (str_val == NULL) {
     return default_val;
   }
@@ -3792,10 +3828,14 @@ int UnitTestImpl::FilterTests(ReactionToSharding shard_tests) {
                                                    kDisableTestFilter);
       test_info->impl()->set_is_disabled(is_disabled);
 
-      const bool is_runnable =
-          (GTEST_FLAG(also_run_disabled_tests) || !is_disabled) &&
+      const bool matches_filter =
           internal::UnitTestOptions::FilterMatchesTest(test_case_name,
                                                        test_name);
+      test_info->impl()->set_matches_filter(matches_filter);
+
+      const bool is_runnable =
+          (GTEST_FLAG(also_run_disabled_tests) || !is_disabled) &&
+          matches_filter;
 
       const bool is_selected = is_runnable &&
           (shard_tests == IGNORE_SHARDING_PROTOCOL ||
@@ -3812,23 +3852,26 @@ int UnitTestImpl::FilterTests(ReactionToSharding shard_tests) {
   return num_selected_tests;
 }
 
-// Lists all tests by name.
-void UnitTestImpl::ListAllTests() {
+// Prints the names of the tests matching the user-specified filter flag.
+void UnitTestImpl::ListTestsMatchingFilter() {
   for (const internal::ListNode<TestCase*>* test_case_node = test_cases_.Head();
        test_case_node != NULL;
        test_case_node = test_case_node->next()) {
     const TestCase* const test_case = test_case_node->element();
-
-    // Prints the test case name following by an indented list of test nodes.
-    printf("%s.\n", test_case->name());
+    bool printed_test_case_name = false;
 
     for (const internal::ListNode<TestInfo*>* test_info_node =
          test_case->test_info_list().Head();
          test_info_node != NULL;
          test_info_node = test_info_node->next()) {
       const TestInfo* const test_info = test_info_node->element();
-
-      printf("  %s\n", test_info->name());
+      if (test_info->matches_filter()) {
+        if (!printed_test_case_name) {
+          printed_test_case_name = true;
+          printf("%s.\n", test_case->name());
+        }
+        printf("  %s\n", test_info->name());
+      }
     }
   }
   fflush(stdout);
@@ -3925,6 +3968,7 @@ TestInfoImpl::TestInfoImpl(TestInfo* parent,
     fixture_class_id_(fixture_class_id),
     should_run_(false),
     is_disabled_(false),
+    matches_filter_(false),
     factory_(factory) {
 }
 
@@ -4125,8 +4169,8 @@ static const char kColorEncodedHelpMessage[] =
 "Test Output:\n"
 "  @G--" GTEST_FLAG_PREFIX_ "color=@Y(@Gyes@Y|@Gno@Y|@Gauto@Y)@D\n"
 "      Enable/disable colored output. The default is @Gauto@D.\n"
-"  -@G-" GTEST_FLAG_PREFIX_ "print_time@D\n"
-"      Print the elapsed time of each test.\n"
+"  -@G-" GTEST_FLAG_PREFIX_ "print_time=0@D\n"
+"      Don't print the elapsed time of each test.\n"
 "  @G--" GTEST_FLAG_PREFIX_ "output=xml@Y[@G:@YDIRECTORY_PATH@G"
     GTEST_PATH_SEP_ "@Y|@G:@YFILE_PATH]@D\n"
 "      Generate an XML report in the given directory or with the given file\n"
@@ -4149,10 +4193,9 @@ static const char kColorEncodedHelpMessage[] =
 "Except for @G--" GTEST_FLAG_PREFIX_ "list_tests@D, you can alternatively set "
     "the corresponding\n"
 "environment variable of a flag (all letters in upper-case). For example, to\n"
-"print the elapsed time, you can either specify @G--" GTEST_FLAG_PREFIX_
-    "print_time@D or set the\n"
-"@G" GTEST_FLAG_PREFIX_UPPER_ "PRINT_TIME@D environment variable to a "
-    "non-zero value.\n"
+"disable colored text output, you can either specify @G--" GTEST_FLAG_PREFIX_
+    "color=no@D or set\n"
+"the @G" GTEST_FLAG_PREFIX_UPPER_ "COLOR@D environment variable to @Gno@D.\n"
 "\n"
 "For more information, please read the " GTEST_NAME_ " documentation at\n"
 "@G" GTEST_PROJECT_URL_ "@D. If you find a bug in " GTEST_NAME_ "\n"

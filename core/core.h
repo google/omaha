@@ -49,7 +49,8 @@ class Core
   // Executes the instance entry point with given parameters.
   HRESULT Main(bool is_system, bool is_crash_handler_enabled);
 
-  // Starts an update worker process.
+  // Starts an update worker process if the Core is meant to run all the time.
+  // If not, causes the Core to exit the process.
   HRESULT StartUpdateWorker() const;
 
   // Starts a code red process.
@@ -71,14 +72,18 @@ class Core
 
   HRESULT DoMain(bool is_system, bool is_crash_handler_enabled);
 
-  bool AreScheduledTasksHealthy();
-  bool IsServiceHealthy();
-  bool IsCheckingForUpdates();
-  bool ShouldRunForever();
+  // Starts an update worker process.
+  HRESULT StartUpdateWorkerInternal() const;
+
+  bool AreScheduledTasksHealthy() const;
+  bool IsServiceHealthy() const;
+  bool IsCheckingForUpdates() const;
+  bool ShouldRunForever() const;
 
   // ShutdownCallback interface.
   // Signals the core to stop handling events and exit.
   virtual HRESULT Shutdown();
+  virtual HRESULT ShutdownInternal() const;
 
   // SystemMonitorObserver interface.
   virtual void LastCheckedDeleted();

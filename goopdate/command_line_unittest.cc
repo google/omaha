@@ -872,7 +872,7 @@ TEST_F(CommandLineTest, ParseCommandLine_Ug) {
 }
 
 // Parse: <path> /ua
-TEST_F(CommandLineTest, ParseCommandLine_Ua) {
+TEST_F(CommandLineTest, ParseCommandLine_UaNoInstallSource) {
   const TCHAR* kCmdLine = _T("goopdate.exe /ua");
   EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
 
@@ -880,12 +880,23 @@ TEST_F(CommandLineTest, ParseCommandLine_Ua) {
   VerifyCommandLineArgs(expected_, args_);
 }
 
-// Parse: <path> /ua /uninstall
-TEST_F(CommandLineTest, ParseCommandLine_UaWithUninstall) {
-  const TCHAR* kCmdLine = _T("goopdate.exe /ua /uninstall");
+// Parse: <path> /ua /installsource core
+TEST_F(CommandLineTest, ParseCommandLine_Ua) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /ua /installsource core");
   EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
 
   expected_.mode = COMMANDLINE_MODE_UA;
+  expected_.install_source = _T("core");
+  VerifyCommandLineArgs(expected_, args_);
+}
+
+// Parse: <path> /ua /installsource core /uninstall
+TEST_F(CommandLineTest, ParseCommandLine_UaWithUninstall) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /ua /installsource core /uninstall");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_UA;
+  expected_.install_source = _T("core");
   expected_.is_uninstall_set = true;
   VerifyCommandLineArgs(expected_, args_);
 }

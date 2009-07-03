@@ -30,8 +30,8 @@
 // use set_margins() to overwrite default values if you need to.
 
 
-#ifndef TACTICAL_PROTECTOR_UILIB_CONTROLS_STATIC_EX_H__
-#define TACTICAL_PROTECTOR_UILIB_CONTROLS_STATIC_EX_H__
+#ifndef OMAHA_WORKER_UILIB_STATIC_EX_H_
+#define OMAHA_WORKER_UILIB_STATIC_EX_H_
 
 #include <windows.h>
 #include <atlbase.h>
@@ -97,22 +97,17 @@ class StaticEx : public CWindowImpl<StaticEx> {
     MESSAGE_HANDLER(WM_SETCURSOR, OnSetCursor)
   END_MSG_MAP()
 
-// Handler prototypes:
-//  LRESULT MessageHandler(UINT msg, WPARAM wparam,LPARAM lparam, BOOL& handled);
-//  LRESULT CommandHandler(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& handled);
-//  LRESULT NotifyHandler(int idCtrl, LPNMHDR pnmh, BOOL& handled);
-
-  LRESULT OnSetText(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
+  LRESULT OnSetText(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);         // NOLINT
   // OnGetText and OnGetTextLength work with full text including formatting tags
   // to get readable text (without formatting info) call GetWindowText or
   // send WM_GETTEXT
-  LRESULT OnGetText(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
-  LRESULT OnGetTextLength(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
+  LRESULT OnGetText(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);         // NOLINT
+  LRESULT OnGetTextLength(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);   // NOLINT
 
-  LRESULT OnPaint(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
-  LRESULT OnEraseBkgnd(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
-  LRESULT OnLButtonDown(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
-  LRESULT OnSetCursor(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
+  LRESULT OnPaint(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);           // NOLINT
+  LRESULT OnEraseBkgnd(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);      // NOLINT
+  LRESULT OnLButtonDown(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);     // NOLINT
+  LRESULT OnSetCursor(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);       // NOLINT
 
   BOOL SubclassWindow(HWND hWnd);
   HWND UnsubclassWindow(BOOL bForce = FALSE);
@@ -156,4 +151,4 @@ class StaticEx : public CWindowImpl<StaticEx> {
   DISALLOW_EVIL_CONSTRUCTORS(StaticEx);
 };
 
-#endif  // TACTICAL_PROTECTOR_UILIB_CONTROLS_STATIC_EX_H__
+#endif  // OMAHA_WORKER_UILIB_STATIC_EX_H_

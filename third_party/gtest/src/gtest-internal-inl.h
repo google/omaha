@@ -548,6 +548,9 @@ class TestResult {
   // Returns true iff the test fatally failed.
   bool HasFatalFailure() const;
 
+  // Returns true iff the test has a non-fatal failure.
+  bool HasNonfatalFailure() const;
+
   // Returns the elapsed time, in milliseconds.
   TimeInMillis elapsed_time() const { return elapsed_time_; }
 
@@ -574,6 +577,9 @@ class TestResult {
 
   // Increments the death test count, returning the new count.
   int increment_death_test_count() { return ++death_test_count_; }
+
+  // Clears the test part results.
+  void ClearTestPartResults() { test_part_results_.Clear(); }
 
   // Clears the object.
   void Clear();
@@ -614,6 +620,12 @@ class TestInfoImpl {
 
   // Sets the is_disabled member.
   void set_is_disabled(bool is) { is_disabled_ = is; }
+
+  // Returns true if this test matches the filter specified by the user.
+  bool matches_filter() const { return matches_filter_; }
+
+  // Sets the matches_filter member.
+  void set_matches_filter(bool matches) { matches_filter_ = matches; }
 
   // Returns the test case name.
   const char* test_case_name() const { return test_case_name_.c_str(); }
@@ -661,6 +673,8 @@ class TestInfoImpl {
   const TypeId fixture_class_id_;   // ID of the test fixture class
   bool should_run_;                 // True iff this test should run
   bool is_disabled_;                // True iff this test is disabled
+  bool matches_filter_;             // True if this test matches the
+                                    // user-specified filter.
   internal::TestFactoryBase* const factory_;  // The factory that creates
                                               // the test object
 
@@ -1158,8 +1172,8 @@ class UnitTestImpl {
   // Returns the number of tests that should run.
   int FilterTests(ReactionToSharding shard_tests);
 
-  // Lists all the tests by name.
-  void ListAllTests();
+  // Prints the names of the tests matching the user-specified filter flag.
+  void ListTestsMatchingFilter();
 
   const TestCase* current_test_case() const { return current_test_case_; }
   TestInfo* current_test_info() { return current_test_info_; }
@@ -1298,6 +1312,11 @@ class UnitTestImpl {
 // implementation object.
 inline UnitTestImpl* GetUnitTestImpl() {
   return UnitTest::GetInstance()->impl();
+}
+
+// Clears all test part results of the current test.
+inline void ClearCurrentTestPartResults() {
+  GetUnitTestImpl()->current_test_result()->ClearTestPartResults();
 }
 
 // Internal helper functions for implementing the simple regular

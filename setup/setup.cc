@@ -251,11 +251,6 @@ HRESULT Setup::Install(const CString& cmd_line) {
     return GOOPDATE_E_NON_OEM_INSTALL_IN_AUDIT_MODE;
   }
 
-  HRESULT hr = SetEulaRequiredState();
-  if (FAILED(hr)) {
-    return hr;
-  }
-
   ++metric_setup_install_total;
   if (args_->is_install_elevated) {
     ++metric_setup_uac_succeeded;
@@ -265,7 +260,7 @@ HRESULT Setup::Install(const CString& cmd_line) {
   // We will also need to tell the installer how to install.
 
   if (IsElevationRequired()) {
-    hr = ElevateAndWait(cmd_line);
+    HRESULT hr = ElevateAndWait(cmd_line);
     if (FAILED(hr)) {
       SETUP_LOG(LE, (_T("[Setup::ElevateAndWait failed][%s][0x%08x]"),
                     cmd_line, hr));
@@ -279,7 +274,7 @@ HRESULT Setup::Install(const CString& cmd_line) {
     ++metric_setup_user_app_admin;
   }
 
-  hr = DoInstall();
+  HRESULT hr = DoInstall();
 
   if (FAILED(hr)) {
     return hr;
@@ -297,12 +292,7 @@ HRESULT Setup::InstallSelfSilently() {
   // TODO(omaha): add metrics.
   mode_ = MODE_SELF_INSTALL;
 
-  HRESULT hr = SetEulaRequiredState();
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  hr = DoInstall();
+  HRESULT hr = DoInstall();
   if (FAILED(hr)) {
     return hr;
   }
@@ -356,13 +346,24 @@ HRESULT Setup::RepairSilently() {
 // lock11, respectively.
 // Until we secure the current setup lock (bug 1076207), we return an error if
 // we are unable to acquire the legacy locks.
-// Note: Our own lock is susceptible to DOS until we fix bug 1076207.
 // Gets the legacy locks first because we wait a lot longer for them during
 // updates and would not want to hold the setup lock all that time.
 // Legacy Setup Locks are not released until the app is installed.
+//
+// Sets the EULA as accepted when installing and /eularequired is not specified.
+// This can be done outside the locks. Setting EULA not accepted is done inside
+// the lock and process protection in DoProtectedGoogleUpdateInstall.
 HRESULT Setup::DoInstall() {
   ASSERT1(MODE_UNKNOWN != mode_);
   ASSERT1(!IsElevationRequired());
+
+  if (!args_->is_eula_required_set &&
+      (MODE_INSTALL == mode_ || MODE_SELF_INSTALL == mode_)) {
+    HRESULT hr = SetEulaAccepted(is_machine_);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
 
   // Validate that key OS components are installed.
   if (!HasXmlParser()) {
@@ -392,19 +393,18 @@ HRESULT Setup::DoInstall() {
   {
     HighresTimer lock_metrics_timer;
 
-    // Try to acquire the 1.0 lock to prevent 1.0 installers from running, but
-    // do not fail if not acquired because this prevents simultaneous user and
-    // machine installs because both used the same name. See bug 1145609.
-    // For simplicity, hold this lock until the function exits.
+    // Try to acquire the 1.0/1.1 locks to prevent these installers from
+    // running, but do not fail if not acquired because this prevents
+    // simultaneous user and machine installs because both used the same name.
+    // See bug 1145609. For simplicity, hold these locks until the function
+    // exits.
     if (!lock10.Lock(kSetupLockWaitMs)) {
       OPT_LOG(LW, (_T("[Failed to acquire 1.0 setup lock]")));
     }
 
     if (!lock11_user.Lock(kSetupLockWaitMs)) {
-      OPT_LOG(LE, (_T("[Failed to acquire 1.1 user setup lock]")));
-      return HandleLockFailed(kVersion11);
+      OPT_LOG(LW, (_T("[Failed to acquire 1.1 user setup lock]")));
     }
-    ON_SCOPE_EXIT_OBJ(lock11_user, &GLock::Unlock);
 
     if (is_machine_) {
       if (!lock11_machine.Lock(kSetupLockWaitMs)) {
@@ -774,6 +774,8 @@ void Setup::UpdateCoreNotRunningMetric(const CString& existing_version) {
   }
 }
 
+// When installing and /eularequired is specified, calls SetEulaNotAccepted
+// after guaranteeing that no other processes are running.
 HRESULT Setup::DoProtectedGoogleUpdateInstall(SetupFiles* setup_files) {
   ASSERT1(setup_files);
   SETUP_LOG(L2, (_T("[Setup::DoProtectedGoogleUpdateInstall]")));
@@ -788,6 +790,17 @@ HRESULT Setup::DoProtectedGoogleUpdateInstall(SetupFiles* setup_files) {
   }
 
   VERIFY1(SUCCEEDED(ResetMetrics(is_machine_)));
+
+  if (args_->is_eula_required_set) {
+    if (MODE_INSTALL == mode_ || MODE_SELF_INSTALL == mode_) {
+      hr = SetEulaNotAccepted(is_machine_);
+      if (FAILED(hr)) {
+        return hr;
+      }
+    } else {
+      ASSERT1(false);
+    }
+  }
 
   hr = setup_files->Install();
   if (FAILED(hr)) {
@@ -2189,30 +2202,6 @@ HRESULT Setup::SetOemInstallState() {
   return S_OK;
 }
 
-// Failing to set the state fails installation because this would prevent
-// updates or allow updates that should not be.
-HRESULT Setup::SetEulaRequiredState() {
-  ASSERT1(MODE_INSTALL == mode_ ||
-          MODE_SELF_INSTALL == mode_);
-  ASSERT1(MODE_INSTALL == mode_ || !args_->is_eula_required_set);
-
-  if (IsElevationRequired()) {
-    ASSERT1(is_machine_ && !args_->is_install_elevated);
-    return S_OK;
-  }
-
-  const bool eula_accepted = !args_->is_eula_required_set;
-  HRESULT hr = eula_accepted ? SetEulaAccepted(is_machine_) :
-                               SetEulaNotAccepted(is_machine_);
-  if (FAILED(hr)) {
-    SETUP_LOG(LE, (_T("[set EULA accepted state failed][accepted=%d][0x%08x]"),
-                   eula_accepted, hr));
-    return hr;
-  }
-
-  return S_OK;
-}
-
 HRESULT Setup::SetEulaAccepted(bool is_machine) {
   SETUP_LOG(L4, (_T("[SetEulaAccepted][%d]"), is_machine));
   const TCHAR* update_key_name =
@@ -2223,7 +2212,7 @@ HRESULT Setup::SetEulaAccepted(bool is_machine) {
 }
 
 // Does not write the registry if Google Update is already installed as
-// determined by the presence of  2 or more registered apps. In those cases, we
+// determined by the presence of 2 or more registered apps. In those cases, we
 // assume the existing EULA state is correct and do not want to disable updates
 // for an existing installation.
 // Assumes it is called with appropriate synchronization protection such that it

@@ -602,10 +602,6 @@ _extra_dirs = [
     'test',
     ]
 
-_bin_dirs = [
-    'bin'
-    ]
-
 #
 # Need to decide which subdirs need to be built.
 #
@@ -614,10 +610,7 @@ _dirs_to_build = set()
 if win_env.Bit('official_installers'):
   # Only want to build very specific subdirs.
   _dirs_to_build.update(_official_installers_dirs)
-elif win_env.Bit('bin'):
-  # Only build 'bin' subdir.
-  _dirs_to_build.update(_bin_dirs)
-else:
+elif not win_env.Bit('bin'):
   # All other configs get the base dirs.
   _dirs_to_build.update(_base_dirs)
 
@@ -720,6 +713,7 @@ windows_coverage_env.Alias(
 windows_coverage_env.Append(
     COVERAGE_TARGETS=['run_omaha_unittest'],
     COVERAGE_INSTRUMENTATION_PATHS=['$STAGING_DIR'],
+    CPPDEFINES=['COVERAGE_ENABLED'],
 )
 
 # Make debug the default build after any copies of it have been made.

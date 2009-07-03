@@ -83,8 +83,7 @@ no_precomp_env['CPPPATH'] += ['$OBJ_ROOT']
 no_precomp_env.ComponentLibrary('google_update_ps', 'google_update_idl_datax.c')
 
 
-# Make sure that if there are any languages at all, then
-# default and hong kong chinese are added (why?)
+# Add languages that have version resources but are not fully supported.
 translated_languages = list(env['languages'])
 if 1 < len(translated_languages):
   translated_languages += [

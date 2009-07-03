@@ -98,6 +98,9 @@ class ConfigManagerTest : public ConfigManagerNoOverrideTest {
   void CanCollectStatsHelper(bool is_machine);
   void CanCollectStatsIgnoresOppositeHiveHelper(bool is_machine);
   HRESULT SetFirstInstallTime(bool is_machine, DWORD time);
+  HRESULT DeleteFirstInstallTime(bool is_machine);
+  HRESULT SetUpdateTime(bool is_machine, DWORD time);
+  HRESULT DeleteUpdateTime(bool is_machine);
 
   CString hive_override_key_name_;
 };
@@ -164,6 +167,32 @@ HRESULT ConfigManagerTest::SetFirstInstallTime(bool is_machine, DWORD time) {
   return RegKey::SetValue(cm_->registry_client_state_goopdate(is_machine),
                           kRegValueInstallTimeSec,
                           time);
+}
+
+HRESULT ConfigManagerTest::DeleteFirstInstallTime(bool is_machine) {
+  if (!RegKey::HasValue(cm_->registry_client_state_goopdate(is_machine),
+                        kRegValueInstallTimeSec)) {
+    return S_OK;
+  }
+
+  return RegKey::DeleteValue(cm_->registry_client_state_goopdate(is_machine),
+                             kRegValueInstallTimeSec);
+}
+
+HRESULT ConfigManagerTest::SetUpdateTime(bool is_machine, DWORD time) {
+  return RegKey::SetValue(cm_->registry_client_state_goopdate(is_machine),
+                          kRegValueLastUpdateTimeSec,
+                          time);
+}
+
+HRESULT ConfigManagerTest::DeleteUpdateTime(bool is_machine) {
+  if (!RegKey::HasValue(cm_->registry_client_state_goopdate(is_machine),
+                        kRegValueLastUpdateTimeSec)) {
+    return S_OK;
+  }
+
+  return RegKey::DeleteValue(cm_->registry_client_state_goopdate(is_machine),
+                             kRegValueLastUpdateTimeSec);
 }
 
 TEST_F(ConfigManagerNoOverrideTest, RegistryKeys) {
@@ -1820,13 +1849,24 @@ TEST_F(ConfigManagerTest, GetNetConfig) {
   EXPECT_STREQ(expected_value, actual_value);
 }
 
-TEST_F(ConfigManagerTest, GetFirstInstallTime) {
+TEST_F(ConfigManagerTest, GetInstallTime) {
+  EXPECT_SUCCEEDED(DeleteUpdateTime(false));
+  EXPECT_SUCCEEDED(DeleteFirstInstallTime(false));
+  EXPECT_EQ(0, ConfigManager::GetInstallTime(false));
+
   DWORD time = 500;
   EXPECT_SUCCEEDED(SetFirstInstallTime(false, time));
-  EXPECT_EQ(time, ConfigManager::GetFirstInstallTime(false));
+  EXPECT_EQ(time, ConfigManager::GetInstallTime(false));
+
+  time = 1000;
+  EXPECT_SUCCEEDED(SetUpdateTime(false, time));
+  EXPECT_EQ(time, ConfigManager::GetInstallTime(false));
+
+  EXPECT_SUCCEEDED(DeleteFirstInstallTime(false));
+  EXPECT_EQ(time, ConfigManager::GetInstallTime(false));
 }
 
-TEST_F(ConfigManagerTest, Is24HoursSinceFirstInstall) {
+TEST_F(ConfigManagerTest, Is24HoursSinceInstall) {
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
   const int k12HourPeriodSec = 12 * 60 * 60;
   const int k48HourPeriodSec = 48 * 60 * 60;
@@ -1835,10 +1875,16 @@ TEST_F(ConfigManagerTest, Is24HoursSinceFirstInstall) {
   const uint32 first_install_48 = now - k48HourPeriodSec;
 
   EXPECT_SUCCEEDED(SetFirstInstallTime(false, first_install_12));
-  EXPECT_FALSE(ConfigManager::Is24HoursSinceFirstInstall(false));
+  EXPECT_FALSE(ConfigManager::Is24HoursSinceInstall(false));
 
   EXPECT_SUCCEEDED(SetFirstInstallTime(false, first_install_48));
-  EXPECT_TRUE(ConfigManager::Is24HoursSinceFirstInstall(false));
+  EXPECT_TRUE(ConfigManager::Is24HoursSinceInstall(false));
+
+  EXPECT_SUCCEEDED(SetUpdateTime(false, first_install_12));
+  EXPECT_FALSE(ConfigManager::Is24HoursSinceInstall(false));
+
+  EXPECT_SUCCEEDED(SetUpdateTime(false, first_install_48));
+  EXPECT_TRUE(ConfigManager::Is24HoursSinceInstall(false));
 }
 
 }  // namespace omaha

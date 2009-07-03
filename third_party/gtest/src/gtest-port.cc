@@ -42,6 +42,12 @@
 #include <unistd.h>
 #endif  // GTEST_OS_WINDOWS
 
+#if GTEST_OS_MAC
+#include <mach/mach_init.h>
+#include <mach/task.h>
+#include <mach/vm_map.h>
+#endif  // GTEST_OS_MAC
+
 #ifdef _WIN32_WCE
 #include <windows.h>  // For TerminateProcess()
 #endif  // _WIN32_WCE
@@ -62,12 +68,43 @@
 namespace testing {
 namespace internal {
 
-#if GTEST_OS_WINDOWS
-// Microsoft does not provide a definition of STDERR_FILENO.
+#if defined(_MSC_VER) || defined(__BORLANDC__)
+// MSVC and C++Builder do not provide a definition of STDERR_FILENO.
 const int kStdErrFileno = 2;
 #else
 const int kStdErrFileno = STDERR_FILENO;
-#endif  // GTEST_OS_WINDOWS
+#endif  // _MSC_VER
+
+#if GTEST_OS_MAC
+
+// Returns the number of threads running in the process, or 0 to indicate that
+// we cannot detect it.
+size_t GetThreadCount() {
+  const task_t task = mach_task_self();
+  mach_msg_type_number_t thread_count;
+  thread_act_array_t thread_list;
+  const kern_return_t status = task_threads(task, &thread_list, &thread_count);
+  if (status == KERN_SUCCESS) {
+    // task_threads allocates resources in thread_list and we need to free them
+    // to avoid leaks.
+    vm_deallocate(task,
+                  reinterpret_cast<vm_address_t>(thread_list),
+                  sizeof(thread_t) * thread_count);
+    return static_cast<size_t>(thread_count);
+  } else {
+    return 0;
+  }
+}
+
+#else
+
+size_t GetThreadCount() {
+  // There's no portable way to detect the number of threads, so we just
+  // return 0 to indicate that we cannot detect it.
+  return 0;
+}
+
+#endif  // GTEST_OS_MAC
 
 #if GTEST_USES_POSIX_RE
 
@@ -502,9 +539,9 @@ void CaptureStderr() {
 ::std::string GetCapturedStderr() {
   g_captured_stderr->StopCapture();
 
-  FILE* const file = posix::fopen(g_captured_stderr->filename().c_str(), "r");
+  FILE* const file = posix::FOpen(g_captured_stderr->filename().c_str(), "r");
   const ::std::string content = ReadEntireFile(file);
-  posix::fclose(file);
+  posix::FClose(file);
 
   delete g_captured_stderr;
   g_captured_stderr = NULL;
@@ -526,7 +563,7 @@ const ::std::vector<String>& GetArgvs() { return g_argvs; }
 
 #ifdef _WIN32_WCE
 namespace posix {
-void abort() {
+void Abort() {
   DebugBreak();
   TerminateProcess(GetCurrentProcess(), 1);
 }
@@ -595,7 +632,7 @@ bool ParseInt32(const Message& src_text, const char* str, Int32* value) {
 // The value is considered true iff it's not "0".
 bool BoolFromGTestEnv(const char* flag, bool default_value) {
   const String env_var = FlagToEnvVar(flag);
-  const char* const string_value = posix::getenv(env_var.c_str());
+  const char* const string_value = posix::GetEnv(env_var.c_str());
   return string_value == NULL ?
       default_value : strcmp(string_value, "0") != 0;
 }
@@ -605,7 +642,7 @@ bool BoolFromGTestEnv(const char* flag, bool default_value) {
 // doesn't represent a valid 32-bit integer, returns default_value.
 Int32 Int32FromGTestEnv(const char* flag, Int32 default_value) {
   const String env_var = FlagToEnvVar(flag);
-  const char* const string_value = posix::getenv(env_var.c_str());
+  const char* const string_value = posix::GetEnv(env_var.c_str());
   if (string_value == NULL) {
     // The environment variable is not set.
     return default_value;
@@ -627,7 +664,7 @@ Int32 Int32FromGTestEnv(const char* flag, Int32 default_value) {
 // the given flag; if it's not set, returns default_value.
 const char* StringFromGTestEnv(const char* flag, const char* default_value) {
   const String env_var = FlagToEnvVar(flag);
-  const char* const value = posix::getenv(env_var.c_str());
+  const char* const value = posix::GetEnv(env_var.c_str());
   return value == NULL ? default_value : value;
 }
 

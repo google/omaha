@@ -31,16 +31,11 @@ def UpdateSettingsForCheckedInVersion(env,
                                       version_build,
                                       version_patch,
                                       oneclick_plugin_version):
-  print ''
+  print
   print '******* CHANGING VERSION! *******'
   env.SetProductVersion(
       version_major, version_minor, version_build, version_patch)
 
-  return UpdateSettingsExceptForCheckedInVersion(env, oneclick_plugin_version)
-
-
-# Returns list of removed languages.
-def UpdateSettingsExceptForCheckedInVersion(env, oneclick_plugin_version):
   print
   print '*********************************'
   print 'Plug-in version: ' + oneclick_plugin_version

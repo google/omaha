@@ -498,22 +498,19 @@ HRESULT CreateScheduledTask(ITask* task,
     return hr;
   }
 
-  // TASK_FLAG_RUN_IF_CONNECTED_TO_INTERNET is not supported currently, but may
-  // work in a future OS release.
-  // For the user task, we set TASK_FLAG_RUN_ONLY_IF_LOGGED_ON, so that we do
-  // not need the user password for task creation.
-  hr = task->SetFlags(TASK_FLAG_RUN_IF_CONNECTED_TO_INTERNET |
-                      (is_machine ? 0 : TASK_FLAG_RUN_ONLY_IF_LOGGED_ON));
-  if (FAILED(hr)) {
-    ASSERT(false, (_T("ITask.SetFlags failed 0x%x"), hr));
-    return hr;
-  }
-
   if (is_machine) {
     // Run using SYSTEM credentials, by passing in an empty username string.
     hr = task->SetAccountInformation(_T(""), NULL);
   } else {
     // Run as current user.
+    // For the user task, we set TASK_FLAG_RUN_ONLY_IF_LOGGED_ON, so that we do
+    // not need the user password for task creation.
+    hr = task->SetFlags(TASK_FLAG_RUN_ONLY_IF_LOGGED_ON);
+    if (FAILED(hr)) {
+      ASSERT(false, (_T("ITask.SetFlags failed 0x%x"), hr));
+      return hr;
+    }
+
     CString user_name;
     DWORD buffer_size = UNLEN + 1;
     if (!::GetUserName(CStrBuf(user_name, buffer_size), &buffer_size)) {
@@ -531,7 +528,12 @@ HRESULT CreateScheduledTask(ITask* task,
 
   // The default is to run for a finite number of days. We want to run
   // indefinitely.
-  hr = task->SetMaxRunTime(INFINITE);
+  // Due to a bug introduced in Vista, and propogated to Windows 7, setting the
+  // MaxRunTime to INFINITE results in the task only running for 72 hours. For
+  // these operating systems, setting the RunTime to "INFINITE - 1" gets the
+  // desired behavior of allowing an "infinite" run of the task.
+  DWORD max_time = INFINITE - (SystemInfo::IsRunningOnVistaOrLater() ? 1 : 0);
+  hr = task->SetMaxRunTime(max_time);
   if (FAILED(hr)) {
     ASSERT(false, (_T("ITask.SetMaxRunTime failed 0x%x"), hr));
     return hr;
@@ -1627,6 +1629,10 @@ HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
   ASSERT1(mode == COMMANDLINE_MODE_CORE || mode == COMMANDLINE_MODE_UA);
 
   CommandLineBuilder builder(mode);
+  if (mode == COMMANDLINE_MODE_UA) {
+    builder.set_install_source(kCmdLineInstallSourceScheduler);
+  }
+
   CString task_description;
   VERIFY1(task_description.LoadString(IDS_SCHEDULED_TASK_DESCRIPTION));
 
@@ -2599,10 +2605,32 @@ HRESULT WriteNameValuePairsToFile(const CString& file_path,
 HRESULT SetGoogleUpdateBranding(const CString& client_state_key_path,
                                 const CString& brand_code,
                                 const CString& client_id) {
-  return SetAppBranding(client_state_key_path,
-                        brand_code,
-                        client_id,
-                        CString());
+  HRESULT hr(SetAppBranding(client_state_key_path,
+                            brand_code,
+                            client_id,
+                            CString()));
+
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  RegKey state_key;
+  hr = state_key.Open(client_state_key_path);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // Legacy support for older versions that do not write the FirstInstallTime.
+  // This code ensures that FirstInstallTime always has a valid non-zero value.
+  DWORD install_time(0);
+  if (FAILED(state_key.GetValue(kRegValueInstallTimeSec, &install_time)) ||
+      !install_time) {
+    const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now)));
+    SETUP_LOG(L3, (_T("[InstallTime missing. Setting it here.][%u]"), now));
+  }
+
+  return S_OK;
 }
 
 // Branding information is only written if a brand code is not already present.

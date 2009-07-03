@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 #include "omaha/common/app_util.h"
+#include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_object_names.h"
 #include "omaha/common/debug.h"
 #include "omaha/common/error.h"
@@ -80,7 +81,7 @@ HRESULT Core::Main(bool is_system, bool is_crash_handler_enabled) {
   return S_OK;
 }
 
-bool Core::AreScheduledTasksHealthy() {
+bool Core::AreScheduledTasksHealthy() const {
   if (!ServiceUtils::IsServiceRunning(SERVICE_SCHEDULE)) {
     ++metric_core_run_task_scheduler_not_running;
     CORE_LOG(LE, (_T("[Task Scheduler Service is not running]")));
@@ -103,9 +104,10 @@ bool Core::AreScheduledTasksHealthy() {
       goopdate_utils::GetExitCodeGoopdateTaskUA(is_system_);
 
   if (ua_task_last_exit_code == SCHED_S_TASK_HAS_NOT_RUN &&
-      !ConfigManager::Is24HoursSinceFirstInstall(is_system_)) {
-    // Not 24 hours yet since first install. Let us give the UA task the benefit
-    // of the doubt, and assume all is well for right now.
+      !ConfigManager::Is24HoursSinceInstall(is_system_)) {
+    // Not 24 hours yet since install or update. Let us give the UA task the
+    // benefit of the doubt, and assume all is well for right now.
+    CORE_LOG(L3, (_T("[Not yet 24 hours since install/update]")));
     ua_task_last_exit_code = S_OK;
   }
 
@@ -119,7 +121,7 @@ bool Core::AreScheduledTasksHealthy() {
   return true;
 }
 
-bool Core::IsServiceHealthy() {
+bool Core::IsServiceHealthy() const {
   if (!is_system_) {
     return true;
   }
@@ -140,7 +142,12 @@ bool Core::IsServiceHealthy() {
   return true;
 }
 
-bool Core::IsCheckingForUpdates() {
+bool Core::IsCheckingForUpdates() const {
+  if (!ConfigManager::Is24HoursSinceInstall(is_system_)) {
+    CORE_LOG(L3, (_T("[Not yet 24 hours since install/update]")));
+    return true;
+  }
+
   ConfigManager* cm = ConfigManager::Instance();
   const int k14DaysSec = 14 * 24 * 60 * 60;
 
@@ -167,7 +174,7 @@ bool Core::IsCheckingForUpdates() {
 // In addition, for the machine GoogleUpdate, the Core will run all the time if
 // the service is not installed, or is disabled. In this case, Omaha uses the
 // elevator interface hosted by the core, and this keeps the core running.
-bool Core::ShouldRunForever() {
+bool Core::ShouldRunForever() const {
   // The methods are being called individually to enable metrics capture.
   bool are_scheduled_tasks_healthy(AreScheduledTasksHealthy());
   bool is_service_healthy(IsServiceHealthy());
@@ -216,9 +223,6 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
     CORE_LOG(LW, (_T("[CleanUpInitialManifestDirectory failed][0x%08x]"), hr));
   }
 
-  // TODO(Omaha): Delay starting update worker when run at startup.
-  StartUpdateWorker();
-
   // Start the crash handler if necessary.
   if (is_crash_handler_enabled_) {
     HRESULT hr = StartCrashHandler();
@@ -230,6 +234,9 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   if (!ShouldRunForever()) {
     return S_OK;
   }
+
+  // TODO(Omaha): Delay starting update worker when run at startup.
+  StartUpdateWorkerInternal();
 
   // Force the main thread to create a message queue so any future WM_QUIT
   // message posted by the ShutdownHandler will be received. If the main
@@ -282,6 +289,10 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
 // causes it to break out of the message loop. If the message can't be posted,
 // it terminates the process unconditionally.
 HRESULT Core::Shutdown() {
+  return ShutdownInternal();
+}
+
+HRESULT Core::ShutdownInternal() const {
   OPT_LOG(L1, (_T("[Google Update is shutting down...]")));
   ASSERT1(::GetCurrentThreadId() != main_thread_id_);
   if (::PostThreadMessage(main_thread_id_, WM_QUIT, 0, 0)) {
@@ -331,6 +342,14 @@ HRESULT Core::DoHandleEvents() {
 }
 
 HRESULT Core::StartUpdateWorker() const {
+  if (!ShouldRunForever()) {
+    return ShutdownInternal();
+  }
+
+  return StartUpdateWorkerInternal();
+}
+
+HRESULT Core::StartUpdateWorkerInternal() const {
   // The uninstall check is tentative. There are stronger checks, protected
   // by locks, which are done by the worker process.
   size_t num_clients(0);
@@ -342,6 +361,7 @@ HRESULT Core::StartUpdateWorker() const {
 
   CString exe_path = goopdate_utils::BuildGoogleUpdateExePath(is_system_);
   CommandLineBuilder builder(COMMANDLINE_MODE_UA);
+  builder.set_install_source(kCmdLineInstallSourceCore);
   builder.set_is_uninstall_set(is_uninstall);
   CString cmd_line = builder.GetCommandLineArgs();
   HRESULT hr = System::StartProcessWithArgs(exe_path, cmd_line);

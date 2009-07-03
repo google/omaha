@@ -84,9 +84,9 @@ class ConfigManager {
     return is_machine ? machine_registry_google() : user_registry_google();
   }
 
-  // Creates download data dir:
-  // %UserProfile%/Application Data/Google/Update/Downloads
-  CString GetDownloadStorage() const;
+  // Gets the temporary download dir for the current thread token:
+  // %UserProfile%/AppData/Local/Temp/Downloads
+  CString GetTempDownloadDir() const;
 
   // Creates download data dir:
   // %UserProfile%/Application Data/Google/Update/Downloads
@@ -243,13 +243,12 @@ class ConfigManager {
   // Returns the network configuration override as a string.
   static HRESULT GetNetConfig(CString* configuration_override);
 
-  // Gets the time when Goopdate was first installed. This value is not
-  // updated when Omaha is updated or overinstalled to a later version.
-  static DWORD GetFirstInstallTime(bool is_machine);
+  // Gets the time when Goopdate was last updated or installed.
+  static DWORD GetInstallTime(bool is_machine);
 
-  // Returns true if it has been more than 24 hours since Goopdate was first
-  // installed.
-  static bool Is24HoursSinceFirstInstall(bool is_machine);
+  // Returns true if it has been more than 24 hours since Goopdate was updated
+  // or installed.
+  static bool Is24HoursSinceInstall(bool is_machine);
 
   static ConfigManager* Instance();
   static void DeleteInstance();
