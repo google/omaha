@@ -1,0 +1,30 @@
+#summary Protocol Omaha uses to communicate with the update server
+
+= Introduction =
+
+The open source Omaha project only includes the Windows client. The code in SVN will only communicate with Google's servers, but with a few minor modifications, it could talk to any server that supports the Omaha server protocol.
+
+This page describes that protocol, both to help in understanding the client code and as a guide for anyone implementing an update server.
+
+= Details =
+
+For now, the code is the best documentation of the protocol.
+
+== Update Request ==
+The format of the client's update check sent to the server can be seen in the `IDS_EXPECTED_UPDATE_REQUEST*` strings in [http://code.google.com/p/omaha/source/browse/trunk/testing/omaha_unittest.rc omaha_unittest.rc].
+
+== Update Response == 
+Sample server responses can be seen in [http://code.google.com/p/omaha/source/browse/trunk/data/server_manifest.xml server_manifest.xml], which is used by [http://code.google.com/p/omaha/source/browse/trunk/goopdate/goopdate_xml_parser_unittest.cc goopdate_xml_parser_unittest.cc].
+
+`status`, `codebase`, `size`, and `hash` are all required for update responses. 
+
+server_manifest.xml also contains an example of a `"noupdate"` response.
+
+Supported error statuses are listed in `JobCreator::UpdateResponseDataToCompletionInfo()` in [http://code.google.com/p/omaha/source/browse/trunk/worker/job_creator.cc job_creator.cc]. Other statuses will cause `GOOPDATE_E_UNKNOWN_SERVER_RESPONSE`.
+
+== Pings ==
+The server should also allow pings, which include an <o:event> element as shown in IDS_EXPECTED_UPDATE_REQUEST2. No special response is necessary. 
+
+= Server Operation =
+
+The server can be as simple or as complex as is necessary for your needs. The most basic server would check the client's version of the app against the latest version on the server, and provide an update if the server's version is newer. Otherwise, the server responds with "noupdate". A more complex server could support features such as metered updates (to slowly roll out a new version) and providing different responses depending on the OS version.
