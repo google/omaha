@@ -6,7 +6,9 @@ The open source Omaha project only includes the Windows client. The code in SVN 
 
 This page describes that protocol, both to help in understanding the client code and as a guide for anyone implementing an update server.
 
-= Details =
+The same protocol is used by both Omaha/Google Update (Windows) and Google Software Update (Mac OS X).
+
+= Protocol =
 
 For now, the code is the best documentation of the protocol.
 
@@ -24,6 +26,9 @@ Supported error statuses are listed in `JobCreator::UpdateResponseDataToCompleti
 
 == Pings ==
 The server should also allow pings, which include an <o:event> element as shown in IDS_EXPECTED_UPDATE_REQUEST2. No special response is necessary. 
+
+= Secure Communication =
+The Omaha client supports communicating with the server over HTTPS or over an authenticated HTTP channel using an algorithm known as CUP. The client side of CUP is implemented in [http://code.google.com/p/omaha/source/browse/trunk/net net].
 
 = Server Operation =
 
