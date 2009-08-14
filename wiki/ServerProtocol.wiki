@@ -6,7 +6,7 @@ This document describes version 2 of the Omaha client-server protocol.  Omaha wa
 == Overview ==
 The client sends requests via HTTP POST with an XML data body.  The response is an XML data body.
 
-<img src="ServerProtocol_Images/omahaprotocol2.jpg" width="834" height="566">
+http://omaha.googlecode.com/svn/wiki/ServerProtocol_Images/omahaprotocol2.jpg
 
 An HTTP request may concatenate multiple applications in one XML body; similarly, multiple request-actions may be included for any application.  The server responds with a status and other information (as appropriate) for each action, organized in a similar nested XML structure.
 
