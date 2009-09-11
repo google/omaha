@@ -215,7 +215,7 @@ In addition, the Omaha client supports the following optional attributes:
    * Version: The version of the app that the app should be updated to (by running the installer binary specified by codebase).
    * successurl: URL to open upon successful installation. (Currently the Omaha client will only use this if the user chooses restart the browser(s).)
    * terminateallbrowsers: "true" or "false", specifies whether Omaha should attempt to shutdown all supported browsers or just the specified browser.
-   * tttoken: If present, the client should change its tt-token to this value.  A zero-length value means the token should be deleted from local store.
+   * tttoken: If present, the client should change its tt-token to this value.  A zero-length value means the token should be deleted from local store. (The server must echo the tttoken in the request unless it wants the client to clear its token.)
 
 And on the Mac, the Google Software Update Agent supports the following optional attributes.
    * Prompt: Whether to display the UI before installing an update
