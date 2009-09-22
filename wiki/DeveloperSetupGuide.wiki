@@ -71,6 +71,8 @@ Once the above setup is complete:
 
 In order to pass all of the unit tests, there is one other piece of setup required. You must download Windows !SysInternals !PsExec (you can get it [http://technet.microsoft.com/en-us/sysinternals/bb897553.aspx here]) and save `psexec.exe` somewhere. Then you will need to set an environment variable named OMAHA_PSEXEC_DIR to the directory containing `psexec.exe`.
 
+The unit tests also expect a value to be set in the registry. Create the following registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\Google\UpdateDev`. Then, add a string value named `TestSource` with the value `ossdev`.
+
 When running unit tests:
   * You must be connected to the Internet for some tests to pass.
   * We recommend running them with administrator privileges as some tests do not run otherwise.
