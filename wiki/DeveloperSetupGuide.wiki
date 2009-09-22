@@ -44,7 +44,7 @@ The following packages are required to build Omaha:
   # Follow the Software Construction Toolkit [http://code.google.com/p/swtoolkit/wiki/Introduction installation instructions]. Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
   # Extract or checkout the Omaha source code to a location of your choice, perhaps something like "C:\Omaha"
 
-== EnvironmentVariables ==
+== Environment Variables ==
 
 Create the following environment variables:
   * SCT_DIR - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
