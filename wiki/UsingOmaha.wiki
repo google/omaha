@@ -19,6 +19,8 @@ This will install your build in Documents & Settings (XP) / Users (Vista), and i
 
 = Customize Omaha for Your Application/Organization =
 
+*Note: Before you can use Omaha for your own application(s), you must have an update server that supports the Omaha ServerProtocol.* Google does not currently provide an update server for external applications.
+
 See CustomizingOmaha.
 
 = Create a Metainstaller for Your Application =
