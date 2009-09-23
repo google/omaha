@@ -6,7 +6,7 @@ As is, the open source Omaha code on this site builds "Google Update". Google Up
 
 In order to use Omaha for your application or organization, you must customize the code for your organization and prevent it from conflicting with Google Update on users' computers.
 
-= Details =
+= Vendor-Specific Values =
 
 The following must be customized for your organization and updater product name. This list may not be exhaustive.
  * Omaha's application ID
@@ -26,7 +26,13 @@ The following must be customized for your organization and updater product name.
  * MSI product IDs, upgrade codes, etc.
  * application id, names, strings, filenames, paths, locations, etc. in unit tests.
 
-Many of the above items are defined in the following files.
+= How to Customize Omaha =
+
+Currently, the values mentioned above are specified in a variety of files and you will need to find and modify each of the values. Ideally there would be a small number of values to change in a a small number of locations and these would be well-documented.
+
+The Google Update team does not currently have plans to do this, though we are making gradual improvements. We would welcome such contributions from the community. Please contact us on [http://groups.google.com/group/omaha-discuss omaha-discuss] if you are interested in helping with this.
+
+In the meantime, many of the above items are defined in the following files.
  * `*.scons` files
  * `*.rc` files
  * `*.idl` files
