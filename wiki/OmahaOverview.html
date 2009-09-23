@@ -268,7 +268,7 @@ h3 { font-size: 12pt }
 h2 { font-size: 14pt }
 h1 { font-size: 18pt }
 
-blockquote {padding: 10px; border: 1px #DDD dashed }
+blockquote {padding: 10px; border: 1px #000 solid; max-width: 65em; }
 
 .webkit-indent-blockquote { border: none; }
 
@@ -1141,6 +1141,10 @@ It is important the same binary works the same way on different operating system
 <h3 id=s8>
   <a id=_Server_ name=_Server_></a> Server
 </h3>
+<p>
+<blockquote>The Google Update server is not part of the Omaha open source project. Providing updates for applications requires a server that implements the
+<a href=http://code.google.com/p/omaha/wiki/ServerProtocol target=_self>Omaha Server Protocol</a>.</blockquote>
+</p>
 <p>
   Omaha has two server components: autoupdate and download. This separation of server responsibilities is desirable because the requirements are different: downloading large binaries takes high bandwidth and can tolerate relatively high latency, whereas small transactions such as update pings may be much more frequent but require extremely low bandwidth per transaction. These differences allow Google to provision the two servers appropriately.
 </p>
