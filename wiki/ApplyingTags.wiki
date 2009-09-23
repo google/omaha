@@ -1,10 +1,10 @@
-#summary Applying tags to the metainstaller
+#summary Tagged metainstallers and how to create them
 
 = Introduction =
 
 The quoted string that appears after `/install` and `/handoff` in Omaha command lines is called the _tag_. By embedding this tag in the metainstaller, users can just run or double-click on the metainstaller to install the specified app.
 
-= Signature Tags =
+== Background ==
 
 There is a section of an Authenticode signature that can be modified without affecting the signature. We call this area the tag and use it for the purposes described above.
 
