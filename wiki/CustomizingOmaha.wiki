@@ -1,0 +1,33 @@
+#summary How to customize Omaha for your application or organization.
+
+= Introduction =
+
+As is, the open source Omaha code on this site builds "Google Update". Google Update communicates with Google's update servers, which only support Google applications. The main difference between code compiled from this site and Google Update is the Authenticode signature and version number.
+
+In order to use Omaha for your application or organization, you must customize the:
+ * Omaha's application ID
+ * name (currently Google Update)
+ * strings (where "Google" is referenced)
+ * version resources that reference "Google" or "Google Update"
+ * (optional) log statements where "Google Update" is used
+ * filenames
+ * install location (currently `Google\Update`)
+ * registry location (currently `Software\Google\Update`)
+ * various server URLs
+ * public CUP key if you want to support ClientUpdateProtocol
+ * object names (mutexes, etc.)
+ * COM CLSIDs
+ * signing certificate that gets used for official builds
+ * certificate names in the code
+ * application id, names, strings, filenames, paths, locations, etc. in unit tests.
+
+= Details =
+
+Many of the above items are defined in:
+ * .scons files
+ * `const_addresses.h`
+ * `const_object_names.h`
+ * `constants.h`
+ * `signaturevalidator.cc`
+ * (optional) `generate_group_policy_template.py` and `public_apps.py`
+ * (optional) `*.wxs.xml` amd `*.xml`
