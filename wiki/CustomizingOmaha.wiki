@@ -4,7 +4,11 @@
 
 As is, the open source Omaha code on this site builds "Google Update". Google Update communicates with Google's update servers, which only support Google applications. The main difference between code compiled from this site and Google Update is the Authenticode signature and version number.
 
-In order to use Omaha for your application or organization, you must customize the:
+In order to use Omaha for your application or organization, you must customize the code for your organization and prevent it from conflicting with Google Update on users' computers.
+
+= Details =
+
+The following must be customized for your organization and updater product name. This list may not be exhaustive.
  * Omaha's application ID
  * name (currently Google Update)
  * strings (where "Google" is referenced)
@@ -16,18 +20,21 @@ In order to use Omaha for your application or organization, you must customize t
  * various server URLs
  * public CUP key if you want to support ClientUpdateProtocol
  * object names (mutexes, etc.)
- * COM CLSIDs
+ * COM CLSIDs and interface IDs
  * signing certificate that gets used for official builds
  * certificate names in the code
+ * MSI product IDs, upgrade codes, etc.
  * application id, names, strings, filenames, paths, locations, etc. in unit tests.
 
-= Details =
-
-Many of the above items are defined in:
- * .scons files
+Many of the above items are defined in the following files.
+ * `*.scons` files
+ * `*.rc` files
+ * `*.idl` files
  * `const_addresses.h`
+ * `const_goopdate.h`
  * `const_object_names.h`
  * `constants.h`
- * `signaturevalidator.cc`
- * (optional) `generate_group_policy_template.py` and `public_apps.py`
- * (optional) `*.wxs.xml` amd `*.xml`
+ * `signaturevalidator.cc` (constant should be moved in a future version)
+ * `crash.cc` (constant  should be moved in a future version)
+ * (optional - if support Group Policy) `generate_group_policy_template.py` and `public_apps.py`
+ * (optional - if builgin MSI wrappers and test apps) `*.wxs.xml` amd `*.xml`
