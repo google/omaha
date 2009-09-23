@@ -18,3 +18,13 @@ GoogleUpdate.exe /install "appguid={8A69D345-D564-463C-AFF1-A69D9E530F96}&appnam
 }}}
 
 This will install your build in Documents & Settings (XP) / Users (Vista) and it will in turn download and install Google Chrome.
+
+= Customize Omaha for Your Application/Organization =
+
+See CustomizingOmaha.
+
+= Create a Metainstaller for Your Application =
+
+The quoted string after `/install` in the command line above is called the tag. This tag can be added to the metainstaller (GoogleUpdateSetup.exe) so that double-clicking the metainstaller will install the application specified by the tag.
+
+See ApplyingTags.
