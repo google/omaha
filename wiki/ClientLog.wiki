@@ -7,8 +7,8 @@ Omaha can be configured to produce a log. This page provides instructions for en
 = Location =
 
 The log file location depends on the OS.
- * Windows XP: `C:\Documents and Settings\All Users\Application Data\Google\Update\Log`
- * Vista and Windows 7: `C:\ProgramData\Google\Update\Log`
+ * *Windows XP*: `C:\Documents and Settings\All Users\Application Data\Google\Update\Log`
+ * *Windows Vista* and *Windows 7*: `C:\ProgramData\Google\Update\Log`
 
 = Enabling Logging on Production (opt-win) Builds =
 
