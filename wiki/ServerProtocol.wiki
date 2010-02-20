@@ -41,6 +41,7 @@ There is not an update for either of the apps. The app and ping elements are ack
 {{{
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <daystart elapsed_seconds="59892"/>
   <app appid="{430FD4D0-B729-4F61-AA34-91526481799D}" status="ok">
     <updatecheck status="noupdate"/>
   </app>
@@ -57,6 +58,7 @@ There is an update available for only the second app. The app and ping elements 
 {{{
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <daystart elapsed_seconds="59892"/>
   <app appid="{430FD4D0-B729-4F61-AA34-91526481799D}" status="ok">
     <updatecheck status="noupdate"/>
   </app>
@@ -91,6 +93,7 @@ _Response:_
 {{{
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <daystart elapsed_seconds="59892"/>
   <app appid="{8A69D345-D564-463C-AFF1-A69D9E530F96}" status="ok">
     <event status="ok"/>
   </app>
@@ -118,6 +121,7 @@ _Response:_
 {{{
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <daystart elapsed_seconds="59892"/>
   <app appid="{8A69D345-D564-463C-AFF1-A69D9E530F96}" status="ok">
     <data index="custominstallconfigfoo" name="install" status="ok">app-specific values here
     </data>
@@ -155,6 +159,16 @@ _Request Attributes_
 _Response Attributes_
 
 N/A
+
+=== daystart Element ===
+(Added February 2010)  Inside the gupdate envelope, but prior to any app-response elements, is a daystart element that gives the number of seconds since midnight at the server's locale.  This is used by the client to calculate days-since attributes in pings.
+
+_Request Attributes_
+
+N/A
+
+_Response Attributes_
+  * elapsed_seconds: Number of seconds since midnight at the server's locale.
 
 === app Element ===
 The app element may be repeated in the request any number of times.  The server will reply with a corresponding app element for each request app element; In practice, the app elements of the response will be in the same order as the request.
@@ -274,7 +288,15 @@ _Response Attributes_
 The ping response is always status="ok", meaning the data were successfully received.
 
 _Request Attributes_
+
+(Prior to February 2010)
    * active: 0 or 1, depending on whether the application was active since the last report
+
+(Since February 2010)
+
+In either case, the special value "-1" indicates a new install.
+   * a: The app was active since the last report; the value is the number of days since the app last reported active.  The attr is omitted if the app was not active.
+   * r: The app is present; the value is the number of the days since the app last reported present.
 
 _Response Attributes_
    * status: Always "ok"
