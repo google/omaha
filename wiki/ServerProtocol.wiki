@@ -294,7 +294,7 @@ _Request Attributes_
 
 (Since February 2010)
 
-In either case, the special value "-1" indicates a new install.
+In either case, the special value "-1" indicates a new install.  An attr may be omitted if the value is "0"; and the entire ping may be omitted if both values are zero.
    * a: The app was active since the last report; the value is the number of days since the app last reported active.  The attr is omitted if the app was not active.
    * r: The app is present; the value is the number of the days since the app last reported present.
 
