@@ -895,15 +895,6 @@ TEST(ExtraArgsParserTest, InstallationGuidIsString) {
   EXPECT_FAILED(parser.Parse(extra_args, NULL, &args));
 }
 
-TEST(ExtraArgsParserTest, RlzNotSupported) {
-  CommandLineExtraArgs args;
-  ExtraArgsParser parser;
-  CString extra_args = _T("appguid={8617EE50-F91C-4DC1-B937-0969EEF59B0B}&")
-                       _T("rlz=hithere");
-
-  EXPECT_EQ(E_INVALIDARG, parser.Parse(extra_args, NULL, &args));
-}
-
 TEST(ExtraArgsParserTest, BrandCodeValid) {
   CommandLineExtraArgs args;
   ExtraArgsParser parser;

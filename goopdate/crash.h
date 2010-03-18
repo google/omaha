@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,25 +32,21 @@ namespace omaha {
 
 // Annotates the version reported along with the crash.
 const TCHAR* const kCrashVersionPostfixString =
-  _T("")
 #if !OFFICIAL_BUILD
   _T(".private")
 #endif
 #if DEBUG
   _T(".debug")
 #endif
-#if UNITTEST
-  _T(".ut")
-#endif
-;  // NOLINT
+  _T("");
 
 // Official builds can only send a few crashes per day. Debug builds including
 // all build modes for unit tests send unlimited number of crashes.
 const int kCrashReportMaxReportsPerDay =
-#if OFFICIAL_BUILD && !defined(UNITTEST)
+#if OFFICIAL_BUILD
                                          5;
 #else
-                                         0x7fffffff;
+                                         INT_MAX;
 #endif
 
 const TCHAR* const kNoCrashHandlerEnvVariableName =
@@ -94,9 +90,6 @@ class Crash {
   static void set_version_postfix(const TCHAR* version_postfix) {
     version_postfix_ = version_postfix;
   }
-
-  // Sets the guid to be reported. If not set, it uses the machine/user guid.
-  static void set_guid(const TCHAR* guid) { guid_ = guid; }
 
   // Sets how many reports can be sent until the crash report sender starts
   // rejecting and discarding crashes.
@@ -229,9 +222,17 @@ class Crash {
       void* context,
       const google_breakpad::ClientInfo* client_info);
 
-  // Builds a security attribute to allow all users to connect to the
-  // crash server named pipe, when the server is running as system.
-  static bool BuildPipeSecurityAttributes(CSecurityAttributes* sa);
+  // Given an empty CSecurityDesc, creates a low integrity sacl within it.
+  static HRESULT CreateLowIntegrityDesc(CSecurityDesc* sd);
+
+  // Builds a security DACL to allow user processes to connect to the crash
+  // server named pipe, and sets the DACL on the CSecurityDesc.
+  static bool AddPipeSecurityDaclToDesc(bool is_machine, CSecurityDesc* sd);
+
+  // Builds a security attribute to allow user processes including low integrity
+  // to connect to the crash server named pipe.
+  static bool BuildPipeSecurityAttributes(bool is_machine,
+                                          CSecurityAttributes* sa);
 
   // Builds a security attribute to allow full control for the Local System
   // account and read/execute for the Administrators group, when the crash
@@ -243,7 +244,7 @@ class Crash {
   static CString Crash::crash_dir_;
   static CString Crash::checkpoint_file_;
   static CString version_postfix_;
-  static CString guid_;
+
   static CString crash_report_url_;
   static int max_reports_per_day_;
   static google_breakpad::ExceptionHandler* exception_handler_;

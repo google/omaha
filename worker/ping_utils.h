@@ -36,6 +36,7 @@ namespace ping_utils {
 // TODO(omaha): Put common params in the same order.
 HRESULT SendGoopdatePing(bool is_machine,
                          const CommandLineExtraArgs& extra_args,
+                         const CString& install_source,
                          PingEvent::Types type,
                          HRESULT error,
                          int extra_code1,
@@ -48,6 +49,7 @@ HRESULT SendPostSetupPing(HRESULT result,
                           bool is_machine,
                           bool is_interactive,
                           const CommandLineExtraArgs& extra,
+                          const CString& install_source,
                           Ping* ping);
 
 PingEvent::Results CompletionStatusToPingEventResult(
@@ -66,6 +68,7 @@ HRESULT SendCompletedPingsForAllProducts(const ProductDataVector& products,
 
 void BuildGoogleUpdateAppRequestData(bool is_machine,
                                      const CommandLineExtraArgs& extra_args,
+                                     const CString& install_source,
                                      CString* previous_version,
                                      AppRequestData* app_request_data);
 

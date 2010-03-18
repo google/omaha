@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,6 +71,7 @@ class AppManagerTest : public testing::Test {
     CString client_state_key_name = AppendRegKeyPath(
         ConfigManager::Instance()->registry_client_state(is_machine),
         GuidToString(data.app_guid()));
+    const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
     RegKey client_key;
     if (!data.is_uninstalled()) {
@@ -143,7 +144,6 @@ class AppManagerTest : public testing::Test {
     }
 
     if (data.install_time_diff_sec()) {
-      const uint32 now = Time64ToInt32(GetCurrent100NSTime());
       const DWORD install_time = now - data.install_time_diff_sec();
       ASSERT_SUCCEEDED(client_state_key.SetValue(kRegValueInstallTimeSec,
                                                  install_time));
@@ -152,6 +152,30 @@ class AppManagerTest : public testing::Test {
     if (!data.is_eula_accepted()) {
       ASSERT_SUCCEEDED(client_state_key.SetValue(_T("eulaaccepted"),
                                                  static_cast<DWORD>(0)));
+    }
+
+    int days = data.days_since_last_active_ping();
+
+    if (days != -1) {
+      EXPECT_GE(days, 0);
+      ASSERT1(now > static_cast<uint32>(days * kSecondsPerDay));
+      uint32 last_active_time = now - days * kSecondsPerDay;
+
+      ASSERT_SUCCEEDED(client_state_key.SetValue(
+          kRegValueActivePingDayStartSec,
+          static_cast<DWORD>(last_active_time)));
+    }
+
+    days = data.days_since_last_roll_call();
+    if (days != -1) {
+      EXPECT_GE(days, 0);
+      EXPECT_GE(now, static_cast<uint32>(days * kSecondsPerDay));
+
+      uint32 last_roll_call_time = now - days * kSecondsPerDay;
+
+      ASSERT_SUCCEEDED(client_state_key.SetValue(
+          kRegValueRollCallDayStartSec,
+          static_cast<DWORD>(last_roll_call_time)));
     }
   }
 
@@ -170,6 +194,8 @@ class AppManagerTest : public testing::Test {
     // expected in most cases.
     // This value must be ACTIVE_RUN for UpdateApplicationStateTest to work.
     expected_app->set_did_run(AppData::ACTIVE_RUN);
+    expected_app->set_days_since_last_active_ping(3);
+    expected_app->set_days_since_last_roll_call(1);
   }
 
   static void PopulateExpectedAppData1InvalidBrand(AppData* expected_app) {
@@ -189,6 +215,9 @@ class AppManagerTest : public testing::Test {
     expected_app->set_brand_code(_T("GooG"));
     expected_app->set_client_id(_T("anotherclient"));
     expected_app->set_did_run(AppData::ACTIVE_NOTRUN);
+
+    expected_app->set_days_since_last_active_ping(100);
+    expected_app->set_days_since_last_roll_call(1);
   }
 
   static void PopulateExpectedUninstalledAppData(AppData* expected_app) {
@@ -235,6 +264,8 @@ class AppManagerTest : public testing::Test {
     AppData expected_data(guid1_, is_machine);
     expected_data.set_version(_T("4.5.6.7"));
     expected_data.set_language(_T("de"));
+    expected_data.set_days_since_last_active_ping(-1);
+    expected_data.set_days_since_last_roll_call(-1);
     CreateAppRegistryState(expected_data);
 
     // Create the job that contains the test data.
@@ -308,6 +339,8 @@ class AppManagerTest : public testing::Test {
     EXPECT_FALSE(client_state_key.HasValue(kRegValueUsageStats));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueInstallTimeSec));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueTTToken));
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueActivePingDayStartSec));
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueRollCallDayStartSec));
   }
 
   void UpdateApplicationStateTest(bool is_machine, const CString& app_id) {
@@ -334,7 +367,11 @@ class AppManagerTest : public testing::Test {
     EXPECT_TRUE(product_data.app_data().referral_id().IsEmpty());
 
     AppData app_data_temp = product_data.app_data();
-    EXPECT_SUCCEEDED(app_manager.UpdateApplicationState(&app_data_temp));
+
+    // Doesn't care about time_since_midnight_sec here, so just pass a 0 as the
+    // first parameter.
+    EXPECT_SUCCEEDED(app_manager.UpdateApplicationState(0, &app_data_temp));
+
     product_data.set_app_data(app_data_temp);
 
     EXPECT_TRUE(app_data_temp.referral_id().IsEmpty());
@@ -409,6 +446,26 @@ class AppManagerTest : public testing::Test {
                                                &eula_accepted));
     EXPECT_EQ(0, eula_accepted);
     EXPECT_FALSE(expected_data.is_eula_accepted());
+
+    bool did_send_active_ping =
+        (expected_data.did_run() == AppData::ACTIVE_RUN &&
+         expected_data.days_since_last_active_ping() != 0);
+    DWORD last_active_ping_day_start_sec = 0;
+    if (did_send_active_ping) {
+      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueActivePingDayStartSec,
+          &last_active_ping_day_start_sec));
+      EXPECT_GE(now, last_active_ping_day_start_sec);
+      EXPECT_LE(now, last_active_ping_day_start_sec + kMaxTimeSinceMidnightSec);
+    }
+
+    bool did_send_roll_call = (expected_data.days_since_last_roll_call() != 0);
+    DWORD last_roll_call_day_start_sec = 0;
+    if (did_send_roll_call) {
+      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
+          &last_roll_call_day_start_sec));
+      EXPECT_GE(now, last_roll_call_day_start_sec);
+      EXPECT_LE(now, last_roll_call_day_start_sec + kMaxTimeSinceMidnightSec);
+    }
   }
 
   void WritePreInstallDataTest(const AppData& app_data_in) {
@@ -541,6 +598,13 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   extra2.ap = _T("beta");
   extra2.tt_token = _T("beta TT Token");
 
+  CommandLineAppArgs extra3;
+  extra3.app_guid = StringToGuid(kGuid3);
+  extra3.app_name = _T("bar");
+  extra3.needs_admin = true;    // This gets ignored.
+  extra3.ap = _T("beta");
+  extra3.tt_token = _T("beta TT Token");
+
   CommandLineArgs args;
   args.is_interactive_set = true;  // Not used.
   args.is_machine_set = true;  // Not used.
@@ -563,6 +627,7 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   args.extra.usage_stats_enable = TRISTATE_TRUE;
   args.extra.apps.push_back(extra1);
   args.extra.apps.push_back(extra2);
+  args.extra.apps.push_back(extra3);
 
   AppData expected_data1(guid1_, false);
   PopulateExpectedAppData1(&expected_data1);
@@ -576,9 +641,19 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   expected_data1.set_install_data_index(_T("foobar"));
   expected_data1.set_usage_stats_enable(TRISTATE_TRUE);
   expected_data1.set_referral_id(_T("referrer1"));
+  expected_data1.set_install_time_diff_sec(
+      static_cast<uint32>(-1 * kSecondsPerDay));  // New install.
   expected_data1.set_is_eula_accepted(false);
+  expected_data1.set_days_since_last_active_ping(0);
+  expected_data1.set_days_since_last_roll_call(0);
 
   AppData expected_data2(StringToGuid(kGuid2), false);
+
+  // Make the first app appear to already be installed but without an
+  // InstallTime. This affects install_time_diff_sec.
+  expected_data2.set_version(_T("4.5.6.7"));
+  CreateAppRegistryState(expected_data2);
+
   PopulateExpectedAppData2(&expected_data2);
   expected_data2.set_version(_T(""));  // Clear value.
   expected_data2.set_previous_version(_T(""));  // Clear value.
@@ -594,17 +669,61 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   expected_data2.set_brand_code(_T("GOOG"));
   expected_data2.set_client_id(_T("someclient"));
   expected_data2.set_referral_id(_T("referrer1"));
+  expected_data2.set_install_time_diff_sec(0);  // InstallTime is unknown.
   expected_data2.set_is_eula_accepted(false);
+  expected_data2.set_days_since_last_active_ping(0);
+  expected_data2.set_days_since_last_roll_call(0);
+
+  AppData expected_data3(StringToGuid(kGuid3), false);
+
+  // Make the first app appear to already be installed with a valid InstallTime.
+  // This affects install_time_diff_sec.
+  expected_data3.set_version(_T("4.5.6.7"));
+  expected_data3.set_install_time_diff_sec(123456);  // Known original time.
+  CreateAppRegistryState(expected_data3);
+
+  PopulateExpectedAppData2(&expected_data3);
+  expected_data3.set_version(_T(""));  // Clear value.
+  expected_data3.set_previous_version(_T(""));  // Clear value.
+  expected_data3.set_did_run(AppData::ACTIVE_UNKNOWN);  // Clear value.
+  expected_data3.set_language(_T("abc"));
+  expected_data3.set_display_name(_T("bar"));
+  expected_data3.set_browser_type(BROWSER_IE);
+  expected_data3.set_install_source(_T("one_click"));
+  expected_data3.set_usage_stats_enable(TRISTATE_TRUE);
+  // Override unique expected data because the args apply to all apps.
+  expected_data3.set_iid(
+      StringToGuid(_T("{F723495F-8ACF-4746-8240-643741C797B5}")));
+  expected_data3.set_brand_code(_T("GOOG"));
+  expected_data3.set_client_id(_T("someclient"));
+  expected_data3.set_referral_id(_T("referrer1"));
+  expected_data3.set_is_eula_accepted(false);
+  expected_data3.set_days_since_last_active_ping(0);
+  expected_data3.set_days_since_last_roll_call(0);
 
   ProductDataVector products;
   AppManager app_manager(false);
   app_manager.ConvertCommandLineToProductData(args, &products);
 
-  ASSERT_EQ(2, products.size());
-  ASSERT_EQ(0, products[0].num_components());
-  ASSERT_EQ(0, products[1].num_components());
+  ASSERT_EQ(3, products.size());
+  EXPECT_EQ(0, products[0].num_components());
+  EXPECT_EQ(0, products[1].num_components());
+  EXPECT_EQ(0, products[2].num_components());
   ValidateExpectedValues(expected_data1, products[0].app_data());
   ValidateExpectedValues(expected_data2, products[1].app_data());
+
+  // install_time_diff_sec may be off by a second or so.
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  EXPECT_GE(products[2].app_data().install_time_diff_sec(),
+            expected_data3.install_time_diff_sec());
+  EXPECT_GE(static_cast<uint32>(500),
+            products[2].app_data().install_time_diff_sec() -
+            expected_data3.install_time_diff_sec());
+  // Fix up expected_data3 or it might fail verification.
+  expected_data3.set_install_time_diff_sec(
+      products[2].app_data().install_time_diff_sec());
+
+  ValidateExpectedValues(expected_data3, products[2].app_data());
 }
 
 TEST_F(AppManagerTest, WritePreInstallData_Machine) {

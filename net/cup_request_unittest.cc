@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ const TCHAR* const kGetUrlNoResponseBody =
     _T("http://tools.google.com/service/update2/nil");
 const TCHAR* const kPostUrl =
     _T("http://tools.google.com/service/update2");
-const uint8 kRequestBuffer[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><o:gupdate xmlns:o=\"http://www.google.com/update2/request\" protocol=\"2.0\" version=\"1.2.1.0\" ismachine=\"1\" machineid=\"{00A3CC40-4DA1-405E-BCAD-CE46F7A49A6E}\" userid=\"{C161C6CD-FC1B-43FF-8B33-CAB5EE144664}\" testsource=\"dev\"><o:os platform=\"win\" version=\"5.1\" sp=\"Service Pack 2\"/><o:app appid=\"{52820187-5605-4C18-AA51-8BD0A1209C8C}\" version=\"1.1.1.3\" lang=\"abc\" client=\"{0AF52D61-9958-4fea-9B29-CDD9DCDBB145}\" iid=\"{F723495F-8ACF-4746-8240-643741C797B5}\"><o:event eventtype=\"1\" eventresult=\"1\" errorcode=\"0\" previousversion=\"1.0.0.0\"/></o:app></o:gupdate>";  // NOLINT
+const uint8 kRequestBuffer[] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><o:gupdate xmlns:o=\"http://www.google.com/update2/request\" protocol=\"2.0\" version=\"1.2.1.0\" ismachine=\"1\" testsource=\"dev\"><o:os platform=\"win\" version=\"5.1\" sp=\"Service Pack 2\"/><o:app appid=\"{52820187-5605-4C18-AA51-8BD0A1209C8C}\" version=\"1.1.1.3\" lang=\"abc\" client=\"{0AF52D61-9958-4fea-9B29-CDD9DCDBB145}\" iid=\"{F723495F-8ACF-4746-8240-643741C797B5}\"><o:event eventtype=\"1\" eventresult=\"1\" errorcode=\"0\" previousversion=\"1.0.0.0\"/></o:app></o:gupdate>";  // NOLINT
 
 class CupRequestTest : public testing::Test {
  protected:
@@ -124,13 +124,13 @@ TEST_F(CupRequestTest, GetSimpleRequest) {
 
 TEST_F(CupRequestTest, GetUrlmonRequest) {
   DoRequest(new UrlmonRequest, kGetUrl, NULL, 0);
-  DoRequest(new SimpleRequest, kGetUrlNoResponseBody, NULL, 0);
+  DoRequest(new UrlmonRequest, kGetUrlNoResponseBody, NULL, 0);
 }
 
 TEST_F(CupRequestTest, GetBrowserRequest) {
   if (are_browser_objects_available) {
     DoRequest(new BrowserRequest, kGetUrl, NULL, 0);
-    DoRequest(new SimpleRequest, kGetUrlNoResponseBody, NULL, 0);
+    DoRequest(new BrowserRequest, kGetUrlNoResponseBody, NULL, 0);
   } else {
     std::wcout << "\tTest did not run because no browser object was available"
                << std::endl;

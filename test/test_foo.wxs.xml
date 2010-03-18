@@ -32,8 +32,11 @@
         -->
 
         <Package Id='*'
-           Description='Test Foo' Comments='Test Foo'
-           Manufacturer='Google, Inc.' InstallerVersion='200' Compressed='yes' />
+           Description='Test Foo'
+           Comments='Copyright 2007-2010 Google Inc.'
+           Manufacturer='Google Inc.'
+           InstallerVersion='200'
+           Compressed='yes' />
 
         <Upgrade Id='$(var.UpgradeCode)'>
           <UpgradeVersion Property='UPGRADING'

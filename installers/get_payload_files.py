@@ -22,22 +22,12 @@ def GetListOfPayloadFiles(prefix,
                           product_version):
   payload_files = [
       'GoogleUpdate.exe',
+      'GoogleCrashHandler.exe',
       '%sgoopdate.dll' % (prefix),
-      # One-Click DLL
-      '%s%s' % (prefix, activex_filename),
-      # BHO proxy DLL
-      '%s%s' % (prefix, bho_filename),
+      '%s%s' % (prefix, activex_filename),  # One-Click DLL
+      '%s%s' % (prefix, bho_filename),      # BHO proxy DLL
       'GoogleUpdateHelper.msi',
       ]
-
-  # TODO(omaha): Eliminate this and add GoogleCrashHandler.exe above once we no
-  # longer need to support versions less than 1.2.147.x.
-  # Note: check will be incorrect for versions such as 0.3.0.0, but it is
-  # assumed that such versions will not be used.
-  if (product_version[0] > 1 or
-      product_version[1] > 2 or
-      product_version[2] > 146):
-    payload_files += ['GoogleCrashHandler.exe']
 
   for language in languages:
     payload_files += ['%sgoopdateres_%s.dll' % (prefix, language)]

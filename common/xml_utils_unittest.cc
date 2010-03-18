@@ -63,7 +63,7 @@ TEST(XmlUtilsTest, LoadSave) {
   TCHAR directory[MAX_PATH] = {0};
   ASSERT_TRUE(GetModuleDirectory(NULL, directory));
   CString test_file;
-  test_file.AppendFormat(_T("%s\\%s"), directory, kTestXMLFile);
+  test_file.Format(_T("%s\\unittest_support\\%s"), directory, kTestXMLFile);
 
   TCHAR temp_path[MAX_PATH] = {0};
   ASSERT_TRUE(::GetTempPath(MAX_PATH, temp_path));
@@ -76,11 +76,25 @@ TEST(XmlUtilsTest, LoadSave) {
   ASSERT_TRUE(xmldoc);
   ASSERT_SUCCEEDED(SaveXMLToFile(xmldoc, temp_file));
 
-  // Test loading and storing to memory.
-  // The input must be Unicode but our test file is UTF-8 - so read
-  // it and convert it to Unicode.
+  // Test loading and storing raw UTF8 data to memory.
   std::vector<byte> buffer_utf8;
   ASSERT_SUCCEEDED(ReadEntireFile(temp_file, 0, &buffer_utf8));
+
+  CComPtr<IXMLDOMDocument> xmldoc2;
+  ASSERT_SUCCEEDED(LoadXMLFromRawData(buffer_utf8, true, &xmldoc2));
+  ASSERT_TRUE(xmldoc2);
+  std::vector<byte> xml_utf8;
+  ASSERT_SUCCEEDED(SaveXMLToRawData(xmldoc2, &xml_utf8));
+
+  CStringA input_utf8(reinterpret_cast<char*>(&buffer_utf8.front()),
+                      buffer_utf8.size());
+  CStringA output_utf8(reinterpret_cast<char*>(&xml_utf8.front()),
+                       xml_utf8.size());
+  ASSERT_STREQ(input_utf8, output_utf8);
+
+  // Test loading and storing Unicode to memory.
+  // The input must be Unicode for the calls below, but our test file is UTF-8.
+  // So read it and convert it to Unicode.
   int len(::MultiByteToWideChar(CP_UTF8,
                                 0, /*flags*/
                                 reinterpret_cast<const char*>(&buffer_utf8[0]),
@@ -98,7 +112,7 @@ TEST(XmlUtilsTest, LoadSave) {
   buffer_unicode[len] = 0;  // null terminate the unicode string.
 
   // Now round-trip the load from memory and save to memory.
-  CComPtr<IXMLDOMDocument> xmldoc2;
+  xmldoc2 = NULL;
   ASSERT_SUCCEEDED(LoadXMLFromMemory(&buffer_unicode.front(), true, &xmldoc2));
   ASSERT_TRUE(xmldoc2);
   CString xmlmemory;

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -454,6 +454,8 @@ class SetupTest : public testing::Test {
     }
 
     for (size_t i = 0; i < started_processes.size(); ++i) {
+      SETUP_LOG(L1, (_T("Terminating PID %u]"),
+                     ::GetProcessId(started_processes[i])));
       EXPECT_TRUE(::TerminateProcess(started_processes[i], 1));
     }
     EXPECT_EQ(WAIT_OBJECT_0, ::WaitForMultipleObjects(started_processes.size(),
@@ -708,20 +710,34 @@ class SetupTest : public testing::Test {
       return;
     }
 
-    CString omaha_clients_key_name = is_machine_ ?
-                                     MACHINE_REG_CLIENTS_GOOPDATE :
-                                     USER_REG_CLIENTS_GOOPDATE;
+    // If Omaha 2 is not already installed, fool the legacy instances into
+    // thinking a newer version is installed so that they don't try to install
+    // when we release the locks. Do this for both user and machine in the
+    // is_machine case since it starts both.
+    // This must be reverted at the end of the test because some tests or shell
+    // EXE instances may see this value and assume Omaha is correctly installed.
+    const TCHAR* const kFakeVersion = _T("1.2.0.654");
     CString version;
-    if (FAILED(RegKey::GetValue(omaha_clients_key_name,
+    bool is_fake_pv_user = false;
+    if (FAILED(RegKey::GetValue(USER_REG_CLIENTS_GOOPDATE,
+                                               _T("pv"),
+                                               &version)) ||
+        (_T("1.2.") != version.Left(4))) {
+      is_fake_pv_user = true;
+      version = kFakeVersion;
+      EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
+                                        _T("pv"),
+                                        version));
+    }
+
+    bool is_fake_pv_machine = false;
+    if (is_machine_ && FAILED(RegKey::GetValue(MACHINE_REG_CLIENTS_GOOPDATE,
                                 _T("pv"),
                                 &version)) ||
         (_T("1.2.") != version.Left(4))) {
-      // Fool the legacy instances into thinking a newer version is installed
-      // so that they don't try to install when we release the locks.
-      // Do not worry about restoring it because there is only a potential
-      // problem when running a legacy metainstaller after this test.
-      version = _T("1.2.0.654");
-      EXPECT_SUCCEEDED(RegKey::SetValue(omaha_clients_key_name,
+      is_fake_pv_machine = true;
+      version = kFakeVersion;
+      EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_CLIENTS_GOOPDATE,
                                         _T("pv"),
                                         version));
     }
@@ -786,16 +802,26 @@ class SetupTest : public testing::Test {
                                                      1000));
 
     // Release the locks and the legacy processes should exit
-    ASSERT_TRUE(lock10.Unlock());
-    ASSERT_TRUE(lock11_user.Unlock());
+    EXPECT_TRUE(lock10.Unlock());
+    EXPECT_TRUE(lock11_user.Unlock());
     if (is_machine_) {
-      ASSERT_TRUE(lock11_machine.Unlock());
+      EXPECT_TRUE(lock11_machine.Unlock());
     }
 
     EXPECT_EQ(WAIT_OBJECT_0, ::WaitForMultipleObjects(num_processes,
                                                       processes,
                                                       true,  // wait for all
                                                       kProcessesCleanupWait));
+
+    RestoreRegistryHives();
+    if (is_fake_pv_user) {
+      EXPECT_SUCCEEDED(RegKey::DeleteValue(USER_REG_CLIENTS_GOOPDATE,
+                                           kRegValueProductVersion));
+    }
+    if (is_fake_pv_machine) {
+      EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_CLIENTS_GOOPDATE,
+                                           kRegValueProductVersion));
+    }
   }
 
   // Starts dummy process that doesn't exit and assigns it to the specified job.
@@ -1110,11 +1136,7 @@ TEST_F(SetupFutureVersionInstalledUserTest,
     // registry until after the existing_version_ has been restored to the
     // registry. This causes GoogleUpdate.exe to find goopdate.dll in the
     // existing_version_ and run with a UI. Wait so that this does not happen.
-#if OFFICIAL_BUILD
-    ::Sleep(8000);
-#else
-    ::Sleep(1000);
-#endif
+    ::Sleep(IsBuildSystem() ? 8000 : 1000);
   } else {
     EXPECT_EQ(GOOGLEUPDATE_E_DLL_NOT_FOUND, setup_->extra_code1());
   }
@@ -1255,20 +1277,18 @@ TEST_F(SetupMachineTest, Install_LockTimedOut) {
 }
 
 TEST_F(SetupRegistryProtectedUserTest, Install_OEM) {
-  // The test fixture only disables HKCU by default. Disable HKLM too.
-  OverrideSpecifiedRegistryHives(hive_override_key_name_, true, true);
+#if OFFICIAL_BUILD
+  std::wcout << _T("\tTest did not run because official builds cannot ")
+                _T("simulate AuditMode.")<< std::endl;
+  return;
+#else
+  // Since we cannot simulate the Administrator SID checked by
+  // IsWindowsReallyInAuditMode(), use the UpdateDev override.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueNameWindowsInstalling,
+                                    static_cast<DWORD>(1)));
 
-  if (vista_util::IsVistaOrLater()) {
-    ASSERT_SUCCEEDED(RegKey::SetValue(
-        _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State"),
-        _T("ImageState"),
-        _T("IMAGE_STATE_UNDEPLOYABLE")));
-  } else {
-    ASSERT_SUCCEEDED(RegKey::SetValue(_T("HKLM\\System\\Setup"),
-                                      _T("AuditInProgress"),
-                                      static_cast<DWORD>(1)));
-  }
-  ASSERT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
+  EXPECT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
 
   args_.is_oem_set = true;
   EXPECT_EQ(GOOPDATE_E_OEM_NOT_MACHINE_AND_PRIVILEGED_AND_AUDIT_MODE,
@@ -1277,26 +1297,31 @@ TEST_F(SetupRegistryProtectedUserTest, Install_OEM) {
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, kRegValueOemInstallTimeSec));
   EXPECT_FALSE(
       RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueNameWindowsInstalling));
+#endif
 }
 
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemElevationRequired) {
+#if OFFICIAL_BUILD
+  std::wcout << _T("\tTest did not run because official builds cannot ")
+                _T("simulate AuditMode.")<< std::endl;
+  return;
+#else
   if (vista_util::IsUserAdmin()) {
     std::wcout << _T("\tTest did not run because the user IS an admin.")
                << std::endl;
     return;
   }
 
-  if (vista_util::IsVistaOrLater()) {
-    ASSERT_SUCCEEDED(RegKey::SetValue(
-        _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State"),
-        _T("ImageState"),
-        _T("IMAGE_STATE_UNDEPLOYABLE")));
-  } else {
-    ASSERT_SUCCEEDED(RegKey::SetValue(_T("HKLM\\System\\Setup"),
-                                      _T("AuditInProgress"),
-                                      static_cast<DWORD>(1)));
-  }
-  ASSERT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
+  // Since we cannot simulate the Administrator SID checked by
+  // IsWindowsReallyInAuditMode(), use the UpdateDev override.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueNameWindowsInstalling,
+                                    static_cast<DWORD>(1)));
+
+  EXPECT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
 
   args_.is_oem_set = true;
   EXPECT_EQ(GOOPDATE_E_OEM_NOT_MACHINE_AND_PRIVILEGED_AND_AUDIT_MODE,
@@ -1304,6 +1329,10 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemElevationRequired) {
 
   EXPECT_FALSE(
       RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueNameWindowsInstalling));
+#endif
 }
 
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemNotAuditMode) {
@@ -1322,27 +1351,24 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemNotAuditMode) {
 
 // Prevents the install from continuing by holding the Setup Lock.
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemFails) {
+#if OFFICIAL_BUILD
+  std::wcout << _T("\tTest did not run because official builds cannot ")
+                _T("simulate AuditMode.")<< std::endl;
+  return;
+#else
   if (!vista_util::IsUserAdmin()) {
     std::wcout << _T("\tTest did not run because the user is not an admin.")
                << std::endl;
     return;
   }
 
-  if (vista_util::IsVistaOrLater()) {
-    ASSERT_SUCCEEDED(RegKey::SetValue(
-        _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State"),
-        _T("ImageState"),
-        _T("IMAGE_STATE_UNDEPLOYABLE")));
+  // Since we cannot simulate the Administrator SID checked by
+  // IsWindowsReallyInAuditMode(), use the UpdateDev override.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueNameWindowsInstalling,
+                                    static_cast<DWORD>(1)));
 
-    // TODO(omaha): Overriding HKLM causes HasXmlParser() to fail on Vista,
-    // preventing this test from running correctly.
-    return;
-  } else {
-    ASSERT_SUCCEEDED(RegKey::SetValue(_T("HKLM\\System\\Setup"),
-                                      _T("AuditInProgress"),
-                                      static_cast<DWORD>(1)));
-  }
-  ASSERT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
+  EXPECT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
 
   HoldLock hold_lock(is_machine_);
   Thread thread;
@@ -1352,13 +1378,15 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemFails) {
   args_.is_oem_set = true;
   EXPECT_EQ(GOOPDATE_E_FAILED_TO_GET_LOCK, setup_->Install(_T("foo")));
 
-  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueMachineId));
-  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueUserId));
   EXPECT_TRUE(
       RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
 
   hold_lock.Stop();
   thread.WaitTillExit(1000);
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueNameWindowsInstalling));
+#endif
 }
 
 TEST_F(SetupMachineTest, LaunchInstalledWorker_OemInstallNotOffline) {
@@ -1434,6 +1462,10 @@ TEST_F(SetupRegistryProtectedUserTest,
 
 TEST_F(SetupRegistryProtectedUserTest,
        ShouldInstall_SameVersionFilesPresentSameLanguage) {
+  if (!ShouldRunLargeTest()) {
+    return;
+  }
+
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     kRegValueInstalledVersion,
                                     this_version_));
@@ -1445,33 +1477,31 @@ TEST_F(SetupRegistryProtectedUserTest,
 
   EXPECT_EQ(expected_is_overinstall_, ShouldInstall());
 
-  if (ShouldRunLargeTest()) {
-    // Override OverInstall to test official behavior on non-official builds.
+  // Override OverInstall to test official behavior on non-official builds.
 
-    DWORD existing_overinstall(0);
-    bool had_existing_overinstall = SUCCEEDED(RegKey::GetValue(
-                                                  MACHINE_REG_UPDATE_DEV,
-                                                  kRegValueNameOverInstall,
-                                                  &existing_overinstall));
+  DWORD existing_overinstall(0);
+  bool had_existing_overinstall = SUCCEEDED(RegKey::GetValue(
+                                                MACHINE_REG_UPDATE_DEV,
+                                                kRegValueNameOverInstall,
+                                                &existing_overinstall));
 
-    EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                      kRegValueNameOverInstall,
-                                      static_cast<DWORD>(0)));
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueNameOverInstall,
+                                    static_cast<DWORD>(0)));
 #ifdef DEBUG
-    EXPECT_FALSE(ShouldInstall());
+  EXPECT_FALSE(ShouldInstall());
 #else
-    EXPECT_EQ(expected_is_overinstall_, ShouldInstall());
+  EXPECT_EQ(expected_is_overinstall_, ShouldInstall());
 #endif
 
-    // Restore "overinstall"
-    if (had_existing_overinstall) {
-      EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                        kRegValueNameOverInstall,
-                                        existing_overinstall));
-    } else {
-      EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                                           kRegValueNameOverInstall));
-    }
+  // Restore "overinstall"
+  if (had_existing_overinstall) {
+    EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                      kRegValueNameOverInstall,
+                                      existing_overinstall));
+  } else {
+    EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                         kRegValueNameOverInstall));
   }
 }
 

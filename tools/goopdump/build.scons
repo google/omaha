@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -123,7 +123,7 @@ exe_env.Append(
 exe_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
 exe_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
-target_name = 'goopdump.exe'
+target_name = 'goopdump'
 
 exe_inputs = [
     'goopdump_main.cc',
@@ -132,8 +132,8 @@ exe_inputs = [
 if env.Bit('use_precompiled_headers'):
   exe_inputs += exe_env.EnablePrecompile(target_name)
 
-exe_env.ComponentProgram(
+exe_env.ComponentTestProgram(
     prog_name=target_name,
-    source=exe_inputs
+    source=exe_inputs,
+    COMPONENT_TEST_RUNNABLE=False,
 )
-

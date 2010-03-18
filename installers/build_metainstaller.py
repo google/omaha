@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,8 @@ def BuildMetaInstaller(env,
                        prefix = '',
                        suffix = '',
                        additional_payload_contents = None,
-                       additional_payload_contents_dependencies = None):
+                       additional_payload_contents_dependencies = None,
+                       output_dir = '$STAGING_DIR'):
   """Build a meta-installer.
 
     Builds a full meta-installer, which is a meta-installer containing a full
@@ -54,6 +55,7 @@ def BuildMetaInstaller(env,
         executable, beyond the normal payload files
     additional_payload_contents_dependencies: extra dependencies to be used to
         ensure the executable is rebuilt when required
+    output_dir: path to the directory that will contain the metainstaller
 
   Returns:
     Nothing.
@@ -159,6 +161,4 @@ def BuildMetaInstaller(env,
       source=merged_output,
   )
 
-  env.Replicate('$STAGING_DIR', signed_exe)
-
-
+  env.Replicate(output_dir, signed_exe)

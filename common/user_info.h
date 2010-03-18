@@ -1,4 +1,4 @@
-// Copyright 2004-2009 Google Inc.
+// Copyright 2004-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,15 +21,20 @@
 #ifndef OMAHA_COMMON_USER_INFO_H__
 #define OMAHA_COMMON_USER_INFO_H__
 
+#include <windows.h>
+#include <atlsecurity.h>
 #include <atlstr.h>
 
 namespace omaha {
 
 namespace user_info {
 
-// Gets the user name, domain, and the sid associated with the access token
+// Gets the user name, domain, and the SID associated with the access token
 // of the current process.
 HRESULT GetCurrentUser(CString* name, CString* domain, CString* sid);
+
+// Gets SID associated with the access token of the current process.
+HRESULT GetCurrentUserSid(CSid* sid);
 
 // Gets the user sid associated with the access token of the current thread if
 // the thread is impersonating. If the thread is not impersonating, the API

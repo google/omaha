@@ -24,14 +24,12 @@
               <xs:element name="version" type="xs:string" />
               <xs:element name="lang" type="xs:string" />
               <xs:element name="country" type="xs:string" />
-              <xs:element name="machineid" type="ts:GuidType" />
             </xs:sequence>
           </xs:complexType>
         </xs:element>
         <xs:element maxOccurs="unbounded" name="request">
           <xs:complexType>
             <xs:sequence>
-              <xs:element name="userid" type="ts:GuidType" />
               <xs:element name="version" type="xs:string" />
               <xs:element name="lang" type="xs:string" />
               <xs:element name="country" type="xs:string" />

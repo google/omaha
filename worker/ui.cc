@@ -807,6 +807,8 @@ HRESULT ProgressWnd::ShowGetHelpLink(HRESULT error_code) {
       GetVersionString(),
       is_machine_,
       language_,
+      iid_,
+      brand_code_,
       kHelpLinkSourceId,
       &url);
   if (FAILED(hr)) {

@@ -1,5 +1,5 @@
 #!/usr/bin/python2.4
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import re
 from installers import tag_meta_installers
 
 
-def TagOneBundle(env, bundle, untagged_binary, output_dir):
+def TagOneBundle(env, bundle, untagged_binary_path, output_dir):
   tag_str = tag_meta_installers.BuildTagStringForBundle(bundle)
 
   # Need to find relative path to output file under source dir, to allow
@@ -28,15 +28,17 @@ def TagOneBundle(env, bundle, untagged_binary, output_dir):
   indx = bundle.output_file_name.find('installers')
   relative_filepath = bundle.output_file_name[indx+len('installers')+1:]
 
+  tag_exe = '$TESTS_DIR/ApplyTag.exe'
+
   tag_output = env.Command(
       target='%s/%s' % (output_dir, relative_filepath),
-      source='$STAGING_DIR/%s' % (untagged_binary),
+      source=untagged_binary_path,
       action='%s $SOURCES $TARGET %s' % (
-          env.File('$STAGING_DIR/ApplyTag.exe').abspath, tag_str)
+          env.File(tag_exe).abspath, tag_str)
   )
 
-  # Add extra (hidden) dependency.
-  env.Depends(tag_output, bundle.installers_txt_filename)
+  # Add extra (hidden) dependency plus a dependency on the tag executable.
+  env.Depends(tag_output, [bundle.installers_txt_filename, tag_exe])
 
 
 def _ReadAllBundleInstallerFiles(installers_txt_files_path):
@@ -84,7 +86,7 @@ def CreateTaggedInstallers(env, installers_txt_files_path, product_name,
       TagOneBundle(
           env=env,
           bundle=bundle,
-          untagged_binary=untagged_binary,
+          untagged_binary_path='$STAGING_DIR/%s' % (untagged_binary),
           output_dir='$TARGET_ROOT/Tagged_Installers',
       )
 

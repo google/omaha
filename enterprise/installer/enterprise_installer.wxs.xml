@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
   <?define CompanyFullName = 'Google, Inc.'?>
-  <?define Copyright = 'Copyright 2007-2009 Google Inc.'?>
+  <?define Copyright = 'Copyright 2007-2010 Google Inc.'?>
 
   <Product
     Id='$(var.MsiProductId)'
@@ -53,10 +53,11 @@
       </Directory>
     </Directory>
 
-
     <Binary Id='$(var.ProductNameLegalIdentifier)Installer'
             SourceFile='$(var.ProductInstallerPath)' />
 
+    <Binary Id='UninstallCADll'
+            SourceFile='$(var.UninstallCADll)' />
 
     <Feature Id='Complete' Level='1'>
       <ComponentRef Id='ComponentGoogleUpdate' />
@@ -82,11 +83,16 @@
       Execute='deferred'
       ExeCommand='[FullProductInstallerInstallCommand]'
       Return='check' />
-    <CustomAction Id='Uninstall$(var.ProductNameLegalIdentifier)'
-      BinaryKey='$(var.ProductNameLegalIdentifier)Installer'
+    <CustomAction Id='CallUninstaller.SetProperty'
+      Property='CallUninstaller'
+      Value='$(var.ProductGuid)|$(var.ProductUninstallerAdditionalArgs)'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='CallUninstaller'
+      BinaryKey='UninstallCADll'
       Impersonate='no'
       Execute='deferred'
-      ExeCommand='$(var.ProductInstallerUninstallCommand)'
+      DllEntry='UninstallOmahaProduct'
       Return='check' />
 
     <InstallExecuteSequence>
@@ -99,7 +105,15 @@
       <!-- Any operations that rely on values, such as brand and usagestats, in
            ClientState should not run until after
            InstallGoogleUpdateAndRegister. This is sequenced before InstallFiles
-           so that can be used as well. -->
+           so that can be used as well.
+           It is also advisable to write the Clients key after this point so
+           the specific values in the installer will replace the ones Google
+           Update writes as part of /registerproduct. -->
+      <!-- The app's uninstaller MUST delete the entire Clients key even if
+           values it didn't write are present. The Google Update Fragment writes
+           "pv" and "name" when it calls /registerproduct. While apps should
+           always write and cleanup "name", not all do and this can cause
+           problems.-->
       <!-- TODO(omaha): Support Rollback? Need to determine whether Product
            was installed before installing it and only add the rollback then.
       <Custom Action='Rollback$(var.ProductNameLegalIdentifier)'
@@ -121,7 +135,11 @@
         (($ComponentGoogleUpdate>2) OR REINSTALL)
       </Custom>
 
-      <Custom Action='Uninstall$(var.ProductNameLegalIdentifier)'
+      <Custom Action='CallUninstaller.SetProperty'
+              Before='CallUninstaller'>
+        $ComponentGoogleUpdate=2
+      </Custom>
+      <Custom Action='CallUninstaller'
               Before='RemoveFiles'>
         $ComponentGoogleUpdate=2
       </Custom>

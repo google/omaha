@@ -220,12 +220,12 @@ void DeathTestAbort(const String& message) {
 // fails.
 #define GTEST_DEATH_TEST_CHECK_(expression) \
   do { \
-    if (!(expression)) { \
-      DeathTestAbort(::testing::internal::String::Format(\
+    if (!::testing::internal::IsTrue(expression)) { \
+      DeathTestAbort(::testing::internal::String::Format( \
           "CHECK failed: File %s, line %d: %s", \
           __FILE__, __LINE__, #expression)); \
     } \
-  } while (0)
+  } while (::testing::internal::AlwaysFalse())
 
 // This macro is similar to GTEST_DEATH_TEST_CHECK_, but it is meant for
 // evaluating any system call that fulfills two conditions: it must return
@@ -241,11 +241,11 @@ void DeathTestAbort(const String& message) {
       gtest_retval = (expression); \
     } while (gtest_retval == -1 && errno == EINTR); \
     if (gtest_retval == -1) { \
-      DeathTestAbort(::testing::internal::String::Format(\
+      DeathTestAbort(::testing::internal::String::Format( \
           "CHECK failed: File %s, line %d: %s != -1", \
           __FILE__, __LINE__, #expression)); \
     } \
-  } while (0)
+  } while (::testing::internal::AlwaysFalse())
 
 // Returns the message describing the last system error in errno.
 String GetLastErrnoDescription() {
@@ -269,13 +269,11 @@ static void FailFromInternalError(int fd) {
   } while (num_read == -1 && errno == EINTR);
 
   if (num_read == 0) {
-    GTEST_LOG_(FATAL, error);
+    GTEST_LOG_(FATAL) << error.GetString();
   } else {
     const int last_error = errno;
-    const String message = GetLastErrnoDescription();
-    GTEST_LOG_(FATAL,
-               Message() << "Error while reading death test internal: "
-               << message << " [" << last_error << "]");
+    GTEST_LOG_(FATAL) << "Error while reading death test internal: "
+                      << GetLastErrnoDescription() << " [" << last_error << "]";
   }
 }
 
@@ -397,15 +395,13 @@ void DeathTestImpl::ReadAndInterpretStatusByte() {
         FailFromInternalError(read_fd());  // Does not return.
         break;
       default:
-        GTEST_LOG_(FATAL,
-                   Message() << "Death test child process reported "
-                   << "unexpected status byte ("
-                   << static_cast<unsigned int>(flag) << ")");
+        GTEST_LOG_(FATAL) << "Death test child process reported "
+                          << "unexpected status byte ("
+                          << static_cast<unsigned int>(flag) << ")";
     }
   } else {
-    GTEST_LOG_(FATAL,
-               Message() << "Read from death test child process failed: "
-                         << GetLastErrnoDescription());
+    GTEST_LOG_(FATAL) << "Read from death test child process failed: "
+                      << GetLastErrnoDescription();
   }
   GTEST_DEATH_TEST_CHECK_SYSCALL_(posix::Close(read_fd()));
   set_read_fd(-1);
@@ -452,11 +448,7 @@ bool DeathTestImpl::Passed(bool status_ok) {
   if (!spawned())
     return false;
 
-#if GTEST_HAS_GLOBAL_STRING
-  const ::string error_message = GetCapturedStderr();
-#else
-  const ::std::string error_message = GetCapturedStderr();
-#endif  // GTEST_HAS_GLOBAL_STRING
+  const String error_message = GetCapturedStderr();
 
   bool success = false;
   Message buffer;
@@ -473,7 +465,8 @@ bool DeathTestImpl::Passed(bool status_ok) {
       break;
     case DIED:
       if (status_ok) {
-        if (RE::PartialMatch(error_message, *regex())) {
+        const bool matched = RE::PartialMatch(error_message.c_str(), *regex());
+        if (matched) {
           success = true;
         } else {
           buffer << "    Result: died but not with expected error.\n"
@@ -487,8 +480,8 @@ bool DeathTestImpl::Passed(bool status_ok) {
       break;
     case IN_PROGRESS:
     default:
-      GTEST_LOG_(FATAL,
-                 "DeathTest::Passed somehow called before conclusion of test");
+      GTEST_LOG_(FATAL)
+          << "DeathTest::Passed somehow called before conclusion of test";
   }
 
   DeathTest::set_last_death_test_message(buffer.GetString());
@@ -588,8 +581,8 @@ int WindowsDeathTest::Wait() {
       WAIT_OBJECT_0 == ::WaitForSingleObject(child_handle_.Get(),
                                              INFINITE));
   DWORD status;
-  GTEST_DEATH_TEST_CHECK_(::GetExitCodeProcess(child_handle_.Get(),
-                                               &status));
+  GTEST_DEATH_TEST_CHECK_(::GetExitCodeProcess(child_handle_.Get(), &status)
+                          != FALSE);
   child_handle_.Reset();
   set_status(static_cast<int>(status));
   return this->status();
@@ -619,9 +612,10 @@ DeathTest::TestRole WindowsDeathTest::AssumeRole() {
   SECURITY_ATTRIBUTES handles_are_inheritable = {
     sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
   HANDLE read_handle, write_handle;
-  GTEST_DEATH_TEST_CHECK_(::CreatePipe(&read_handle, &write_handle,
-                                       &handles_are_inheritable,
-                                       0));  // Default buffer size.
+  GTEST_DEATH_TEST_CHECK_(
+      ::CreatePipe(&read_handle, &write_handle, &handles_are_inheritable,
+                   0)  // Default buffer size.
+      != FALSE);
   set_read_fd(::_open_osfhandle(reinterpret_cast<intptr_t>(read_handle),
                                 O_RDONLY));
   write_handle_.Reset(write_handle);
@@ -684,7 +678,7 @@ DeathTest::TestRole WindowsDeathTest::AssumeRole() {
       NULL,   // Inherit the parent's environment.
       UnitTest::GetInstance()->original_working_dir(),
       &startup_info,
-      &process_info));
+      &process_info) != FALSE);
   child_handle_.Reset(process_info.hProcess);
   ::CloseHandle(process_info.hThread);
   set_spawned(true);
@@ -744,7 +738,7 @@ class NoExecDeathTest : public ForkingDeathTest {
 DeathTest::TestRole NoExecDeathTest::AssumeRole() {
   const size_t thread_count = GetThreadCount();
   if (thread_count != 1) {
-    GTEST_LOG_(WARNING, DeathTestThreadWarning(thread_count));
+    GTEST_LOG_(WARNING) << DeathTestThreadWarning(thread_count);
   }
 
   int pipe_fd[2];
@@ -771,6 +765,9 @@ DeathTest::TestRole NoExecDeathTest::AssumeRole() {
     // concurrent writes to the log files.  We capture stderr in the parent
     // process and append the child process' output to a log.
     LogToStderr();
+    // Event forwarding to the listeners of event listener API mush be shut
+    // down in death test subprocesses.
+    GetUnitTestImpl()->listeners()->SuppressEventForwarding();
     return EXECUTE_TEST;
   } else {
     GTEST_DEATH_TEST_CHECK_SYSCALL_(close(pipe_fd[1]));
@@ -1046,7 +1043,7 @@ static void SplitString(const ::std::string& str, char delimiter,
                         ::std::vector< ::std::string>* dest) {
   ::std::vector< ::std::string> parsed;
   ::std::string::size_type pos = 0;
-  while (true) {
+  while (::testing::internal::AlwaysTrue()) {
     const ::std::string::size_type colon = str.find(delimiter, pos);
     if (colon == ::std::string::npos) {
       parsed.push_back(str.substr(pos));

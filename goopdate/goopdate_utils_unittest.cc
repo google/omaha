@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ const TCHAR* const kAppUserClientStateMediumPath =
     _T("HKCU\\Software\\Google\\Update\\ClientStateMedium\\") APP_GUID;
 
 // Constants used in the scheduled task tests.
-const int kMaxWaitForProcessMs              = 5000;
+const int kMaxWaitForProcessMs              = 60000;
 const int kWaitForProcessIntervalMs         = 100;
 const int kMaxWaitForProcessIterations      =
     kMaxWaitForProcessMs / kWaitForProcessIntervalMs;
@@ -153,27 +153,36 @@ TEST(GoopdateUtilsTest, ScheduledTasks) {
 
   // Start and stop.
   EXPECT_SUCCEEDED(StartScheduledTask(kSchedTestTaskName));
-  HRESULT hr = E_FAIL;
-  for (int tries = 0;
+  HRESULT hr = SCHED_S_TASK_HAS_NOT_RUN;
+  int tries = 0;
+  for (tries = 0;
        tries < kMaxWaitForProcessIterations && SCHED_S_TASK_RUNNING != hr;
        ++tries) {
+    EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN, hr);  // For debugging test failures.
     ::Sleep(kWaitForProcessIntervalMs);
     hr = GetScheduledTaskStatus(kSchedTestTaskName);
   }
   EXPECT_EQ(SCHED_S_TASK_RUNNING, hr);
+  EXPECT_LT(tries, kMaxWaitForProcessIterations) << _T("Loops exhausted.");
+  std::wcout << _T("\tLine ") << __LINE__ << _T(": Iterations=") << tries
+             << std::endl;
 
   // Without a wait in between the start and stop, stop failed intermittently.
   ::Sleep(500);
 
   EXPECT_SUCCEEDED(StopScheduledTask(kSchedTestTaskName));
   hr = SCHED_S_TASK_RUNNING;
-  for (int tries = 0;
+  for (tries = 0;
        tries < kMaxWaitForProcessIterations && SCHED_S_TASK_RUNNING == hr;
        ++tries) {
     ::Sleep(kWaitForProcessIntervalMs);
     hr = GetScheduledTaskStatus(kSchedTestTaskName);
   }
   EXPECT_NE(SCHED_S_TASK_RUNNING, hr);
+  EXPECT_LT(tries, kMaxWaitForProcessIterations) << _T("Loops exhausted.");
+  std::wcout << _T("\tLine ") << __LINE__ << _T(": Iterations=") << tries
+             << std::endl;
+  EXPECT_EQ(SCHED_S_TASK_READY, hr);
 
   // Finally, uninstall.
   EXPECT_SUCCEEDED(UninstallScheduledTask(kSchedTestTaskName));
@@ -1122,8 +1131,9 @@ TEST(GoopdateUtilsTest, ImpersonateUser) {
 }
 
 TEST(GoopdateUtilsTest, GoopdateTasks) {
-  CString task_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                                      _T("LongRunningSilent.exe"));
+  CString task_path = ConcatenatePath(
+      app_util::GetCurrentModuleDirectory(),
+      _T("unittest_support\\does_not_shutdown\\GoogleUpdate.exe"));
   // Install/uninstall.
   EXPECT_SUCCEEDED(InstallGoopdateTasks(task_path,
                                         vista_util::IsUserAdmin()));
@@ -1137,15 +1147,20 @@ TEST(GoopdateUtilsTest, GoopdateTasks) {
 
   // Start and stop.
   EXPECT_SUCCEEDED(StartGoopdateTaskCore(vista_util::IsUserAdmin()));
-  HRESULT hr = E_FAIL;
-  for (int tries = 0;
+  HRESULT hr = SCHED_S_TASK_HAS_NOT_RUN;
+  int tries = 0;
+  for (tries = 0;
        tries < kMaxWaitForProcessIterations && SCHED_S_TASK_RUNNING != hr;
        ++tries) {
+    EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN, hr);  // For debugging test failures.
     ::Sleep(kWaitForProcessIntervalMs);
     hr = internal::GetScheduledTaskStatus(
         ConfigManager::GetCurrentTaskNameCore(vista_util::IsUserAdmin()));
   }
   EXPECT_EQ(SCHED_S_TASK_RUNNING, hr);
+  EXPECT_LT(tries, kMaxWaitForProcessIterations) << _T("Loops exhausted.");
+  std::wcout << _T("\tLine ") << __LINE__ << _T(": Iterations=") << tries
+             << std::endl;
 
   // Without a wait in between the start and stop, stop failed intermittently.
   ::Sleep(500);
@@ -1153,7 +1168,7 @@ TEST(GoopdateUtilsTest, GoopdateTasks) {
   EXPECT_SUCCEEDED(internal::StopScheduledTask(
       ConfigManager::GetCurrentTaskNameCore(vista_util::IsUserAdmin())));
   hr = SCHED_S_TASK_RUNNING;
-  for (int tries = 0;
+  for (tries = 0;
        tries < kMaxWaitForProcessIterations && SCHED_S_TASK_RUNNING == hr;
        ++tries) {
     ::Sleep(kWaitForProcessIntervalMs);
@@ -1161,6 +1176,10 @@ TEST(GoopdateUtilsTest, GoopdateTasks) {
         ConfigManager::GetCurrentTaskNameCore(vista_util::IsUserAdmin()));
   }
   EXPECT_NE(SCHED_S_TASK_RUNNING, hr);
+  EXPECT_LT(tries, kMaxWaitForProcessIterations) << _T("Loops exhausted.");
+  std::wcout << _T("\tLine ") << __LINE__ << _T(": Iterations=") << tries
+             << std::endl;
+  EXPECT_EQ(SCHED_S_TASK_READY, hr);
 
   // Finally, uninstall.
   EXPECT_SUCCEEDED(UninstallGoopdateTasks(vista_util::IsUserAdmin()));
@@ -1217,25 +1236,37 @@ TEST(GoopdateUtilsTest, GetExitCodeGoopdateTaskUA) {
   EXPECT_SUCCEEDED(internal::StartScheduledTask(
       ConfigManager::GetCurrentTaskNameUA(vista_util::IsUserAdmin())));
 
+  // Because SaveArguments.exe is not a long-lived process, the task could have
+  // run and finished at any point.
   HRESULT hr = SCHED_S_TASK_HAS_NOT_RUN;
-  for (int tries = 0;
+  int tries = 0;
+  for (tries = 0;
        tries < kMaxWaitForProcessIterations && SCHED_S_TASK_HAS_NOT_RUN == hr;
        ++tries) {
     ::Sleep(kWaitForProcessIntervalMs);
     hr = internal::GetScheduledTaskStatus(
         ConfigManager::GetCurrentTaskNameUA(vista_util::IsUserAdmin()));
   }
+  EXPECT_NE(SCHED_S_TASK_HAS_NOT_RUN, hr);
+  EXPECT_LT(tries, kMaxWaitForProcessIterations) << _T("Loops exhausted.");
+  std::wcout << _T("\tLine ") << __LINE__ << _T(": Iterations=") << tries
+             << std::endl;
+  EXPECT_TRUE(SCHED_S_TASK_RUNNING == hr || SCHED_S_TASK_READY == hr);
 
   hr = SCHED_S_TASK_RUNNING;
-  for (int tries = 0;
+  for (tries = 0;
        tries < kMaxWaitForProcessIterations && SCHED_S_TASK_RUNNING == hr;
        ++tries) {
     ::Sleep(kWaitForProcessIntervalMs);
     hr = internal::GetScheduledTaskStatus(
         ConfigManager::GetCurrentTaskNameUA(vista_util::IsUserAdmin()));
   }
-
   EXPECT_NE(SCHED_S_TASK_RUNNING, hr);
+  EXPECT_LT(tries, kMaxWaitForProcessIterations) << _T("Loops exhausted.");
+  std::wcout << _T("\tLine ") << __LINE__ << _T(": Iterations=") << tries
+             << std::endl;
+  EXPECT_EQ(SCHED_S_TASK_READY, hr);
+
   EXPECT_EQ(S_OK, GetExitCodeGoopdateTaskUA(vista_util::IsUserAdmin()));
 
   EXPECT_SUCCEEDED(File::Remove(
@@ -1409,243 +1440,6 @@ TEST_F(GoopdateUtilsRegistryProtectedWithUserFolderPathsTest,
                                     _T("1.2.3.4")));
   HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(false, NULL, NULL);
   EXPECT_TRUE(S_OK == hr || HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest, GetPersistentUserId_User) {
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(USER_KEY_NAME,
-                                                 kRegValueUserId,
-                                                 &id));
-
-  CString uid = goopdate_utils::GetPersistentUserId(USER_KEY_NAME);
-  EXPECT_FALSE(uid.IsEmpty());
-
-  EXPECT_SUCCEEDED(goopdate_utils::ReadPersistentId(USER_KEY_NAME,
-                                                    kRegValueUserId,
-                                                    &id));
-  EXPECT_STREQ(uid, id);
-
-  uid = goopdate_utils::GetPersistentUserId(USER_KEY_NAME);
-  EXPECT_STREQ(uid, id);
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest, GetPersistentUserId_Machine) {
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueUserId,
-                                                 &id));
-
-  CString uid = goopdate_utils::GetPersistentUserId(MACHINE_KEY_NAME);
-  EXPECT_FALSE(uid.IsEmpty());
-
-  EXPECT_SUCCEEDED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                    kRegValueUserId,
-                                                    &id));
-  EXPECT_STREQ(uid, id);
-
-  uid = goopdate_utils::GetPersistentUserId(MACHINE_KEY_NAME);
-  EXPECT_STREQ(uid, id);
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest, GetPersistentMachineId_Machine) {
-  // Initially there is no machine id.
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueMachineId,
-                                                 &id));
-  // Call the test method.
-  CString mid = goopdate_utils::GetPersistentMachineId();
-  EXPECT_FALSE(mid.IsEmpty());
-
-  // Ensure that the value is written in the registry.
-  EXPECT_SUCCEEDED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                    kRegValueMachineId,
-                                                    &id));
-  EXPECT_STREQ(mid, id);
-
-  // Call the method again.
-  mid = goopdate_utils::GetPersistentMachineId();
-
-  // Ensure that the same id is returned.
-  EXPECT_STREQ(mid, id);
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest, GetPersistentMachineId_User1) {
-  // Initially there is no machine id.
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueMachineId,
-                                                 &id));
-  SID* sid_val = NULL;
-  ASSERT_TRUE(::ConvertStringSidToSid(_T("S-1-1-0"),
-                                      reinterpret_cast<PSID*>(&sid_val)));
-  ASSERT_TRUE(sid_val != NULL);
-
-  // Create the update key.
-  RegKey mid_key;
-  EXPECT_SUCCEEDED(mid_key.Create(HKEY_LOCAL_MACHINE, GOOPDATE_MAIN_KEY));
-  CDacl dacl;
-  ASSERT_TRUE(AtlGetDacl(mid_key.Key(), SE_REGISTRY_KEY, &dacl));
-  ASSERT_TRUE(dacl.AddDeniedAce(*sid_val, KEY_SET_VALUE));
-  EXPECT_SUCCEEDED(mid_key.Close());
-
-  // Now set the key permissions to not allow anyone to write.
-  EXPECT_SUCCEEDED(mid_key.Open(HKEY_LOCAL_MACHINE, GOOPDATE_MAIN_KEY));
-  ASSERT_TRUE(AtlSetDacl(mid_key.Key(), SE_REGISTRY_KEY, dacl, 0));
-
-  // Call the test method.
-  CString mid = goopdate_utils::GetPersistentMachineId();
-  ASSERT_TRUE(mid.IsEmpty());
-
-  // Ensure that the value Could not be written to the registry.
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueMachineId,
-                                                 &id));
-  ASSERT_TRUE(id.IsEmpty());
-
-  ASSERT_TRUE(dacl.RemoveAces(*sid_val));
-  ASSERT_TRUE(AtlSetDacl(mid_key.Key(), SE_REGISTRY_KEY, dacl, 0));
-  EXPECT_SUCCEEDED(mid_key.Close());
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest, GetPersistentMachineId_User2) {
-  // Test simulates the situation where a machine goopdate is already running
-  // and a user goopdate is run next.
-
-  // Initially there is no machine id.
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueMachineId,
-                                                 &id));
-
-  CString mid = goopdate_utils::GetPersistentMachineId();
-  EXPECT_FALSE(mid.IsEmpty());
-
-  // Ensure that the value Could not be written to the registry.
-  EXPECT_SUCCEEDED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                kRegValueMachineId,
-                                                &id));
-  EXPECT_STREQ(id, mid);
-
-  // Now set the permissions on the registry key such that we cannot write to
-  // it. We should however be able to read from it.
-  SID* sid_val = NULL;
-  ASSERT_TRUE(::ConvertStringSidToSid(_T("S-1-1-0"),
-                                      reinterpret_cast<PSID*>(&sid_val)));
-  ASSERT_TRUE(sid_val != NULL);
-
-  RegKey mid_key;
-  EXPECT_SUCCEEDED(mid_key.Open(HKEY_LOCAL_MACHINE, GOOPDATE_MAIN_KEY));
-  CDacl dacl;
-  ASSERT_TRUE(AtlGetDacl(mid_key.Key(), SE_REGISTRY_KEY, &dacl));
-  ASSERT_TRUE(dacl.AddDeniedAce(*sid_val, KEY_SET_VALUE));
-  ASSERT_TRUE(AtlSetDacl(mid_key.Key(), SE_REGISTRY_KEY, dacl, 0));
-
-  // Call the test method.
-  mid = goopdate_utils::GetPersistentMachineId();
-  EXPECT_FALSE(mid.IsEmpty());
-  EXPECT_STREQ(mid, id);
-
-  ASSERT_TRUE(dacl.RemoveAces(*sid_val));
-  ASSERT_TRUE(AtlSetDacl(mid_key.Key(), SE_REGISTRY_KEY, dacl, 0));
-  EXPECT_SUCCEEDED(mid_key.Close());
-}
-
-// New Unique ID is created and stored.
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       GetPersistentUserId_OemInstalling_User) {
-  const DWORD now_seconds = Time64ToInt32(GetCurrent100NSTime());
-  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
-                                    _T("OemInstallTime"),
-                                    now_seconds));
-  ASSERT_TRUE(ConfigManager::Instance()->IsOemInstalling(true));
-
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(USER_KEY_NAME,
-                                                 kRegValueUserId,
-                                                 &id));
-
-  CString uid = goopdate_utils::GetPersistentUserId(USER_KEY_NAME);
-  EXPECT_FALSE(uid.IsEmpty());
-
-  EXPECT_SUCCEEDED(goopdate_utils::ReadPersistentId(USER_KEY_NAME,
-                                                    kRegValueUserId,
-                                                    &id));
-  EXPECT_STREQ(uid, id);
-
-  uid = goopdate_utils::GetPersistentUserId(USER_KEY_NAME);
-  EXPECT_STREQ(uid, id);
-}
-
-// Special value is returned but not stored.
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       GetPersistentUserId_OemInstalling_Machine) {
-  const DWORD now_seconds = Time64ToInt32(GetCurrent100NSTime());
-  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
-                                    _T("OemInstallTime"),
-                                    now_seconds));
-  ASSERT_TRUE(ConfigManager::Instance()->IsOemInstalling(true));
-
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueUserId,
-                                                 &id));
-
-  CString uid = goopdate_utils::GetPersistentUserId(MACHINE_KEY_NAME);
-  EXPECT_STREQ(_T("{00000000-03AA-03AA-03AA-000000000000}"), uid);
-
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueUserId,
-                                                 &id));
-
-  uid = goopdate_utils::GetPersistentUserId(MACHINE_KEY_NAME);
-  EXPECT_STREQ(_T("{00000000-03AA-03AA-03AA-000000000000}"), uid);
-  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueUserId));
-
-  // Test the case where the value already exists.
-  EXPECT_SUCCEEDED(RegKey::SetValue(
-      MACHINE_REG_UPDATE,
-      kRegValueUserId,
-      _T("{12345678-1234-1234-1234-123456789abcd}")));
-  uid = goopdate_utils::GetPersistentUserId(MACHINE_KEY_NAME);
-  EXPECT_STREQ(_T("{00000000-03AA-03AA-03AA-000000000000}"), uid);
-  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueUserId));
-}
-
-// Special value is returned but not stored.
-// There is no difference between user and machine instances.
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       GetPersistentMachineId_OemInstalling_Machine) {
-  const DWORD now_seconds = Time64ToInt32(GetCurrent100NSTime());
-  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
-                                    _T("OemInstallTime"),
-                                    now_seconds));
-  ASSERT_TRUE(ConfigManager::Instance()->IsOemInstalling(true));
-
-  CString id;
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueMachineId,
-                                                 &id));
-
-  CString mid = goopdate_utils::GetPersistentMachineId();
-  EXPECT_STREQ(_T("{00000000-03AA-03AA-03AA-000000000000}"), mid);
-
-  EXPECT_FAILED(goopdate_utils::ReadPersistentId(MACHINE_KEY_NAME,
-                                                 kRegValueMachineId,
-                                                 &id));
-
-  mid = goopdate_utils::GetPersistentMachineId();
-  EXPECT_STREQ(_T("{00000000-03AA-03AA-03AA-000000000000}"), mid);
-  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueMachineId));
-
-  // Test the case where the value already exists.
-  EXPECT_SUCCEEDED(RegKey::SetValue(
-      MACHINE_REG_UPDATE,
-      kRegValueMachineId,
-      _T("{12345678-1234-1234-1234-123456789abcd}")));
-  mid = goopdate_utils::GetPersistentMachineId();
-  EXPECT_STREQ(_T("{00000000-03AA-03AA-03AA-000000000000}"), mid);
-  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueMachineId));
 }
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
@@ -3162,28 +2956,14 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, GetVerFromRegistry) {
 
 TEST_F(GoopdateUtilsRegistryProtectedTest,
        BuildHttpGetString_MachineNoTestSource) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(
-                       MACHINE_REG_UPDATE,
-                       kRegValueMachineId,
-                       _T("{39980C99-CDD5-43A0-93C7-69D90C124729}")));
-  ASSERT_SUCCEEDED(RegKey::SetValue(
-                       MACHINE_REG_UPDATE,
-                       kRegValueUserId,
-                       _T("{75521B9F-3EA4-49E8-BC61-E6BDCFEDF6F6}")));
-  ASSERT_SUCCEEDED(RegKey::SetValue(
-                       MACHINE_REG_CLIENT_STATE APP_GUID,
-                       kRegValueInstallationId,
-                       _T("{0F973A20-C484-462b-952C-5D9A459E3326}")));
-
   CString expected_str_before_os(
       _T("http://www.google.com/hello.py?code=123&")
       _T("hl=en&errorcode=0x0000000a&extracode1=0x00000016&extracode2=0&")
       _T("app=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
       _T("guver=1.0.51.0&ismachine=1&os="));
   CString expected_str_after_os(
-      _T("&mid=%7B39980C99-CDD5-43A0-93C7-69D90C124729%7D")
-      _T("&uid=%7B75521B9F-3EA4-49E8-BC61-E6BDCFEDF6F6%7D")
-      _T("&iid=%7B0F973A20-C484-462b-952C-5D9A459E3326%7D&source=click"));
+      _T("&iid=%7B0F973A20-C484-462B-952C-5D9A459E3326%7D")  // Upper case 'B'.
+      _T("&brand=GoOG&source=click"));
   bool expected_test_source = false;
 
 #if defined(DEBUG) || !OFFICIAL_BUILD
@@ -3203,17 +2983,26 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
       _T("1.0.51.0"),
       true,
       _T("en"),
+      StringToGuid(_T("{0F973A20-C484-462b-952C-5D9A459E3326}")),
+      _T("GoOG"),
       _T("click"),
       &url_req));
-  EXPECT_LE(expected_str_before_os.GetLength(), url_req.GetLength());
-  EXPECT_EQ(0, url_req.Find(expected_str_before_os));
 
+  EXPECT_EQ(-1, url_req.FindOneOf(_T("{}")));
+
+  EXPECT_LE(expected_str_before_os.GetLength(), url_req.GetLength());
+  EXPECT_EQ(0, url_req.Find(expected_str_before_os)) <<
+      _T("Expected: ") << expected_str_before_os.GetString() << std::endl <<
+      _T("At beginning of: ") << url_req.GetString();
   int os_fragment_len = 0;
   EXPECT_EQ(expected_str_before_os.GetLength(),
-            VerifyOSInUrl(url_req, &os_fragment_len));
+            VerifyOSInUrl(url_req, &os_fragment_len)) <<
+      _T("Expected OS string not found in: ") << url_req.GetString();
 
   EXPECT_EQ(expected_str_before_os.GetLength() + os_fragment_len,
-            url_req.Find(expected_str_after_os));
+            url_req.Find(expected_str_after_os)) <<
+      _T("Expected: ") << expected_str_after_os.GetString() << std::endl <<
+      _T("At end of: ") << url_req.GetString();
 
   if (expected_test_source) {
     CString expected_testsource_str =
@@ -3238,18 +3027,6 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
        BuildHttpGetString_UserWithTestSource) {
   #define APP_GUID _T("{B7BAF788-9D64-49c3-AFDC-B336AB12F332}")
 
-  ASSERT_SUCCEEDED(RegKey::SetValue(
-                       MACHINE_REG_UPDATE,
-                       kRegValueMachineId,
-                       _T("{39980C99-CDD5-43A0-93C7-69D90C124729}")));
-  ASSERT_SUCCEEDED(RegKey::SetValue(
-                       USER_REG_UPDATE,
-                       kRegValueUserId,
-                       _T("{75521B9F-3EA4-49E8-BC61-E6BDCFEDF6F6}")));
-  ASSERT_SUCCEEDED(RegKey::SetValue(
-                       USER_REG_CLIENT_STATE APP_GUID,
-                       kRegValueInstallationId,
-                       _T("{0F973A20-C484-462b-952C-5D9A459E3326}")));
   ASSERT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueTestSource,
                                     _T("dev")));
@@ -3260,9 +3037,8 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
       _T("app=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
       _T("guver=foo%20bar&ismachine=0&os="));
   const CString expected_str_after_os(
-      _T("&mid=%7B39980C99-CDD5-43A0-93C7-69D90C124729%7D")
-      _T("&uid=%7B75521B9F-3EA4-49E8-BC61-E6BDCFEDF6F6%7D")
-      _T("&iid=%7B0F973A20-C484-462b-952C-5D9A459E3326%7D&source=clack")
+      _T("&iid=%7B0F973A20-C484-462B-952C-5D9A459E3326%7D")  // Upper case 'B'.
+      _T("&brand=GGLE&source=clack")
       _T("&testsource="));
 
   CString url_req;
@@ -3275,6 +3051,8 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
       _T("foo bar"),
       false,
       _T("de"),
+      StringToGuid(_T("{0F973A20-C484-462b-952C-5D9A459E3326}")),
+      _T("GGLE"),
       _T("clack"),
       &url_req));
   EXPECT_LE(expected_str_before_os.GetLength(), url_req.GetLength());
@@ -3282,10 +3060,13 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
 
   int os_fragment_len = 0;
   EXPECT_EQ(expected_str_before_os.GetLength(),
-            VerifyOSInUrl(url_req, &os_fragment_len));
+            VerifyOSInUrl(url_req, &os_fragment_len)) <<
+      _T("Expected: ") << expected_str_before_os.GetString() << std::endl <<
+      _T("At beginning of: ") << url_req.GetString();
 
   EXPECT_EQ(expected_str_before_os.GetLength() + os_fragment_len,
-            url_req.Find(expected_str_after_os));
+            url_req.Find(expected_str_after_os)) <<
+      _T("Expected OS string not found in: ") << url_req.GetString();
 
   const CString expected_testsource_str = _T("dev");
 
@@ -3298,8 +3079,17 @@ TEST_F(GoopdateUtilsRegistryProtectedTest,
 }
 
 // MID and UID automatically get generated when they are read, so it is not
-// possible for them to be empty. IID is emtpy if not present.
-TEST_F(GoopdateUtilsRegistryProtectedTest, BuildHttpGetString_NoMidUidIid) {
+// possible for them to be empty. IID and brand code is emtpy if not present.
+TEST_F(GoopdateUtilsRegistryProtectedTest,
+       BuildHttpGetString_NoMidUidIidBrandCode) {
+  const CString expected_str_before_os(
+      _T("http://www.google.com/hello.py?")
+      _T("hl=en&errorcode=0xffffffff&extracode1=0x00000000&extracode2=99&")
+      _T("app=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
+      _T("guver=foo%20bar&ismachine=1&os="));
+  const CString expected_str_after_uid(
+      _T("&mid=&uid=&iid=&brand=&source=cluck"));
+
   CString url_req;
   EXPECT_SUCCEEDED(goopdate_utils::BuildHttpGetString(
       _T("http://www.google.com/hello.py?"),
@@ -3310,18 +3100,22 @@ TEST_F(GoopdateUtilsRegistryProtectedTest, BuildHttpGetString_NoMidUidIid) {
       _T("foo bar"),
       true,
       _T("en"),
+      GUID_NULL,
+      _T(""),
       _T("cluck"),
       &url_req));
 
-  // Check for the GUID brackets and end of string as appropriate.
-  EXPECT_NE(-1, url_req.Find(_T("&mid=%7B")));
-  EXPECT_NE(-1, url_req.Find(_T("%7D&uid=%7B")));
+  EXPECT_EQ(0, url_req.Find(expected_str_before_os)) <<
+      _T("Expected: ") << expected_str_before_os.GetString() << std::endl <<
+      _T("At beginning of: ") << url_req.GetString();
+
+  EXPECT_GT(0, url_req.Find(expected_str_after_uid));
 
   CString expected_test_src;
 #if defined(DEBUG) || !OFFICIAL_BUILD
   expected_test_src = _T("&testsource=auto");
 #endif
-  const CString expected_iid_str(_T("%7D&iid=&source=cluck"));
+  const CString expected_iid_str(_T("&iid=&brand=&source=cluck"));
   EXPECT_EQ(url_req.GetLength() -
             expected_iid_str.GetLength() -
             expected_test_src.GetLength(),

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -124,15 +124,19 @@ bool IsMachineProcessWithoutPrivileges(bool is_machine_process) {
 }
 
 HRESULT LaunchImpersonatedCmdLine(const CString& cmd_line) {
+  CORE_LOG(L3, (_T("[LaunchImpersonatedCmdLine][%s]"), cmd_line));
+
   scoped_handle impersonation_token;
   HRESULT hr = vista::GetLoggedOnUserToken(address(impersonation_token));
   if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[GetLoggedOnUserToken failed][0x%x]"), hr));
     return hr;
   }
 
   scoped_impersonation impersonate_user(get(impersonation_token));
   hr = HRESULT_FROM_WIN32(impersonate_user.result());
   if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[impersonation failed][0x%x]"), hr));
     return hr;
   }
 
@@ -141,22 +145,33 @@ HRESULT LaunchImpersonatedCmdLine(const CString& cmd_line) {
                                  NULL,
                                  CLSCTX_LOCAL_SERVER);
   if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[CoCreateInstance IProcessLauncher failed][0x%x]"), hr));
     return hr;
   }
 
-  return launcher->LaunchCmdLine(cmd_line);
+  hr = launcher->LaunchCmdLine(cmd_line);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[IProcessLauncher.LaunchBrowser failed][0x%x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
 }
 
 HRESULT LaunchImpersonatedBrowser(BrowserType type, const CString& url) {
+  CORE_LOG(L3, (_T("[LaunchImpersonatedBrowser][%u][%s]"), type, url));
+
   scoped_handle impersonation_token;
   HRESULT hr = vista::GetLoggedOnUserToken(address(impersonation_token));
   if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[GetLoggedOnUserToken failed][0x%x]"), hr));
     return hr;
   }
 
   scoped_impersonation impersonate_user(get(impersonation_token));
   hr = HRESULT_FROM_WIN32(impersonate_user.result());
   if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[impersonation failed][0x%x]"), hr));
     return hr;
   }
 
@@ -165,51 +180,17 @@ HRESULT LaunchImpersonatedBrowser(BrowserType type, const CString& url) {
                                  NULL,
                                  CLSCTX_LOCAL_SERVER);
   if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[CoCreateInstance IProcessLauncher failed][0x%x]"), hr));
     return hr;
   }
 
-  return launcher->LaunchBrowser(type, url);
-}
-
-// Returns an ID stored in the key_name hive with the name value_name.
-// Creates the ID in this location if it does not already exist.
-// During OEM installs, deletes any existing ID and returns a special value.
-// IsOemInstalling needs to know whether this is a machine instance but this
-// method does not know. Therefore, we use key_name. This isn't perfect, but
-// the worst that can happen is that the special value is returned for the
-// machine ID in a user instance when in "OEM mode". User instances shouldn't
-// be running in user mode, so this should never happen.
-// Ideally, we would use !CanUseNetwork instead, but this requires knowing the
-// actual value of is_machine.
-CString CreatePersistentId(const CString& key_name,
-                           const CString& value_name) {
-  const bool oem_installing_is_machine = MACHINE_KEY_NAME == key_name;
-  if (ConfigManager::Instance()->IsOemInstalling(oem_installing_is_machine)) {
-    const CString key_path = AppendRegKeyPath(key_name, GOOPDATE_MAIN_KEY);
-    RegKey::DeleteValue(key_path, value_name);
-    return _T("{00000000-03AA-03AA-03AA-000000000000}");
+  hr = launcher->LaunchBrowser(type, url);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[IProcessLauncher.LaunchBrowser failed][0x%x]"), hr));
+    return hr;
   }
 
-  CString id;
-  if (SUCCEEDED(ReadPersistentId(key_name, value_name, &id))) {
-    return id;
-  }
-
-  GUID guid = GUID_NULL;
-  RegKey update_key;
-  const CString key_path = AppendRegKeyPath(key_name, GOOPDATE_MAIN_KEY);
-  if (SUCCEEDED(::CoCreateGuid(&guid))) {
-    const int guid_len = kApplicationGuidOffset;
-    TCHAR guid_string[guid_len + 1] = { _T('\0') };
-    if (::StringFromGUID2(guid, guid_string, guid_len + 1) > 0) {
-      if (SUCCEEDED(update_key.Create(key_path))) {
-        if (SUCCEEDED(update_key.SetValue(value_name, guid_string))) {
-          id = guid_string;
-        }
-      }
-    }
-  }
-  return id;
+  return S_OK;
 }
 
 }  // namespace
@@ -1003,14 +984,6 @@ HRESULT ReadPersistentId(const CString& key_name,
   return RegKey::GetValue(key_path, value_name, id);
 }
 
-CString GetPersistentUserId(const CString& key_name) {
-  return CreatePersistentId(key_name, kRegValueUserId);
-}
-
-CString GetPersistentMachineId() {
-  return CreatePersistentId(MACHINE_KEY_NAME, kRegValueMachineId);
-}
-
 HRESULT BuildHttpGetString(const CString& url,
                            DWORD error_code,
                            DWORD extra_code1,
@@ -1019,6 +992,8 @@ HRESULT BuildHttpGetString(const CString& url,
                            const CString& goopdate_version,
                            bool is_machine,
                            const CString& language,
+                           const GUID& iid,
+                           const CString& brand_code,
                            const CString& source_id,
                            CString* get_request) {
   ASSERT1(get_request);
@@ -1041,13 +1016,8 @@ HRESULT BuildHttpGetString(const CString& url,
   if (FAILED(hr)) {
     CORE_LOG(LEVEL_WARNING, (_T("[GetOSInfo failed][0x%08x]"), hr));
   }
-  CString mid = GetPersistentMachineId();
-  CString uid = GetPersistentUserId(is_machine ? MACHINE_KEY_NAME :
-                                                 USER_KEY_NAME);
-  CString iid;
-  CString state_key_name = GetAppClientStateKey(is_machine, app_guid);
-  // Ignore the return value because it may not exist.
-  RegKey::GetValue(state_key_name, kRegValueInstallationId, &iid);
+  const CString iid_string = ::IsEqualGUID(GUID_NULL, iid) ? _T("") :
+                                                             GuidToString(iid);
 
   std::vector<QueryElement> elements;
   elements.push_back(QueryElement(_T("hl"), language));
@@ -1060,9 +1030,8 @@ HRESULT BuildHttpGetString(const CString& url,
                                   is_machine ? _T("1") : _T("0")));
   elements.push_back(QueryElement(_T("os"), os_version));
   elements.push_back(QueryElement(_T("sp"), service_pack));
-  elements.push_back(QueryElement(_T("mid"), mid));
-  elements.push_back(QueryElement(_T("uid"), uid));
-  elements.push_back(QueryElement(_T("iid"), iid));
+  elements.push_back(QueryElement(_T("iid"), iid_string));
+  elements.push_back(QueryElement(_T("brand"), brand_code));
   elements.push_back(QueryElement(_T("source"), source_id));
 
   CString test_source = ConfigManager::Instance()->GetTestSource();
@@ -2082,30 +2051,6 @@ HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
   return S_OK;
 }
 
-// We have a mechanism to display a help center page asking users for help
-// debugging crashes.
-HRESULT ShowUserCrashPage(const CString& language,
-                          uint64 address,
-                          uint32 code) {
-  const TCHAR* const kCrashSourceId = _T("crash");
-
-  CString url;
-  HRESULT hr = BuildHttpGetString(kUrlMoreInformation,
-                                  code,
-                                  static_cast<DWORD>(address),
-                                  0,
-                                  kGoogleUpdateAppId,
-                                  GetVersionString(),
-                                  false,
-                                  language,
-                                  kCrashSourceId,
-                                  &url);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  return ShellExecuteBrowser(BROWSER_DEFAULT, url);
-}
-
 CPath BuildInstallDirectory(bool is_machine, const CString& version) {
   ConfigManager& cm = *ConfigManager::Instance();
   CPath install_dir(is_machine ? cm.GetMachineGoopdateInstallDir() :
@@ -2116,17 +2061,41 @@ CPath BuildInstallDirectory(bool is_machine, const CString& version) {
 }
 
 HRESULT LaunchCmdLine(const CString& cmd_line) {
-  bool run_with_lower_privileges = vista_util::IsUserRunningSplitToken() &&
-                                   vista_util::IsUserAdmin();
+  CORE_LOG(L3, (_T("[LaunchCmdLine][%s]"), cmd_line));
 
-  return run_with_lower_privileges ?
-             LaunchImpersonatedCmdLine(cmd_line) :
-             System::ShellExecuteCommandLine(cmd_line, NULL, NULL);
+  bool is_split_token = false;
+  HRESULT hr = vista_util::IsUserRunningSplitToken(&is_split_token);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[IsUserRunningSplitToken failed][0x%x]"), hr));
+    return hr;
+  }
+
+  bool run_with_lower_privileges = is_split_token && vista_util::IsUserAdmin();
+
+  if (run_with_lower_privileges) {
+    return LaunchImpersonatedCmdLine(cmd_line);
+  }
+
+  hr = System::ShellExecuteCommandLine(cmd_line, NULL, NULL);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[ShellExecuteCommandLine failed][0x%x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
 }
 
 HRESULT LaunchBrowser(BrowserType type, const CString& url) {
-  bool run_with_lower_privileges = vista_util::IsUserRunningSplitToken() &&
-                                   vista_util::IsUserAdmin();
+  CORE_LOG(L3, (_T("[LaunchBrowser][%u][%s]"), type, url));
+
+  bool is_split_token = false;
+  HRESULT hr = vista_util::IsUserRunningSplitToken(&is_split_token);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[IsUserRunningSplitToken failed][0x%x]"), hr));
+    return hr;
+  }
+
+  bool run_with_lower_privileges = is_split_token && vista_util::IsUserAdmin();
 
   if (run_with_lower_privileges) {
     // Other than having a service launch the browser using CreateProcessAsUser,
@@ -2135,11 +2104,13 @@ HRESULT LaunchBrowser(BrowserType type, const CString& url) {
     return LaunchImpersonatedBrowser(type, url);
   }
 
-  HRESULT hr = ShellExecuteBrowser(type, url);
+  hr = ShellExecuteBrowser(type, url);
   if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[ShellExecuteBrowser failed][0x%x]"), hr));
+    UTIL_LOG(LE, (_T("[ShellExecuteBrowser failed][0x%x]"), hr));
+    return hr;
   }
-  return hr;
+
+  return S_OK;
 }
 
 // This method formats all the data that is present inside the UpdateResponse
@@ -2251,7 +2222,7 @@ HRESULT HandleLegacyManifestHandoff(const CString& manifest_filename,
   OPT_LOG(L1, (_T("[HandleLegacyManifestHandoff]")));
 
   // Read the manifest file.
-  CString xml_contents;
+  std::vector<byte> xml_contents;
   HRESULT hr = GoopdateXmlParser::LoadXmlFileToMemory(manifest_filename,
                                                       &xml_contents);
   if (FAILED(hr)) {
@@ -2267,7 +2238,7 @@ HRESULT HandleLegacyManifestHandoff(const CString& manifest_filename,
 
   // Parse the manifest.
   UpdateResponses responses;
-  hr = GoopdateXmlParser::ParseManifestString(xml_contents, &responses);
+  hr = GoopdateXmlParser::ParseManifestBytes(xml_contents, &responses);
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[Could not parse manifest][%s]"), manifest_filename));
     return hr;

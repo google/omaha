@@ -166,8 +166,8 @@ void VerifyHklmKeyHasIntegrity(
     const CString& key_name,
     ACCESS_MASK expected_non_admin_interactive_access) {
 
-  // These checks take a long time, so avoid some of them in the common case.
-  if (!ShouldRunLargeTest()) {
+  // These checks can take a long time, so avoid them by default.
+  if (!ShouldRunEnormousTest()) {
     return;
   }
 
@@ -400,7 +400,9 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   // The version in the real registry must be set because it is used by
   // GoogleUpdate.exe during registrations.
   RestoreRegistryHives();
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
+  const bool had_pv = RegKey::HasValue(USER_REG_CLIENTS_GOOPDATE,
+                                       kRegValueProductVersion);
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
                                     kRegValueProductVersion,
                                     GetVersionString()));
   OverrideSpecifiedRegistryHives(hive_override_key_name_, false, true);
@@ -411,6 +413,16 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   EXPECT_SUCCEEDED(RegKey::CreateKey(_T("HKCU\\Software\\Classes")));
 
   ASSERT_FALSE(RegKey::HasKey(kRunKey));
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    _T("mi"),
+                                    _T("39980C99-CDD5-43A0-93C7-69D90C14729")));
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
+                                    _T("mi"),
+                                    _T("39980C99-CDD5-43A0-93C7-69D90C14729")));
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    _T("ui"),
+                                    _T("49980C99-CDD5-43A0-93C7-69D90C14729")));
 
   EXPECT_SUCCEEDED(setup_google_update_->FinishInstall());
 
@@ -433,6 +445,10 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   EXPECT_EQ(GetVersionString(), value);
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, kRegValueLastChecked));
 
+  EXPECT_TRUE(RegKey::HasValue(USER_REG_UPDATE, _T("mi")));
+  EXPECT_FALSE(RegKey::HasValue(MACHINE_REG_UPDATE, _T("mi")));
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, _T("ui")));
+
   // TODO(omaha): Check for other state.
 
   // Clean up the launch mechanisms, at least one of which is not in the
@@ -440,6 +456,14 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   UninstallLaunchMechanisms();
   EXPECT_FALSE(RegKey::HasValue(kRunKey, _T("Google Update")));
   EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
+
+  if (!had_pv) {
+    // Delete the pv value. Some tests or shell .exe instances may see this
+    // value and assume Omaha is correctly installed.
+    RestoreRegistryHives();
+    EXPECT_SUCCEEDED(RegKey::DeleteValue(USER_REG_CLIENTS_GOOPDATE,
+                                         kRegValueProductVersion));
+  }
 }
 
 // TODO(omaha): Assumes GoogleUpdate.exe exists in the installed location, which
@@ -532,11 +556,6 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
 // TODO(omaha): Fails when run by itself on Windows Vista.
 TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
        InstallRegistryValues) {
-// TODO(omaha): Remove the ifdef when signing occurs after instrumentation or
-// the TODO above is addressed.
-#ifdef COVERAGE_ENABLED
-  std::wcout << _T("\tTest does not run in coverage builds.") << std::endl;
-#else
   EXPECT_SUCCEEDED(InstallRegistryValues());
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
@@ -622,7 +641,6 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
   EXPECT_SUCCEEDED(RegKey::CreateKey(app_client_state_medium_key_name));
 
   VerifyHklmKeyHasMediumIntegrity(app_client_state_medium_key_name);
-#endif
 }
 
 TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
@@ -638,7 +656,8 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
 // CreateClientStateMedium does not replace permissions on existing keys.
 TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
        CreateClientStateMedium_KeysAlreadyExistWithDifferentPermissions) {
-  if (!ShouldRunLargeTest()) {
+  // The checks in this test can take a long time, so avoid them by default.
+  if (!ShouldRunEnormousTest()) {
     return;
   }
 

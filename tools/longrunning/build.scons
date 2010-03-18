@@ -1,5 +1,5 @@
 #!/usr/bin/python2.4
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,9 +51,10 @@ silent_env = base_env.Clone()
 # Use different subdirectory to avoid having 2 obj files with the same name.
 silent_env['OBJPREFIX'] = 'silent/' + silent_env['OBJPREFIX']
 
-silent_env.ComponentProgram(
-    prog_name='LongRunningSilent.exe',
+silent_env.ComponentTestProgram(
+    prog_name='LongRunningSilent',
     source=inputs,
+    COMPONENT_TEST_RUNNABLE=False
 )
 
 
@@ -63,7 +64,8 @@ base_env['LINKFLAGS'] += [
     '/ENTRY:WinMain',
     ]
 
-base_env.ComponentProgram(
-    prog_name='LongRunning.exe',
-    source=inputs
+base_env.ComponentTestProgram(
+    prog_name='LongRunning',
+    source=inputs,
+    COMPONENT_TEST_RUNNABLE=False
 )

@@ -35,10 +35,34 @@ namespace omaha {
 // LW = Low Integrity Level (What IE normally runs in)
 
 // The LABEL_SECURITY_INFORMATION SDDL SACL for medium integrity.
-#define MEDIUM_INTEGRITY_SDDL_SACL _T("S:(ML;;NW;;;ME)")
+// L"S:(ML;;NW;;;ME)"
+#define MEDIUM_INTEGRITY_SDDL_SACL  SDDL_SACL             \
+                                    SDDL_DELIMINATOR      \
+                                    SDDL_ACE_BEGIN        \
+                                    SDDL_MANDATORY_LABEL  \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_NO_WRITE_UP      \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_ML_MEDIUM        \
+                                    SDDL_ACE_END
 
 // The LABEL_SECURITY_INFORMATION SDDL SACL for low integrity.
-#define LOW_INTEGRITY_SDDL_SACL    _T("S:(ML;;NW;;;LW)")
+// L"S:(ML;;NW;;;LW)"
+#define LOW_INTEGRITY_SDDL_SACL     SDDL_SACL             \
+                                    SDDL_DELIMINATOR      \
+                                    SDDL_ACE_BEGIN        \
+                                    SDDL_MANDATORY_LABEL  \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_NO_WRITE_UP      \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_SEPERATOR        \
+                                    SDDL_ML_LOW           \
+                                    SDDL_ACE_END
 
 namespace vista_util {
 
@@ -46,7 +70,7 @@ namespace vista_util {
 bool IsVistaOrLater();
 
 // Is the user running on Vista or later with a split-token.
-bool IsUserRunningSplitToken();
+HRESULT IsUserRunningSplitToken(bool* is_split_token);
 
 // Returns true if the user has the reg key for disabling UAC policy at startup
 // set.
@@ -122,6 +146,9 @@ HRESULT SetRegKeyIntegrityLevel(HKEY root, const TCHAR* subkey,
 // For example, use MUTEX_ALL_ACCESS for shared mutexes.
 CSecurityDesc* CreateLowIntegritySecurityDesc(ACCESS_MASK mask);
 CSecurityDesc* CreateMediumIntegritySecurityDesc(ACCESS_MASK mask);
+
+// For Vista or later, add the low integrity SACL to an existing CSecurityDesc.
+HRESULT AddLowIntegritySaclToExistingDesc(CSecurityDesc* sd);
 
 }  // namespace vista_util
 

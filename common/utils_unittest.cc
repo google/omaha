@@ -1,4 +1,4 @@
-// Copyright 2003-2009 Google Inc.
+// Copyright 2003-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 #include "omaha/common/shell.h"
 #include "omaha/common/string.h"
 #include "omaha/common/time.h"
+#include "omaha/common/user_info.h"
 #include "omaha/common/utils.h"
 #include "omaha/common/scoped_any.h"
 #include "omaha/common/system_info.h"
@@ -102,7 +103,7 @@ TEST(UtilsTest, ReadEntireFile) {
   TCHAR directory[MAX_PATH] = {0};
   ASSERT_TRUE(GetModuleDirectory(NULL, directory));
   CString file_name;
-  file_name.AppendFormat(_T("%s\\declaration.txt"), directory);
+  file_name.Format(_T("%s\\unittest_support\\declaration.txt"), directory);
 
   std::vector<byte> buffer;
   ASSERT_FAILED(ReadEntireFile(L"C:\\F00Bar\\ImaginaryFile", 0, &buffer));
@@ -470,6 +471,43 @@ TEST(UtilsTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
 
   RestoreRegistryHives();
   EXPECT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
+}
+
+TEST(UtilsTest, IsBuiltInAdministratorAccount_True) {
+  CSid sid;
+  // May fail on non-en OS or if Administrator account does not exist.
+  EXPECT_TRUE(sid.LoadAccount(_T("Administrator")));
+  EXPECT_EQ(5, sid.GetSubAuthorityCount());
+  if (sid.GetSubAuthority(4) != 500) {
+    // Works because ::IsWellKnownSid() ignores the 3 middle subauthorities.
+    std::wcout << _T("\tNot real Administrator account. Replacing last ")
+                  _T("subauthroity with 500.") << std::endl;
+    SID* sid_data = const_cast<SID*>(sid.GetPSID());
+    sid_data->SubAuthority[4] = 500;
+  }
+  EXPECT_STREQ(_T("Administrator"), sid.AccountName());
+
+  EXPECT_TRUE(IsBuiltInAdministratorAccount(&sid));
+}
+
+TEST(UtilsTest, IsBuiltInAdministratorAccount_CurrentUser) {
+  CSid sid;
+  EXPECT_SUCCEEDED(user_info::GetCurrentUserSid(&sid));
+  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid));
+}
+
+TEST(UtilsTest, IsBuiltInAdministratorAccount_SpecialAccounts) {
+  CSid sid1;
+  EXPECT_TRUE(sid1.LoadAccount(_T("Guest")));
+  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid1));
+
+  CSid sid2;
+  EXPECT_TRUE(sid2.LoadAccount(_T("LocalService")));
+  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid2));
+
+  CSid sid3;
+  EXPECT_TRUE(sid3.LoadAccount(_T("NetworkService")));
+  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid3));
 }
 
 TEST(UtilsTest, AddAllowedAce) {

@@ -132,6 +132,10 @@ class SetupFilesTest : public testing::Test {
     ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
   }
 
+  static bool IsOlderShellVersionCompatible(ULONGLONG version) {
+    return SetupFiles::IsOlderShellVersionCompatible(version);
+  }
+
   // Assumes the executable version has been changed to the future version.
   void InstallHelper(const CString& omaha_path) {
     const CString version_path = ConcatenatePath(omaha_path,
@@ -351,12 +355,7 @@ TEST_F(SetupFilesMachineTest, Install_NotOverInstall) {
     const ULONGLONG module_version = GetVersion();
     InitializeVersion(kFutureVersion);
 
-// TODO(omaha): Remove the ifdef when signing occurs after instrumentation.
-#ifdef COVERAGE_ENABLED
-  std::wcout << _T("\tTest does not run in coverage builds.") << std::endl;
-#else
     InstallHelper(omaha_path_);
-#endif
 
     InitializeVersion(module_version);
   } else {
@@ -400,38 +399,84 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsSame) {
   EXPECT_EQ(expected_is_overinstall_, should_copy);
   EXPECT_TRUE(already_exists);
 
-  if (ShouldRunLargeTest()) {
-    // Override OverInstall to test official behavior on non-official builds.
+  if (!ShouldRunLargeTest()) {
+    return;
+  }
 
-    DWORD existing_overinstall(0);
-    bool had_existing_overinstall = SUCCEEDED(RegKey::GetValue(
-                                                  MACHINE_REG_UPDATE_DEV,
-                                                  kRegValueNameOverInstall,
-                                                  &existing_overinstall));
+  // Override OverInstall to test official behavior on non-official builds.
 
+  DWORD existing_overinstall(0);
+  bool had_existing_overinstall = SUCCEEDED(RegKey::GetValue(
+                                                MACHINE_REG_UPDATE_DEV,
+                                                kRegValueNameOverInstall,
+                                                &existing_overinstall));
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueNameOverInstall,
+                                    static_cast<DWORD>(0)));
+
+  EXPECT_SUCCEEDED(
+      ShouldCopyShell(target_path, &should_copy, &already_exists));
+#ifdef DEBUG
+  EXPECT_FALSE(should_copy);
+#else
+  EXPECT_EQ(expected_is_overinstall_, should_copy);
+#endif
+  EXPECT_TRUE(already_exists);
+
+  // Restore "overinstall"
+  if (had_existing_overinstall) {
     EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                       kRegValueNameOverInstall,
-                                      static_cast<DWORD>(0)));
-
-    EXPECT_SUCCEEDED(
-        ShouldCopyShell(target_path, &should_copy, &already_exists));
-#ifdef DEBUG
-    EXPECT_FALSE(should_copy);
-#else
-    EXPECT_EQ(expected_is_overinstall_, should_copy);
-#endif
-    EXPECT_TRUE(already_exists);
-
-    // Restore "overinstall"
-    if (had_existing_overinstall) {
-      EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                        kRegValueNameOverInstall,
-                                        existing_overinstall));
-    } else {
-      EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                                           kRegValueNameOverInstall));
-    }
+                                      existing_overinstall));
+  } else {
+    EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                         kRegValueNameOverInstall));
   }
+}
+
+TEST_F(SetupFilesUserTest, IsOlderShellVersionCompatible_Compatible) {
+  EXPECT_TRUE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 131, 7)));
+  EXPECT_TRUE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 9)));
+}
+
+TEST_F(SetupFilesUserTest, IsOlderShellVersionCompatible_Incompatible) {
+  // Vary the four elements of the version.
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 7)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 185, 9)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 183, 9)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(2, 2, 183, 9)));
+
+  // Corner cases
+  EXPECT_FALSE(IsOlderShellVersionCompatible(_UI64_MAX));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(0));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(1));
+}
+
+TEST_F(SetupFilesUserTest,
+       ShouldCopyShell_ExistingIsOlderButCompatible_1_2_131_7) {
+  CString target_path = ConcatenatePath(
+      ConcatenatePath(exe_parent_dir_, _T("omaha_1.2.131.7_shell")),
+      kGoopdateFileName);
+  ASSERT_TRUE(File::Exists(target_path));
+  bool should_copy = false;
+  bool already_exists = false;
+  EXPECT_SUCCEEDED(ShouldCopyShell(target_path, &should_copy, &already_exists));
+  EXPECT_FALSE(should_copy);
+  EXPECT_TRUE(already_exists);
+}
+
+TEST_F(SetupFilesUserTest,
+       ShouldCopyShell_ExistingIsOlderButCompatible_1_2_183_9) {
+  CString target_path = ConcatenatePath(
+      ConcatenatePath(exe_parent_dir_, _T("omaha_1.2.183.9_shell")),
+      kGoopdateFileName);
+  ASSERT_TRUE(File::Exists(target_path));
+  bool should_copy = false;
+  bool already_exists = false;
+  EXPECT_SUCCEEDED(ShouldCopyShell(target_path, &should_copy, &already_exists));
+  EXPECT_FALSE(should_copy);
+  EXPECT_TRUE(already_exists);
 }
 
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderMinor) {

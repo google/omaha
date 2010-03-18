@@ -37,6 +37,7 @@ namespace ping_utils {
 // If version is NULL, the current version will be used.
 HRESULT SendGoopdatePing(bool is_machine,
                          const CommandLineExtraArgs& extra_args,
+                         const CString& install_source,
                          PingEvent::Types type,
                          HRESULT result,
                          int extra_code1,
@@ -49,6 +50,7 @@ HRESULT SendGoopdatePing(bool is_machine,
   AppRequestData app_request_data_goopdate;
   BuildGoogleUpdateAppRequestData(is_machine,
                                   extra_args,
+                                  install_source,
                                   &previous_version,
                                   &app_request_data_goopdate);
 
@@ -86,6 +88,7 @@ HRESULT SendGoopdatePing(bool is_machine,
 // attempts to obtain data from the registry.
 void BuildGoogleUpdateAppRequestData(bool is_machine,
                                      const CommandLineExtraArgs& extra_args,
+                                     const CString& install_source,
                                      CString* previous_version,
                                      AppRequestData* app_request_data) {
   CORE_LOG(L3, (_T("[Ping::BuildGoogleUpdateAppRequest]")));
@@ -127,10 +130,12 @@ void BuildGoogleUpdateAppRequestData(bool is_machine,
     }
   }
 
-  // Always use the installation ID data from the command line if present.
+  // Always use the installation ID and install source from the command line if
+  // present.
   if (GUID_NULL != extra_args.installation_id) {
     app_data_goopdate.set_iid(extra_args.installation_id);
   }
+  app_data_goopdate.set_install_source(install_source);
 
   AppRequestData app_request_data_temp(app_data_goopdate);
   *app_request_data = app_request_data_temp;
@@ -142,6 +147,7 @@ HRESULT SendPostSetupPing(HRESULT result,
                           bool is_machine,
                           bool is_self_update,
                           const CommandLineExtraArgs& extra,
+                          const CString& install_source,
                           Ping* ping) {
   CORE_LOG(L3, (_T("[Ping::SendPostSetupPing]")));
   ASSERT1(ping);
@@ -151,6 +157,7 @@ HRESULT SendPostSetupPing(HRESULT result,
   BuildGoogleUpdateAppRequestData(
       is_machine,
       extra,
+      install_source,
       NULL,
       &app_request_data);
 

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,9 +44,9 @@ class GoopdateXmlParser {
   static HRESULT ParseManifestFile(const CString& file_name,
                                    UpdateResponses* responses);
 
-  // Parses the manifest string.
-  static HRESULT ParseManifestString(const TCHAR* manifest,
-                                     UpdateResponses* responses);
+  // Parses the manifest.
+  static HRESULT ParseManifestBytes(const std::vector<byte>& manifest_bytes,
+                                    UpdateResponses* responses);
 
   // Generates the update request from the request node.
   static HRESULT GenerateRequest(const Request& request,
@@ -55,7 +55,7 @@ class GoopdateXmlParser {
 
   // Loads an XML file into memory.
   static HRESULT LoadXmlFileToMemory(const CString& file_name,
-                                     CString* xml_string);
+                                     std::vector<byte>* buffer);
 
  private:
   // Reads the protocol version of the xml file.
@@ -167,6 +167,9 @@ class GoopdateXmlParser {
   static HRESULT VerifyProtocolRange(const CString& actual_ver,
                                      const CString& start_ver,
                                      const CString& end_ver);
+
+  static HRESULT ReadTimeSinceMidnightSec(IXMLDOMNode* node,
+                                          int* time_since_midnight_sec);
 
  private:
   // Helper for CreateUpdateAppRequestElement and CreatePingAppRequestElement.

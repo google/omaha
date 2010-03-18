@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,6 +63,11 @@ _PRODUCT_NAME = 'Update'
 _ACTIVEX_NAME = 'npGoogleOneClick'
 _BHO_NAME = 'GoopdateBho'
 
+# The hash comes from the Thumbprint item in the Details tab of the file
+# properties for the public key .cer file.
+# TODO(omaha): Can we automate reading this and/or pass it on the command line?
+_BUILD_SERVER_CERTIFICATE_HASH = 'fe5008fe0da7a2033816752d6eafe95214f5a7e1'
+
 # COM proxy setting.
 # The proxy clsid needs to be changed anytime the interfaces in
 # google_update_idl.idl change, or when a new interface is added. Use
@@ -118,8 +123,15 @@ if win_env['ENV'].has_key('SYSTEMROOT'):
     del win_env['ENV']['SYSTEMROOT']
     del os.environ['SYSTEMROOT']
 
+# Work around http://code.google.com/p/swtoolkit/issues/detail?id=10.
+win_env['COMPONENT_TEST_SUBSYSTEM_WINDOWS'] = 1
 
 # Declare command line options relating to code signing
+# authenticode_file and authenticode_password are used by the normal signing
+# tool and to sign manifests for ClickOnce.
+# patching_certificate is used to create patchable MSI installers and MSPs.
+# authenticode_file and authenticode_password are only used if !build_server.
+# patching_certificate is used in all cases.
 AddOption(
     '--authenticode_file',
     action='store',
@@ -135,6 +147,14 @@ AddOption(
     nargs=1,
     type='string',
     default=default_cert_password
+)
+
+AddOption(
+    '--patching_certificate',
+    action='store',
+    nargs=1,
+    type='string',
+    default='$MAIN_DIR/data/OmahaTestCert.cer'
 )
 
 # Declare option for specifying path to new official build files
@@ -162,7 +182,7 @@ win_env.SetBitFromOption('official_installers', False)
 # Build as a build server if --build_server is on the command line.
 win_env.SetBitFromOption('build_server', False)
 
-# Build from pre-built binaries if --bin is on the command line.
+# Store new versions of pre-built binaries if --bin is on the command line.
 win_env.SetBitFromOption('bin', False)
 
 # Build minimal set of libs if --min is on the command line.
@@ -242,8 +262,11 @@ def _EnablePrecompile(self_env, target_name):
     # Must manually force-include the header, as the precompilation step does
     # not evaluate $INCLUDES
     pch_env.Append(CCFLAGS = ['/FI$MAIN_DIR/precompile/precompile.h'])
+    # Append '_pch' to the target base name to prevent target name collisions.
+    # One case where this might have occurred is when a .cc file has the same
+    # base name as the target program/library.
     pch_output = pch_env.PCH(
-        target=target_name.replace('.', '_') + '.pch',
+        target=target_name.replace('.', '_') + '_pch' + '.pch',
         source='$MAIN_DIR/precompile/precompile.cc',
     )
 
@@ -254,6 +277,30 @@ def _EnablePrecompile(self_env, target_name):
     return [pch_output[1]]
 
 win_env.AddMethod(_EnablePrecompile, 'EnablePrecompile')
+
+def _SignDotNetManifest(self_env, target, unsigned_manifest):
+  sign_manifest_cmd =('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
+                      'http://timestamp.verisign.com/scripts/timstamp.dll ')
+
+  if self_env.Bit('build_server'):
+    # If signing fails with the following error, the hash may not match any
+    # certificates: "Internal error, please try again. Object reference not set
+    # to an instance of an object."
+    sign_manifest_cmd += ('-CertHash ' +
+                           self_env['build_server_certificate_hash'])
+  else:
+    sign_manifest_cmd += '-CertFile %s -Password %s' % (
+        GetOption('authenticode_file'), GetOption('authenticode_password'))
+
+  signed_manifest = self_env.Command(
+      target=target,
+      source=unsigned_manifest,
+      action=sign_manifest_cmd
+  )
+
+  return signed_manifest
+
+win_env.AddMethod(_SignDotNetManifest, 'SignDotNetManifest')
 
 
 def _SetProductVersion(self_env,
@@ -309,6 +356,7 @@ win_env.SetProductVersion(version_major, version_minor, version_build, version_p
 
 win_env['msc_ver'] = _msc_ver;
 
+win_env['build_server_certificate_hash'] = _BUILD_SERVER_CERTIFICATE_HASH
 
 # Plug-in versioning. Firefox Plug-in needs a different filename for each
 # version of the plug-in. If the filename is the same, even though the path
@@ -484,7 +532,7 @@ if win_env.Bit('build_server'):
   print 'TEST_CERTIFICATE=%d' % win_env.Bit('test_certificate')
 
 
-# List of languages that we compile in.
+# List of languages that are fully supported.
 win_env['languages'] = [
     'ar',
     'bg',
@@ -542,6 +590,18 @@ win_env['languages'] = [
     'zh-TW',
     ]
 
+# The shell and goopdate.dll contain additional languages.
+# 'userdefault' addresses apps that don't look up the resource for the OS
+# language. See http://b/1328652.
+
+win_env['additional_shell_languages'] = [
+    'am',
+    'sw',
+    'userdefault',
+    'zh-HK',
+    ]
+
+
 # Make sure python.exe can be located.
 win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])
 
@@ -561,10 +621,10 @@ if not win_env.Bit('official_installers'):
   # Make sure csc.exe can be located.
   win_env.AppendENVPath('PATH', os.environ['OMAHA_NET_DIR'])
 
-  # WiX path has to be added before the WiX tool can be called.
-  win_env.AppendENVPath('PATH', os.environ['OMAHA_WIX_DIR'])
-  win_env.Tool('wix')
+# WiX path has to be added before the WiX tool can be called.
+win_env.AppendENVPath('PATH', os.environ['OMAHA_WIX_DIR'])
 
+win_env.Tool('wix')
 
 _base_dirs = [
     '.',      # ./build.scons is used to copy some files to staging.
@@ -588,7 +648,6 @@ _normal_dirs = [
     'bho',
     'clickonce',
     'installers',
-    'standalone',
     'plugins',
     ]
 
@@ -599,6 +658,7 @@ _official_installers_dirs = [
 
 _extra_dirs = [
     'enterprise',
+    'standalone',
     'test',
     ]
 
@@ -711,10 +771,87 @@ windows_coverage_env.Alias(
     '$STAGING_DIR/omaha_unittest.exe'
 )
 windows_coverage_env.Append(
-    COVERAGE_TARGETS=['run_omaha_unittest'],
+    # TODO(omaha): We cannot run our unit tests on the new build system. Ensure
+    # coverage works with the new test execution system.
+    # COVERAGE_TARGETS=['run_omaha_unittest'],
     COVERAGE_INSTRUMENTATION_PATHS=['$STAGING_DIR'],
+    # This value should only be used in code if absolutely necessary.
     CPPDEFINES=['COVERAGE_ENABLED'],
 )
+
+# TODO(omaha): Prevent the analyzer, which will fail, from running until we can
+# run unit tests on the build system. See the TODO above.
+windows_coverage_env['COVERAGE_START_CMD'] = '@echo Not starting coverage'
+windows_coverage_env['COVERAGE_STOP_CMD'] = '@echo Not ending coverage'
+
+# Skip signing in coverage build until the last step.
+windows_coverage_env['SIGNTOOL_ORIG'] = windows_coverage_env['SIGNTOOL']
+windows_coverage_env['SIGNTOOL'] = '@echo Signing deferred: '
+
+def SigningCommand(env, filename):
+  # Only do signing if there is a certificate file or certificate name.
+  if env.subst('$CERTIFICATE_PATH') or env.subst('$CERTIFICATE_NAME'):
+    # The command used to do signing (target added on below).
+    signing_cmd = '$SIGNTOOL_ORIG sign '
+    # Add in certificate file if any.
+    if env.subst('$CERTIFICATE_PATH'):
+      signing_cmd += ' /f "$CERTIFICATE_PATH"'
+      # Add certificate password if any.
+      if env.subst('$CERTIFICATE_PASSWORD'):
+        signing_cmd += ' /p "$CERTIFICATE_PASSWORD"'
+    # Add certificate store if any.
+    if env.subst('$CERTIFICATE_NAME'):
+      # The command used to do signing (target added on below).
+      signing_cmd += ' /s "$CERTIFICATE_STORE" /n "$CERTIFICATE_NAME"'
+    # Add timestamp server if any.
+    if env.subst('$TIMESTAMP_SERVER'):
+      signing_cmd += ' /t "$TIMESTAMP_SERVER"'
+    # Add in target name
+    signing_cmd += ' "%s"' % filename
+    return signing_cmd
+  else:
+    return 'echo no signing needed'
+
+def _IsInstrumentableFileType(file):
+  if (file.endswith('.exe') or
+      file.endswith('.dll')):
+    return True
+  return False
+
+def _IsSignableFileType(file):
+  if (file.endswith('.exe') or
+      file.endswith('.dll') or
+      file.endswith('.msi') or
+      file.endswith('.msp')):
+    return True
+  return False
+
+# Sign files during the install stage, since instrumentation invalidates the
+# signature. Signing within the individual build files was disabled above.
+# Do not sign intermediate "_unsigned" or "_unittest" files.
+# Instrumented files must be signed after installing becuase install is what
+# does the instrumentation. This also seems to be required to avoid
+# unnecessarily rebuilding non-instrumentable files.
+def _PostCoverageSigningInstall(dest, source, env):
+  if _IsInstrumentableFileType(dest) or not _IsSignableFileType(dest):
+    # Install the file to staging. Includes instrumentation if appropriate.
+    env['PRECOVERAGE_SIGN_INSTALL'](dest, source, env)
+  else:
+    # For signable but not instrumentable files, copy the files rather than
+    # using PRECOVERAGE_SIGN_INSTALL as this works around unnecessary rebuilds
+    # caused by http://code.google.com/p/swtoolkit/issues/detail?id=13.
+    env.Execute('copy "%s" "%s"' % (source, dest))
+
+  if (_IsSignableFileType(dest) and
+      (-1 == dest.find('_unsigned')) and
+      (-1 == dest.find('_unittest')) and
+      os.path.split(os.path.split(dest)[0])[1] == 'staging'):
+    env.Execute(SigningCommand(env, dest))
+
+windows_coverage_env['PRECOVERAGE_SIGN_INSTALL'] = (
+    windows_coverage_env['INSTALL'])
+windows_coverage_env['INSTALL'] = _PostCoverageSigningInstall
+
 
 # Make debug the default build after any copies of it have been made.
 windows_debug_env.Append(BUILD_GROUPS = ['default'])

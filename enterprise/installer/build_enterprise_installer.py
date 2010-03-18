@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,14 +18,14 @@
 """Build an installer for use in enterprise situations.
 
   This module contains the functionality required to build enterprise
-  installers (msi's) for Omaha's various customers.
+  installers (MSIs) for Omaha's various customers.
 
   The supplied wxs templates need to have an XML extension because SCons
   tries to apply WiX building rules to any input file with the .wxs suffix.
 
   BuildGoogleUpdateFragment(): Build an update fragment into a .wixobj.
   GenerateNameBasedGUID(): Generate a GUID based on the names supplied.
-  BuildEnterpriseInstaller(): Build an msi installer for use in enterprises.
+  BuildEnterpriseInstaller(): Build an MSI installer for use in enterprises.
 """
 
 import binascii
@@ -45,7 +45,7 @@ def BuildGoogleUpdateFragment(env,
   """Build an update fragment into a WiX object.
 
     Takes a supplied wix fragment, and turns it into a .wixobj object for later
-    inclusion into an msi.
+    inclusion into an MSI.
 
   Args:
     env: environment to build with
@@ -104,18 +104,60 @@ def BuildGoogleUpdateFragment(env,
 
 
 def _BuildMsiForExe(env,
-                    enterprise_installer_dir,
                     product_name,
                     product_version,
+                    product_guid,
                     product_installer_path,
                     product_installer_install_command,
                     product_installer_disable_update_registration_arg,
-                    product_installer_uninstall_command,
+                    product_uninstaller_additional_args,
                     msi_base_name,
                     google_update_wixobj_output,
-                    metainstaller_path):
-  # metainstaller_path: path to the Omaha metainstaller. Should be same file
-  #     used for google_update_wixobj_output. Used only to force rebuilds.
+                    enterprise_installer_dir,
+                    uninstall_custom_action_dll_path,
+                    metainstaller_path,
+                    output_dir):
+  """Build an MSI installer for use in enterprise situations.
+
+    Builds an MSI for the executable installer at product_installer_path using
+    the supplied details. Requires an existing Google Update installer fragment
+    as well as a path to a custom action DLL containing the logic to launch the
+    product's uninstaller.
+
+    This is intended to enable enterprise installation scenarios.
+
+  Args:
+    env: environment to build with
+    product_name: name of the product being built
+    product_version: product version to be installed
+    product_guid: product's Omaha application ID
+    product_installer_path: path to specific product installer
+    product_installer_install_command: command line args used to run product
+        installer in 'install' mode
+    product_installer_disable_update_registration_arg: command line args used
+        to run product installer in 'do not register' mode
+    product_uninstaller_additional_args: extra command line parameters that the
+        custom action dll will pass on to the product uninstaller, typically
+        you'll want to pass any extra arguments that will force the uninstaller
+        to run silently here.
+    msi_base_name: root of name for the MSI
+    google_update_wixobj_output: the MSI fragment containing the Omaha
+        installer.
+    enterprise_installer_dir: path to dir which contains
+        enterprise_installer.wxs.xml
+    uninstall_custom_action_dll_path: path to the custom action
+        dll that exports an UninstallOmahaProduct method. This CA method will
+        find and execute the product's uninstaller.
+    metainstaller_path: path to the Omaha metainstaller. Should be same file
+        used for google_update_wixobj_output. Used only to force rebuilds.
+    output_dir: path to the directory that will contain the resulting MSI
+
+  Returns:
+    Nothing.
+
+  Raises:
+    Nothing.
+  """
 
   product_name_legal_identifier = product_name.replace(' ', '')
   msi_name = msi_base_name + '.msi'
@@ -146,13 +188,16 @@ def _BuildMsiForExe(env,
           '-dProductName=' + product_name,
           '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
           '-dProductVersion=' + product_version,
+          '-dProductGuid=' + product_guid,
           '-dProductInstallerPath=' + env.File(product_installer_path).abspath,
           '-dProductInstallerInstallCommand=' +
               product_installer_install_command,
           '-dProductInstallerDisableUpdateRegistrationArg=' +
               product_installer_disable_update_registration_arg,
-          '-dProductInstallerUninstallCommand=' +
-              product_installer_uninstall_command,
+          '-dUninstallCADll=' +
+              env.File(uninstall_custom_action_dll_path).abspath,
+          '-dProductUninstallerAdditionalArgs=' +
+              product_uninstaller_additional_args,
           '-dMsiProductId=' + msi_product_id,
           '-dMsiUpgradeCode=' + msi_upgradecode_guid,
           ],
@@ -166,15 +211,18 @@ def _BuildMsiForExe(env,
   # Force a rebuild when the installer or metainstaller changes.
   # The metainstaller change does not get passed through even though the .wixobj
   # file is rebuilt because the hash of the .wixobj does not change.
-  wix_env.Depends(wix_output,
-                  [product_installer_path, metainstaller_path])
+  # Also force a dependency on the CA DLL. Otherwise, it might not be built
+  # before the MSI.
+  wix_env.Depends(wix_output, [product_installer_path,
+                               metainstaller_path,
+                               uninstall_custom_action_dll_path])
 
   sign_output = wix_env.SignedBinary(
       target=msi_name,
       source=wix_output,
   )
 
-  env.Replicate('$STAGING_DIR', sign_output)
+  env.Replicate(output_dir, sign_output)
 
 
 def GenerateNameBasedGUID(namespace, name):
@@ -230,14 +278,16 @@ def BuildEnterpriseInstaller(env,
                              product_installer_path,
                              product_installer_install_command,
                              product_installer_disable_update_registration_arg,
-                             product_installer_uninstall_command,
+                             product_uninstaller_additional_args,
                              msi_base_name,
                              enterprise_installer_dir,
+                             uninstall_custom_action_dll_path,
                              metainstaller_path,
+                             output_dir = '$STAGING_DIR',
                              is_using_google_update_1_2_171_or_later=False):
   """Build an installer for use in enterprise situations.
 
-    Builds an msi using the supplied details and binaries. This msi is
+    Builds an MSI using the supplied details and binaries. This MSI is
     intended to enable enterprise installation scenarios.
 
   Args:
@@ -251,12 +301,18 @@ def BuildEnterpriseInstaller(env,
         installer in 'install' mode
     product_installer_disable_update_registration_arg: command line args used
         to run product installer in 'do not register' mode
-    product_installer_uninstall_command: command line args used to run product
-        installer in 'uninstall' mode
-    msi_base_name: root of name for the msi
+    product_uninstaller_additional_args: extra command line parameters that the
+        custom action dll will pass on to the product uninstaller, typically
+        you'll want to pass any extra arguments that will force the uninstaller
+        to run silently here.
+    msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_installer.wxs.xml
+    uninstall_custom_action_dll_path: path to the custom action
+        dll that exports an UninstallOmahaProduct method. This CA method will
+        find and execute the product's uninstaller.
     metainstaller_path: path to the Omaha metainstaller to include
+    output_dir: path to the directory that will contain the resulting MSI
 
   Returns:
     Nothing.
@@ -278,16 +334,19 @@ def BuildEnterpriseInstaller(env,
 
   _BuildMsiForExe(
       env,
-      enterprise_installer_dir,
       product_name,
       product_version,
+      product_guid,
       product_installer_path,
       product_installer_install_command,
       product_installer_disable_update_registration_arg,
-      product_installer_uninstall_command,
+      product_uninstaller_additional_args,
       msi_base_name,
       google_update_wixobj_output,
-      metainstaller_path)
+      enterprise_installer_dir,
+      uninstall_custom_action_dll_path,
+      metainstaller_path,
+      output_dir)
 
 def BuildEnterpriseInstallerFromStandaloneInstaller(
     env,
@@ -295,13 +354,15 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
     product_version,
     product_guid,
     product_custom_params,
+    product_uninstaller_additional_args,
     standalone_installer_path,
-    product_uninstall_command_line,
+    uninstall_custom_action_dll_path,
     msi_base_name,
-    enterprise_installer_dir):
+    enterprise_installer_dir,
+    output_dir = '$STAGING_DIR'):
   """Build an installer for use in enterprise situations.
 
-    Builds an msi around the supplied standalone installer. This msi is
+    Builds an MSI around the supplied standalone installer. This MSI is
     intended to enable enterprise installation scenarios while being as close
     to a normal install as possible. It does not suffer from the separation of
     Omaha and application install like the other methods do.
@@ -314,14 +375,18 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
     product_version: product version to be installed
     product_guid: product's Omaha application ID
     product_custom_params: custom values to be appended to the Omaha tag
+    product_uninstaller_additional_args: extra command line parameters that the
+        custom action dll will pass on to the product uninstaller, typically
+        you'll want to pass any extra arguments that will force the uninstaller
+        to run silently here.
     standalone_installer_path: path to product's standalone installer
-    product_uninstall_command_line: command line used to uninstall the product;
-        will be executed directly.
-        TODO(omaha): Change this to quiet_uninstall_args and append to uninstall
-        string found in registry. Requires a custom action DLL.
-    msi_base_name: root of name for the msi
+    uninstall_custom_action_dll_path: path to the custom action
+        dll that exports an UninstallOmahaProduct method. This CA method will
+        find and execute the product's uninstaller.
+    msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_standalone_installer.wxs.xml
+    output_dir: path to the directory that will contain the resulting MSI
 
   Returns:
     Nothing.
@@ -363,7 +428,10 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
           '-dProductCustomParams="%s"' % product_custom_params,
           '-dStandaloneInstallerPath=' + (
               env.File(standalone_installer_path).abspath),
-          '-dProductUninstallCommandLine=' + product_uninstall_command_line,
+          '-dUninstallCADll=' +
+              env.File(uninstall_custom_action_dll_path).abspath,
+          '-dProductUninstallerAdditionalArgs=' +
+              product_uninstaller_additional_args,
           '-dMsiProductId=' + msi_product_id,
           '-dMsiUpgradeCode=' + msi_upgradecode_guid,
           ],
@@ -377,11 +445,14 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   # Force a rebuild when the standalone installer changes.
   # The metainstaller change does not get passed through even though the .wixobj
   # file is rebuilt because the hash of the .wixobj does not change.
-  wix_env.Depends(wix_output, standalone_installer_path)
+  # Also force a dependency on the CA DLL. Otherwise, it might not be built
+  # before the MSI.
+  wix_env.Depends(wix_output, [standalone_installer_path,
+                               uninstall_custom_action_dll_path])
 
   sign_output = wix_env.SignedBinary(
       target=msi_name,
       source=wix_output,
   )
 
-  env.Replicate('$STAGING_DIR', sign_output)
+  env.Replicate(output_dir, sign_output)

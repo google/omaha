@@ -65,10 +65,6 @@ TEST(ExtractorTest, EmbedExtract) {
                                     strlen(kTagString),
                                     tagged_file,
                                     false));
-// TODO(omaha): Remove the ifdef when signing occurs after instrumentation.
-#ifdef COVERAGE_ENABLED
-  std::wcout << _T("\tTest does not run in coverage builds.") << std::endl;
-#else
   ASSERT_SUCCEEDED(tag.EmbedTagString());
   ON_SCOPE_EXIT(::DeleteFile, tagged_file);
 
@@ -83,7 +79,6 @@ TEST(ExtractorTest, EmbedExtract) {
   ASSERT_EQ(tag_buffer_size, arraysize(kTagString));
   ASSERT_EQ(memcmp(tag_buffer, kTagString, arraysize(kTagString)), 0);
   extractor.CloseFile();
-#endif
 }
 
 TEST(ExtractorTest, EmbedAppendExtract) {
@@ -100,10 +95,6 @@ TEST(ExtractorTest, EmbedAppendExtract) {
   // No tag string in the original exe file.
   int tag_buffer_size = 0;
   ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
-// TODO(omaha): Remove the ifdef when signing occurs after instrumentation.
-#ifdef COVERAGE_ENABLED
-  std::wcout << _T("\tTest does not run in coverage builds.") << std::endl;
-#else
   ASSERT_GT(extractor.cert_length(), 0);
   ASSERT_EQ(tag_buffer_size, 0);
   extractor.CloseFile();
@@ -167,7 +158,6 @@ TEST(ExtractorTest, EmbedAppendExtract) {
                    expected_tag_string,
                    expected_tag_string_len),
             0);
-#endif
   extractor.CloseFile();
 }
 
@@ -185,10 +175,6 @@ TEST(ExtractorTest, AlreadyTaggedError) {
   // No tag string in the original exe file.
   int tag_buffer_size = 0;
   ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
-// TODO(omaha): Remove the ifdef when signing occurs after instrumentation.
-#ifdef COVERAGE_ENABLED
-  std::wcout << _T("\tTest does not run in coverage builds.") << std::endl;
-#else
   ASSERT_GT(extractor.cert_length(), 0);
   ASSERT_EQ(tag_buffer_size, 0);
   extractor.CloseFile();
@@ -220,7 +206,6 @@ TEST(ExtractorTest, AlreadyTaggedError) {
                                      false));
   ASSERT_EQ(tag2.EmbedTagString(), APPLYTAG_E_ALREADY_TAGGED);
   ON_SCOPE_EXIT(::DeleteFile, tagged_appended_file);
-#endif
   extractor.CloseFile();
 }
 

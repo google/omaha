@@ -111,13 +111,13 @@ bool IsDiskExternal(const TCHAR *drive) {
   byte buffer[kIoctlBufferSize+1];
 
   bool external = false;
-  HANDLE device = CreateFile(drive,
-                             GENERIC_READ,
-                             FILE_SHARE_READ | FILE_SHARE_WRITE,
-                             NULL,
-                             OPEN_EXISTING,
-                             NULL,
-                             NULL);
+  HANDLE device = ::CreateFile(drive,
+                               GENERIC_READ,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE,
+                               NULL,
+                               OPEN_EXISTING,
+                               NULL,
+                               NULL);
   if (device == INVALID_HANDLE_VALUE) {
       UTIL_LOG(L1, (L"disk external could not open drive %s", drive));
       goto done;
@@ -284,6 +284,7 @@ HRESULT HasEnoughFreeDiskSpace(const TCHAR* folder, uint64 disk_space_needed) {
   return S_OK;
 }
 
+// The ::CreateFile() call will fail for mapped local drives (subst).
 bool IsHotPluggable(const TCHAR* drive) {
   ASSERT(drive, (L""));
 
@@ -302,9 +303,9 @@ bool IsHotPluggable(const TCHAR* drive) {
     // We don't want the trailing backslash.
     volume_path.Append(drive, 2);
 
-    CHandle volume(CreateFile(volume_path, GENERIC_READ,
-                              FILE_SHARE_READ | FILE_SHARE_WRITE,
-                              NULL, OPEN_EXISTING, 0, NULL));
+    CHandle volume(::CreateFile(volume_path, GENERIC_READ,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                NULL, OPEN_EXISTING, 0, NULL));
 
     if (volume != INVALID_HANDLE_VALUE) {
       STORAGE_HOTPLUG_INFO shi = {0};
@@ -314,7 +315,11 @@ bool IsHotPluggable(const TCHAR* drive) {
                             &shi, sizeof(STORAGE_HOTPLUG_INFO), &bytes_returned,
                             NULL)) {
           ret = (shi.DeviceHotplug != false);
-        }
+      } else {
+        UTIL_LOG(LW, (_T("[::DeviceIoControl failed][%u]"), ::GetLastError()));
+      }
+    } else {
+      UTIL_LOG(LW, (_T("[::CreateFile failed][%u]"), ::GetLastError()));
     }
   } else {
     ASSERT(false, (L"Invalid path"));
@@ -393,4 +398,3 @@ HRESULT DevicePathToDosPath(const TCHAR* device_path, CString* dos_path) {
 }
 
 }  // namespace omaha
-

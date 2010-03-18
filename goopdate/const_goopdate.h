@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,6 +94,11 @@ const TCHAR* const kRegValueInstallationId   = _T("iid");
 const TCHAR* const kRegValueOemInstall       = _T("oeminstall");
 const TCHAR* const kRegValueReferralId       = _T("referral");
 
+// This two registries hold client UTC timestamp of server's midnight of the day
+// that last active ping/roll call happened.
+const TCHAR* const kRegValueActivePingDayStartSec = _T("ActivePingDayStartSec");
+const TCHAR* const kRegValueRollCallDayStartSec   = _T("RollCallDayStartSec");
+
 // Registry values stored in the ClientState key related to Omaha's actions.
 // A "successful check" means "noupdate" received from the server or an update
 // was successfully applied.
@@ -117,10 +122,8 @@ const TCHAR* const kRegValueServiceName           = _T("gupdate_service_name");
 const TCHAR* const kRegValueTaskNameC             = _T("gupdate_task_name_c");
 const TCHAR* const kRegValueTaskNameUA            = _T("gupdate_task_name_ua");
 const TCHAR* const kRegValueLastChecked           = _T("LastChecked");
-const TCHAR* const kRegValueMachineId             = _T("mi");
 const TCHAR* const kRegValueOemInstallTimeSec     = _T("OemInstallTime");
 const TCHAR* const kRegValueInstalledPath         = _T("path");
-const TCHAR* const kRegValueUserId                = _T("ui");
 const TCHAR* const kRegValueSelfUpdateExtraCode1  = _T("UpdateCode1");
 const TCHAR* const kRegValueSelfUpdateErrorCode   = _T("UpdateError");
 const TCHAR* const kRegValueSelfUpdateVersion     = _T("UpdateVersion");
@@ -163,6 +166,16 @@ const int kWorkerStartEventId        = 14;
 
 // Network Request events.
 const int kNetworkRequestEventId     = 20;
+
+// Maximum value the server can respond for elapsed_seconds attribute in
+// <daystart ...> element. The value is one day plus an hour ("fall back"
+// daylight savings).
+const int kMaxTimeSinceMidnightSec   = ((24 + 1) * 60 * 60);
+
+// Maximum time to keep the Installation ID. If the app was installed longer
+// than this time ago, the Installation ID will be deleted regardless of
+// whether the application has been run or not.
+const int kMaxLifeOfInstallationIDSec = (7 * 24 * 60 * 60);  // 7 days
 
 }  // namespace omaha
 

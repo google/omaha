@@ -43,10 +43,10 @@ namespace {
 // ERROR_INSTALL_ALREADY_RUNNING. We exponentially backoff from this value.
 // Note that there is an additional delay for the MSI call, so the tries may
 // be a few seconds further apart.
-int kMsiAlreadyRunningRetryDelayBaseMs = 5000;
+const int kMsiAlreadyRunningRetryDelayBaseMs = 5000;
 // Number of retries. Updates are silent so we can wait longer.
-int kNumMsiAlreadyRunningInteractiveMaxTries = 4;  // Up to 35 seconds.
-int kNumMsiAlreadyRunningSilentMaxTries      = 7;  // Up to 6.25 minutes.
+const int kNumMsiAlreadyRunningInteractiveMaxTries = 4;  // Up to 35 seconds.
+const int kNumMsiAlreadyRunningSilentMaxTries      = 7;  // Up to 6.25 minutes.
 
 // Interval to wait for installer completion.
 const int kInstallManagerCompleteIntervalMs = 15 * 60 * 1000;

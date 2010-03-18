@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -122,16 +122,6 @@ HRESULT InitializeSecurity();
 // Gets the product name for a app guid.
 CString GetProductName(const CString& app_guid);
 
-// Returns the userId that is stored in the registry. If the user id is
-// not present in the registry, then the id is generated and saved in the
-// registry for future use.
-CString GetPersistentUserId(const CString& key_name);
-
-// Returns the machine id that is stored in the registry. If there is no
-// machine id in the registry, then it creates one and stores in the
-// registry.
-CString GetPersistentMachineId();
-
 // Returns true if it is a development or test machine.
 bool IsTestSource();
 
@@ -145,6 +135,8 @@ HRESULT BuildHttpGetString(const CString& url,
                            const CString& goopdate_version,
                            bool is_machine,
                            const CString& language,
+                           const GUID& iid,
+                           const CString& brand_code,
                            const CString& source_id,
                            CString* get_request);
 
@@ -296,12 +288,6 @@ HRESULT ReadPersistentId(const CString& key_name,
 
 // Obtains the OS version and service pack.
 HRESULT GetOSInfo(CString* os_version, CString* service_pack);
-
-// Starts the default browser and navigates to a help center page
-// corresponding to the address and the exception code of the crash.
-HRESULT ShowUserCrashPage(const CString& language,
-                          uint64 address,
-                          uint32 code);
 
 // Returns the install directory for the specified version.
 CPath BuildInstallDirectory(bool is_machine, const CString& version);

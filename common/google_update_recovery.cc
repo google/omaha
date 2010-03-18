@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,22 +40,18 @@ const TCHAR* const kUserRepairArgs = _T("/recover");
 // we check in the lib.
 const TCHAR* const kQueryStringFormat =
     _T("?appid=%s&appversion=%s&applang=%s&machine=%u")
-    _T("&version=%s&machineid=%s&userid=%s")
-    _T("&osversion=%s&servicepack=%s");
+    _T("&version=%s&osversion=%s&servicepack=%s");
 
 // Information about where to obtain Omaha info.
 // This must never change in Omaha.
 const TCHAR* const kRegValueProductVersion  = _T("pv");
-const TCHAR* const kRegValueUserId          = _T("ui");
-const TCHAR* const kRegValueMachineId       = _T("mi");
 const TCHAR* const kRelativeGoopdateRegPath = _T("Software\\Google\\Update\\");
 const TCHAR* const kRelativeClientsGoopdateRegPath =
     _T("Software\\Google\\Update\\Clients\\")
     _T("{430FD4D0-B729-4F61-AA34-91526481799D}");
 
 // Starts another process via ::CreateProcess.
-HRESULT StartProcess(const TCHAR* process_name,
-                     TCHAR* command_line) {
+HRESULT StartProcess(const TCHAR* process_name, TCHAR* command_line) {
   if (!process_name && !command_line) {
     return E_INVALIDARG;
   }
@@ -336,10 +332,8 @@ HRESULT GetRegDwordValue(bool is_machine_key,
 // Attempts to obtain as much information as possible even if errors occur.
 // Therefore, return values of GetRegStringValue are ignored.
 HRESULT GetOmahaInformation(bool is_machine_app,
-                            CString* omaha_version,
-                            CString* machine_id,
-                            CString* user_id) {
-  if (!omaha_version || !machine_id || !user_id) {
+                            CString* omaha_version) {
+  if (!omaha_version) {
     return E_INVALIDARG;
   }
 
@@ -349,16 +343,6 @@ HRESULT GetOmahaInformation(bool is_machine_app,
                                omaha_version))) {
     *omaha_version = _T("0.0.0.0");
   }
-
-  GetRegStringValue(true,  // Machine ID is always in HKLM.
-                    kRelativeGoopdateRegPath,
-                    kRegValueMachineId,
-                    machine_id);
-
-  GetRegStringValue(is_machine_app,
-                    kRelativeGoopdateRegPath,
-                    kRegValueUserId,
-                    user_id);
 
   return S_OK;
 }
@@ -377,9 +361,7 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
   }
 
   CString omaha_version;
-  CString machine_id;
-  CString user_id;
-  GetOmahaInformation(is_machine_app, &omaha_version, &machine_id, &user_id);
+  GetOmahaInformation(is_machine_app, &omaha_version);
 
   CString os_version;
   CString os_service_pack;
@@ -390,16 +372,12 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
   CString app_version_escaped;
   CString app_language_escaped;
   CString omaha_version_escaped;
-  CString machine_id_escaped;
-  CString user_id_escaped;
   CString os_version_escaped;
   CString os_service_pack_escaped;
   StringEscape(app_guid, true, &app_guid_escaped);
   StringEscape(app_version, true, &app_version_escaped);
   StringEscape(app_language, true, &app_language_escaped);
   StringEscape(omaha_version, true, &omaha_version_escaped);
-  StringEscape(machine_id, true, &machine_id_escaped);
-  StringEscape(user_id, true, &user_id_escaped);
   StringEscape(os_version, true, &os_version_escaped);
   StringEscape(os_service_pack, true, &os_service_pack_escaped);
 
@@ -409,8 +387,6 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
                 app_language_escaped,
                 is_machine_app ? 1 : 0,
                 omaha_version_escaped,
-                machine_id_escaped,
-                user_id_escaped,
                 os_version_escaped,
                 os_service_pack_escaped);
 
@@ -508,7 +484,7 @@ HRESULT VerifyFileSignature(const CString& filename) {
     return hr;
   }
 
-  // Verify that there is a Google certificate and that it has not expired.
+  // Verify that there is a Google certificate.
   if (!VerifySigneeIsGoogle(filename)) {
     return CERT_E_CN_NO_MATCH;
   }

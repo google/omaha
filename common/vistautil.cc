@@ -23,6 +23,7 @@
 #include <shlobj.h>
 #include "base/scoped_ptr.h"
 #include "omaha/common/debug.h"
+#include "omaha/common/error.h"
 #include "omaha/common/logging.h"
 #include "omaha/common/process.h"
 #include "omaha/common/reg_key.h"
@@ -237,18 +238,21 @@ bool IsVistaOrLater() {
   return is_vista;
 }
 
-bool IsUserRunningSplitToken() {
+HRESULT IsUserRunningSplitToken(bool* is_split_token) {
+  ASSERT1(is_split_token);
+
   if (!IsVistaOrLater()) {
-    return false;
+    *is_split_token = false;
+    return S_OK;
   }
 
   scoped_handle process_token;
-  if (!::OpenProcessToken(GetCurrentProcess(),
+  if (!::OpenProcessToken(::GetCurrentProcess(),
                           TOKEN_QUERY,
                           address(process_token))) {
-    HRESULT hr = HRESULT_FROM_WIN32(::GetLastError());
+    HRESULT hr = HRESULTFromLastError();
     UTIL_LOG(L1, (_T("[OpenProcessToken failed][0x%x]"), hr));
-    return false;
+    return hr;
   }
 
   TOKEN_ELEVATION_TYPE elevation_type = TokenElevationTypeDefault;
@@ -258,13 +262,16 @@ bool IsUserRunningSplitToken() {
                              &elevation_type,
                              sizeof(elevation_type),
                              &size_returned)) {
-    HRESULT hr = HRESULT_FROM_WIN32(::GetLastError());
+    HRESULT hr = HRESULTFromLastError();
     UTIL_LOG(L1, (_T("[GetTokenInformation failed][0x%x]"), hr));
-    return false;
+    return hr;
   }
 
-  return (elevation_type == TokenElevationTypeFull ||
-          elevation_type == TokenElevationTypeLimited);
+  *is_split_token = elevation_type == TokenElevationTypeFull ||
+                    elevation_type == TokenElevationTypeLimited;
+  ASSERT1(*is_split_token || elevation_type == TokenElevationTypeDefault);
+
+  return S_OK;
 }
 
 bool IsUACDisabled() {
@@ -272,24 +279,21 @@ bool IsUACDisabled() {
     return false;
   }
 
-  if (IsUserRunningSplitToken()) {
-    // Split token indicates that UAC is on.
+  // Split token indicates that UAC is on.
+  bool is_split_token = true;
+  if SUCCEEDED(IsUserRunningSplitToken(&is_split_token)) {
+    return !is_split_token;
+  } else {
+    // Return a safe value on failure.
     return false;
   }
-
-  const TCHAR* key_name = _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\")
-                          _T("CurrentVersion\\Policies\\System");
-
-  DWORD val = 1;    // Assume UAC is enabled.
-  return SUCCEEDED(RegKey::GetValue(key_name, _T("EnableLUA"), &val)) && !val;
 }
-
 
 HRESULT RunElevated(const TCHAR* file_path,
                     const TCHAR* parameters,
                     int show_window,
                     DWORD* exit_code) {
-  OPT_LOG(L1, (_T("[Running elevated][%s][%s]"), file_path, parameters));
+  UTIL_LOG(L1, (_T("[Running elevated][%s][%s]"), file_path, parameters));
 
   SHELLEXECUTEINFO shell_execute_info;
   shell_execute_info.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -334,7 +338,7 @@ HRESULT GetProcessIntegrityLevel(DWORD process_id, MANDATORY_LEVEL* level) {
     return E_NOTIMPL;
 
   if (process_id == 0)
-    process_id = GetCurrentProcessId();
+    process_id = ::GetCurrentProcessId();
 
   HRESULT result = E_FAIL;
   HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, process_id);
@@ -504,6 +508,67 @@ CSecurityDesc* CreateLowIntegritySecurityDesc(ACCESS_MASK mask) {
 
 CSecurityDesc* CreateMediumIntegritySecurityDesc(ACCESS_MASK mask) {
   return BuildSecurityDescriptor(MEDIUM_INTEGRITY_SDDL_SACL, mask);
+}
+
+HRESULT AddLowIntegritySaclToExistingDesc(CSecurityDesc* sd) {
+  ASSERT1(sd);
+  ASSERT1(sd->GetPSECURITY_DESCRIPTOR());
+
+  if (!IsVistaOrLater()) {
+    return S_FALSE;
+  }
+
+  CSecurityDesc sd_low;
+  if (!sd_low.FromString(LOW_INTEGRITY_SDDL_SACL)) {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LE, (_T("[Failed to parse LOW_INTEGRITY_SDDL_SACL][0x%x]"), hr));
+    return hr;
+  }
+
+  // Atl::CSacl does not support SYSTEM_MANDATORY_LABEL_ACE_TYPE.
+  BOOL sacl_present = FALSE;
+  BOOL sacl_defaulted = FALSE;
+  PACL sacl = NULL;
+  if (!::GetSecurityDescriptorSacl(
+             const_cast<SECURITY_DESCRIPTOR*>(sd_low.GetPSECURITY_DESCRIPTOR()),
+             &sacl_present,
+             &sacl,
+             &sacl_defaulted) ||
+      !sacl) {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LE, (_T("[Failed to get the low integrity SACL][0x%x]"), hr));
+    return hr;
+  }
+
+  ACL_SIZE_INFORMATION acl_size = {0};
+  if (!::GetAclInformation(sacl,
+                           &acl_size,
+                           sizeof(acl_size),
+                           AclSizeInformation)) {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LE, (_T("[Failed to get AclSizeInformation][0x%x]"), hr));
+    return hr;
+  }
+
+  // The CSecurityDesc destructor expects the memory to have been malloced.
+  PACL new_sacl = static_cast<PACL>(malloc(acl_size.AclBytesInUse));
+  ::CopyMemory(new_sacl, sacl, acl_size.AclBytesInUse);
+
+  CSacl sacl_empty;
+  sd->SetSacl(sacl_empty);
+
+  if (!::SetSecurityDescriptorSacl(
+             const_cast<SECURITY_DESCRIPTOR*>(sd->GetPSECURITY_DESCRIPTOR()),
+             sacl_present,
+             new_sacl,
+             sacl_defaulted))  {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LE, (_T("[Failed to set the low integrity SACL][0x%x]"), hr));
+    free(new_sacl);
+    return hr;
+  }
+
+  return S_OK;
 }
 
 }  // namespace vista_util

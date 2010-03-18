@@ -1,4 +1,4 @@
-// Copyright 2004-2009 Google Inc.
+// Copyright 2004-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,11 +33,10 @@ namespace omaha {
 namespace user_info {
 
 HRESULT GetCurrentUser(CString* name, CString* domain, CString* sid) {
-  CAccessToken token;
   CSid current_sid;
-  if (!token.GetProcessToken(TOKEN_QUERY) || !token.GetUser(&current_sid)) {
-    HRESULT hr = HRESULTFromLastError();
-    ASSERT(false, (_T("[Failed to get current user sid[0x%x]"), hr));
+
+  HRESULT hr = GetCurrentUserSid(&current_sid);
+  if (FAILED(hr)) {
     return hr;
   }
 
@@ -50,6 +49,19 @@ HRESULT GetCurrentUser(CString* name, CString* domain, CString* sid) {
   if (domain != NULL) {
     *domain = current_sid.Domain();
   }
+  return S_OK;
+}
+
+HRESULT GetCurrentUserSid(CSid* sid) {
+  ASSERT1(sid);
+
+  CAccessToken token;
+  if (!token.GetProcessToken(TOKEN_QUERY) || !token.GetUser(sid)) {
+    HRESULT hr = HRESULTFromLastError();
+    ASSERT(false, (_T("[Failed to get current user SID][0x%x]"), hr));
+    return hr;
+  }
+
   return S_OK;
 }
 

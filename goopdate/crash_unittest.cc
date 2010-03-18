@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,11 @@
 #include "omaha/common/const_object_names.h"
 #include "omaha/common/file.h"
 #include "omaha/common/scoped_any.h"
+#include "omaha/common/time.h"
 #include "omaha/common/user_info.h"
 #include "omaha/common/utils.h"
-#include "omaha/common/time.h"
+#include "omaha/common/vistautil.h"
+#include "omaha/goopdate/goopdate_utils.h"
 #include "omaha/testing/unit_test.h"
 
 // TODO(omaha): Modify the tests to avoid writing files to the staging
@@ -35,6 +37,14 @@ using google_breakpad::CustomInfoEntry;
 using google_breakpad::ExceptionHandler;
 
 namespace omaha {
+
+namespace {
+
+const TCHAR kMiniDumpFilename[]     = _T("minidump.dmp");
+const TCHAR kCustomInfoFilename[]   = _T("minidump.txt");
+const TCHAR kTestFilenamePattern[]  = _T("minidump.*");
+
+}  // namespace
 
 class CrashTest : public testing::Test {
  protected:
@@ -51,11 +61,12 @@ class CrashTest : public testing::Test {
 
   static void CallbackHelper(const wchar_t* dump_path,
                              const wchar_t* minidump_id) {
+    CString postfix_string(kCrashVersionPostfixString);
+    postfix_string.Append(_T(".ut"));
     CString crash_filename;
     crash_filename.Format(_T("%s\\%s.dmp"), dump_path, minidump_id);
-    Crash::set_max_reports_per_day(omaha::kCrashReportMaxReportsPerDay);
-    Crash::set_version_postfix(omaha::kCrashVersionPostfixString);
-    Crash::set_guid(_T("UNIT_TEST"));
+    Crash::set_max_reports_per_day(kMaxReportsPerDayFromUnittests);
+    Crash::set_version_postfix(postfix_string);
     Crash::set_crash_report_url(kUrlCrashReport);
     EXPECT_SUCCEEDED(Crash::Report(true, crash_filename, CString(), false));
   }
@@ -75,22 +86,66 @@ class CrashTest : public testing::Test {
     return true;
   }
 
+  static void BuildPipeSecurityAttributesTest(bool is_machine) {
+    CSecurityAttributes pipe_sec_attrs;
+    EXPECT_TRUE(
+        Crash::BuildPipeSecurityAttributes(is_machine, &pipe_sec_attrs));
+    LPVOID sec_desc(pipe_sec_attrs.lpSecurityDescriptor);
+    CSecurityDesc sd1(*reinterpret_cast<SECURITY_DESCRIPTOR*>(sec_desc));
+    CString sddl1;
+
+    sd1.ToString(&sddl1, OWNER_SECURITY_INFORMATION |
+                         GROUP_SECURITY_INFORMATION |
+                         DACL_SECURITY_INFORMATION  |
+                         SACL_SECURITY_INFORMATION  |
+                         LABEL_SECURITY_INFORMATION);
+
+    CSecurityDesc sd2;
+    EXPECT_TRUE(Crash::AddPipeSecurityDaclToDesc(is_machine, &sd2));
+    EXPECT_HRESULT_SUCCEEDED(
+        vista_util::AddLowIntegritySaclToExistingDesc(&sd2));
+
+    CString sddl2;
+    sd2.ToString(&sddl2, OWNER_SECURITY_INFORMATION |
+                         GROUP_SECURITY_INFORMATION |
+                         DACL_SECURITY_INFORMATION  |
+                         SACL_SECURITY_INFORMATION  |
+                         LABEL_SECURITY_INFORMATION);
+
+    EXPECT_STREQ(sddl2, sddl1);
+
+    if (vista_util::IsVistaOrLater()) {
+      // The low integrity SACL is at the end of the SDDL string.
+      EXPECT_STREQ(LOW_INTEGRITY_SDDL_SACL,
+                   sddl1.Right(arraysize(LOW_INTEGRITY_SDDL_SACL) - 1));
+    }
+  }
+
+
+  static HRESULT StartSenderWithCommandLine(CString* cmd_line) {
+    return Crash::StartSenderWithCommandLine(cmd_line);
+  }
+
   CString module_dir_;
+
+  static const int kMaxReportsPerDayFromUnittests = INT_MAX;
 };
 
 TEST_F(CrashTest, CreateCustomInfoFile) {
+  CString expected_custom_info_file_path;
+  expected_custom_info_file_path.Format(_T("%s\\%s"),
+                                        module_dir_, kCustomInfoFilename);
+
+  CString crash_filename;
+  crash_filename.Format(_T("%s\\%s"), module_dir_, kMiniDumpFilename);
   CustomInfoEntry info_entry(_T("foo"), _T("bar"));
   CustomClientInfo custom_client_info = {&info_entry, 1};
-
-  CString crash_filename, custom_info_filename;
-  crash_filename.Format(_T("%s\\%s"), module_dir_, _T("minidump.dmp"));
-  custom_info_filename.Format(_T("%s\\%s"), module_dir_, _T("minidump.txt"));
 
   CString actual_custom_info_filepath;
   EXPECT_SUCCEEDED(Crash::CreateCustomInfoFile(crash_filename,
                                                custom_client_info,
                                                &actual_custom_info_filepath));
-  EXPECT_STREQ(custom_info_filename, actual_custom_info_filepath);
+  EXPECT_STREQ(expected_custom_info_file_path, actual_custom_info_filepath);
   EXPECT_TRUE(File::Exists(actual_custom_info_filepath));
   EXPECT_TRUE(::DeleteFile(actual_custom_info_filepath));
 
@@ -103,8 +158,8 @@ TEST_F(CrashTest, CreateCustomInfoFile) {
 
 // Tests sending an Omaha crash.
 TEST_F(CrashTest, Report_OmahaCrash) {
-  CString crash_filename, custom_info_filename;
-  crash_filename.Format(_T("%s\\%s"), module_dir_, _T("minidump.dmp"));
+  CString crash_filename;
+  crash_filename.Format(_T("%s\\%s"), module_dir_, kMiniDumpFilename);
 
   ::DeleteFile(crash_filename);
 
@@ -116,7 +171,7 @@ TEST_F(CrashTest, Report_OmahaCrash) {
   test_dir.Format(_T("%s\\unittest_support"), module_dir_);
   ASSERT_SUCCEEDED(File::CopyWildcards(test_dir,          // From.
                                        module_dir_,       // To.
-                                       _T("minidump.*"),
+                                       kTestFilenamePattern,
                                        true));
 
   ASSERT_TRUE(File::Exists(crash_filename));
@@ -130,9 +185,10 @@ TEST_F(CrashTest, Report_OmahaCrash) {
 // Tests sending an out-of-process crash.
 // This test will write an entry with the source "Update2" in the Event Log.
 TEST_F(CrashTest, Report_ProductCrash) {
-  CString crash_filename, custom_info_filename;
-  crash_filename.Format(_T("%s\\%s"), module_dir_, _T("minidump.dmp"));
-  custom_info_filename.Format(_T("%s\\%s"), module_dir_, _T("minidump.txt"));
+  CString crash_filename;
+  CString custom_info_filename;
+  crash_filename.Format(_T("%s\\%s"), module_dir_, kMiniDumpFilename);
+  custom_info_filename.Format(_T("%s\\%s"), module_dir_, kCustomInfoFilename);
 
   ::DeleteFile(crash_filename);
   ::DeleteFile(custom_info_filename);
@@ -145,7 +201,7 @@ TEST_F(CrashTest, Report_ProductCrash) {
   test_dir.Format(_T("%s\\unittest_support"), module_dir_);
   ASSERT_SUCCEEDED(File::CopyWildcards(test_dir,          // From.
                                        module_dir_,       // To.
-                                       _T("minidump.*"),
+                                       kTestFilenamePattern,
                                        true));
 
   ASSERT_TRUE(File::Exists(crash_filename));
@@ -167,10 +223,9 @@ TEST_F(CrashTest, WriteMinidump) {
                                               NULL));
 }
 
-// Tests the retrieval of the exception information from an existing minidump.
+// Tests the retrieval of the exception information from an existing mini dump.
 TEST_F(CrashTest, GetExceptionInfo) {
-  const TCHAR kMiniDumpFilename[] = _T("minidump.dmp");
-  const uint32 kExceptionAddress  = 0x10001240;
+  const uint32 kExceptionAddress  = 0x12345670;
   const uint32 kExceptionCode     = 0xc0000005;
 
   CString filename;
@@ -178,8 +233,8 @@ TEST_F(CrashTest, GetExceptionInfo) {
                         module_dir_, kMiniDumpFilename);
   MINIDUMP_EXCEPTION ex_info = {0};
   ASSERT_SUCCEEDED(Crash::GetExceptionInfo(filename, &ex_info));
-  EXPECT_EQ(ex_info.ExceptionAddress, kExceptionAddress);
-  EXPECT_EQ(ex_info.ExceptionCode, kExceptionCode);
+  EXPECT_EQ(kExceptionAddress, ex_info.ExceptionAddress);
+  EXPECT_EQ(kExceptionCode, ex_info.ExceptionCode);
 }
 
 TEST_F(CrashTest, IsCrashReportProcess) {
@@ -210,11 +265,8 @@ TEST_F(CrashTest, GetProductName) {
 
 TEST_F(CrashTest, SaveLastCrash) {
   // Copy a test file into the module directory to use as a crash file.
-  const TCHAR kMiniDumpFilename[] = _T("minidump.dmp");
-
   CString test_file;    // The unit test support file.
   CString crash_file;   // The crash file to be backed up.
-
   test_file.AppendFormat(_T("%s\\unittest_support\\%s"),
                          module_dir_, kMiniDumpFilename);
   crash_file.AppendFormat(_T("%s\\%s"), Crash::crash_dir_, kMiniDumpFilename);
@@ -256,11 +308,8 @@ TEST_F(CrashTest, StartServer) {
 
 TEST_F(CrashTest, CleanStaleCrashes) {
   // Copy a test file into the module directory to use as a crash file.
-  const TCHAR kMiniDumpFilename[] = _T("minidump.dmp");
-
   CString test_file;    // The unit test support file.
   CString crash_file;   // The crash file to be backed up.
-
   test_file.AppendFormat(_T("%s\\unittest_support\\%s"),
                          module_dir_, kMiniDumpFilename);
   crash_file.AppendFormat(_T("%s\\%s.dmp"),
@@ -292,6 +341,26 @@ TEST_F(CrashTest, CleanStaleCrashes) {
 TEST_F(CrashTest, InstallCrashHandler) {
   EXPECT_HRESULT_SUCCEEDED(Crash::InstallCrashHandler(false));
   Crash::UninstallCrashHandler();
+}
+
+// Makes sure that the security descriptor that BuildPipeSecurityAttributes
+// creates matches the security descriptor built by adding the DACL first, and
+// then using AddLowIntegritySaclToExistingDesc(). The latter method uses an
+// approach similar to what is documented in MSDN:
+// http://msdn.microsoft.com/en-us/library/bb625960.aspx
+//
+// Also, makes sure that the security descriptor that
+// BuildPipeSecurityAttributes creates has the low integrity SACL within it.
+TEST_F(CrashTest, BuildPipeSecurityAttributes) {
+  BuildPipeSecurityAttributesTest(true);
+  BuildPipeSecurityAttributesTest(false);
+}
+
+TEST_F(CrashTest, StartSenderWithCommandLine) {
+  // Negative test.
+  CString filename(_T(""));
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            StartSenderWithCommandLine(&filename));
 }
 
 }  // namespace omaha

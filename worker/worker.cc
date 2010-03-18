@@ -32,6 +32,7 @@
 #include "omaha/common/error.h"
 #include "omaha/common/firewall_product_detection.h"
 #include "omaha/common/logging.h"
+#include "omaha/common/module_utils.h"
 #include "omaha/common/omaha_version.h"
 #include "omaha/common/reactor.h"
 #include "omaha/common/scope_guard.h"
@@ -141,6 +142,43 @@ class ErrorWndEvents : public ProgressWndEvents {
   }
 };
 
+// Users with UAC disabled may need to be updated to a new build in 2010. Set
+// the ap so we can make sure they get updated. See http://b/2194722.
+// Do not replace any existing APs.
+// TODO(omaha): Remove this code after June 2010.
+void Set2010UpdateAp(bool is_machine) {
+  const TCHAR* const k2010UpdateAp = _T("2010update");
+  // Only shell 1.2.131.7 is affected.
+  const ULONGLONG kAffectedShellVersion = 0x0001000200830007;
+
+  if (!vista_util::IsVistaOrLater()) {
+    return;
+  }
+
+  if (!vista_util::IsUACDisabled()) {
+    return;
+  }
+
+  const CString key =
+      ConfigManager::Instance()->registry_client_state_goopdate(is_machine);
+
+  if (RegKey::HasValue(key, kRegValueAdditionalParams)) {
+    return;
+  }
+
+  CString shell_path;
+  if (FAILED(GetModuleFileName(NULL, &shell_path))) {
+    return;
+  }
+
+  if (app_util::GetVersionFromFile(shell_path) != kAffectedShellVersion) {
+    return;
+  }
+
+  VERIFY1(SUCCEEDED(
+      RegKey::SetValue(key, kRegValueAdditionalParams, k2010UpdateAp)));
+}
+
 }  // namespace
 
 namespace internal {
@@ -221,6 +259,7 @@ void SendSelfUpdateFailurePing(bool is_machine) {
   HRESULT hr = ping_utils::SendGoopdatePing(
       is_machine,
       CommandLineExtraArgs(),
+      _T(""),
       PingEvent::EVENT_SETUP_UPDATE_FAILURE,
       self_update_error_code,
       self_update_extra_code1,
@@ -422,6 +461,8 @@ HRESULT Worker::InitializeUI() {
   ASSERT1(!args_.extra.apps.empty());
   progress_wnd_->set_product_name(GetPrimaryJobInfo().app_name);
   progress_wnd_->set_product_guid(GetPrimaryJobInfo().app_guid);
+  progress_wnd_->set_iid(args_.extra.installation_id);
+  progress_wnd_->set_brand_code(args_.extra.brand_code);
 
   JobObserverCallMethodDecorator* decorator =
       new JobObserverCallMethodDecorator(progress_wnd_.get());
@@ -665,6 +706,7 @@ HRESULT Worker::HandleSetupError(HRESULT error, int extra_code1) {
   HRESULT hr_ping = ping_utils::SendGoopdatePing(
       is_machine_,
       args().extra,
+      args().install_source,
       PingEvent::EVENT_SETUP_INSTALL_FAILURE,
       error,
       extra_code1,
@@ -728,6 +770,9 @@ void Worker::CollectAmbientUsageStats() {
   if (args_.mode != COMMANDLINE_MODE_UA) {
     return;
   }
+
+  // Check every time the /ua worker exits in case the user later disables UAC.
+  Set2010UpdateAp(is_machine_);
 
   CString name, version;
   HRESULT hr = firewall_detection::Detect(&name, &version);

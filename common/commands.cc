@@ -80,6 +80,10 @@ HRESULT ConvertValue<int>(const TCHAR* str_value, int* value) {
   ASSERT1(str_value && *str_value);
   ASSERT1(value);
 
+  if (_set_errno(0)) {
+    return E_FAIL;
+  }
+
   *value = _tcstol(str_value, NULL, 0);
   if (errno == ERANGE) {
     return CI_E_INVALID_ARG;
@@ -92,6 +96,10 @@ template<>
 HRESULT ConvertValue<uint32>(const TCHAR* str_value, uint32* value) {
   ASSERT1(str_value && *str_value);
   ASSERT1(value);
+
+  if (_set_errno(0)) {
+    return E_FAIL;
+  }
 
   *value = _tcstoul(str_value, NULL, 0);
   if (errno == ERANGE) {

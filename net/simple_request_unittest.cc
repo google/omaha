@@ -72,10 +72,14 @@ void SimpleRequestTest::SimpleGet(const CString& url, const Config& config) {
   simple_request.QueryHeadersString(WINHTTP_QUERY_CONTENT_TYPE,
                                     NULL, &content_type);
   EXPECT_STREQ(_T("text/plain"), content_type);
-  CString server;
+
+  // Uses custom query for content type and it should match what we just got.
+  CString content_type_from_custom_query;
   simple_request.QueryHeadersString(WINHTTP_QUERY_CUSTOM,
-                                    _T("Server"), &server);
-  EXPECT_STREQ(_T("gws"), server);
+                                    _T("Content-Type"),
+                                    &content_type_from_custom_query);
+  EXPECT_STREQ(content_type, content_type_from_custom_query);
+
   EXPECT_FALSE(simple_request.GetResponseHeaders().IsEmpty());
 
   // Check the user agent went out with the request.
@@ -96,14 +100,20 @@ void SimpleRequestTest::SimpleGetHostNotFound(const CString& url,
   int status_code = simple_request.GetHttpStatusCode();
 
   if (config.auto_detect) {
-    // When the http host is not found, the proxy server usually returns 503.
-    // When the https host is not found, the proxy server returns 404. This may
-    // result in a flaky unit test but it's the best it can be done for now.
-    EXPECT_HRESULT_SUCCEEDED(hr);
-    if (String_StartsWith(url, kHttpsProtoScheme, true)) {
-      EXPECT_EQ(HTTP_STATUS_NOT_FOUND, status_code);
+    // Either a direct connection or a proxy will be used in the case of
+    // proxy auto detect.
+    //
+    // When a proxy is detected, the proxy server can return some html content
+    // indicating an error has occured. The status codes will be different,
+    // depending on how each proxy is configured. This may be a flaky unit test.
+    if (FAILED(hr)) {
+      EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_WINHTTP_NAME_NOT_RESOLVED), hr);
     } else {
-      EXPECT_EQ(HTTP_STATUS_SERVICE_UNAVAIL, status_code);
+      if (String_StartsWith(url, kHttpsProtoScheme, true)) {
+        EXPECT_EQ(HTTP_STATUS_NOT_FOUND, status_code);
+      } else {
+        EXPECT_EQ(HTTP_STATUS_SERVICE_UNAVAIL, status_code);
+      }
     }
   } else {
     EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_WINHTTP_NAME_NOT_RESOLVED), hr);

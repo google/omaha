@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,6 +55,8 @@ const TCHAR* const kGuid3 = _T("{661045C5-4429-4140-BC48-8CEA241D1DEF}");
     EXPECT_TRUE(data.install_data_index().IsEmpty());
     EXPECT_EQ(TRISTATE_NONE, data.usage_stats_enable());
     EXPECT_EQ(AppData::ACTIVE_UNKNOWN, data.did_run());
+    EXPECT_EQ(0, data.days_since_last_active_ping());
+    EXPECT_EQ(0, data.days_since_last_roll_call());
     EXPECT_FALSE(data.is_uninstalled());
     EXPECT_FALSE(data.is_update_disabled());
   }
@@ -85,6 +87,10 @@ const TCHAR* const kGuid3 = _T("{661045C5-4429-4140-BC48-8CEA241D1DEF}");
     EXPECT_STREQ(expected.install_data_index(), actual.install_data_index());
     EXPECT_EQ(expected.usage_stats_enable(), actual.usage_stats_enable());
     EXPECT_EQ(expected.did_run(), actual.did_run());
+    EXPECT_EQ(expected.days_since_last_active_ping(),
+              actual.days_since_last_active_ping());
+    EXPECT_EQ(expected.days_since_last_roll_call(),
+              actual.days_since_last_roll_call());
     EXPECT_EQ(expected.is_uninstalled(), actual.is_uninstalled());
     EXPECT_EQ(expected.is_update_disabled(), actual.is_update_disabled());
   }
@@ -97,6 +103,8 @@ void FillAppData(AppData* app_data) {
   const CString previous_version = _T("11111");
   const CString language = _T("en");
   const AppData::ActiveStates did_run = AppData::ACTIVE_RUN;
+  const int days_since_last_active_ping = 2;
+  const int days_since_last_roll_call = 1;
   const CString ap = _T("some_ap_value");
   const GUID iid = StringToGuid(kGuid3);
   const CString brand_code = _T("GOOG");
@@ -116,6 +124,8 @@ void FillAppData(AppData* app_data) {
   app_data->set_previous_version(previous_version);
   app_data->set_language(language);
   app_data->set_did_run(did_run);
+  app_data->set_days_since_last_active_ping(days_since_last_active_ping);
+  app_data->set_days_since_last_roll_call(days_since_last_roll_call);
   app_data->set_ap(ap);
   app_data->set_iid(iid);
   app_data->set_brand_code(brand_code);
@@ -138,6 +148,8 @@ TEST(AppDataTest, TestAllParams) {
   const CString previous_version = _T("11111");
   const CString language = _T("en");
   const AppData::ActiveStates did_run = AppData::ACTIVE_RUN;
+  const int days_since_last_active_ping = 3;
+  const int days_since_last_roll_call = 2;
   const CString ap = _T("some_ap_value");
   const CString tt_token = _T("some_tt_token_value");
   const GUID iid = StringToGuid(kGuid3);
@@ -158,6 +170,8 @@ TEST(AppDataTest, TestAllParams) {
   actual.set_previous_version(previous_version);
   actual.set_language(language);
   actual.set_did_run(did_run);
+  actual.set_days_since_last_active_ping(days_since_last_active_ping);
+  actual.set_days_since_last_roll_call(days_since_last_roll_call);
   actual.set_ap(ap);
   actual.set_tt_token(tt_token);
   actual.set_iid(iid);
@@ -179,6 +193,8 @@ TEST(AppDataTest, TestAllParams) {
   EXPECT_STREQ(previous_version, actual.previous_version());
   EXPECT_STREQ(language, actual.language());
   EXPECT_EQ(did_run, actual.did_run());
+  EXPECT_EQ(days_since_last_active_ping, actual.days_since_last_active_ping());
+  EXPECT_EQ(days_since_last_roll_call, actual.days_since_last_roll_call());
   EXPECT_STREQ(ap, actual.ap());
   EXPECT_STREQ(tt_token, actual.tt_token());
   EXPECT_TRUE(::IsEqualGUID(iid, actual.iid()));

@@ -43,6 +43,7 @@ TEST_F(PingUtilsTest, SendGoopdatePing) {
   EXPECT_SUCCEEDED(
       ping_utils::SendGoopdatePing(false,
                                    extra_args,
+                                   _T(""),
                                    PingEvent::EVENT_SETUP_INSTALL_FAILURE,
                                    S_OK,
                                    0,
@@ -54,6 +55,7 @@ TEST_F(PingUtilsTest, SendGoopdatePing) {
   EXPECT_SUCCEEDED(
       ping_utils::SendGoopdatePing(false,
                                    extra_args,
+                                   _T(""),
                                    PingEvent::EVENT_SETUP_INSTALL_FAILURE,
                                    S_OK,
                                    0,
@@ -73,6 +75,7 @@ TEST_F(PingUtilsTest, SendGoopdatePing) {
   EXPECT_SUCCEEDED(ping_utils::SendGoopdatePing(
                        true,
                        extra_args,
+                       _T("sourcefoo"),
                        PingEvent::EVENT_SETUP_UPDATE_FAILURE,
                        E_FAIL,
                        1234567890,

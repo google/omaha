@@ -106,6 +106,8 @@ class ProgressWnd
   void set_language(const CString& language) { language_ = language; }
   void set_product_name(const CString& name) { product_name_ = name; }
   void set_product_guid(const GUID& guid) { product_guid_ = guid; }
+  void set_iid(const GUID& iid) { iid_ = iid; }
+  void set_brand_code(const CString& brand_code) { brand_code_ = brand_code; }
 
   // These methods are called by the job to transition the UI from
   // one state to another. The methods are always executed by the thread
@@ -227,6 +229,8 @@ class ProgressWnd
   CString language_;
   CString product_name_;
   GUID product_guid_;
+  GUID iid_;
+  CString brand_code_;
 
   // The speed by which the progress bar moves in marquee mode.
   static const int kMarqueeModeUpdatesMs = 75;

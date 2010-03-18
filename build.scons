@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,13 +18,4 @@
 
 Import('env')
 
-# Copy useful test files to the build output.
-files = [
-    '$MAIN_DIR/VERSION',
-    '$MAIN_DIR/data/GoogleUpdate.ini',
-    '$MAIN_DIR/data/make_dev_system.reg',
-    '$MAIN_DIR/data/make_qa_system.reg',
-    ]
-env.Replicate('$STAGING_DIR', files)
-
-
+env.Replicate('$STAGING_DIR', '$MAIN_DIR/VERSION')

@@ -304,8 +304,8 @@ HRESULT NetworkRequestImpl::DoSend(int* http_status_code,
     response->swap(error_response);
   }
 
-  OPT_LOG(L3, (_T("[Send response received][%s][0x%08x]"),
-               VectorToPrintableString(*response)));
+  OPT_LOG(L3, (_T("[Send response received][%s]"),
+      VectorToPrintableString(*response)));
 
 #ifdef DEBUG
   if (!filename_.IsEmpty()) {
@@ -517,7 +517,7 @@ void NetworkRequestImpl::DetectNetworkConfiguration(
   network_configurations->push_back(config);
 
   // Default to direct connection as a last resort.
-  network_configurations->push_back(config);
+  network_configurations->push_back(Config());
 
   // Some of the configurations might occur multiple times. To avoid retrying
   // the same configuration over, try to remove duplicates while preserving

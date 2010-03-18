@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -109,6 +109,7 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
   const CString version_goopdate = _T("1.2.75.3");
   const CString version_app1 = _T("1.1.2.3");
   const CString version_app2 = _T("2.0.0.5");
+  const int kElapsedTimeSec = 12345;
 
   JobCreator job_creator(true, true, &ping_);
   job_creator.set_is_auto_update(true);
@@ -156,6 +157,14 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
   app_data2.set_app_guid(app2_guid_);
   app_data2.set_is_machine_app(true);
   app_data2.set_version(version_app2);
+  app_data2.set_did_run(AppData::ACTIVE_RUN);
+
+  // Set days_since_last_active_ping and days_since_last_roll_call to non-zero
+  // values so their timestamp gets a chance to update. The values themselves
+  // are not important as long as they are not 0s.
+  app_data2.set_days_since_last_active_ping(3);
+  app_data2.set_days_since_last_roll_call(1);
+
   ProductData product2(app_data2);
   products.push_back(product2);
 
@@ -181,6 +190,7 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
   resp_data2.set_status(kResponseStatusOkValue);
   // TODO(omaha): Add component responses here.
   UpdateResponse resp2(resp_data2);
+  resp2.set_time_since_midnight_sec(kElapsedTimeSec);
   responses.insert(std::pair<GUID, UpdateResponse>(app2_guid_, resp2));
 
   Jobs jobs;
@@ -274,6 +284,20 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
   EXPECT_EQ(kExistingUpdateValues,
             GetDwordValue(kApp2ClientStateKeyPathMachine,
                           kRegValueLastUpdateTimeSec));
+
+  // Check that the registry value of day start time for last active ping is
+  // in range
+  uint32 day_start_time_sec = GetDwordValue(kApp2ClientStateKeyPathMachine,
+                                            kRegValueActivePingDayStartSec);
+  EXPECT_GE(now, day_start_time_sec + kElapsedTimeSec);
+  EXPECT_LE(now, day_start_time_sec + kElapsedTimeSec + 1);
+
+  // Check that the registry value of day start time for last roll call is
+  // in range
+  day_start_time_sec = GetDwordValue(kApp2ClientStateKeyPathMachine,
+                                     kRegValueRollCallDayStartSec);
+  EXPECT_GE(now, day_start_time_sec + kElapsedTimeSec);
+  EXPECT_LE(now, day_start_time_sec + kElapsedTimeSec + 1);
 }
 
 TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateForUpdateDisabledApp) {
@@ -1270,30 +1294,30 @@ TEST_F(JobCreatorTest, FindOfflineFilePath_Success) {
   CString installer_path = ConcatenatePath(
                                 app_util::GetCurrentModuleDirectory(),
                                 kGuidApp1);
-  ASSERT_SUCCEEDED(CreateDir(installer_path, NULL));
-  ASSERT_SUCCEEDED(File::Copy(
+  EXPECT_SUCCEEDED(CreateDir(installer_path, NULL));
+  EXPECT_SUCCEEDED(File::Copy(
       ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                      _T("LongRunning.exe")),
+                      _T("unittest_support\\SaveArguments.exe")),
       ConcatenatePath(installer_path, installer_exe),
       true));
 
   CString file_path;
-  ASSERT_SUCCEEDED(CallFindOfflineFilePath(
+  EXPECT_SUCCEEDED(CallFindOfflineFilePath(
                        app_util::GetCurrentModuleDirectory(),
                        kGuidApp1,
                        &file_path));
-  ASSERT_STREQ(ConcatenatePath(installer_path, installer_exe), file_path);
+  EXPECT_STREQ(ConcatenatePath(installer_path, installer_exe), file_path);
 
   EXPECT_SUCCEEDED(DeleteDirectory(installer_path));
 }
 
 TEST_F(JobCreatorTest, FindOfflineFilePath_Failure) {
   CString file_path;
-  ASSERT_EQ(HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND),
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND),
             CallFindOfflineFilePath(app_util::GetCurrentModuleDirectory(),
                                     kGuidApp1,
                                     &file_path));
-  ASSERT_TRUE(file_path.IsEmpty());
+  EXPECT_TRUE(file_path.IsEmpty());
 }
 
 TEST_F(JobCreatorTest, ReadOfflineManifest_Success) {
@@ -1331,4 +1355,3 @@ TEST_F(JobCreatorTest, ReadOfflineManifest_FileDoesNotExist) {
 }
 
 }  // namespace omaha
-
