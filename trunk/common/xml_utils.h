@@ -54,6 +54,9 @@ HRESULT SaveXMLToFile(IXMLDOMDocument* xmldoc, const TCHAR * xmlfile);
 // xmlstring is in UCS-2
 HRESULT SaveXMLToMemory(IXMLDOMDocument* xmldoc, CString* xmlstring);
 
+// buffer is in the encoding specified in the XML document.
+HRESULT SaveXMLToRawData(IXMLDOMDocument* xmldoc, std::vector<byte>* buffer);
+
 // Canonicalizes the XML string so you can compute a signature on it.
 // This is not the official canonicalization but a cheaper scheme which
 // depends on the whitespace stripping capability of MSXML.

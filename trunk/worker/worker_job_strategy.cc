@@ -254,6 +254,7 @@ HRESULT UpdateAppsStrategy::PreUpdateCheck(ProductDataVector* products) {
 // at least one app to update. This should always be the case because Omaha can
 // always be updated.
 HRESULT UpdateAppsStrategy::RemoveDisallowedApps(ProductDataVector* products) {
+  ASSERT1(products);
   RemoveAppsIfUpdateDisallowedByEula(products);
   if (products->empty()) {
     return GOOPDATE_E_APP_UPDATE_DISABLED_EULA_NOT_ACCEPTED;

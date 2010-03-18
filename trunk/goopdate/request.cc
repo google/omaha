@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,10 +29,6 @@ namespace omaha {
 
 Request::Request(bool is_machine)
     : is_machine_(is_machine),
-      machine_id_(goopdate_utils::GetPersistentMachineId()),
-      user_id_(goopdate_utils::GetPersistentUserId(is_machine ?
-                                                   MACHINE_KEY_NAME :
-                                                   USER_KEY_NAME)),
       version_(GetVersionString()),
       test_source_(ConfigManager::Instance()->GetTestSource()) {
   GUID req_id = GUID_NULL;

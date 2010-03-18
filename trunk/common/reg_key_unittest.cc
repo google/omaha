@@ -20,12 +20,16 @@
 
 namespace omaha {
 
-#define kStRkey1          _T("HKCU\\Software\\Google\\Update\\TEST")
-#define kRkey1            _T("Software\\Google\\Update\\TEST")
-#define kStRkey2          _T("HKCU\\Software\\Google\\Update\\TEST2")
-#define kStRkey3          _T("HKCU\\Software\\Google\\Update\\TEST3")
+#define kStTestRkeyRelativeBase   _T("Software\\Google\\Update\\UnitTest")
+#define kStTestRkeyBase   _T("HKCU\\") kStTestRkeyRelativeBase
+#define kStRkey1Name      _T("TEST")
+#define kStRkey1          kStTestRkeyBase _T("\\") kStRkey1Name
+#define kRkey1            kStTestRkeyRelativeBase _T("\\") kStRkey1Name
+#define kStRkey2          kStTestRkeyBase _T("\\TEST2")
+#define kStRkey3          kStTestRkeyBase _T("\\TEST3")
 #define kRkey1SubkeyName  _T("subkey_test")
 #define kRkey1Subkey      kRkey1 _T("\\") kRkey1SubkeyName
+#define kStRkey1Subkey    kStRkey1 _T("\\") kRkey1SubkeyName
 
 // NON - STATIC
 
@@ -69,7 +73,7 @@ namespace omaha {
 
 // Test the private member functions of RegKey
 class RegKeyTestClass : public testing::Test {
- public:
+ protected:
   static const HKEY GetHKey(const RegKey& reg) {
     return reg.h_key_;
   }
@@ -77,6 +81,19 @@ class RegKeyTestClass : public testing::Test {
   static CString GetParentKeyInfo(CString* key_name) {
     return RegKey::GetParentKeyInfo(key_name);
   }
+};
+
+class RegKeyCleanupTestKeyTest : public testing::Test {
+ protected:
+  virtual void SetUp() {
+    EXPECT_SUCCEEDED(RegKey::DeleteKey(kStTestRkeyBase));
+  }
+
+  virtual void TearDown() {
+    EXPECT_SUCCEEDED(RegKey::DeleteKey(kStTestRkeyBase));
+  }
+
+  RegKey key_;
 };
 
 // Make sure the RegKey is nice and clean when we first initialize it
@@ -195,7 +212,7 @@ TEST(RegKeyTest, RegKey) {
 
   // Just in case...
   // make sure the no test key residue is left from previous aborted runs
-  hr = RegKey::DeleteKey(kStRkey1);
+  hr = RegKey::DeleteKey(kStTestRkeyBase);
 
   // first test the non-static version
 
@@ -442,7 +459,7 @@ TEST(RegKeyTest, RegKey) {
   r_key.Close();
 
   // whack the whole key
-  hr = RegKey::DeleteKey(kStRkey1);
+  hr = RegKey::DeleteKey(kStTestRkeyBase);
   ASSERT_SUCCEEDED(hr);
 
   // STATIC
@@ -663,7 +680,7 @@ TEST(RegKeyTest, RegKey) {
 
   // whack the whole key
 
-  hr = RegKey::DeleteKey(kStRkey1);
+  hr = RegKey::DeleteKey(kStTestRkeyBase);
   ASSERT_SUCCEEDED(hr);
 }
 
@@ -674,14 +691,7 @@ TEST_F(RegKeyTestClass, ChangesStringOnErrors) {
   ASSERT_TRUE(string_val.IsEmpty());
 }
 
-TEST(RegKeyTest, CreateKeys) {
-  RegKey::DeleteKey(kStRkey1);
-  RegKey::DeleteKey(kStRkey2);
-  RegKey::DeleteKey(kStRkey3);
-  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
-  EXPECT_FALSE(RegKey::HasKey(kStRkey2));
-  EXPECT_FALSE(RegKey::HasKey(kStRkey3));
-
+TEST_F(RegKeyCleanupTestKeyTest, CreateKeys) {
   // 3 keys specified but the count is two.
   const TCHAR* keys[] = {kStRkey1, kStRkey2, kStRkey3};
   ASSERT_SUCCEEDED(RegKey::CreateKeys(keys, 2));
@@ -689,23 +699,15 @@ TEST(RegKeyTest, CreateKeys) {
   EXPECT_TRUE(RegKey::HasKey(kStRkey1));
   EXPECT_TRUE(RegKey::HasKey(kStRkey2));
   EXPECT_FALSE(RegKey::HasKey(kStRkey3));
-
-  EXPECT_SUCCEEDED(RegKey::DeleteKey(kStRkey1));
-  EXPECT_SUCCEEDED(RegKey::DeleteKey(kStRkey2));
 }
 
-TEST(RegKeyTest, CreateKey) {
-  RegKey::DeleteKey(kStRkey1);
-  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
-
+TEST_F(RegKeyCleanupTestKeyTest, CreateKey) {
   ASSERT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
 
   EXPECT_TRUE(RegKey::HasKey(kStRkey1));
-
-  EXPECT_SUCCEEDED(RegKey::DeleteKey(kStRkey1));
 }
 
-TEST(RegKeyTest, RenameValue) {
+TEST_F(RegKeyCleanupTestKeyTest, RenameValue) {
   RegKey reg_key;
   ASSERT_SUCCEEDED(reg_key.Create(HKEY_CURRENT_USER, kRkey1));
   ASSERT_SUCCEEDED(reg_key.SetValue(kValNameInt, kIntVal));
@@ -719,10 +721,9 @@ TEST(RegKeyTest, RenameValue) {
   EXPECT_EQ(kIntVal, int_val);
 
   EXPECT_SUCCEEDED(reg_key.Close());
-  EXPECT_SUCCEEDED(RegKey::DeleteKey(kStRkey1));
 }
 
-TEST(RegKeyTest, RenameValueStatic) {
+TEST_F(RegKeyCleanupTestKeyTest, RenameValueStatic) {
   ASSERT_SUCCEEDED(RegKey::SetValue(kStRkey1, kStValNameStr, kStStrVal));
   ASSERT_TRUE(RegKey::HasValue(kStRkey1, kStValNameStr));
 
@@ -732,11 +733,9 @@ TEST(RegKeyTest, RenameValueStatic) {
   CString str_val;
   EXPECT_SUCCEEDED(RegKey::GetValue(kStRkey1, kRenameStValNameStr, &str_val));
   EXPECT_STREQ(kStStrVal, str_val);
-
-  EXPECT_SUCCEEDED(RegKey::DeleteKey(kStRkey1));
 }
 
-TEST(RegKeyTest, CopyValue) {
+TEST_F(RegKeyCleanupTestKeyTest, CopyValue) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kStRkey1, kStValNameStr, kStStrVal));
   EXPECT_SUCCEEDED(RegKey::SetValue(kStRkey1, NULL, kStStrVal));
   EXPECT_TRUE(RegKey::HasValue(kStRkey1, kStValNameStr));
@@ -768,10 +767,132 @@ TEST(RegKeyTest, CopyValue) {
   str_val.Empty();
   EXPECT_SUCCEEDED(RegKey::GetValue(kStRkey2, kRenameStValNameStr, &str_val));
   EXPECT_STREQ(kStStrVal, str_val);
+}
 
-  EXPECT_SUCCEEDED(RegKey::DeleteKey(kStRkey1));
-  EXPECT_SUCCEEDED(RegKey::DeleteKey(kStRkey2));
+// Delete a key that does not have children.
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteKey_NoChildren_Recursively) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+
+  EXPECT_EQ(S_OK, RegKey::DeleteKey(kStRkey1, true));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteKey_NoChildren_NotRecursively) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+
+  EXPECT_EQ(S_OK, RegKey::DeleteKey(kStRkey1, false));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest, RecurseDeleteSubKey_NoChildren) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+  EXPECT_SUCCEEDED(key_.Open(kStTestRkeyBase));
+
+  EXPECT_EQ(S_OK, key_.RecurseDeleteSubKey(kStRkey1Name));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteSubKey_NoChildren) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+  EXPECT_SUCCEEDED(key_.Open(kStTestRkeyBase));
+
+  EXPECT_EQ(S_OK, key_.DeleteSubKey(kStRkey1Name));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+}
+
+// Delete a key that has a child.
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteKey_WithChild_Recursively) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1Subkey));
+
+  EXPECT_EQ(S_OK, RegKey::DeleteKey(kStRkey1, true));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+// Deleting a key with children present results in ERROR_ACCESS_DENIED.
+TEST_F(RegKeyCleanupTestKeyTest, DeleteKey_WithChild_NotRecursively) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1Subkey));
+
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED),
+            RegKey::DeleteKey(kStRkey1, false));
+  EXPECT_TRUE(RegKey::HasKey(kStRkey1));
+  EXPECT_TRUE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest, RecurseDeleteSubKey_WithChild) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1Subkey));
+  EXPECT_SUCCEEDED(key_.Open(kStTestRkeyBase));
+
+  EXPECT_EQ(S_OK, key_.RecurseDeleteSubKey(kStRkey1Name));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+// Deleting a key with children present results in ERROR_ACCESS_DENIED.
+TEST_F(RegKeyCleanupTestKeyTest, DeleteSubKey_WithChild) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1Subkey));
+  EXPECT_SUCCEEDED(key_.Open(kStTestRkeyBase));
+
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED),
+            key_.DeleteSubKey(kStRkey1Name));
+  EXPECT_TRUE(RegKey::HasKey(kStRkey1));
+  EXPECT_TRUE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+// Delete a key that does not exist.
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteKey_KeyDoesNotExist_Recursively) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+
+  EXPECT_EQ(S_FALSE, RegKey::DeleteKey(kStRkey1Subkey, true));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteKey_KeyDoesNotExist_NotRecursively) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+
+  EXPECT_EQ(S_FALSE, RegKey::DeleteKey(kStRkey1Subkey, false));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest, RecurseDeleteSubKey_KeyDoesNotExist) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+  EXPECT_SUCCEEDED(key_.Open(kStRkey1));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+
+  EXPECT_EQ(S_FALSE, key_.RecurseDeleteSubKey(kRkey1SubkeyName));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteSubKey_KeyDoesNotExist) {
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kStRkey1));
+  EXPECT_SUCCEEDED(key_.Open(kStRkey1));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+
+  EXPECT_EQ(S_FALSE, key_.DeleteSubKey(kRkey1SubkeyName));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+// Delete a key whose parent does not exist.
+// There is no equivalent test for RecurseDeleteSubKey and DeleteSubKey.
+
+TEST_F(RegKeyCleanupTestKeyTest, DeleteKey_ParentKeyDoesNotExist_Recursively) {
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+
+  EXPECT_EQ(S_FALSE, RegKey::DeleteKey(kStRkey1Subkey, true));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
+}
+
+TEST_F(RegKeyCleanupTestKeyTest,
+       DeleteKey_ParentKeyDoesNotExist_NotRecursively) {
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1));
+
+  EXPECT_EQ(S_FALSE, RegKey::DeleteKey(kStRkey1Subkey, false));
+  EXPECT_FALSE(RegKey::HasKey(kStRkey1Subkey));
 }
 
 }  // namespace omaha
-

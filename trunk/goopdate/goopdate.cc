@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -253,6 +253,9 @@ GoopdateImpl::GoopdateImpl(Goopdate* goopdate, bool is_local_system)
       has_uninstalled_(false),
       goopdate_(goopdate) {
   ASSERT1(goopdate);
+
+  ++metric_goopdate_constructor;
+
   // The command line needs to be parsed to accurately determine if the
   // current process is a machine process or not. Use the value of
   // is_local_system until that.
@@ -271,6 +274,8 @@ GoopdateImpl::GoopdateImpl(Goopdate* goopdate, bool is_local_system)
 
 GoopdateImpl::~GoopdateImpl() {
   CORE_LOG(L2, (_T("[GoopdateImpl::~GoopdateImpl]")));
+
+  ++metric_goopdate_destructor;
 
   // Bug 994348 does not repro anymore.
   // If the assert fires, clean up the key, and fix the code if we have unit
@@ -295,10 +300,6 @@ GoopdateImpl::~GoopdateImpl() {
   // This check must be the last thing before exiting the process.
   if (COMMANDLINE_MODE_INSTALL == args_.mode && args_.is_oem_set ||
       ConfigManager::Instance()->IsOemInstalling(is_machine_)) {
-    // During an OEM install, there should be no persistent IDs.
-    ASSERT1(!RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueMachineId));
-    ASSERT1(!RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueUserId));
-
     ASSERT1(RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec) ||
             !is_machine_ ||
             !vista_util::IsUserAdmin() ||
@@ -356,6 +357,8 @@ HRESULT GoopdateImpl::HandleError(HRESULT hr) {
 HRESULT GoopdateImpl::Main(HINSTANCE instance,
                            const TCHAR* cmd_line,
                            int cmd_show) {
+  ++metric_goopdate_main;
+
   HRESULT hr = DoMain(instance, cmd_line, cmd_show);
 
   CORE_LOG(L2, (_T("[has_uninstalled is %d]"), has_uninstalled_));
@@ -648,6 +651,9 @@ bool GoopdateImpl::IsMachineProcess() {
 
 
 HRESULT GoopdateImpl::HandleReportCrash() {
+  ++metric_goopdate_handle_report_crash;
+  VERIFY1(SUCCEEDED(AggregateMetrics(is_machine_)));
+
   // Catch exceptions to avoid reporting crashes when handling a crash.
   // TODO(omaha): maybe let Windows handle the crashes when reporting crashes
   // in certain interactive modes.
@@ -964,7 +970,7 @@ HRESULT GoopdateImpl::DoRegisterProductHelper(bool is_machine,
   ASSERT1(app_manager);
   // Ensure we're running as elevated admin if needs_admin is true.
   if (is_machine && !vista_util::IsUserAdmin()) {
-    CORE_LOG(LE, (_T("[DoRegisterProduct][needs admin & user not admin]")));
+    CORE_LOG(LE, (_T("[DoRegisterProductHelper][machine & user not admin]")));
     return GOOPDATE_E_NONADMIN_INSTALL_ADMIN_APP;
   }
 
@@ -976,6 +982,8 @@ HRESULT GoopdateImpl::DoRegisterProductHelper(bool is_machine,
     return hr;
   }
 
+  // TODO(omaha): Fix http://b/1390770. The brand code, etc. do not get written
+  // because the second phase of Setup uses /ug, which doesn't take these args.
   Setup setup(is_machine, &args_);
   hr = setup.InstallSelfSilently();
   if (FAILED(hr)) {

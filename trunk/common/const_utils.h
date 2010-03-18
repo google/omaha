@@ -1,4 +1,4 @@
-// Copyright 2004-2009 Google Inc.
+// Copyright 2004-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,9 @@ namespace omaha {
 #define kRegKeyApplicationPath \
     _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths")
 #define kRegKeyPathValue _T("Path")
+
+
+// TODO(omaha): We could probably move most of these to browser_utils.
 
 // The regkey for the default browser the Windows Shell opens.
 #define kRegKeyDefaultBrowser _T("SOFTWARE\\Clients\\StartMenuInternet")
@@ -66,24 +69,6 @@ const TCHAR* const kRegValueIEAutoConfigURL = _T("AutoConfigURL");
 // Chrome.
 #define kRegKeyChrome _T("HKCR\\Applications\\chrome.exe\\shell\\open\\command")
 #define kRegValueChrome _T("")
-
-// Amount of disk space required for program files.
-#ifdef _DEBUG
-// 100 MB since debug usually includes PDBs in addition to huge EXEs.
-#define kSpaceRequiredToInstallProgramFiles (100LL * 1000LL * 1000LL)
-#else
-#define kSpaceRequiredToInstallProgramFiles (10LL * 1000LL * 1000LL)  // 10MB
-#endif
-
-// Preferred amount of disk space for data (choose first location if found).
-#define kSpacePreferredToInstallDataDir (1000LL * 1000LL * 1000LL)
-
-// Amount of disk space required for data (choose first location if
-// could not find a location with the preferred amount of space).
-#define kSpaceRequiredToInstallDataDir (500LL * 1000LL * 1000LL)
-
-// Maximum file size allowed for performing authentication.
-#define kMaxFileSizeForAuthentication (512000000L)    // 512MB
 
 }  // namespace omaha
 

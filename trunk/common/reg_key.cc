@@ -923,8 +923,13 @@ HRESULT RegKey::RecurseDeleteSubKey(const TCHAR * key_name) {
 
   RegKey key;
   HRESULT hr = key.Open(h_key_, key_name);
-  if (hr != S_OK)
+  if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) ||
+      hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) {
+    hr = S_FALSE;
+  }
+  if (hr != S_OK) {
     return hr;
+  }
 
   // enumerate all subkeys of this key
   // and recursivelly delete them

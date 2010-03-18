@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+<daystart elapsed_seconds="8400" />
 <app appid="{D6B08267-B440-4C85-9F79-E195E80D9937}" status="ok">
   <updatecheck status="ok"
                codebase="http://dl.google.com/foo/1.0.101.0/test_foo_v1.0.101.0.msi"

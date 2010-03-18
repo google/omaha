@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,20 @@
 namespace omaha {
 
 namespace {
+
+// Returns the number of days haven been passed since the given time.
+// The parameter time is in the same format as C time() returns.
+int GetNumberOfDaysSince(int time) {
+  ASSERT1(time >= 0);
+  const int now = Time64ToInt32(GetCurrent100NSTime());
+  ASSERT1(now >= time);
+
+  if (now < time) {
+    // In case the client computer clock is adjusted in between.
+    return 0;
+  }
+  return (now - time) / kSecondsPerDay;
+}
 
 // Determines if an application is registered with Google Update.
 class IsAppRegisteredFunc
@@ -180,7 +194,8 @@ void AppManager::ConvertCommandLineToProductData(const CommandLineArgs& args,
   // multiple AppData objects (and also to read components) and add unit test.
   for (size_t i = 0; i < args.extra.apps.size(); ++i) {
     const CommandLineAppArgs& extra_arg = args.extra.apps[i];
-    AppData app_data(extra_arg.app_guid, is_machine_);
+    const GUID& app_guid = extra_arg.app_guid;
+    AppData app_data(app_guid, is_machine_);
     app_data.set_language(args.extra.language);
     app_data.set_ap(extra_arg.ap);
     app_data.set_tt_token(extra_arg.tt_token);
@@ -188,8 +203,20 @@ void AppManager::ConvertCommandLineToProductData(const CommandLineArgs& args,
     app_data.set_brand_code(args.extra.brand_code);
     app_data.set_client_id(args.extra.client_id);
     app_data.set_referral_id(args.extra.referral_id);
-    // Do not set install_time_diff_sec or is_oem_install because they are not
-    // based on the command line.
+
+    // install_time_diff_sec is set based on the current state of the system.
+    if (IsProductRegistered(app_guid)) {
+      app_data.set_install_time_diff_sec(GetInstallTimeDiffSec(app_guid));
+    } else {
+      // The product is not already installed. We differentiate this from no
+      // install time being present (i.e. the app was installed before
+      // installtime was implemented) by setting the diff to -1 days.
+      // This makes an assumption about the XML parser but works for now.
+      const int kNewInstallValue = -1 * kSecondsPerDay;
+      app_data.set_install_time_diff_sec(kNewInstallValue);
+    }
+
+    // Do not set is_oem_install because it is not based on the command line.
     app_data.set_is_eula_accepted(!args.is_eula_required_set);
     app_data.set_display_name(extra_arg.app_name);
     app_data.set_browser_type(args.extra.browser_type);
@@ -400,6 +427,13 @@ HRESULT AppManager::ReadAppDataFromStore(const GUID& parent_app_guid,
     client_key_exists = true;
   }
 
+  // If ClientState registry key doesn't exist, the function could return.
+  // Before opening the key, set days_since_last* to -1, which is the
+  // default value if reg key doesn't exist. If later we find that the values
+  // are readable, new values will overwrite current ones.
+  temp_data.set_days_since_last_active_ping(-1);
+  temp_data.set_days_since_last_roll_call(-1);
+
   RegKey client_state_key;
   hr = OpenClientStateKey(parent_app_guid,
                           app_guid,
@@ -456,17 +490,27 @@ HRESULT AppManager::ReadAppDataFromStore(const GUID& parent_app_guid,
   client_state_key.GetValue(kRegValueClientId, &client_id);
   temp_data.set_client_id(client_id);
 
+  DWORD last_active_ping_sec(0);
+  if (SUCCEEDED(client_state_key.GetValue(kRegValueActivePingDayStartSec,
+                                          &last_active_ping_sec))) {
+    int days_since_last_active_ping =
+        GetNumberOfDaysSince(static_cast<int32>(last_active_ping_sec));
+    temp_data.set_days_since_last_active_ping(days_since_last_active_ping);
+  }
+
+  DWORD last_roll_call_sec(0);
+  if (SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
+                                          &last_roll_call_sec))) {
+    int days_since_last_roll_call =
+        GetNumberOfDaysSince(static_cast<int32>(last_roll_call_sec));
+    temp_data.set_days_since_last_roll_call(days_since_last_roll_call);
+  }
+
   // We do not need the referral_id.
 
-  // Get the install time and calculate the elapsed time since then if is valid.
-  DWORD install_time(0);
-  if (SUCCEEDED(client_state_key.GetValue(kRegValueInstallTimeSec,
-                                          &install_time))) {
-    const uint32 now = Time64ToInt32(GetCurrent100NSTime());
-    if (0 != install_time && now >= install_time) {
-      temp_data.set_install_time_diff_sec(now - install_time);
-    }
-  }
+  ASSERT(::IsEqualGUID(parent_app_guid, GUID_NULL),
+         (_T("Legacy components not supported.")));
+  temp_data.set_install_time_diff_sec(GetInstallTimeDiffSec(app_guid));
 
   temp_data.set_is_oem_install(client_state_key.HasValue(kRegValueOemInstall));
 
@@ -621,7 +665,10 @@ HRESULT AppManager::InitializeApplicationState(AppData* app_data) {
 // Copies language and version from clients into client state reg key.
 // Removes installation id, if did run = true or if goopdate.
 // Clears did run.
-HRESULT AppManager::UpdateApplicationState(AppData* app_data) {
+// Also updates the last active ping and roll call time in registry
+// if the corresponding ping was sent to server.
+HRESULT AppManager::UpdateApplicationState(int time_since_midnight_sec,
+                                           AppData* app_data) {
   ASSERT1(app_data);
   RegKey client_state_key;
   HRESULT hr = CreateClientStateKey(app_data->parent_app_guid(),
@@ -652,12 +699,15 @@ HRESULT AppManager::UpdateApplicationState(AppData* app_data) {
     return hr;
   }
 
-  // Clear the did run value.
-  ApplicationUsageData app_usage(app_data->is_machine_app(),
-                                 vista_util::IsVistaOrLater());
-  VERIFY1(SUCCEEDED(app_usage.ResetDidRun(GuidToString(app_data->app_guid()))));
-  app_data->set_did_run(app_usage.exists() ? AppData::ACTIVE_NOTRUN :
-                                             AppData::ACTIVE_UNKNOWN);
+  SetLastPingDayStartTime(time_since_midnight_sec,
+                          app_data,
+                          client_state_key);
+
+  // Reset did_run after updating the days_since_last_active_ping since that
+  // need previous did_run status to determine whether an active ping has been
+  // sent.
+  ResetDidRun(app_data);
+
   return S_OK;
 }
 
@@ -829,16 +879,53 @@ void AppManager::RecordSuccessfulUpdateCheck(const GUID& parent_app_guid,
   VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueLastSuccessfulCheckSec, now)));
 }
 
+// Assumes the app is registered and has a ClientState. The new install case
+// should be handled differently.
+uint32 AppManager::GetInstallTimeDiffSec(const GUID& app_guid) {
+  RegKey client_state_key;
+  HRESULT hr = OpenClientStateKey(GUID_NULL,
+                                  app_guid,
+                                  KEY_READ,
+                                  &client_state_key);
+  ASSERT(SUCCEEDED(hr), (_T("Assumes app is registered.")));
+  if (FAILED(hr)) {
+    return 0;
+  }
+
+  DWORD install_time(0);
+  DWORD install_time_diff_sec(0);
+  if (SUCCEEDED(client_state_key.GetValue(kRegValueInstallTimeSec,
+                                          &install_time))) {
+    const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+    if (0 != install_time && now >= install_time) {
+      install_time_diff_sec = now - install_time;
+      // TODO(omaha3): Restore this assert. In Omaha 2, this method gets called
+      // as part of installation verification and Job::UpdateJob(), so the value
+      // can be 0. This will not be the case in Omaha 3.
+      // ASSERT1(install_time_diff_sec != 0);
+    }
+  }
+
+  return install_time_diff_sec;
+}
+
+// Clear the Installation ID if at least one of the conditions is true:
+// 1) DidRun==yes. First run is the last time we want to use the Installation
+//    ID. So delete Installation ID if it is present.
+// 2) kMaxLifeOfInstallationIDSec has passed since the app was installed. This
+//    is to ensure that Installation ID is cleared even if DidRun is never set.
+// 3) The app is Omaha. Always delete Installation ID if it is present
+//    because DidRun does not apply.
 HRESULT AppManager::ClearInstallationId(AppData* app_data,
                                         const RegKey& client_state_key) {
   ASSERT1(app_data);
-  // First run is the last time we want to use the Installation ID.
-  // For apps, delete Installation ID if it is present and DidRun==yes.
-  // For Omaha, always delete Installation ID if it is present because
-  // DidRun does not apply.
-  if (!::IsEqualGUID(app_data->iid(), GUID_NULL) &&
-      ((AppData::ACTIVE_RUN == app_data->did_run()) ||
-       (::IsEqualGUID(kGoopdateGuid, app_data->app_guid())))) {
+  if (::IsEqualGUID(app_data->iid(), GUID_NULL)) {
+    return S_OK;
+  }
+
+  if ((AppData::ACTIVE_RUN == app_data->did_run()) ||
+      (kMaxLifeOfInstallationIDSec <= app_data->install_time_diff_sec()) ||
+      (::IsEqualGUID(kGoopdateGuid, app_data->app_guid()))) {
     CORE_LOG(L1, (_T("[Deleting iid for app][%s]"),
                   GuidToString(app_data->app_guid())));
     // Relies on installation_id not empty to indicate state_key is valid.
@@ -847,6 +934,42 @@ HRESULT AppManager::ClearInstallationId(AppData* app_data,
   }
 
   return S_OK;
+}
+
+void AppManager::ResetDidRun(AppData* app_data) {
+  ApplicationUsageData app_usage(app_data->is_machine_app(),
+                                 vista_util::IsVistaOrLater());
+  VERIFY1(SUCCEEDED(app_usage.ResetDidRun(GuidToString(app_data->app_guid()))));
+  app_data->set_did_run(app_usage.exists() ? AppData::ACTIVE_NOTRUN :
+                                             AppData::ACTIVE_UNKNOWN);
+}
+
+// Write the day start time when last active ping/roll call happened to
+// registry.
+void AppManager::SetLastPingDayStartTime(int time_since_midnight_sec,
+                                         AppData* app_data,
+                                         const RegKey& client_state_key) {
+  ASSERT1(time_since_midnight_sec >= 0);
+  ASSERT1(time_since_midnight_sec < kMaxTimeSinceMidnightSec);
+
+  int now = Time64ToInt32(GetCurrent100NSTime());
+
+  bool did_send_active_ping = (app_data->did_run() == AppData::ACTIVE_RUN &&
+                               app_data->days_since_last_active_ping() != 0);
+  if (did_send_active_ping) {
+    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+                          kRegValueActivePingDayStartSec,
+                          static_cast<DWORD>(now - time_since_midnight_sec))));
+    app_data->set_days_since_last_active_ping(0);
+  }
+
+  bool did_send_roll_call = (app_data->days_since_last_roll_call() != 0);
+  if (did_send_roll_call) {
+    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+                          kRegValueRollCallDayStartSec,
+                          static_cast<DWORD>(now - time_since_midnight_sec))));
+    app_data->set_days_since_last_roll_call(0);
+  }
 }
 
 // Only replaces the language in ClientState and app_data if the language in
@@ -877,8 +1000,7 @@ HRESULT AppManager::CopyVersionAndLanguageToClientState(
   app_data->set_previous_version(version);
 
   if (!language.IsEmpty()) {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueLanguage,
-                                                language)));
+    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueLanguage, language)));
     app_data->set_language(language);
   }
 

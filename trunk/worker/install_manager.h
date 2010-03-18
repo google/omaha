@@ -129,9 +129,6 @@ class InstallManager {
       const CString& app_client_state_key,
       CString* installer_result_uistring);
 
-  // If we are installing an application.
-  bool is_installing_;
-
   // Whether this object is running in a machine Goopdate instance.
   bool is_machine_;
 

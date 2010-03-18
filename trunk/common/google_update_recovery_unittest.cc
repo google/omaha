@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,22 @@
 #include "omaha/net/simple_request.h"
 #include "omaha/third_party/gtest/include/gtest/gtest.h"
 
+// TODO(omaha): Replicate some of these tests in signaturevalidator_unittest.cc.
+
+// As of Google Test 1.4.0, expressions get converted to 'bool', resulting in
+// "warning C4800: 'BOOL' : forcing value to bool 'true' or 'false' (performance
+// warning)" in some uses.
+// These must be kept in sync with gtest.h.
+// TODO(omaha): Try to get this fixed in Google Test.
+#undef EXPECT_TRUE
+#define EXPECT_TRUE(condition) \
+  GTEST_TEST_BOOLEAN_(!!(condition), #condition, false, true, \
+                      GTEST_NONFATAL_FAILURE_)
+#undef ASSERT_TRUE
+#define ASSERT_TRUE(condition) \
+  GTEST_TEST_BOOLEAN_(!!(condition), #condition, false, true, \
+                      GTEST_FATAL_FAILURE_)
+
 namespace omaha {
 
 namespace {
@@ -48,8 +64,6 @@ namespace {
 const TCHAR kDummyAppGuid[] = _T("{8E472B0D-3E8B-43b1-B89A-E8506AAF1F16}");
 const TCHAR kDummyAppVersion[] = _T("3.4.5.6");
 const TCHAR kDummyAppLang[] = _T("en-us");
-const TCHAR kDummyMachineId[] = _T("{12A7B304-B4ED-4b5c-8122-31E7ECB8BE3C}");
-const TCHAR kDummyUserId[] = _T("{29388E49-2995-437c-BF47-587C7E9247E5}");
 
 const TCHAR kTempDirectory[] = _T("C:\\WINDOWS\\Temp");
 
@@ -80,7 +94,7 @@ const TCHAR* const kInvalidFileAddress = _T("http://www.google.com/robots.txt");
 const TCHAR kRegistryHiveOverrideRoot[] =
     _T("HKCU\\Software\\Google\\Update\\UnitTest\\");
 
-const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&machineid=&userid=&osversion=");  // NOLINT
+const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&osversion=");  // NOLINT
 const int kExpectedUrlForDummyAppAndNoOmahaValuesLength =
     arraysize(kExpectedUrlForDummyAppAndNoOmahaValues) - 1;
 
@@ -92,20 +106,20 @@ void OverrideRegistryHives(const CString& hive_override_key_name) {
   // for the unit tests so that we don't disturb the actual Omaha state.
   RegKey machine_key;
   RegKey user_key;
-  ASSERT_HRESULT_SUCCEEDED(
+  EXPECT_HRESULT_SUCCEEDED(
       machine_key.Create(hive_override_key_name + MACHINE_KEY));
-  ASSERT_HRESULT_SUCCEEDED(user_key.Create(hive_override_key_name + USER_KEY));
-  ASSERT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_LOCAL_MACHINE,
+  EXPECT_HRESULT_SUCCEEDED(user_key.Create(hive_override_key_name + USER_KEY));
+  EXPECT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_LOCAL_MACHINE,
                                                   machine_key.Key()));
-  ASSERT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_CURRENT_USER,
+  EXPECT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_CURRENT_USER,
                                                   user_key.Key()));
 }
 
 // Restores HKLM and HKCU registry accesses to the real hives.
 // This method is most often used in TearDown().
 void RestoreRegistryHives() {
-  ASSERT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_LOCAL_MACHINE, NULL));
-  ASSERT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_CURRENT_USER, NULL));
+  EXPECT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_LOCAL_MACHINE, NULL));
+  EXPECT_HRESULT_SUCCEEDED(::RegOverridePredefKey(HKEY_CURRENT_USER, NULL));
 }
 
 CString GetTmp() {
@@ -178,7 +192,7 @@ class GoogleUpdateRecoveryTest : public testing::Test {
       ::Sleep(50);
       is_found = File::Exists(saved_arguments_path);
     }
-    ASSERT_TRUE(is_found);
+    EXPECT_TRUE(is_found);
 
     scoped_hfile file(::CreateFile(saved_arguments_path,
                                    GENERIC_READ,
@@ -187,7 +201,7 @@ class GoogleUpdateRecoveryTest : public testing::Test {
                                    OPEN_EXISTING,         // existing file only
                                    FILE_ATTRIBUTE_NORMAL,
                                    NULL));                // no template
-    ASSERT_NE(INVALID_HANDLE_VALUE, get(file));
+    EXPECT_NE(INVALID_HANDLE_VALUE, get(file));
 
     const int kBufferLen = 50;
     TCHAR buffer[kBufferLen + 1] = {0};
@@ -343,7 +357,7 @@ class GoogleUpdateRecoveryRegistryProtectedTest
 
   virtual void TearDown() {
     RestoreRegistryHives();
-    ASSERT_HRESULT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
+    EXPECT_HRESULT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
     GoogleUpdateRecoveryTest::TearDown();
   }
 };
@@ -367,7 +381,7 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_Machine) {
                                                  kSavedArgumentsFileName);
 
   ::DeleteFile(saved_arguments_path);
-  ASSERT_FALSE(File::Exists(saved_arguments_path));
+  EXPECT_FALSE(File::Exists(saved_arguments_path));
 
   CString context_string(_T("some context"));
   EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
@@ -393,7 +407,7 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_User) {
                                                  kSavedArgumentsFileName);
 
   ::DeleteFile(saved_arguments_path);
-  ASSERT_FALSE(File::Exists(saved_arguments_path));
+  EXPECT_FALSE(File::Exists(saved_arguments_path));
 
   CString context_string(_T("more context"));
   EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
@@ -450,20 +464,14 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_User) {
 
 TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AllValues_MachineApp) {
-  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=5.6.78.1&machineid=%7B12A7B304-B4ED-4b5c-8122-31E7ECB8BE3C%7D&userid=%7B29388E49-2995-437c-BF47-587C7E9247E5%7D&osversion=");  // NOLINT
+  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=5.6.78.1&osversion=");  // NOLINT
 
   const CString prev_tmp = GetTmp();
-  ASSERT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
+  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
 
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullMachineOmahaClientKeyPath,
                                             _T("pv"),
                                             _T("5.6.78.1")));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullMachineOmahaMainKeyPath,
-                                            _T("mi"),
-                                            kDummyMachineId));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullMachineOmahaMainKeyPath,
-                                            _T("ui"),
-                                            kDummyUserId));
 
   EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
                                                kDummyAppVersion,
@@ -481,20 +489,14 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
 
 TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AllValues_UserApp) {
-  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=0&version=5.6.78.1&machineid=%7B12A7B304-B4ED-4b5c-8122-31E7ECB8BE3C%7D&userid=%7B29388E49-2995-437c-BF47-587C7E9247E5%7D&osversion=");  // NOLINT
+  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=0&version=5.6.78.1&osversion=");  // NOLINT
 
   const CString prev_tmp = GetTmp();
-  ASSERT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
+  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
 
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullUserOmahaClientKeyPath,
                                             _T("pv"),
                                             _T("5.6.78.1")));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullMachineOmahaMainKeyPath,
-                                            _T("mi"),
-                                            kDummyMachineId));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullUserOmahaMainKeyPath,
-                                            _T("ui"),
-                                            kDummyUserId));
 
   EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
                                                kDummyAppVersion,
@@ -525,7 +527,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
 
 TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_EmptyAppInfo) {
-  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=&appversion=&applang=&machine=1&version=0.0.0.0&machineid=&userid=&osversion=");  // NOLINT
+  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=&appversion=&applang=&machine=1&version=0.0.0.0&osversion=");  // NOLINT
 
   EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(_T(""),
                                                _T(""),
@@ -713,10 +715,10 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_SaveToNonExistantDirectory) {
   const TCHAR kNonExistantDirectory[] = _T("c:\\directory_does_not_exist");
   DeleteDirectory(kNonExistantDirectory);
-  ASSERT_FALSE(File::Exists(kNonExistantDirectory));
+  EXPECT_FALSE(File::Exists(kNonExistantDirectory));
 
   const CString prev_tmp = GetTmp();
-  ASSERT_TRUE(::SetEnvironmentVariable(_T("TMP"), kNonExistantDirectory));
+  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kNonExistantDirectory));
 
   EXPECT_EQ(TRUST_E_SUBJECT_FORM_UNKNOWN,
             FixGoogleUpdate(kDummyAppGuid,
@@ -729,11 +731,12 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_SaveToNonExistantDirectory) {
   VerifyExpectedSavedFilePath(kNonExistantDirectory);
 
   EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), prev_tmp));
+  EXPECT_HRESULT_SUCCEEDED(DeleteDirectory(kNonExistantDirectory));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
   const CString prev_tmp = GetTmp();
-  ASSERT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
+  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
 
   CString saved_arguments_path = ConcatenatePath(app_util::GetTempDir(),
                                                  kSavedArgumentsFileName);
@@ -785,9 +788,9 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
 //
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedValid) {
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
                            kArgumentSavingExecutableRelativePath));
-  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_HRESULT_SUCCEEDED(VerifyFileSignature(executable_full_path));
 }
 
@@ -795,38 +798,39 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotSigned) {
   const TCHAR kUnsignedExecutable[] = _T("GoogleUpdate_unsigned.exe");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
                            kUnsignedExecutable));
-  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_NOSIGNATURE, VerifyFileSignature(executable_full_path));
 }
 
 // The certificate is still valid, but the executable was signed more than N
 // days ago.
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedOldWithValidCert) {
-  const TCHAR kUnsignedExecutable[] =
+  const TCHAR kRelativePath[] =
       _T("unittest_support\\GoogleUpdate_old_signature.exe");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kUnsignedExecutable));
-  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_TIME_STAMP, VerifyFileSignature(executable_full_path));
 }
 
 // The certificate was valid when it was used to sign the executable, but it has
 // since expired.
-// The error returned is inappropriate for this case because of the way
-// expiration checking is implemented.
+// TRUST_E_TIME_STAMP is returned because the file was signed more than the
+// allowable number of dates ago for the repair file. Otherwise, the signature
+// is fine.
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedWithNowExpiredCert) {
-  const TCHAR kUnsignedExecutable[] =
+  const TCHAR kRelativePath[] =
       _T("unittest_support\\GoogleUpdate_now_expired_cert.exe");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kUnsignedExecutable));
-  ASSERT_TRUE(File::Exists(executable_full_path));
-  EXPECT_EQ(CERT_E_CN_NO_MATCH, VerifyFileSignature(executable_full_path));
+  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  EXPECT_TRUE(File::Exists(executable_full_path));
+  EXPECT_EQ(TRUST_E_TIME_STAMP, VerifyFileSignature(executable_full_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_UntrustedChain) {
@@ -834,9 +838,9 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_UntrustedChain) {
       _T("unittest_support\\SaveArguments_OmahaTestSigned.exe");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
                            kUntrustedChainExecutable));
-  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(CERT_E_UNTRUSTEDROOT, VerifyFileSignature(executable_full_path));
 }
 
@@ -845,9 +849,9 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_HashFails) {
       _T("unittest_support\\GoogleUpdate_corrupted.exe");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
                            kCorruptedExecutable));
-  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_BAD_DIGEST, VerifyFileSignature(executable_full_path));
 }
 
@@ -861,9 +865,9 @@ TEST_F(GoogleUpdateRecoveryTest,
                << _T("' was not found.") << std::endl;
     return;
   }
-  ASSERT_HRESULT_SUCCEEDED(ExpandStringWithSpecialFolders(&file_path));
-  ASSERT_TRUE(File::Exists(file_path));
-  ASSERT_TRUE(SignatureIsValid(file_path, false));
+  EXPECT_HRESULT_SUCCEEDED(ExpandStringWithSpecialFolders(&file_path));
+  EXPECT_TRUE(File::Exists(file_path));
+  EXPECT_TRUE(SignatureIsValid(file_path, false));
   EXPECT_EQ(CERT_E_CN_NO_MATCH, VerifyFileSignature(file_path));
 }
 
@@ -885,7 +889,8 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_ValidMarkup) {
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_InvalidMarkups) {
-  const TCHAR kNoResourcesExecutable[] = _T("RecoveryTest.exe");
+  const TCHAR kNoResourcesExecutable[] =
+      _T("unittest_support\\SaveArguments_unsigned_no_resources.exe");
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_DATA_NOT_FOUND),
             VerifyRepairFileMarkup(kNoResourcesExecutable));
 

@@ -1,4 +1,4 @@
-// Copyright 2003-2009 Google Inc.
+// Copyright 2003-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -802,10 +802,19 @@ HRESULT WaitForMSIExecute(int timeout_ms);
 // Returns the value of the specified environment variable.
 CString GetEnvironmentVariableAsString(const TCHAR* name);
 
-// Returns true if the OS is installing (e.g., at an OEM factory).
+// Returns true if the OS is installing (e.g., Audit Mode at an OEM factory).
+// NOTE: This is unreliable on Windows Vista and later. Some computers remain in
+// one of the incomplete states even after OOBE. See http://b/1690617.
 bool IsWindowsInstalling();
+
+// Returns true if Windows is really in Audit Mode. Tries to overcome the
+// limitation of IsWindowsInstalling() by checking the current user account too.
+bool IsWindowsReallyInAuditMode();
+
+// Checks if the current user is the built-in Administrator account
+// (SID S-1-5-21-XXXX-XXXX-XXXX-500).
+bool IsBuiltInAdministratorAccount(CSid* sid);
 
 }  // namespace omaha
 
 #endif  // OMAHA_COMMON_UTILS_H__
-

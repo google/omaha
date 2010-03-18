@@ -148,6 +148,10 @@ HRESULT LoadXMLFromRawData(const std::vector<byte>& xmldata,
   ASSERT1(!*xmldoc);
 
   *xmldoc = NULL;
+  if (!xmldata.size()) {
+    return E_INVALIDARG;
+  }
+
   CComPtr<IXMLDOMDocument> my_xmldoc;
   RET_IF_FAILED(CoCreateSafeDOMDocument(&my_xmldoc));
   RET_IF_FAILED(my_xmldoc->put_preserveWhiteSpace(
@@ -190,6 +194,48 @@ HRESULT SaveXMLToMemory(IXMLDOMDocument* xmldoc, CString* xmlstring) {
   CComBSTR xmlmemory;
   RET_IF_FAILED(xmldoc->get_xml(&xmlmemory));
   *xmlstring = xmlmemory;
+
+  return S_OK;
+}
+
+HRESULT SaveXMLToRawData(IXMLDOMDocument* xmldoc, std::vector<byte>* buffer) {
+  ASSERT1(xmldoc);
+  ASSERT1(buffer);
+
+  CComPtr<IStream> stream;
+  HRESULT hr = ::CreateStreamOnHGlobal(NULL, TRUE, &stream);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  ASSERT1(stream);
+
+  hr = xmldoc->save(CComVariant(stream));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // To get the exact size of the stream, we have to use the seek function.
+  LARGE_INTEGER li = {0, 0};
+  ULARGE_INTEGER uli = {0, 0};
+  hr = stream->Seek(li, STREAM_SEEK_END, &uli);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  buffer->resize(static_cast<size_t>(uli.QuadPart));
+
+  HGLOBAL hglobal = NULL;
+  hr = ::GetHGlobalFromStream(stream, &hglobal);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  memcpy_s(&buffer->front(),
+           buffer->size(),
+           ::GlobalLock(hglobal),
+           buffer->size());
+  ::GlobalUnlock(hglobal);
 
   return S_OK;
 }

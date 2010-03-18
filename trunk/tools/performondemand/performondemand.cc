@@ -14,7 +14,7 @@
 // ========================================================================
 //
 // A simple tool for performing and interacting with on demand updates.
-#include "performondemand.h"
+#include "omaha/tools/performondemand/performondemand.h"
 #include <windows.h>
 #include <sddl.h>
 #include <shlobj.h>
@@ -205,15 +205,22 @@ class VistaProxyRegistrar {
 
  private:
   HRESULT VistaProxyRegistrarImpl() {
-    if (!SystemInfo::IsRunningOnVistaRTM() ||
-        vista_util::IsUserRunningSplitToken() ||
-        !::IsUserAnAdmin()) {
+    if (!SystemInfo::IsRunningOnVistaRTM() || !::IsUserAnAdmin()) {
+      return S_OK;
+    }
+
+    bool is_split_token = false;
+    HRESULT hr = vista_util::IsUserRunningSplitToken(&is_split_token);
+    if (FAILED(hr)) {
+      return hr;
+    }
+    if (is_split_token) {
       return S_OK;
     }
 
     // Needs to be called very early on in a process.
     // Turn on dynamic cloaking so COM picks up the impersonated thread token.
-    HRESULT hr = ::CoInitializeSecurity(
+    hr = ::CoInitializeSecurity(
         NULL,
         -1,
         NULL,

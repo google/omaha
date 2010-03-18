@@ -60,6 +60,13 @@ DECLARE_METRIC_count(oop_crashes_uploaded);
 DECLARE_METRIC_count(oop_crashes_throttled);
 DECLARE_METRIC_count(oop_crashes_rejected);
 DECLARE_METRIC_count(oop_crashes_failed);
+DECLARE_METRIC_count(oop_crashes_crash_filename_empty);
+DECLARE_METRIC_count(oop_crashes_createcustominfofile_failed);
+DECLARE_METRIC_count(oop_crashes_startsenderwithcommandline_failed);
+DECLARE_METRIC_count(oop_crash_start_sender);
+
+// Increments every time GoopdateImpl::HandleReportCrash is called.
+DECLARE_METRIC_count(goopdate_handle_report_crash);
 
 // How many times StartCrashServer() was called.
 DECLARE_METRIC_count(crash_start_server_total);
@@ -81,6 +88,10 @@ DECLARE_METRIC_count(cr_callback_status_other);
 // How many times GoopdateImpl::LoadResourceDll() failed to load the resource
 // DLL. Does not include modes that do not need the DLL.
 DECLARE_METRIC_count(load_resource_dll_failed);
+
+DECLARE_METRIC_count(goopdate_constructor);
+DECLARE_METRIC_count(goopdate_destructor);
+DECLARE_METRIC_count(goopdate_main);
 
 }  // namespace omaha
 

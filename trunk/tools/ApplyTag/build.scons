@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
 local_env.Dir('.').addRepository(local_env.Dir('$MAIN_DIR/common'))
 
-target_name = 'ApplyTag.exe'
+target_name = 'ApplyTag'
 
 inputs = [
     'apply_tag.cc',  # Comes from $MAIN_DIR/common
@@ -55,7 +55,8 @@ inputs = [
 if env.Bit('use_precompiled_headers'):
   inputs += local_env.EnablePrecompile(target_name)
 
-local_env.ComponentProgram(
+local_env.ComponentTestProgram(
     prog_name=target_name,
     source=inputs,
+    COMPONENT_TEST_RUNNABLE=False
 )

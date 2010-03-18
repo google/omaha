@@ -35,16 +35,9 @@ gtest_env.Append(
         ],
 )
 
-target_name = 'gtest.lib'
+target_name = 'gtest'
 
-gtest_inputs = [
-    'src/gtest.cc',
-    'src/gtest-death-test.cc',
-    'src/gtest-filepath.cc',
-    'src/gtest-port.cc',
-    'src/gtest-test-part.cc',
-    'src/gtest-typed-test.cc',
-    ]
+gtest_inputs = [ 'src/gtest-all.cc' ]
 if env.Bit('use_precompiled_headers'):
   gtest_inputs += gtest_env.EnablePrecompile(target_name)
 

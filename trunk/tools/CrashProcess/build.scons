@@ -1,5 +1,5 @@
 #!/usr/bin/python2.4
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,8 @@ local_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
 local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
 
-local_env.ComponentProgram(
-    prog_name='CrashProcess.exe',
-    source=['crash_process.cc']
+local_env.ComponentTestProgram(
+    prog_name='CrashProcess',
+    source=['crash_process.cc'],
+    COMPONENT_TEST_RUNNABLE=False
 )

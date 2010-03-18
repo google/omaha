@@ -66,6 +66,11 @@
       ExeCommand='/unregisterproduct "[ProductTag]"'
       Return='check' />
     <?ifdef UsingGoogleUpdate_1_2_171_OrLater?>
+    <!-- TODO(omaha): If /registerproduct is deprecated in favor of an
+         "install Omaha only" switch, we might need to update this fragment to
+         write the pv value to the product's ClientState. Otherwise, Omaha
+         might uninstall itself before the product's normal install flow writes
+         these values. -->
     <CustomAction Id='InstallGoogleUpdateAndRegister'
       BinaryKey='GoogleUpdateSetup'
       Impersonate='no'
@@ -108,8 +113,12 @@
         (($ComponentGoogleUpdate>2) OR REINSTALL) AND (NOT DISABLE_UPDATES)
       </Custom>
 
-      <!-- Google Update will uninstall itself if the product is the only app it
-           so no need to have an uninstall operation. -->
+      <!-- Google Update will uninstall itself if the product is the only
+           registered product, so no need to have an uninstall operation.
+           Uninstall actions would not run when expected anyway if Omaha updates
+           the product using a normal MSI installer (without this fragment).
+           Information about this installer would be lost. Also, the uninstall
+           action might run during the first update.-->
 
     </InstallExecuteSequence>
 

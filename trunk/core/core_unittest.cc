@@ -14,12 +14,15 @@
 // ========================================================================
 
 
+#include "omaha/common/app_util.h"
 #include "omaha/common/const_object_names.h"
 #include "omaha/common/error.h"
+#include "omaha/common/path.h"
 #include "omaha/common/scoped_any.h"
 #include "omaha/common/thread.h"
 #include "omaha/common/time.h"
 #include "omaha/common/utils.h"
+#include "omaha/common/vistautil.h"
 #include "omaha/core/core.h"
 #include "omaha/goopdate/config_manager.h"
 #include "omaha/goopdate/const_goopdate.h"
@@ -174,8 +177,10 @@ TEST_F(CoreUtilsTest, IsServiceHealthy) {
   EXPECT_SUCCEEDED(DeleteServices());
   EXPECT_FALSE(IsServiceHealthy());
 
+  // Using a signed file because some anti-virus programs find this behavior
+  // suspicious with unsigned files.
   CString service_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                                         _T("LongRunningSilent.exe"));
+                                         _T("GoogleUpdate.exe"));
   EXPECT_SUCCEEDED(DoInstallService(service_path, _T(" ")));
   EXPECT_TRUE(IsServiceHealthy());
 

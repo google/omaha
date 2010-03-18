@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,11 +31,17 @@ namespace omaha {
 
 class UpdateResponse {
  public:
-  UpdateResponse() {}
-  explicit UpdateResponse(const UpdateResponseData& response_data) {
+  UpdateResponse() : time_since_midnight_sec_(0) {}
+  explicit UpdateResponse(const UpdateResponseData& response_data)
+      : time_since_midnight_sec_(0) {
     response_data_ = response_data;
   }
   ~UpdateResponse() {}
+
+  void set_time_since_midnight_sec(int time_since_midnight_sec) {
+    time_since_midnight_sec_ = time_since_midnight_sec;
+  }
+  int time_since_midnight_sec() const { return time_since_midnight_sec_; }
 
   void set_update_response_data(const UpdateResponseData& response_data) {
     response_data_ = response_data;
@@ -76,6 +82,7 @@ class UpdateResponse {
  private:
   UpdateResponseData response_data_;
   UpdateResponseDatas components_;
+  int time_since_midnight_sec_;
 };
 
 // Map of UpdateResponses, key=Guid, value=UpdateResponse.

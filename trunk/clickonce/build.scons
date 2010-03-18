@@ -71,20 +71,8 @@ unsigned_manifest = env.Command(
 )
 
 # Sign the application manifest.
-sign_manifest_cmd =('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
-                    'http://timestamp.verisign.com/scripts/timstamp.dll ')
-
-if env.Bit('build_server'):
-  sign_manifest_cmd += '-CertHash fe5008fe0da7a2033816752d6eafe95214f5a7e1'
-else:
-  sign_manifest_cmd += '-CertFile %s -Password %s' % (
-      GetOption('authenticode_file'), GetOption('authenticode_password'))
-
-signed_manifest = env.Command(
-    target='%s/%s.manifest' % (clickonce_deploy_dir, clickonce_binary),
-    source=unsigned_manifest,
-    action=sign_manifest_cmd
-)
+manifest_target = '%s/%s.manifest' % (clickonce_deploy_dir, clickonce_binary)
+signed_manifest = env.SignDotNetManifest(manifest_target, unsigned_manifest)
 
 
 # Instruct Hammer to regenerate the manifests when either of these

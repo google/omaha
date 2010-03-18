@@ -96,22 +96,10 @@ def _GenerateDeploymentForOneLanguage(language):
   )
 
   # Sign the deployment manifest.
-  sign_manifest_cmd =('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
-                      'http://timestamp.verisign.com/scripts/timstamp.dll ')
-
-  if env.Bit('build_server'):
-    sign_manifest_cmd += '-CertHash fe5008fe0da7a2033816752d6eafe95214f5a7e1'
-  else:
-    sign_manifest_cmd += '-CertFile %s -Password %s' % (
-        GetOption('authenticode_file'), GetOption('authenticode_password'))
-
   # This will be of the form
   # 'scons-out\dbg-win\clickonce_deployment\GoogleInstaller_en.application'.
-  sign_target = env.Command(
-      target='%s/%s' % (_CLICKONCE_DEPLOY_DIR, clickonce_deployment_name),
-      source=clickonce_target_2,
-      action=sign_manifest_cmd
-  )
+  manifest_target = '%s/%s' % (_CLICKONCE_DEPLOY_DIR, clickonce_deployment_name)
+  env.SignDotNetManifest(manifest_target, clickonce_target_2)
 
 
 
@@ -152,7 +140,7 @@ def _BuildSetupRepairVersion(source_binary, product_name, prefix = ''):
       prefix = prefix,
       suffix = '_repair',
       additional_payload_contents = [
-          '$OBJ_ROOT/recovery/repair_exe/msp/GoogleUpdateHelperPatch.msp',
+          '$STAGING_DIR/GoogleUpdateHelperPatch.msp',
           ],
   )
 
@@ -174,7 +162,7 @@ def _BuildSetupVersion(source_binary, product_name, prefix = ''):
   if env.Bit('all') or 'OMAHA_BUILD_CLICKONCE' in os.environ.keys():
     for language in env['languages']:
       _GenerateDeploymentForOneLanguage(language)
-      
+
     # zh-HK needs a deployment file, but it is not in env['languages'] and there
     # is no mi_generated_resources_zh-HK.rc file. The few translations are
     # inherited from zh-TW, and there are no language code-specific values in

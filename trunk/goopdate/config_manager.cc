@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -744,9 +744,10 @@ bool ConfigManager::CanUseNetwork(bool is_machine) const {
 
 // Always returns false if !is_machine. This prevents ever blocking per-user
 // instances.
-// Returns true if in audit mode and OEM install time is present. Requiring the
-// OEM install time prevents ever blocking non-OEM installs from updating.
-// Also returns true if less than kMinOemModeMs since the OEM install.
+// Returns true if OEM install time is present and it has been less than
+// kMinOemModeSec since the OEM install.
+// Non-OEM installs can never be blocked from updating because OEM install time
+// will not be present.
 bool ConfigManager::IsOemInstalling(bool is_machine) const {
   if (!is_machine) {
     return false;
@@ -760,11 +761,6 @@ bool ConfigManager::IsOemInstalling(bool is_machine) const {
     return false;
   }
 
-  if (IsWindowsInstalling()) {
-    CORE_LOG(L3, (_T("[IsOemInstalling][IsWindowsInstalling][true]")));
-    return true;
-  }
-
   const uint32 now_seconds = Time64ToInt32(GetCurrent100NSTime());
   if (now_seconds < oem_install_time_seconds) {
     CORE_LOG(LW, (_T("[possible time warp detected][now %u][last checked %u]"),
@@ -774,9 +770,7 @@ bool ConfigManager::IsOemInstalling(bool is_machine) const {
       abs(static_cast<int>(now_seconds - oem_install_time_seconds));
 
   ASSERT1(0 <= time_difference_seconds);
-  const uint32 kMinOemModeSeconds = kMinOemModeMs / kMsPerSec;
-  const bool result = time_difference_seconds < kMinOemModeSeconds ? true :
-                                                                     false;
+  const bool result = time_difference_seconds < kMinOemModeSec ? true : false;
 
   CORE_LOG(L3, (_T("[now %u][OEM install time %u][time difference %u][%d]"),
                 now_seconds, oem_install_time_seconds, time_difference_seconds,
@@ -796,7 +790,9 @@ bool ConfigManager::IsWindowsInstalling() const {
   }
 #endif
 
-  return omaha::IsWindowsInstalling();
+  // Call IsWindowsReallyInAuditMode() because IsWindowsInstalling() is not
+  // reliable on its own.
+  return IsWindowsReallyInAuditMode();
 }
 
 // Checks if the computer name ends with .google.com or the netbios domain is

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,10 +38,6 @@ class Request {
 
   bool is_machine() const { return is_machine_; }
   void set_is_machine(bool is_machine) { is_machine_ = is_machine; }
-  CString machine_id() const { return machine_id_; }
-  void set_machine_id(const CString& machine_id) { machine_id_ = machine_id; }
-  CString user_id() const { return user_id_; }
-  void set_user_id(const CString& user_id) { user_id_ = user_id; }
   CString version() const { return version_; }
   void set_version(const CString& version) { version_ = version; }
   CString os_version() const { return os_version_; }
@@ -73,8 +69,6 @@ class Request {
  private:
 
   bool is_machine_;
-  CString machine_id_;
-  CString user_id_;
   CString version_;
   CString os_version_;
   CString os_service_pack_;

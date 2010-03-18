@@ -10,7 +10,7 @@
 
     <Package Id="*"
       Description="Google Update Helper"
-      Comments="Copyright 2007-2009 Google Inc."
+      Comments="Copyright 2007-2010 Google Inc."
       Manufacturer="Google Inc."
       Languages="1033"
       SummaryCodepage="1252"

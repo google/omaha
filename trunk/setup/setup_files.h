@@ -88,6 +88,9 @@ class SetupFiles {
   // Only checks certain extensions since not all extensions can be signed.
   HRESULT VerifyFileSignature(const CString& filepath);
 
+  // Returns whether an older shell version is compatible.
+  static bool IsOlderShellVersionCompatible(ULONGLONG version);
+
   const bool is_machine_;
   CString saved_shell_path_;  // Path of the previous shell saved for roll back.
   std::vector<CString> core_program_files_;

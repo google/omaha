@@ -55,6 +55,7 @@ HRESULT FinishGoogleUpdateInstall(const CommandLineArgs& args,
   HRESULT hr_ping = ping_utils::SendGoopdatePing(
       is_machine,
       args.extra,
+      args.install_source,
       is_self_update ? PingEvent::EVENT_SETUP_UPDATE_BEGIN :
                        PingEvent::EVENT_SETUP_INSTALL_BEGIN,
       S_OK,
@@ -98,6 +99,7 @@ HRESULT FinishGoogleUpdateInstall(const CommandLineArgs& args,
                                           is_machine,
                                           is_self_update,
                                           args.extra,
+                                          args.install_source,
                                           ping);
   if (FAILED(hr_ping)) {
     CORE_LOG(LW, (_T("[SendSetupPing(completed) failed][0x%08x]"), hr_ping));
@@ -107,4 +109,3 @@ HRESULT FinishGoogleUpdateInstall(const CommandLineArgs& args,
 }
 
 }  // namespace omaha
-

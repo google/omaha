@@ -1,4 +1,4 @@
-// Copyright 2003-2009 Google Inc.
+// Copyright 2003-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -108,6 +108,15 @@ const GUID kGoopdateGuid = {0x430FD4D0, 0xB729, 0x4F61,
     _T("InternetRegistry\\REGISTRY\\USER")
 
 #define MACHINE_REG_UPDATE_DEV MACHINE_KEY GOOGLE_MAIN_KEY _T("UpdateDev\\")
+
+//
+// Compatible shell versions
+// The following shell versions are compatible with the current version of
+// goopdate.dll and do not need be replaced: 1.2.131.7 and 1.2.183.9.
+//
+const ULONGLONG kCompatibleOlderShellVersions[] = { 0x0001000200830007,
+                                                    0x0001000200B70009,
+                                                  };
 
 //
 // Registry values under MACHINE_REG_UPDATE_DEV allow customization of the
@@ -243,6 +252,7 @@ const TCHAR* const kLocalSystemSid = _T("S-1-5-18");
 const int kMsPerSec           = 1000;
 const int kMinPerHour         = 60;
 const int kSecondsPerHour     = 60 * 60;
+const int kSecondsPerDay      = 24 * kSecondsPerHour;
 
 // Since time computation for LastChecked is done in seconds, sometimes it
 // can miss an update check, depending on arithmetic truncations.
@@ -279,7 +289,7 @@ const int kMinCodeRedCheckPeriodMs  = 60 * 1000;              // 1 minute.
 
 // The minimum amount of time after a /oem install that Google Update is
 // considered to be in OEM mode regardless of audit mode.
-const int kMinOemModeMs = 72 * 60 * 60 * 1000;  // 72 hours.
+const int kMinOemModeSec = 72 * 60 * 60;  // 72 hours.
 
 // The amount of time to wait for the setup lock before giving up.
 const int kSetupLockWaitMs = 1000;  // 1 second.
@@ -313,4 +323,3 @@ const TCHAR* const kCustomClientInfoGroup = _T("ClientCustomData");
 }  // namespace omaha
 
 #endif  // OMAHA_COMMON_CONSTANTS_H__
-

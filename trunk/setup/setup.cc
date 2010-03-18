@@ -246,9 +246,6 @@ HRESULT Setup::Install(const CString& cmd_line) {
     if (FAILED(hr)) {
       return hr;
     }
-  } else if (ConfigManager::Instance()->IsWindowsInstalling()) {
-    ASSERT(false, (_T("[In OEM Audit Mode but not doing OEM install]")));
-    return GOOPDATE_E_NON_OEM_INSTALL_IN_AUDIT_MODE;
   }
 
   ++metric_setup_install_total;

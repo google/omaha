@@ -1,4 +1,4 @@
-// Copyright 2009 Google Inc.
+// Copyright 2009-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,8 +40,6 @@ class PingMock : public Ping {
     ASSERT1(req);
 
     Request* request = new Request(req->is_machine());
-    request->machine_id_ = req->machine_id();
-    request->user_id_ = req->user_id();
     request->version_ = req->version();
     request->os_version_ = req->os_version();
     request->os_service_pack_ = req->os_service_pack();
@@ -84,8 +82,6 @@ inline const PingEvent& GetSingleEventFromRequest(const Request& request,
                                                   const GUID& expected_app_guid,
                                                   bool expected_is_machine) {
   EXPECT_EQ(expected_is_machine, request.is_machine());
-  EXPECT_TRUE(!request.machine_id().IsEmpty() || !expected_is_machine);
-  EXPECT_TRUE(!request.user_id().IsEmpty());
   EXPECT_TRUE(!request.version().IsEmpty());
   EXPECT_TRUE(!request.os_version().IsEmpty());
   // Skip checking request.os_service_pack() as it can be empty for RTM.

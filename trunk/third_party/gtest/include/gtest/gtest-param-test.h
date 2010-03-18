@@ -146,16 +146,20 @@ INSTANTIATE_TEST_CASE_P(AnotherInstantiationName, FooTest, ValuesIn(pets));
 
 #endif  // 0
 
-
-#include <utility>
-
 #include <gtest/internal/gtest-port.h>
 
-#if GTEST_HAS_PARAM_TEST
+#if !GTEST_OS_SYMBIAN
+#include <utility>
+#endif
 
+// scripts/fuse_gtest.py depends on gtest's own header being #included
+// *unconditionally*.  Therefore these #includes cannot be moved
+// inside #if GTEST_HAS_PARAM_TEST.
 #include <gtest/internal/gtest-internal.h>
 #include <gtest/internal/gtest-param-util.h>
 #include <gtest/internal/gtest-param-util-generated.h>
+
+#if GTEST_HAS_PARAM_TEST
 
 namespace testing {
 

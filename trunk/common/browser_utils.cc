@@ -108,7 +108,7 @@ HRESULT GetDefaultBrowserName(CString* name) {
   if (user_root_key) {
     LONG error(::RegCloseKey(user_root_key));
 
-    // See bug http://b/issue?id=1231862 for details when RegCloseKey can
+    // See bug http://b/1231862 for details when RegCloseKey can
     // return ERROR_INVALID_HANDLE.
     ASSERT1(error == ERROR_SUCCESS ||
             error == ERROR_INVALID_HANDLE);

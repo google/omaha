@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 #include "omaha/common/utils.h"
 #include "omaha/common/xml_utils.h"
 #include "omaha/goopdate/config_manager.h"
+#include "omaha/goopdate/const_goopdate.h"
 #include "omaha/goopdate/goopdate_metrics.h"
 #include "omaha/goopdate/goopdate_utils.h"
 
@@ -105,6 +106,7 @@ namespace Xml {
     const TCHAR* const kInstall = _T("install");
     const TCHAR* const kResponse = _T("response");
     const TCHAR* const kNameValue = _T("attr");
+    const TCHAR* const kDayStart = _T("daystart");
   }
   namespace Attribute {
     const TCHAR* const kActive = _T("active");
@@ -118,6 +120,8 @@ namespace Xml {
     const TCHAR* const kClientId = _T("client");
     const TCHAR* const kCodebase = _T("codebase");
     const TCHAR* const kCountry = _T("country");
+    const TCHAR* const kDaysSinceLastActivePing = _T("a");
+    const TCHAR* const kDaysSinceLastRollCall = _T("r");
     const TCHAR* const kErrorCode = _T("errorcode");
     const TCHAR* const kEventResult = _T("eventresult");
     const TCHAR* const kEventType = _T("eventtype");
@@ -130,7 +134,6 @@ namespace Xml {
     const TCHAR* const kInstallationId = _T("iid");
     const TCHAR* const kInstallSource = _T("installsource");
     const TCHAR* const kLang = _T("lang");
-    const TCHAR* const kMachineId = _T("machineid");
     const TCHAR* const kName = _T("name");
     const TCHAR* const kNeedsAdmin = _T("needsadmin");
     const TCHAR* const kParameter = _T("parameter");
@@ -151,9 +154,9 @@ namespace Xml {
     const TCHAR* const kTerminateAllBrowsers = _T("terminateallbrowsers");
     const TCHAR* const kTTToken = _T("tttoken");
     const TCHAR* const kUpdateDisabled = _T("updatedisabled");
-    const TCHAR* const kUserId = _T("userid");
     const TCHAR* const kVersion = _T("version");
     const TCHAR* const kXmlns = _T("xmlns");
+    const TCHAR* const kElapsedSeconds = _T("elapsed_seconds");
   }
 
   namespace Value {
@@ -793,9 +796,13 @@ HRESULT GoopdateXmlParser::ReadUpdateResponses(
   ASSERT1(node != NULL);
   ASSERT1(responses != NULL);
 
+  int time_since_midnight_sec(0);
+  HRESULT hr = ReadTimeSinceMidnightSec(node, &time_since_midnight_sec);
+  if (FAILED(hr)) { return hr; }
+
   CComPtr<IXMLDOMNodeList> child_nodes;
   // Get all the children of the Node.
-  HRESULT hr = node->get_childNodes(&child_nodes);
+  hr = node->get_childNodes(&child_nodes);
   if (FAILED(hr)) { return hr; }
   if (!child_nodes) { return E_FAIL; }  // Protect against msxml S_FALSE return.
 
@@ -813,6 +820,7 @@ HRESULT GoopdateXmlParser::ReadUpdateResponses(
     if (child_node_name.base == Xml::Element::kApp) {
       // we got a response we should read that in.
       UpdateResponse response;
+      response.set_time_since_midnight_sec(time_since_midnight_sec);
       hr = ReadUpdateResponse(child_node, &response);
       if (FAILED(hr)) { return hr; }
 
@@ -948,6 +956,73 @@ HRESULT GoopdateXmlParser::ValidateResponseElement(
                                             Xml::Value::kVersion2);
 }
 
+// When the server sends the update response back to client, it includes an
+// XML elements as <daystart elapsed_seconds='###'> where ### is the number
+// of seconds since the midnight on server. The client then uses this number to
+// figure out the corresponding local UTC time. This local time stamp is used
+// to determine whether a following ping need to be sent or postponed. Basically
+// client should not send the same type of ping in each server day separated by
+// server's midnight.
+// Since the clock time used on client side is relative value, it doesn't
+// matter if the client's clock is off. But if it's clock runs slower or
+// faster, it may affect the calculation, esp. when server and client don't
+// have time sync-ed for a long time.
+HRESULT GoopdateXmlParser::ReadTimeSinceMidnightSec(IXMLDOMNode* node,
+    int* time_since_midnight_sec) {
+  ASSERT1(node != NULL);
+  ASSERT1(time_since_midnight_sec != NULL);
+
+  CComQIPtr<IXMLDOMElement> manifest = node;
+  CComPtr<IXMLDOMNodeList> child_nodes;
+  CComBSTR target_node_name(Xml::Element::kDayStart);
+
+  HRESULT hr = manifest->getElementsByTagName(
+                             static_cast<BSTR>(target_node_name),
+                             &child_nodes);
+  if (FAILED(hr)) { return hr; }
+  if (!child_nodes) { return E_FAIL; }  // Protect against msxml S_FALSE return.
+
+  long num_elements(0);   // NOLINT
+  hr = child_nodes->get_length(&num_elements);
+  if (FAILED(hr)) { return hr; }
+  if (num_elements == 0) {
+    return S_FALSE;
+  } else if (num_elements != 1) {
+    CORE_LOG(LE,
+             (_T("[ReadTimeSinceMidnightSec sees %d element(s) with name %s]"),
+             num_elements, Xml::Element::kDayStart));
+    return E_FAIL;
+  }
+
+  hr = child_nodes->reset();
+  if (FAILED(hr)) { return hr; }
+
+  CComPtr<IXMLDOMNode> child_node;
+  hr = child_nodes->get_item(0, &child_node);
+  if (FAILED(hr)) { return hr; }
+
+  *time_since_midnight_sec = 0;
+  hr = ReadIntAttribute(child_node,
+                        Xml::Attribute::kElapsedSeconds,
+                        time_since_midnight_sec);
+  if (FAILED(hr)) {
+    CORE_LOG(LE,
+             (_T("[ReadTimeSinceMidnightSec: read attribute %s failed][0x%x]"),
+             Xml::Attribute::kElapsedSeconds, hr));
+    return hr;
+  }
+  if (*time_since_midnight_sec < 0 ||
+      *time_since_midnight_sec >= kMaxTimeSinceMidnightSec) {
+    CORE_LOG(LE,
+             (_T("[ReadTimeSinceMidnightSec: attribute %s value invalid: %d]"),
+             Xml::Attribute::kElapsedSeconds, *time_since_midnight_sec));
+    return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
+  }
+
+  return S_OK;
+}
+
+
 HRESULT GoopdateXmlParser::ParseManifestFile(const CString& file_name,
                                              UpdateResponses* responses) {
   if (responses == NULL) {
@@ -961,13 +1036,12 @@ HRESULT GoopdateXmlParser::ParseManifestFile(const CString& file_name,
   return ParseManifest(document_element, responses);
 }
 
-HRESULT GoopdateXmlParser::ParseManifestString(
-    const TCHAR* manifest,
+HRESULT GoopdateXmlParser::ParseManifestBytes(
+    const std::vector<byte>& manifest_bytes,
     UpdateResponses* responses) {
-  ASSERT1(manifest);
   ASSERT1(responses);
   CComPtr<IXMLDOMDocument> document;
-  HRESULT hr = LoadXMLFromMemory(manifest, false, &document);
+  HRESULT hr = LoadXMLFromRawData(manifest_bytes, false, &document);
   if (FAILED(hr)) { return hr; }
 
   CComPtr<IXMLDOMElement> document_element;
@@ -1124,9 +1198,11 @@ HRESULT GoopdateXmlParser::CreateAppRequestElementHelper(
     }
   }
 
+  // 0 seconds indicates unknown install time. A new install uses -1 days.
   if (0 != app_data.install_time_diff_sec()) {
-    const int kSecondsPerDay = 24 * kSecondsPerHour;
-    int installed_full_days = app_data.install_time_diff_sec() / kSecondsPerDay;
+    const int installed_full_days =
+        static_cast<int>(app_data.install_time_diff_sec()) / kSecondsPerDay;
+    ASSERT1(installed_full_days >= 0 || -1 == installed_full_days);
     hr = AddXMLAttributeNode(*app_element,
                              Xml::Namespace::kRequest,
                              Xml::Attribute::kInstalledAgeDays,
@@ -1275,8 +1351,13 @@ HRESULT GoopdateXmlParser::CreateUpdateAppRequestElement(
     if (FAILED(hr)) { return hr; }
   }
 
-  AppData::ActiveStates active = app_data.did_run();
-  if (active != AppData::ACTIVE_UNKNOWN) {
+  bool was_active = app_data.did_run() == AppData::ACTIVE_RUN;
+  bool need_active = app_data.did_run() != AppData::ACTIVE_UNKNOWN;
+  bool has_sent_a_today = app_data.days_since_last_active_ping() == 0;
+  bool need_a = was_active && !has_sent_a_today;
+  bool need_r = app_data.days_since_last_roll_call() != 0;
+
+  if (need_active || need_a || need_r) {
     // didrun element. The server calls it "ping" for legacy reasons.
     CComPtr<IXMLDOMNode> ping;
     hr = CreateRequestElement(Xml::Element::kPing,
@@ -1285,14 +1366,31 @@ HRESULT GoopdateXmlParser::CreateUpdateAppRequestElement(
                               &ping);
     if (FAILED(hr)) { return hr; }
 
-    const TCHAR* active_str(active == AppData::ACTIVE_RUN ?
-                            _T("1") :
-                            _T("0"));
-    hr = AddXMLAttributeNode(ping,
-                             Xml::Namespace::kRequest,
-                             Xml::Attribute::kActive,
-                             active_str);
-    if (FAILED(hr)) { return hr; }
+    // TODO(omaha): Remove "active" attribute after transition.
+    if (need_active) {
+      const TCHAR* active_str(was_active ? _T("1") : _T("0"));
+      hr = AddXMLAttributeNode(ping,
+                               Xml::Namespace::kRequest,
+                               Xml::Attribute::kActive,
+                               active_str);
+      if (FAILED(hr)) { return hr; }
+    }
+
+    if (need_a) {
+      hr = AddXMLAttributeNode(ping,
+                               Xml::Namespace::kRequest,
+                               Xml::Attribute::kDaysSinceLastActivePing,
+                               itostr(app_data.days_since_last_active_ping()));
+      if (FAILED(hr)) { return hr; }
+    }
+
+    if (need_r) {
+      hr = AddXMLAttributeNode(ping,
+                               Xml::Namespace::kRequest,
+                               Xml::Attribute::kDaysSinceLastRollCall,
+                               itostr(app_data.days_since_last_roll_call()));
+      if (FAILED(hr)) { return hr; }
+    }
 
     hr = (*app_element)->appendChild(ping, NULL);
     if (FAILED(hr)) { return hr; }
@@ -1410,8 +1508,6 @@ HRESULT GoopdateXmlParser::GenerateRequest(const Request& req,
   // add attributes to the top element:
   // * protocol - protocol version
   // * version - omaha version
-  // * machineid - per machine guid
-  // * userid - per user guid
   // * testsource - test source
   // * requestid - Unique request id
   hr = AddXMLAttributeNode(update_requests,
@@ -1431,16 +1527,6 @@ HRESULT GoopdateXmlParser::GenerateRequest(const Request& req,
                            Xml::Namespace::kRequest,
                            Xml::Attribute::kIsMachine,
                            req.is_machine() ? _T("1") : _T("0"));
-  if (FAILED(hr)) { return hr; }
-  hr = AddXMLAttributeNode(update_requests,
-                           Xml::Namespace::kRequest,
-                           Xml::Attribute::kMachineId,
-                           req.machine_id());
-  if (FAILED(hr)) { return hr; }
-  hr = AddXMLAttributeNode(update_requests,
-                           Xml::Namespace::kRequest,
-                           Xml::Attribute::kUserId,
-                           req.user_id());
   if (FAILED(hr)) { return hr; }
   if (!req.test_source().IsEmpty()) {
     hr = AddXMLAttributeNode(update_requests,
@@ -1526,7 +1612,7 @@ HRESULT GoopdateXmlParser::GenerateRequest(const Request& req,
 }
 
 HRESULT GoopdateXmlParser::LoadXmlFileToMemory(const CString& file_name,
-                                               CString* buffer) {
+                                               std::vector<byte>* buffer) {
   ASSERT1(buffer);
 
   CComPtr<IXMLDOMDocument> document;
@@ -1535,7 +1621,7 @@ HRESULT GoopdateXmlParser::LoadXmlFileToMemory(const CString& file_name,
     return hr;
   }
 
-  return SaveXMLToMemory(document, buffer);
+  return SaveXMLToRawData(document, buffer);
 }
 
 }  // namespace omaha

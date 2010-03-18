@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
   <?define CompanyFullName = 'Google, Inc.'?>
-  <?define Copyright = 'Copyright 2007-2009 Google Inc.'?>
+  <?define Copyright = 'Copyright 2007-2010 Google Inc.'?>
   <?define UpdateKeyPath = 'SOFTWARE\Google\Update' ?>
 
   <Product
@@ -75,6 +75,8 @@
         in standalone_installer.py.-->
     <Binary Id='$(var.ProductNameLegalIdentifier)Installer'
             SourceFile='$(var.StandaloneInstallerPath)' />
+    <Binary Id='UninstallCADll'
+            SourceFile='$(var.UninstallCADll)' />
 
     <CustomAction Id='NewerVersionError' Error='4000'/>
 
@@ -99,15 +101,16 @@
       Execute='deferred'
       ExeCommand='/silent /install "[ProductTag]" /installsource enterprisemsi'
       Return='check' />
-
-    <CustomAction Id='SetProductUninstallExe'
-      Property='ProductUninstallExeProperty'
-      Value='[SystemFolder]cmd.exe' />
-    <CustomAction Id='Uninstall$(var.ProductNameLegalIdentifier)'
+    <CustomAction Id='CallUninstaller.SetProperty'
+      Property='CallUninstaller'
+      Value='$(var.ProductGuid)|$(var.ProductUninstallerAdditionalArgs)'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='CallUninstaller'
+      BinaryKey='UninstallCADll'
       Impersonate='no'
       Execute='deferred'
-      Property='ProductUninstallExeProperty'
-      ExeCommand='/c $(var.ProductUninstallCommandLine)'
+      DllEntry='UninstallOmahaProduct'
       Return='check' />
 
     <InstallExecuteSequence>
@@ -147,11 +150,11 @@
         (($ProductClientState>2) OR REINSTALL)
       </Custom>
 
-      <Custom Action='SetProductUninstallExe'
-              Before='Uninstall$(var.ProductNameLegalIdentifier)'>
+      <Custom Action='CallUninstaller.SetProperty'
+              Before='CallUninstaller'>
         $ProductClientState=2
       </Custom>
-      <Custom Action='Uninstall$(var.ProductNameLegalIdentifier)'
+      <Custom Action='CallUninstaller'
               Before='RemoveFiles'>
         $ProductClientState=2
       </Custom>

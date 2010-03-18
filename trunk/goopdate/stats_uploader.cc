@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,20 +98,14 @@ HRESULT UploadMetrics(bool is_machine,
   }
 
   const TCHAR* version = GetVersionString();
-  CString machine_id(goopdate_utils::GetPersistentMachineId());
-  CString user_id(goopdate_utils::GetPersistentUserId(is_machine ?
-                                                      MACHINE_KEY_NAME :
-                                                      USER_KEY_NAME));
   CString test_source(ConfigManager::Instance()->GetTestSource());
 
   CString url(kUrlUsageStatsReport);
-  url.AppendFormat(_T("?%s=%s&%s=%s&%s=%s&%s=%s&%s=%s&%s=%s&%s"),
+  url.AppendFormat(_T("?%s=%s&%s=%s&%s=%s&%s=%s&%s"),
       kMetricsServerParamSourceId,  kMetricsProductName,
       kMetricsServerParamVersion,   version,
       kMetricsServerParamIsMachine, is_machine ? _T("1") : _T("0"),
       kMetricsServerTestSource,     test_source,
-      kMetricsServerMachineId,      machine_id,
-      kMetricsServerUserId,         user_id,
       extra_url_data);
 
   CORE_LOG(L3, (_T("[upload usage stats][%s]"), content));

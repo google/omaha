@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,8 @@ class AppManager {
 
   // Updates the state of the application in the registry. Call this method
   // to update the state of the application after an update check.
-  HRESULT UpdateApplicationState(AppData* app_data);
+  HRESULT UpdateApplicationState(int time_since_midnight_sec,
+                                 AppData* app_data);
 
   // Write the TT Token with what the server returned.
   HRESULT WriteTTToken(const AppData& app_data,
@@ -149,11 +150,21 @@ class AppManager {
   CString GetComponentClientStateKeyName(const GUID& parent_app_guid,
                                          const GUID& app_guid);
 
+  // Gets the time since InstallTime was written. Returns 0 if InstallTime
+  // could not be read. This could occur if the app is not already installed or
+  // there is no valid install time in the registry, which can occur for apps
+  // installed before installtime was implemented.
+  uint32 GetInstallTimeDiffSec(const GUID& app_guid);
+
   HRESULT ClearInstallationId(AppData* app_data,
                               const RegKey& client_state_key);
   HRESULT CopyVersionAndLanguageToClientState(AppData* app_data,
                                               const RegKey& client_state_key,
                                               const RegKey& client_key);
+  static void ResetDidRun(AppData* app_data);
+  static void SetLastPingDayStartTime(int time_since_midnight_sec,
+                                      AppData* app_data,
+                                      const RegKey& client_state_key);
 
   const bool is_machine_;
 

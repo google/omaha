@@ -1,4 +1,4 @@
-// Copyright 2003-2009 Google Inc.
+// Copyright 2003-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +44,9 @@ const DWORD kEncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
 const DWORD kProviderType = PROV_RSA_FULL;
 const DWORD kCertificateNameType = CERT_NAME_SIMPLE_DISPLAY_TYPE;
 const DWORD kKeyPairType = AT_SIGNATURE;
+
+// Maximum file size allowed for performing authentication.
+const int kMaxFileSizeForAuthentication = 512 * 1000 * 1000;  // 512MB
 
 namespace CryptDetails {
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -331,7 +331,7 @@ if env.Bit('build_server'):
   official_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
   official_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
-  target_name = 'SaveArguments_unsigned.exe'
+  target_name = 'SaveArguments_unsigned'
 
   unsigned_inputs = [
       'save_arguments.cc',
@@ -345,9 +345,10 @@ if env.Bit('build_server'):
     unsigned_inputs += official_env.EnablePrecompile(target_name)
 
   # Build the *unsigned* executeable
-  unsigned_output = official_env.ComponentProgram(
+  unsigned_output = official_env.ComponentTestProgram(
       prog_name=target_name,
       source=unsigned_inputs,
+      COMPONENT_TEST_RUNNABLE=False
   )
 
   signed_output = official_env.SignedBinary(
@@ -355,38 +356,35 @@ if env.Bit('build_server'):
       source=unsigned_output,
   )
 
-  official_env.Replicate('$STAGING_DIR', signed_output)
+  official_env.Replicate('$TESTS_DIR', signed_output)
 
 
 # Copy a few test files needed by the unit test.
 # The files are installed side by side with the unit test executable
 # in the build directory.
 env.Replicate('$STAGING_DIR', [
-    # signatures_unittest files.
-    # (download_manager_unittest also uses declaration.txt.)
-    '$MAIN_DIR/data/declaration.txt',
-    '$MAIN_DIR/data/certificate-with-private-key.pfx',
-    '$MAIN_DIR/data/certificate-without-private-key.cer',
-
-    # xml_utils_unittest files.
-    '$MAIN_DIR/data/manifest.xml',
-
     # goopdate_xml_parser_unittest files.
     '$MAIN_DIR/data/seed_manifest_v1.xml',
     '$MAIN_DIR/data/seed_manifest.xml',
     '$MAIN_DIR/data/seed_manifest_v9.xml',
     '$MAIN_DIR/data/server_manifest.xml',
+    '$MAIN_DIR/data/server_manifest_with_unsupported_tags.xml',
     '$MAIN_DIR/data/server_manifest_components.xml',
 
     # goopdate_unittest files.
     '$MAIN_DIR/data/seed_manifest_with_args.xml',
     '$MAIN_DIR/data/server_manifest_one_app.xml',
-    '$MAIN_DIR/data/seed_manifest_with_argsV3.xml',
     '$MAIN_DIR/data/server_manifest_one_app.xml'
     ])
 
 # Install files from the testing/unittest_support/ directory.
 env.Replicate('$STAGING_DIR/unittest_support/', [
+    # Files used by the common unit tests.
+    'unittest_support/certificate-with-private-key.pfx',
+    'unittest_support/certificate-without-private-key.cer',
+    'unittest_support/declaration.txt',
+    'unittest_support/manifest.xml',
+
     # Installer files used by the Install Manager unit tests.
     'unittest_support/test_foo_v1.0.101.0.msi',
 
@@ -396,7 +394,9 @@ env.Replicate('$STAGING_DIR/unittest_support/', [
     'unittest_support/GoogleUpdate_old_signature.exe',
     'unittest_support/GoogleUpdateHelper.msi',
     'unittest_support/SaveArguments.exe',
+    'unittest_support/SaveArguments_different_ou.exe',
     'unittest_support/SaveArguments_OmahaTestSigned.exe',
+    'unittest_support/SaveArguments_unsigned_no_resources.exe',
     'unittest_support/SaveArguments_unsigned_wrong_markup_size.exe',
     'unittest_support/SaveArguments_unsigned_wrong_markup_value.exe',
     'unittest_support/SaveArguments_unsigned_wrong_resource_name.exe',
@@ -415,6 +415,12 @@ env.Replicate('$STAGING_DIR/unittest_support/omaha_1.1.x/', [
     'unittest_support/omaha_1.1.x/GoogleUpdate.exe',
     'unittest_support/omaha_1.1.x/goopdate.dll',
     'unittest_support/omaha_1.1.x/goopdateres_en.dll',
+    ])
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.131.7_shell/', [
+    'unittest_support/omaha_1.2.131.7_shell/GoogleUpdate.exe',
+    ])
+env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.183.9_shell/', [
+    'unittest_support/omaha_1.2.183.9_shell/GoogleUpdate.exe',
     ])
 env.Replicate('$STAGING_DIR/unittest_support/omaha_1.2.x/', [
     'unittest_support/omaha_1.2.x/GoogleUpdate.exe',
@@ -499,7 +505,7 @@ ondemandsystem_unittest_env.Append(
 ondemandsystem_unittest_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
 ondemandsystem_unittest_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
-target_name = 'ondemandsystem_unittest.exe'
+target_name = 'ondemandsystem_unittest'
 
 ondemandsystem_unittest_inputs = [
     'ondemandsystem_unittest.cc',
@@ -509,7 +515,8 @@ if env.Bit('use_precompiled_headers'):
       ondemandsystem_unittest_env.EnablePrecompile(target_name))
 
 
-ondemandsystem_unittest_env.ComponentProgram(
+ondemandsystem_unittest_env.ComponentTestProgram(
     prog_name=target_name,
     source=ondemandsystem_unittest_inputs,
+    COMPONENT_TEST_RUNNABLE=False
 )

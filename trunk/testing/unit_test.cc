@@ -27,6 +27,31 @@
 
 namespace omaha {
 
+namespace {
+
+static bool is_buildsystem = false;
+static TCHAR psexec_dir[MAX_PATH] = {0};
+
+// Returns whether all unit tests should be run.
+bool ShouldRunAllTests() {
+  if (is_buildsystem) {
+    return true;
+  }
+
+  TCHAR var[100] = {0};
+  DWORD res = ::GetEnvironmentVariable(_T("OMAHA_RUN_ALL_TESTS"),
+                                       var,
+                                       arraysize(var));
+  if (0 == res) {
+    ASSERT1(ERROR_ENVVAR_NOT_FOUND == ::GetLastError());
+    return false;
+  } else {
+    return true;
+  }
+}
+
+}  // namespace
+
 CString GetLocalAppDataPath() {
   CString expected_local_app_data_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_LOCAL_APPDATA | CSIDL_FLAG_DONT_VERIFY,
@@ -113,29 +138,78 @@ void RestoreRegistryHives() {
   ASSERT_SUCCEEDED(::RegOverridePredefKey(HKEY_CURRENT_USER, NULL));
 }
 
+void SetPsexecDir(const CString& dir) {
+  _tcscpy_s(psexec_dir, arraysize(psexec_dir), dir.GetString());
+}
+
+// If psexec_dir is not already set - by SetPsexecDir or a previous call to this
+// method - read the environment variable.
+CString GetPsexecDir() {
+  if (!_tcsnlen(psexec_dir, arraysize(psexec_dir))) {
+    EXPECT_TRUE(::GetEnvironmentVariable(_T("OMAHA_PSEXEC_DIR"),
+                                         psexec_dir,
+                                         arraysize(psexec_dir)));
+  }
+
+  return psexec_dir;
+}
+
+// Must be called after SetPsexecDir().
+// Does not wait for the EULA accepting process to complete.
+bool AcceptPsexecEula() {
+  CString psexec_dir = GetPsexecDir();
+  if (psexec_dir.IsEmpty()) {
+    return false;
+  }
+
+  CString psexec_path = ConcatenatePath(psexec_dir, _T("psexec.exe"));
+  return SUCCEEDED(System::StartProcessWithArgs(psexec_path,
+                                                _T("/accepteula")));
+}
+
+void SetIsBuildSystem() {
+  is_buildsystem = true;
+}
+
+bool IsBuildSystem() {
+  return is_buildsystem;
+}
+
 void SetBuildSystemTestSource() {
-  ASSERT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueTestSource,
-                                    _T("pulse")));
+                                    _T("buildsystem")));
 }
 
 bool ShouldRunLargeTest() {
-  if (IsBuildSystem()) {
+  if (ShouldRunAllTests()) {
     return true;
   }
-  // TODO(omaha): Force enable for coverage builds (BULK_COVERAGE_RUN?).
 
   TCHAR var[100] = {0};
-  DWORD res = ::GetEnvironmentVariable(_T("OMAHA_RUN_ALL_TESTS"), var, 100);
+  DWORD res = ::GetEnvironmentVariable(_T("OMAHA_RUN_LARGE_TESTS"),
+                                       var,
+                                       arraysize(var));
   if (0 == res) {
     ASSERT1(ERROR_ENVVAR_NOT_FOUND == ::GetLastError());
-    std::wcout << _T("\tThis large test did not run because ")
-                  _T("'OMAHA_RUN_ALL_TESTS' is not set in the environment.")
-               << std::endl;
+    std::wcout << _T("\tThis large test did not run because neither ")
+                  _T("'OMAHA_RUN_LARGE_TESTS' or 'OMAHA_RUN_ALL_TESTS' is set ")
+                  _T("in the environment.") << std::endl;
     return false;
   } else {
     return true;
   }
+}
+
+bool ShouldRunEnormousTest() {
+  if (ShouldRunAllTests()) {
+    return true;
+  }
+
+  std::wcout << _T("\tThis large test did not run because ")
+              _T("'OMAHA_RUN_ALL_TESTS' is not set in the environment.")
+           << std::endl;
+  return false;
 }
 
 void TerminateAllProcessesByName(const TCHAR* process_name) {
@@ -165,12 +239,7 @@ void TerminateAllGoogleUpdateProcesses() {
 void LaunchProcessAsSystem(const CString& launch_cmd, HANDLE* process) {
   ASSERT_TRUE(process);
 
-  TCHAR psexec_path[MAX_PATH] = {0};
-  EXPECT_TRUE(::GetEnvironmentVariable(_T("OMAHA_PSEXEC_DIR"),
-                                       psexec_path,
-                                       arraysize(psexec_path)));
-
-  CString app_launcher = ConcatenatePath(psexec_path, _T("psexec.exe"));
+  CString app_launcher = ConcatenatePath(GetPsexecDir(), _T("psexec.exe"));
   CString cmd_line_args;
   cmd_line_args.Format(_T("-s -d %s"), launch_cmd);
 
@@ -239,7 +308,9 @@ TEST(UnitTestHelpersTest, GetLocalAppDataPath) {
       _T("C:\\Users\\%s\\AppData\\Local\\");
 
   TCHAR username[MAX_PATH] = {0};
-  EXPECT_TRUE(::GetEnvironmentVariable(_T("USERNAME"), username, MAX_PATH));
+  EXPECT_TRUE(::GetEnvironmentVariable(_T("USERNAME"),
+                                       username,
+                                       arraysize(username)));
   CString expected_path;
   expected_path.Format(vista_util::IsVistaOrLater() ?
                            kUserVistaLocalAppDataPathFormat :

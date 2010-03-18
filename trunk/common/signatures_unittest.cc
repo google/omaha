@@ -96,10 +96,11 @@ TEST(SignaturesTest, CryptoHash) {
 }
 
 TEST(SignaturesTest, CreationVerification) {
-  // Load the test certificates from the directory where the unit test is
-  // running from. The test certificates are copied there during the build.
-  TCHAR directory[MAX_PATH] = {0};
-  ASSERT_TRUE(GetModuleDirectory(NULL, directory));
+  TCHAR module_directory[MAX_PATH] = {0};
+  ASSERT_TRUE(GetModuleDirectory(NULL, module_directory));
+  CString directory;
+  directory.Format(_T("%s\\unittest_support"), module_directory);
+
   CString encoded_cert_with_private_key_path;
   encoded_cert_with_private_key_path.AppendFormat(
       _T("%s\\certificate-with-private-key.pfx"), directory);

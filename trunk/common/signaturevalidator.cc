@@ -307,7 +307,7 @@ bool CertInfo::ExtractIssuerInfo(const CERT_CONTEXT* cert_context,
   DWORD name_size = sizeof(name_str);
 
   DWORD num_converted_bytes =
-    CertNameToStr(
+    ::CertNameToStr(
         kCertificateEncoding,
         &orgn_blob,
         CERT_X500_NAME_STR|CERT_NAME_STR_NO_QUOTING_FLAG|
@@ -339,7 +339,7 @@ void CertList::FindFirstCert(CertInfo** result_cert_info,
                              const CString &orgn_unit_to_match,
                              const CString &trust_authority_to_match,
                              bool allow_test_variant,
-                             bool check_timestamp) {
+                             bool check_cert_is_valid_now) {
   if (!result_cert_info)
     return;
   (*result_cert_info) = NULL;
@@ -367,7 +367,7 @@ void CertList::FindFirstCert(CertInfo** result_cert_info,
         trust_authority_to_match != (*cert_iter)->trust_authority_name_)
       continue;
     // All the criteria matched. But, add only if it is a valid certificate.
-    if (!check_timestamp || (*cert_iter)->IsValidNow()) {
+    if (!check_cert_is_valid_now || (*cert_iter)->IsValidNow()) {
       (*result_cert_info) = (*cert_iter);
       return;
     }
@@ -411,24 +411,20 @@ void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
   return;
 }
 
+// Only check the CN. The OU can change.
+// TODO(omaha): A better way to implement the valid now check would be to add
+// a parameter to VerifySignature that adds WTD_LIFETIME_SIGNING_FLAG.
 bool VerifySigneeIsGoogleInternal(const wchar_t* signed_file,
-                                  bool check_timestamp) {
-  // Google Name and its dept name as expected on the certificate.
-  // We switched to a slightly different cert in late 2005. The values were
-  // "Google, Inc." and "Engineering" respectively.
-  // Subject Name
+                                  bool check_cert_is_valid_now) {
   const TCHAR* google_name = _T("Google Inc");
-  // Organization Unit Name
-  const TCHAR* google_dept_name =
-      _T("Digital ID Class 3 - Netscape Object Signing");
 
   CertList cert_list;
   ExtractAllCertificatesFromSignature(signed_file, &cert_list);
   if (cert_list.size() > 0) {
     CertInfo* required_cert = NULL;
     // now, see if one of the certificates in the signature belongs to Google.
-    cert_list.FindFirstCert(&required_cert, google_name, google_dept_name,
-                            CString(), true, check_timestamp);
+    cert_list.FindFirstCert(&required_cert, google_name, CString(),
+                            CString(), true, check_cert_is_valid_now);
     if (required_cert != NULL) {
       return true;
     }
@@ -436,11 +432,10 @@ bool VerifySigneeIsGoogleInternal(const wchar_t* signed_file,
   return false;
 }
 
+// Does not verify that the certificate is currently valid.
+// VerifySignature verifies that the certificate was valid at signing time as
+// part of the normal signature verification.
 bool VerifySigneeIsGoogle(const wchar_t* signed_file) {
-  return VerifySigneeIsGoogleInternal(signed_file, true);
-}
-
-bool VerifySigneeIsGoogleNoTimestampCheck(const wchar_t* signed_file) {
   return VerifySigneeIsGoogleInternal(signed_file, false);
 }
 
@@ -476,7 +471,7 @@ HRESULT VerifySignature(const wchar_t* signed_file, bool allow_network_check) {
   // If the trust provider verifies that the subject is trusted for the
   // specified action, the return value is zero. No other value besides zero
   // should be considered a successful return.
-  LONG result = WinVerifyTrust(kWindowMode, &verification_type, &trust_data);
+  LONG result = ::WinVerifyTrust(kWindowMode, &verification_type, &trust_data);
   if (result != 0) {
     return FAILED(result) ? result : HRESULT_FROM_WIN32(result);
   }

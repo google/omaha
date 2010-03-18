@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 #define IDS_EXPECTED_UPDATE_REQUEST2                8105
 #define IDS_EXPECTED_UPDATE_REQUEST3                8106
 #define IDS_EXPECTED_UPDATE_REQUEST4                8107
+#define IDS_EXPECTED_UPDATE_REQUEST5                8108
 #define IDS_ESCAPE_TEST                             8120
 #define IDS_ESCAPE_TEST1                            8121
 

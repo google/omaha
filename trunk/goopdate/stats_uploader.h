@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,8 +31,6 @@ const TCHAR* const kMetricsServerParamSourceId   = _T("sourceid");
 const TCHAR* const kMetricsServerParamVersion    = _T("v");
 const TCHAR* const kMetricsServerParamIsMachine  = _T("ismachine");
 const TCHAR* const kMetricsServerTestSource      = _T("testsource");
-const TCHAR* const kMetricsServerMachineId       = _T("mi");
-const TCHAR* const kMetricsServerUserId          = _T("ui");
 
 // Metrics are uploaded every 25 hours.
 const int kMetricsUploadIntervalSec              = 25 * 60 * 60;

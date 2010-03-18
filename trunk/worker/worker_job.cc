@@ -526,6 +526,8 @@ HRESULT WorkerJob::DoUpdateCheck(const ProductDataVector& products) {
           running_version_,
           is_machine_,
           strategy_->language(),
+          products[0].app_data().iid(),
+          products[0].app_data().brand_code(),
           kUpdateCheckSourceId,
           &url);
       if (SUCCEEDED(hres)) {
@@ -548,10 +550,10 @@ HRESULT WorkerJob::DoUpdateCheck(const ProductDataVector& products) {
   ASSERT1(network_request->http_status_code() == HTTP_STATUS_OK);
 
   // Parse the response.
-  CString response(Utf8BufferToWideChar(response_buffer));
-  CORE_LOG(L2, (_T("[Parse update check][%s]"), response));
+  CORE_LOG(L2, (_T("[Parse update check][%s]"),
+                Utf8BufferToWideChar(response_buffer)));
   UpdateResponses responses;
-  hr = GoopdateXmlParser::ParseManifestString(response, &responses);
+  hr = GoopdateXmlParser::ParseManifestBytes(response_buffer, &responses);
   if (FAILED(hr)) {
     CString msg;
     msg.FormatMessage(IDS_INSTALL_FAILED, hr);

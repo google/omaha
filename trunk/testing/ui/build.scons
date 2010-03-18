@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
 # Do not name the output _unittest.exe or _test.exe to avoid the build machine
 # automatically running it after the build. See rut.py for details.
-target_name = 'ui_systemtest.exe'
+target_name = 'ui_systemtest'
 
 inputs = [
     'ui_unittest.cc',
@@ -102,5 +102,9 @@ inputs = [
 if env.Bit('use_precompiled_headers'):
   inputs += local_env.EnablePrecompile(target_name)
 
-local_env.ComponentProgram(target_name, inputs)
+local_env.ComponentTestProgram(
+    prog_name=target_name,
+    source=inputs,
+    COMPONENT_TEST_RUNNABLE=False
+)
 

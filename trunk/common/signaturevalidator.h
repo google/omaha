@@ -25,6 +25,26 @@
 #include <vector>
 #pragma warning(pop)
 
+// VerifySignature() and VerifySigneeIsGoogle() should always be used together.
+//
+// VerifySignature() verifies that the signature is valid and has a trusted
+// chain. It also verifies that the signing certificate was valid at the time
+// it was used to sign. If all are true, it returns S_OK. Even if the
+// certificate has expired since it was used to sign, the signature is valid and
+// VerifySignature() returns S_OK.
+//
+// If allow_network_check is true, VerifySignature() will
+// also check the Certificate Revocation List (CRL). If the certificate was
+// revoked after it was used to sign, it will return S_OK. Otherwise, it fails.
+// At no time does VerifySignature() check whether the certificate is currently
+// valid.
+//
+// VerifySigneeIsGoogle() verifies that Google signed the file. It does not
+// check the certificate chain, CRL, or anything related to the timestamp.
+//
+// Some of the helper classes and methods allow the caller to check whether the
+// certificate is valid now. The above methods do not check this.
+
 namespace omaha {
 
 // Class: CertInfo
@@ -140,16 +160,9 @@ class CertList {
                      const CString &orgn_unit_to_match,
                      const CString &trust_authority_to_match,
                      bool allow_test_variant,
-                     bool check_timestamp);
+                     bool check_cert_is_valid_now);
 
   typedef std::vector<CertInfo*> CertInfoList;
-
-  // FindAllCerts() finds all certificates that match given criteria.
-  void FindAllCerts(CertInfoList* result_cert_info_list,
-                    CString company_name_to_match,
-                    CString orgn_unit_to_match,
-                    CString trust_authority_to_match,
-                    bool check_timestamp);
 
  private:
   CertInfoList cert_list_;
@@ -162,20 +175,9 @@ class CertList {
 void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
                                          CertList* cert_list);
 
-// TODO(omaha): the time check verification algorithm below seems weak if not
-// completely wrong. The time stamp check should be done against the time
-// stamp signature instead of the current time. For example, modifying the
-// system time allows the test to pass or fail. See the documentation for
-// WinVerifyTrust and WTD_LIFETIME_SIGNING_FLAG.
-//
-// VerifySigneeIsGoogle() tries to verify the signee is Google by matching
-// the subject name on the certificate to "Google Inc" and its corresponding
-// dept name on the certificate to "Engineering". If matched, this returns true
-// otherwise it returns false. The time validity of the certicate is checked.
+// Tries to verify the signee is Google by matching the company and organization
+// unit names on the certificate. Returns true if both match.
 bool VerifySigneeIsGoogle(const wchar_t* signed_file);
-
-// Verifies the signee but not the time stamp of the certificate.
-bool VerifySigneeIsGoogleNoTimestampCheck(const wchar_t* signed_file);
 
 // Returns S_OK if a given signed file contains a signature
 // that could be successfully verified using one of the trust providers

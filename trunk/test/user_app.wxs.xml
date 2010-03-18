@@ -4,8 +4,11 @@
      Version="$(var.FooVersion)" Manufacturer='Google'
      UpgradeCode='97781963-8283-4602-A9DA-CAE7A5536C75'>
      <Package Id='*'
-       Description='User Test Foo' Comments='User Test Foo'
-       Manufacturer='Google' InstallerVersion='200' Compressed='yes' />
+       Description='User Test Foo'
+       Comments='Copyright 2007-2010 Google Inc.'
+       Manufacturer='Google Inc.'
+       InstallerVersion='200'
+       Compressed='yes' />
 
       <Upgrade Id='97781963-8283-4602-A9DA-CAE7A5536C75'>
         <UpgradeVersion Property='UPGRADING'

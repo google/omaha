@@ -38,16 +38,18 @@
 #include <utility>
 #include <vector>
 
+// scripts/fuse_gtest.py depends on gtest's own header being #included
+// *unconditionally*.  Therefore these #includes cannot be moved
+// inside #if GTEST_HAS_PARAM_TEST.
+#include <gtest/internal/gtest-internal.h>
+#include <gtest/internal/gtest-linked_ptr.h>
 #include <gtest/internal/gtest-port.h>
 
 #if GTEST_HAS_PARAM_TEST
 
 #if GTEST_HAS_RTTI
-#include <typeinfo>
+#include <typeinfo>  // NOLINT
 #endif  // GTEST_HAS_RTTI
-
-#include <gtest/internal/gtest-linked_ptr.h>
-#include <gtest/internal/gtest-internal.h>
 
 namespace testing {
 namespace internal {
@@ -248,6 +250,9 @@ class RangeGenerator : public ParamGeneratorInterface<T> {
         : base_(other.base_), value_(other.value_), index_(other.index_),
           step_(other.step_) {}
 
+    // No implementation - assignment is unsupported.
+    void operator=(const Iterator& other);
+
     const ParamGeneratorInterface<T>* const base_;
     T value_;
     int index_;
@@ -262,6 +267,9 @@ class RangeGenerator : public ParamGeneratorInterface<T> {
       end_index++;
     return end_index;
   }
+
+  // No implementation - assignment is unsupported.
+  void operator=(const RangeGenerator& other);
 
   const T begin_;
   const T end_;
@@ -349,7 +357,10 @@ class ValuesInIteratorRangeGenerator : public ParamGeneratorInterface<T> {
     // Use of scoped_ptr helps manage cached value's lifetime,
     // which is bound by the lifespan of the iterator itself.
     mutable scoped_ptr<const T> value_;
-  };
+  };  // class ValuesInIteratorRangeGenerator::Iterator
+
+  // No implementation - assignment is unsupported.
+  void operator=(const ValuesInIteratorRangeGenerator& other);
 
   const ContainerType container_;
 };  // class ValuesInIteratorRangeGenerator

@@ -38,7 +38,7 @@ TEST(GoogleUpdateTest, ShellVersion) {
                StringFromVersion(actual_shell_version));
 #else
   // This version must be updated whenever the saved shell is updated.
-  EXPECT_STREQ(_T("1.2.131.7"), StringFromVersion(actual_shell_version));
+  EXPECT_STREQ(_T("1.2.183.21"), StringFromVersion(actual_shell_version));
 #endif
 }
 

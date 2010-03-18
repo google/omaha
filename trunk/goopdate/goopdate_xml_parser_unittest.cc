@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include "omaha/common/path.h"
 #include "omaha/common/utils.h"
 #include "omaha/common/reg_key.h"
+#include "omaha/common/string.h"
 #include "omaha/common/xml_utils.h"
 #include "omaha/goopdate/goopdate_xml_parser.h"
 #include "omaha/goopdate/update_response.h"
@@ -129,8 +130,6 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test1) {
                            kExpectedRequestLength) != 0);
 
   Request req(false);
-  req.set_machine_id(_T("{874E4D29-8671-40C8-859F-4DECA481CF42}"));
-  req.set_user_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_request_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_os_version(_T("5.1"));
   req.set_os_service_pack(_T(""));
@@ -140,11 +139,16 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test1) {
   AppData app_data1;
   CreateBaseAppData(req.is_machine(), &app_data1);
   app_data1.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data1.set_days_since_last_active_ping(3);
+  app_data1.set_days_since_last_roll_call(2);
   app_data1.set_ap(_T("dev"));
   app_data1.set_iid(StringToGuid(_T("{A972BB39-CCA3-4f25-9737-3308F5FA19B5}")));
   app_data1.set_client_id(_T("_one_client"));
   app_data1.set_install_source(_T("oneclick"));
   app_data1.set_brand_code(_T("GGLG"));
+  // This 32-bit unsigned value gets reported as a negative value due to casting
+  // in place to handle the -1 case. This is okay because there are 68 positive
+  // years in INT_MAX.
   app_data1.set_install_time_diff_sec(3123456789);
   app_data1.set_install_source(_T("oneclick"));
 
@@ -155,6 +159,8 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test1) {
   AppData app_data2;
   CreateBaseAppData(req.is_machine(), &app_data2);
   app_data2.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data2.set_days_since_last_active_ping(5);
+  app_data2.set_days_since_last_roll_call(0);
   app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
   app_data2.set_client_id(_T("_another_client"));
   app_data2.set_brand_code(_T("GooG"));
@@ -164,6 +170,7 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test1) {
   req.AddAppRequest(app_request2);
 
   CString request_string;
+  ExpectAsserts expect_asserts;  // set_install_time_diff_sec overflow.
   ASSERT_SUCCEEDED(
       GoopdateXmlParser::GenerateRequest(req, true, &request_string));
 
@@ -181,8 +188,6 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestTTToken) {
                            expected_value, kExpectedRequestLength) != 0);
 
   Request req(false);
-  req.set_machine_id(_T("{874E4D29-8671-40C8-859F-4DECA481CF42}"));
-  req.set_user_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_request_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_os_version(_T("5.1"));
   req.set_os_service_pack(_T(""));
@@ -191,13 +196,16 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestTTToken) {
 
   AppData app_data1;
   CreateBaseAppData(req.is_machine(), &app_data1);
-  app_data1.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data1.set_did_run(AppData::ACTIVE_RUN);
+  app_data1.set_days_since_last_active_ping(7);
+  app_data1.set_days_since_last_roll_call(0);
   app_data1.set_ap(_T("dev"));
   app_data1.set_tt_token(_T("foobar"));
   app_data1.set_iid(StringToGuid(_T("{A972BB39-CCA3-4f25-9737-3308F5FA19B5}")));
   app_data1.set_client_id(_T("_one_client"));
   app_data1.set_install_source(_T("oneclick"));
   app_data1.set_brand_code(_T("GGLG"));
+  app_data1.set_install_time_diff_sec(static_cast<uint32>(-1 * kSecondsPerDay));
   app_data1.set_install_source(_T("oneclick"));
 
   AppRequestData app_request_data1(app_data1);
@@ -206,7 +214,9 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestTTToken) {
 
   AppData app_data2;
   CreateBaseAppData(req.is_machine(), &app_data2);
-  app_data2.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data2.set_did_run(AppData::ACTIVE_RUN);
+  app_data2.set_days_since_last_active_ping(0);
+  app_data2.set_days_since_last_roll_call(4);
   app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
   app_data2.set_client_id(_T("_another_client"));
   app_data2.set_brand_code(_T("GooG"));
@@ -227,8 +237,6 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestUpdateDisabled) {
                            expected_value, kExpectedRequestLength) != 0);
 
   Request req(false);
-  req.set_machine_id(_T("{874E4D29-8671-40C8-859F-4DECA481CF42}"));
-  req.set_user_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_request_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_os_version(_T("5.1"));
   req.set_os_service_pack(_T(""));
@@ -238,6 +246,8 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestUpdateDisabled) {
   AppData app_data1;
   CreateBaseAppData(req.is_machine(), &app_data1);
   app_data1.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data1.set_days_since_last_active_ping(1);
+  app_data1.set_days_since_last_roll_call(1);
   app_data1.set_ap(_T("dev"));
   app_data1.set_tt_token(_T("foobar"));
   app_data1.set_iid(StringToGuid(_T("{A972BB39-CCA3-4f25-9737-3308F5FA19B5}")));
@@ -253,7 +263,9 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestUpdateDisabled) {
 
   AppData app_data2;
   CreateBaseAppData(req.is_machine(), &app_data2);
-  app_data2.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data2.set_did_run(AppData::ACTIVE_RUN);
+  app_data2.set_days_since_last_active_ping(2);
+  app_data2.set_days_since_last_roll_call(2);
   app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
   app_data2.set_client_id(_T("_another_client"));
   app_data2.set_brand_code(_T("GooG"));
@@ -274,8 +286,6 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test2) {
                            kExpectedRequestLength) != 0);
 
   Request req(true);
-  req.set_machine_id(_T("{874E4D29-8671-40C8-859F-4DECA481CF42}"));
-  req.set_user_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_request_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_os_version(_T("5.1"));
   req.set_os_service_pack(_T("Service Pack 2"));
@@ -327,8 +337,6 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_Test3_Components) {
                            kExpectedRequestLength) != 0);
 
   Request req(true);
-  req.set_machine_id(_T("{874E4D29-8671-40C8-859F-4DECA481CF42}"));
-  req.set_user_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_request_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_os_version(_T("5.1"));
   req.set_os_service_pack(_T("Service Pack 2"));
@@ -397,8 +405,6 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestInstallDataIndex) {
                            kExpectedRequestLength) != 0);
 
   Request req(false);
-  req.set_machine_id(_T("{874E4D29-8671-40C8-859F-4DECA481CF42}"));
-  req.set_user_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_request_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
   req.set_os_version(_T("5.1"));
   req.set_os_service_pack(_T(""));
@@ -407,7 +413,9 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestInstallDataIndex) {
 
   AppData app_data1;
   CreateBaseAppData(req.is_machine(), &app_data1);
-  app_data1.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data1.set_did_run(AppData::ACTIVE_RUN);
+  app_data1.set_days_since_last_active_ping(365);
+  app_data1.set_days_since_last_roll_call(31);
   app_data1.set_ap(_T("dev"));
   app_data1.set_iid(StringToGuid(_T("{A972BB39-CCA3-4f25-9737-3308F5FA19B5}")));
   app_data1.set_brand_code(_T("GGLG"));
@@ -423,6 +431,8 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestInstallDataIndex) {
   AppData app_data2;
   CreateBaseAppData(req.is_machine(), &app_data2);
   app_data2.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data2.set_days_since_last_active_ping(-1);
+  app_data2.set_days_since_last_roll_call(-1);
   app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
   app_data2.set_client_id(_T("_another_client"));
   app_data2.set_brand_code(_T("GooG"));
@@ -432,6 +442,64 @@ TEST_F(GoopdateXmlParserTest, GenerateRequest_TestInstallDataIndex) {
   req.AddAppRequest(app_request2);
 
   CString request_string;
+  ASSERT_SUCCEEDED(
+      GoopdateXmlParser::GenerateRequest(req, true, &request_string));
+
+  ASSERT_STREQ(expected_value, request_string);
+}
+
+// TODO(omaha): Enable this test once 'active' attribute is removed
+// from ping attribute list. Until legacy active is removed, it sends a ping
+// and makes this test fail.
+TEST_F(GoopdateXmlParserTest, DISABLED_GenerateRequest_NoPingSend) {
+  // Test that no ping is sent if both last active ping and last roll count
+  // was sent within one time unit
+  TCHAR expected_value[kExpectedRequestLength] = {0};
+  EXPECT_TRUE(::LoadString(NULL, IDS_EXPECTED_UPDATE_REQUEST5, expected_value,
+                           kExpectedRequestLength) != 0);
+
+  Request req(false);
+  req.set_request_id(_T("{8CD4D4C7-D42E-49B7-9E1A-DDDC8F8F77A8}"));
+  req.set_os_version(_T("5.1"));
+  req.set_os_service_pack(_T(""));
+  req.set_version(_T("0.0.0.0"));
+  req.set_test_source(_T("dev"));
+
+  AppData app_data1;
+  CreateBaseAppData(req.is_machine(), &app_data1);
+  app_data1.set_did_run(AppData::ACTIVE_RUN);
+  app_data1.set_days_since_last_active_ping(0);
+  app_data1.set_days_since_last_roll_call(0);
+  app_data1.set_ap(_T("dev"));
+  app_data1.set_iid(StringToGuid(_T("{A972BB39-CCA3-4f25-9737-3308F5FA19B5}")));
+  app_data1.set_client_id(_T("_one_client"));
+  app_data1.set_install_source(_T("oneclick"));
+  app_data1.set_brand_code(_T("GGLG"));
+  // This 32-bit unsigned value gets reported as a negative value due to casting
+  // in place to handle the -1 case. This is okay because there are 68 positive
+  // years in INT_MAX.
+  app_data1.set_install_time_diff_sec(3123456789);
+  app_data1.set_install_source(_T("oneclick"));
+
+  AppRequestData app_request_data1(app_data1);
+  AppRequest app_request1(app_request_data1);
+  req.AddAppRequest(app_request1);
+
+  AppData app_data2;
+  CreateBaseAppData(req.is_machine(), &app_data2);
+  app_data2.set_did_run(AppData::ACTIVE_NOTRUN);
+  app_data2.set_days_since_last_active_ping(0);
+  app_data2.set_days_since_last_roll_call(0);
+  app_data2.set_iid(StringToGuid(_T("{E9EF60A1-B254-4898-A1B3-6C9B60FAC94A}")));
+  app_data2.set_client_id(_T("_another_client"));
+  app_data2.set_brand_code(_T("GooG"));
+  app_data2.set_install_time_diff_sec(30);
+  AppRequestData app_request_data2(app_data2);
+  AppRequest app_request2(app_request_data2);
+  req.AddAppRequest(app_request2);
+
+  CString request_string;
+  ExpectAsserts expect_asserts;  // set_install_time_diff_sec overflow.
   ASSERT_SUCCEEDED(
       GoopdateXmlParser::GenerateRequest(req, true, &request_string));
 
@@ -514,99 +582,112 @@ TEST_F(GoopdateXmlParserTest, ParseManifestFile_SeedManifest) {
 }
 
 TEST_F(GoopdateXmlParserTest, ParseManifestFile_ServerManifest) {
-  UpdateResponses responses;
-  CString file_name(ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                                    _T("server_manifest.xml")));
-  GUID guid  = StringToGuid(_T("{D6B08267-B440-4C85-9F79-E195E80D9937}"));
-  GUID guid2 = StringToGuid(_T("{104844D6-7DDA-460B-89F0-FBF8AFDD0A67}"));
-  GUID guid3 = StringToGuid(_T("{884a01d9-fb67-430a-b491-28f960dd7309}"));
-  GUID guid4 = StringToGuid(_T("{D6B08267-B440-4C85-9F79-E195E80D9936}"));
-  GUID guid5 = StringToGuid(_T("{8CF15C17-7BB5-433a-8E6C-C018D79D00B1}"));
+  const TCHAR* kManifestFileNames[] = {
+      _T("server_manifest.xml"),
+      _T("server_manifest_with_unsupported_tags.xml"),
+  };
 
-  const TCHAR* kVerboseLog = _T("\n  {\n    \"distribution\": {\n      ")
-                             _T("\"verbose_logging\": true\n    }\n  }\n  ");
-  const TCHAR* kSkipFirstRun = _T("{\n    \"distribution\": {\n      \"")
+  for (int i = 0; i < arraysize(kManifestFileNames); ++i) {
+    UpdateResponses responses;
+    CString file_name(ConcatenatePath(app_util::GetCurrentModuleDirectory(),
+                                      kManifestFileNames[i]));
+    GUID guid  = StringToGuid(_T("{D6B08267-B440-4C85-9F79-E195E80D9937}"));
+    GUID guid2 = StringToGuid(_T("{104844D6-7DDA-460B-89F0-FBF8AFDD0A67}"));
+    GUID guid3 = StringToGuid(_T("{884a01d9-fb67-430a-b491-28f960dd7309}"));
+    GUID guid4 = StringToGuid(_T("{D6B08267-B440-4C85-9F79-E195E80D9936}"));
+    GUID guid5 = StringToGuid(_T("{8CF15C17-7BB5-433a-8E6C-C018D79D00B1}"));
+
+    const TCHAR* kVerboseLog = _T("\n  {\n    \"distribution\": {\n      ")
+                               _T("\"verbose_logging\": true\n    }\n  }\n  ");
+    const TCHAR* kSkipFirstRun = _T("{\n    \"distribution\": {\n      \"")
                                _T("skip_first_run_ui\": true,\n    }\n  }\n  ");
 
-  ASSERT_SUCCEEDED(GoopdateXmlParser::ParseManifestFile(file_name, &responses));
-  ASSERT_EQ(kServerManifestResponseCount, responses.size());
+    ASSERT_SUCCEEDED(GoopdateXmlParser::ParseManifestFile(file_name,
+                                                          &responses));
+    ASSERT_EQ(kServerManifestResponseCount, responses.size());
 
-  UpdateResponseData response_data =
-      responses[guid].update_response_data();
-  EXPECT_STREQ(_T("http://dl.google.com/foo/1.0.101.0/test_foo_v1.0.101.0.msi"),
-               response_data.url());
-  EXPECT_STREQ(_T("6bPU7OnbKAGJ1LOw6fpIUuQl1FQ="), response_data.hash());
-  EXPECT_EQ(80896, response_data.size());
-  EXPECT_EQ(NEEDS_ADMIN_YES, response_data.needs_admin());
-  EXPECT_TRUE(response_data.arguments().IsEmpty());
-  EXPECT_TRUE(guid == response_data.guid());
-  EXPECT_STREQ(kResponseStatusOkValue, response_data.status());
-  EXPECT_TRUE(GUID_NULL == response_data.installation_id());
-  EXPECT_TRUE(response_data.ap().IsEmpty());
-  EXPECT_STREQ(_T("http://testsuccessurl.com"), response_data.success_url());
-  EXPECT_TRUE(response_data.error_url().IsEmpty());
-  EXPECT_TRUE(response_data.terminate_all_browsers());
-  EXPECT_EQ(SUCCESS_ACTION_EXIT_SILENTLY, response_data.success_action());
-  EXPECT_EQ(0, responses[guid].num_components());
-  EXPECT_STREQ(kVerboseLog, response_data.GetInstallData(_T("verboselogging")));
-  EXPECT_STREQ(kSkipFirstRun, response_data.GetInstallData(_T("skipfirstrun")));
-  EXPECT_TRUE(response_data.GetInstallData(_T("foobar")).IsEmpty());
+    UpdateResponseData response_data =
+        responses[guid].update_response_data();
+    EXPECT_STREQ(
+        _T("http://dl.google.com/foo/1.0.101.0/test_foo_v1.0.101.0.msi"),
+        response_data.url());
+    EXPECT_STREQ(_T("6bPU7OnbKAGJ1LOw6fpIUuQl1FQ="), response_data.hash());
+    EXPECT_EQ(80896, response_data.size());
+    EXPECT_EQ(NEEDS_ADMIN_YES, response_data.needs_admin());
+    EXPECT_TRUE(response_data.arguments().IsEmpty());
+    EXPECT_TRUE(guid == response_data.guid());
+    EXPECT_STREQ(kResponseStatusOkValue, response_data.status());
+    EXPECT_TRUE(GUID_NULL == response_data.installation_id());
+    EXPECT_TRUE(response_data.ap().IsEmpty());
+    EXPECT_STREQ(_T("http://testsuccessurl.com"), response_data.success_url());
+    EXPECT_TRUE(response_data.error_url().IsEmpty());
+    EXPECT_TRUE(response_data.terminate_all_browsers());
+    EXPECT_EQ(SUCCESS_ACTION_EXIT_SILENTLY, response_data.success_action());
+    EXPECT_EQ(0, responses[guid].num_components());
+    EXPECT_STREQ(kVerboseLog,
+                 response_data.GetInstallData(_T("verboselogging")));
+    EXPECT_STREQ(kSkipFirstRun,
+                 response_data.GetInstallData(_T("skipfirstrun")));
+    EXPECT_TRUE(response_data.GetInstallData(_T("foobar")).IsEmpty());
 
-  response_data = responses[guid4].update_response_data();
-  EXPECT_TRUE(response_data.url().IsEmpty());
-  EXPECT_EQ(0, response_data.size());
-  EXPECT_TRUE(response_data.hash().IsEmpty());
-  EXPECT_EQ(NEEDS_ADMIN_NO, response_data.needs_admin());
-  EXPECT_TRUE(response_data.arguments().IsEmpty());
-  EXPECT_TRUE(guid4 == response_data.guid());
-  EXPECT_STREQ(kResponseStatusNoUpdate, response_data.status());
-  EXPECT_TRUE(GUID_NULL == response_data.installation_id());
-  EXPECT_TRUE(response_data.ap().IsEmpty());
-  EXPECT_TRUE(response_data.success_url().IsEmpty());
-  EXPECT_TRUE(response_data.error_url().IsEmpty());
-  EXPECT_FALSE(response_data.terminate_all_browsers());
-  EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
-  EXPECT_EQ(0, responses[guid4].num_components());
+    response_data = responses[guid4].update_response_data();
+    EXPECT_TRUE(response_data.url().IsEmpty());
+    EXPECT_EQ(0, response_data.size());
+    EXPECT_TRUE(response_data.hash().IsEmpty());
+    EXPECT_EQ(NEEDS_ADMIN_NO, response_data.needs_admin());
+    EXPECT_TRUE(response_data.arguments().IsEmpty());
+    EXPECT_TRUE(guid4 == response_data.guid());
+    EXPECT_STREQ(kResponseStatusNoUpdate, response_data.status());
+    EXPECT_TRUE(GUID_NULL == response_data.installation_id());
+    EXPECT_TRUE(response_data.ap().IsEmpty());
+    EXPECT_TRUE(response_data.success_url().IsEmpty());
+    EXPECT_TRUE(response_data.error_url().IsEmpty());
+    EXPECT_FALSE(response_data.terminate_all_browsers());
+    EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
+    EXPECT_EQ(0, responses[guid4].num_components());
 
-  response_data = responses[guid2].update_response_data();
-  EXPECT_STREQ(_T("http://dl.google.com/foo/1.0.102.0/user_foo_v1.0.102.0.msi"),
-               response_data.url());
-  EXPECT_STREQ(_T("/XzRh1rpwqrDr6ashpmQnYZIzDI="), response_data.hash());
-  EXPECT_EQ(630152,               response_data.size());
-  EXPECT_EQ(NEEDS_ADMIN_NO,      response_data.needs_admin());
-  EXPECT_STREQ(kResponseStatusOkValue, response_data.status());
-  EXPECT_STREQ(_T("/install"),    response_data.arguments());
-  EXPECT_TRUE(guid2 ==            response_data.guid());
-  EXPECT_TRUE(response_data.success_url().IsEmpty());
-  EXPECT_TRUE(response_data.error_url().IsEmpty());
-  EXPECT_FALSE(response_data.terminate_all_browsers());
-  EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
-  EXPECT_EQ(0, responses[guid2].num_components());
+    response_data = responses[guid2].update_response_data();
+    EXPECT_STREQ(
+        _T("http://dl.google.com/foo/1.0.102.0/user_foo_v1.0.102.0.msi"),
+        response_data.url());
+    EXPECT_STREQ(_T("/XzRh1rpwqrDr6ashpmQnYZIzDI="), response_data.hash());
+    EXPECT_EQ(630152,               response_data.size());
+    EXPECT_EQ(NEEDS_ADMIN_NO,      response_data.needs_admin());
+    EXPECT_STREQ(kResponseStatusOkValue, response_data.status());
+    EXPECT_STREQ(_T("/install"),    response_data.arguments());
+    EXPECT_TRUE(guid2 ==            response_data.guid());
+    EXPECT_TRUE(response_data.success_url().IsEmpty());
+    EXPECT_TRUE(response_data.error_url().IsEmpty());
+    EXPECT_FALSE(response_data.terminate_all_browsers());
+    EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
+    EXPECT_EQ(0, responses[guid2].num_components());
 
-  response_data = responses[guid3].update_response_data();
-  EXPECT_TRUE(guid3 == response_data.guid());
-  EXPECT_STREQ(kResponseStatusRestrictedExportCountry, response_data.status());
-  EXPECT_FALSE(response_data.terminate_all_browsers());
-  EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
-  EXPECT_EQ(0, responses[guid3].num_components());
+    response_data = responses[guid3].update_response_data();
+    EXPECT_TRUE(guid3 == response_data.guid());
+    EXPECT_STREQ(kResponseStatusRestrictedExportCountry,
+                 response_data.status());
+    EXPECT_FALSE(response_data.terminate_all_browsers());
+    EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
+    EXPECT_EQ(0, responses[guid3].num_components());
 
-  response_data = responses[guid5].update_response_data();
-  EXPECT_TRUE(response_data.url().IsEmpty());
-  EXPECT_TRUE(response_data.hash().IsEmpty());
-  EXPECT_EQ(0, response_data.size());
-  EXPECT_EQ(NEEDS_ADMIN_NO, response_data.needs_admin());
-  EXPECT_TRUE(response_data.arguments().IsEmpty());
-  EXPECT_TRUE(guid5 == response_data.guid());
-  EXPECT_STREQ(kResponseStatusOsNotSupported, response_data.status());
-  EXPECT_TRUE(GUID_NULL == response_data.installation_id());
-  EXPECT_TRUE(response_data.ap().IsEmpty());
-  EXPECT_TRUE(response_data.success_url().IsEmpty());
-  EXPECT_STREQ(_T("http://foo.google.com/support/article.py?id=12345&")
-               _T("hl=es-419&os=5.1"),
-               response_data.error_url());
-  EXPECT_FALSE(response_data.terminate_all_browsers());
-  EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
-  EXPECT_EQ(0, responses[guid5].num_components());
+    response_data = responses[guid5].update_response_data();
+    EXPECT_TRUE(response_data.url().IsEmpty());
+    EXPECT_TRUE(response_data.hash().IsEmpty());
+    EXPECT_EQ(0, response_data.size());
+    EXPECT_EQ(NEEDS_ADMIN_NO, response_data.needs_admin());
+    EXPECT_TRUE(response_data.arguments().IsEmpty());
+    EXPECT_TRUE(guid5 == response_data.guid());
+    EXPECT_STREQ(kResponseStatusOsNotSupported, response_data.status());
+    EXPECT_TRUE(GUID_NULL == response_data.installation_id());
+    EXPECT_TRUE(response_data.ap().IsEmpty());
+    EXPECT_TRUE(response_data.success_url().IsEmpty());
+    EXPECT_STREQ(_T("http://foo.google.com/support/article.py?id=12345&")
+                 _T("hl=es-419&os=5.1"),
+                 response_data.error_url());
+    EXPECT_FALSE(response_data.terminate_all_browsers());
+    EXPECT_EQ(SUCCESS_ACTION_DEFAULT, response_data.success_action());
+    EXPECT_EQ(0, responses[guid5].num_components());
+  }
 }
 
 TEST_F(GoopdateXmlParserTest, ParseManifestFile_ServerManifest_Components) {
@@ -755,8 +836,8 @@ TEST_F(GoopdateXmlParserTest, ParseManifestFile_NoSuchFile) {
 }
 
 // This is a duplicate of the ParseManifestFile test except that it uses
-// LoadXmlFileToMemory() and ParseManifestString().
-TEST_F(GoopdateXmlParserTest, ParseManifestString_ServerManifest) {
+// LoadXmlFileToMemory() and ParseManifestBytes().
+TEST_F(GoopdateXmlParserTest, ParseManifestBytes_ServerManifest) {
   UpdateResponses responses;
   CString file_name(ConcatenatePath(app_util::GetCurrentModuleDirectory(),
                                     _T("server_manifest.xml")));
@@ -766,12 +847,12 @@ TEST_F(GoopdateXmlParserTest, ParseManifestString_ServerManifest) {
   GUID guid4 = StringToGuid(_T("{D6B08267-B440-4C85-9F79-E195E80D9936}"));
   GUID guid5 = StringToGuid(_T("{8CF15C17-7BB5-433a-8E6C-C018D79D00B1}"));
 
-  CString manifest_contents;
+  std::vector<byte> manifest_contents;
   EXPECT_SUCCEEDED(GoopdateXmlParser::LoadXmlFileToMemory(file_name,
                                                           &manifest_contents));
 
-  ASSERT_SUCCEEDED(GoopdateXmlParser::ParseManifestString(manifest_contents,
-                                                          &responses));
+  ASSERT_SUCCEEDED(GoopdateXmlParser::ParseManifestBytes(manifest_contents,
+                                                         &responses));
   ASSERT_EQ(kServerManifestResponseCount, responses.size());
 
   UpdateResponse response(responses[guid]);
@@ -849,18 +930,22 @@ TEST_F(GoopdateXmlParserTest, ParseManifestString_ServerManifest) {
   EXPECT_EQ(0, response.num_components());
 }
 
-TEST_F(GoopdateXmlParserTest, ParseManifestString_EmptyString) {
-  CString empty_string;
+TEST_F(GoopdateXmlParserTest, ParseManifestBytes_EmptyString) {
+  std::vector<byte> empty_contents;
   UpdateResponses responses;
-  EXPECT_EQ(0xC00CE558, GoopdateXmlParser::ParseManifestString(empty_string,
-                                                               &responses));
+  EXPECT_EQ(E_INVALIDARG, GoopdateXmlParser::ParseManifestBytes(empty_contents,
+                                                                &responses));
 }
 
-TEST_F(GoopdateXmlParserTest, ParseManifestString_ManifestNotXml) {
-  CString not_xml(_T("<this> is not XML"));
+TEST_F(GoopdateXmlParserTest, ParseManifestBytes_ManifestNotXml) {
+  std::vector<byte> not_xml;
+  CString not_xml_string(_T("<this> is not XML"));
+  not_xml.resize(not_xml_string.GetLength() * sizeof(TCHAR));
+  memcpy(&not_xml.front(), not_xml_string, not_xml.size());
+
   UpdateResponses responses;
-  EXPECT_EQ(0xC00CE553, GoopdateXmlParser::ParseManifestString(not_xml,
-                                                               &responses));
+  EXPECT_EQ(0xC00CE508, GoopdateXmlParser::ParseManifestBytes(not_xml,
+                                                              &responses));
 }
 
 TEST_F(GoopdateXmlParserTest, VerifyProtocolCompatibility) {
@@ -897,28 +982,29 @@ TEST_F(GoopdateXmlParserTest, LoadXmlFileToMemory) {
   CString base_seed_path(ConcatenatePath(app_util::GetCurrentModuleDirectory(),
                                          _T("seed_manifest_with_args.xml")));
   const CString kExpectedManifestContents(
-      _T("<?xml version=\"1.0\"?>\r\n")
+      _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n")
       _T("<gupdate protocol=\"2.0\" signature=\"\" xmlns=\"http://www.google.com/update2/install\">\r\n")   // NOLINT
       _T("\t<install appguid=\"{283EAF47-8817-4c2b-A801-AD1FADFB7BAA}\" needsadmin=\"true\" iid=\"{874E4D29-8671-40C8-859F-4DECA4819999}\" client=\"someclient\" ap=\"1.0-dev\"/>\r\n")   // NOLINT
       _T("</gupdate>\r\n"));
 
-  CString manifest_contents;
+  std::vector<byte> manifest_contents;
   EXPECT_SUCCEEDED(GoopdateXmlParser::LoadXmlFileToMemory(base_seed_path,
                                                           &manifest_contents));
 
-  EXPECT_STREQ(kExpectedManifestContents, manifest_contents);
+  CString manifest_string(Utf8BufferToWideChar(manifest_contents));
+  EXPECT_STREQ(kExpectedManifestContents, manifest_string);
 }
 
 TEST_F(GoopdateXmlParserTest, LoadXmlFileToMemory_EmptyFilename) {
   CString empty_filename;
-  CString manifest_contents;
+  std::vector<byte> manifest_contents;
   EXPECT_EQ(E_INVALIDARG, GoopdateXmlParser::LoadXmlFileToMemory(
                               empty_filename, &manifest_contents));
 }
 
 TEST_F(GoopdateXmlParserTest, LoadXmlFileToMemory_NoSuchFile) {
   CString no_such_file(_T("no_such_file.xml"));
-  CString manifest_contents;
+  std::vector<byte> manifest_contents;
   EXPECT_EQ(0x800c0005, GoopdateXmlParser::LoadXmlFileToMemory(
                             no_such_file, &manifest_contents));
 }

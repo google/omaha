@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -295,7 +295,8 @@ HRESULT JobCreator::CreateJobsFromResponsesInternal(
     // AppManager::UpdateApplicationState() to make sure the registry is
     // initialized properly.
     if (is_update_) {
-      app_manager.UpdateApplicationState(&product_app_data);
+      app_manager.UpdateApplicationState(response.time_since_midnight_sec(),
+                                         &product_app_data);
     }
 
     // Write the TT Token, if any, with what the server returned. The server

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 //
 // Common include file for unit testing.
 
-#ifndef OMAHA_TESTING_UNIT_TEST_H__
-#define OMAHA_TESTING_UNIT_TEST_H__
+#ifndef OMAHA_TESTING_UNIT_TEST_H_
+#define OMAHA_TESTING_UNIT_TEST_H_
 
 #include <windows.h>
 #include <atlstr.h>
@@ -49,12 +49,6 @@ inline testing::AssertionResult Failed(const char* s, HRESULT hr) {
     msg << text;
     return testing::AssertionFailure(msg);
   }
-}
-
-// Returns whether the tests are running on a Pulse build system.
-inline bool IsBuildSystem() {
-  TCHAR agent[MAX_PATH] = {0};
-  return !!::GetEnvironmentVariable(_T("PULSE_AGENT"), agent, arraysize(agent));
 }
 
 // Returns the path to the base local app data directory for the user on the
@@ -116,12 +110,36 @@ void OverrideRegistryHivesWithExecutionPermissions(
 // registry key that is created by OverrideRegistryHives.
 void RestoreRegistryHives();
 
-// Sets TestSource=pulse.
+// Specifies the location of psexec.exe. Only call during initialization.
+void SetPsexecDir(const CString& dir);
+
+// Returns the location of psexec.exe.
+CString GetPsexecDir();
+
+// Accepts the psexec.exe EULA. Only use for automated testing when you have
+// already read and agreed to the EULA terms.
+// Returns true if the process was successfully started.
+bool AcceptPsexecEula();
+
+// Specifies that the tests are running on or on behalf of the build system.
+void SetIsBuildSystem();
+
+// Returns whether tests are running on or on behalf of the build system.
+bool IsBuildSystem();
+
+// Sets TestSource=buildsystem.
 void SetBuildSystemTestSource();
 
 // Returns whether large tests should be run. Large tests are always run on the
-// build system and if the "OMAHA_RUN_ALL_TESTS" environment variable is set.
+// build system and if the "OMAHA_RUN_LARGE_TESTS" or "OMAHA_RUN_ALL_TESTS"
+// environment variable is set.
 bool ShouldRunLargeTest();
+
+// Returns whether enourmous tests should be run. Enormous tests are always run
+// on the build system and if the "OMAHA_RUN_ALL_TESTS" environment variable is
+// set. This method should be used sparingly and only by tests that take a
+// really long time to complete.
+bool ShouldRunEnormousTest();
 
 // Terminates all processes named GoogleUpdate.exe or GoogleCrashHandler.exe.
 void TerminateAllGoogleUpdateProcesses();
@@ -143,7 +161,20 @@ void LaunchProcessAsSystem(const CString& launch_cmd, HANDLE* process);
 #define ASSERT_FAILED(x) ASSERT_PRED_FORMAT1(omaha::Failed, x)
 #define EXPECT_FAILED(x) EXPECT_PRED_FORMAT1(omaha::Failed, x)
 
+// As of Google Test 1.4.0, expressions get converted to 'bool', resulting in
+// "warning C4800: 'BOOL' : forcing value to bool 'true' or 'false' (performance
+// warning)" in some uses.
+// These must be kept in sync with gtest.h.
+// TODO(omaha): Try to get this fixed in Google Test.
+#undef EXPECT_TRUE
+#define EXPECT_TRUE(condition) \
+  GTEST_TEST_BOOLEAN_(!!(condition), #condition, false, true, \
+                      GTEST_NONFATAL_FAILURE_)
+#undef ASSERT_TRUE
+#define ASSERT_TRUE(condition) \
+  GTEST_TEST_BOOLEAN_(!!(condition), #condition, false, true, \
+                      GTEST_FATAL_FAILURE_)
+
 #define kUnittestName _T("omaha_unittest.exe")
 
-#endif  // OMAHA_TESTING_UNIT_TEST_H__
-
+#endif  // OMAHA_TESTING_UNIT_TEST_H_

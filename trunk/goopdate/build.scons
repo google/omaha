@@ -86,10 +86,7 @@ no_precomp_env.ComponentLibrary('google_update_ps', 'google_update_idl_datax.c')
 # Add languages that have version resources but are not fully supported.
 translated_languages = list(env['languages'])
 if 1 < len(translated_languages):
-  translated_languages += [
-      'userdefault',
-      'zh-HK',
-      ]
+  translated_languages += env['additional_shell_languages']
 
 #
 # Build Goopdate DLL

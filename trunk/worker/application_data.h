@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,6 +60,8 @@ class AppData {
         browser_type_(BROWSER_UNKNOWN),
         usage_stats_enable_(TRISTATE_NONE),
         did_run_(ACTIVE_UNKNOWN),
+        days_since_last_active_ping_(0),
+        days_since_last_roll_call_(0),
         is_uninstalled_(false),
         is_update_disabled_(false) { }
 
@@ -74,6 +76,8 @@ class AppData {
         browser_type_(BROWSER_UNKNOWN),
         usage_stats_enable_(TRISTATE_NONE),
         did_run_(ACTIVE_UNKNOWN),
+        days_since_last_active_ping_(0),
+        days_since_last_roll_call_(0),
         is_uninstalled_(false),
         is_update_disabled_(false) { }
 
@@ -167,6 +171,20 @@ class AppData {
     did_run_ = did_run;
   }
 
+  int days_since_last_active_ping() const {
+    return days_since_last_active_ping_;
+  }
+  int set_days_since_last_active_ping(int days) {
+    return days_since_last_active_ping_ = days;
+  }
+
+  int days_since_last_roll_call() const {
+    return days_since_last_roll_call_;
+  }
+  int set_days_since_last_roll_call(int days) {
+    return days_since_last_roll_call_ = days;
+  }
+
   bool is_uninstalled() const { return is_uninstalled_; }
   void set_is_uninstalled(bool is_uninstalled) {
     is_uninstalled_ = is_uninstalled;
@@ -204,6 +222,8 @@ class AppData {
   Tristate usage_stats_enable_;
 
   ActiveStates did_run_;
+  int days_since_last_active_ping_;
+  int days_since_last_roll_call_;
 
   bool is_uninstalled_;
   bool is_update_disabled_;

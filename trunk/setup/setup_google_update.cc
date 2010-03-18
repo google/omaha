@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -163,6 +163,7 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
     VERIFY1(SUCCEEDED(ping_utils::SendGoopdatePing(
                                       is_machine_,
                                       args_->extra,
+                                      args_->install_source,
                                       PingEvent::EVENT_SETUP_COM_SERVER_FAILURE,
                                       hr_register_com_server,
                                       0,
@@ -676,11 +677,6 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
     }
   }
 
-  // Need to clean up old lang key for Goopdate.  Don't care about failure.
-  CString goopdate_client_key =
-      ConfigManager::Instance()->registry_clients_goopdate(is_machine_);
-  RegKey::DeleteValue(goopdate_client_key, kRegValueLanguage);
-
   if (!found_next) {
     DWORD err = ::GetLastError();
     if (ERROR_NO_MORE_FILES != err) {
@@ -688,6 +684,22 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
       return HRESULT_FROM_WIN32(err);
     }
   }
+
+  // Need to clean up old lang key for Goopdate.  Don't care about failure.
+  CString goopdate_client_key =
+      ConfigManager::Instance()->registry_clients_goopdate(is_machine_);
+  RegKey::DeleteValue(goopdate_client_key, kRegValueLanguage);
+
+  // Clean up existing machine ID and user ID since they are no longer used.
+  // Ignore failures as they may not be present and we may not have permission
+  // to HKLM.
+  const TCHAR* const kRegValueMachineId = _T("mi");
+  const TCHAR* const kRegValueUserId = _T("ui");
+  RegKey::DeleteValue(ConfigManager::Instance()->machine_registry_update(),
+                      kRegValueMachineId);
+  RegKey::DeleteValue(
+      ConfigManager::Instance()->registry_update(is_machine_),
+      kRegValueUserId);
 
   return S_OK;
 }
@@ -773,9 +785,7 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
     ASSERT1(hr == S_OK);
     // TODO(omaha): Remove kRegValueLast* once we have an install API.
     if (SUCCEEDED(hr)) {
-      if (value_name != kRegValueMachineId &&
-          value_name != kRegValueUserId &&
-          value_name != kRegValueLastInstallerResult &&
+      if (value_name != kRegValueLastInstallerResult &&
           value_name != kRegValueLastInstallerError &&
           value_name != kRegValueLastInstallerResultUIString &&
           value_name != kRegValueLastInstallerSuccessLaunchCmdLine) {

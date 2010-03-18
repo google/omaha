@@ -27,8 +27,16 @@ Import('env')
 
 _custom_actions_path = (
     '$OBJ_ROOT/recovery/repair_exe/custom_action/executecustomaction.dll')
-_cert_file = env.File(GetOption('authenticode_file')).abspath[:-3] + 'cer'
+_cert_file = env.File(GetOption('patching_certificate')).abspath
 _required_file = '$MAIN_DIR/recovery/repair_exe/msp/requiredfile.txt'
+
+# TODO(omaha): Update the build machine command lines to use
+# patching_certificate instead of authenticode_file and remove this.
+# The following is for backwards compatibility. Historically, the build server,
+# as specified the patching_certificate with --authenticode_file.
+if (env.Bit('build_server') and
+    GetOption('patching_certificate') == '$MAIN_DIR/data/OmahaTestCert.cer'):
+  _cert_file = env.File(GetOption('authenticode_file')).abspath
 
 google_update_version = env['product_version'][0]
 google_update_version_string = '%d.%d.%d.%d' % (google_update_version[0],

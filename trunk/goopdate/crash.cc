@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,9 +42,11 @@
 #include "omaha/common/omaha_version.h"
 #include "omaha/common/path.h"
 #include "omaha/common/reg_key.h"
+#include "omaha/common/scope_guard.h"
 #include "omaha/common/scoped_any.h"
 #include "omaha/common/time.h"
 #include "omaha/common/utils.h"
+#include "omaha/common/vistautil.h"
 #include "omaha/goopdate/command_line_builder.h"
 #include "omaha/goopdate/config_manager.h"
 #include "omaha/goopdate/event_logger.h"
@@ -76,7 +78,6 @@ const ACCESS_MASK kPipeAccessMask = FILE_READ_ATTRIBUTES  |
 CString Crash::module_filename_;
 CString Crash::crash_dir_;
 CString Crash::checkpoint_file_;
-CString Crash::guid_;
 CString Crash::version_postfix_  = kCrashVersionPostfixString;
 CString Crash::crash_report_url_ = kUrlCrashReport;
 int Crash::max_reports_per_day_  = kCrashReportMaxReportsPerDay;
@@ -162,15 +163,15 @@ void Crash::UninstallCrashHandler() {
 HRESULT Crash::CrashHandler(bool is_machine,
                             const google_breakpad::ClientInfo& client_info,
                             const CString& crash_filename) {
-  // Count the number of crashes requested by applications.
-  ++metric_oop_crashes_requested;
-
   // GoogleCrashHandler.exe is only aggregating metrics at process exit. Since
   // GoogleCrashHandler.exe is long-running however, we hardly ever exit. As a
-  // consequence, oop_crashes_requested will be reported very infrequently. This
+  // consequence, the metrics below will be reported very infrequently. This
   // call below will do additional aggregation of metrics, so that we can report
-  // metric_oop_crashes_requested in a timely manner.
-  VERIFY1(SUCCEEDED(AggregateMetrics(is_machine)));
+  // the metrics below in a timely manner.
+  ON_SCOPE_EXIT(AggregateMetrics, is_machine);
+
+  // Count the number of crashes requested by applications.
+  ++metric_oop_crashes_requested;
 
   DWORD pid = client_info.pid();
   OPT_LOG(L1, (_T("[client requested dump][pid %d]"), pid));
@@ -178,6 +179,7 @@ HRESULT Crash::CrashHandler(bool is_machine,
   ASSERT1(!crash_filename.IsEmpty());
   if (crash_filename.IsEmpty()) {
     OPT_LOG(L1, (_T("[no crash file]")));
+    ++metric_oop_crashes_crash_filename_empty;
     return E_UNEXPECTED;
   }
 
@@ -187,6 +189,7 @@ HRESULT Crash::CrashHandler(bool is_machine,
                                     &custom_info_filename);
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[CreateCustomInfoFile failed][0x%08x]"), hr));
+    ++metric_oop_crashes_createcustominfofile_failed;
     return hr;
   }
 
@@ -199,6 +202,7 @@ HRESULT Crash::CrashHandler(bool is_machine,
   hr = StartSenderWithCommandLine(&cmd_line);
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[StartSenderWithCommandLine failed][0x%08x]"), hr));
+    ++metric_oop_crashes_startsenderwithcommandline_failed;
     return hr;
   }
 
@@ -324,7 +328,7 @@ HRESULT Crash::StartSenderWithCommandLine(CString* cmd_line) {
                        NULL,
                        &si,
                        &pi)) {
-    return ::GetLastError();
+    return HRESULTFromLastError();
   }
 
   ::CloseHandle(pi.hProcess);
@@ -548,31 +552,19 @@ HRESULT Crash::ReportGoogleUpdateCrash(bool can_upload,
 
   UNREFERENCED_PARAMETER(custom_info_filename);
 
-  CString guid = is_machine_ ?
-                 goopdate_utils::GetPersistentMachineId() :
-                 goopdate_utils::GetPersistentUserId(USER_KEY_NAME);
-
-  // If someone has set a guid then use it instead of the user or the
-  // machine id. This is usually the case of a unit test where for the
-  // sake of aggregating the crashes we use the same guid.
-  if (!guid_.IsEmpty()) {
-    guid = guid_;
-  }
-
   // Build the map of additional parameters to report along with the crash.
   CString ver(GetVersionString() + version_postfix_);
 
   ParameterMap parameters;
   parameters[_T("prod")] = _T("Update2");
   parameters[_T("ver")]  = ver;
-  parameters[_T("guid")] = guid;
   parameters[_T("lang")] = lang;
 
   CString event_text;
   event_text.Format(
       _T("Google Update has encountered a fatal error.\r\n")
-      _T("ver=%s;lang=%s;id=%s;is_machine=%d;upload=%d;minidump=%s"),
-      ver, lang, guid, is_machine_, can_upload ? 1 : 0, crash_filename);
+      _T("ver=%s;lang=%s;is_machine=%d;upload=%d;minidump=%s"),
+      ver, lang, is_machine_, can_upload ? 1 : 0, crash_filename);
   VERIFY1(SUCCEEDED(Crash::Log(EVENTLOG_ERROR_TYPE,
                                kCrashReportEventId,
                                kAppName,
@@ -872,19 +864,36 @@ int Crash::CrashNow() {
 #endif
 }
 
-bool Crash::BuildPipeSecurityAttributes(CSecurityAttributes* sa) {
-  ASSERT1(sa);
+HRESULT Crash::CreateLowIntegrityDesc(CSecurityDesc* sd) {
+  ASSERT1(sd);
+  ASSERT1(!sd->GetPSECURITY_DESCRIPTOR());
 
-  CDacl dacl;
+  if (!vista_util::IsVistaOrLater()) {
+    return S_FALSE;
+  }
+
+  return sd->FromString(LOW_INTEGRITY_SDDL_SACL) ? S_OK :
+                                                   HRESULTFromLastError();
+}
+
+bool Crash::AddPipeSecurityDaclToDesc(bool is_machine, CSecurityDesc* sd) {
+  ASSERT1(sd);
+
   CAccessToken current_token;
   if (!current_token.GetEffectiveToken(TOKEN_QUERY)) {
     OPT_LOG(LE, (_T("[Failed to get current thread token]")));
     return false;
   }
 
+  CDacl dacl;
   if (!current_token.GetDefaultDacl(&dacl)) {
     OPT_LOG(LE, (_T("[Failed to get default DACL]")));
     return false;
+  }
+
+  if (!is_machine) {
+    sd->SetDacl(dacl);
+    return true;
   }
 
   if (!dacl.AddAllowedAce(ATL::Sids::Users(), kPipeAccessMask)) {
@@ -897,14 +906,35 @@ bool Crash::BuildPipeSecurityAttributes(CSecurityAttributes* sa) {
     return false;
   }
 
-  ATL::CSecurityDesc sd;
-  sd.SetDacl(dacl);
+  sd->SetDacl(dacl);
+  return true;
+}
+
+bool Crash::BuildPipeSecurityAttributes(bool is_machine,
+                                        CSecurityAttributes* sa) {
+  ASSERT1(sa);
+
+  CSecurityDesc sd;
+  HRESULT hr = CreateLowIntegrityDesc(&sd);
+  if (FAILED(hr)) {
+    OPT_LOG(LE, (_T("[Failed to CreateLowIntegrityDesc][0x%x]"), hr));
+    return false;
+  }
+
+  if (!AddPipeSecurityDaclToDesc(is_machine, &sd)) {
+    return false;
+  }
+
   sa->Set(sd);
 
 #ifdef _DEBUG
   // Print SDDL for debugging.
   CString sddl;
-  sd.ToString(&sddl);
+  sd.ToString(&sddl, OWNER_SECURITY_INFORMATION |
+                     GROUP_SECURITY_INFORMATION |
+                     DACL_SECURITY_INFORMATION  |
+                     SACL_SECURITY_INFORMATION  |
+                     LABEL_SECURITY_INFORMATION);
   CORE_LOG(L1, (_T("[Pipe security SDDL][%s]"), sddl));
 #endif
 
@@ -963,14 +993,14 @@ HRESULT Crash::StartServer() {
 
   CSecurityAttributes pipe_sec_attrs;
 
-  // If running as machine, use custom security attributes on the pipe to
-  // allow all users on the local machine to connect to it.
-  // If running as user, the default security descriptor for the
+  // * If running as machine, use custom security attributes on the pipe to
+  // allow all users on the local machine to connect to it. Add the low
+  // integrity SACL to account for browser plugins.
+  // * If running as user, the default security descriptor for the
   // pipe grants full control to the system account, administrators,
-  // and the creator owner. However, when running elevated, the creator
-  // owner is not given full rights. In this case, only elevated users can
-  // connect to the pipe. This is not the desired behavior.
-  if (is_machine_ && !BuildPipeSecurityAttributes(&pipe_sec_attrs)) {
+  // and the creator owner. Add the low integrity SACL to account for browser
+  // plugins.
+  if (!BuildPipeSecurityAttributes(is_machine_, &pipe_sec_attrs)) {
     return GOOPDATE_E_CRASH_SECURITY_FAILED;
   }
 

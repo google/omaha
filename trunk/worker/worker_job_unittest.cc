@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -154,7 +154,7 @@ class MockRequestSaveNoUpdate : public MockRequestSave {
     }
     no_update_response.Append("</gupdate>");
 
-    const size_t response_length = strlen(no_update_response) + 1;
+    const size_t response_length = strlen(no_update_response);
     std::vector<uint8> response;
     response.resize(response_length);
     EXPECT_EQ(0, memcpy_s(&response[0],
@@ -192,20 +192,20 @@ void VerifyUpdateCheckInRequest(const std::vector<CString>& expected_app_guids,
   const char* kOmahaRequestUpdate =
       "<o:app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" "
       "version=\"5.6.7.8\" lang=\"\" brand=\"\" client=\"\"><o:updatecheck/>"
+      "<o:ping r=\"-1\"/>"
       "</o:app>";
 
   // The 'c' in "464c" element of the app GUID is capitalized in the request.
   const char* kAppRequestFormat=
       "<o:app appid=\"%s\" "
-      "version=\"%s\" lang=\"\" brand=\"\" client=\"\"%s><o:updatecheck%s/>"
-      "</o:app>";
+      "version=\"%s\" lang=\"\" brand=\"\" client=\"\"%s%s><o:updatecheck%s/>"
+      "%s</o:app>";
 
   EXPECT_EQ(0, request_utf8.Find(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
       "<o:gupdate xmlns:o=\"http://www.google.com/update2/request\" "
       "protocol=\"2.0\" version=\"1.2."));
-  EXPECT_NE(-1, request_utf8.Find("\" ismachine=\"1\" machineid=\"{"));
-  EXPECT_NE(-1, request_utf8.Find("}\" userid=\"{"));
+  EXPECT_NE(-1, request_utf8.Find("\" ismachine=\"1\" "));
   EXPECT_NE(-1, request_utf8.Find("\" requestid=\"{"));
   EXPECT_NE(-1, request_utf8.Find("}\"><o:os platform=\"win\" version=\""));
   EXPECT_NE(-1, request_utf8.Find("\" sp=\""));
@@ -244,8 +244,10 @@ void VerifyUpdateCheckInRequest(const std::vector<CString>& expected_app_guids,
           kAppRequestFormat,
           app_guid,
           is_install ? "" : "1.2.3.4",
+          is_install ? " installage=\"-1\"" : "",
           is_on_demand ? " installsource=\"ondemandupdate\"" : "",
-          is_disabled_expected ? " updatedisabled=\"true\"" : "");
+          is_disabled_expected ? " updatedisabled=\"true\"" : "",
+          is_install ? "" : "<o:ping r=\"-1\"/>");
       EXPECT_NE(-1, request_utf8.Find(expected_app_element)) <<
           _T("Expected: ") <<
           Utf8ToWideChar(expected_app_element.GetString(),

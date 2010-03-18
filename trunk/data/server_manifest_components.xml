@@ -37,7 +37,6 @@
                      hash="some_hash_value"/>
       </component>
     </components>
-    <rlz status="ok"/>
     <ping status="ok"/>
   </app>
   <app appid="{104844D6-7DDA-460B-89F0-FBF8AFDD0A67}" status="ok">
@@ -47,7 +46,6 @@
                  hash="/XzRh1rpwqrDr6ashpmQnYZIzDI="
                  needsadmin="false"
                  arguments="/install"/>
-    <rlz parameter="1O1GGLGN__"/>
     <ping status="ok"/>
   </app>
   <app appid="{884a01d9-fb67-430a-b491-28f960dd7309}" status="restricted"></app>

@@ -39,8 +39,12 @@
 
 namespace omaha {
 
+namespace {
+
 const int kNumberOfCreateServiceRetries = 5;
 const int kSleepBetweenCreateServiceRetryMs = 200;
+
+}  // namespace
 
 SetupFiles::SetupFiles(bool is_machine)
 : is_machine_(is_machine) {
@@ -295,8 +299,13 @@ HRESULT SetupFiles::ShouldCopyShell(const CString& shell_install_path,
     SETUP_LOG(L2, (_T("[newer shell version exists - not copying]")));
     *should_copy = false;
   } else if (existing_version < source_version) {
-    SETUP_LOG(L2, (_T("[older shell version exists - copying]")));
-    *should_copy = true;
+    if (IsOlderShellVersionCompatible(existing_version)) {
+      SETUP_LOG(L2, (_T("[compatible shell version exists - not copying]")));
+      *should_copy = false;
+    } else {
+      SETUP_LOG(L2, (_T("[older shell version exists - copying]")));
+      *should_copy = true;
+    }
   } else {
     // Same version.
     *should_copy = ConfigManager::Instance()->CanOverInstall();
@@ -502,15 +511,19 @@ HRESULT SetupFiles::VerifyFileSignature(const CString& filepath) {
 
   // Verify that there is a Google certificate and that it has not expired.
   if (!VerifySigneeIsGoogle(filepath)) {
-    if (VerifySigneeIsGoogleNoTimestampCheck(filepath)) {
-      // Google was verified as the signee when not doing a timestamp check, so
-      // it must be the timestamp check that failed.
-      return GOOPDATE_E_VERIFY_SIGNEE_IS_GOOGLE_FAILED_TIMESTAMP_CHECK;
-    }
     return GOOPDATE_E_VERIFY_SIGNEE_IS_GOOGLE_FAILED;
   }
 
   return S_OK;
+}
+
+bool SetupFiles::IsOlderShellVersionCompatible(ULONGLONG version) {
+  for (int i = 0; i < arraysize(kCompatibleOlderShellVersions); ++i) {
+    if (version == kCompatibleOlderShellVersions[i]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace omaha

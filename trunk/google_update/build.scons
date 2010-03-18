@@ -33,18 +33,9 @@ version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
 # The shell contains languages not supported by the rest of Omaha.
 # This is intended to allow us to add languages in the future without releasing
 # a new shell.
-# 'userdefault' addresses apps that don't look up the resource for the OS
-# language. See http://b/1328652.
-
 shell_languages = list(env['languages'])
-
-additional_shell_languages = [
-    'userdefault',
-    'zh-HK',
-    ]
-
 if 1 < len(shell_languages):
-  shell_languages += additional_shell_languages
+  shell_languages += env['additional_shell_languages']
 
 
 exe_env = env.Clone()

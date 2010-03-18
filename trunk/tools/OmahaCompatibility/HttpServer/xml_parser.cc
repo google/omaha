@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,7 +79,6 @@ namespace Xml {
     const TCHAR* const kInstallationId = _T("iid");
     const TCHAR* const kInstallSource = _T("installsource");
     const TCHAR* const kLang = _T("lang");
-    const TCHAR* const kMachineId = _T("machineid");
     const TCHAR* const kNeedsAdmin = _T("needsadmin");
     const TCHAR* const kParameter = _T("parameter");
     const TCHAR* const kPlatform = _T("platform");
@@ -95,7 +94,6 @@ namespace Xml {
     const TCHAR* const kTag = _T("tag");
     const TCHAR* const kTestSource = _T("testsource");
     const TCHAR* const kTerminateAllBrowsers = _T("terminateallbrowsers");
-    const TCHAR* const kUserId = _T("userid");
     const TCHAR* const kVersion = _T("version");
     const TCHAR* const kXmlns = _T("xmlns");
     const TCHAR* const kTTToken = _T("tttoken");

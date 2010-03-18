@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ no_precomp_env = local_env.Clone()
 idl_obj = no_precomp_env.ComponentObject(
     source='$OBJ_ROOT/goopdate/google_update_idl_i.c')
 
-target_name = 'performondemand.exe'
+target_name = 'performondemand'
 
 inputs = [
     'performondemand.cc',
@@ -70,7 +70,8 @@ inputs = [
 if env.Bit('use_precompiled_headers'):
   inputs += local_env.EnablePrecompile(target_name)
 
-local_env.ComponentProgram(
+local_env.ComponentTestProgram(
     prog_name=target_name,
     source=inputs,
+    COMPONENT_TEST_RUNNABLE=False
 )

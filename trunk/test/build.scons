@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -100,6 +100,7 @@ def BuildMSI(version, namespace, exe_name, wxs_template, msi_base_name,
   additional_dependencies = [exe_name]
 
   if is_enterprise:
+    output_dir = '$TARGET_ROOT/Test_Installers'
     wix_env['WIXCANDLEFLAGS'] += ['-dIsEnterprise=1']
 
     # The metainstaller change does not get passed through even though the
@@ -121,6 +122,7 @@ def BuildMSI(version, namespace, exe_name, wxs_template, msi_base_name,
     wix_inputs += [google_update_wixobj]
     additional_dependencies += [metainstaller_path]
   else:
+    output_dir = '$TESTS_DIR'
     wix_env['WIXCANDLEFLAGS'] += ['-dIsEnterprise=0']
 
   unsigned_msi = wix_env.WiX('unsigned_%s.msi' % msi_base_name, wix_inputs)
@@ -132,7 +134,7 @@ def BuildMSI(version, namespace, exe_name, wxs_template, msi_base_name,
       source=unsigned_msi,
   )
 
-  env.Replicate('$STAGING_DIR', signed_output)
+  env.Replicate(output_dir, signed_output)
 
 _GUID_NAMESPACE = binascii.a2b_hex('BE19B3E4502845af8B3E67A99FCDCFB1')
 _USER_GUID_NAMESPACE = binascii.a2b_hex('2B599C061F7C4eed9D686616EEBDDFDB')
@@ -164,20 +166,25 @@ for (major, minor, build, patch) in [(1,0,101,0), (1,0,102,0)]:
 
   ver_env['OBJPREFIX'] = '%s%s/' % (ver_env['OBJPREFIX'], version)
 
-  unsigned_exe = ver_env.ComponentProgram(
-      prog_name='unsigned_test_foo_v%s.exe' % version,
+  base_name = 'test_foo_v%s' % version.replace('.', '_')
+  signed_target_name = base_name + '.exe'
+  target_name = base_name + '_unsigned'
+
+  unsigned_exe = ver_env.ComponentTestProgram(
+      prog_name=target_name,
       source=[
           'test_foo.cc',
           ver_env.RES('test_foo_v%s.res' % version, 'test_foo.rc'),
-          ]
+          ],
+      COMPONENT_TEST_RUNNABLE=False
   )
 
   signed_output = ver_env.SignedBinary(
-      target='test_foo_v%s.exe' % version,
+      target=signed_target_name,
       source=unsigned_exe,
   )
 
-  ver_env.Replicate('$STAGING_DIR', signed_output)
+  ver_env.Replicate('$TESTS_DIR', signed_output)
 
   signed_exe = signed_output[0]
 
@@ -206,7 +213,9 @@ bar_env.Append(
         ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
         ],
 )
-bar_env.ComponentProgram('test_bar.cc')
+bar_env.ComponentTestProgram(prog_name='test_bar',
+                             source='test_bar.cc',
+                             COMPONENT_TEST_RUNNABLE=False)
 
 
 """ This is commented out because it step_test is currently unused,
@@ -230,10 +239,11 @@ omaha_system_env.Append(
 omaha_system_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
 omaha_system_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
-omaha_system_env.ComponentProgram([
+omaha_system_env.ComponentTestProgram([
     'omaha_system_test.cc',
     'step_test.cc',
     ],
+    COMPONENT_TEST_RUNNABLE=False
 )
 """
 

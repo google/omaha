@@ -55,16 +55,16 @@ namespace omaha {
 // disabled in the mk_file.
 #pragma check_stack()
 
-// Have to define this here since this is used in signaturevalidator.cpp.
-// This is defined in error.cc, but that pulls in debug.cpp which has a lot
-// of additional dependencies we don't want.  Not worth it for just this
+// Have to define this here since this is used in signaturevalidator.cc.
+// This is defined in error.cc, but that pulls in debug.cc, which has a lot
+// of additional dependencies we do not want.  Not worth it for just this
 // function.
 HRESULT HRESULTFromLastError() {
   DWORD error_code = ::GetLastError();
   return (error_code != NO_ERROR) ? HRESULT_FROM_WIN32(error_code) : E_FAIL;
 }
 
-// Adapted from File::Exists in file.cpp.
+// Adapted from File::Exists in file.cc.
 bool FileExists(const TCHAR* file_name) {
   if (!file_name || !*file_name) {
     return false;
@@ -74,6 +74,7 @@ bool FileExists(const TCHAR* file_name) {
   return 0 != ::GetFileAttributesEx(file_name, ::GetFileExInfoStandard, &attrs);
 }
 
+// Adapted from vistautil.cc.
 bool IsVistaOrLater() {
   static bool known = false;
   static bool is_vista = false;
@@ -89,6 +90,60 @@ bool IsVistaOrLater() {
   return is_vista;
 }
 
+// Adapted from vistautil.cc.
+HRESULT IsUserRunningSplitToken(bool* is_split_token) {
+  if (!IsVistaOrLater()) {
+    *is_split_token = false;
+    return S_OK;
+  }
+
+  HANDLE process_token = NULL;
+  if (!::OpenProcessToken(::GetCurrentProcess(),
+                          TOKEN_QUERY,
+                          &process_token)) {
+    HRESULT hr = HRESULTFromLastError();
+    ::CloseHandle(process_token);
+    return hr;
+  }
+
+  TOKEN_ELEVATION_TYPE elevation_type = TokenElevationTypeDefault;
+  DWORD size_returned = 0;
+  if (!::GetTokenInformation(process_token,
+                             TokenElevationType,
+                             &elevation_type,
+                             sizeof(elevation_type),
+                             &size_returned)) {
+    HRESULT hr = HRESULTFromLastError();
+    ::CloseHandle(process_token);
+    return hr;
+  }
+
+  ::CloseHandle(process_token);
+
+  *is_split_token = elevation_type == TokenElevationTypeFull ||
+                    elevation_type == TokenElevationTypeLimited;
+
+  return S_OK;
+}
+
+// Adapted from vistautil.cc.
+bool IsUACDisabled() {
+  if (!IsVistaOrLater()) {
+    return false;
+  }
+
+  // Split token indicates that UAC is on.
+  bool is_split_token = true;
+  if SUCCEEDED(IsUserRunningSplitToken(&is_split_token)) {
+    return !is_split_token;
+  } else {
+    // Return a safe value on failure.
+    return false;
+  }
+}
+
+// Checking the full path vs. just being somewhere in Program Files is important
+// because other programs may have lowered the ACLs of some subdirectories.
 bool IsRunningFromProgramFilesDirectory() {
   // Get the HMODULE for the current process.
   HMODULE module_handle = ::GetModuleHandle(NULL);
@@ -137,14 +192,32 @@ bool IsRunningFromProgramFilesDirectory() {
   return (module_path.Find(folder_path) == 0);
 }
 
-// If we're not running from program files and we're running as an elevated
-// user on Vista, we need to validate the signature of goopdate.dll before
-// loading it.
+// In the following case, we need to validate the signature of goopdate.dll
+// before loading it to maintain the chain of trust:
+//  * Not running from a secure location
+//  * Vista and later
+//  * Running elevated/with admin privileges
+//  * UAC is not disabled
+//
+// We explicitly do not perform the authenticode check when UAC is disabled
+// because the other conditions are all satisfied by the per-user instance of
+// Omaha installed for a member of the admin group. Without an explicit check,
+// an authenticode check would be performed every time the the per-user instance
+// runs in these configurations.
+// Skipping the authenticode check when UAC is disabled is also okay because the
+// user has opted to let all applications run with the same privilege, so there
+// is no need elevation of privileges.
+// TODO(omaha): Eliminate the supported cases where this shell runs elevated
+// from an unsecure location and replace the authenticode check with an error.
 HRESULT VerifySignatureIfNecessary(const TCHAR* file_path,
-                                   bool is_running_from_program_files) {
-  if (is_running_from_program_files ||
+                                   bool is_running_from_secure_location) {
+  if (is_running_from_secure_location ||
       !IsVistaOrLater() ||
       !::IsUserAnAdmin()) {
+    return S_OK;
+  }
+
+  if (IsUACDisabled()) {
     return S_OK;
   }
 
@@ -258,8 +331,8 @@ int WINAPI _tWinMain(HINSTANCE instance,
   // We assume here that running from program files means we should check
   // the machine install version and otherwise we should check the user
   // version. This should be true in all end user cases except for initial
-  // installs from the temp directory and OneClick cross-installs. In both
-  // cases, the DLL should be in the same directory so we should not get here.
+  // installs from the temp directory, in which case the DLL should be in the
+  // same directory so this value does not get used.
   // For developer use cases, the DLL should also be in the same directory.
   bool is_machine = is_running_from_program_files;
 
@@ -295,4 +368,3 @@ int WINAPI _tWinMain(HINSTANCE instance,
 
   return hr;
 }
-
