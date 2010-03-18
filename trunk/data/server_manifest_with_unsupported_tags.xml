@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0"
+         ExtraUnsupportedAttribute='123'>
+<UnsupportedElement1 UnsupportedAttribute1='some value' />
+<app appid="{D6B08267-B440-4C85-9F79-E195E80D9937}" status="ok">
+  <updatecheck status="ok"
+               codebase="http://dl.google.com/foo/1.0.101.0/test_foo_v1.0.101.0.msi"
+               size="80896"
+               hash="6bPU7OnbKAGJ1LOw6fpIUuQl1FQ="
+               needsadmin="true"
+               successurl="http://testsuccessurl.com"
+               terminateallbrowsers="true"
+               onsuccess="exitsilently"/>
+  <data index="verboselogging" name="install" status="ok">
+  {
+    "distribution": {
+      "verbose_logging": true
+    }
+  }
+  </data>
+  <data index="skipfirstrun" name="install" status="ok">{
+    "distribution": {
+      "skip_first_run_ui": true,
+    }
+  }
+  </data>
+  <ping status="ok"/>
+</app>
+<app appid="{D6B08267-B440-4C85-9F79-E195E80D9936}" status="ok">
+  <updatecheck status="noupdate"/>
+  <ping status="ok"/>
+</app>
+<app appid="{104844D6-7DDA-460B-89F0-FBF8AFDD0A67}" status="ok">
+  <updatecheck status="ok"
+               codebase="http://dl.google.com/foo/1.0.102.0/user_foo_v1.0.102.0.msi"
+               size="630152"
+               hash="/XzRh1rpwqrDr6ashpmQnYZIzDI="
+               needsadmin="false"
+               arguments="/install"
+               unknownfeature="Tests behavior if server supports features client does not."/>
+  <ping status="ok"/>
+</app>
+<app appid="{884a01d9-fb67-430a-b491-28f960dd7309}" status="restricted"></app>
+<app appid="{8CF15C17-7BB5-433a-8E6C-C018D79D00B1}" status="ok">
+  <updatecheck status="error-osnotsupported"
+               errorurl="http://foo.google.com/support/article.py?id=12345&amp;hl=es-419&amp;os=5.1"/>
+  <ping status="ok"/>
+</app>
+<UnsupportedElement2 UnsupportedAttribute2='Unsupported value' >
+  Some strings inside an unsupported element, should be ignored.
+  <ping status="ok"/>
+</UnsupportedElement2>
+</gupdate>
