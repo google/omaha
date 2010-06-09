@@ -452,14 +452,15 @@ HRESULT AppManager::ReadAppDataFromStore(const GUID& parent_app_guid,
     }
   }
 
-  // The value is not essential for omaha's operation, so ignore errors.
+  // The value is not essential for Omaha's operation, so ignore errors.
   CString previous_version;
   HRESULT previous_version_hr =
       client_state_key.GetValue(kRegValueProductVersion, &previous_version);
   temp_data.set_previous_version(previous_version);
 
-  // An app is uninstalled if the Client key exists and the pv value in the
-  // ClientState key does not exist.
+  // An app is considered uninstalled if:
+  //  * The app's Clients key does not exist AND
+  //  * The app's ClientState key exists and contains the pv value.
   // Omaha may create the app's ClientState key and write values from the
   // metainstaller tag before running the installer, which creates the Client
   // key. Requiring pv in ClientState avoids mistakenly determining that the
@@ -663,12 +664,7 @@ HRESULT AppManager::InitializeApplicationState(AppData* app_data) {
 }
 
 // Copies language and version from clients into client state reg key.
-// Removes installation id, if did run = true or if goopdate.
-// Clears did run.
-// Also updates the last active ping and roll call time in registry
-// if the corresponding ping was sent to server.
-HRESULT AppManager::UpdateApplicationState(int time_since_midnight_sec,
-                                           AppData* app_data) {
+HRESULT AppManager::UpdateApplicationState(AppData* app_data) {
   ASSERT1(app_data);
   RegKey client_state_key;
   HRESULT hr = CreateClientStateKey(app_data->parent_app_guid(),
@@ -692,21 +688,6 @@ HRESULT AppManager::UpdateApplicationState(int time_since_midnight_sec,
   if (FAILED(hr)) {
     return hr;
   }
-
-  // Handle the installation id.
-  hr = ClearInstallationId(app_data, client_state_key);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  SetLastPingDayStartTime(time_since_midnight_sec,
-                          app_data,
-                          client_state_key);
-
-  // Reset did_run after updating the days_since_last_active_ping since that
-  // need previous did_run status to determine whether an active ping has been
-  // sent.
-  ResetDidRun(app_data);
 
   return S_OK;
 }
@@ -944,13 +925,12 @@ void AppManager::ResetDidRun(AppData* app_data) {
                                              AppData::ACTIVE_UNKNOWN);
 }
 
-// Write the day start time when last active ping/roll call happened to
-// registry.
 void AppManager::SetLastPingDayStartTime(int time_since_midnight_sec,
                                          AppData* app_data,
                                          const RegKey& client_state_key) {
   ASSERT1(time_since_midnight_sec >= 0);
   ASSERT1(time_since_midnight_sec < kMaxTimeSinceMidnightSec);
+  ASSERT1(app_data);
 
   int now = Time64ToInt32(GetCurrent100NSTime());
 
@@ -970,6 +950,37 @@ void AppManager::SetLastPingDayStartTime(int time_since_midnight_sec,
                           static_cast<DWORD>(now - time_since_midnight_sec))));
     app_data->set_days_since_last_roll_call(0);
   }
+}
+
+// Writes the day start time when last active ping/roll call happened to
+// registry if the corresponding ping has been sent.
+// Removes installation id, if did run = true or if goopdate.
+// Clears did run.
+HRESULT AppManager::HandleSuccessfulUpdateCheckRequestSend(
+    int time_since_midnight_sec,
+    AppData* app_data) {
+  RegKey client_state_key;
+  HRESULT hr = CreateClientStateKey(app_data->parent_app_guid(),
+                                    app_data->app_guid(),
+                                    &client_state_key);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // Handle the installation id.
+  hr = ClearInstallationId(app_data, client_state_key);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[ClearInstallationId failed][hr=0x%08x]"), hr));
+  }
+
+  SetLastPingDayStartTime(time_since_midnight_sec, app_data, client_state_key);
+
+  // Reset did_run after updating the days_since_last_active_ping and the
+  // installation ID since these updates need previous did_run status to
+  // determine the right actions.
+  ResetDidRun(app_data);
+
+  return hr;
 }
 
 // Only replaces the language in ClientState and app_data if the language in

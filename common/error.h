@@ -1,4 +1,4 @@
-// Copyright 2003-2009 Google Inc.
+// Copyright 2003-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -266,6 +266,12 @@ HRESULT HRESULTFromHttpStatusCode(int status_code);
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x815)
 #define GOOPDATE_E_APP_UPDATE_DISABLED_EULA_NOT_ACCEPTED  \
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x816)
+// 0x817-9: reserved.
+// TODO(omaha): Rename other SERVER_RESPONSE errors to match these.
+#define GOOPDATE_E_SERVER_RESPONSE_NO_HASH \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x81a)
+#define GOOPDATE_E_SERVER_RESPONSE_UNSUPPORTED_PROTOCOL \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x81b)
 
 //
 // Network stack error codes.

@@ -151,9 +151,8 @@ HRESULT SetupService::DoInstallNewService(const TCHAR* service_name,
 
   scoped_service scm(::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS));
   if (!scm) {
-    ASSERT1(false);
     HRESULT hr = HRESULTFromLastError();
-    SETUP_LOG(LEVEL_ERROR, (_T("Failed to open SC Manager 0x%08x"), hr));
+    ASSERT(false, (_T("Failed to open SC Manager 0x%08x"), hr));
     return hr;
   }
 
@@ -177,7 +176,7 @@ HRESULT SetupService::DoInstallNewService(const TCHAR* service_name,
     return hr;
   }
   VERIFY1(SUCCEEDED(SetDescription(service_name, description)));
-  SETUP_LOG(L1, (_T("[SetupService::InstallService - service installed]")));
+  SETUP_LOG(L1, (_T("[SetupService::DoInstallService][service installed]")));
   return S_OK;
 }
 
@@ -221,10 +220,9 @@ HRESULT SetupService::UpgradeService(const TCHAR* service_cmd_line) {
 
   scoped_service scm(::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS));
   if (!scm) {
-    ASSERT1(false);
-    SETUP_LOG(LEVEL_ERROR, (_T("Failed to open SC Manager 0x%08x"),
-                           HRESULTFromLastError()));
-    return HRESULTFromLastError();
+    hr = HRESULTFromLastError();
+    ASSERT(false, (_T("Failed to open SC Manager 0x%08x"), hr));
+    return hr;
   }
 
   CString service_name(ConfigManager::GetCurrentServiceName());
@@ -235,10 +233,9 @@ HRESULT SetupService::UpgradeService(const TCHAR* service_cmd_line) {
                                        service_name,
                                        SERVICE_CHANGE_CONFIG));
   if (!service) {
-    ASSERT1(false);
-    SETUP_LOG(LEVEL_ERROR, (_T("Failed to open service for update 0x%08x"),
-                           HRESULTFromLastError()));
-    return HRESULTFromLastError();
+    hr = HRESULTFromLastError();
+    ASSERT(false, (_T("Failed to open service for update 0x%08x"), hr));
+    return hr;
   }
 
   if (!::ChangeServiceConfig(get(service),
@@ -252,10 +249,9 @@ HRESULT SetupService::UpgradeService(const TCHAR* service_cmd_line) {
                              NULL,
                              NULL,
                              NULL)) {
-    ASSERT1(false);
-    SETUP_LOG(LEVEL_ERROR, (_T("Failed to change service config 0x%08x"),
-                           HRESULTFromLastError()));
-    return HRESULTFromLastError();
+    hr = HRESULTFromLastError();
+    ASSERT(false, (_T("Failed to change service config 0x%08x"), hr));
+    return hr;
   }
 
   SETUP_LOG(L3, (_T("[ChangeServiceConfig succeeded]")));

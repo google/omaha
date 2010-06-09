@@ -10,7 +10,7 @@
 #      easy to differentiate different copies of the standalone installer. The
 #      version properties of the standalone installer have Omaha's version, not
 #      the app's, so the only way to determine the app version is to install it.
-#  * Version of the app (required for MSI).
+#  * Version of the app (required).
 #  * List of (App Installer Location, App ID) tuples (required).
 #  * MSI installer name base (required for MSI) - everything but '.msi'. Cannot change! Thus, should not include version info. Also, the resulting MSI must not be renamed.
 #  * Custom tag parameters for MSI installer (optional). Example: '&brand=FOOB&ap=enterprise'
@@ -18,7 +18,7 @@
 #  * Whether to build an enterprise MSI - True/False.
 #  * File Containing Tagging Info (optional)
 
-('Test Foo', 'TestFooStandaloneInstaller', None, [('$STAGING_DIR/unittest_support/test_foo_v1.0.101.0.msi', '{D6B08267-B440-4C85-9F79-E195E80D9937}')], None, None, None, False, '/installers/SampleApp_installers.txt')
+('Test Foo', 'TestFooStandaloneInstaller', '1.0.101.0', [('$STAGING_DIR/unittest_support/test_foo_v1.0.101.0.msi', '{D6B08267-B440-4C85-9F79-E195E80D9937}')], None, None, None, False, '', '$MAIN_DIR/installers/SampleApp_installers.txt')
 
 # Not a real installer.
-('Save Arguments', 'SaveArgumentsStandaloneInstaller', '0.1.2.0', [('$STAGING_DIR/unittest_support/SaveArguments.exe', '{7DD1EF7B-D075-47c0-BD51-F624ED87CCF0}')], 'SaveArgumentsStandaloneEnterprise', '', '/silentuninstall', True, '')
+('Save Arguments', 'SaveArgumentsStandaloneInstaller', '0.1.2.0', [('$STAGING_DIR/unittest_support/SaveArguments.exe', '{7DD1EF7B-D075-47c0-BD51-F624ED87CCF0}')], 'SaveArgumentsStandaloneEnterprise', '', '/silentuninstall', True, '', '')

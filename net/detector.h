@@ -32,9 +32,7 @@ class ProxyDetectorInterface {
   virtual ~ProxyDetectorInterface() {}
 };
 
-// Detects proxy information for the corp machines. This information is
-// periodically distributed by SMS and it is part of the gWindows image.
-// The proxy information is stored under: HKLM\SOFTWARE\Google\UpdateDev
+// Detects proxy override information in the specified registry key.
 class GoogleProxyDetector : public ProxyDetectorInterface {
  public:
   explicit GoogleProxyDetector(const CString& reg_path)

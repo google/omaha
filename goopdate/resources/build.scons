@@ -33,26 +33,19 @@ if local_env['msc_ver'] >= 1400:
   local_env['CCFLAGS'] += ['/GS-']
 
 
-_first = True
-for v in env['product_version']:
+for omaha_version_info in local_env['omaha_versions_info']:
+  prefix = omaha_version_info.filename_prefix
 
-  if _first:
-    _first = False
-    prefix = ''
-  else:
-    prefix = 'TEST_'
-
-  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
-
-  for lang in env['languages']:
+  for lang in omaha_version_info.GetSupportedLanguages():
     lang_env = local_env.Clone()
     lang_env.Append(
         RCFLAGS = [
-            '/DVERSION_MAJOR=%d' % v[0],
-            '/DVERSION_MINOR=%d' % v[1],
-            '/DVERSION_BUILD=%d' % v[2],
-            '/DVERSION_PATCH=%d' % v[3],
-            '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+            '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+            '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+            '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+            '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+            '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+                omaha_version_info.GetVersionString()),
             '/DLANGUAGE_STRING=\\"%s\\"' % lang
             ],
         CPPPATH = [

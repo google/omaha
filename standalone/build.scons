@@ -20,19 +20,15 @@ Import('env')
 
 from standalone import standalone_installer
 
-# Build the meta-installer for each version.
-first = True
-for v in env['product_version']:
-  if first:
-    first = False
-    prefix = ''
-  else:
-    prefix = 'TEST_'
+# Build the standalone installer for each version.
+for omaha_version_info in env['omaha_versions_info']:
+  prefix = omaha_version_info.filename_prefix
 
   source_binary = '$OBJ_ROOT/mi_exe_stub/%smi_exe_stub.exe' % (prefix)
 
   standalone_installer.BuildOfflineInstallersVersion(
       env,
+      omaha_version_info,
       '$STAGING_DIR',
       source_binary,
       '$MAIN_DIR/standalone/standalone_installers.txt',

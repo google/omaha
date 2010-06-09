@@ -562,6 +562,10 @@ HRESULT WorkerJob::DoUpdateCheck(const ProductDataVector& products) {
   }
   ASSERT1(static_cast<size_t>(req->get_request_count()) == responses.size());
 
+  if (strategy_->IsUpdate()) {
+    HandleSuccessfulUpdateCheckRequestSend(responses, products);
+  }
+
   hr = CreateJobs(false, responses, products);
   if (FAILED(hr)) {
     return hr;
@@ -571,6 +575,26 @@ HRESULT WorkerJob::DoUpdateCheck(const ProductDataVector& products) {
     ++metric_worker_update_check_succeeded;
   }
   return S_OK;
+}
+
+void WorkerJob::HandleSuccessfulUpdateCheckRequestSend(
+    const UpdateResponses& responses,
+    const ProductDataVector& products) {
+  AppManager app_manager(is_machine_);
+
+  for (ProductDataVector::const_iterator products_it = products.begin();
+       products_it != products.end(); ++products_it) {
+    const ProductData& product_data = *products_it;
+    AppData app_data = product_data.app_data();
+    UpdateResponses::const_iterator it = responses.find(app_data.app_guid());
+
+    if (it != responses.end()) {
+      const UpdateResponse& response = it->second;
+
+      VERIFY1(SUCCEEDED(app_manager.HandleSuccessfulUpdateCheckRequestSend(
+          response.time_since_midnight_sec(), &app_data)));
+    }
+  }
 }
 
 HRESULT WorkerJob::CreateJobs(bool is_offline,

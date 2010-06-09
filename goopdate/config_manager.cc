@@ -320,21 +320,6 @@ HRESULT ConfigManager::GetUpdateCheckUrl(CString* url) const {
   return S_OK;
 }
 
-HRESULT ConfigManager::GetWebPluginCheckUrl(CString* url) const {
-  ASSERT1(url);
-
-#ifdef DEBUG
-  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
-                                 kRegValueNameWebPluginUrl,
-                                 url))) {
-    CORE_LOG(L5, (_T("['webplugin url' override %s]"), *url));
-    return S_OK;
-  }
-#endif
-  *url = kUrlWebPluginCheck;
-  return S_OK;
-}
-
 // Returns the override from the registry locations if present. Otherwise,
 // returns the default value.
 // Default value is different value for Googlers, to make update checks more
@@ -790,9 +775,7 @@ bool ConfigManager::IsWindowsInstalling() const {
   }
 #endif
 
-  // Call IsWindowsReallyInAuditMode() because IsWindowsInstalling() is not
-  // reliable on its own.
-  return IsWindowsReallyInAuditMode();
+  return omaha::IsWindowsInstalling();
 }
 
 // Checks if the computer name ends with .google.com or the netbios domain is

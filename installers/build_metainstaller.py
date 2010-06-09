@@ -25,18 +25,20 @@
   BuildMetaInstaller(): Build a meta-installer.
 """
 
-from installers import get_payload_files
-
 
 def BuildMetaInstaller(env,
                        target_name,
+                       omaha_version_info,
                        empty_metainstaller_path,
-                       google_update_files_path,
-                       prefix = '',
-                       suffix = '',
-                       additional_payload_contents = None,
-                       additional_payload_contents_dependencies = None,
-                       output_dir = '$STAGING_DIR'):
+                       omaha_files_path,
+                       prefix='',
+                       suffix='',
+                       additional_payload_contents=None,
+                       additional_payload_contents_dependencies=None,
+                       output_dir='$STAGING_DIR',
+                       installers_sources_path='$MAIN_DIR/installers',
+                       lzma_path='$MAIN_DIR/third_party/lzma/lzma.exe',
+                       resmerge_path='$MAIN_DIR/tools/resmerge.exe'):
   """Build a meta-installer.
 
     Builds a full meta-installer, which is a meta-installer containing a full
@@ -46,8 +48,9 @@ def BuildMetaInstaller(env,
   Args:
     env: environment to build with
     target_name: name to use for the target executable
+    omaha_version_info: info about the version of the Omaha files
     empty_metainstaller_path: path to the base (empty) meta-installer executable
-    google_update_files_path: path to the resource dlls to build into the
+    omaha_files_path: path to the resource dlls to build into the
         target executable
     prefix: target file name prefix, used to distinguish different targets
     suffix: target file name suffix, used to distinguish different targets
@@ -56,9 +59,13 @@ def BuildMetaInstaller(env,
     additional_payload_contents_dependencies: extra dependencies to be used to
         ensure the executable is rebuilt when required
     output_dir: path to the directory that will contain the metainstaller
+    installers_sources_path: path to the directory containing the source files
+        for building the metainstaller
+    lzma_path: path to lzma.exe
+    resmerge_path: path to resmerge.exe
 
   Returns:
-    Nothing.
+    Target nodes.
 
   Raises:
     Nothing.
@@ -75,15 +82,9 @@ def BuildMetaInstaller(env,
   payload_filename = tarball_filename + '.lzma'
 
   # Collect a list of all the files to include in the payload
-  payload_file_names = get_payload_files.GetListOfPayloadFiles(
-      prefix,
-      env['ACTIVEX_FILENAME'],
-      env['BHO_FILENAME'],
-      env['languages'],
-      env['product_version'][0],
-  )
+  payload_file_names = omaha_version_info.GetMetainstallerPayloadFilenames()
 
-  payload_contents = [google_update_files_path + '/' + file_name
+  payload_contents = [omaha_files_path + '/' + file_name
                       for file_name in payload_file_names]
   payload_contents += additional_payload_contents
 
@@ -92,7 +93,7 @@ def BuildMetaInstaller(env,
       target=tarball_filename,    # Archive filename
       source=payload_contents,    # List of files to include in tarball
       action='python.exe %s -o $TARGET $SOURCES' % (
-          env.File('$MAIN_DIR/installers/generate_tarball.py').abspath),
+          env.File(installers_sources_path + '/generate_tarball.py').abspath),
   )
 
   # Add potentially hidden dependencies
@@ -104,16 +105,17 @@ def BuildMetaInstaller(env,
   lzma_output = env.Command(
       target=payload_filename,
       source=tarball_output,
-      action='$MAIN_DIR/third_party/lzma/lzma.exe e $SOURCES $TARGET',
+      action=lzma_path + ' e $SOURCES $TARGET',
   )
 
   # Construct the resource generation script
-  manifest_path = '$MAIN_DIR/installers/installers.manifest'
+  manifest_path = installers_sources_path + '/installers.manifest'
   res_command = 'python.exe %s -i %s -o $TARGET -p $SOURCES -m %s -r %s' % (
-      env.File('$MAIN_DIR/installers/generate_resource_script.py').abspath,
-      env.File('$MAIN_DIR/installers/resource.rc.in').abspath,
+      env.File(installers_sources_path + '/generate_resource_script.py'
+              ).abspath,
+      env.File(installers_sources_path + '/resource.rc.in').abspath,
       env.File(manifest_path).abspath,
-      env.File('$MAIN_DIR/installers/resource.h').abspath
+      env.File(installers_sources_path + '/resource.h').abspath
       )
 
   # Generate the .rc file
@@ -136,7 +138,7 @@ def BuildMetaInstaller(env,
   dll_env['LINKFLAGS'] += ['/noentry']
 
   dll_inputs = [
-      '$MAIN_DIR/installers/resource_only_dll.def',
+      installers_sources_path + '/resource_only_dll.def',
       res_file
       ]
 
@@ -153,7 +155,7 @@ def BuildMetaInstaller(env,
   merged_output = env.Command(
       target='unsigned_' + target_name,
       source=[empty_metainstaller_path, dll_output_name],
-      action='$MAIN_DIR/tools/resmerge --copyappend $SOURCES $TARGET'
+      action=resmerge_path + ' --copyappend $SOURCES $TARGET'
   )
 
   signed_exe = env.SignedBinary(
@@ -161,4 +163,4 @@ def BuildMetaInstaller(env,
       source=merged_output,
   )
 
-  env.Replicate(output_dir, signed_exe)
+  return env.Replicate(output_dir, signed_exe)

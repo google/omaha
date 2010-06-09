@@ -115,8 +115,7 @@ def BuildMSI(version, namespace, exe_name, wxs_template, msi_base_name,
             '&ap=enterprise',
             msi_base_name,
             ('$MAIN_DIR/enterprise/installer/'
-                'google_update_installer_fragment.wxs.xml'),
-            is_using_google_update_1_2_171_or_later=True
+                'google_update_installer_fragment.wxs.xml')
     )
 
     wix_inputs += [google_update_wixobj]
@@ -192,13 +191,8 @@ for (major, minor, build, patch) in [(1,0,101,0), (1,0,102,0)]:
            msi_base_name)
 
   # Build the enterprise installer for each version of Omaha.
-  first = True
-  for _ in env['product_version']:
-    if first:
-      first = False
-      prefix = ''
-    else:
-      prefix = 'TEST_'
+  for omaha_version_info in ver_env['omaha_versions_info']:
+    prefix = omaha_version_info.filename_prefix
 
     BuildMSI(version, _GUID_NAMESPACE, signed_exe, _WXS_TEMPLATE_NAME,
              msi_base_name, is_enterprise=True, prefix=prefix)

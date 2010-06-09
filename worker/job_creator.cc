@@ -295,8 +295,7 @@ HRESULT JobCreator::CreateJobsFromResponsesInternal(
     // AppManager::UpdateApplicationState() to make sure the registry is
     // initialized properly.
     if (is_update_) {
-      app_manager.UpdateApplicationState(response.time_since_midnight_sec(),
-                                         &product_app_data);
+      app_manager.UpdateApplicationState(&product_app_data);
     }
 
     // Write the TT Token, if any, with what the server returned. The server
@@ -516,6 +515,8 @@ HRESULT JobCreator::HandleUpdateNotAvailable(
       break;
     case GOOPDATE_E_UNKNOWN_APP_SERVER_RESPONSE:
     case GOOPDATE_E_INTERNAL_ERROR_SERVER_RESPONSE:
+    case GOOPDATE_E_SERVER_RESPONSE_NO_HASH:
+    case GOOPDATE_E_SERVER_RESPONSE_UNSUPPORTED_PROTOCOL:
     case GOOPDATE_E_UNKNOWN_SERVER_RESPONSE:
     default:
       event_log_text->AppendFormat(_T("App=%s, Ver=%s, Status=error:0x%08x\n"),
@@ -591,6 +592,22 @@ CompletionInfo JobCreator::UpdateResponseDataToCompletionInfo(
     info.error_code =
         static_cast<DWORD>(GOOPDATE_E_INTERNAL_ERROR_SERVER_RESPONSE);
     info.text.FormatMessage(IDS_NON_OK_RESPONSE_FROM_SERVER, status);
+  } else if (_tcsicmp(kResponseStatusHashError, status) == 0) {
+    // "error-hash"
+    info.status = COMPLETION_ERROR;
+    info.error_code =
+        static_cast<DWORD>(GOOPDATE_E_SERVER_RESPONSE_NO_HASH);
+    info.text.FormatMessage(IDS_NON_OK_RESPONSE_FROM_SERVER, status);
+  } else if (_tcsicmp(kResponseStatusUnsupportedProtocol, status) == 0) {
+    // "error-unsupportedprotocol"
+    info.status = COMPLETION_ERROR;
+    info.error_code =
+        static_cast<DWORD>(GOOPDATE_E_SERVER_RESPONSE_UNSUPPORTED_PROTOCOL);
+    // TODO(omaha): Ideally, we would provide an app-specific URL instead of
+    // just the publisher name. If it was a link, we could use point to a
+    // redirect URL and provide the app GUID rather than somehow obtaining the
+    // app-specific URL.
+    info.text.FormatMessage(IDS_INSTALLER_OLD, kPublisherName);
   } else {
     // Unknown response.
     info.status = COMPLETION_ERROR;

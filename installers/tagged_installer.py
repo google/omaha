@@ -40,6 +40,8 @@ def TagOneBundle(env, bundle, untagged_binary_path, output_dir):
   # Add extra (hidden) dependency plus a dependency on the tag executable.
   env.Depends(tag_output, [bundle.installers_txt_filename, tag_exe])
 
+  return tag_output
+
 
 def _ReadAllBundleInstallerFiles(installers_txt_files_path):
   """Enumerates all the .*_installers.txt files in the installers_txt_files_path

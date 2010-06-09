@@ -68,8 +68,12 @@ class AppManager {
 
   // Updates the state of the application in the registry. Call this method
   // to update the state of the application after an update check.
-  HRESULT UpdateApplicationState(int time_since_midnight_sec,
-                                 AppData* app_data);
+  HRESULT UpdateApplicationState(AppData* app_data);
+
+  // Updates application state after server confirms that it has suscessfully
+  // received an update check.
+  HRESULT HandleSuccessfulUpdateCheckRequestSend(int time_since_midnight_sec,
+                                                 AppData* app_data);
 
   // Write the TT Token with what the server returned.
   HRESULT WriteTTToken(const AppData& app_data,
@@ -162,6 +166,9 @@ class AppManager {
                                               const RegKey& client_state_key,
                                               const RegKey& client_key);
   static void ResetDidRun(AppData* app_data);
+
+  // Writes the day start time when last active ping/roll call happened to
+  // registry.
   static void SetLastPingDayStartTime(int time_since_midnight_sec,
                                       AppData* app_data,
                                       const RegKey& client_state_key);

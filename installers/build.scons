@@ -35,11 +35,8 @@ def _GetClickOnceDeploymentName(language):
 
 # Generate a ClickOnce deployment manifest personalized with the localized
 # display name of 'Google Installer'.
-def _GenerateDeploymentForOneLanguage(language):
+def _GenerateDeploymentForOneLanguage(omaha_version_info, language):
   clickonce_deployment_name = _GetClickOnceDeploymentName(language)
-
-  v = env['product_version'][0]
-  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
 
   clickonce_manifest_name = 'clickonce_bootstrap.exe.manifest'
   clickonce_manifest = '%s/%s' % (_CLICKONCE_DEPLOY_DIR,
@@ -51,7 +48,7 @@ def _GenerateDeploymentForOneLanguage(language):
   generate_deploy_manifest_command = (
       '@mage -New Deployment -Install false -ToFile $TARGET -Name xxxXXXxxx'
       ' -Version %s -Processor x86 -AppManifest $SOURCE -AppCodeBase %s' %
-      (version_string, clickonce_manifest_name))
+      (omaha_version_info.GetVersionString(), clickonce_manifest_name))
 
   # Have to set up a clear chain of source->target1->target2->target3->etc so
   # that declarative Hammer will know the order in which to run each command.
@@ -103,27 +100,32 @@ def _GenerateDeploymentForOneLanguage(language):
 
 
 
-def _BuildSetup(is_repair = False):
+def _BuildSetup(omaha_versions_info, is_repair = False):
   # Build the meta-installer for each version.
-  PRODUCT_NAME = 'GoogleUpdate'
-  first = True
-  for v in env['product_version']:
-    if first:
-      first = False
-      prefix = ''
-    else:
-      prefix = 'TEST_'
+  _PRODUCT_NAME = 'GoogleUpdate'
+  
+  for omaha_version_info in omaha_versions_info:
+    prefix = omaha_version_info.filename_prefix
 
-    source_binary = '$OBJ_ROOT/mi_exe_stub/%smi_exe_stub.exe' % (prefix)
+    source_binary = '$OBJ_ROOT/mi_exe_stub/%smi_exe_stub.exe' % prefix
 
     if is_repair:
-      _BuildSetupRepairVersion(source_binary, PRODUCT_NAME, prefix)
+      _BuildSetupRepairVersion(omaha_version_info,
+                               source_binary,
+                               _PRODUCT_NAME,
+                               prefix)
     else:
-      _BuildSetupVersion(source_binary, PRODUCT_NAME, prefix)
+      _BuildSetupVersion(omaha_version_info,
+                         source_binary,
+                         _PRODUCT_NAME,
+                         prefix)
 
 
 
-def _BuildSetupRepairVersion(source_binary, product_name, prefix = ''):
+def _BuildSetupRepairVersion(omaha_version_info,
+                             source_binary,
+                             product_name,
+                             prefix = ''):
   # Build the target setup executable by merging the empty metafile
   # with the resource dll built earlier
   merged_output = env.Command(
@@ -135,8 +137,9 @@ def _BuildSetupRepairVersion(source_binary, product_name, prefix = ''):
   build_metainstaller.BuildMetaInstaller(
       env=env,
       target_name='%s%sSetup_repair.exe' % (prefix, product_name),
+      omaha_version_info=omaha_version_info,
       empty_metainstaller_path=merged_output,
-      google_update_files_path='$STAGING_DIR',
+      omaha_files_path='$STAGING_DIR',
       prefix = prefix,
       suffix = '_repair',
       additional_payload_contents = [
@@ -146,27 +149,32 @@ def _BuildSetupRepairVersion(source_binary, product_name, prefix = ''):
 
 
 
-def _BuildSetupVersion(source_binary, product_name, prefix = ''):
+def _BuildSetupVersion(omaha_version_info,
+                       source_binary,
+                       product_name,
+                       prefix = ''):
   target_name = '%s%sSetup.exe' % (prefix, product_name)
 
   build_metainstaller.BuildMetaInstaller(
       env=env,
+      omaha_version_info=omaha_version_info,
       target_name=target_name,
       empty_metainstaller_path=source_binary,
-      google_update_files_path='$STAGING_DIR',
+      omaha_files_path='$STAGING_DIR',
       prefix=prefix
   )
 
   # Generate the i18n ClickOnce deployment manifest for languages that we
   # support.
   if env.Bit('all') or 'OMAHA_BUILD_CLICKONCE' in os.environ.keys():
-    for language in env['languages']:
-      _GenerateDeploymentForOneLanguage(language)
+    for language in omaha_version_info.GetSupportedLanguages():
+      _GenerateDeploymentForOneLanguage(omaha_version_info, language)
 
-    # zh-HK needs a deployment file, but it is not in env['languages'] and there
-    # is no mi_generated_resources_zh-HK.rc file. The few translations are
-    # inherited from zh-TW, and there are no language code-specific values in
-    # the deployment file, so just copy the zh-TW file to zh-HK.
+    # zh-HK needs a deployment file, but it is not in
+    # omaha_version_info.GetSupportedLanguages() and there is no
+    # mi_generated_resources_zh-HK.rc file. The few translations are inherited
+    # from zh-TW, and there are no language code-specific values in the
+    # deployment file, so just copy the zh-TW file to zh-HK.
     env.Command(
         target='%s/%s' % (_CLICKONCE_DEPLOY_DIR,
                           _GetClickOnceDeploymentName('zh-HK')),
@@ -176,17 +184,10 @@ def _BuildSetupVersion(source_binary, product_name, prefix = ''):
     )
 
 if not env.Bit('official_installers'):
-  # The logic:
-  # - Set OMAHA_BUILD_TWO_VERSIONS environment variable to create the Test_
-  #   versions of the meta-installers, which can be used to test over-installs
-  #   and updates.
-  #
-  # Legacy Note:
-  # QA_* meta-installers are not longer being produced by the build.
-  # OMAHA_BUILD_ALLSETUPS is no longer being used.
+  omaha_versions_info = env['omaha_versions_info']
 
   # Build the normal tagged installers.
-  _BuildSetup()
+  _BuildSetup(omaha_versions_info)
 
   env.Replicate(
       target=[
@@ -197,7 +198,7 @@ if not env.Bit('official_installers'):
   )
 
   # Build the repair installer.
-  _BuildSetup(is_repair = True)
+  _BuildSetup(omaha_versions_info, is_repair = True)
 
   # Build a resource DLL containing the recovery markup resource.
   dll_env = env.Clone(COMPONENT_STATIC=False)

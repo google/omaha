@@ -251,38 +251,31 @@ CString CertInfo::FileTimeToString(const FILETIME* ft) {
 }
 
 
-bool CertInfo::ExtractField(const TCHAR* str,
-                            const TCHAR* field_name,
+bool CertInfo::ExtractField(const CERT_CONTEXT* cert_context,
+                            const char* field_name,
                             CString* field_value) {
-  if ((!str) || (!field_name) || (!field_value))
-    return false;
-
-  // first, we have to locate pattern - "<field-name>="
-  CString field_name_with_equal_sign = field_name + CString(_T("="));
-  const TCHAR* field_name_start = _tcsstr(str, field_name_with_equal_sign);
-
-  // there is no such field? ok, sorry..
-  if (field_name_start == NULL) {
-    field_value->Empty();
+  if ((!cert_context) || (!field_name) || (!field_value)) {
     return false;
   }
 
-  // now, locate the end of this field-value. we know each field value
-  // is followed by a semi-colon (except last one).
-  const TCHAR* next_field = _tcschr(field_name_start, ';');
-  // identify where exactly field-value starts.
-  const TCHAR* field_value_start = field_name_start +
-                                   field_name_with_equal_sign.GetLength();
-  if (next_field) {
-    // if next-field exists, copy all the chars before semi-colon
-    field_value->SetString(field_value_start,
-        static_cast<int>(next_field - field_value_start));
-  } else {
-    // this must be the last field. copy till the end of the string.
-    field_value->SetString(field_value_start);
+  field_value->Empty();
+
+  DWORD num_chars = ::CertGetNameString(cert_context,
+                                        CERT_NAME_ATTR_TYPE,
+                                        0,
+                                        const_cast<char*>(field_name),
+                                        NULL,
+                                        0);
+  if (num_chars > 1) {
+    num_chars = ::CertGetNameString(cert_context,
+                                  CERT_NAME_ATTR_TYPE,
+                                  0,
+                                  const_cast<char*>(field_name),
+                                  CStrBuf(*field_value, num_chars),
+                                  num_chars);
   }
 
-  return true;
+  return num_chars > 1 ? true : false;
 }
 
 
@@ -291,45 +284,16 @@ bool CertInfo::ExtractIssuerInfo(const CERT_CONTEXT* cert_context,
                                  CString* orgn_dept_name,
                                  CString* trust_authority) {
   // trust-authority is optional, so no check.
-  if ((!orgn_name) || (!orgn_dept_name))
-    return false;
-
-  if (!cert_context) {
-    orgn_name->Empty();
-    orgn_dept_name->Empty();
+  if ((!orgn_name) || (!orgn_dept_name)) {
     return false;
   }
 
-  // Retrieve organization info in the form of a BLOB
-  CERT_NAME_BLOB orgn_blob = cert_context->pCertInfo->Subject;
-
-  TCHAR name_str[1024];
-  DWORD name_size = sizeof(name_str);
-
-  DWORD num_converted_bytes =
-    ::CertNameToStr(
-        kCertificateEncoding,
-        &orgn_blob,
-        CERT_X500_NAME_STR|CERT_NAME_STR_NO_QUOTING_FLAG|
-        CERT_NAME_STR_SEMICOLON_FLAG|  // all the fields to be separated by ';'
-        CERT_NAME_STR_REVERSE_FLAG,    // we are reversing the order of fields
-                                       // so that subject/signee related fields
-                                       // turn up first.
-        name_str,
-        name_size);
-
-  if ((num_converted_bytes <= 0) || (num_converted_bytes > name_size)) {
-    // num_converted_bytes > name_size - means that name_str needs to be larger.
-    // That's very unlikely so I don't call again it with a bigger string.
-    orgn_name->Empty();
-    orgn_dept_name->Empty();
-    return false;
+  ExtractField(cert_context, szOID_COMMON_NAME, orgn_name);
+  ExtractField(cert_context, szOID_ORGANIZATIONAL_UNIT_NAME, orgn_dept_name);
+  if (trust_authority != NULL) {
+    ExtractField(cert_context, szOID_ORGANIZATION_NAME, trust_authority);
   }
 
-  ExtractField(name_str, _T("CN"), orgn_name);       // CN - Common Name
-  ExtractField(name_str, _T("OU"), orgn_dept_name);  // OU - Organizational Unit
-  if (trust_authority != NULL)
-    ExtractField(name_str, _T("O"), trust_authority);
   return true;
 }
 

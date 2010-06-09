@@ -24,21 +24,20 @@
 # saved constant shell location.
 
 
+import omaha_version_utils
+
 Import('env')
 
+exe_env = env.Clone()
+
 # Only build the first version. We don't need a test version.
-v = env['product_version'][0]
-version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+omaha_version_info = exe_env['omaha_versions_info'][0]
 
 # The shell contains languages not supported by the rest of Omaha.
 # This is intended to allow us to add languages in the future without releasing
 # a new shell.
-shell_languages = list(env['languages'])
-if 1 < len(shell_languages):
-  shell_languages += env['additional_shell_languages']
-
-
-exe_env = env.Clone()
+shell_languages = omaha_version_utils.GetShellLanguagesForVersion(
+    omaha_version_info.GetVersion())
 
 # TODO(omaha): While there is a precompile.h, it does not actually use PCH.
 exe_env.Append(
@@ -76,11 +75,12 @@ exe_env.Append(
         '/INCLUDE:_CoCreateGuid@4',
         ],
     RCFLAGS = [
-        '/DVERSION_MAJOR=%d' % v[0],
-        '/DVERSION_MINOR=%d' % v[1],
-        '/DVERSION_BUILD=%d' % v[2],
-        '/DVERSION_PATCH=%d' % v[3],
-        '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+        '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+        '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+        '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+        '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+            omaha_version_info.GetVersionString()),
         ],
 )
 

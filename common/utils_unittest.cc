@@ -473,43 +473,6 @@ TEST(UtilsTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
   EXPECT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
 }
 
-TEST(UtilsTest, IsBuiltInAdministratorAccount_True) {
-  CSid sid;
-  // May fail on non-en OS or if Administrator account does not exist.
-  EXPECT_TRUE(sid.LoadAccount(_T("Administrator")));
-  EXPECT_EQ(5, sid.GetSubAuthorityCount());
-  if (sid.GetSubAuthority(4) != 500) {
-    // Works because ::IsWellKnownSid() ignores the 3 middle subauthorities.
-    std::wcout << _T("\tNot real Administrator account. Replacing last ")
-                  _T("subauthroity with 500.") << std::endl;
-    SID* sid_data = const_cast<SID*>(sid.GetPSID());
-    sid_data->SubAuthority[4] = 500;
-  }
-  EXPECT_STREQ(_T("Administrator"), sid.AccountName());
-
-  EXPECT_TRUE(IsBuiltInAdministratorAccount(&sid));
-}
-
-TEST(UtilsTest, IsBuiltInAdministratorAccount_CurrentUser) {
-  CSid sid;
-  EXPECT_SUCCEEDED(user_info::GetCurrentUserSid(&sid));
-  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid));
-}
-
-TEST(UtilsTest, IsBuiltInAdministratorAccount_SpecialAccounts) {
-  CSid sid1;
-  EXPECT_TRUE(sid1.LoadAccount(_T("Guest")));
-  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid1));
-
-  CSid sid2;
-  EXPECT_TRUE(sid2.LoadAccount(_T("LocalService")));
-  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid2));
-
-  CSid sid3;
-  EXPECT_TRUE(sid3.LoadAccount(_T("NetworkService")));
-  EXPECT_FALSE(IsBuiltInAdministratorAccount(&sid3));
-}
-
 TEST(UtilsTest, AddAllowedAce) {
   CString test_file_path = ConcatenatePath(
       app_util::GetCurrentModuleDirectory(), _T("TestAddAllowedAce.exe"));

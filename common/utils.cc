@@ -1923,27 +1923,4 @@ bool IsWindowsInstalling() {
   return false;
 }
 
-// If IsWindowsInstalling(), checks the user name to verify it is the special
-// "Administrator" account, which should only be the case in Audit Mode.
-bool IsWindowsReallyInAuditMode() {
-  if (!IsWindowsInstalling()) {
-    return false;
-  }
-
-  CSid sid;
-  if FAILED(user_info::GetCurrentUserSid(&sid)) {
-    return false;
-  }
-
-  return IsBuiltInAdministratorAccount(&sid);
-}
-
-bool IsBuiltInAdministratorAccount(CSid* sid) {
-  ASSERT1(sid);
-  // Must const_cast because there is no way to get a non-const instance of the
-  // SID. ::Even CopySid() takes a non-const input.
-  SID* psid = const_cast<SID*>(sid->GetPSID());
-  return !!::IsWellKnownSid(psid, ::WinAccountAdministratorSid);
-}
-
 }  // namespace omaha

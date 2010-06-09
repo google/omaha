@@ -36,9 +36,37 @@
     <!-- Per-machine installation - make sure product appears for all users. -->
     <Property Id='ALLUSERS' Value='1' />
 
-    <!-- Hide the Add/Remove Programs entry.
-         The application installer should have its own entry. -->
-    <Property Id='ARPSYSTEMCOMPONENT' Value='1' />
+    <?ifdef $(var.ProductIcon)?>
+      <!-- If var.ProductIcon is defined, use that as an icon in the ARP
+           dialog, otherwise rely on the ARP dialog's heuristics:
+           http://blogs.msdn.com/oldnewthing/archive/2004/07/09/178342.aspx -->
+      <Icon Id='icon.ico' SourceFile='$(var.ProductIcon)'/>
+      <Property Id='ARPPRODUCTICON' Value='icon.ico' />
+    <?endif?>
+
+    <!-- ARPNOMODIFY does two things:
+         1) Removes the 'Modify' button from the ARP dialog.
+         2) Causes the 'Remove' command to invoke msiexec /X instead of /I
+            (the intent being that WITH a Modify button, clicking either
+            Modify or Remove command will launch your installer UI). -->
+    <Property Id='ARPNOMODIFY' Value='1' />
+
+    <!-- Find the uninstall string to be used for the product. Only used for
+         uninstallation. -->
+    <Property Id='UNINSTALLCMDLINE'>
+      <RegistrySearch Id='UninstallCmdSearch'
+                      Root='HKLM'
+                      Type='raw'
+                      Key='Software\Google\Update\ClientState\$(var.ProductGuid)'
+                      Name='UninstallString'/>
+    </Property>
+    <Property Id='UNINSTALLCMDARGS'>
+      <RegistrySearch Id='UninstallArgSearch'
+                      Root='HKLM'
+                      Type='raw'
+                      Key='Software\Google\Update\ClientState\$(var.ProductGuid)'
+                      Name='UninstallArguments'/>
+    </Property>
 
     <UI>
       <Error Id='4000'>A newer version of the $(var.ProductName) enterprise installer is already installed.</Error>
@@ -55,9 +83,6 @@
 
     <Binary Id='$(var.ProductNameLegalIdentifier)Installer'
             SourceFile='$(var.ProductInstallerPath)' />
-
-    <Binary Id='UninstallCADll'
-            SourceFile='$(var.UninstallCADll)' />
 
     <Feature Id='Complete' Level='1'>
       <ComponentRef Id='ComponentGoogleUpdate' />
@@ -84,15 +109,20 @@
       ExeCommand='[FullProductInstallerInstallCommand]'
       Return='check' />
     <CustomAction Id='CallUninstaller.SetProperty'
-      Property='CallUninstaller'
-      Value='$(var.ProductGuid)|$(var.ProductUninstallerAdditionalArgs)'
+      Property='UninstallCmd'
+      Value='[UNINSTALLCMDLINE] $(var.ProductUninstallerAdditionalArgs)'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='CallUninstallerArgs.SetProperty'
+      Property='UninstallCmdArgs'
+      Value='[UNINSTALLCMDARGS]'
       Execute='immediate'
       Return='check' />
     <CustomAction Id='CallUninstaller'
-      BinaryKey='UninstallCADll'
+      Property='UninstallCmd'
+      ExeCommand='[UninstallCmdArgs] $(var.ProductUninstallerAdditionalArgs)'
       Impersonate='no'
       Execute='deferred'
-      DllEntry='UninstallOmahaProduct'
       Return='check' />
 
     <InstallExecuteSequence>
@@ -135,6 +165,10 @@
         (($ComponentGoogleUpdate>2) OR REINSTALL)
       </Custom>
 
+      <Custom Action='CallUninstallerArgs.SetProperty'
+              Before='CallUninstaller.SetProperty'>
+        $ComponentGoogleUpdate=2
+      </Custom>
       <Custom Action='CallUninstaller.SetProperty'
               Before='CallUninstaller'>
         $ComponentGoogleUpdate=2

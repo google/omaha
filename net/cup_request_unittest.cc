@@ -122,7 +122,7 @@ TEST_F(CupRequestTest, GetSimpleRequest) {
   DoRequest(new SimpleRequest, kGetUrlNoResponseBody, NULL, 0);
 }
 
-TEST_F(CupRequestTest, GetUrlmonRequest) {
+TEST_F(CupRequestTest, DISABLED_GetUrlmonRequest) {
   DoRequest(new UrlmonRequest, kGetUrl, NULL, 0);
   DoRequest(new UrlmonRequest, kGetUrlNoResponseBody, NULL, 0);
 }
@@ -142,7 +142,7 @@ TEST_F(CupRequestTest, PostSimpleRequest) {
             kRequestBuffer, arraysize(kRequestBuffer) - 1);
 }
 
-TEST_F(CupRequestTest, PostUrlmonRequest) {
+TEST_F(CupRequestTest, DISABLED_PostUrlmonRequest) {
   DoRequest(new UrlmonRequest, kPostUrl,
             kRequestBuffer, arraysize(kRequestBuffer) - 1);
 }

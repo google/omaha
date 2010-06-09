@@ -237,7 +237,9 @@ TEST(BrowserUtilsTest, GetBrowserImagePath_AllSupportedBrowsers) {
         0 == path.CompareNoCase(
             _T("C:\\Program Files\\Mozilla Firefox\\firefox.exe")) ||
         0 == path.CompareNoCase(
-            _T("C:\\PROGRA~1\\MOZILL~1\\FIREFOX.EXE")))
+            _T("C:\\PROGRA~1\\MOZILL~1\\FIREFOX.EXE")) ||
+        0 == path.CompareNoCase(
+            _T("C:\\Program Files\\Minefield\\FIREFOX.EXE")))  // Trunk build.
         << _T("Actual path: ") << path.GetString();
   } else {
     EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), hr);

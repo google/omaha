@@ -28,9 +28,11 @@ namespace omaha {
 // (also the HMODULE for an exe app)
 #define kExeLoadingAddress      0x00400000
 
+#define kPublisherName _T(PUBLISHER_NAME_ANSI)
+
 // application name (for debugging messages)
 // kAppName == "Google Update"
-#define kAppName          _T(PUBLISHER_NAME_ANSI) _T(" ") _T(PRODUCT_NAME_ANSI)
+#define kAppName          kPublisherName _T(" ") _T(PRODUCT_NAME_ANSI)
 
 // Product name to report
 // kProductNameToReport == "Google Update"
@@ -241,7 +243,10 @@ const TCHAR* const kResponseStatusRestrictedExportCountry = _T("restricted");
 const TCHAR* const kResponseStatusOsNotSupported = _T("error-osnotsupported");
 const TCHAR* const kResponseStatusUnKnownApplication =
     _T("error-UnKnownApplication");
+const TCHAR* const kResponseStatusHashError = _T("error-hash");
 const TCHAR* const kResponseStatusInternalError = _T("error-internal");
+const TCHAR* const kResponseStatusUnsupportedProtocol =
+    _T("error-unsupportedprotocol");
 
 const TCHAR* const kLocalSystemSid = _T("S-1-5-18");
 
