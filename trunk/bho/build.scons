@@ -18,9 +18,8 @@
 
 Import('env')
 
-
 _first = True
-for v in env['product_version']:
+for omaha_version_info in env['omaha_versions_info']:
   temp_env = env.Clone(COMPONENT_STATIC=False)
 
   if _first:
@@ -79,11 +78,12 @@ for v in env['product_version']:
           '/DELAYLOAD:version.dll',
           ],
       RCFLAGS = [
-          '/DVERSION_MAJOR=%d' % v[0],
-          '/DVERSION_MINOR=%d' % v[1],
-          '/DVERSION_BUILD=%d' % v[2],
-          '/DVERSION_PATCH=%d' % v[3],
-          '/DVERSION_NUMBER_STRING=\\"%d.%d.%d.%d\\"' % (v[0],v[1],v[2],v[3]),
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+              omaha_version_info.GetVersionString()),
           ],
   )
 
@@ -95,7 +95,8 @@ for v in env['product_version']:
   # Force a rebuild when the version changes.
   temp_env.Depends(bho_res, '$MAIN_DIR/VERSION')
 
-  target_name = prefix + temp_env['BHO_UNSIGNED_FILENAME']
+  target_name = (prefix +
+                 omaha_version_info.bho_signed_file_info.unsigned_filename)
 
   temp_inputs = [
       'bho_dll.cc',
@@ -111,7 +112,7 @@ for v in env['product_version']:
   )
 
   signed_dll = temp_env.SignedBinary(
-      target=prefix + temp_env['BHO_FILENAME'],
+      target=prefix + omaha_version_info.bho_signed_file_info.filename,
       source=unsigned_dll,
   )
 

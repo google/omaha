@@ -50,6 +50,8 @@ namespace omaha {
 
 namespace {
 
+const TCHAR* const kMsiSuppressAllRebootsCmdLine = _T("REBOOT=ReallySuppress");
+
 #ifdef _DEBUG
 HRESULT VerifyCOMLocalServerRegistration(bool is_machine) {
   // Validate the following:
@@ -481,12 +483,14 @@ HRESULT SetupGoogleUpdate::InstallMsiHelper() {
   ::MsiSetInternalUI(INSTALLUILEVEL_NONE, NULL);
 
   // Try a normal install.
-  UINT res = ::MsiInstallProduct(msi_path, _T(""));
+  UINT res = ::MsiInstallProduct(msi_path, kMsiSuppressAllRebootsCmdLine);
   if (ERROR_PRODUCT_VERSION == res) {
     // The product may already be installed. Force a reinstall of everything.
     SETUP_LOG(L3, (_T("[ERROR_PRODUCT_VERSION returned - forcing reinstall]")));
-    res = ::MsiInstallProduct(msi_path,
-                              _T("REINSTALL=ALL REINSTALLMODE=vamus"));
+    CString force_install_cmd_line;
+    force_install_cmd_line.Format(_T("REINSTALL=ALL REINSTALLMODE=vamus %s"),
+                                  kMsiSuppressAllRebootsCmdLine);
+    res = ::MsiInstallProduct(msi_path, force_install_cmd_line);
   }
 
   HRESULT hr = HRESULT_FROM_WIN32(res);
@@ -511,9 +515,16 @@ HRESULT SetupGoogleUpdate::UninstallMsiHelper() {
   // Setting INSTALLUILEVEL_NONE causes installation to be silent and not
   // create a restore point.
   ::MsiSetInternalUI(INSTALLUILEVEL_NONE, NULL);
-  UINT res = ::MsiConfigureProduct(kHelperInstallerProductGuid,
-                                   INSTALLLEVEL_DEFAULT,
-                                   INSTALLSTATE_ABSENT);
+  // MSDN says that eInstallState must be INSTALLSTATE_DEFAULT in order for the
+  // command line to be used. Therefore, instead of using INSTALLSTATE_ABSENT
+  // to uninstall, we must pass REMOVE=ALL in the command line.
+  CString uninstall_cmd_line;
+  uninstall_cmd_line.Format(_T("REMOVE=ALL %s"),
+                            kMsiSuppressAllRebootsCmdLine);
+  UINT res = ::MsiConfigureProductEx(kHelperInstallerProductGuid,
+                                     INSTALLLEVEL_DEFAULT,
+                                     INSTALLSTATE_DEFAULT,
+                                     uninstall_cmd_line);
 
   // Ignore the product not currently installed result.
   if ((ERROR_SUCCESS != res) && (ERROR_UNKNOWN_PRODUCT != res)) {

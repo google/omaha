@@ -40,6 +40,7 @@ const TCHAR* const kGuid4 = _T("{AAFA1CF9-E94F-42e6-A899-4CD27F37D5A7}");
 const TCHAR* const kGuid5 = _T("{3B1A3CCA-0525-4418-93E6-A0DB3398EC9B}");
 const TCHAR* const kGuid6 = _T("{F3F2CFD4-5F98-4bf0-ABB0-BEEEA46C62B4}");
 const TCHAR* const kGuid7 = _T("{6FD2272F-8583-4bbd-895A-E65F8003FC7B}");
+const TCHAR* const kIid1  = _T("{F723495F-8ACF-4746-8240-643741C797B5}");
 
 const TCHAR* const kGuid1ClientsKeyPathUser =
     _T("HKCU\\Software\\Google\\Update\\Clients\\")
@@ -186,8 +187,7 @@ class AppManagerTest : public testing::Test {
     expected_app->set_language(_T("abc"));
     expected_app->set_ap(_T("Test ap"));
     expected_app->set_tt_token(_T("Test TT Token"));
-    expected_app->set_iid(
-        StringToGuid(_T("{F723495F-8ACF-4746-8240-643741C797B5}")));
+    expected_app->set_iid(StringToGuid(kIid1));
     expected_app->set_brand_code(_T("GOOG"));
     expected_app->set_client_id(_T("someclient"));
     // Do not set referral_id or install_time_diff_sec because these are not
@@ -343,6 +343,193 @@ class AppManagerTest : public testing::Test {
     EXPECT_FALSE(client_state_key.HasValue(kRegValueRollCallDayStartSec));
   }
 
+  void HandleSuccessfulUpdateCheckRequestSendTest_AllUpdated(bool is_machine) {
+    const CString client_state_key_name = AppendRegKeyPath(
+        ConfigManager::Instance()->registry_client_state(is_machine),
+        kGuid1);
+
+    // Create the test data.
+    AppData expected_data(guid1_, is_machine);
+    expected_data.set_version(_T("1.0.0.0"));
+    expected_data.set_iid(StringToGuid(kIid1));
+    expected_data.set_did_run(AppData::ACTIVE_RUN);
+    // Set non-zero values for activities so that the registry values can
+    // be updated.
+    expected_data.set_days_since_last_active_ping(4);
+    expected_data.set_days_since_last_roll_call(2);
+    CreateAppRegistryState(expected_data);
+
+    ProductData product_data;
+    AppManager app_manager(is_machine);
+    EXPECT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_,
+                                                          &product_data));
+    AppData app_data_temp = product_data.app_data();
+
+    // We only want to make sure the timestamps in the registry are updated and
+    // don't care about time_since_midnight_sec here, so just pass a 0 as the
+    // first parameter.
+    EXPECT_SUCCEEDED(app_manager.HandleSuccessfulUpdateCheckRequestSend(
+        0, &app_data_temp));
+
+    // Validate the results.
+    RegKey client_state_key;
+    EXPECT_SUCCEEDED(client_state_key.Open(client_state_key_name));
+
+    // Check installation id removed.
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueInstallationId));
+
+    // Check ping timestamps are updated.
+    const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+
+    DWORD last_active_ping_day_start_sec = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueActivePingDayStartSec,
+        &last_active_ping_day_start_sec));
+    EXPECT_GE(now, last_active_ping_day_start_sec);
+    EXPECT_LE(now, last_active_ping_day_start_sec + kMaxTimeSinceMidnightSec);
+    EXPECT_EQ(0, app_data_temp.days_since_last_active_ping());
+
+    DWORD last_roll_call_day_start_sec = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
+        &last_roll_call_day_start_sec));
+    EXPECT_GE(now, last_roll_call_day_start_sec);
+    EXPECT_LE(now, last_roll_call_day_start_sec + kMaxTimeSinceMidnightSec);
+    EXPECT_EQ(0, app_data_temp.days_since_last_roll_call());
+
+    // Check did_run is cleared.
+    CString did_run;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDidRun, &did_run));
+    EXPECT_STREQ(_T("0"), did_run);
+  }
+
+  void HandleSuccessfulUpdateCheckRequestSendTest_NotRun(bool is_machine) {
+    const CString client_state_key_name = AppendRegKeyPath(
+        ConfigManager::Instance()->registry_client_state(is_machine),
+        kGuid1);
+    const int kDaysSinceLastActivePing = 2;
+
+    // Create the test data.
+    AppData expected_data(guid1_, is_machine);
+    expected_data.set_version(_T("1.0.0.0"));
+    expected_data.set_iid(StringToGuid(kIid1));
+    expected_data.set_did_run(AppData::ACTIVE_NOTRUN);
+    expected_data.set_days_since_last_active_ping(kDaysSinceLastActivePing);
+    expected_data.set_days_since_last_roll_call(0);
+    CreateAppRegistryState(expected_data);
+
+    // Choose a time that is close to current time but with some skew so that
+    // if the registry is rewritten, we won't write the same value again and
+    // the change would be detected.
+    const uint32 base_time = Time64ToInt32(GetCurrent100NSTime()) - 2;
+
+    RegKey client_state_key;
+    EXPECT_SUCCEEDED(client_state_key.Open(client_state_key_name));
+    uint32 last_active_time =
+        base_time - kDaysSinceLastActivePing * kSecondsPerDay;
+    ASSERT_SUCCEEDED(client_state_key.SetValue(
+        kRegValueActivePingDayStartSec,
+        static_cast<DWORD>(last_active_time)));
+
+    ASSERT_SUCCEEDED(client_state_key.SetValue(
+        kRegValueRollCallDayStartSec,
+        static_cast<DWORD>(base_time)));
+
+    ProductData product_data;
+    AppManager app_manager(is_machine);
+    EXPECT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_,
+                                                          &product_data));
+    AppData app_data_temp = product_data.app_data();
+
+    // We only want to make sure the timestamps in the registry are updated and
+    // don't care about time_since_midnight_sec here, so just pass a 0 as the
+    // first parameter.
+    EXPECT_SUCCEEDED(app_manager.HandleSuccessfulUpdateCheckRequestSend(
+        0, &app_data_temp));
+
+    // Validate the results.
+
+    // did_run is false so installation id should still exist.
+    CString iid;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueInstallationId, &iid));
+    EXPECT_STREQ(kIid1, iid);
+
+
+    // did_run is false so active ping timestamp should not be updated.
+    DWORD last_active_ping_day_start_sec = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueActivePingDayStartSec,
+        &last_active_ping_day_start_sec));
+    EXPECT_EQ(last_active_time, last_active_ping_day_start_sec);
+    EXPECT_EQ(kDaysSinceLastActivePing,
+              app_data_temp.days_since_last_active_ping());
+
+    // Previous days_since_last_roll_call is 0 so that timestamp should
+    // not change.
+    DWORD last_roll_call_day_start_sec = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
+        &last_roll_call_day_start_sec));
+    EXPECT_EQ(base_time, last_roll_call_day_start_sec);
+    EXPECT_EQ(0, app_data_temp.days_since_last_roll_call());
+
+    // did_run is still not set.
+    CString did_run;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDidRun, &did_run));
+    EXPECT_STREQ(_T("0"), did_run);
+  }
+
+  void HandleSuccessfulUpdateCheckRequestSendTest_NoPreviousPing(
+      bool is_machine) {
+    const CString client_state_key_name = AppendRegKeyPath(
+        ConfigManager::Instance()->registry_client_state(is_machine),
+        kGuid1);
+    const int kDaysSinceLastActivePing = 2;
+
+    // Create the test data.
+    AppData expected_data(guid1_, is_machine);
+    expected_data.set_version(_T("1.0.0.0"));
+    expected_data.set_iid(StringToGuid(kIid1));
+    expected_data.set_did_run(AppData::ACTIVE_UNKNOWN);
+    expected_data.set_days_since_last_active_ping(-1);
+    expected_data.set_days_since_last_roll_call(-1);
+    CreateAppRegistryState(expected_data);
+
+    ProductData product_data;
+    AppManager app_manager(is_machine);
+    EXPECT_SUCCEEDED(app_manager.ReadProductDataFromStore(guid1_,
+                                                          &product_data));
+    AppData app_data_temp = product_data.app_data();
+
+    // We only want to make sure the timestamps in the registry are updated and
+    // don't care about time_since_midnight_sec here, so just pass a 0 as the
+    // first parameter.
+    EXPECT_SUCCEEDED(app_manager.HandleSuccessfulUpdateCheckRequestSend(
+        0, &app_data_temp));
+
+    // Validate the results.
+    RegKey client_state_key;
+    EXPECT_SUCCEEDED(client_state_key.Open(client_state_key_name));
+
+    // did_run is unknown so installation id should still exist.
+    CString iid;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueInstallationId, &iid));
+    EXPECT_STREQ(kIid1, iid);
+
+    const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+
+    // did_run is unknown so active ping timestamp should not be updated.
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueActivePingDayStartSec));
+    EXPECT_EQ(-1, app_data_temp.days_since_last_active_ping());
+
+    DWORD last_roll_call_day_start_sec = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
+        &last_roll_call_day_start_sec));
+    EXPECT_GE(now, last_roll_call_day_start_sec);
+    EXPECT_LE(now, last_roll_call_day_start_sec + kMaxTimeSinceMidnightSec);
+    EXPECT_EQ(0, app_data_temp.days_since_last_roll_call());
+
+    // did_run is unknown.
+    CString did_run;
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueDidRun));
+  }
+
   void UpdateApplicationStateTest(bool is_machine, const CString& app_id) {
     const CString client_state_key_name = AppendRegKeyPath(
         ConfigManager::Instance()->registry_client_state(is_machine),
@@ -368,9 +555,7 @@ class AppManagerTest : public testing::Test {
 
     AppData app_data_temp = product_data.app_data();
 
-    // Doesn't care about time_since_midnight_sec here, so just pass a 0 as the
-    // first parameter.
-    EXPECT_SUCCEEDED(app_manager.UpdateApplicationState(0, &app_data_temp));
+    EXPECT_SUCCEEDED(app_manager.UpdateApplicationState(&app_data_temp));
 
     product_data.set_app_data(app_data_temp);
 
@@ -398,18 +583,6 @@ class AppManagerTest : public testing::Test {
     EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueLanguage,
                                                &language));
     EXPECT_STREQ(expected_data.language(), language);
-
-    // Check installation id removed.
-    CString iid;
-    EXPECT_FAILED(client_state_key.GetValue(kRegValueInstallationId,
-                                            &iid));
-    EXPECT_TRUE(iid.IsEmpty());
-
-    // Check did_run is cleared.
-    CString did_run;
-    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDidRun,
-                                               &did_run));
-    EXPECT_STREQ(_T("0"), did_run);
 
     // Check that ap, brand_code, and client_id are not changed.
     CString ap;
@@ -446,26 +619,6 @@ class AppManagerTest : public testing::Test {
                                                &eula_accepted));
     EXPECT_EQ(0, eula_accepted);
     EXPECT_FALSE(expected_data.is_eula_accepted());
-
-    bool did_send_active_ping =
-        (expected_data.did_run() == AppData::ACTIVE_RUN &&
-         expected_data.days_since_last_active_ping() != 0);
-    DWORD last_active_ping_day_start_sec = 0;
-    if (did_send_active_ping) {
-      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueActivePingDayStartSec,
-          &last_active_ping_day_start_sec));
-      EXPECT_GE(now, last_active_ping_day_start_sec);
-      EXPECT_LE(now, last_active_ping_day_start_sec + kMaxTimeSinceMidnightSec);
-    }
-
-    bool did_send_roll_call = (expected_data.days_since_last_roll_call() != 0);
-    DWORD last_roll_call_day_start_sec = 0;
-    if (did_send_roll_call) {
-      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
-          &last_roll_call_day_start_sec));
-      EXPECT_GE(now, last_roll_call_day_start_sec);
-      EXPECT_LE(now, last_roll_call_day_start_sec + kMaxTimeSinceMidnightSec);
-    }
   }
 
   void WritePreInstallDataTest(const AppData& app_data_in) {
@@ -617,8 +770,7 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   args.code_red_metainstaller_path = _T("foo.exe");  // Not used.
   args.legacy_manifest_path = _T("bar.exe");  // Not used.
   args.crash_filename = _T("foo.dmp");  // Not used.
-  args.extra.installation_id =
-      StringToGuid(_T("{F723495F-8ACF-4746-8240-643741C797B5}"));
+  args.extra.installation_id = StringToGuid(kIid1);
   args.extra.brand_code = _T("GOOG");
   args.extra.client_id = _T("someclient");
   args.extra.referral_id = _T("referrer1");
@@ -664,8 +816,7 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   expected_data2.set_install_source(_T("one_click"));
   expected_data2.set_usage_stats_enable(TRISTATE_TRUE);
   // Override unique expected data because the args apply to all apps.
-  expected_data2.set_iid(
-      StringToGuid(_T("{F723495F-8ACF-4746-8240-643741C797B5}")));
+  expected_data2.set_iid(StringToGuid(kIid1));
   expected_data2.set_brand_code(_T("GOOG"));
   expected_data2.set_client_id(_T("someclient"));
   expected_data2.set_referral_id(_T("referrer1"));
@@ -692,8 +843,7 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   expected_data3.set_install_source(_T("one_click"));
   expected_data3.set_usage_stats_enable(TRISTATE_TRUE);
   // Override unique expected data because the args apply to all apps.
-  expected_data3.set_iid(
-      StringToGuid(_T("{F723495F-8ACF-4746-8240-643741C797B5}")));
+  expected_data3.set_iid(StringToGuid(kIid1));
   expected_data3.set_brand_code(_T("GOOG"));
   expected_data3.set_client_id(_T("someclient"));
   expected_data3.set_referral_id(_T("referrer1"));
@@ -1144,6 +1294,37 @@ TEST_F(AppManagerTest, InitializeApplicationState_UserTest) {
 TEST_F(AppManagerTest, InitializeApplicationState_MachineTest) {
   InitializeApplicationStateTest(true);
 }
+
+TEST_F(AppManagerTest,
+       HandleSuccessfulUpdateCheckRequestSendTest_AllUpdated_UserTest) {
+  HandleSuccessfulUpdateCheckRequestSendTest_AllUpdated(false);
+}
+
+TEST_F(AppManagerTest,
+       HandleSuccessfulUpdateCheckRequestSendTest_AllUpdated_MachineTest) {
+  HandleSuccessfulUpdateCheckRequestSendTest_AllUpdated(true);
+}
+
+TEST_F(AppManagerTest,
+       HandleSuccessfulUpdateCheckRequestSendTest_NotRun_UserTest) {
+  HandleSuccessfulUpdateCheckRequestSendTest_NotRun(false);
+}
+
+TEST_F(AppManagerTest,
+       HandleSuccessfulUpdateCheckRequestSendTest_NotRun_MachineTest) {
+  HandleSuccessfulUpdateCheckRequestSendTest_NotRun(true);
+}
+
+TEST_F(AppManagerTest,
+       HandleSuccessfulUpdateCheckRequestSendTest_NoPreviousPing_UserTest) {
+  HandleSuccessfulUpdateCheckRequestSendTest_NoPreviousPing(false);
+}
+
+TEST_F(AppManagerTest,
+       HandleSuccessfulUpdateCheckRequestSendTest_NoPreviousPing_MachineTest) {
+  HandleSuccessfulUpdateCheckRequestSendTest_NoPreviousPing(true);
+}
+
 
 TEST_F(AppManagerTest, UpdateApplicationState_UserTest) {
   UpdateApplicationStateTest(false, kGuid1);

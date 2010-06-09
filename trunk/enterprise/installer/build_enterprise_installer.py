@@ -33,6 +33,7 @@ import md5
 
 _GOOGLE_UPDATE_NAMESPACE_GUID = 'BE19B3E4502845af8B3E67A99FCDCFB1'
 
+
 def BuildGoogleUpdateFragment(env,
                               metainstaller_path,
                               product_name,
@@ -40,8 +41,7 @@ def BuildGoogleUpdateFragment(env,
                               product_guid,
                               product_custom_params,
                               wixobj_base_name,
-                              google_update_wxs_template_path,
-                              is_using_google_update_1_2_171_or_later=False):
+                              google_update_wxs_template_path):
   """Build an update fragment into a WiX object.
 
     Takes a supplied wix fragment, and turns it into a .wixobj object for later
@@ -51,12 +51,12 @@ def BuildGoogleUpdateFragment(env,
     env: environment to build with
     metainstaller_path: path to the Omaha metainstaller to include
     product_name: name of the product the fragment is being built for
+    product_version: product version to be installed
     product_guid: Omaha application ID of the product the fragment is being
         built for
     product_custom_params: custom values to be appended to the Omaha tag
     wixobj_base_name: root of name for the wixobj
     google_update_wxs_template_path: path to the fragment source
-    product_version: product version to be installed
 
   Returns:
     Output object for the built wixobj.
@@ -85,11 +85,6 @@ def BuildGoogleUpdateFragment(env,
           env.File(metainstaller_path).abspath),
       ]
 
-  if is_using_google_update_1_2_171_or_later:
-    wix_defines += [
-        '-dUsingGoogleUpdate_1_2_171_OrLater=1'
-        ]
-
   wixobj_output = env.Command(
       target=intermediate_base_name + '.wixobj',
       source=copy_target,
@@ -114,7 +109,6 @@ def _BuildMsiForExe(env,
                     msi_base_name,
                     google_update_wixobj_output,
                     enterprise_installer_dir,
-                    uninstall_custom_action_dll_path,
                     metainstaller_path,
                     output_dir):
   """Build an MSI installer for use in enterprise situations.
@@ -145,9 +139,6 @@ def _BuildMsiForExe(env,
         installer.
     enterprise_installer_dir: path to dir which contains
         enterprise_installer.wxs.xml
-    uninstall_custom_action_dll_path: path to the custom action
-        dll that exports an UninstallOmahaProduct method. This CA method will
-        find and execute the product's uninstaller.
     metainstaller_path: path to the Omaha metainstaller. Should be same file
         used for google_update_wixobj_output. Used only to force rebuilds.
     output_dir: path to the directory that will contain the resulting MSI
@@ -177,31 +168,35 @@ def _BuildMsiForExe(env,
   )
 
   copy_target = env.Command(
-      target= msi_base_name + '.wxs',
+      target=msi_base_name + '.wxs',
       source=enterprise_installer_dir + '/enterprise_installer.wxs.xml',
       action='@copy /y $SOURCE $TARGET',
   )
 
   wix_env = env.Clone()
   wix_env.Append(
-      WIXCANDLEFLAGS = [
+      WIXCANDLEFLAGS=[
           '-dProductName=' + product_name,
           '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
           '-dProductVersion=' + product_version,
           '-dProductGuid=' + product_guid,
           '-dProductInstallerPath=' + env.File(product_installer_path).abspath,
-          '-dProductInstallerInstallCommand=' +
-              product_installer_install_command,
-          '-dProductInstallerDisableUpdateRegistrationArg=' +
-              product_installer_disable_update_registration_arg,
-          '-dUninstallCADll=' +
-              env.File(uninstall_custom_action_dll_path).abspath,
-          '-dProductUninstallerAdditionalArgs=' +
-              product_uninstaller_additional_args,
+          '-dProductInstallerInstallCommand=' + (
+              product_installer_install_command),
+          '-dProductInstallerDisableUpdateRegistrationArg=' + (
+              product_installer_disable_update_registration_arg),
+          '-dProductUninstallerAdditionalArgs=' + (
+              product_uninstaller_additional_args),
           '-dMsiProductId=' + msi_product_id,
           '-dMsiUpgradeCode=' + msi_upgradecode_guid,
           ],
   )
+
+  # Disable warning LGHT1076 which complains about a string-length ICE error
+  # that can safely be ignored as per
+  # http://blogs.msdn.com/astebner/archive/2007/02/13/building-an-msi-
+  # using-wix-v3-0-that-includes-the-vc-8-0-runtime-merge-modules.aspx
+  wix_env['WIXLIGHTFLAGS'].append('-sw1076')
 
   wix_output = wix_env.WiX(
       target='unsigned_' + msi_name,
@@ -213,9 +208,7 @@ def _BuildMsiForExe(env,
   # file is rebuilt because the hash of the .wixobj does not change.
   # Also force a dependency on the CA DLL. Otherwise, it might not be built
   # before the MSI.
-  wix_env.Depends(wix_output, [product_installer_path,
-                               metainstaller_path,
-                               uninstall_custom_action_dll_path])
+  wix_env.Depends(wix_output, [product_installer_path, metainstaller_path])
 
   sign_output = wix_env.SignedBinary(
       target=msi_name,
@@ -233,41 +226,44 @@ def GenerateNameBasedGUID(namespace, name):
     inputs to the GUID so that you can generate the same valid GUID each time
     given the same inputs.
 
-    Args:
-      namespace: First part of identifier used to generate GUID
-      name: Second part of identifier used to generate GUID
+  Args:
+    namespace: First part of identifier used to generate GUID
+    name: Second part of identifier used to generate GUID
 
-    Returns:
-      String representation of the generated GUID.
+  Returns:
+    String representation of the generated GUID.
 
-    Raises:
-      Nothing.
+  Raises:
+    Nothing.
   """
 
   # Generate 128 unique bits.
   mymd5 = md5.new()
   mymd5.update(namespace + name)
-  hash = mymd5.digest()
+  md5_hash = mymd5.digest()
 
   # Set various reserved bits to make this a valid GUID.
 
   # "Set the four most significant bits (bits 12 through 15) of the
   # time_hi_and_version field to the appropriate 4-bit version number
   # from Section 4.1.3."
-  version = ord(hash[6])
+  version = ord(md5_hash[6])
   version = 0x30 | (version & 0x0f)
 
   # "Set the two most significant bits (bits 6 and 7) of the
   # clock_seq_hi_and_reserved to zero and one, respectively."
-  clock_seq_hi_and_reserved = ord(hash[8])
+  clock_seq_hi_and_reserved = ord(md5_hash[8])
   clock_seq_hi_and_reserved = 0x80 | (clock_seq_hi_and_reserved & 0x3f)
 
   return (
       '%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x' % (
-      ord(hash[0]), ord(hash[1]), ord(hash[2]), ord(hash[3]), ord(hash[4]),
-      ord(hash[5]), version, ord(hash[7]), clock_seq_hi_and_reserved,
-      ord(hash[9]), ord(hash[10]), ord(hash[11]), ord(hash[12]), ord(hash[13]),
-      ord(hash[14]), ord(hash[15])))
+          ord(md5_hash[0]), ord(md5_hash[1]), ord(md5_hash[2]),
+          ord(md5_hash[3]),
+          ord(md5_hash[4]), ord(md5_hash[5]),
+          version, ord(md5_hash[7]),
+          clock_seq_hi_and_reserved, ord(md5_hash[9]),
+          ord(md5_hash[10]), ord(md5_hash[11]), ord(md5_hash[12]),
+          ord(md5_hash[13]), ord(md5_hash[14]), ord(md5_hash[15])))
 
 
 def BuildEnterpriseInstaller(env,
@@ -281,10 +277,8 @@ def BuildEnterpriseInstaller(env,
                              product_uninstaller_additional_args,
                              msi_base_name,
                              enterprise_installer_dir,
-                             uninstall_custom_action_dll_path,
                              metainstaller_path,
-                             output_dir = '$STAGING_DIR',
-                             is_using_google_update_1_2_171_or_later=False):
+                             output_dir='$STAGING_DIR'):
   """Build an installer for use in enterprise situations.
 
     Builds an MSI using the supplied details and binaries. This MSI is
@@ -308,9 +302,6 @@ def BuildEnterpriseInstaller(env,
     msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_installer.wxs.xml
-    uninstall_custom_action_dll_path: path to the custom action
-        dll that exports an UninstallOmahaProduct method. This CA method will
-        find and execute the product's uninstaller.
     metainstaller_path: path to the Omaha metainstaller to include
     output_dir: path to the directory that will contain the resulting MSI
 
@@ -329,8 +320,7 @@ def BuildEnterpriseInstaller(env,
       product_guid,
       product_custom_params,
       msi_base_name,
-      enterprise_installer_dir + '/google_update_installer_fragment.wxs.xml',
-      is_using_google_update_1_2_171_or_later)
+      enterprise_installer_dir + '/google_update_installer_fragment.wxs.xml')
 
   _BuildMsiForExe(
       env,
@@ -344,9 +334,9 @@ def BuildEnterpriseInstaller(env,
       msi_base_name,
       google_update_wixobj_output,
       enterprise_installer_dir,
-      uninstall_custom_action_dll_path,
       metainstaller_path,
       output_dir)
+
 
 def BuildEnterpriseInstallerFromStandaloneInstaller(
     env,
@@ -355,11 +345,11 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
     product_guid,
     product_custom_params,
     product_uninstaller_additional_args,
+    product_installer_data,
     standalone_installer_path,
-    uninstall_custom_action_dll_path,
     msi_base_name,
     enterprise_installer_dir,
-    output_dir = '$STAGING_DIR'):
+    output_dir='$STAGING_DIR'):
   """Build an installer for use in enterprise situations.
 
     Builds an MSI around the supplied standalone installer. This MSI is
@@ -379,17 +369,20 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
         custom action dll will pass on to the product uninstaller, typically
         you'll want to pass any extra arguments that will force the uninstaller
         to run silently here.
+    product_installer_data: installer data to be passed to the
+        product installer at run time. This is useful as an alternative to
+        the product_installer_install_command parameter accepted by
+        BuildEnterpriseInstaller() since command line parameters can't be
+        passed to the product installer when it is wrapped in a standalone
+        installer.
     standalone_installer_path: path to product's standalone installer
-    uninstall_custom_action_dll_path: path to the custom action
-        dll that exports an UninstallOmahaProduct method. This CA method will
-        find and execute the product's uninstaller.
     msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_standalone_installer.wxs.xml
     output_dir: path to the directory that will contain the resulting MSI
 
   Returns:
-    Nothing.
+    Target nodes.
 
   Raises:
     Nothing.
@@ -411,35 +404,48 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
       'Upgrade ' + product_name
   )
 
+  # To allow for multiple versions of the same product to be generated,
+  # stick output in a subdirectory.
+  output_directory_name = product_guid + '.' + product_version
+
   copy_target = env.Command(
-      target= msi_base_name + '.wxs',
+      target=output_directory_name + msi_base_name + '.wxs',
       source=(enterprise_installer_dir +
               '/enterprise_standalone_installer.wxs.xml'),
       action='@copy /y $SOURCE $TARGET',
   )
 
   wix_env = env.Clone()
+  wix_candle_flags = [
+      '-dProductName=' + product_name,
+      '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
+      '-dProductVersion=' + product_version,
+      '-dProductGuid="%s"' % product_guid,
+      '-dProductCustomParams="%s"' % product_custom_params,
+      '-dStandaloneInstallerPath=' + (
+          env.File(standalone_installer_path).abspath),
+      '-dProductUninstallerAdditionalArgs=' + (
+          product_uninstaller_additional_args),
+      '-dMsiProductId=' + msi_product_id,
+      '-dMsiUpgradeCode=' + msi_upgradecode_guid,
+  ]
+
+  if product_installer_data:
+    wix_candle_flags.append('-dProductInstallerData=' + product_installer_data)
+
   wix_env.Append(
-      WIXCANDLEFLAGS = [
-          '-dProductName=' + product_name,
-          '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
-          '-dProductVersion=' + product_version,
-          '-dProductGuid="%s"' % product_guid,
-          '-dProductCustomParams="%s"' % product_custom_params,
-          '-dStandaloneInstallerPath=' + (
-              env.File(standalone_installer_path).abspath),
-          '-dUninstallCADll=' +
-              env.File(uninstall_custom_action_dll_path).abspath,
-          '-dProductUninstallerAdditionalArgs=' +
-              product_uninstaller_additional_args,
-          '-dMsiProductId=' + msi_product_id,
-          '-dMsiUpgradeCode=' + msi_upgradecode_guid,
-          ],
+      WIXCANDLEFLAGS=wix_candle_flags
   )
 
+  # Disable warning LGHT1076 which complains about a string-length ICE error
+  # that can safely be ignored as per
+  # http://blogs.msdn.com/astebner/archive/2007/02/13/building-an-msi-
+  # using-wix-v3-0-that-includes-the-vc-8-0-runtime-merge-modules.aspx
+  wix_env['WIXLIGHTFLAGS'].append('-sw1076')
+
   wix_output = wix_env.WiX(
-      target='unsigned_' + msi_name,
-      source=[copy_target],
+      target = output_directory_name + '/' + 'unsigned_' + msi_name,
+      source = [copy_target],
   )
 
   # Force a rebuild when the standalone installer changes.
@@ -447,12 +453,11 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   # file is rebuilt because the hash of the .wixobj does not change.
   # Also force a dependency on the CA DLL. Otherwise, it might not be built
   # before the MSI.
-  wix_env.Depends(wix_output, [standalone_installer_path,
-                               uninstall_custom_action_dll_path])
+  wix_env.Depends(wix_output, [standalone_installer_path])
 
   sign_output = wix_env.SignedBinary(
-      target=msi_name,
+      target=output_directory_name + '/' + msi_name,
       source=wix_output,
   )
 
-  env.Replicate(output_dir, sign_output)
+  return env.Replicate(output_dir + '/' + output_directory_name, sign_output)

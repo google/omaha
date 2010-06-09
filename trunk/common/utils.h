@@ -807,14 +807,6 @@ CString GetEnvironmentVariableAsString(const TCHAR* name);
 // one of the incomplete states even after OOBE. See http://b/1690617.
 bool IsWindowsInstalling();
 
-// Returns true if Windows is really in Audit Mode. Tries to overcome the
-// limitation of IsWindowsInstalling() by checking the current user account too.
-bool IsWindowsReallyInAuditMode();
-
-// Checks if the current user is the built-in Administrator account
-// (SID S-1-5-21-XXXX-XXXX-XXXX-500).
-bool IsBuiltInAdministratorAccount(CSid* sid);
-
 }  // namespace omaha
 
 #endif  // OMAHA_COMMON_UTILS_H__

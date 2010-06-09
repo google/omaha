@@ -284,20 +284,6 @@ TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateMultipleAppsAndStatuses) {
   EXPECT_EQ(kExistingUpdateValues,
             GetDwordValue(kApp2ClientStateKeyPathMachine,
                           kRegValueLastUpdateTimeSec));
-
-  // Check that the registry value of day start time for last active ping is
-  // in range
-  uint32 day_start_time_sec = GetDwordValue(kApp2ClientStateKeyPathMachine,
-                                            kRegValueActivePingDayStartSec);
-  EXPECT_GE(now, day_start_time_sec + kElapsedTimeSec);
-  EXPECT_LE(now, day_start_time_sec + kElapsedTimeSec + 1);
-
-  // Check that the registry value of day start time for last roll call is
-  // in range
-  day_start_time_sec = GetDwordValue(kApp2ClientStateKeyPathMachine,
-                                     kRegValueRollCallDayStartSec);
-  EXPECT_GE(now, day_start_time_sec + kElapsedTimeSec);
-  EXPECT_LE(now, day_start_time_sec + kElapsedTimeSec + 1);
 }
 
 TEST_F(JobCreatorTest, CreateJobsFromResponses_UpdateForUpdateDisabledApp) {
@@ -1163,6 +1149,29 @@ TEST_F(JobCreatorTest, UpdateResponseDataToCompletionInfo_InternalError) {
   EXPECT_EQ(GOOPDATE_E_INTERNAL_ERROR_SERVER_RESPONSE, info.error_code);
   EXPECT_STREQ(_T("Server returned the following error: eRrOr-InTeRnAl. ")
                _T("Please try again later."), info.text);
+}
+
+TEST_F(JobCreatorTest, UpdateResponseDataToCompletionInfo_HashError) {
+  UpdateResponseData response_data;
+  response_data.set_status(_T("eRrOr-HaSh"));
+  CompletionInfo info = UpdateResponseDataToCompletionInfo(response_data,
+                                                           _T("My App"));
+  EXPECT_EQ(COMPLETION_ERROR, info.status);
+  EXPECT_EQ(GOOPDATE_E_SERVER_RESPONSE_NO_HASH, info.error_code);
+  EXPECT_STREQ(_T("Server returned the following error: eRrOr-HaSh. ")
+               _T("Please try again later."), info.text);
+}
+
+TEST_F(JobCreatorTest, UpdateResponseDataToCompletionInfo_UnsupportedProtocol) {
+  UpdateResponseData response_data;
+  response_data.set_status(_T("eRrOr-UnSuPpOrTeDpRoToCoL"));
+  CompletionInfo info = UpdateResponseDataToCompletionInfo(response_data,
+                                                           _T("My App"));
+  EXPECT_EQ(COMPLETION_ERROR, info.status);
+  EXPECT_EQ(GOOPDATE_E_SERVER_RESPONSE_UNSUPPORTED_PROTOCOL, info.error_code);
+  EXPECT_STREQ(
+      _T("This installer is no longer supported. Please download a new ")
+      _T("version from Google."), info.text);
 }
 
 TEST_F(JobCreatorTest, UpdateResponseDataToCompletionInfo_UnknownResponse) {

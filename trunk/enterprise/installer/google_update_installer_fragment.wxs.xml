@@ -65,7 +65,6 @@
       Execute='rollback'
       ExeCommand='/unregisterproduct "[ProductTag]"'
       Return='check' />
-    <?ifdef UsingGoogleUpdate_1_2_171_OrLater?>
     <!-- TODO(omaha): If /registerproduct is deprecated in favor of an
          "install Omaha only" switch, we might need to update this fragment to
          write the pv value to the product's ClientState. Otherwise, Omaha
@@ -77,14 +76,6 @@
       Execute='deferred'
       ExeCommand='/registerproduct "[ProductTag]" /installsource enterprisemsi'
       Return='check' />
-    <?else?>
-    <CustomAction Id='InstallGoogleUpdateAndRegister'
-      BinaryKey='GoogleUpdateSetup'
-      Impersonate='no'
-      Execute='deferred'
-      ExeCommand='/registerproduct "[ProductTag]"'
-      Return='check' />
-    <?endif?>
 
     <InstallExecuteSequence>
       <!-- Build tag property. -->

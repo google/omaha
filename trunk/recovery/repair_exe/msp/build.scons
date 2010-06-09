@@ -38,11 +38,9 @@ if (env.Bit('build_server') and
     GetOption('patching_certificate') == '$MAIN_DIR/data/OmahaTestCert.cer'):
   _cert_file = env.File(GetOption('authenticode_file')).abspath
 
-google_update_version = env['product_version'][0]
-google_update_version_string = '%d.%d.%d.%d' % (google_update_version[0],
-                                                google_update_version[1],
-                                                google_update_version[2],
-                                                google_update_version[3])
+
+omaha_version_info = env['omaha_versions_info'][0]
+omaha_version_string = omaha_version_info.GetVersionString()
 
 old_unsigned_env = env.Clone()
 old_unsigned_env.Append(
@@ -50,7 +48,7 @@ old_unsigned_env.Append(
         '-dFinalMsi=0',
         '-dCertificateFile=' + _cert_file,
         '-dRequiredFile=' + env.File(_required_file).abspath,
-        '-dGoogleUpdateVersion=' + google_update_version_string,
+        '-dGoogleUpdateVersion=' + omaha_version_string,
         ],
     WIXLIGHTFLAGS = [
         '-dRequiredFile=' + env.File(_required_file).abspath,
@@ -70,7 +68,7 @@ new_unsigned_env.Append(
         '-dExecuteCustomActionDLL=' + env.File(_custom_actions_path).abspath,
         '-dCertificateFile=' + _cert_file,
         '-dRequiredFile=' + env.File(_required_file).abspath,
-        '-dGoogleUpdateVersion=' + google_update_version_string,
+        '-dGoogleUpdateVersion=' + omaha_version_string,
         ],
     WIXLIGHTFLAGS = [
         '-dRequiredFile=' + env.File(_required_file).abspath,

@@ -37,8 +37,8 @@ env.BuildSConscript('ui')
 #=============UnitTests========================================================
 
 
-v = env['product_version'][0]
-version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+omaha_version_info = env['omaha_versions_info'][0]
+version_string = omaha_version_info.GetVersionString()
 
 #
 # Builds omaha_unittest
@@ -62,7 +62,11 @@ omaha_unittest_env.Append(
         '/wd4610',        # object 'class' can never be instantiated
         ],
     CPPDEFINES = [
-        'OMAHA_BUILD_VERSION=0x%.4x%.4x%.4x%.4x' % (v[0], v[1], v[2], v[3]),
+        'OMAHA_BUILD_VERSION=0x%.4x%.4x%.4x%.4x' % (
+            omaha_version_info.version_major,
+            omaha_version_info.version_minor,
+            omaha_version_info.version_build,
+            omaha_version_info.version_patch),
         'OMAHA_BUILD_VERSION_STRING=_T(\\"%s\\")' % version_string,
         ],
     LIBS = [
@@ -118,10 +122,10 @@ omaha_unittest_env.Append(
         '/DELAYLOAD:Wtsapi32.dll',
         ],
     RCFLAGS = [
-        '/DVERSION_MAJOR=%d' % v[0],
-        '/DVERSION_MINOR=%d' % v[1],
-        '/DVERSION_BUILD=%d' % v[2],
-        '/DVERSION_PATCH=%d' % v[3],
+        '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+        '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+        '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+        '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
         '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
         '/DLANGUAGE_STRING=\\"en\\"'
         ],
@@ -319,10 +323,10 @@ if env.Bit('build_server'):
           'wtsapi32.lib',
           ],
       RCFLAGS = [
-          '/DVERSION_MAJOR=%d' % v[0],
-          '/DVERSION_MINOR=%d' % v[1],
-          '/DVERSION_BUILD=%d' % v[2],
-          '/DVERSION_PATCH=%d' % v[3],
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
           '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
           '/DLANGUAGE_STRING=\\"en\\"'
           ],
@@ -395,11 +399,14 @@ env.Replicate('$STAGING_DIR/unittest_support/', [
     'unittest_support/GoogleUpdateHelper.msi',
     'unittest_support/SaveArguments.exe',
     'unittest_support/SaveArguments_different_ou.exe',
+    'unittest_support/SaveArguments_multiple_cn.exe',
+    'unittest_support/SaveArguments_no_cn.exe',
     'unittest_support/SaveArguments_OmahaTestSigned.exe',
     'unittest_support/SaveArguments_unsigned_no_resources.exe',
     'unittest_support/SaveArguments_unsigned_wrong_markup_size.exe',
     'unittest_support/SaveArguments_unsigned_wrong_markup_value.exe',
     'unittest_support/SaveArguments_unsigned_wrong_resource_name.exe',
+    'unittest_support/SaveArguments_wrong_cn.exe',
 
     # Minidump file for the crash unit test.
     'unittest_support/minidump.dmp',

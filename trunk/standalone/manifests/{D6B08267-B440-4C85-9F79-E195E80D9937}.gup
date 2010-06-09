@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
   <app appid="{D6B08267-B440-4C85-9F79-E195E80D9937}" status="ok">
-    <updatecheck arguments="REGISTER_LAUNCH_COMMAND=1"
-                 codebase="http://dl.google.com/foo/test_foo_v1.0.101.0.msi"
-                 hash="Bul1OVnBVhX1R6KwS7gaTtZm9m8="
+    <updatecheck Version="${INSTALLER_VERSION}"
+                 arguments="REGISTER_LAUNCH_COMMAND=1"
+                 codebase="http://dl.google.com/foo/test_foo_v${INSTALLER_VERSION}.msi"
+                 hash="${INSTALLER_HASH}"
                  needsadmin="true"
-                 size="50688"
+                 size="${INSTALLER_SIZE}"
                  status="ok"/>
-</app>
+  </app>
 </gupdate>

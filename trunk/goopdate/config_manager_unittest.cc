@@ -1020,7 +1020,7 @@ TEST_F(ConfigManagerTest, IsOemInstalling_Machine_OemInstallTimeNow_AuditMode) {
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_TRUE(cm_->IsOemInstalling(true));
 }
@@ -1062,7 +1062,7 @@ TEST_F(ConfigManagerTest,
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_TRUE(cm_->IsOemInstalling(true));
 }
@@ -1104,7 +1104,7 @@ TEST_F(ConfigManagerTest,
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_FALSE(cm_->IsOemInstalling(true));
 }
@@ -1144,7 +1144,7 @@ TEST_F(ConfigManagerTest,
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_TRUE(cm_->IsOemInstalling(true));
 }
@@ -1184,7 +1184,7 @@ TEST_F(ConfigManagerTest,
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_FALSE(cm_->IsOemInstalling(true));
 }
@@ -1214,7 +1214,7 @@ TEST_F(ConfigManagerTest,
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_FALSE(cm_->IsOemInstalling(true));
 }
@@ -1252,7 +1252,7 @@ TEST_F(ConfigManagerTest,
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_FALSE(cm_->IsOemInstalling(true));
 }
@@ -1268,7 +1268,7 @@ TEST_F(ConfigManagerTest, IsOemInstalling_Machine_NoOemInstallTime_AuditMode) {
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_FALSE(cm_->IsOemInstalling(true));
 }
@@ -1299,7 +1299,7 @@ TEST_F(ConfigManagerTest, IsOemInstalling_User_OemInstallTimeNow_AuditMode) {
                                       _T("AuditInProgress"),
                                       static_cast<DWORD>(1)));
   }
-  EXPECT_FALSE(cm_->IsWindowsInstalling());  // Not running as Administrator.
+  EXPECT_TRUE(cm_->IsWindowsInstalling());
 
   EXPECT_FALSE(cm_->IsOemInstalling(false));
 }

@@ -25,8 +25,11 @@ update response tarred together.
 MSI installers that wrap the standalone installer may also be created.
 """
 
+import array
+import base64
 import codecs
 import os
+import sha
 
 from enterprise.installer import build_enterprise_installer
 from installers import build_metainstaller
@@ -46,6 +49,7 @@ class OfflineInstaller(object):
                custom_tag_params,
                silent_uninstall_args,
                should_build_enterprise_msi,
+               msi_installer_data,
                installers_txt_filename):
     self.friendly_product_name = friendly_product_name
     self.exe_base_name = exe_base_name
@@ -55,6 +59,7 @@ class OfflineInstaller(object):
     self.custom_tag_params = custom_tag_params
     self.silent_uninstall_args = silent_uninstall_args
     self.should_build_enterprise_msi = should_build_enterprise_msi
+    self.msi_installer_data = msi_installer_data
     self.installers_txt_filename = installers_txt_filename
 
 
@@ -72,7 +77,7 @@ def ReadOfflineInstallersFile(env, offline_installers_file_path):
   offline_installers = []
   offline_abs_path = env.File(offline_installers_file_path).abspath
   installer_file = codecs.open(offline_abs_path, 'r')
-  for line in installer_file.readlines():
+  for line in installer_file:
     line = line.strip()
     if len(line) and not line.startswith('#'):
       (friendly_product_name,
@@ -83,6 +88,7 @@ def ReadOfflineInstallersFile(env, offline_installers_file_path):
        custom_tag_params,
        silent_uninstall_args,
        should_build_enterprise_msi,
+       msi_installer_data,
        installers_txt_filename) = eval(line)
       installer = OfflineInstaller(friendly_product_name,
                                    exe_base_name,
@@ -92,12 +98,14 @@ def ReadOfflineInstallersFile(env, offline_installers_file_path):
                                    custom_tag_params,
                                    silent_uninstall_args,
                                    should_build_enterprise_msi,
+                                   msi_installer_data,
                                    installers_txt_filename)
       offline_installers.append(installer)
   return offline_installers
 
 
 def BuildOfflineInstallersVersion(env,
+                                  omaha_version_info,
                                   omaha_files_path,
                                   empty_metainstaller_path,
                                   offline_installers_file_path,
@@ -108,6 +116,7 @@ def BuildOfflineInstallersVersion(env,
 
   Args:
     env: Environment.
+    omaha_version_info: info about the version of the Omaha files
     omaha_files_path: Path to the directory containing the Omaha binaries.
     empty_metainstaller_path: Path to empty (no tarball) metainstaller binary.
     offline_installers_file_path: Path to file specifying installers to build.
@@ -124,6 +133,7 @@ def BuildOfflineInstallersVersion(env,
     BuildOfflineInstaller(
         env,
         offline_installer,
+        omaha_version_info,
         omaha_files_path,
         empty_metainstaller_path,
         offline_installers_file_path,
@@ -133,20 +143,27 @@ def BuildOfflineInstallersVersion(env,
     )
 
 
-def BuildOfflineInstaller(env,
-                          offline_installer,
-                          omaha_files_path,
-                          empty_metainstaller_path,
-                          offline_installers_file_path,
-                          manifest_files_path,
-                          prefix='',
-                          is_official=False):
+def BuildOfflineInstaller(
+    env,
+    offline_installer,
+    omaha_version_info,
+    omaha_files_path,
+    empty_metainstaller_path,
+    offline_installers_file_path,
+    manifest_files_path,
+    prefix='',
+    is_official=False,
+    installers_sources_path='$MAIN_DIR/installers',
+    enterprise_installers_sources_path='$MAIN_DIR/enterprise/installer',
+    lzma_path='$MAIN_DIR/third_party/lzma/lzma.exe',
+    resmerge_path='$MAIN_DIR/tools/resmerge'):
   """Builds the standalone installers specified by offline_installer.
 
   Args:
     env: Environment.
     offline_installer: OfflineInstaller containing the information about the
         standalone installer to build.
+    omaha_version_info: info about the version of the Omaha files
     omaha_files_path: Path to the directory containing the Omaha binaries.
     empty_metainstaller_path: Path to empty (no tarball) metainstaller binary.
     offline_installers_file_path: Path to file specifying installers to build.
@@ -154,9 +171,18 @@ def BuildOfflineInstaller(env,
         apps specified in offline_installers_file_path.
     prefix: Optional prefix for the resulting installer.
     is_official: Whether to build official (vs. test) standalone installers.
+    installers_sources_path: path to the directory containing the source files
+        for building the metainstaller
+    enterprise_installers_sources_path: path to the directory containing the
+        source files for building enterprise installers
+    lzma_path: path to lzma.exe
+    resmerge_path: path to resmerge.exe
+
+  Returns:
+    Target nodes.
 
   Raises:
-      Exception: Missing or invalid data specified in offline_installer.
+    Exception: Missing or invalid data specified in offline_installer.
   """
 
   standalone_installer_base_name = offline_installer.exe_base_name
@@ -173,17 +199,9 @@ def BuildOfflineInstaller(env,
   target_name = target_base + '.exe'
   log_name = target_base + '_Contents.txt'
 
-  # Write Omaha's VERSION file.
-  if prefix:
-    version_index = 1
-  else:
-    version_index = 0
-
-  v = env['product_version'][version_index]
-  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
-
+  # Write Omaha's version.
   log_text = '*** Omaha Version ***\n\n'
-  log_text += version_string + '\n'
+  log_text += omaha_version_info.GetVersionString() + '\n'
 
   # Rename the checked in binaries by adding the application guid as the
   # extension. This is needed as the meta-installer expects the
@@ -192,12 +210,48 @@ def BuildOfflineInstaller(env,
   additional_payload_contents = []
   if not offline_installer.binaries:
     raise Exception('No binaries specified.')
+  manifests_to_dump = []
   for binary in offline_installer.binaries:
     (binary_name, guid) = binary
     if not binary_name or not guid:
       raise Exception('Binary specification incomplete.')
 
     output_file = os.path.basename(binary_name) + '.' + guid
+
+    def _SubstituteStringsInUpdateResponseFile(target, source, env):
+      # Don't call funtion directly from this script. source may be
+      # generated as part of build. Use function as action in env.Command.
+      source_manifest_path = source[0]
+      binary_path = source[1]
+      size = os.stat(binary_path.abspath).st_size
+      installer_file = open(binary_path.abspath, mode='rb')
+      data = array.array('B')
+      data.fromfile(installer_file, size)
+      installer_file.close()
+      s = sha.new(data)
+      hash_value = base64.b64encode(s.digest())
+      manifest_content = open(source_manifest_path.abspath).read()
+      env = env.Clone(
+          INSTALLER_SIZE='%d' % size,
+          INSTALLER_HASH=hash_value
+      )
+      output_file = open(target[0].abspath, 'w')
+      output_file.write(env.subst(manifest_content, raw=1))
+      output_file.close()
+
+    # Place the generated manifests in a subdirectory. This allows a single
+    # build to generate installers for multiple versions of the same app.
+    manifest_file_path = env.Command(
+        target=guid + offline_installer.version + '/' + guid + '.gup',
+        source=[
+            manifest_files_path + '/' + guid + '.gup',
+            output_file,
+        ],
+        action=[_SubstituteStringsInUpdateResponseFile],
+        # TODO(omaha): This does not work for bundled apps because the
+        # .txt file only has one version for all apps in the bundle.
+        INSTALLER_VERSION=offline_installer.version,
+    )
 
     # Have to use Command('copy') here instead of replicate, as the
     # file is being renamed in the process.
@@ -207,43 +261,53 @@ def BuildOfflineInstaller(env,
         action='@copy /y $SOURCES $TARGET'
     )
 
-    manifest_file_path = manifest_files_path + '/' + guid + '.gup'
+    manifests_to_dump += [manifest_file_path]
     additional_payload_contents += [output_file, manifest_file_path]
 
     # Log info about the app.
     log_text += '\n\n*** App: ' + guid + ' ***\n'
     log_text += '\nINSTALLER:\n' + binary_name + '\n'
 
-    manifest_file = open(env.File(manifest_file_path).abspath, 'r', -1)
-    manifest_file_contents = manifest_file.read()
-    manifest_file.close()
-    log_text += '\nMANIFEST:\n'
-    log_text += manifest_file_contents
-
   def WriteLog(target, source, env):
+    """Writes the log of what is being built."""
+    dump_data = ''
+    for f in source:
+      file_to_dump = open(env.File(f).abspath, 'r', -1)
+      content = file_to_dump.read()
+      file_to_dump.close()
+      dump_data += '\nMANIFEST:\n'
+      dump_data += str(f)
+      dump_data += '\n'
+      dump_data += content
     source = source  # Avoid PyLint warning.
     f = open(env.File(target[0]).abspath, 'w')
     f.write(env['write_data'])
+    f.write(dump_data)
     f.close()
     return 0
 
   env.Command(
       target='%s/%s' % (output_dir, log_name),
-      source=[],
+      source=manifests_to_dump,
       action=WriteLog,
       write_data=log_text
   )
 
-  build_metainstaller.BuildMetaInstaller(
+  results = []
+  results += build_metainstaller.BuildMetaInstaller(
       env=env,
       target_name=target_name,
+      omaha_version_info=omaha_version_info,
       empty_metainstaller_path=empty_metainstaller_path,
-      google_update_files_path=omaha_files_path,
+      omaha_files_path=omaha_files_path,
       prefix=prefix,
       suffix='_' + standalone_installer_base_name,
       additional_payload_contents=additional_payload_contents,
       additional_payload_contents_dependencies=offline_installers_file_path,
-      output_dir=output_dir
+      output_dir=output_dir,
+      installers_sources_path=installers_sources_path,
+      lzma_path=lzma_path,
+      resmerge_path=resmerge_path
   )
 
   standalone_installer_path = '%s/%s' % (output_dir, target_name)
@@ -263,6 +327,7 @@ def BuildOfflineInstaller(env,
     msi_base_name = offline_installer.msi_base_name
     custom_tag_params = offline_installer.custom_tag_params
     silent_uninstall_args = offline_installer.silent_uninstall_args
+    msi_installer_data = offline_installer.msi_installer_data
 
     # Only custom_tag_params is optional.
     if (not product_version or not friendly_product_name or not msi_base_name or
@@ -272,25 +337,25 @@ def BuildOfflineInstaller(env,
     if not is_official:
       msi_base_name = ('UNOFFICIAL_' + msi_base_name)
 
-    build_enterprise_installer.BuildEnterpriseInstallerFromStandaloneInstaller(
-        env,
-        friendly_product_name,
-        product_version,
-        product_guid,
-        custom_tag_params,
-        silent_uninstall_args,
-        standalone_installer_path,
-        omaha_files_path + '/uninstall_action.dll',
-        prefix + msi_base_name,
-        '$MAIN_DIR/enterprise/installer',
-        output_dir=output_dir
-    )
+    results += (build_enterprise_installer.
+                BuildEnterpriseInstallerFromStandaloneInstaller(
+                    env,
+                    friendly_product_name,
+                    product_version,
+                    product_guid,
+                    custom_tag_params,
+                    silent_uninstall_args,
+                    msi_installer_data,
+                    standalone_installer_path,
+                    prefix + msi_base_name,
+                    enterprise_installers_sources_path,
+                    output_dir=output_dir
+                    ))
 
   # Tag the meta-installer if an installers.txt file was specified.
   if offline_installer.installers_txt_filename:
-    installers_txt_path = (
-        env.File('$MAIN_DIR/' + offline_installer.installers_txt_filename)
-        .abspath)
+    installers_txt_path = env.File(
+        offline_installer.installers_txt_filename).abspath
     app_bundles = tag_meta_installers.ReadBundleInstallerFile(
         installers_txt_path)
 
@@ -307,9 +372,11 @@ def BuildOfflineInstaller(env,
     tag_meta_installers.SetOutputFileNames(target_name, bundles, '')
     for bundles_lang in bundles.itervalues():
       for bundle in bundles_lang:
-        tagged_installer.TagOneBundle(
+        results += tagged_installer.TagOneBundle(
             env=env,
             bundle=bundle,
             untagged_binary_path=standalone_installer_path,
             output_dir='$TARGET_ROOT/Tagged_Offline_Installers',
         )
+
+  return results

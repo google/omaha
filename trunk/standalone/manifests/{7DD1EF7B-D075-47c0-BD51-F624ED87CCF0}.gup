@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
   <app appid="{7DD1EF7B-D075-47c0-BD51-F624ED87CCF0}" status="ok">
-    <updatecheck arguments="standalone installer arguments"
-                 codebase="http://dl.google.com/foo/SaveArguments.exe"
-                 hash="bswfGQc+vKY2touwCoiURM+IZ5A="
+    <updatecheck Version="${INSTALLER_VERSION}"
+                 arguments="standalone installer arguments"
+                 codebase="http://dl.google.com/foo/${INSTALLER_VERSION}/SaveArguments.exe"
+                 hash="${INSTALLER_HASH}"
                  needsadmin="true"
-                 size="86512"
+                 size="${INSTALLER_SIZE}"
                  status="ok"/>
   </app>
 </gupdate>

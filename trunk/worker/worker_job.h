@@ -93,6 +93,9 @@ class WorkerJob : public JobObserver,
   bool is_canceled() const { return !!is_canceled_; }
 
  private:
+  void HandleSuccessfulUpdateCheckRequestSend(
+      const UpdateResponses& responses, const ProductDataVector& products);
+
   HRESULT CreateJobs(bool is_offline,
                      const UpdateResponses& responses,
                      const ProductDataVector& products);

@@ -43,6 +43,20 @@ TEST_F(SignatureValidatorTest, VerifySigneeIsGoogle_OfficiallySigned) {
   EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
 }
 
+// Tests a certificate subject containing multiple CNs such as:
+//    "CN = Google Inc (TEST), CN = Some Other CN, ...
+// The code exactly matches on the first CN only.
+TEST_F(SignatureValidatorTest, VerifySigneeIsGoogle_TestSigned_MultipleCN) {
+  const TCHAR kRelativePath[] =
+      _T("unittest_support\\SaveArguments_multiple_cn.exe");
+
+  CString executable_full_path(app_util::GetCurrentModuleDirectory());
+  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
+}
+
 TEST_F(SignatureValidatorTest,
        VerifySigneeIsGoogle_OfficiallySigned_DifferentOU) {
   const TCHAR kRelativePath[] =
@@ -77,6 +91,28 @@ TEST_F(SignatureValidatorTest, VerifySigneeIsGoogle_SignedWithNowExpiredCert) {
                            kRelativePath));
   ASSERT_TRUE(File::Exists(executable_full_path));
   EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
+}
+
+TEST_F(SignatureValidatorTest, VerifySigneeIsGoogle_TestSigned_NoCN) {
+  const TCHAR kRelativePath[] =
+      _T("unittest_support\\SaveArguments_no_cn.exe");
+
+  CString executable_full_path(app_util::GetCurrentModuleDirectory());
+  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_FALSE(VerifySigneeIsGoogle(executable_full_path));
+}
+
+TEST_F(SignatureValidatorTest, VerifySigneeIsGoogle_TestSigned_WrongCN) {
+  const TCHAR kRelativePath[] =
+      _T("unittest_support\\SaveArguments_wrong_cn.exe");
+
+  CString executable_full_path(app_util::GetCurrentModuleDirectory());
+  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_FALSE(VerifySigneeIsGoogle(executable_full_path));
 }
 
 }  // namespace omaha

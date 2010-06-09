@@ -57,8 +57,9 @@ replicate_output = env.Replicate(clickonce_deploy_bin_dir, exe_output)
 #
 # Generate the application manifest.
 #
-v = env['product_version'][0]
-version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+
+omaha_versions_info = env['omaha_versions_info']
+version_string = omaha_versions_info[0].GetVersionString()
 
 generate_manifest_action = ('@mage -New Application -ToFile $TARGET -Name %s'
     ' -Version %s -FromDirectory %s -Processor x86 -TrustLevel FullTrust' % (

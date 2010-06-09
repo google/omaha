@@ -18,26 +18,23 @@
 
 Import('env')
 
+for omaha_version_info in env['omaha_versions_info']:
+  version_string = omaha_version_info.GetVersionString()
+  prefix = omaha_version_info.filename_prefix
 
-_first = True
-for v in env['product_version']:
   temp_env = env.Clone(COMPONENT_STATIC = False)
 
-  if _first:
-    _first = False
-    prefix = ''
-  else:
-    prefix = 'TEST_'
-    temp_env['OBJPREFIX'] = temp_env['OBJPREFIX'] + 'test/'
-
-  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+  if prefix == 'TEST_':
+    temp_env['OBJPREFIX'] = temp_env.subst('test/$OBJPREFIX')
+  elif prefix:
+    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
 
   temp_env.Append(
       RCFLAGS = [
-          '/DVERSION_MAJOR=%d' % v[0],
-          '/DVERSION_MINOR=%d' % v[1],
-          '/DVERSION_BUILD=%d' % v[2],
-          '/DVERSION_PATCH=%d' % v[3],
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
           '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
           ],
 
@@ -95,7 +92,8 @@ for v in env['product_version']:
   # TODO(Omaha): Remove plugin dependencies on goopdate and all its
   # dependencies.
 
-  target_name = prefix + temp_env['ACTIVEX_UNSIGNED_FILENAME']
+  target_name = (prefix +
+                 omaha_version_info.oneclick_signed_file_info.unsigned_filename)
 
   temp_inputs = [
       'dllmain.cc',
@@ -120,7 +118,7 @@ for v in env['product_version']:
   )
 
   signed_dll = temp_env.SignedBinary(
-      target=prefix + temp_env['ACTIVEX_FILENAME'],
+      target=prefix + omaha_version_info.oneclick_signed_file_info.filename,
       source=unsigned_dll,
   )
 

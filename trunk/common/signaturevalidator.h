@@ -1,4 +1,4 @@
-// Copyright 2002-2009 Google Inc.
+// Copyright 2002-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -107,13 +107,12 @@ class CertInfo {
                          CString* trust_authority = NULL);
 
  private:
-  // we expect the input string to contain field <name, value> pairs
-  // separated by semi-colons. i.e.
-  // <field-name>=<field-value>;<field-name=<field-value>;
-  // N O T E: If more than field exists with the same name, this function
-  //          returns the value of the first field.
-  static bool ExtractField(const TCHAR* str,
-                           const TCHAR* field_name,
+  // Extracts the specified field from the certificate. Only the first value for
+  // the field is extracted if multiple values are present. Returns true if
+  // the field is extracted successfully. Returns false if an error occurred
+  // during the extraction or the field was not found.
+  static bool ExtractField(const CERT_CONTEXT* cert_context,
+                           const char* field_name,
                            CString* field_value);
 };
 
@@ -152,9 +151,9 @@ class CertList {
     cert_list_.push_back(cert);
   }
 
-  // FindFirstCert() finds the first certificate that matches given criteria.
-  // If allow_test_variant is true, the company name will also be deemed valid
-  // if it equals company_name_to_match + " (TEST)".
+  // FindFirstCert() finds the first certificate that exactly matches the given
+  // criteria. If allow_test_variant is true, the company name will also be
+  // deemed valid if it equals company_name_to_match + " (TEST)".
   void FindFirstCert(CertInfo** result_cert_info,
                      const CString &company_name_to_match,
                      const CString &orgn_unit_to_match,
@@ -175,8 +174,8 @@ class CertList {
 void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
                                          CertList* cert_list);
 
-// Tries to verify the signee is Google by matching the company and organization
-// unit names on the certificate. Returns true if both match.
+// Returns true if the signee is Google by exactly matching the first CN name
+// against a well-defined string, currently "Google Inc".
 bool VerifySigneeIsGoogle(const wchar_t* signed_file);
 
 // Returns S_OK if a given signed file contains a signature

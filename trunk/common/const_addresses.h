@@ -51,10 +51,6 @@ const TCHAR* const kUrlUpdateCheck =
 // Pings.
 const TCHAR* const kUrlPing = _T("http://tools.google.com/service/update2");
 
-// WebPlugin checks
-const TCHAR* const kUrlWebPluginCheck =
-    _T("https://tools.google.com/service/update2/oneclick");
-
 // Crash reports.
 const TCHAR* const kUrlCrashReport =
     _T("http://clients2.google.com/cr/report");

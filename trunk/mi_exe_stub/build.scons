@@ -33,19 +33,16 @@ def AddCommonOptions(env):
   )
 
 
-first = 1
-for v in env['product_version']:
+for omaha_version_info in env['omaha_versions_info']:
+  prefix = omaha_version_info.filename_prefix
+
   temp_env = env.Clone()
   AddCommonOptions(temp_env)
 
-  if first:
-    first = 0
-    prefix = ''
-  else:
-    prefix = 'TEST_'
-    temp_env['OBJPREFIX'] = temp_env['OBJPREFIX'] + 'test/'
-
-  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+  if prefix == 'TEST_':
+    temp_env['OBJPREFIX'] = temp_env.subst('test/$OBJPREFIX')
+  elif prefix:
+    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
 
   # MI stub links with the minicrt.lib in the non-debug builds.
   # This gets its size down to about 27K and it saves about 40K in library code
@@ -60,11 +57,12 @@ for v in env['product_version']:
           'version.lib',
           ],
       RCFLAGS = [
-          '/DVERSION_MAJOR=%d' % v[0],
-          '/DVERSION_MINOR=%d' % v[1],
-          '/DVERSION_BUILD=%d' % v[2],
-          '/DVERSION_PATCH=%d' % v[3],
-          '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+              omaha_version_info.GetVersionString()),
           '/DLANGUAGE_STRING=\\"%s\\"' % 'en'
           ],
 
@@ -83,7 +81,7 @@ for v in env['product_version']:
   # Force a rebuild when the version changes.
   temp_env.Depends(exe_inputs, '$MAIN_DIR/VERSION')
 
-  for language in env['languages']:
+  for language in omaha_version_info.GetSupportedLanguages():
     base_name = 'mi_generated_resources_' + language
     exe_inputs += temp_env.RES(
         target=prefix + base_name + '.res',

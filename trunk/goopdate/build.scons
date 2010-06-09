@@ -16,6 +16,8 @@
 # ========================================================================
 
 
+import omaha_version_utils
+
 Import('env')
 
 
@@ -83,26 +85,22 @@ no_precomp_env['CPPPATH'] += ['$OBJ_ROOT']
 no_precomp_env.ComponentLibrary('google_update_ps', 'google_update_idl_datax.c')
 
 
-# Add languages that have version resources but are not fully supported.
-translated_languages = list(env['languages'])
-if 1 < len(translated_languages):
-  translated_languages += env['additional_shell_languages']
-
 #
 # Build Goopdate DLL
 #
-_first = True
-for v in env['product_version']:
+for omaha_version_info in env['omaha_versions_info']:
+  prefix = omaha_version_info.filename_prefix
+
   temp_env = env.Clone(COMPONENT_STATIC=False)
 
-  if _first:
-    _first = False
-    prefix = ''
-  else:
-    prefix = 'TEST_'
+  if prefix == 'TEST_':
     temp_env['OBJPREFIX'] = temp_env.subst('test/$OBJPREFIX')
+  elif prefix:
+    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
 
-  version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+  # Add languages that have version resources but are not fully supported.
+  translated_languages = omaha_version_utils.GetShellLanguagesForVersion(
+                             omaha_version_info.GetVersion())
 
   temp_env.Append(
       CPPPATH = [
@@ -176,11 +174,12 @@ for v in env['product_version']:
           '/BASE:0x18000000',
           ],
       RCFLAGS = [
-          '/DVERSION_MAJOR=%d' % v[0],
-          '/DVERSION_MINOR=%d' % v[1],
-          '/DVERSION_BUILD=%d' % v[2],
-          '/DVERSION_PATCH=%d' % v[3],
-          '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+              omaha_version_info.GetVersionString()),
 
           # goopdate.dll is resource neutral.
           '/DLANGAUGE_STRING=\\"en\\"',

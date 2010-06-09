@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-
-//
 
 #include "omaha/worker/worker_job_strategy.h"
 #include <functional>
@@ -224,15 +222,8 @@ HRESULT UpdateAppsStrategy::PreUpdateCheck(ProductDataVector* products) {
   }
 
   hr = app_manager.GetRegisteredProducts(products);
-
-  if (FAILED(hr) || args_.install_source.IsEmpty()) {
+  if (FAILED(hr)) {
     return hr;
-  }
-
-  for (size_t i = 0; i < products->size(); ++i) {
-    AppData app_data = (*products)[i].app_data();
-    app_data.set_install_source(args_.install_source);
-    (*products)[i].set_app_data(app_data);
   }
 
 #ifdef _DEBUG
@@ -246,6 +237,16 @@ HRESULT UpdateAppsStrategy::PreUpdateCheck(ProductDataVector* products) {
             GuidToString(app_guid)));
   }
 #endif
+
+  if (args_.install_source.IsEmpty()) {
+    return S_OK;
+  }
+
+  for (size_t i = 0; i < products->size(); ++i) {
+    AppData app_data = (*products)[i].app_data();
+    app_data.set_install_source(args_.install_source);
+    (*products)[i].set_app_data(app_data);
+  }
 
   return S_OK;
 }

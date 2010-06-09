@@ -127,7 +127,7 @@ TEST_F(QueueTimerTest, Alarm) {
     // Expect the alarm to fire anytime between a narrow interval.
     EXPECT_EQ(1, cnt_);
     EXPECT_LE(time_interval_ms - 50, actual_time_ms);
-    EXPECT_GE(time_interval_ms + 50, actual_time_ms);
+    EXPECT_GE(time_interval_ms + 150, actual_time_ms);
 
     cnt_ = 0;
     ::ResetEvent(get(ev_));
@@ -165,7 +165,7 @@ TEST_F(QueueTimerTest, Timer) {
 
   EXPECT_EQ(4, cnt_);
   EXPECT_LE(35 * 1000 - 50, actual_time_ms);
-  EXPECT_GE(35 * 1000 + 50, actual_time_ms);
+  EXPECT_GE(35 * 1000 + 350, actual_time_ms);
 
   // Tests it can't start periodic timers more than one time.
   ASSERT_EQ(E_UNEXPECTED, queue_timer_->Start(25, 50, WT_EXECUTEDEFAULT));

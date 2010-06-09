@@ -49,7 +49,10 @@
 #   Build arbitrary library in the default mode:
 #     hammer <library name>
 
+import copy
 import os
+
+import omaha_version_utils
 
 # To switch the build, simply change the value of the msc_ver variable below.
 # VC2003/VC71 is 1310 but not supported by the current build.
@@ -60,8 +63,6 @@ _msc_ver = 1400
 # TODO(Omaha) - Change this to match the official product name
 _PUBLISHER_NAME = 'Google'
 _PRODUCT_NAME = 'Update'
-_ACTIVEX_NAME = 'npGoogleOneClick'
-_BHO_NAME = 'GoopdateBho'
 
 # The hash comes from the Thumbprint item in the Details tab of the file
 # properties for the public key .cer file.
@@ -75,11 +76,6 @@ _BUILD_SERVER_CERTIFICATE_HASH = 'fe5008fe0da7a2033816752d6eafe95214f5a7e1'
 # PROXY_CLSID_IS = {29A96789-9595-4947-BEDB-0FCC776F7DB8}
 _PROXY_CLSID_IS = ('{0x29a96789, 0x9595, 0x4947, '
     '{0xbe, 0xdb, 0xf, 0xcc, 0x77, 0x6f, 0x7d, 0xb8}}')
-
-#
-# Set up version info
-#
-execfile('VERSION')
 
 
 # Windows is the only environment we bulid for, so create a specialized base
@@ -126,6 +122,10 @@ if win_env['ENV'].has_key('SYSTEMROOT'):
 # Work around http://code.google.com/p/swtoolkit/issues/detail?id=10.
 win_env['COMPONENT_TEST_SUBSYSTEM_WINDOWS'] = 1
 
+win_env['msc_ver'] = _msc_ver;
+
+win_env['build_server_certificate_hash'] = _BUILD_SERVER_CERTIFICATE_HASH
+
 # Declare command line options relating to code signing
 # authenticode_file and authenticode_password are used by the normal signing
 # tool and to sign manifests for ClickOnce.
@@ -170,6 +170,7 @@ AddOption(
 DeclareBit('use_precompiled_headers', 'Use precompiled headers in build')
 DeclareBit('official_installers', 'Building using checked-in binaries')
 DeclareBit('build_server', 'Running on the build server')
+DeclareBit('build_two_versions', 'Build second version for self-update testing')
 DeclareBit('test_certificate', 'Files will be signed with the test certificate')
 DeclareBit('bin', 'Building from pre-built binaries')
 DeclareBit('min', 'Building minimal set of projects')
@@ -181,6 +182,9 @@ win_env.SetBitFromOption('official_installers', False)
 
 # Build as a build server if --build_server is on the command line.
 win_env.SetBitFromOption('build_server', False)
+
+# Build two versions if --build_two_versions is on the command line.
+win_env.SetBitFromOption('build_two_versions', False)
 
 # Store new versions of pre-built binaries if --bin is on the command line.
 win_env.SetBitFromOption('bin', False)
@@ -194,9 +198,10 @@ win_env.SetBitFromOption('all', False)
 # Build Visual Studio solution files if --msvs is on the command line.
 win_env.SetBitFromOption('msvs', False)
 
-# Also build all directories if this is the build server.
+# Build all directories and two versions if this is the build server.
 if win_env.Bit('build_server'):
   win_env.SetBits('all')
+  win_env.SetBits('build_two_versions')
 
 # Make sure 'all' overrides 'min'.
 if win_env.Bit('all'):
@@ -238,142 +243,25 @@ win_env.SetBitFromOption('use_precompiled_headers', True)
 if win_env.Bit('use_precompiled_headers'):
   print 'Using precompiled headers.'
 
-def _EnablePrecompile(self_env, target_name):
-  if self_env.Bit('use_precompiled_headers'):
-
-    # We enable all warnings on all levels. The goal is to fix the code that
-    # we have written and to programmatically disable the warnings for the
-    # code we do not control. This list of warnings should shrink as the code
-    # gets fixed.
-    self_env.FilterOut(CCFLAGS=['/W3'])
-    self_env.Append(
-        CCFLAGS = [
-            '/W4',
-            '/Wall',
-            ],
-        INCLUDES = [
-            '$MAIN_DIR/precompile/precompile.h'
-            ],
-    )
-
-    self_env['PCHSTOP'] = '$MAIN_DIR/precompile/precompile.h'
-
-    pch_env = self_env.Clone()
-    # Must manually force-include the header, as the precompilation step does
-    # not evaluate $INCLUDES
-    pch_env.Append(CCFLAGS = ['/FI$MAIN_DIR/precompile/precompile.h'])
-    # Append '_pch' to the target base name to prevent target name collisions.
-    # One case where this might have occurred is when a .cc file has the same
-    # base name as the target program/library.
-    pch_output = pch_env.PCH(
-        target=target_name.replace('.', '_') + '_pch' + '.pch',
-        source='$MAIN_DIR/precompile/precompile.cc',
-    )
-
-    self_env['PCH'] = pch_output[0]
-
-    # Return the pch .obj file that is created, so it can be
-    # included with the inputs of a module
-    return [pch_output[1]]
-
-win_env.AddMethod(_EnablePrecompile, 'EnablePrecompile')
-
-def _SignDotNetManifest(self_env, target, unsigned_manifest):
-  sign_manifest_cmd =('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
-                      'http://timestamp.verisign.com/scripts/timstamp.dll ')
-
-  if self_env.Bit('build_server'):
-    # If signing fails with the following error, the hash may not match any
-    # certificates: "Internal error, please try again. Object reference not set
-    # to an instance of an object."
-    sign_manifest_cmd += ('-CertHash ' +
-                           self_env['build_server_certificate_hash'])
-  else:
-    sign_manifest_cmd += '-CertFile %s -Password %s' % (
-        GetOption('authenticode_file'), GetOption('authenticode_password'))
-
-  signed_manifest = self_env.Command(
-      target=target,
-      source=unsigned_manifest,
-      action=sign_manifest_cmd
-  )
-
-  return signed_manifest
-
-win_env.AddMethod(_SignDotNetManifest, 'SignDotNetManifest')
+win_env.Tool('omaha_builders')
 
 
-def _SetProductVersion(self_env,
-                       version_major,
-                       version_minor,
-                       version_build,
-                       version_patch):
-  build_two_versions = False
+#
+# Set up version info.
+#
+omaha_version_info = omaha_version_utils.OmahaVersionInfo('VERSION')
+omaha_versions_info = [omaha_version_info]
 
-  if (self_env.Bit('build_server') or
-      'OMAHA_BUILD_TWO_VERSIONS' in os.environ.keys()):
-    build_two_versions = True
+if win_env.Bit('build_two_versions'):
+  omaha_test_version_info = copy.deepcopy(omaha_version_info)
+  omaha_test_version_info.MakeTestVersion()
+  omaha_versions_info.append(omaha_test_version_info)
 
-  if build_two_versions:
-    self_env['product_version_series'] = [0, 1]
-  else:
-    self_env['product_version_series'] = [0]
+# Print the version(s) being built.
+print 'Building versions: %s' % ', '.join(
+    [version_info.GetVersionString() for version_info in omaha_versions_info])
 
-  if version_patch > 0:
-    original_value = version_patch
-    value_name = 'patch'
-  else:
-    original_value = version_build
-    value_name = 'build'
-  if 2 * (original_value / 2) == original_value:
-    raise Exception('ERROR: By convention, the %s number in VERSION '
-      '(currently %d) should be odd.' % (value_name, original_value))
-
-  ver_descriptions = []
-  versions = []
-  for delta in self_env['product_version_series']:
-    # If we're doing a patch, increment that; else, increment build
-    vp = version_patch
-    vb = version_build
-    if vp > 0:
-      vp = vp + delta
-    else:
-      vb = vb + delta
-    v = (version_major, version_minor, vb, vp)
-    versions.append(v)
-    ver_descriptions.append('%d.%d.%d.%d' %
-        (version_major, version_minor, vb, vp))
-
-  self_env['product_version'] = versions
-
-  # print the version string so we know what build are we building on the
-  # build server
-  print 'Working on versions: %s' % ', '.join(ver_descriptions)
-
-win_env.AddMethod(_SetProductVersion, 'SetProductVersion')
-win_env.SetProductVersion(version_major, version_minor, version_build, version_patch)
-
-
-win_env['msc_ver'] = _msc_ver;
-
-win_env['build_server_certificate_hash'] = _BUILD_SERVER_CERTIFICATE_HASH
-
-# Plug-in versioning. Firefox Plug-in needs a different filename for each
-# version of the plug-in. If the filename is the same, even though the path
-# is different, Firefox decides not to load the new DLL if it has the old DLL
-# loaded in memory.
-def _SetActiveXFilenames(self_env, activex_version):
-  activex_name = _ACTIVEX_NAME + activex_version
-  self_env['ACTIVEX_FILENAME'] = activex_name + '.dll'
-  self_env['ACTIVEX_UNSIGNED_FILENAME'] = activex_name + '_unsigned.dll'
-
-win_env.AddMethod(_SetActiveXFilenames, 'SetActiveXFilenames')
-win_env.SetActiveXFilenames(oneclick_plugin_version)
-
-
-# BHO settings.
-win_env['BHO_FILENAME'] = '%s.dll' % (_BHO_NAME)
-win_env['BHO_UNSIGNED_FILENAME'] = '%s_unsigned.dll' % (_BHO_NAME)
+win_env['omaha_versions_info'] = omaha_versions_info
 
 
 win_env.Append(
@@ -469,14 +357,18 @@ win_env.Append(
         'LOGGING',
         'PUBLISHER_NAME_ANSI=\\"%s\\"' % _PUBLISHER_NAME,
         'PRODUCT_NAME_ANSI=\\"%s\\"' % _PRODUCT_NAME,
-        'ACTIVEX_NAME=_T(\\"%s\\")' % _ACTIVEX_NAME,
+        # TODO(omaha): Rename to ONECLICK_ACTIVEX_NAME in source files.
+        'ACTIVEX_NAME=_T(\\"%s\\")' % (
+            omaha_version_utils.GetONECLICK_ACTIVEX_NAME()),
         'PROXY_CLSID_IS=%s' % _PROXY_CLSID_IS,
         'OFFICIAL_BUILD=%d' % win_env.Bit('build_server'),
         'TEST_CERTIFICATE=%d' % win_env.Bit('test_certificate'),
-        'ACTIVEX_FILENAME=_T(\\"%s\\")' % win_env['ACTIVEX_FILENAME'],
-        'ACTIVEX_VERSION_ANSI=\\"%s\\"' % oneclick_plugin_version,
-        'BHO_NAME=_T(\\"%s\\")' % _BHO_NAME,
-        'BHO_FILENAME=_T(\\"%s\\")' % win_env['BHO_FILENAME'],
+        'ACTIVEX_FILENAME=_T(\\"%s\\")' % (
+            omaha_version_info.oneclick_plugin_filename),
+        'ACTIVEX_VERSION_ANSI=\\"%d\\"' % (
+            omaha_version_info.oneclick_plugin_version),
+        'BHO_NAME=_T(\\"%s\\")' % omaha_version_utils.GetBHO_NAME(),
+        'BHO_FILENAME=_T(\\"%s\\")' % omaha_version_info.bho_filename,
         ],
 
     # Link in some windows libraries.
@@ -518,11 +410,14 @@ win_env.Append(
         '/DOFFICIAL_BUILD=%d' % win_env.Bit('build_server'),
         '/DPUBLISHER_NAME_ANSI=\\"%s\\"' % _PUBLISHER_NAME,
         '/DPRODUCT_NAME_ANSI=\\"%s\\"' % _PRODUCT_NAME,
-        '/DACTIVEX_NAME=_T(\\"%s\\")' % _ACTIVEX_NAME,
-        '/DACTIVEX_FILENAME=_T(\\"%s\\")' % win_env['ACTIVEX_FILENAME'],
-        '/DACTIVEX_VERSION_ANSI=\\"%s\\"' % oneclick_plugin_version,
-        '/DBHO_NAME=_T(\\"%s\\")' % _BHO_NAME,
-        '/DBHO_FILENAME=_T(\\"%s\\")' % win_env['BHO_FILENAME'],
+        '/DACTIVEX_NAME=_T(\\"%s\\")' % (
+            omaha_version_utils.GetONECLICK_ACTIVEX_NAME()),
+        '/DACTIVEX_FILENAME=_T(\\"%s\\")' % (
+            omaha_version_info.oneclick_plugin_filename),
+        '/DACTIVEX_VERSION_ANSI=\\"%d\\"' % (
+            omaha_version_info.oneclick_plugin_version),
+        '/DBHO_NAME=_T(\\"%s\\")' % omaha_version_utils.GetBHO_NAME(),
+        '/DBHO_FILENAME=_T(\\"%s\\")' % omaha_version_info.bho_filename,
         ],
 )
 
@@ -530,76 +425,6 @@ win_env.Append(
 if win_env.Bit('build_server'):
   print 'OFFICIAL_BUILD=1'
   print 'TEST_CERTIFICATE=%d' % win_env.Bit('test_certificate')
-
-
-# List of languages that are fully supported.
-win_env['languages'] = [
-    'ar',
-    'bg',
-    'bn',
-    'ca',
-    'cs',
-    'da',
-    'de',
-    'el',
-    'en',
-    'en-GB',
-    'es',
-    'es-419',
-    'et',
-    'fa',
-    'fi',
-    'fil',
-    'fr',
-    'gu',
-    'hi',
-    'hr',
-    'hu',
-    'id',
-    'is',
-    'it',
-    'iw',
-    'ja',
-    'kn',
-    'ko',
-    'lt',
-    'lv',
-    'ml',
-    'mr',
-    'ms',
-    'nl',
-    'no',
-    'or',
-    'pl',
-    'pt-BR',
-    'pt-PT',
-    'ro',
-    'ru',
-    'sk',
-    'sl',
-    'sr',
-    'sv',
-    'ta',
-    'te',
-    'th',
-    'tr',
-    'uk',
-    'ur',
-    'vi',
-    'zh-CN',
-    'zh-TW',
-    ]
-
-# The shell and goopdate.dll contain additional languages.
-# 'userdefault' addresses apps that don't look up the resource for the OS
-# language. See http://b/1328652.
-
-win_env['additional_shell_languages'] = [
-    'am',
-    'sw',
-    'userdefault',
-    'zh-HK',
-    ]
 
 
 # Make sure python.exe can be located.

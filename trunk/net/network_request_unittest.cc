@@ -323,7 +323,7 @@ TEST_F(NetworkRequestTest, MultipleRequests) {
   MultipleRequestsHelper();
 }
 
-TEST_F(NetworkRequestTest, MultipleRequestsUrlmon) {
+TEST_F(NetworkRequestTest, DISABLED_MultipleRequestsUrlmon) {
   network_request_->AddHttpRequest(new CupRequest(new UrlmonRequest));
   MultipleRequestsHelper();
 }

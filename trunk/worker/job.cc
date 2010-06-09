@@ -480,16 +480,15 @@ HRESULT Job::DoInstall(CompletionInfo* completion_info,
   HRESULT hr = install_manager.InstallJob(this);
   *completion_info = install_manager.error_info();
   if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[InstallManager::InstallJobs failed][0x%08x][%s]"),
+    CORE_LOG(LE, (_T("[InstallManager::InstallJob failed][0x%08x][%s]"),
                   hr, GuidToString(app_data_.app_guid())));
 
     // If we failed the install job and the product wasn't registered, it's safe
     // to delete the ClientState key.  We need to remove it because it contains
     // data like "ap", browsertype, language, etc. that need to be cleaned up in
     // case user tries to install again in the future.
-    if (!is_update_ &&
-        !app_manager.IsProductRegistered(app_data_.app_guid())) {
-      // Need to set IsUninstalled to true or else we'll assert in
+    if (!is_update_ && !app_manager.IsProductRegistered(app_data_.app_guid())) {
+      // Need to set is_uninstalled to true or else we'll assert in
       // RemoveClientState().
       app_data_.set_is_uninstalled(true);
       app_manager.RemoveClientState(app_data_);
@@ -500,7 +499,7 @@ HRESULT Job::DoInstall(CompletionInfo* completion_info,
 
   hr = UpdateJob();
   if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[UpdateJobAndRegistry failed][0x%08x][%s]"),
+    CORE_LOG(LE, (_T("[UpdateJob failed][0x%08x][%s]"),
                   hr, GuidToString(app_data_.app_guid())));
     completion_info->status = COMPLETION_ERROR;
     completion_info->error_code = hr;
@@ -510,7 +509,7 @@ HRESULT Job::DoInstall(CompletionInfo* completion_info,
 
   hr = UpdateRegistry(new_app_data);
   if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[UpdateJobAndRegistry failed][0x%08x][%s]"),
+    CORE_LOG(LE, (_T("[UpdateRegistry failed][0x%08x][%s]"),
                   hr, GuidToString(app_data_.app_guid())));
     completion_info->status = COMPLETION_ERROR;
     completion_info->error_code = hr;

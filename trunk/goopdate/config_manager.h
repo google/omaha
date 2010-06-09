@@ -147,10 +147,6 @@ class ConfigManager {
   // checks are being sent.
   HRESULT GetUpdateCheckUrl(CString* url) const;
 
-  // Returns the service endpoint where the webplugin parameters
-  // are being sent for validation.
-  HRESULT GetWebPluginCheckUrl(CString* url) const;
-
   // Returns the time interval between update checks in seconds.
   // 0 indicates updates are disabled.
   int GetLastCheckPeriodSec(bool* is_overridden) const;

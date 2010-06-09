@@ -1277,16 +1277,19 @@ TEST_F(SetupMachineTest, Install_LockTimedOut) {
 }
 
 TEST_F(SetupRegistryProtectedUserTest, Install_OEM) {
-#if OFFICIAL_BUILD
-  std::wcout << _T("\tTest did not run because official builds cannot ")
-                _T("simulate AuditMode.")<< std::endl;
-  return;
-#else
-  // Since we cannot simulate the Administrator SID checked by
-  // IsWindowsReallyInAuditMode(), use the UpdateDev override.
-  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                    kRegValueNameWindowsInstalling,
-                                    static_cast<DWORD>(1)));
+  // The test fixture only disables HKCU by default. Disable HKLM too.
+  OverrideSpecifiedRegistryHives(hive_override_key_name_, true, true);
+
+  if (vista_util::IsVistaOrLater()) {
+    EXPECT_SUCCEEDED(RegKey::SetValue(
+        _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State"),
+        _T("ImageState"),
+        _T("IMAGE_STATE_UNDEPLOYABLE")));
+  } else {
+    EXPECT_SUCCEEDED(RegKey::SetValue(_T("HKLM\\System\\Setup"),
+                                      _T("AuditInProgress"),
+                                      static_cast<DWORD>(1)));
+  }
 
   EXPECT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
 
@@ -1297,29 +1300,25 @@ TEST_F(SetupRegistryProtectedUserTest, Install_OEM) {
   EXPECT_FALSE(RegKey::HasValue(USER_REG_UPDATE, kRegValueOemInstallTimeSec));
   EXPECT_FALSE(
       RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
-
-  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                                       kRegValueNameWindowsInstalling));
-#endif
 }
 
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemElevationRequired) {
-#if OFFICIAL_BUILD
-  std::wcout << _T("\tTest did not run because official builds cannot ")
-                _T("simulate AuditMode.")<< std::endl;
-  return;
-#else
   if (vista_util::IsUserAdmin()) {
     std::wcout << _T("\tTest did not run because the user IS an admin.")
                << std::endl;
     return;
   }
 
-  // Since we cannot simulate the Administrator SID checked by
-  // IsWindowsReallyInAuditMode(), use the UpdateDev override.
-  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                    kRegValueNameWindowsInstalling,
-                                    static_cast<DWORD>(1)));
+  if (vista_util::IsVistaOrLater()) {
+    EXPECT_SUCCEEDED(RegKey::SetValue(
+        _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State"),
+        _T("ImageState"),
+        _T("IMAGE_STATE_UNDEPLOYABLE")));
+  } else {
+    EXPECT_SUCCEEDED(RegKey::SetValue(_T("HKLM\\System\\Setup"),
+                                      _T("AuditInProgress"),
+                                      static_cast<DWORD>(1)));
+  }
 
   EXPECT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
 
@@ -1329,10 +1328,6 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemElevationRequired) {
 
   EXPECT_FALSE(
       RegKey::HasValue(MACHINE_REG_UPDATE, kRegValueOemInstallTimeSec));
-
-  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                                       kRegValueNameWindowsInstalling));
-#endif
 }
 
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemNotAuditMode) {
@@ -1351,22 +1346,26 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemNotAuditMode) {
 
 // Prevents the install from continuing by holding the Setup Lock.
 TEST_F(SetupRegistryProtectedMachineTest, Install_OemFails) {
-#if OFFICIAL_BUILD
-  std::wcout << _T("\tTest did not run because official builds cannot ")
-                _T("simulate AuditMode.")<< std::endl;
-  return;
-#else
   if (!vista_util::IsUserAdmin()) {
     std::wcout << _T("\tTest did not run because the user is not an admin.")
                << std::endl;
     return;
   }
 
-  // Since we cannot simulate the Administrator SID checked by
-  // IsWindowsReallyInAuditMode(), use the UpdateDev override.
-  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                    kRegValueNameWindowsInstalling,
-                                    static_cast<DWORD>(1)));
+  if (vista_util::IsVistaOrLater()) {
+    EXPECT_SUCCEEDED(RegKey::SetValue(
+        _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State"),
+        _T("ImageState"),
+        _T("IMAGE_STATE_UNDEPLOYABLE")));
+
+    // TODO(omaha): Overriding HKLM causes HasXmlParser() to fail on Vista,
+    // preventing this test from running correctly.
+    return;
+  } else {
+    EXPECT_SUCCEEDED(RegKey::SetValue(_T("HKLM\\System\\Setup"),
+                                      _T("AuditInProgress"),
+                                      static_cast<DWORD>(1)));
+  }
 
   EXPECT_TRUE(ConfigManager::Instance()->IsWindowsInstalling());
 
@@ -1383,10 +1382,6 @@ TEST_F(SetupRegistryProtectedMachineTest, Install_OemFails) {
 
   hold_lock.Stop();
   thread.WaitTillExit(1000);
-
-  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                                       kRegValueNameWindowsInstalling));
-#endif
 }
 
 TEST_F(SetupMachineTest, LaunchInstalledWorker_OemInstallNotOffline) {

@@ -55,16 +55,16 @@ lib_env.ComponentLibrary(
 #
 exe_env = env.Clone()
 
-v = exe_env['product_version'][0]
-version_string = '%d.%d.%d.%d' % (v[0], v[1], v[2], v[3])
+omaha_version_info = exe_env['omaha_versions_info'][0]
 
 exe_env.Append(
     RCFLAGS = [
-        '/DVERSION_MAJOR=%d' % v[0],
-        '/DVERSION_MINOR=%d' % v[1],
-        '/DVERSION_BUILD=%d' % v[2],
-        '/DVERSION_PATCH=%d' % v[3],
-        '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+        '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+        '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+        '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+        '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+            omaha_version_info.GetVersionString()),
         '/DLANGAUGE_STRING=\\"en\\"',
         ],
 
