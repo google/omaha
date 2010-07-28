@@ -201,6 +201,7 @@ Request whether a newer version of the application is available.
 _Request Attributes_
    * tag (optional): Additional app-defined data that the server can use to select a response. For historical reasons, this is called "ap" in the Omaha client.
    * tttoken (optional): An access token for protected downloads.  The request should be sent over SSL if this attribute is present.
+   * updatedisabled (optional): `"true"` indicates that an update response will not be applied because it is disallowed by Group Policy.
 
 _Response Attributes_
 
