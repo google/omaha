@@ -33,11 +33,11 @@
 #include <list>
 #include <string>
 #include "client/windows/common/ipc_protocol.h"
-#include "client/windows/crash_generation/client_info.h"
 #include "client/windows/crash_generation/minidump_generator.h"
 #include "processor/scoped_ptr.h"
 
 namespace google_breakpad {
+class ClientInfo;
 
 // Abstraction for server side implementation of out-of-process crash
 // generation protocol for Windows platform only. It generates Windows
@@ -91,7 +91,8 @@ class CrashGenerationServer {
 
   ~CrashGenerationServer();
 
-  // Performs initialization steps needed to start listening to clients.
+  // Performs initialization steps needed to start listening to clients. Upon
+  // successful return clients may connect to this server's pipe.
   //
   // Returns true if initialization is successful; false otherwise.
   bool Start();
@@ -100,6 +101,9 @@ class CrashGenerationServer {
   // Various states the client can be in during the handshake with
   // the server.
   enum IPCServerState {
+    // Server starts in this state.
+    IPC_SERVER_STATE_UNINITIALIZED,
+
     // Server is in error state and it cannot serve any clients.
     IPC_SERVER_STATE_ERROR,
 
@@ -191,6 +195,21 @@ class CrashGenerationServer {
 
   // Generates dump for the given client.
   bool GenerateDump(const ClientInfo& client, std::wstring* dump_path);
+
+  // Puts the server in a permanent error state and sets a signal such that
+  // the state will be immediately entered after the current state transition
+  // is complete.
+  void EnterErrorState();
+
+  // Puts the server in the specified state and sets a signal such that the
+  // state is immediately entered after the current state transition is
+  // complete.
+  void EnterStateImmediately(IPCServerState state);
+
+  // Puts the server in the specified state. No signal will be set, so the state
+  // transition will only occur when signaled manually or by completion of an
+  // asynchronous IO operation.
+  void EnterStateWhenSignaled(IPCServerState state);
 
   // Sync object for thread-safe access to the shared list of clients.
   CRITICAL_SECTION clients_sync_;

@@ -13,8 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
+#include <afxres.h>
 #include "resource.h"
-#include "afxres.h"
 
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
@@ -23,5 +23,5 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_APP                 ICON                    "omaha/goopdate/goopdate.ico"
+IDI_APP   ICON    "omaha/google_update/google_update.ico"
 

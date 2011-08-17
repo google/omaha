@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,22 @@
 // ========================================================================
 
 
-#include "omaha/common/app_util.h"
-#include "omaha/common/const_object_names.h"
-#include "omaha/common/error.h"
-#include "omaha/common/path.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/thread.h"
-#include "omaha/common/time.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/const_object_names.h"
+#include "omaha/base/error.h"
+#include "omaha/base/path.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/thread.h"
+#include "omaha/base/time.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/const_goopdate.h"
+#include "omaha/common/goopdate_utils.h"
+#include "omaha/common/scheduled_task_utils.h"
 #include "omaha/core/core.h"
-#include "omaha/goopdate/config_manager.h"
-#include "omaha/goopdate/const_goopdate.h"
-#include "omaha/goopdate/goopdate_utils.h"
 #include "omaha/setup/setup_service.h"
 #include "omaha/testing/unit_test.h"
-#include "omaha/worker/application_manager.h"
 
 namespace omaha {
 
@@ -46,7 +46,7 @@ class CoreRunner : public Runnable {
  private:
   virtual void Run() {
     Core core;
-    core.Main(is_machine_, true);         // Run the crash handler.
+    core.Main(is_machine_, false);         // Do not run the crash handler.
   }
 
   bool is_machine_;
@@ -60,6 +60,12 @@ class CoreTest : public testing::Test {
   CoreTest() : is_machine_(false) {}
 
   virtual void SetUp() {
+    // The Core has it's own ATL module. ATL does not like having multiple ATL
+    // modules. This TestCase saves and restore the original ATL module to get
+    // around ATL's limitation. This is a hack.
+    original_atl_module_ = _pAtlModule;
+    _pAtlModule = NULL;
+
     ASSERT_HRESULT_SUCCEEDED(IsSystemProcess(&is_machine_));
 
     ConfigManager::Instance()->SetLastCheckedTime(is_machine_, 10);
@@ -71,6 +77,7 @@ class CoreTest : public testing::Test {
   }
 
   virtual void TearDown() {
+     _pAtlModule = original_atl_module_;
   }
 
   HRESULT SignalShutdownEvent() {
@@ -86,6 +93,8 @@ class CoreTest : public testing::Test {
  protected:
   bool is_machine_;
   scoped_event shutdown_event_;
+
+  CAtlModule* original_atl_module_;
 };
 
 // Tests the core shutdown mechanism.
@@ -107,6 +116,8 @@ TEST_F(CoreTest, Shutdown) {
   EXPECT_HRESULT_SUCCEEDED(SignalShutdownEvent());
   EXPECT_TRUE(thread.WaitTillExit(2000));
   if (thread.Running()) {
+    // If you see a crash here, it was likely caused by Application Verifier.
+    // TODO(omaha): Is there a better way to exit? Should we wait longer?
     thread.Terminate(-1);
   }
   EXPECT_HRESULT_SUCCEEDED(ResetShutdownEvent());
@@ -117,45 +128,51 @@ class CoreUtilsTest : public testing::Test {
   CoreUtilsTest() : is_machine_(vista_util::IsUserAdmin()) {}
 
   virtual void SetUp() {
-    core_.is_system_ = is_machine_;
+    // The Core has it's own ATL module. ATL does not like having multiple ATL
+    // modules. This TestCase saves and restore the original ATL module to get
+    // around ATL's limitation. This is a hack.
+    original_atl_module_ = _pAtlModule;
+    _pAtlModule = NULL;
+
+    // The Core must be created after the ATL module work around.
+    core_.reset(new Core);
+    core_->is_system_ = is_machine_;
   }
 
   virtual void TearDown() {
+    _pAtlModule = original_atl_module_;
   }
 
   bool AreScheduledTasksHealthy() {
-    return core_.AreScheduledTasksHealthy();
-  }
-
-  bool IsServiceHealthy() {
-    return core_.IsServiceHealthy();
+    return core_->AreScheduledTasksHealthy();
   }
 
   bool IsCheckingForUpdates() {
-    return core_.IsCheckingForUpdates();
+    return core_->IsCheckingForUpdates();
   }
 
-  static HRESULT DoInstallService(const TCHAR* service_cmd_line,
-                                  const TCHAR* desc) {
-    return SetupService::DoInstallService(service_cmd_line, desc);
+  static HRESULT DoInstallService(const TCHAR* service_cmd_line) {
+    return SetupUpdate3Service::DoInstallService(service_cmd_line);
   }
 
-  static HRESULT DeleteServices() {
-    return SetupService::DeleteServices();
+  static HRESULT DeleteService() {
+    return SetupUpdate3Service::DeleteService();
   }
 
-  Core core_;
+  scoped_ptr<Core> core_;
   bool is_machine_;
+
+  CAtlModule* original_atl_module_;
 };
 
 TEST_F(CoreUtilsTest, AreScheduledTasksHealthy) {
-  EXPECT_SUCCEEDED(goopdate_utils::UninstallGoopdateTasks(is_machine_));
+  EXPECT_SUCCEEDED(scheduled_task_utils::UninstallGoopdateTasks(is_machine_));
   EXPECT_FALSE(AreScheduledTasksHealthy());
 
   CString task_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
                                       _T("LongRunningSilent.exe"));
-  EXPECT_SUCCEEDED(goopdate_utils::InstallGoopdateTasks(task_path,
-                                                        is_machine_));
+  EXPECT_SUCCEEDED(scheduled_task_utils::InstallGoopdateTasks(task_path,
+                                                              is_machine_));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
   const int k12HourPeriodSec = 12 * 60 * 60;
   const DWORD first_install_12 = now - k12HourPeriodSec;
@@ -165,26 +182,7 @@ TEST_F(CoreUtilsTest, AreScheduledTasksHealthy) {
       first_install_12));
   EXPECT_TRUE(AreScheduledTasksHealthy());
 
-  EXPECT_SUCCEEDED(goopdate_utils::UninstallGoopdateTasks(is_machine_));
-}
-
-TEST_F(CoreUtilsTest, IsServiceHealthy) {
-  if (!is_machine_) {
-    EXPECT_TRUE(IsServiceHealthy());
-    return;
-  }
-
-  EXPECT_SUCCEEDED(DeleteServices());
-  EXPECT_FALSE(IsServiceHealthy());
-
-  // Using a signed file because some anti-virus programs find this behavior
-  // suspicious with unsigned files.
-  CString service_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                                         _T("GoogleUpdate.exe"));
-  EXPECT_SUCCEEDED(DoInstallService(service_path, _T(" ")));
-  EXPECT_TRUE(IsServiceHealthy());
-
-  EXPECT_SUCCEEDED(DeleteServices());
+  EXPECT_SUCCEEDED(scheduled_task_utils::UninstallGoopdateTasks(is_machine_));
 }
 
 TEST_F(CoreUtilsTest, IsCheckingForUpdates) {
@@ -207,8 +205,7 @@ TEST_F(CoreUtilsTest, IsCheckingForUpdates) {
       first_install_48_hours_back));
   EXPECT_FALSE(IsCheckingForUpdates());
 
-  AppManager app_manager(is_machine_);
-  EXPECT_SUCCEEDED(app_manager.UpdateLastChecked());
+  EXPECT_SUCCEEDED(goopdate_utils::UpdateLastChecked(is_machine_));
   EXPECT_TRUE(IsCheckingForUpdates());
 
   const int k15DaysPeriodSec = 15 * 24 * 60 * 60;
@@ -219,4 +216,3 @@ TEST_F(CoreUtilsTest, IsCheckingForUpdates) {
 }
 
 }  // namespace omaha
-

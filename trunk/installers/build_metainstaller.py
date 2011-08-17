@@ -26,19 +26,21 @@
 """
 
 
-def BuildMetaInstaller(env,
-                       target_name,
-                       omaha_version_info,
-                       empty_metainstaller_path,
-                       omaha_files_path,
-                       prefix='',
-                       suffix='',
-                       additional_payload_contents=None,
-                       additional_payload_contents_dependencies=None,
-                       output_dir='$STAGING_DIR',
-                       installers_sources_path='$MAIN_DIR/installers',
-                       lzma_path='$MAIN_DIR/third_party/lzma/lzma.exe',
-                       resmerge_path='$MAIN_DIR/tools/resmerge.exe'):
+def BuildMetaInstaller(
+    env,
+    target_name,
+    omaha_version_info,
+    empty_metainstaller_path,
+    omaha_files_path,
+    prefix='',
+    suffix='',
+    additional_payload_contents=None,
+    additional_payload_contents_dependencies=None,
+    output_dir='$STAGING_DIR',
+    installers_sources_path='$MAIN_DIR/installers',
+    lzma_path='$MAIN_DIR/third_party/lzma/v4_65/files/lzma.exe',
+    resmerge_path='$MAIN_DIR/tools/resmerge.exe',
+    bcj2_path='$OBJ_ROOT/mi_exe_stub/x86_encoder/bcj2.exe'):
   """Build a meta-installer.
 
     Builds a full meta-installer, which is a meta-installer containing a full
@@ -63,6 +65,7 @@ def BuildMetaInstaller(env,
         for building the metainstaller
     lzma_path: path to lzma.exe
     resmerge_path: path to resmerge.exe
+    bcj2_path: path to bcj2.exe
 
   Returns:
     Target nodes.
@@ -70,12 +73,6 @@ def BuildMetaInstaller(env,
   Raises:
     Nothing.
   """
-
-  if additional_payload_contents is None:
-    additional_payload_contents = []
-
-  if additional_payload_contents_dependencies is None:
-    additional_payload_contents_dependencies = []
 
   # Payload .tar.lzma
   tarball_filename = '%spayload%s.tar' % (prefix, suffix)
@@ -86,7 +83,8 @@ def BuildMetaInstaller(env,
 
   payload_contents = [omaha_files_path + '/' + file_name
                       for file_name in payload_file_names]
-  payload_contents += additional_payload_contents
+  if additional_payload_contents:
+    payload_contents += additional_payload_contents
 
   # Create the tarball
   tarball_output = env.Command(
@@ -97,15 +95,28 @@ def BuildMetaInstaller(env,
   )
 
   # Add potentially hidden dependencies
-  if additional_payload_contents and additional_payload_contents_dependencies:
-    env.Depends(tarball_output, additional_payload_contents)
+  if additional_payload_contents_dependencies:
     env.Depends(tarball_output, additional_payload_contents_dependencies)
 
-  # Compress the tarball
-  lzma_output = env.Command(
-      target=payload_filename,
+  # Preprocess the tarball to increase compressibility
+  bcj_filename = '%spayload%s.tar.bcj' % (prefix, suffix)
+  # TODO(omaha): Add the bcj2 path as an optional parameter.
+  bcj_output = env.Command(
+      target=bcj_filename,
       source=tarball_output,
-      action=lzma_path + ' e $SOURCES $TARGET',
+      action='%s "$SOURCES" "$TARGET"' % bcj2_path,
+  )
+  env.Depends(bcj_output, bcj2_path)
+
+  # Compress the tarball
+  lzma_env = env.Clone()
+  lzma_env.Append(
+      LZMAFLAGS=[],
+  )
+  lzma_output = lzma_env.Command(
+      target=payload_filename,
+      source=bcj_output,
+      action='%s e $SOURCES $TARGET $LZMAFLAGS' % lzma_path,
   )
 
   # Construct the resource generation script
@@ -143,7 +154,7 @@ def BuildMetaInstaller(env,
       ]
 
   dll_output = dll_env.ComponentLibrary(
-      lib_name='%spayload%s.dll' % (prefix, suffix),
+      lib_name='%spayload%s' % (prefix, suffix),
       source=dll_inputs,
   )
 
@@ -151,11 +162,11 @@ def BuildMetaInstaller(env,
   dll_output_name = [f for f in dll_output if f.suffix == '.dll']
 
   # Build the target setup executable by merging the empty metafile
-  # with the resource dll built above
+  # with the resource DLL built above.
   merged_output = env.Command(
       target='unsigned_' + target_name,
       source=[empty_metainstaller_path, dll_output_name],
-      action=resmerge_path + ' --copyappend $SOURCES $TARGET'
+      action= '%s --copyappend $SOURCES $TARGET' % resmerge_path
   )
 
   signed_exe = env.SignedBinary(

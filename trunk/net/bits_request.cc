@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,11 +32,13 @@
 #include <atlbase.h>
 #include <atlstr.h>
 #include <functional>
-#include "omaha/common/const_addresses.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/const_addresses.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/scoped_impersonation.h"
+#include "omaha/base/utils.h"
+#include "omaha/net/bits_job_callback.h"
 #include "omaha/net/bits_utils.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/network_request.h"
@@ -46,12 +48,14 @@ namespace omaha {
 
 namespace {
 
-const TCHAR* const kJobDescription = _T("Google Update");
+const TCHAR* const kJobDescription = kAppName;
 
-// TODO(omaha): expose polling interval, as it is likely that polling for
-// downloading files must be different than polling for retrieving smaller
-// files.
-const int kPollingIntervalMs = 1000;
+// During BITS job downloading, we setup the notification callback so that
+// BITS can notify BitsRequest whenever BITS job state changes. To avoid
+// potential notification loss we also use a max polling interval (1s) and
+// when that amount of time passes, we'll do a poll anyway even if no BITS
+// notification is received at that time.
+const LONG kPollingIntervalMs = 1000;
 
 // Returns the job priority or -1 in case of errors.
 int GetJobPriority(IBackgroundCopyJob* job) {
@@ -62,18 +66,25 @@ int GetJobPriority(IBackgroundCopyJob* job) {
 
 }   // namespace
 
-
 BitsRequest::BitsRequest()
     : request_buffer_(NULL),
       request_buffer_length_(0),
+      proxy_auth_config_(NULL, CString()),
       low_priority_(false),
       is_canceled_(false),
       callback_(NULL),
       minimum_retry_delay_(-1),
       no_progress_timeout_(-1),
       current_auth_scheme_(0),
+      bits_request_callback_(NULL),
+      last_progress_report_tick_(0),
       creds_set_scheme_unknown_(false) {
-  VERIFY1(SUCCEEDED(GetBitsManager(&bits_manager_)));
+  GetBitsManager(&bits_manager_);
+
+  // Creates a auto-reset event for BITS job change notifications.
+  reset(bits_job_status_changed_event_,
+        ::CreateEvent(NULL, false, false, NULL));
+  ASSERT1(valid(bits_job_status_changed_event_));
 }
 
 // Once this instance connects to a BITS job, it either completes the job
@@ -91,9 +102,64 @@ BitsRequest::~BitsRequest() {
   }
 }
 
+HRESULT BitsRequest::SetupBitsCallback() {
+  ASSERT1(request_state_.get());
+  ASSERT1(request_state_->bits_job);
+
+  __mutexScope(lock_);
+
+  VERIFY1(::ResetEvent(get(bits_job_status_changed_event_)));
+
+  RemoveBitsCallback();
+
+  HRESULT hr = BitsJobCallback::Create(this, &bits_request_callback_);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // In the /ua case, the high-integrity COM server is running as SYSTEM, and
+  // impersonating a medium-integrity token. Calling SetNotifyInterface() with
+  // impersonation will give E_ACCESSDENIED. This is because the COM server only
+  // accepts high integrity incoming calls, as per the DACL set in
+  // InitializeServerSecurity(). Calling AsSelf with EOAC_DYNAMIC_CLOAKING
+  // sets high-integrity SYSTEM as the identity for the callback COM proxy on
+  // the BITS side.
+  hr = StdCallAsSelfAndImpersonate1(
+      request_state_->bits_job.p,
+      &IBackgroundCopyJob::SetNotifyInterface,
+      static_cast<IUnknown*>(bits_request_callback_));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = request_state_->bits_job->SetNotifyFlags(BG_NOTIFY_JOB_TRANSFERRED |
+                                                BG_NOTIFY_JOB_ERROR |
+                                                BG_NOTIFY_JOB_MODIFICATION);
+  return hr;
+}
+
+void BitsRequest::RemoveBitsCallback() {
+  if (bits_request_callback_ != NULL) {
+    bits_request_callback_->RemoveReferenceToBitsRequest();
+
+    bits_request_callback_->Release();
+    bits_request_callback_ = NULL;
+  }
+
+  if (request_state_.get() && request_state_->bits_job) {
+    request_state_->bits_job->SetNotifyInterface(NULL);
+  }
+}
+
+void BitsRequest::OnBitsJobStateChanged() {
+  VERIFY1(::SetEvent(get(bits_job_status_changed_event_)));
+}
+
 HRESULT BitsRequest::Close() {
   NET_LOG(L3, (_T("[BitsRequest::Close]")));
   __mutexBlock(lock_) {
+    RemoveBitsCallback();
+
     if (request_state_.get()) {
       VERIFY1(SUCCEEDED(CancelBitsJob(request_state_->bits_job)));
     }
@@ -105,9 +171,33 @@ HRESULT BitsRequest::Close() {
 HRESULT BitsRequest::Cancel() {
   NET_LOG(L3, (_T("[BitsRequest::Cancel]")));
   __mutexBlock(lock_) {
+    RemoveBitsCallback();
+
     is_canceled_ = true;
     if (request_state_.get()) {
       VERIFY1(SUCCEEDED(CancelBitsJob(request_state_->bits_job)));
+    }
+  }
+
+  OnBitsJobStateChanged();
+  return S_OK;
+}
+
+HRESULT BitsRequest::Pause() {
+  NET_LOG(L3, (_T("[BitsRequest::Pause]")));
+  __mutexBlock(lock_) {
+    if (request_state_.get()) {
+      VERIFY1(SUCCEEDED(PauseBitsJob(request_state_->bits_job)));
+    }
+  }
+  return S_OK;
+}
+
+HRESULT BitsRequest::Resume() {
+  NET_LOG(L3, (_T("[BitsRequest::Resume]")));
+  __mutexBlock(lock_) {
+    if (request_state_.get()) {
+      VERIFY1(SUCCEEDED(ResumeBitsJob(request_state_->bits_job)));
     }
   }
   return S_OK;
@@ -213,6 +303,7 @@ HRESULT BitsRequest::SetInvariantJobProperties() {
   if (FAILED(hr)) {
     return hr;
   }
+
   return S_OK;
 }
 
@@ -232,33 +323,72 @@ HRESULT BitsRequest::SetJobProperties() {
       return hr;
     }
   }
-  if (no_progress_timeout_ != -1) {
-    ASSERT1(no_progress_timeout_ >= 0);
-    hr = request_state_->bits_job->SetNoProgressTimeout(no_progress_timeout_);
+
+  // Always set no_progress_timeout to 0 for foreground jobs which means the
+  // jobs in transient error state will be immediately moved to error state.
+  int no_progress_timeout = low_priority_ ? no_progress_timeout_ : 0;
+
+  if (no_progress_timeout != -1) {
+    ASSERT1(no_progress_timeout >= 0);
+    hr = request_state_->bits_job->SetNoProgressTimeout(no_progress_timeout);
     if (FAILED(hr)) {
       return hr;
     }
   }
+
+  SetJobCustomHeaders();
+  return S_OK;
+}
+
+HRESULT BitsRequest::SetJobCustomHeaders() {
+  NET_LOG(L3, (_T("[BitsRequest::SetJobCustomHeaders][%s]"),
+               additional_headers_));
+  ASSERT1(request_state_.get());
+  ASSERT1(request_state_->bits_job);
+
+  if (additional_headers_.IsEmpty()) {
+    return S_OK;
+  }
+
+  CComPtr<IBackgroundCopyJobHttpOptions> http_options;
+  HRESULT hr = request_state_->bits_job->QueryInterface(&http_options);
+  if (FAILED(hr)) {
+    NET_LOG(LW, (_T("[QI IBackgroundCopyJobHttpOptions failed][0x%x]"), hr));
+    return hr;
+  }
+
+  hr = http_options->SetCustomHeaders(additional_headers_);
+  if (FAILED(hr)) {
+    NET_LOG(LE, (_T("[SetCustomHeaders failed][0x%x]"), hr));
+    return hr;
+  }
+
   return S_OK;
 }
 
 HRESULT BitsRequest::DetectManualProxy() {
-  if (NetworkConfig::GetAccessType(network_config_) !=
+  if (NetworkConfig::GetAccessType(proxy_config_) !=
       WINHTTP_ACCESS_TYPE_AUTO_DETECT) {
     return S_OK;
   }
 
+  NetworkConfig* network_config = NULL;
+  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+  HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
   HttpClient::ProxyInfo proxy_info = {0};
-  HRESULT hr = NetworkConfig::Instance().GetProxyForUrl(
-      url_,
-      network_config_.auto_config_url,
-      &proxy_info);
+  hr = network_config->GetProxyForUrl(url_,
+                                      proxy_config_.auto_config_url,
+                                      &proxy_info);
   if (SUCCEEDED(hr) &&
       proxy_info.access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY) {
-    network_config_.auto_detect = false;
-    network_config_.auto_config_url.Empty();
-    network_config_.proxy = proxy_info.proxy;
-    network_config_.proxy_bypass = proxy_info.proxy_bypass;
+    proxy_config_.auto_detect = false;
+    proxy_config_.auto_config_url.Empty();
+    proxy_config_.proxy = proxy_info.proxy;
+    proxy_config_.proxy_bypass = proxy_info.proxy_bypass;
   }
 
   ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy));
@@ -277,13 +407,13 @@ HRESULT BitsRequest::SetJobProxyUsage() {
 
   DetectManualProxy();
 
-  int access_type = NetworkConfig::GetAccessType(network_config_);
+  int access_type = NetworkConfig::GetAccessType(proxy_config_);
   if (access_type == WINHTTP_ACCESS_TYPE_AUTO_DETECT) {
     proxy_usage = BG_JOB_PROXY_USAGE_AUTODETECT;
   } else if (access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY) {
     proxy_usage = BG_JOB_PROXY_USAGE_OVERRIDE;
-    proxy = network_config_.proxy;
-    proxy_bypass = network_config_.proxy_bypass;
+    proxy = proxy_config_.proxy;
+    proxy_bypass = proxy_config_.proxy_bypass;
   }
   HRESULT hr = request_state_->bits_job->SetProxySettings(proxy_usage,
                                                           proxy,
@@ -316,7 +446,7 @@ HRESULT BitsRequest::DoSend() {
   NET_LOG(L3, (_T("[BitsRequest::DoSend]")));
 
   if (is_canceled_) {
-    return OMAHA_NET_E_REQUEST_CANCELLED;
+    return GOOPDATE_E_CANCELLED;
   }
 
   HRESULT hr = SetJobProperties();
@@ -324,6 +454,10 @@ HRESULT BitsRequest::DoSend() {
     return hr;
   }
   hr = SetJobProxyUsage();
+  if (FAILED(hr)) {
+    return hr;
+  }
+  hr = SetupBitsCallback();
   if (FAILED(hr)) {
     return hr;
   }
@@ -345,7 +479,7 @@ HRESULT BitsRequest::DoSend() {
 
   for (;;) {
     if (is_canceled_) {
-      return OMAHA_NET_E_REQUEST_CANCELLED;
+      return GOOPDATE_E_CANCELLED;
     }
 
     BG_JOB_STATE job_state = BG_JOB_STATE_ERROR;
@@ -389,22 +523,31 @@ HRESULT BitsRequest::DoSend() {
         return request_state_->http_status_code ? S_OK : hr;
 
       case BG_JOB_STATE_TRANSFERRED:
+        NotifyProgress();
         hr = request_state_->bits_job->Complete();
         if (SUCCEEDED(hr) || BG_S_UNABLE_TO_DELETE_FILES == hr) {
           // Assume the status code is 200 if the transfer completed. BITS does
-          // ot provide access to the status code.
+          // not provide access to the status code.
           request_state_->http_status_code = HTTP_STATUS_OK;
 
           if (creds_set_scheme_unknown_) {
             // Bits job completed successfully. If we have a valid username, we
             // record the auth scheme with the NetworkConfig, so it can be used
             // in the future within this process.
-            ASSERT1(BitsToWinhttpProxyAuthScheme(current_auth_scheme_) !=
-                    UNKNOWN_AUTH_SCHEME);
+            uint32 win_http_scheme =
+                BitsToWinhttpProxyAuthScheme(current_auth_scheme_);
+            ASSERT1(win_http_scheme != UNKNOWN_AUTH_SCHEME);
             bool is_https = String_StartsWith(url_, kHttpsProtoScheme, true);
-            VERIFY1(SUCCEEDED(NetworkConfig::Instance().SetProxyAuthScheme(
-                network_config_.proxy, is_https,
-                BitsToWinhttpProxyAuthScheme(current_auth_scheme_))));
+
+            NetworkConfig* network_config = NULL;
+            NetworkConfigManager& nm = NetworkConfigManager::Instance();
+            HRESULT hr = nm.GetUserNetworkConfig(&network_config);
+            if (FAILED(hr)) {
+              return hr;
+            }
+
+            VERIFY1(SUCCEEDED(network_config->SetProxyAuthScheme(
+                proxy_config_.proxy, is_https, win_http_scheme)));
           }
 
           return S_OK;
@@ -413,40 +556,36 @@ HRESULT BitsRequest::DoSend() {
         }
 
       case BG_JOB_STATE_SUSPENDED:
-        // Pausing downloads is not supported yet.
-        ASSERT1(false);
-        return E_FAIL;
+        break;
 
       case BG_JOB_STATE_ACKNOWLEDGED:
         ASSERT1(false);
         return S_OK;
 
       case BG_JOB_STATE_CANCELLED:
-        return OMAHA_NET_E_REQUEST_CANCELLED;
+        return GOOPDATE_E_CANCELLED;
     };
 
-    ::Sleep(kPollingIntervalMs);
+    DWORD wait_result = ::WaitForSingleObject(
+        get(bits_job_status_changed_event_), kPollingIntervalMs);
+    if (wait_result == WAIT_FAILED) {
+      ::Sleep(kPollingIntervalMs);
+    }
   }
 }
 
 HRESULT BitsRequest::OnStateTransferring() {
-  if (!callback_) {
+  // BITS could call JobModification very often during transfer so we
+  // do report meter here to avoid too many progress notifications.
+  uint32 now = GetTickCount();
+
+  if (now >= last_progress_report_tick_ &&
+      now - last_progress_report_tick_ < kJobProgressReportMinimumIntervalMs) {
     return S_OK;
   }
-  BG_JOB_PROGRESS progress = {0};
-  HRESULT hr = request_state_->bits_job->GetProgress(&progress);
-  if (FAILED(hr)) {
-    return hr;
-  }
 
-  ASSERT1(progress.FilesTotal == 1);
-  ASSERT1(progress.BytesTransferred <= INT_MAX);
-  ASSERT1(progress.BytesTotal <= INT_MAX);
-  callback_->OnProgress(static_cast<int>(progress.BytesTransferred),
-                        static_cast<int>(progress.BytesTotal),
-                        WINHTTP_CALLBACK_STATUS_READ_COMPLETE,
-                        NULL);
-  return S_OK;
+  last_progress_report_tick_ = now;
+  return NotifyProgress();
 }
 
 HRESULT BitsRequest::OnStateError() {
@@ -468,8 +607,8 @@ HRESULT BitsRequest::OnStateError() {
   request_state_->http_status_code = GetHttpStatusFromBitsError(error_code);
 
   if (error_code == BG_E_HTTP_ERROR_407) {
-    hr = !creds_set_scheme_unknown_ ? HandleProxyAuthenticationError() :
-                                      HandleProxyAuthenticationErrorCredsSet();
+    hr = creds_set_scheme_unknown_ ? HandleProxyAuthenticationErrorCredsSet() :
+                                     HandleProxyAuthenticationError();
     if (SUCCEEDED(hr)) {
       return S_OK;
     }
@@ -479,15 +618,42 @@ HRESULT BitsRequest::OnStateError() {
   return error_code;
 }
 
+HRESULT BitsRequest::NotifyProgress() {
+  if (!callback_) {
+    return S_OK;
+  }
+  BG_JOB_PROGRESS progress = {0};
+  HRESULT hr = request_state_->bits_job->GetProgress(&progress);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  ASSERT1(progress.FilesTotal == 1);
+  ASSERT1(progress.BytesTransferred <= INT_MAX);
+  ASSERT1(progress.BytesTotal <= INT_MAX);
+  callback_->OnProgress(static_cast<int>(progress.BytesTransferred),
+                        static_cast<int>(progress.BytesTotal),
+                        WINHTTP_CALLBACK_STATUS_READ_COMPLETE,
+                        NULL);
+  return S_OK;
+}
+
 HRESULT BitsRequest::GetProxyCredentials() {
   CString username;
   CString password;
   uint32 auth_scheme = UNKNOWN_AUTH_SCHEME;
   bool is_https = String_StartsWith(url_, kHttpsProtoScheme, true);
 
-  if (!NetworkConfig::Instance().GetProxyCredentials(true, false,
-          network_config_.proxy, is_https, &username, &password,
-          &auth_scheme)) {
+  NetworkConfig* network_config = NULL;
+  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+  HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (!network_config->GetProxyCredentials(true, false,
+          proxy_config_.proxy, proxy_auth_config_, is_https, &username,
+          &password, &auth_scheme)) {
     OPT_LOG(LE, (_T("[BitsRequest::GetProxyCredentials failed]")));
     return E_ACCESSDENIED;
   }
@@ -507,9 +673,9 @@ HRESULT BitsRequest::GetProxyCredentials() {
   // as well, however, we do not want to leak passwords by mistake.
   for (int scheme = BG_AUTH_SCHEME_DIGEST; scheme <= BG_AUTH_SCHEME_NEGOTIATE;
        ++scheme) {
-    HRESULT hr = SetProxyAuthCredentials(request_state_->bits_job,
-                                         CStrBuf(username), CStrBuf(password),
-                                         static_cast<BG_AUTH_SCHEME>(scheme));
+    hr = SetProxyAuthCredentials(request_state_->bits_job,
+                                 CStrBuf(username), CStrBuf(password),
+                                 static_cast<BG_AUTH_SCHEME>(scheme));
     if (FAILED(hr)) {
       OPT_LOG(LE, (_T("[BitsRequest::GetProxyCredentials][0x%08x][%s]"),
                    hr, BitsAuthSchemeToString(scheme)));

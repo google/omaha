@@ -44,8 +44,8 @@ def BuildGoogleUpdateFragment(env,
                               google_update_wxs_template_path):
   """Build an update fragment into a WiX object.
 
-    Takes a supplied wix fragment, and turns it into a .wixobj object for later
-    inclusion into an MSI.
+  Takes a supplied wix fragment, and turns it into a .wixobj object for later
+  inclusion into an MSI.
 
   Args:
     env: environment to build with
@@ -109,16 +109,17 @@ def _BuildMsiForExe(env,
                     msi_base_name,
                     google_update_wixobj_output,
                     enterprise_installer_dir,
+                    show_error_action_dll_path,
                     metainstaller_path,
                     output_dir):
   """Build an MSI installer for use in enterprise situations.
 
-    Builds an MSI for the executable installer at product_installer_path using
-    the supplied details. Requires an existing Google Update installer fragment
-    as well as a path to a custom action DLL containing the logic to launch the
-    product's uninstaller.
+  Builds an MSI for the executable installer at product_installer_path using
+  the supplied details. Requires an existing Google Update installer fragment
+  as well as a path to a custom action DLL containing the logic to launch the
+  product's uninstaller.
 
-    This is intended to enable enterprise installation scenarios.
+  This is intended to enable enterprise installation scenarios.
 
   Args:
     env: environment to build with
@@ -139,6 +140,10 @@ def _BuildMsiForExe(env,
         installer.
     enterprise_installer_dir: path to dir which contains
         enterprise_installer.wxs.xml
+    show_error_action_dll_path: path to the error display custom action dll that
+        exports a ShowInstallerResultUIString method. This CA method will read
+        the LastInstallerResultUIString from the product's ClientState key in
+        the registry and display the string via MsiProcessMessage.
     metainstaller_path: path to the Omaha metainstaller. Should be same file
         used for google_update_wixobj_output. Used only to force rebuilds.
     output_dir: path to the directory that will contain the resulting MSI
@@ -173,6 +178,9 @@ def _BuildMsiForExe(env,
       action='@copy /y $SOURCE $TARGET',
   )
 
+  # Disable warning LGHT1076 and internal check ICE61 on light.exe.  Details:
+  # http://blogs.msdn.com/astebner/archive/2007/02/13/building-an-msi-using-wix-v3-0-that-includes-the-vc-8-0-runtime-merge-modules.aspx
+  # http://windows-installer-xml-wix-toolset.687559.n2.nabble.com/ICE61-Upgrade-VersionMax-format-is-wrong-td4396813.html # pylint: disable-msg=C6310
   wix_env = env.Clone()
   wix_env.Append(
       WIXCANDLEFLAGS=[
@@ -185,18 +193,17 @@ def _BuildMsiForExe(env,
               product_installer_install_command),
           '-dProductInstallerDisableUpdateRegistrationArg=' + (
               product_installer_disable_update_registration_arg),
+          '-dShowErrorCADll=' + env.File(show_error_action_dll_path).abspath,
           '-dProductUninstallerAdditionalArgs=' + (
               product_uninstaller_additional_args),
           '-dMsiProductId=' + msi_product_id,
           '-dMsiUpgradeCode=' + msi_upgradecode_guid,
           ],
+      WIXLIGHTFLAGS=[
+          '-sw1076',
+          '-sice:ICE61',
+          ],
   )
-
-  # Disable warning LGHT1076 which complains about a string-length ICE error
-  # that can safely be ignored as per
-  # http://blogs.msdn.com/astebner/archive/2007/02/13/building-an-msi-
-  # using-wix-v3-0-that-includes-the-vc-8-0-runtime-merge-modules.aspx
-  wix_env['WIXLIGHTFLAGS'].append('-sw1076')
 
   wix_output = wix_env.WiX(
       target='unsigned_' + msi_name,
@@ -208,7 +215,9 @@ def _BuildMsiForExe(env,
   # file is rebuilt because the hash of the .wixobj does not change.
   # Also force a dependency on the CA DLL. Otherwise, it might not be built
   # before the MSI.
-  wix_env.Depends(wix_output, [product_installer_path, metainstaller_path])
+  wix_env.Depends(wix_output, [product_installer_path,
+                               metainstaller_path,
+                               show_error_action_dll_path])
 
   sign_output = wix_env.SignedBinary(
       target=msi_name,
@@ -221,10 +230,10 @@ def _BuildMsiForExe(env,
 def GenerateNameBasedGUID(namespace, name):
   """Generate a GUID based on the names supplied.
 
-    Follows a methodology recommended in Section 4.3 of RFC 4122 to generate
-    a "name-based UUID," which basically means that you want to control the
-    inputs to the GUID so that you can generate the same valid GUID each time
-    given the same inputs.
+  Follows a methodology recommended in Section 4.3 of RFC 4122 to generate
+  a "name-based UUID," which basically means that you want to control the
+  inputs to the GUID so that you can generate the same valid GUID each time
+  given the same inputs.
 
   Args:
     namespace: First part of identifier used to generate GUID
@@ -266,6 +275,49 @@ def GenerateNameBasedGUID(namespace, name):
           ord(md5_hash[13]), ord(md5_hash[14]), ord(md5_hash[15])))
 
 
+def ConvertToMSIVersionNumberIfNeeded(product_version):
+  """Change product_version to fit in an MSI version number if needed.
+
+  Some products use a 4-field version numbering scheme whereas MSI looks only
+  at the first three fields when considering version numbers. Furthermore, MSI
+  version fields have documented width restrictions of 8bits.8bits.16bits as
+  per http://msdn.microsoft.com/en-us/library/aa370859(VS.85).aspx
+
+  As such, the following scheme is used:
+
+  Product a.b.c.d -> a.(c>>8).(((c & 0xFF) << 8) + d)
+
+  So eg. 6.1.420.8 would become 6.1.41992.
+
+  This assumes:
+  1) we don't care about the product minor number, e.g. we will never reset
+     the 'c' number after an increase in 'b'.
+  2) 'd' will always be <= 255
+  3) 'c' is <= 65535
+
+  As a final note, if product_version is not of the format a.b.c.d then
+  this function returns the original product_version value.
+  """
+
+  try:
+    version_field_strings = product_version.split('.')
+    (major, minor, build, patch) = [int(x) for x in version_field_strings]
+  except:
+    # Couldn't parse the version number as a 4-term period-separated number,
+    # just return the original string.
+    return product_version
+
+  # Input version number was out of range. Return the original string.
+  if patch > 255 or build > 65535:
+    return product_string
+
+  msi_major = major
+  msi_minor = build >> 8
+  msi_build = ((build & 0xff) << 8) + patch
+
+  return str(msi_major) + '.' + str(msi_minor) + '.' + str(msi_build)
+
+
 def BuildEnterpriseInstaller(env,
                              product_name,
                              product_version,
@@ -277,12 +329,13 @@ def BuildEnterpriseInstaller(env,
                              product_uninstaller_additional_args,
                              msi_base_name,
                              enterprise_installer_dir,
+                             show_error_action_dll_path,
                              metainstaller_path,
                              output_dir='$STAGING_DIR'):
   """Build an installer for use in enterprise situations.
 
-    Builds an MSI using the supplied details and binaries. This MSI is
-    intended to enable enterprise installation scenarios.
+  Builds an MSI using the supplied details and binaries. This MSI is
+  intended to enable enterprise installation scenarios.
 
   Args:
     env: environment to build with
@@ -302,6 +355,10 @@ def BuildEnterpriseInstaller(env,
     msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_installer.wxs.xml
+    show_error_action_dll_path: path to the error display custom action dll that
+        exports a ShowInstallerResultUIString method. This CA method will read
+        the LastInstallerResultUIString from the product's ClientState key in
+        the registry and display the string via MsiProcessMessage.
     metainstaller_path: path to the Omaha metainstaller to include
     output_dir: path to the directory that will contain the resulting MSI
 
@@ -311,6 +368,7 @@ def BuildEnterpriseInstaller(env,
   Raises:
     Nothing.
   """
+  product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
 
   google_update_wixobj_output = BuildGoogleUpdateFragment(
       env,
@@ -334,6 +392,7 @@ def BuildEnterpriseInstaller(env,
       msi_base_name,
       google_update_wixobj_output,
       enterprise_installer_dir,
+      show_error_action_dll_path,
       metainstaller_path,
       output_dir)
 
@@ -347,17 +406,18 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
     product_uninstaller_additional_args,
     product_installer_data,
     standalone_installer_path,
+    show_error_action_dll_path,
     msi_base_name,
     enterprise_installer_dir,
     output_dir='$STAGING_DIR'):
   """Build an installer for use in enterprise situations.
 
-    Builds an MSI around the supplied standalone installer. This MSI is
-    intended to enable enterprise installation scenarios while being as close
-    to a normal install as possible. It does not suffer from the separation of
-    Omaha and application install like the other methods do.
+  Builds an MSI around the supplied standalone installer. This MSI is
+  intended to enable enterprise installation scenarios while being as close
+  to a normal install as possible. It does not suffer from the separation of
+  Omaha and application install like the other methods do.
 
-    This method only works for installers that do not use an MSI.
+  This method only works for installers that do not use an MSI.
 
   Args:
     env: environment to build with
@@ -376,6 +436,10 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
         passed to the product installer when it is wrapped in a standalone
         installer.
     standalone_installer_path: path to product's standalone installer
+    show_error_action_dll_path: path to the error display custom action dll that
+        exports a ShowInstallerResultUIString method. This CA method will read
+        the LastInstallerResultUIString from the product's ClientState key in
+        the registry and display the string via MsiProcessMessage.
     msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_standalone_installer.wxs.xml
@@ -389,6 +453,7 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   """
   product_name_legal_identifier = product_name.replace(' ', '')
   msi_name = msi_base_name + '.msi'
+  product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
 
   omaha_installer_namespace = binascii.a2b_hex(_GOOGLE_UPDATE_NAMESPACE_GUID)
 
@@ -424,6 +489,7 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
       '-dProductCustomParams="%s"' % product_custom_params,
       '-dStandaloneInstallerPath=' + (
           env.File(standalone_installer_path).abspath),
+      '-dShowErrorCADll=' + env.File(show_error_action_dll_path).abspath,
       '-dProductUninstallerAdditionalArgs=' + (
           product_uninstaller_additional_args),
       '-dMsiProductId=' + msi_product_id,
@@ -433,15 +499,15 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   if product_installer_data:
     wix_candle_flags.append('-dProductInstallerData=' + product_installer_data)
 
-  wix_env.Append(
-      WIXCANDLEFLAGS=wix_candle_flags
-  )
+  wix_light_flags = [
+      '-sw1076',
+      '-sice:ICE61',
+  ]
 
-  # Disable warning LGHT1076 which complains about a string-length ICE error
-  # that can safely be ignored as per
-  # http://blogs.msdn.com/astebner/archive/2007/02/13/building-an-msi-
-  # using-wix-v3-0-that-includes-the-vc-8-0-runtime-merge-modules.aspx
-  wix_env['WIXLIGHTFLAGS'].append('-sw1076')
+  wix_env.Append(
+      WIXCANDLEFLAGS=wix_candle_flags,
+      WIXLIGHTFLAGS=wix_light_flags
+  )
 
   wix_output = wix_env.WiX(
       target = output_directory_name + '/' + 'unsigned_' + msi_name,
@@ -453,7 +519,8 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   # file is rebuilt because the hash of the .wixobj does not change.
   # Also force a dependency on the CA DLL. Otherwise, it might not be built
   # before the MSI.
-  wix_env.Depends(wix_output, [standalone_installer_path])
+  wix_env.Depends(wix_output, [standalone_installer_path,
+                               show_error_action_dll_path])
 
   sign_output = wix_env.SignedBinary(
       target=output_directory_name + '/' + msi_name,

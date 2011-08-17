@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +19,12 @@
 #include <windows.h>
 #include <stdarg.h>
 #include <vector>
-#include "omaha/common/app_util.h"
-#include "omaha/common/browser_utils.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/system_info.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/browser_utils.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/system_info.h"
+#include "omaha/base/time.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/network_config.h"
 #include "omaha/net/network_request.h"
 
@@ -81,19 +82,25 @@ void NetDiags::Initialize() {
     ::ExitProcess(1);
   }
 
+  NetworkConfig* network_config = NULL;
+  hr = NetworkConfigManager::Instance().GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    PrintToConsole(_T("Failed to GetUserNetworkConfig() [0x%x]\n"), hr);
+    ::ExitProcess(1);
+  }
+
   // Initialize the detection chain: GoogleProxy, FireFox if it is the
   // default browser, and IE.
-  NetworkConfig& network_config(NetworkConfig::Instance());
-  network_config.Clear();
+  network_config->Clear();
   BrowserType browser_type(BROWSER_UNKNOWN);
   GetDefaultBrowserType(&browser_type);
   if (browser_type == BROWSER_FIREFOX) {
     PrintToConsole(_T("Default browser is Firefox\n"));
-    network_config.Add(new FirefoxProxyDetector());
+    network_config->Add(new FirefoxProxyDetector());
   }
-  network_config.Add(new IEProxyDetector());
+  network_config->Add(new IEProxyDetector());
 
-  std::vector<Config> configs = network_config.GetConfigurations();
+  std::vector<ProxyConfig> configs = network_config->GetConfigurations();
   if (configs.empty()) {
     PrintToConsole(_T("No Network Configurations to display\n"));
   } else {
@@ -106,14 +113,36 @@ void NetDiags::OnProgress(int bytes, int bytes_total, int, const TCHAR*) {
   PrintToConsole(_T("\n[Downloading %d of %d]\n"), bytes, bytes_total);
 }
 
+void NetDiags::OnRequestBegin() {
+  PrintToConsole(_T("\n[Download begins]\n"));
+}
+
+void NetDiags::OnRequestRetryScheduled(time64 next_retry_time) {
+  time64 now = GetCurrent100NSTime();
+  ASSERT1(next_retry_time > now);
+
+  if (next_retry_time > now) {
+    PrintToConsole(_T("\n[Download will retry in %d seconds]\n"),
+                      CeilingDivide(next_retry_time - now, kSecsTo100ns));
+  }
+}
+
 // http get.
 void NetDiags::DoGet(const CString& url) {
   PrintToConsole(_T("\nGET request for [%s]\n"), url);
-  NetworkRequest network_request(NetworkConfig::Instance().session());
+  NetworkConfig* network_config = NULL;
+  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+  HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    PrintToConsole(_T("Failed to GetUserNetworkConfig() [0x%x]\n"), hr);
+    return;
+  }
+  NetworkRequest network_request(network_config->session());
+
   network_request.set_callback(this);
   network_request.set_num_retries(2);
-  CString response;
-  HRESULT hr = GetRequest(&network_request, url, &response);
+  std::vector<uint8> response;
+  hr = GetRequest(&network_request, url, &response);
   int status = network_request.http_status_code();
   if (FAILED(hr)) {
     PrintToConsole(_T("GET request failed. HRESULT=[0x%x], HTTP Status=[%d]\n"),
@@ -122,13 +151,21 @@ void NetDiags::DoGet(const CString& url) {
   }
 
   PrintToConsole(_T("HTTP Status=[%d]\n"), status);
-  PrintToConsole(_T("HTTP Response=\n[%s]\n"), response);
+  PrintToConsole(_T("HTTP Response=\n[%s]\n"), Utf8BufferToWideChar(response));
 }
 
 // http download.
 void NetDiags::DoDownload(const CString& url) {
   PrintToConsole(_T("\nDownload request for [%s]\n"), url);
-  NetworkRequest network_request(NetworkConfig::Instance().session());
+  NetworkConfig* network_config = NULL;
+  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+  HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    PrintToConsole(_T("Failed to GetUserNetworkConfig() [0x%x]\n"), hr);
+    return;
+  }
+  NetworkRequest network_request(network_config->session());
+
   network_request.set_callback(this);
   network_request.set_num_retries(2);
 
@@ -142,7 +179,7 @@ void NetDiags::DoDownload(const CString& url) {
     return;
   }
 
-  HRESULT hr = network_request.DownloadFile(url, temp_file);
+  hr = network_request.DownloadFile(url, temp_file);
   int status = network_request.http_status_code();
   if (FAILED(hr)) {
     PrintToConsole(_T("Download failed. HRESULT=[0x%x], HTTP Status=[%d]\n"),

@@ -25,7 +25,8 @@ import string
 
 from installers import build_metainstaller
 
-_RECOVERY_MARKUP_DLL = 'recovery_markup.dll'
+_RECOVERY_MARKUP_DLL_BASE_NAME = 'recovery_markup'
+_RECOVERY_MARKUP_DLL = _RECOVERY_MARKUP_DLL_BASE_NAME + '.dll'
 
 _CLICKONCE_DEPLOY_DIR = '$TARGET_ROOT/clickonce_deployment'
 
@@ -59,18 +60,32 @@ def _GenerateDeploymentForOneLanguage(omaha_version_info, language):
   )
 
   # Get the localized 'Google Installer' string.
-  mi_generated_res = (
+  mi_generated_resource = (
       '$MAIN_DIR/mi_exe_stub/mi_generated_resources_%s.rc' % language)
-  f_in = codecs.open(env.File(mi_generated_res).abspath, 'r', 'utf16')
+  f_in = codecs.open(env.File(mi_generated_resource).abspath, 'r', 'utf16')
   mi_resource_contents = f_in.read()
   f_in.close()
 
+  # Get and format strings necessary to generate the display name.
   # index() will throw and abort the build if there is no match.
+
+  # First, get the company name.
+  company_name_start = (mi_resource_contents.index('IDS_FRIENDLY_COMPANY_NAME'))
+  company_name_start = mi_resource_contents.index('"', company_name_start)
+  company_name_end = mi_resource_contents.index('"', company_name_start + 1)
+  # Since it is inserted into the display name, the quotes must be dropped.
+  company_name = mi_resource_contents[company_name_start + 1:company_name_end]
+  if -1 != company_name.find('"'):
+    raise Exception('Slice indexes are incorrect!')
+
+  # Now get the installer display name and replace the placeholder with the
+  # company name.
   display_name_start = (
-      mi_resource_contents.index('IDS_GENERIC_INSTALLER_DISPLAY_NAME'))
+      mi_resource_contents.index('IDS_INSTALLER_DISPLAY_NAME'))
   display_name_start = mi_resource_contents.index('"', display_name_start)
   display_name_end = mi_resource_contents.index('"', display_name_start + 1)
   display_name = mi_resource_contents[display_name_start:display_name_end + 1]
+  display_name = display_name.replace('%1!s!', company_name)
 
   # display_name is utf8 encoded to allow the commands and the default codec to
   # pass it through.
@@ -103,7 +118,7 @@ def _GenerateDeploymentForOneLanguage(omaha_version_info, language):
 def _BuildSetup(omaha_versions_info, is_repair = False):
   # Build the meta-installer for each version.
   _PRODUCT_NAME = 'GoogleUpdate'
-  
+
   for omaha_version_info in omaha_versions_info:
     prefix = omaha_version_info.filename_prefix
 
@@ -210,6 +225,6 @@ if not env.Bit('official_installers'):
                   '$MAIN_DIR/recovery/recovery_markup.rc')
       ]
 
-  dll_env.ComponentLibrary(_RECOVERY_MARKUP_DLL, dll_inputs)
+  dll_env.ComponentLibrary(_RECOVERY_MARKUP_DLL_BASE_NAME, dll_inputs)
 
 

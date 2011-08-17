@@ -37,8 +37,9 @@ local_env.Append(
 inputs = [
     'bind_status_callback.cc',
     'bits_request.cc',
+    'bits_job_callback.cc',
     'bits_utils.cc',
-    'browser_request.cc',
+    # 'browser_request.cc',   # it has a dependency on goopdate's idl
     'cup_request.cc',
     'cup_utils.cc',
     'detector.cc',
@@ -53,8 +54,9 @@ inputs = [
     'proxy_auth.cc',
     #'wininet.cc',      # we don't have support for wininet yet
     'winhttp.cc',
+    'winhttp_adapter.cc',
     'winhttp_vtable.cc',
 ]
 
 # Build these into a library.
-local_env.ComponentLibrary('net', inputs)
+local_env.ComponentStaticLibrary('net', inputs)

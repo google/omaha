@@ -1,0 +1,16 @@
+'%HKROOT%' {
+  NoRemove Software {
+    NoRemove Classes {
+      NoRemove CLSID {
+        ForceRemove '%CLSID%' = s '%DESCRIPTION%' {
+          Elevation {
+            val Enabled = d 1
+            val IconReference = s '@%MODULE_RAW%, -%ICONRESID%'
+          }
+          LocalServer32 = s '%EXE_MODULE%'
+          val LocalizedString = s '@%MODULE_RAW%,-%STRINGRESID%'
+        }
+      }
+    }
+  }
+}

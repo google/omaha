@@ -15,15 +15,15 @@
 
 #include <vector>
 #include "base/scoped_ptr.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/error.h"
-#include "omaha/common/file.h"
-#include "omaha/common/omaha_version.h"
-#include "omaha/common/path.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
-#include "omaha/goopdate/config_manager.h"
-#include "omaha/goopdate/const_goopdate.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/error.h"
+#include "omaha/base/file.h"
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/path.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/const_goopdate.h"
 #include "omaha/setup/setup_files.h"
 #include "omaha/testing/unit_test.h"
 
@@ -31,9 +31,15 @@ namespace omaha {
 
 namespace {
 
-const int kNumberOfLanguageDlls = 54;
-const int kNumberOfRequiredFiles = 4;
-const int kNumberOfOptionalFiles = 2;
+// TODO(omaha3): Update the numbers in the else block as we build more files.
+// Eventually use the original values in the if block.
+const int kNumberOfLanguageDlls = 55;
+const int kNumberOfRequiredFiles = 6;
+#if 0
+const int kNumberOfOptionalFiles = 4;
+#else
+const int kNumberOfOptionalFiles = 3;
+#endif
 const int kNumberOfInstalledRequiredFiles =
     kNumberOfLanguageDlls + kNumberOfRequiredFiles;
 // FindFiles returns "." and ".." in addition to the actual files.
@@ -48,43 +54,52 @@ const ULONGLONG kFutureVersion = 0x0009000800070006;
 }  // namespace
 
 void CopyGoopdateFiles(const CString& omaha_path, const CString& version) {
+  EXPECT_SUCCEEDED(CreateDir(omaha_path, NULL));
   const CString version_path = ConcatenatePath(omaha_path, version);
 
-  ASSERT_SUCCEEDED(File::Copy(
+  EXPECT_SUCCEEDED(File::Copy(
       ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                      _T("GoogleUpdate.exe")),
-      ConcatenatePath(omaha_path, _T("GoogleUpdate.exe")),
+                      kOmahaShellFileName),
+      ConcatenatePath(omaha_path, kOmahaShellFileName),
       false));
 
-  ASSERT_SUCCEEDED(CreateDir(version_path, NULL));
+  EXPECT_SUCCEEDED(CreateDir(version_path, NULL));
 
-  const TCHAR* files[] = {_T("GoogleUpdate.exe"),
-                          _T("GoogleUpdateHelper.msi"),
-                          _T("GoogleCrashHandler.exe"),
-                          _T("goopdate.dll"),
+  const TCHAR* files[] = {kCrashHandlerFileName,
+                          kOmahaShellFileName,
+                          kHelperInstallerName,
+                          kOmahaDllName,
+                          kOmahaBrokerFileName,
+                          kOmahaOnDemandFileName,
+// TODO(omaha3): Enable once this is being built.
+#if 0
                           _T("GoopdateBho.dll"),
-                          ACTIVEX_FILENAME};
+#endif
+                          UPDATE_PLUGIN_FILENAME,
+                          kPSFileNameMachine,
+                          kPSFileNameUser,
+                          };
   for (size_t i = 0; i < arraysize(files); ++i) {
-    ASSERT_SUCCEEDED(File::Copy(
+    EXPECT_SUCCEEDED(File::Copy(
         ConcatenatePath(app_util::GetCurrentModuleDirectory(),
                         files[i]),
         ConcatenatePath(version_path, files[i]),
-        false));
+        false)) << _T("Failed copying ") << files[i];
   }
 
-  ASSERT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
+  EXPECT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
                                        version_path,
                                        _T("goopdateres_\?\?.dll"),
                                        false));
-  ASSERT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
+  EXPECT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
                                        version_path,
                                        _T("goopdateres_\?\?\?.dll"),
                                        false));
-  ASSERT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
+  EXPECT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
                                        version_path,
                                        _T("goopdateres_\?\?-\?\?.dll"),
                                        false));
-  ASSERT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
+  EXPECT_SUCCEEDED(File::CopyWildcards(app_util::GetCurrentModuleDirectory(),
                                        version_path,
                                        _T("goopdateres_\?\?-\?\?\?.dll"),
                                        false));
@@ -117,7 +132,7 @@ class SetupFilesTest : public testing::Test {
 #endif
   }
 
-  void SetUp() {
+  virtual void SetUp() {
     RegKey::DeleteKey(hive_override_key_name_, true);
     // Do not override HKLM because it contains the CSIDL_* definitions.
     OverrideSpecifiedRegistryHives(hive_override_key_name_, false, true);
@@ -151,7 +166,7 @@ class SetupFilesTest : public testing::Test {
     EXPECT_SUCCEEDED(setup_files_->Install());
 
     EXPECT_TRUE(File::Exists(ConcatenatePath(omaha_path,
-                             _T("GoogleUpdate.exe"))));
+                             kOmahaShellFileName)));
 
     EXPECT_TRUE(File::IsDirectory(version_path));
 
@@ -159,11 +174,17 @@ class SetupFilesTest : public testing::Test {
     EXPECT_SUCCEEDED(FindFiles(version_path, _T("*.*"), &files));
     ASSERT_EQ(kExpectedFilesReturnedByFindFiles, files.size());
     int file_index = kExtraFilesReturnedByFindFiles;
-    EXPECT_STREQ(_T("GoogleCrashHandler.exe"), files[file_index++]);
-    EXPECT_STREQ(_T("GoogleUpdate.exe"), files[file_index++]);
-    EXPECT_STREQ(_T("GoogleUpdateHelper.msi"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdate.dll"), files[file_index++]);
+    EXPECT_STREQ(kCrashHandlerFileName, files[file_index++]);
+    EXPECT_STREQ(kOmahaShellFileName, files[file_index++]);
+    EXPECT_STREQ(kOmahaBrokerFileName, files[file_index++]);
+    EXPECT_STREQ(kHelperInstallerName, files[file_index++]);
+    EXPECT_STREQ(kOmahaOnDemandFileName, files[file_index++]);
+    EXPECT_STREQ(kOmahaDllName, files[file_index++]);
+// TODO(omaha3): Enable as this is built.
+#if 0
     EXPECT_STREQ(_T("GoopdateBho.dll"), files[file_index++]);
+#endif
+    EXPECT_STREQ(_T("goopdateres_am.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_ar.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_bg.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_bn.dll"), files[file_index++]);
@@ -199,7 +220,6 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(_T("goopdateres_ms.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_nl.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_no.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_or.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_pl.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_pt-BR.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_pt-PT.dll"), files[file_index++]);
@@ -209,6 +229,7 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(_T("goopdateres_sl.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_sr.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_sv.dll"), files[file_index++]);
+    EXPECT_STREQ(_T("goopdateres_sw.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_ta.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_te.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_th.dll"), files[file_index++]);
@@ -218,7 +239,9 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(_T("goopdateres_vi.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_zh-CN.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_zh-TW.dll"), files[file_index++]);
-    EXPECT_STREQ(ACTIVEX_FILENAME, files[file_index++]);
+    EXPECT_STREQ(UPDATE_PLUGIN_FILENAME, files[file_index++]);
+    EXPECT_STREQ(kPSFileNameMachine, files[file_index++]);
+    EXPECT_STREQ(kPSFileNameUser, files[file_index++]);
 
     EXPECT_SUCCEEDED(DeleteDirectory(version_path));
   }
@@ -268,7 +291,7 @@ TEST_F(SetupFilesUserTest,
       DeleteDirectory(ConcatenatePath(omaha_path_, this_version_)));
   CString file_path = ConcatenatePath(
                           ConcatenatePath(omaha_path_, this_version_),
-                          _T("goopdate.dll"));
+                          kOmahaDllName);
   ASSERT_FALSE(File::Exists(file_path));
 
   EXPECT_TRUE(setup_files_->ShouldOverinstallSameVersion());
@@ -293,7 +316,7 @@ TEST_F(SetupFilesUserTest,
 
   CopyGoopdateFiles(omaha_path_, this_version_);
   CString path = ConcatenatePath(ConcatenatePath(omaha_path_, this_version_),
-                                 _T("goopdate.dll"));
+                                 kOmahaDllName);
   ASSERT_SUCCEEDED(File::Remove(path));
   ASSERT_FALSE(File::Exists(path));
 
@@ -308,7 +331,7 @@ TEST_F(SetupFilesUserTest,
 
   CopyGoopdateFiles(omaha_path_, this_version_);
   CString path = ConcatenatePath(ConcatenatePath(omaha_path_, this_version_),
-                                 _T("GoopdateBho.dll"));
+                                 UPDATE_PLUGIN_FILENAME);
   ASSERT_SUCCEEDED(File::Remove(path));
   ASSERT_FALSE(File::Exists(path));
 
@@ -322,7 +345,7 @@ TEST_F(SetupFilesUserTest,
                                     this_version_));
 
   CopyGoopdateFiles(omaha_path_, this_version_);
-  CString shell_path = ConcatenatePath(omaha_path_, _T("GoogleUpdate.exe"));
+  CString shell_path = ConcatenatePath(omaha_path_, kOmahaShellFileName);
   ASSERT_TRUE(SUCCEEDED(File::DeleteAfterReboot(shell_path)) ||
               !vista_util::IsUserAdmin());
   ASSERT_FALSE(File::Exists(shell_path));
@@ -337,7 +360,7 @@ TEST_F(SetupFilesUserTest,
                                     kFutureVersionString));
 
   CopyGoopdateFiles(omaha_path_, kFutureVersionString);
-  CString shell_path = ConcatenatePath(omaha_path_, _T("GoogleUpdate.exe"));
+  CString shell_path = ConcatenatePath(omaha_path_, kOmahaShellFileName);
   ASSERT_TRUE(SUCCEEDED(File::DeleteAfterReboot(shell_path)) ||
               !vista_util::IsUserAdmin());
   ASSERT_FALSE(File::Exists(shell_path));
@@ -349,6 +372,8 @@ TEST_F(SetupFilesUserTest,
       DeleteDirectory(ConcatenatePath(omaha_path_, kFutureVersionString)));
 }
 
+// "NotOverInstall" refers to there not being files in the directory.
+// should_over_install/overwrite will be true for unofficial builds.
 TEST_F(SetupFilesMachineTest, Install_NotOverInstall) {
   if (vista_util::IsUserAdmin()) {
     // Fake the version
@@ -376,10 +401,11 @@ TEST_F(SetupFilesUserTest, Install_NotOverInstall) {
   InitializeVersion(module_version);
 }
 
-TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsNewer) {
+// TODO(omaha3): Need a 1.3.x_newer directory.
+TEST_F(SetupFilesUserTest, DISABLED_ShouldCopyShell_ExistingIsNewer) {
   CString target_path = ConcatenatePath(
-      ConcatenatePath(exe_parent_dir_, _T("omaha_1.2.x_newer")),
-      _T("GoogleUpdate.exe"));
+      ConcatenatePath(exe_parent_dir_, _T("omaha_1.3.x_newer")),
+      kOmahaShellFileName);
   ASSERT_TRUE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;
@@ -390,7 +416,7 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsNewer) {
 
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsSame) {
   CString target_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                                        _T("GoogleUpdate.exe"));
+                                        kOmahaShellFileName);
   ASSERT_TRUE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;
@@ -457,7 +483,7 @@ TEST_F(SetupFilesUserTest,
        ShouldCopyShell_ExistingIsOlderButCompatible_1_2_131_7) {
   CString target_path = ConcatenatePath(
       ConcatenatePath(exe_parent_dir_, _T("omaha_1.2.131.7_shell")),
-      kGoopdateFileName);
+      kOmahaShellFileName);
   ASSERT_TRUE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;
@@ -470,7 +496,7 @@ TEST_F(SetupFilesUserTest,
        ShouldCopyShell_ExistingIsOlderButCompatible_1_2_183_9) {
   CString target_path = ConcatenatePath(
       ConcatenatePath(exe_parent_dir_, _T("omaha_1.2.183.9_shell")),
-      kGoopdateFileName);
+      kOmahaShellFileName);
   ASSERT_TRUE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;
@@ -481,8 +507,8 @@ TEST_F(SetupFilesUserTest,
 
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderMinor) {
   CString target_path = ConcatenatePath(
-      ConcatenatePath(exe_parent_dir_, _T("omaha_1.1.x")),
-      _T("GoogleUpdate.exe"));
+      ConcatenatePath(exe_parent_dir_, _T("omaha_1.2.x")),
+      kOmahaShellFileName);
   ASSERT_TRUE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;
@@ -491,13 +517,13 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderMinor) {
   EXPECT_TRUE(already_exists);
 }
 
-// The 1.2.x directory will not always have an older GoogleUpdate.exe than the
+// The 1.3.x directory will not always have an older GoogleUpdate.exe than the
 // saved version that we use for official builds.
 #if !OFFICIAL_BUILD
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderSameMinor) {
   CString target_path = ConcatenatePath(
-      ConcatenatePath(exe_parent_dir_, _T("omaha_1.2.x")),
-      _T("GoogleUpdate.exe"));
+      ConcatenatePath(exe_parent_dir_, _T("omaha_1.3.x")),
+      kOmahaShellFileName);
   ASSERT_TRUE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;
@@ -511,7 +537,7 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderSameMinor) {
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingHasNoVersion) {
   CString target_path = ConcatenatePath(
       ConcatenatePath(exe_parent_dir_, _T("does_not_shutdown")),
-      _T("GoogleUpdate.exe"));
+      kOmahaShellFileName);
   ASSERT_TRUE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;
@@ -524,7 +550,7 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingHasNoVersion) {
 TEST_F(SetupFilesUserTest, ShouldCopyShell_NoExistingFile) {
   CString target_path = ConcatenatePath(
       ConcatenatePath(exe_parent_dir_, _T("no_such_dir")),
-      _T("GoogleUpdate.exe"));
+      kOmahaShellFileName);
   ASSERT_FALSE(File::Exists(target_path));
   bool should_copy = false;
   bool already_exists = false;

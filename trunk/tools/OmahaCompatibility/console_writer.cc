@@ -71,6 +71,10 @@ CString ConsoleWriter::PingTypeToString(PingEvent::Types type)  {
     // Other events.
     case PingEvent::EVENT_INSTALL_OEM_FIRST_CHECK:
       return _T("EVENT_INSTALL_OEM_FIRST_CHECK");
+    case PingEvent::EVENT_APP_COMMAND_BEGIN:
+      return _T("EVENT_APP_COMMAND_BEGIN");
+    case PingEvent::EVENT_APP_COMMAND_COMPLETE:
+      return _T("EVENT_APP_COMMAND_COMPLETE");
 
     // Failure report events - not part of the normal flow.
     case PingEvent::EVENT_SETUP_INSTALL_FAILURE:

@@ -16,10 +16,10 @@
 // The main file for a simple tool to apply a tag to a signed file.
 #include <Windows.h>
 #include <TCHAR.h>
-#include "omaha/common/apply_tag.h"
-#include "omaha/common/file.h"
-#include "omaha/common/path.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/apply_tag.h"
+#include "omaha/base/file.h"
+#include "omaha/base/path.h"
+#include "omaha/base/utils.h"
 
 using omaha::CreateDir;
 using omaha::ConcatenatePath;

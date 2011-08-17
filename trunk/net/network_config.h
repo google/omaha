@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,6 @@
 // limitations under the License.
 // ========================================================================
 
-// TODO(omaha): provide a way to remember the last good network configuration.
-
-// TODO(omaha): maybe reconsider the singleton and allow multiple instances
-// of it to exist, to allow for testability. The app will most likely use it as
-// a singleton but the class itself should allow for multiple instances.
-
 // TODO(omaha): might need to remove dependency on winhttp.h when implementing
 // support for wininet; see http://b/1119232
 
@@ -28,10 +22,12 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <atlstr.h>
+#include <map>
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/synchronized.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/synchronized.h"
 #include "omaha/net/detector.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/proxy_auth.h"
@@ -44,6 +40,24 @@ class CSecurityDesc;
 
 namespace omaha {
 
+class RegKey;
+
+// The cup credentials are persisted across sessions. The sk is encrypted
+// while on the disk so only a user with the same login credentials as
+// the encryptor can decrypt it. The credentials are protected
+// using the system default security, so users can't modify each other's
+// credentials. In case of elevated administrators, the credentials are
+// protected from the non-elevated administrators, so the latter can't
+// read the keys and attack the elevated administrator.
+//
+// Cup credentials can be negotiated using either production keys or
+// test keys. There is a registry value override to specify that test keys
+// be used. For the change to be effective, the old credentials must be cleared.
+struct CupCredentials {
+  std::vector<uint8> sk;             // shared key (sk)
+  CStringA c;                        // client cookie (c)
+};
+
 // There are three ways by which an application could connect to the Internet:
 // 1. Direct connection.
 //    The config for the direction connection must not specify WPAD information
@@ -54,10 +68,10 @@ namespace omaha {
 //    The config for proxy auto detection should include either the auto-detect
 //    flag or the auto configuration url. Named proxy information is discarded
 //    if present.
-struct Config {
-  Config() : auto_detect(false) {}
+struct ProxyConfig {
+  ProxyConfig() : auto_detect(false), priority(PROXY_PRIORITY_DEFAULT_NORMAL) {}
 
-  // Mostly used for debugging purposes to identify who created the instance.
+  // Used to uniquely identify a proxy.
   CString source;
 
   // Specifies the configuration is WPAD.
@@ -76,43 +90,29 @@ struct Config {
   // result in compatibility problems with BITS. Fix this.
   CString proxy;
   CString proxy_bypass;
-};
 
-struct CupCredentials;
+  // Suggested priority of the proxy config. When establishing network
+  // connections, it is a good idea to try higher priority proxy first.
+  enum Priority {
+    PROXY_PRIORITY_DEFAULT_NORMAL = 0,
+    PROXY_PRIORITY_DEFAULT_BROWSER = 1,
+    PROXY_PRIORITY_LAST_KNOWN_GOOD = 2,
+    PROXY_PRIORITY_OVERRIDE = 3,
+  } priority;
+};
 
 // Manages the network configurations.
 class NetworkConfig {
-  public:
-
+ public:
   // Abstracts the Internet session, as provided by winhttp or wininet.
   // A winhttp session should map to one and only one identity. in other words,
   // a winhttp session is used to manage the network traffic of a single
   // authenticated user, or a group of anonymous users.
   struct Session {
-    Session()
-        : session_handle(NULL),
-          impersonation_token(NULL) {}
+    Session() : session_handle(NULL) {}
 
     HINTERNET session_handle;
-    HANDLE    impersonation_token;
   };
-
-  // Instance, Initialize, and DeleteInstance methods below are not thread safe.
-  // The caller must initialize and cleanup the instance before going
-  // multithreaded.
-  //
-  // Gets the singleton instance of the class.
-  // TODO(omaha): rename to GetInstance for consistency
-  static NetworkConfig& Instance();
-
-  // Initializes the instance. It takes ownership of the impersonation token
-  // provided.
-  HRESULT Initialize(bool is_machine, HANDLE impersonation_token);
-
-  bool is_initialized() const { return is_initialized_; }
-
-  // Cleans up the class instance.
-  static void DeleteInstance();
 
   // Hooks up a proxy detector. The class takes ownership of the detector.
   void Add(ProxyDetectorInterface* detector);
@@ -125,27 +125,43 @@ class NetworkConfig {
   // Detects the network configuration for each of the registered detectors.
   HRESULT Detect();
 
+  // Detects the network configuration for the given source.
+  HRESULT Detect(const CString& proxy_source, ProxyConfig* config) const;
+
+  static HRESULT ConfigFromIdentifier(const CString& id, ProxyConfig* config);
+
+  static bool ProxySortPredicate(const ProxyConfig& config1,
+                                 const ProxyConfig& config2) {
+    return config1.priority > config2.priority;
+  }
+
+  // Sort the proxy configs based on their priorities. Proxy with higher
+  // priority precedes that with lower priority.
+  static void SortProxies(std::vector<ProxyConfig>* configurations);
+
+  void AppendLastKnownGoodProxyConfig(
+      std::vector<ProxyConfig>* configurations) const;
+
+  // Adds static configurations (WPAD & direct) to current detected network
+  // configuration list.
+  static void AppendStaticProxyConfigs(
+      std::vector<ProxyConfig>* configurations);
+
   // Returns the detected configurations.
-  std::vector<Config> GetConfigurations() const;
+  std::vector<ProxyConfig> GetConfigurations() const;
 
   // Gets the persisted CUP credentials.
-  HRESULT GetCupCredentials(CupCredentials* cup_credentials);
+  HRESULT GetCupCredentials(CupCredentials* cup_credentials) const;
 
   // Saves the CUP credentials in persistent storage. If the parameter is null,
   // it clears the credentials.
-  HRESULT SetCupCredentials(const CupCredentials* cup_credentials);
-
-  // The caption is an unformatted string. The message is a formatted string
-  // that accepts one FormatMessage parameter, the proxy server. The
-  // cancel_prompt_threshold is the max number of times the user will see
-  // prompts for this process.
-  void ConfigureProxyAuth(const CString& caption, const CString& message,
-                          HWND parent, uint32 cancel_prompt_threshold);
+  HRESULT SetCupCredentials(const CupCredentials* cup_credentials) const;
 
   // Prompts for credentials, or gets cached credentials if they exist.
   bool GetProxyCredentials(bool allow_ui,
                            bool force_ui,
                            const CString& proxy_settings,
+                           const ProxyAuthConfig& proxy_auth_config,
                            bool is_https,
                            CString* username,
                            CString* password,
@@ -168,11 +184,11 @@ class NetworkConfig {
   Session session() const { return session_; }
 
   // Returns the global configuration override if available.
-  HRESULT GetConfigurationOverride(Config* configuration_override);
+  HRESULT GetConfigurationOverride(ProxyConfig* configuration_override);
 
   // Sets the global configuration override. The function clears the existing
   // configuration if the parameter is NULL.
-  void SetConfigurationOverride(const Config* configuration_override);
+  void SetConfigurationOverride(const ProxyConfig* configuration_override);
 
   // True if the CUP test keys are being used to negotiate the CUP
   // credentials.
@@ -181,20 +197,29 @@ class NetworkConfig {
   // Returns the prefix of the user agent string.
   static CString GetUserAgent();
 
+  // Returns the MID value under UpdateDev.
+  static CString GetMID();
+
   // Eliminates the redundant configurations, for example, if multiple
   // direct connection or proxy auto-detect occur.
-  static void RemoveDuplicates(std::vector<Config>*);
+  static void RemoveDuplicates(std::vector<ProxyConfig>*);
+
+  // Saves/loads a proxy source and auto_detect information to the registry
+  // so that that proxy can be tried with high priority when establishing
+  // network connections later on.
+  static HRESULT SaveProxyConfig(const ProxyConfig& config);
+  HRESULT LoadProxyConfig(ProxyConfig* config) const;
 
   // Parses a network configuration string. The format of the string is:
   // wpad=[false|true];script=script_url;proxy=host:port
   // Ignores the names and the values it does not understand.
-  static Config ParseNetConfig(const CString& net_config);
+  static ProxyConfig ParseNetConfig(const CString& net_config);
 
   // Serializes configurations for debugging purposes.
-  static CString ToString(const std::vector<Config>& configurations);
-  static CString ToString(const Config& configuration);
+  static CString ToString(const std::vector<ProxyConfig>& configurations);
+  static CString ToString(const ProxyConfig& configuration);
 
-  static int GetAccessType(const Config& config);
+  static int GetAccessType(const ProxyConfig& config);
 
   // Returns s1 + delim + s2. Consider making it an utility function if
   // more usage patterns are found.
@@ -202,50 +227,50 @@ class NetworkConfig {
                              const TCHAR* s2,
                              const TCHAR* delim);
 
+  // Uses jsproxy to use a PAC proxy configuration file stored on the local
+  // drive, instead of one sourced from WPAD.
+  static HRESULT GetProxyForUrlLocal(const CString& url,
+                                     const CString& path_to_pac_file,
+                                     HttpClient::ProxyInfo* proxy_info);
+
  private:
-  NetworkConfig();
+  explicit NetworkConfig(bool is_machine);
   ~NetworkConfig();
 
-  HRESULT InitializeLock();
-  HRESULT InitializeRegistryKey();
+  HRESULT Initialize();
 
-  static NetworkConfig* const kInvalidInstance;
-  static NetworkConfig* instance_;
+  // Configures the proxy auth credentials options. Called by Initialize().
+  void ConfigureProxyAuth();
 
-  // Registry sub key where network configuration is persisted.
-  static const TCHAR* const kNetworkSubkey;
+  // Creates the proxy configuration registry key for the calling user
+  // identified by the token.
+  static HRESULT CreateProxyConfigRegKey(RegKey* key);
 
-  // Registry sub key where CUP configuration is persisted.
-  static const TCHAR* const kNetworkCupSubkey;
-
-  // The secret key must be encrypted by the caller. This class does not do any
-  // encryption.
-  static const TCHAR* const kCupClientSecretKey;      // CUP sk.
-  static const TCHAR* const kCupClientCookie;         // CUP c.
+  // Converts a response string from a PAC script into an WinHTTP proxy
+  // descriptor struct.
+  static void ConvertPacResponseToProxyInfo(const CStringA& response,
+                                            HttpClient::ProxyInfo* proxy_info);
 
   static const TCHAR* const kUserAgent;
 
+  static const TCHAR* const kRegKeyProxy;
+  static const TCHAR* const kRegValueSource;
+
+  static const TCHAR* const kWPADIdentifier;
+  static const TCHAR* const kDirectConnectionIdentifier;
+
   bool is_machine_;     // True if the instance is initialized for machine.
 
-  std::vector<Config> configurations_;
+  std::vector<ProxyConfig> configurations_;
   std::vector<ProxyDetectorInterface*> detectors_;
-
-  CString sid_;   // The user sid.
-
-  // The registry path under which to store persistent network configuration.
-  CString registry_update_network_path_;
 
   // Synchronizes access to per-process instance data, which includes
   // the detectors and configurations.
   LLock lock_;
 
-  // Synchronizes access to per-session instance data, such as the
-  // CUP credentials.
-  GLock global_lock_;
-
   bool is_initialized_;
 
-  scoped_ptr<Config> configuration_override_;
+  scoped_ptr<ProxyConfig> configuration_override_;
 
   Session session_;
   scoped_ptr<HttpClient> http_client_;
@@ -258,28 +283,70 @@ class NetworkConfig {
   // ConfigureProxyAuth().
   ProxyAuth proxy_auth_;
 
+  friend class NetworkConfigManager;
   DISALLOW_EVIL_CONSTRUCTORS(NetworkConfig);
 };
 
-// For unittests, where creation and termination of NetworkConfig instances
-// is required, the implementation disables the dead reference detection. This
-// forces an inline of the code below for unit tests, so different behavior
-// can be achieved, even though the rest of the implementation compiles in
-// a library. It is somehow brittle but good enough for now.
+class NetworkConfigManager {
+ public:
+  static NetworkConfigManager& Instance();
+  static void DeleteInstance();
 
-#ifdef UNITTEST
-__forceinline
-#else
-  inline
-#endif
-void NetworkConfig::DeleteInstance() {
-  delete instance_;
-#ifdef UNITTEST
-  instance_ = NULL;
-#else
-  instance_ = kInvalidInstance;
-#endif
-}
+  // Directs this singleton class to create machine or user instance.
+  static void set_is_machine(bool is_machine);
+
+  HRESULT GetUserNetworkConfig(NetworkConfig** network_config);
+
+  // Gets the persisted CUP credentials.
+  HRESULT GetCupCredentials(CupCredentials* cup_credentials);
+
+  // Saves the CUP credentials in persistent storage.
+  HRESULT SetCupCredentials(const CupCredentials& cup_credentials);
+
+  void ClearCupCredentials();
+
+ private:
+  explicit NetworkConfigManager();
+  ~NetworkConfigManager();
+
+  static HRESULT CreateInstance();
+
+  void DeleteInstanceInternal();
+
+  HRESULT InitializeLock();
+  HRESULT InitializeRegistryKey();
+
+  HRESULT CreateNetworkConfigInstance(NetworkConfig** network_config_ptr,
+                                      bool is_machine);
+  HRESULT LoadCupCredentialsFromRegistry();
+  HRESULT SaveCupCredentialsToRegistry();
+
+  std::map<CString, NetworkConfig*> user_network_config_map_;
+  scoped_ptr<CupCredentials> cup_credentials_;
+
+  LLock lock_;
+
+  // Synchronizes access to CUP registry.
+  GLock global_lock_;
+
+  // Registry sub key where network configuration is persisted.
+  static const TCHAR* const kNetworkSubkey;
+
+  // Registry sub key where CUP configuration is persisted.
+  static const TCHAR* const kNetworkCupSubkey;
+
+  // The secret key must be encrypted by the caller. This class does not do any
+  // encryption.
+  static const TCHAR* const kCupClientSecretKey;      // CUP sk.
+  static const TCHAR* const kCupClientCookie;         // CUP c.
+
+  static const NetworkConfigManager* const kInvalidInstance;
+  static NetworkConfigManager* instance_;
+  static LLock instance_lock_;
+  static bool is_machine_;
+
+  DISALLOW_EVIL_CONSTRUCTORS(NetworkConfigManager);
+};
 
 }   // namespace omaha
 

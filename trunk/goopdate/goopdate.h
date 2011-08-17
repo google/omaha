@@ -21,6 +21,7 @@
 #include <atlstr.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "omaha/base/thread_pool.h"
 
 namespace omaha {
 
@@ -39,14 +40,22 @@ class Goopdate {
   explicit Goopdate(bool is_local_system);
   ~Goopdate();
 
+  // Gets the singleton instance of the class.
+  static Goopdate& Instance();
+
   // Runs the entry point for the application.
   HRESULT Main(HINSTANCE instance, const TCHAR* cmd_line, int cmd_show);
 
+  HRESULT QueueUserWorkItem(UserWorkItem* work_item, uint32 flags);
+
+  void Stop();
+
   bool is_local_system() const;
   CommandLineArgs args() const;
-  CString cmd_line() const;
 
  private:
+  static Goopdate* instance_;
+
   // Uses pimpl idiom to minimize dependencies on implementation details.
   scoped_ptr<detail::GoopdateImpl> impl_;
 

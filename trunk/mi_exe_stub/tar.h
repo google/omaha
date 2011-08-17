@@ -17,18 +17,17 @@
 #ifndef OMAHA_MI_EXE_STUB_TAR_H_
 #define OMAHA_MI_EXE_STUB_TAR_H_
 
-#pragma warning(push)
-// C4548: expression before comma has no effect
-#pragma warning(disable : 4548)
-#include <atlbase.h>
-#include <atlstr.h>
+#include <tchar.h>
 #include <atlsimpcoll.h>
-#pragma warning(pop)
+#include <atlstr.h>
+#include <windows.h>
 
-static const int NAME_SIZE = 100;
+namespace omaha {
+
+static const int kNameSize = 100;
 
 typedef struct {
-  char name[NAME_SIZE];
+  char name[kNameSize];
   char mode[8];
   char uid[8];
   char gid[8];
@@ -36,7 +35,7 @@ typedef struct {
   char mtime[12];
   char chksum[8];
   char typeflag;
-  char linkname[NAME_SIZE];
+  char linkname[kNameSize];
   char magic[6];
   char version[2];
   char uname[32];
@@ -51,12 +50,12 @@ typedef struct {
 // doesn't work with everything in the USTAR format.
 class Tar {
  public:
-  Tar(const char *target_dir, HANDLE file_handle, bool delete_when_done);
+  Tar(const CString& target_dir, HANDLE file_handle, bool delete_when_done);
   ~Tar();
 
-  typedef void (*TarFileCallback)(void *context, const char *filename);
+  typedef void (*TarFileCallback)(void* context, const TCHAR* filename);
 
-  void SetCallback(TarFileCallback callback, void *callback_context) {
+  void SetCallback(TarFileCallback callback, void* callback_context) {
     callback_ = callback;
     callback_context_ = callback_context;
   }
@@ -71,9 +70,11 @@ class Tar {
   bool delete_when_done_;
   CSimpleArray<CString> files_to_delete_;
   TarFileCallback callback_;
-  void *callback_context_;
+  void* callback_context_;
 
-  bool ExtractOneFile(bool *done);
+  bool ExtractOneFile(bool* done);
 };
+
+}  // namespace omaha
 
 #endif  // OMAHA_MI_EXE_STUB_TAR_H_

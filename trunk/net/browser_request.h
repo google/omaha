@@ -20,6 +20,7 @@
 #define OMAHA_NET_BROWSER_REQUEST_H__
 
 #include <list>
+#include "goopdate/omaha3_idl.h"
 #include "omaha/net/urlmon_request.h"
 
 namespace omaha {

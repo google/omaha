@@ -16,8 +16,8 @@
 
 #include <windows.h>
 #include <winhttp.h>
-#include "omaha/common/app_util.h"
-#include "omaha/common/string.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/string.h"
 #include "omaha/net/browser_request.h"
 #include "omaha/testing/unit_test.h"
 

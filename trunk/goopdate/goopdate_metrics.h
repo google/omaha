@@ -27,17 +27,6 @@ DECLARE_METRIC_integer(windows_minor_version);
 DECLARE_METRIC_integer(windows_sp_major_version);
 DECLARE_METRIC_integer(windows_sp_minor_version);
 
-// How many times we received a user/machine legacy handoff from an Omaha 1.0.x
-// or 1.1.x metainstaller. These are determined early on in the handoff process
-// whereas the 1.0 and 1.1 metrics are not determined until the XML is parsed so
-// the version metrics may not sum up to the user/machine sum if errors occur.
-DECLARE_METRIC_count(handoff_legacy_user);
-DECLARE_METRIC_count(handoff_legacy_machine);
-// How many times we received a handoff from an Omaha 1.0.x metainstaller.
-DECLARE_METRIC_count(handoff_legacy_10);
-// How many times we received a handoff from an Omaha 1.1.x metainstaller.
-DECLARE_METRIC_count(handoff_legacy_11);
-
 // Crash metrics.
 //
 // A crash can be handled in one of the following ways: uploaded, rejected by

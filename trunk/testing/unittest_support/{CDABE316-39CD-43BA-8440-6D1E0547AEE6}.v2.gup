@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <app appid="{CDABE316-39CD-43BA-8440-6D1E0547AEE6}" status="ok">
+    <updatecheck Version="1.2.3.4"
+                 arguments="-baz"
+                 codebase="http://dl.google.com/foo/install/1.2.3.4/foo_installer.exe"
+                 hash="abcdef" needsadmin="false"
+                 onsuccess="exitsilentlyonlaunchcmd" size="12345678"
+                 status="ok"/>
+    <!-- "system_level" is not included in any of the definitions. needsadmin
+          controls this. -->
+    <data index="verboselogging" name="install" status="ok">
+      {
+        "distribution": {
+          "verbose_logging": true
+        }
+      }
+    </data>
+    <data index="foobarapp" name="install" status="ok">
+      {
+        "distribution": {
+          "skip_first_run_ui": true,
+          "show_welcome_page": true,
+          "import_search_engine": true,
+          "import_history": false,
+          "create_all_shortcuts": true,
+          "do_not_launch_foo": true,
+          "make_foo_default": false,
+          "verbose_logging": false
+        }
+      }
+    </data>
+  </app>
+</gupdate>

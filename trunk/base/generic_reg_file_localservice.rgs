@@ -1,0 +1,28 @@
+HKLM
+{
+  NoRemove SOFTWARE
+  {
+    NoRemove Classes
+    {
+      '%PROGID%.%VERSION%' = s '%DESCRIPTION%'
+      {
+        CLSID = s '%CLSID%'
+      }
+      '%PROGID%' = s '%DESCRIPTION%'
+      {
+        CLSID = s '%CLSID%'
+        CurVer = s '%PROGID%.%VERSION%'
+      }
+      NoRemove CLSID
+      {
+        ForceRemove '%CLSID%' = s '%DESCRIPTION%'
+        {
+          ProgID = s '%PROGID%.%VERSION%'
+          VersionIndependentProgID = s '%PROGID%'
+          val AppID = s '%APPID%'
+        }
+      }
+    }
+  }
+}
+

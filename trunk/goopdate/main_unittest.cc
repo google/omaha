@@ -15,28 +15,27 @@
 
 
 #include <shlwapi.h>
-
+#include "omaha/base/constants.h"
+#include "omaha/common/const_goopdate.h"
 #include "omaha/goopdate/main.h"
-#include "omaha/goopdate/const_goopdate.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
 
-TEST(MainTest, EntryPoint) {
+  TEST(MainTest, EntryPoint) {
   TCHAR path[MAX_PATH] = {0};
   ASSERT_TRUE(::GetModuleFileName(NULL, path, MAX_PATH));
   ::PathRemoveFileSpec(path);
-  ASSERT_TRUE(::PathAppend(path, omaha::kGoopdateDllName));
+  ASSERT_TRUE(::PathAppend(path, kOmahaDllName));
 
   HMODULE module(::LoadLibraryEx(path, NULL, 0));
   ASSERT_TRUE(module);
 
   DllEntry dll_entry = reinterpret_cast<DllEntry>(
-      ::GetProcAddress(module, omaha::kGoopdateDllEntryAnsi));
+      ::GetProcAddress(module, kGoopdateDllEntryAnsi));
   ASSERT_TRUE(dll_entry);
 
   ::FreeLibrary(module);
 }
 
 }  // namespace omaha
-

@@ -28,7 +28,7 @@
 #include <tchar.h>
 #include <strsafe.h>
 
-#include "omaha/common/atlassert.h"   // Redefines ATLASSERT.
+#include "omaha/base/atlassert.h"   // Redefines ATLASSERT.
 
 // C4061: enumerate is not explicitly handled by a case label
 // C4265: class has virtual functions, but destructor is not virtual
@@ -57,7 +57,7 @@
 
 #if (_MSC_VER < 1400)
 // TODO(omaha): fix the atlconv for VC8.
-#include "omaha/common/atlconvfix.h"
+#include "omaha/base/atlconvfix.h"
 #endif
 
 #pragma warning(push)
@@ -66,8 +66,6 @@
 #include "base/basictypes.h"
 #pragma warning(pop)
 
-#ifdef UNITTEST
-#include "third_party/gtest/include/gtest/gtest.h"
-#endif  // UNITTEST
+#include "omaha/third_party/gtest/include/gtest/gtest.h"
 
 #endif  // OMAHA_PRECOMPILE_PRECOMPILE_H__

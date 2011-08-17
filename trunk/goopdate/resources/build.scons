@@ -76,12 +76,12 @@ for omaha_version_info in local_env['omaha_versions_info']:
         'resdll_main.cc',
         lang_res,
         # Needed to prevent rebuilding of the lib.
-        '$MAIN_DIR/installers/resource_only_dll.def'
+        'resource_only_dll.def'
         ]
 
     # Build the (unsigned) DLL
     unsigned_dll = lang_env.ComponentLibrary(
-        lib_name='%s/%sgoopdateres_unsigned_%s.dll' % (lang, prefix, lang),
+        lib_name='%s/%sgoopdateres_unsigned_%s' % (lang, prefix, lang),
         source=lang_inputs
     )
 
@@ -91,4 +91,3 @@ for omaha_version_info in local_env['omaha_versions_info']:
     )
 
     env.Replicate('$STAGING_DIR', signed_dll)
-

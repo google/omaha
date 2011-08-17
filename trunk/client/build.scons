@@ -1,0 +1,109 @@
+# Copyright 2010 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+Import('env')
+
+local_env = env.Clone()
+
+local_env['CPPPATH'] += [
+    '$OBJ_ROOT',  # Needed for generated files.
+    ]
+
+inputs = [
+    'bundle_creator.cc',
+    'bundle_installer.cc',
+    'client_metrics.cc',
+    'client_utils.cc',
+    'help_url_builder.cc',
+    'install.cc',
+    'install_apps.cc',
+    'install_self.cc',
+    'shutdown_events.cc',
+    'ua.cc',
+    ]
+
+# Build these into a library.
+local_env.ComponentStaticLibrary('client', inputs)
+
+no_xml_parser_test_env = env.Clone()
+no_xml_parser_test_env.OmahaUnittest(
+    name='install_self_no_xml_parser_unittest',
+    source=[
+        'install_self_unittest_no_xml_parser.cc',
+    ],
+    LIBS=[
+        '$LIB_DIR/breakpad.lib',
+        '$LIB_DIR/client.lib',
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/logging.lib',       # Required by statsreport.
+        '$LIB_DIR/service.lib',
+        '$LIB_DIR/setup.lib',
+        '$LIB_DIR/statsreport.lib',   # Required by anything using metrics.
+        '$LIB_DIR/ui.lib',
+        'crypt32.lib',    # Required by base.
+        'msi.lib',        # Required by setup.
+        'mstask.lib',     # Required by common.
+        'taskschd.lib',
+        'wininet.lib',
+        'wintrust.lib',   # Required by base.
+
+        # TODO(omaha3): These are required because setup must include
+        # service_main.h, which includes all the COM headers.
+        # The test source also includes fake definitions for IIDs from
+        # omaha3_idl, bits, and iphlpapi.lib.
+        '$LIB_DIR/core.lib',
+        '$LIB_DIR/goopdate_lib.lib',
+        '$LIB_DIR/net.lib',
+        '$LIB_DIR/security.lib',
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+)
+
+utils_test_env = env.Clone()
+utils_test_env.OmahaUnittest(
+    name='client_utils_unittest',
+    source=[
+        'client_utils_unittest.cc',
+    ],
+    LIBS=[
+        '$LIB_DIR/client.lib',
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/logging.lib',       # Required by statsreport.
+        '$LIB_DIR/omaha3_idl.lib',
+        '$LIB_DIR/statsreport.lib',
+        '$LIB_DIR/ui.lib',
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+    is_small_tests_using_resources=True,
+)
+
+help_url_builder_test_env = env.Clone()
+help_url_builder_test_env.OmahaUnittest(
+    name='help_url_builder_unittest',
+    source=[
+        'help_url_builder_test.cc',
+    ],
+    LIBS=[
+        '$LIB_DIR/client.lib',
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/omaha3_idl.lib',  # Required by common
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+    is_small_tests_using_resources=True,
+)

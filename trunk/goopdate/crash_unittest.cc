@@ -14,18 +14,22 @@
 // ========================================================================
 
 #include <string>
+#include "omaha/base/app_util.h"
+#include "omaha/base/atl_regexp.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/const_addresses.h"
+#include "omaha/base/const_object_names.h"
+#include "omaha/base/error.h"
+#include "omaha/base/file.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/time.h"
+#include "omaha/base/user_info.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/event_logger.h"
+#include "omaha/common/goopdate_utils.h"
 #include "omaha/goopdate/crash.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/constants.h"
-#include "omaha/common/const_addresses.h"
-#include "omaha/common/const_object_names.h"
-#include "omaha/common/file.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/time.h"
-#include "omaha/common/user_info.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
-#include "omaha/goopdate/goopdate_utils.h"
 #include "omaha/testing/unit_test.h"
 
 // TODO(omaha): Modify the tests to avoid writing files to the staging
@@ -121,9 +125,24 @@ class CrashTest : public testing::Test {
     }
   }
 
-
   static HRESULT StartSenderWithCommandLine(CString* cmd_line) {
     return Crash::StartSenderWithCommandLine(cmd_line);
+  }
+
+  // Returns the strings of the last Update2 event in the event log.
+  static CString GetLastCrashEventStrings() {
+    const size_t kBufferSize = 1024;
+    uint8 buffer[kBufferSize] = {0};
+    EVENTLOGRECORD* rec = reinterpret_cast<EVENTLOGRECORD*>(buffer);
+
+    rec->Length = kBufferSize;
+    EXPECT_SUCCEEDED(EventLogger::ReadLastEvent(_T("Update2"), rec));
+    EXPECT_EQ(kCrashUploadEventId, rec->EventID);
+
+    const TCHAR* strings = reinterpret_cast<const TCHAR*>(
+        (reinterpret_cast<uint8*>(buffer + rec->StringOffset)));
+
+    return CString(strings);
   }
 
   CString module_dir_;
@@ -210,6 +229,14 @@ TEST_F(CrashTest, Report_ProductCrash) {
   ASSERT_SUCCEEDED(Crash::Report(true, crash_filename,
                                  custom_info_filename, _T("")));
 
+  // Check the 'crash uploaded' event log.
+  const CString strings = GetLastCrashEventStrings();
+
+  // Verify that the strings include the Id token.
+  AtlRE crash_id_regex(_T("Id={\\h+}."));
+  CString crash_id;
+  EXPECT_TRUE(AtlRE::PartialMatch(strings, crash_id_regex, &crash_id));
+
   // The crash artifacts should be deleted after the crash is reported.
   EXPECT_FALSE(File::Exists(crash_filename));
   EXPECT_FALSE(File::Exists(custom_info_filename));
@@ -218,9 +245,13 @@ TEST_F(CrashTest, Report_ProductCrash) {
 // Tests generation of a minidump and uploading it to the staging server.
 TEST_F(CrashTest, WriteMinidump) {
   ASSERT_TRUE(!Crash::crash_dir_.IsEmpty());
-  ASSERT_TRUE(ExceptionHandler::WriteMinidump(Crash::crash_dir_.GetString(),
-                                              &MinidumpCallback,
-                                              NULL));
+
+  MINIDUMP_TYPE dump_type = MiniDumpNormal;
+  ExceptionHandler handler(Crash::crash_dir_.GetString(), NULL,
+                           &MinidumpCallback, NULL,
+                           ExceptionHandler::HANDLER_NONE,
+                           dump_type, NULL, NULL);
+  ASSERT_TRUE(handler.WriteMinidump());
 }
 
 // Tests the retrieval of the exception information from an existing mini dump.
@@ -257,7 +288,8 @@ TEST_F(CrashTest, IsCrashReportProcess) {
 
 TEST_F(CrashTest, GetProductName) {
   Crash::ParameterMap parameters;
-  EXPECT_STREQ(_T("Google Error Reporting"), Crash::GetProductName(parameters));
+  EXPECT_STREQ(SHORT_COMPANY_NAME _T(" Error Reporting"),
+               Crash::GetProductName(parameters));
 
   parameters[_T("prod")] = _T("Update2");
   EXPECT_STREQ(_T("Update2"), Crash::GetProductName(parameters));
@@ -291,9 +323,10 @@ TEST_F(CrashTest, StartServer) {
 
   // Try opening the crash services pipe.
   CString user_sid;
-  EXPECT_HRESULT_SUCCEEDED(user_info::GetCurrentUser(NULL, NULL, &user_sid));
+  EXPECT_HRESULT_SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid));
   CString pipe_name;
-  pipe_name.AppendFormat(_T("\\\\.\\pipe\\GoogleCrashServices\\%s"), user_sid);
+  pipe_name.AppendFormat(_T("\\\\.\\pipe\\%sCrashServices\\%s"),
+                         SHORT_COMPANY_NAME, user_sid);
   scoped_pipe pipe_handle(::CreateFile(pipe_name,
                                        GENERIC_READ | GENERIC_WRITE,
                                        FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -358,7 +391,7 @@ TEST_F(CrashTest, BuildPipeSecurityAttributes) {
 
 TEST_F(CrashTest, StartSenderWithCommandLine) {
   // Negative test.
-  CString filename(_T(""));
+  CString filename(_T("DoesNotExist.exe"));
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
             StartSenderWithCommandLine(&filename));
 }

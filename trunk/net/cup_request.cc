@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,18 +21,19 @@
 #include <atlconv.h>
 #include <atlstr.h>
 #include <vector>
-#include "omaha/common/const_addresses.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/encrypt.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/path.h"
-#include "omaha/common/security/b64.h"
-#include "omaha/common/security/hmac.h"
-#include "omaha/common/security/rsa.h"
-#include "omaha/common/security/sha.h"
-#include "omaha/common/string.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/const_addresses.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/encrypt.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/path.h"
+#include "omaha/base/safe_format.h"
+#include "omaha/base/security/b64.h"
+#include "omaha/base/security/hmac.h"
+#include "omaha/base/security/rsa.h"
+#include "omaha/base/security/sha.h"
+#include "omaha/base/string.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/cup_utils.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/net_utils.h"
@@ -53,6 +54,8 @@ class CupRequestImpl {
   HRESULT Close();
   HRESULT Send();
   HRESULT Cancel();
+  HRESULT Pause();
+  HRESULT Resume();
   std::vector<uint8> GetResponse() const;
   HRESULT QueryHeadersString(uint32 info_level,
                                     const TCHAR* name,
@@ -65,13 +68,15 @@ class CupRequestImpl {
   void set_session_handle(HINTERNET session_handle);
   void set_url(const CString& url);
   void set_request_buffer(const void* buffer, size_t buffer_length);
-  void set_network_configuration(const Config& network_config);
+  void set_proxy_configuration(const ProxyConfig& proxy_config);
   void set_filename(const CString& filename);
   void set_low_priority(bool low_priority);
   void set_callback(NetworkRequestCallback* callback);
   void set_additional_headers(const CString& additional_headers);
+  void set_preserve_protocol(bool preserve_protocol);
   CString user_agent() const;
   void set_user_agent(const CString& user_agent);
+  void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config);
 
  private:
   HRESULT DoSend();
@@ -87,8 +92,9 @@ class CupRequestImpl {
   // Saves the {sk, c} credentials. The key is encrypted before saving it.
   HRESULT SaveCredentials(const std::vector<uint8>& sk, const CStringA& c);
 
-  // Replaces the https protocol scheme with http.
-  CString BuildInnerRequestUrl(const CString& url);
+  // Replaces the https protocol scheme with http if changing protocol is
+  // allowed.
+  HRESULT BuildInnerRequestUrl(const CString& url, CString* inner_url);
 
   // The transient state of the request, so that we can start always with a
   // clean slate even though the same instance is being reuse across requests.
@@ -114,6 +120,9 @@ class CupRequestImpl {
   scoped_ptr<TransientCupState> cup_;
 
   CStringA url_;                        // The original url.
+  CString additional_headers_;
+  bool preserve_protocol_;              // Should not change request scheme if
+                                        // true.
   const void* request_buffer_;          // Contains the request body for POST.
   size_t      request_buffer_length_;   // Length of the request body.
   std::vector<uint8> entropy_;          // Optional entropy pass by the caller,
@@ -146,7 +155,8 @@ const RSA::PublicKeyInstance CupRequestImpl::kCupTestPublicKey =
 ;   // NOLINT
 
 CupRequestImpl::CupRequestImpl(HttpRequestInterface* http_request)
-    : request_buffer_(NULL),
+    : preserve_protocol_(false),
+      request_buffer_(NULL),
       request_buffer_length_(0),
       public_key_(NULL) {
   ASSERT1(http_request);
@@ -230,9 +240,9 @@ HRESULT CupRequestImpl::BuildRequest() {
 
   // Compute the versioned challenge (v|w) as
   // decimal-v:base64-encoded-rsa-wrapper.
-  cup_->vw.Format("%d:%s",
-                  rsa_->version(),
-                  cup_utils::B64Encode(&cup_->r.front(), cup_->r.size()));
+  SafeCStringAFormat(&cup_->vw, "%d:%s",
+                     rsa_->version(),
+                     cup_utils::B64Encode(&cup_->r.front(), cup_->r.size()));
 
   // Compute the url of the CUP request.
   // Append a query string or append to the existing query string if any.
@@ -404,62 +414,55 @@ HRESULT CupRequestImpl::AuthenticateResponse() {
 HRESULT CupRequestImpl::LoadCredentials(std::vector<uint8>* sk, CStringA* c) {
   ASSERT1(sk);
   ASSERT1(c);
-  NetworkConfig& network_config = NetworkConfig::Instance();
+  NetworkConfig* network_config = NULL;
+  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+  HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    return hr;
+  }
   CupCredentials cup_credentials;
-  HRESULT hr = network_config.GetCupCredentials(&cup_credentials);
-  if (FAILED(hr)) {
-    return hr;
+  hr = network_config->GetCupCredentials(&cup_credentials);
+  if (SUCCEEDED(hr)) {
+    sk->swap(cup_credentials.sk);
+    *c = cup_credentials.c;
   }
-  std::vector<uint8> decrypted_sk;
-  hr = DecryptData(NULL,
-                   0,
-                   &cup_credentials.sk.front(),
-                   cup_credentials.sk.size(),
-                   &decrypted_sk);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  sk->swap(decrypted_sk);
-  c->SetString(cup_credentials.c);
-  return S_OK;
+  return hr;
 }
 
 HRESULT CupRequestImpl::SaveCredentials(const std::vector<uint8>& sk,
                                         const CStringA& c) {
-  // Update the client persistent state if the response has been validated.
-  // The client key is encrypted while on the disk.
-  NetworkConfig& network_config = NetworkConfig::Instance();
-  CupCredentials cup_credentials;
-  cup_credentials.c.SetString(c);
-  HRESULT hr = EncryptData(NULL,
-                           0,
-                           &sk.front(),
-                           sk.size(),
-                           &cup_credentials.sk);
+  NetworkConfig* network_config = NULL;
+  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+  HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
   if (FAILED(hr)) {
     return hr;
   }
-  // Try to persist the new client credentials.
-  hr = network_config.SetCupCredentials(&cup_credentials);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  return S_OK;
+
+  CupCredentials  cup_credentials;
+  cup_credentials.sk = sk;
+  cup_credentials.c = c;
+  return network_config->SetCupCredentials(&cup_credentials);
 }
 
 HRESULT CupRequestImpl::DoSend() {
   // The url of the inner request includes the versioned challenge.
   // It replaces the protocol from https to http since CUP over https is
   // not supported.
-  http_request_->set_url(BuildInnerRequestUrl(CString(cup_->request_url)));
+  CString inner_request_url;
+  HRESULT hr = BuildInnerRequestUrl(CString(cup_->request_url),
+                                    &inner_request_url);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  http_request_->set_url(inner_request_url);
 
   // Prepare additional headers to send.
-  CString additional_headers;
+  CString additional_headers(additional_headers_);
 
   // The client proof (cp) is sent as the "If-Match" header.
   ASSERT1(!cup_->cp.IsEmpty());
   CStringA if_match_header;
-  if_match_header.Format("\"%s\"", cup_->cp);
+  SafeCStringAFormat(&if_match_header, "\"%s\"", cup_->cp);
   additional_headers += HttpClient::BuildRequestHeader(_T("If-Match"),
                                                        CA2T(if_match_header));
 
@@ -473,13 +476,14 @@ HRESULT CupRequestImpl::DoSend() {
   NET_LOG(L5, (_T("[CUP request][%s]"),
                BufferToPrintableString(request_buffer_,
                                        request_buffer_length_)));
-  HRESULT hr = http_request_->Send();
+  hr = http_request_->Send();
   if (FAILED(hr)) {
     return hr;
   }
   http_request_->GetResponse().swap(cup_->response);
   int status_code(http_request_->GetHttpStatusCode());
-  if (status_code != HTTP_STATUS_OK) {
+  if (status_code != HTTP_STATUS_OK &&
+      status_code != HTTP_STATUS_PARTIAL_CONTENT) {
     return HRESULTFromHttpStatusCode(status_code);
   }
   NET_LOG(L5, (_T("[CUP response][%s]"),
@@ -506,6 +510,14 @@ HRESULT CupRequestImpl::DoSend() {
 
 HRESULT CupRequestImpl::Cancel() {
   return http_request_->Cancel();
+}
+
+HRESULT CupRequestImpl::Pause() {
+  return http_request_->Pause();
+}
+
+HRESULT CupRequestImpl::Resume() {
+  return http_request_->Resume();
 }
 
 std::vector<uint8> CupRequestImpl::GetResponse() const {
@@ -545,8 +557,8 @@ void CupRequestImpl::set_request_buffer(const void* buffer,
   http_request_->set_request_buffer(request_buffer_, request_buffer_length_);
 }
 
-void CupRequestImpl::set_network_configuration(const Config& network_config) {
-  http_request_->set_network_configuration(network_config);
+void CupRequestImpl::set_proxy_configuration(const ProxyConfig& proxy_config) {
+  http_request_->set_proxy_configuration(proxy_config);
 }
 
 void CupRequestImpl::set_filename(const CString& filename) {
@@ -562,7 +574,11 @@ void CupRequestImpl::set_callback(NetworkRequestCallback* callback) {
 }
 
 void CupRequestImpl::set_additional_headers(const CString& additional_headers) {
-  http_request_->set_additional_headers(additional_headers);
+  additional_headers_ = additional_headers;
+}
+
+void CupRequestImpl::set_preserve_protocol(bool preserve_protocol) {
+  preserve_protocol_ = preserve_protocol;
 }
 
 CString CupRequestImpl::user_agent() const {
@@ -571,6 +587,10 @@ CString CupRequestImpl::user_agent() const {
 
 void CupRequestImpl::set_user_agent(const CString& user_agent) {
   http_request_->set_user_agent(user_agent);
+}
+
+void CupRequestImpl::set_proxy_auth_config(const ProxyAuthConfig& config) {
+  http_request_->set_proxy_auth_config(config);
 }
 
 void CupRequestImpl::SetEntropy(const void* data, size_t data_length) {
@@ -594,13 +614,23 @@ HRESULT CupRequestImpl::InitializeEntropy() {
   return S_OK;
 }
 
-CString CupRequestImpl::BuildInnerRequestUrl(const CString& url) {
-  CString result(url);
-  if (String_StartsWith(result, kHttpsProtoScheme, true)) {
-    result = url.Mid(_tcslen(kHttpsProtoScheme));
-    result.Insert(0, kHttpProtoScheme);
+HRESULT CupRequestImpl::BuildInnerRequestUrl(const CString& url,
+                                             CString* inner_url) {
+  ASSERT1(inner_url);
+  if (!String_StartsWith(url, kHttpsProtoScheme, true)) {
+    *inner_url = url;
+    return S_OK;
   }
-  return result;
+
+  if (preserve_protocol_) {
+    // Request must be sent through https. So return error here so we can
+    // fall back to the next request type in the chain without CUP.
+    return HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+  }
+
+  *inner_url = url.Mid(_tcslen(kHttpsProtoScheme));
+  inner_url->Insert(0, kHttpProtoScheme);
+  return S_OK;
 }
 
 }   // namespace detail
@@ -624,6 +654,14 @@ HRESULT CupRequest::Send() {
 
 HRESULT CupRequest::Cancel() {
   return impl_->Cancel();
+}
+
+HRESULT CupRequest::Pause() {
+  return impl_->Pause();
+}
+
+HRESULT CupRequest::Resume() {
+  return impl_->Resume();
 }
 
 std::vector<uint8> CupRequest::GetResponse() const {
@@ -660,8 +698,8 @@ void CupRequest::set_request_buffer(const void* buffer, size_t buffer_length) {
   impl_->set_request_buffer(buffer, buffer_length);
 }
 
-void CupRequest::set_network_configuration(const Config& network_config) {
-  impl_->set_network_configuration(network_config);
+void CupRequest::set_proxy_configuration(const ProxyConfig& proxy_config) {
+  impl_->set_proxy_configuration(proxy_config);
 }
 
 void CupRequest::set_filename(const CString& filename) {
@@ -680,12 +718,20 @@ void CupRequest::set_additional_headers(const CString& additional_headers) {
   impl_->set_additional_headers(additional_headers);
 }
 
+void CupRequest::set_preserve_protocol(bool preserve_protocol) {
+  impl_->set_preserve_protocol(preserve_protocol);
+}
+
 CString CupRequest::user_agent() const {
   return impl_->user_agent();
 }
 
 void CupRequest::set_user_agent(const CString& user_agent) {
   impl_->set_user_agent(user_agent);
+}
+
+void CupRequest::set_proxy_auth_config(const ProxyAuthConfig& config) {
+  impl_->set_proxy_auth_config(config);
 }
 
 void CupRequest::SetEntropy(const void* data, size_t data_length) {

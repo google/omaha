@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,33 +26,37 @@
 #include <map>
 #include <string>
 #include <vector>
-#include "omaha/common/app_util.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/const_object_names.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/module_utils.h"
+#include "omaha/base/path.h"
+#include "omaha/base/program_instance.h"
+#include "omaha/base/reactor.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/base/service_utils.h"
+#include "omaha/base/shutdown_handler.h"
+#include "omaha/base/system.h"
+#include "omaha/base/time.h"
+#include "omaha/base/user_info.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/app_registry_utils.h"
 #include "omaha/common/const_cmd_line.h"
-#include "omaha/common/const_object_names.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/module_utils.h"
-#include "omaha/common/path.h"
-#include "omaha/common/reactor.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/common/service_utils.h"
-#include "omaha/common/shutdown_handler.h"
-#include "omaha/common/system.h"
-#include "omaha/common/time.h"
-#include "omaha/common/user_info.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
+#include "omaha/common/command_line_builder.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/oem_install_utils.h"
+#include "omaha/common/scheduled_task_utils.h"
+#include "omaha/common/stats_uploader.h"
 #include "omaha/core/core_metrics.h"
-#include "omaha/core/legacy_manifest_handler.h"
 #include "omaha/core/scheduler.h"
 #include "omaha/core/system_monitor.h"
-#include "omaha/goopdate/command_line_builder.h"
-#include "omaha/goopdate/config_manager.h"
-#include "omaha/goopdate/crash.h"
-#include "omaha/goopdate/program_instance.h"
-#include "omaha/goopdate/goopdate_utils.h"
-#include "omaha/goopdate/stats_uploader.h"
+#include "omaha/goopdate/resource_manager.h"
+#include "omaha/goopdate/worker.h"
+#include "omaha/net/network_config.h"
+#include "omaha/setup/setup_service.h"
 
 namespace omaha {
 
@@ -88,26 +92,27 @@ bool Core::AreScheduledTasksHealthy() const {
     return false;
   }
 
-  if (!goopdate_utils::IsInstalledGoopdateTaskUA(is_system_)) {
+  if (!scheduled_task_utils::IsInstalledGoopdateTaskUA(is_system_)) {
     ++metric_core_run_scheduled_task_missing;
     CORE_LOG(LE, (_T("[UA Task not installed]")));
     return false;
   }
 
-  if (goopdate_utils::IsDisabledGoopdateTaskUA(is_system_)) {
+  if (scheduled_task_utils::IsDisabledGoopdateTaskUA(is_system_)) {
     ++metric_core_run_scheduled_task_disabled;
     CORE_LOG(LE, (_T("[UA Task disabled]")));
     return false;
   }
 
   HRESULT ua_task_last_exit_code =
-      goopdate_utils::GetExitCodeGoopdateTaskUA(is_system_);
+      scheduled_task_utils::GetExitCodeGoopdateTaskUA(is_system_);
 
   if (ua_task_last_exit_code == SCHED_S_TASK_HAS_NOT_RUN &&
       !ConfigManager::Is24HoursSinceInstall(is_system_)) {
     // Not 24 hours yet since install or update. Let us give the UA task the
     // benefit of the doubt, and assume all is well for right now.
-    CORE_LOG(L3, (_T("[Not yet 24 hours since install/update]")));
+    CORE_LOG(L3, (_T("[Core::AreScheduledTasksHealthy]")
+                  _T("[Not yet 24 hours since install/update]")));
     ua_task_last_exit_code = S_OK;
   }
 
@@ -121,37 +126,17 @@ bool Core::AreScheduledTasksHealthy() const {
   return true;
 }
 
-bool Core::IsServiceHealthy() const {
-  if (!is_system_) {
-    return true;
-  }
-
-  if (!goopdate_utils::IsServiceInstalled()) {
-    ++metric_core_run_service_missing;
-    CORE_LOG(LE, (_T("[GoogleUpdate Service is not installed]")));
-    return false;
-  }
-
-  if (ServiceUtils::IsServiceDisabled(
-      ConfigManager::GetCurrentServiceName())) {
-    ++metric_core_run_service_disabled;
-    CORE_LOG(LE, (_T("[GoogleUpdate Service is disabled]")));
-    return false;
-  }
-
-  return true;
-}
-
 bool Core::IsCheckingForUpdates() const {
   if (!ConfigManager::Is24HoursSinceInstall(is_system_)) {
-    CORE_LOG(L3, (_T("[Not yet 24 hours since install/update]")));
+    CORE_LOG(L3, (_T("[Core::IsCheckingForUpdates]")
+                  _T("[Not yet 24 hours since install/update]")));
     return true;
   }
 
-  ConfigManager* cm = ConfigManager::Instance();
+  const ConfigManager& cm = *ConfigManager::Instance();
   const int k14DaysSec = 14 * 24 * 60 * 60;
 
-  if (cm->GetTimeSinceLastCheckedSec(is_system_) >= k14DaysSec) {
+  if (cm.GetTimeSinceLastCheckedSec(is_system_) >= k14DaysSec) {
     ++metric_core_run_not_checking_for_updates;
     CORE_LOG(LE, (_T("[LastChecked older than 14 days]")));
     return false;
@@ -170,19 +155,17 @@ bool Core::IsCheckingForUpdates() const {
 //
 // Under these conditions, Omaha uses the built-in scheduler hosted by the core
 // and it keeps the core running.
-//
-// In addition, for the machine GoogleUpdate, the Core will run all the time if
-// the service is not installed, or is disabled. In this case, Omaha uses the
-// elevator interface hosted by the core, and this keeps the core running.
 bool Core::ShouldRunForever() const {
+  CORE_LOG(L3, (_T("[Core::ShouldRunForever]")));
+
   // The methods are being called individually to enable metrics capture.
   bool are_scheduled_tasks_healthy(AreScheduledTasksHealthy());
-  bool is_service_healthy(IsServiceHealthy());
   bool is_checking_for_updates(IsCheckingForUpdates());
 
-  return !are_scheduled_tasks_healthy ||
-         !is_service_healthy ||
-         !is_checking_for_updates;
+  bool result = !are_scheduled_tasks_healthy ||
+                !is_checking_for_updates;
+  CORE_LOG(L1, (_T("[Core::ShouldRunForever][%u]"), result));
+  return result;
 }
 
 
@@ -191,7 +174,11 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   is_system_ = is_system;
   is_crash_handler_enabled_ = is_crash_handler_enabled;
 
-  if (ConfigManager::Instance()->IsOemInstalling(is_system_)) {
+  CORE_LOG(L1, (_T("[is_system_: %d][is_crash_handler_enabled_: %d]"),
+                is_system_, is_crash_handler_enabled_));
+
+  const ConfigManager& cm = *ConfigManager::Instance();
+  if (oem_install_utils::IsOemInstalling(is_system_)) {
     // Exit immediately while an OEM is installing Windows. This prevents cores
     // or update workers from being started by the Scheduled Task or other means
     // before the system is sealed.
@@ -203,25 +190,19 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   // Do a code red check as soon as possible.
   StartCodeRed();
 
-  CORE_LOG(L2, (_T("[IsGoogler %d]"), ConfigManager::Instance()->IsGoogler()));
+  CORE_LOG(L2, (_T("[IsInternalUser: %d]"), cm.IsInternalUser()));
 
   NamedObjectAttributes single_core_attr;
-  GetNamedObjectAttributes(kCoreSingleInstance, is_system, &single_core_attr);
+  GetNamedObjectAttributes(kCoreSingleInstance, is_system_, &single_core_attr);
   ProgramInstance instance(single_core_attr.name);
   bool is_already_running = !instance.EnsureSingleInstance();
   if (is_already_running) {
-    OPT_LOG(L1, (_T("[another core instance is already running]")));
+    OPT_LOG(L1, (_T("[Another core instance is already running]")));
     return S_OK;
   }
 
   // TODO(omaha): the user Omaha core should run at medium integrity level and
   // it should deelevate itself if it does not, see bug 1549842.
-
-  // Clean up the initial install directory and ignore the errors.
-  HRESULT hr = CleanUpInitialManifestDirectory();
-  if (FAILED(hr)) {
-    CORE_LOG(LW, (_T("[CleanUpInitialManifestDirectory failed][0x%08x]"), hr));
-  }
 
   // Start the crash handler if necessary.
   if (is_crash_handler_enabled_) {
@@ -235,7 +216,7 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
     return S_OK;
   }
 
-  // TODO(Omaha): Delay starting update worker when run at startup.
+  // TODO(omaha): Delay starting update worker when run at startup.
   StartUpdateWorkerInternal();
 
   // Force the main thread to create a message queue so any future WM_QUIT
@@ -246,16 +227,9 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
 
   reactor_.reset(new Reactor);
   shutdown_handler_.reset(new ShutdownHandler);
-  hr = shutdown_handler_->Initialize(reactor_.get(), this, is_system_);
+  HRESULT hr = shutdown_handler_->Initialize(reactor_.get(), this, is_system_);
   if (FAILED(hr)) {
     return hr;
-  }
-
-  if (!is_system_) {
-    // We watch the legacy manifest install directory only if we are the
-    // user core. The omaha1 -> omaha2 machine hand off occurs using the
-    // /UI cmd line switch.
-    VERIFY1(SUCCEEDED(InitializeManifestDirectoryWatcher()));
   }
 
   scheduler_.reset(new Scheduler(*this));
@@ -268,20 +242,8 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   VERIFY1(SUCCEEDED(system_monitor_->Initialize(true)));
   system_monitor_->set_observer(this);
 
-  if (is_system_) {
-     VERIFY(SUCCEEDED(RegisterCoreProxy()),
-            (_T("The core may have been started when the registered version ")
-             _T("of Google Update does not exist or one is not registered.")));
-  }
-
   // Start processing messages and events from the system.
-  hr = DoRun();
-
-  if (is_system) {
-    UnregisterCoreProxy();
-  }
-
-  return hr;
+  return DoRun();
 }
 
 // Signals the core to shutdown. The shutdown method is called by a thread
@@ -293,7 +255,13 @@ HRESULT Core::Shutdown() {
 }
 
 HRESULT Core::ShutdownInternal() const {
-  OPT_LOG(L1, (_T("[Google Update is shutting down...]")));
+  LONG atl_module_count(const_cast<Core*>(this)->GetLockCount());
+  if (atl_module_count > 0) {
+    CORE_LOG(L1, (_T("[Core COM server in use][%d]"), atl_module_count));
+    return S_OK;
+  }
+
+  OPT_LOG(L1, (_T("[Google Update core is shutting down...]")));
   ASSERT1(::GetCurrentThreadId() != main_thread_id_);
   if (::PostThreadMessage(main_thread_id_, WM_QUIT, 0, 0)) {
     return S_OK;
@@ -350,19 +318,11 @@ HRESULT Core::StartUpdateWorker() const {
 }
 
 HRESULT Core::StartUpdateWorkerInternal() const {
-  // The uninstall check is tentative. There are stronger checks, protected
-  // by locks, which are done by the worker process.
-  size_t num_clients(0);
-  const bool is_uninstall =
-      FAILED(goopdate_utils::GetNumClients(is_system_, &num_clients)) ||
-      num_clients <= 1;
-
-  CORE_LOG(L2, (_T("[Core::StartUpdateWorker][%u]"), num_clients));
+  CORE_LOG(L2, (_T("[Core::StartUpdateWorkerInternal]")));
 
   CString exe_path = goopdate_utils::BuildGoogleUpdateExePath(is_system_);
   CommandLineBuilder builder(COMMANDLINE_MODE_UA);
-  builder.set_install_source(kCmdLineInstallSourceCore);
-  builder.set_is_uninstall_set(is_uninstall);
+  builder.set_install_source(kCmdLineInstallSource_Core);
   CString cmd_line = builder.GetCommandLineArgs();
   HRESULT hr = System::StartProcessWithArgs(exe_path, cmd_line);
   if (SUCCEEDED(hr)) {
@@ -398,67 +358,14 @@ HRESULT Core::StartCodeRed() const {
 HRESULT Core::StartCrashHandler() const {
   CORE_LOG(L2, (_T("[Core::StartCrashHandler]")));
 
-  CString exe_path = goopdate_utils::BuildGoogleUpdateServicesPath(is_system_);
-  CommandLineBuilder builder(COMMANDLINE_MODE_CRASH_HANDLER);
-  CString cmd_line = builder.GetCommandLineArgs();
-  HRESULT hr = System::StartProcessWithArgs(exe_path, cmd_line);
+  HRESULT hr = goopdate_utils::StartCrashHandler(is_system_);
   if (SUCCEEDED(hr)) {
     ++metric_core_start_crash_handler_succeeded;
   } else {
-    CORE_LOG(LE, (_T("[can't start Crash Handler][0x%08x]"), hr));
+    CORE_LOG(LE, (_T("[Cannot start Crash Handler][0x%08x]"), hr));
   }
   ++metric_core_start_crash_handler_total;
   return hr;
-}
-
-HRESULT Core::InitializeManifestDirectoryWatcher() {
-  // We watch the legacy manifest install directory only if we are the
-  // user core. The omaha1 -> omaha2 machine hand off occurs using the
-  // /UI cmd line switch.
-  legacy_manifest_handler_.reset(new LegacyManifestHandler());
-  return legacy_manifest_handler_->Initialize(this);
-}
-
-HRESULT Core::StartInstallWorker() {
-  // Get all the manifests that are present in the handoff directory.
-  CString manifest_dir =
-      ConfigManager::Instance()->GetUserInitialManifestStorageDir();
-  std::vector<CString> manifests;
-  HRESULT hr = File::GetWildcards(manifest_dir, _T("*.gup"), &manifests);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  std::vector<CString>::iterator it;
-  for (it = manifests.begin(); it != manifests.end(); ++it) {
-    // Launch the worker using /UIUser manifest_file.
-    CString filename = *it;
-    EnclosePath(&filename);
-
-    CommandLineBuilder builder(COMMANDLINE_MODE_LEGACY_MANIFEST_HANDOFF);
-    builder.set_legacy_manifest_path(filename);
-    CString cmd_line = builder.GetCommandLineArgs();
-    HRESULT hr_ret = goopdate_utils::StartGoogleUpdateWithArgs(is_system_,
-                                                               cmd_line,
-                                                               NULL);
-    if (FAILED(hr_ret)) {
-      OPT_LOG(LE, (_T("[StartGoogleUpdateWithArgs failed][0x%08x]"), hr_ret));
-      hr = hr_ret;
-    }
-  }
-
-  return hr;
-}
-
-HRESULT Core::CleanUpInitialManifestDirectory() {
-  CORE_LOG(L2, (_T("[CleanUpInitialManifestDirectory]")));
-
-  const CString dir =
-      ConfigManager::Instance()->GetUserInitialManifestStorageDir();
-  if (dir.IsEmpty()) {
-    return GOOPDATE_E_CORE_INTERNAL_ERROR;
-  }
-  return DeleteDirectoryFiles(dir);
 }
 
 void Core::AggregateMetrics() const {
@@ -514,35 +421,4 @@ void Core::CollectMetrics() const {
   metric_core_disk_space_available = free_bytes_current_user;
 }
 
-HRESULT Core::RegisterCoreProxy() {
-  CComObjectNoLock<GoogleUpdateCore>* google_update_core =
-      new CComObjectNoLock<GoogleUpdateCore>;
-
-  CDacl dacl;
-  dacl.AddAllowedAce(Sids::System(), GENERIC_ALL);
-  dacl.AddAllowedAce(Sids::Users(), GENERIC_READ);
-  CSecurityDesc sd;
-  sd.SetDacl(dacl);
-  sd.MakeAbsolute();
-
-  SharedMemoryAttributes attr(kGoogleUpdateCoreSharedMemoryName, sd);
-  google_update_core_proxy_.reset(new GoogleUpdateCoreProxy(false, &attr));
-
-#if DEBUG
-  // The core interface should be registered only once.
-  CComPtr<IGoogleUpdateCore> core_interface;
-  HRESULT hr = google_update_core_proxy_->GetObject(&core_interface);
-  ASSERT1(FAILED(hr) || !core_interface);
-#endif
-
-  return google_update_core_proxy_->RegisterObject(google_update_core);
-}
-
-void Core::UnregisterCoreProxy() {
-  if (google_update_core_proxy_.get()) {
-    google_update_core_proxy_->RevokeObject();
-  }
-}
-
 }  // namespace omaha
-

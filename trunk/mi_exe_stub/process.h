@@ -13,27 +13,26 @@
 // limitations under the License.
 // ========================================================================
 
-
 #ifndef OMAHA_MI_EXE_STUB_PROCESS_H_
 #define OMAHA_MI_EXE_STUB_PROCESS_H_
 
-#pragma warning(push)
-#pragma warning(disable : 4548)
-// C4548: expression before comma has no effect
-#include <atlbase.h>
 #include <atlstr.h>
-#pragma warning(pop)
+#include <windows.h>
+
+namespace omaha {
 
 // Convenience function to launch a process. Returns true if we successfully
 // launched it.
-bool Run(const CString &command_line);
+bool Run(const CString& command_line);
 
 // Convenience function to launch a process, wait for it to finish,
 // and return the result.
-bool RunAndWait(const CString &command_line, DWORD *exit_code);
+bool RunAndWait(const CString& command_line, DWORD *exit_code);
 
 // Convenience function to launch a process with the initial window hidden,
 // wait for it to finish and return the result.
-bool RunAndWaitHidden(const CString &command_line, DWORD *exit_code);
+bool RunAndWaitHidden(const CString& command_line, DWORD *exit_code);
+
+}  // namespace omaha
 
 #endif  // OMAHA_MI_EXE_STUB_PROCESS_H_

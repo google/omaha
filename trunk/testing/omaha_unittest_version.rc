@@ -1,0 +1,71 @@
+// Copyright 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+
+#include <afxres.h>
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+VS_VERSION_INFO VERSIONINFO
+// Resource Editor does not handle constants from main.scons.
+#ifndef APSTUDIO_INVOKED
+ FILEVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+ PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+#endif  // APSTUDIO_INVOKED
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#if defined _DEBUG && OFFICIAL_BUILD
+ FILEFLAGS VS_FF_DEBUG
+#elif defined _DEBUG
+ FILEFLAGS VS_FF_DEBUG | VS_FF_PRIVATEBUILD
+#elif !OFFICIAL_BUILD
+ FILEFLAGS VS_FF_PRIVATEBUILD
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+// Requires constants from mains.scons that cannot be loaded in Resource Editor.
+#ifndef APSTUDIO_INVOKED
+            VALUE "CompanyName", FULL_COMPANY_NAME_ANSI
+            VALUE "FileDescription", OMAHA_APP_NAME_ANSI " unit test"
+            VALUE "FileVersion", VERSION_NUMBER_STRING
+            VALUE "InternalName", OMAHA_APP_NAME_ANSI
+            VALUE "LegalCopyright", OMAHA_COPYRIGHT_STRING_ENGLISH
+            VALUE "OriginalFilename", "omaha_unittest.exe"
+            VALUE "ProductName", OMAHA_APP_NAME_ANSI
+            VALUE "ProductVersion", VERSION_NUMBER_STRING
+  #ifdef _DEBUG
+            VALUE "Debug", ""
+  #endif
+  #if !OFFICIAL_BUILD
+            VALUE "PrivateBuild", BUILD_NUMBER
+  #endif
+#else
+            VALUE "_SpecialView",
+                  "Most values are not shown in Resource Editor because they "
+                  "require build file constants."
+#endif  // APSTUDIO_INVOKED
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

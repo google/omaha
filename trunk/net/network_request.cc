@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,6 +53,10 @@ HRESULT NetworkRequest::Pause() {
   return impl_->Pause();
 }
 
+HRESULT NetworkRequest::Resume() {
+  return impl_->Resume();
+}
+
 HRESULT NetworkRequest::Cancel() {
   return impl_->Cancel();
 }
@@ -65,6 +69,10 @@ int NetworkRequest::http_status_code() const {
   return impl_->http_status_code();
 }
 
+void NetworkRequest::set_proxy_auth_config(const ProxyAuthConfig& config) {
+  return impl_->set_proxy_auth_config(config);
+}
+
 void NetworkRequest::set_num_retries(int num_retries) {
   return impl_->set_num_retries(num_retries);
 }
@@ -75,6 +83,10 @@ void NetworkRequest::set_time_between_retries(int time_between_retries_ms) {
 
 void NetworkRequest::set_callback(NetworkRequestCallback* callback) {
   return impl_->set_callback(callback);
+}
+
+void NetworkRequest::set_preserve_protocol(bool preserve_protocol) {
+  return impl_->set_preserve_protocol(preserve_protocol);
 }
 
 CString NetworkRequest::response_headers() const {
@@ -95,16 +107,16 @@ void NetworkRequest::set_low_priority(bool low_priority) {
   return impl_->set_low_priority(low_priority);
 }
 
-void NetworkRequest::set_network_configuration(
-    const Config* network_configuration) {
-  return impl_->set_network_configuration(network_configuration);
+void NetworkRequest::set_proxy_configuration(
+    const ProxyConfig* proxy_configuration) {
+  return impl_->set_proxy_configuration(proxy_configuration);
 }
 
 HRESULT PostRequest(NetworkRequest* network_request,
                     bool fallback_to_https,
                     const CString& url,
                     const CString& request_string,
-                    CString* response) {
+                    std::vector<uint8>* response) {
   return detail::PostRequest(network_request,
                              fallback_to_https,
                              url,
@@ -114,7 +126,7 @@ HRESULT PostRequest(NetworkRequest* network_request,
 
 HRESULT GetRequest(NetworkRequest* network_request,
                    const CString& url,
-                   CString* response) {
+                   std::vector<uint8>* response) {
   return detail::GetRequest(network_request, url, response);
 }
 

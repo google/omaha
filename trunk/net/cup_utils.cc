@@ -17,10 +17,10 @@
 
 #include <algorithm>
 #include <vector>
-#include "omaha/common/debug.h"
-#include "omaha/common/security/b64.h"
-#include "omaha/common/security/hmac.h"
-#include "omaha/common/security/sha.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/security/b64.h"
+#include "omaha/base/security/hmac.h"
+#include "omaha/base/security/sha.h"
 
 namespace omaha {
 

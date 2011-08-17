@@ -14,7 +14,7 @@
 # limitations under the License.
 # ========================================================================
 
-# We always build the shell as GoogleUpdate_built.exe.
+# We always build the shell as GoogleUpdate_signed.exe.
 # For official builds, we copy the saved constant shell to the output directory.
 # For unofficial builds, we copy the built shell.
 # Otherwise, the goopdate.dll certificate check fails.
@@ -87,7 +87,7 @@ exe_env.Append(
 
 exe_inputs = [
     'winmain.cc',
-     '../common/signaturevalidator.cc',
+     '../base/signaturevalidator.cc',
      exe_env.RES('resource.rc'),
      ]
 
@@ -115,7 +115,7 @@ if exe_env['msc_ver'] >= 1400:
   exe_env['CCFLAGS'] += ['/GS-']
 
 unsigned_exe_output = exe_env.ComponentProgram(
-    prog_name='GoogleUpdate_unsigned.exe',
+    prog_name='GoogleUpdate_unsigned',
     source=exe_inputs,
 )
 
@@ -140,5 +140,5 @@ else:
 env.Replicate('$STAGING_DIR', source_shell, REPLICATE_REPLACE=[('_signed', '')])
 env.Replicate(target='$STAGING_DIR',
               source=sign_output[0],
-              REPLICATE_REPLACE=[('GoogleUpdate_signed', 'GoogleCrashHandler')]
+              REPLICATE_REPLACE=[('GoogleUpdate_signed', env['omaha_versions_info'][0].crash_handler_filename)]
 )

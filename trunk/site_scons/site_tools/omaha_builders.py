@@ -17,13 +17,22 @@
 
 """Omaha builders tool for SCons."""
 
+import os.path
 import SCons.Action
 import SCons.Builder
 import SCons.Tool
 
 
-def _EnablePrecompile(env, target_name):
-  """Enable use of precompiled headers for target_name."""
+def EnablePrecompile(env, target_name):
+  """Enable use of precompiled headers for target_name.
+
+  Args:
+    env: The environment.
+    target_name: Name of component.
+
+  Returns:
+    The pch .obj file.
+  """
   if env.Bit('use_precompiled_headers'):
     # We enable all warnings on all levels. The goal is to fix the code that
     # we have written and to programmatically disable the warnings for the
@@ -61,7 +70,17 @@ def _EnablePrecompile(env, target_name):
     return [pch_output[1]]
 
 
-def _SignDotNetManifest(env, target, unsigned_manifest):
+def SignDotNetManifest(env, target, unsigned_manifest):
+  """Signs a .NET manifest.
+
+  Args:
+    env: The environment.
+    target: Name of signed manifest.
+    unsigned_manifest: Unsigned manifest.
+
+  Returns:
+    Output node list from env.Command().
+  """
   sign_manifest_cmd = ('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
                        'http://timestamp.verisign.com/scripts/timstamp.dll ')
 
@@ -85,61 +104,280 @@ def _SignDotNetManifest(env, target, unsigned_manifest):
   return signed_manifest
 
 
-_all_in_one_unittest_sources = []
-_all_in_one_unittest_libs = set()
+#
+# Custom Library and Program builders.
+#
+# These builders have additional cababilities, including enabling precompiled
+# headers when appropriate and signing DLLs and EXEs.
+#
+
+# TODO(omaha): Make all build files use these builders instead of Hammer's.
+# This will eliminate many lines in build.scons files related to enabling
+# precompiled header and signing binaries.
 
 
-def _OmahaUnittest(env,  # pylint: disable-msg=C6409
-                   unused_name,
-                   source,
-                   LIBS=None,
-                   all_in_one=True):
+def _ConditionallyEnablePrecompile(env, target_name, *args, **kwargs):
+  """Enables precompiled headers for target_name when appropriate.
+
+  Enables precompiled headers if they are enabled for the build unless
+  use_pch_default = False. This requires that the source files are specified in
+  sources or in a list as the first argument after target_name.
+
+  Args:
+    env: Environment in which we were called.
+    target_name: Name of the build target.
+    args: Positional arguments.
+    kwargs: Keyword arguments.
+  """
+  use_pch_default = kwargs.get('use_pch_default', True)
+
+  if use_pch_default and env.Bit('use_precompiled_headers'):
+    pch_output = env.EnablePrecompile(target_name)
+
+    # Search the keyworded list first.
+    for key in ['source', 'sources', 'input', 'inputs']:
+      if key in kwargs:
+        kwargs[key] += pch_output
+        return
+
+    # If the keyword was not found, assume the sources are the first argument in
+    # the non-keyworded list.
+    if args:
+      args[0].append(pch_output[0])
+
+
+def ComponentStaticLibrary(env, lib_name, *args, **kwargs):
+  """Pseudo-builder for static library.
+
+  Enables precompiled headers if they are enabled for the build unless
+  use_pch_default = False. This requires that the source files are specified in
+  sources or in a list as the first argument after lib_name.
+
+  Args:
+    env: Environment in which we were called.
+    lib_name: Static library name.
+    args: Positional arguments.
+    kwargs: Keyword arguments.
+
+  Returns:
+    Output node list from env.ComponentLibrary().
+  """
+  _ConditionallyEnablePrecompile(env, lib_name, *args, **kwargs)
+
+  return env.ComponentLibrary(lib_name, *args, **kwargs)
+
+
+# TODO(omaha): Add signing.
+def ComponentDll(env, lib_name, *args, **kwargs):
+  """Pseudo-builder for DLL.
+
+  Enables precompiled headers if they are enabled for the build unless
+  use_pch_default = False. This requires that the source files are specified in
+  sources or in a list as the first argument after lib_name.
+
+  Args:
+    env: Environment in which we were called.
+    lib_name: DLL name.
+    args: Positional arguments.
+    kwargs: Keyword arguments.
+
+  Returns:
+    Output node list from env.ComponentLibrary().
+  """
+  env.Append(COMPONENT_STATIC=False)
+
+  _ConditionallyEnablePrecompile(env, lib_name, *args, **kwargs)
+
+  return env.ComponentLibrary(lib_name, *args, **kwargs)
+
+
+# TODO(omaha): Add signing.
+def ComponentSignedProgram(env, prog_name, *args, **kwargs):
+  """Pseudo-builder for signed EXEs.
+
+  Enables precompiled headers if they are enabled for the build unless
+  use_pch_default = False. This requires that the source files are specified in
+  sources or in a list as the first argument after prog_name.
+
+  Args:
+    env: Environment in which we were called.
+    prog_name: Executable name.
+    args: Positional arguments.
+    kwargs: Keyword arguments.
+
+  Returns:
+    Output node list from env.ComponentProgram().
+  """
+  _ConditionallyEnablePrecompile(env, prog_name, *args, **kwargs)
+
+  return env.ComponentProgram(prog_name, *args, **kwargs)
+
+
+# TODO(omaha): Put these in a tools/ directory instead of staging.
+def ComponentTool(env, prog_name, *args, **kwargs):
+  """Pseudo-builder for utility programs that do not need to be signed.
+
+  Enables precompiled headers if they are enabled for the build unless
+  use_pch_default = False. This requires that the source files are specified in
+  sources or in a list as the first argument after prog_name.
+
+  Args:
+    env: Environment in which we were called.
+    prog_name: Executable name.
+    args: Positional arguments.
+    kwargs: Keyword arguments.
+
+  Returns:
+    Output node list from env.ComponentProgram().
+  """
+  _ConditionallyEnablePrecompile(env, prog_name, *args, **kwargs)
+
+  return env.ComponentProgram(prog_name, *args, **kwargs)
+
+
+#
+# Unit Test Builders
+#
+
+
+def OmahaUnittest(env,  # pylint: disable-msg=C6409
+                  name,
+                  source,
+                  LIBS=None,
+                  all_in_one=True,
+                  COMPONENT_TEST_SIZE='large',
+                  is_small_tests_using_resources=False):
   """Declares a new unit test.
 
   Args:
     env: The environment.
-    unused_name: Name of the unit test.
+    name: Name of the unit test.
     source: Sources for the unittest.
     LIBS: Any libs required for the unit test.
     all_in_one: If true, the test will be added to an executable containing
         all tests.
+    COMPONENT_TEST_SIZE: small, medium, or large.
+    is_small_tests_using_resources: True if COMPONENT_TEST_SIZE='small' and
+        the test requires resources, such as strings.
+
+  If !all_in_one and COMPONENT_TEST_SIZE is 'small', a main is automatically
+  provided. Otherwise, one must be provided in source or LIBS. The small main
+  is selected based on is_small_tests_using_resources.
 
   Returns:
-    Nothing.
+    Output node list from env.ComponentTestProgram().
+
+  Raises:
+      Exception: Invalid combination of arguments.
   """
-  source = env.Flatten(source)
+  test_env = env.Clone()
+
+  source = test_env.Flatten(source)
+
+  if COMPONENT_TEST_SIZE != 'small' and is_small_tests_using_resources:
+    raise Exception('is_small_tests_using_resources set for non-small test.')
+
   if all_in_one:
-    _all_in_one_unittest_sources.extend(env.File(source))
+    test_env['all_in_one_unittest_sources'].extend(test_env.File(source))
     if LIBS:
-      _all_in_one_unittest_libs.update(env.File(env.Flatten(LIBS)))
-    # TODO(omaha): this should return the name of the all-in-one unit test.
+      test_env['all_in_one_unittest_libs'].update(
+          test_env.File(test_env.Flatten(LIBS)))
+    # TODO(omaha): Get the node list automatically.
+    if 'HAMMER_RUNS_TESTS' in os.environ.keys():
+      test_program_dir = '$TESTS_DIR'
+    else:
+      test_program_dir = '$STAGING_DIR'
+    output = [os.path.join(test_program_dir, 'omaha_unittest.exe'),
+              os.path.join(test_program_dir, 'omaha_unittest.pdb')]
   else:
-    # TODO(omaha): implement this.
-    raise NotImplementedError('Want to volunteer?')
+    test_env.FilterOut(LINKFLAGS=['/NODEFAULTLIB', '/SUBSYSTEM:WINDOWS'])
+    if LIBS:
+      test_env.Append(
+          LIBS=test_env.Flatten(LIBS),
+      )
+    # TODO(omaha): Let's try to eliminate this giant list of Win32 .libs here.
+    # They are generally dependencies of Omaha base, common, or net; it makes
+    # more sense for unit test authors to stay aware of dependencies and pass
+    # them in as part of the LIBS argument.
+    test_env.Append(
+        CPPPATH=[
+            '$MAIN_DIR/third_party/gmock/include',
+            '$MAIN_DIR/third_party/gtest/include',
+        ],
+        LIBS=[
+            '$LIB_DIR/base',
+            '$LIB_DIR/gmock',
+            '$LIB_DIR/gtest',
+            ('atls', 'atlsd')[test_env.Bit('debug')],
+
+            # Required by base/process.h, which is used by unit_test.cc.
+            'psapi',
+
+            # Required by omaha_version.h, which is used by omaha_unittest.cc.
+            'version',
+
+            # Rquired if base/utils.h, which is used by several modules used by
+            # omaha_unittest.cc, is used.
+            'netapi32',
+            'rasapi32',
+            'shlwapi',
+            'wtsapi32',
+        ],
+    )
+
+    if COMPONENT_TEST_SIZE == 'small':
+      if is_small_tests_using_resources:
+        test_env.Append(LIBS=['$LIB_DIR/unittest_base_small_with_resources'])
+      else:
+        test_env.Append(LIBS=['$LIB_DIR/unittest_base_small'])
+
+    if env.Bit('use_precompiled_headers'):
+      source += test_env.EnablePrecompile(name)
+
+    # Set environment variables specific to the tests.
+    for env_var in os.environ:
+      if (not env_var in test_env['ENV'] and
+          (env_var.startswith('GTEST_') or env_var.startswith('OMAHA_TEST_'))):
+        test_env['ENV'][env_var] = os.environ[env_var]
+
+    output = test_env.ComponentTestProgram(
+        name,
+        source + ['$OBJ_ROOT/testing/run_as_invoker.res'],
+        COMPONENT_TEST_SIZE=COMPONENT_TEST_SIZE,
+    )
+
+  # Add a manual dependency on the resource file used by omaha_unittest.cc to
+  # ensure it is always available before the test runs, which could be during
+  # the build.
+  test_env.Depends(output, '$TESTS_DIR/goopdateres_en.dll')
+
+  return output
 
 
-def _GetAllInOneUnittestSources(unused_env):
+def GetAllInOneUnittestSources(env):
   """Returns a list of source files for the all-in-one unit test.
 
   Args:
-    unused_env: the environment.
+    env: The environment.
 
   Returns:
     A list of sources for the all-in-one unit test.
   """
-  return _all_in_one_unittest_sources
+  return env['all_in_one_unittest_sources']
 
 
-def _GetAllInOneUnittestLibs(unused_env):
+def GetAllInOneUnittestLibs(env):
   """Returns a list of libs to be linked into the all-in-one unit test.
 
   Args:
-    unused_env: the environment.
+    env: The environment.
 
   Returns:
-    A set of libs for the all-in-one unit test.
+    A list of libs for the all-in-one unit test.
   """
-  return list(_all_in_one_unittest_libs)
+  # Sort to prevent spurious rebuilds caused by indeterminate ordering of a set.
+  return sorted(env['all_in_one_unittest_libs'],
+                key=SCons.Node.FS.Base.get_abspath)
 
 
 # If a .idl file does not result in any generated proxy code (no foo_p.c and
@@ -154,15 +392,52 @@ def _MidlEmitter(target, source, env):
   return (filter(IsNonProxyGeneratedFile, t), source)
 
 
+def IsCoverageBuild(env):
+  """Returns true if this is a coverage build.
+
+  Args:
+    env: The environment.
+
+  Returns:
+    whether this is a coverage build.
+  """
+  return 'coverage' in env.subst('$BUILD_TYPE')
+
+
+def CopyFileToDirectory(env, target, source):
+  """Copies the file to the directory using the DOS copy command.
+
+  In general, Replicate() should be used, but there are specific cases where
+  an explicit copy is required.
+
+  Args:
+    env: The environment.
+    target: The target directory.
+    source: The full path to the source file.
+
+  Returns:
+    Output node list from env.Command().
+  """
+  (_, source_filename) = os.path.split(source)
+  return env.Command(target=os.path.join(target, source_filename),
+                     source=source,
+                     action='@copy /y $SOURCE $TARGET')
+
+
 # NOTE: SCons requires the use of this name, which fails gpylint.
 def generate(env):  # pylint: disable-msg=C6409
   """SCons entry point for this tool."""
-  env.AddMethod(_EnablePrecompile, 'EnablePrecompile')
-  env.AddMethod(_SignDotNetManifest, 'SignDotNetManifest')
-  # These are not used by Omaha 2.
-  #env.AddMethod(_OmahaUnittest, 'OmahaUnittest')
-  #env.AddMethod(_GetAllInOneUnittestSources, 'GetAllInOneUnittestSources')
-  #env.AddMethod(_GetAllInOneUnittestLibs, 'GetAllInOneUnittestLibs')
+  env.AddMethod(EnablePrecompile)
+  env.AddMethod(SignDotNetManifest)
+  env.AddMethod(ComponentStaticLibrary)
+  env.AddMethod(ComponentDll)
+  env.AddMethod(ComponentSignedProgram)
+  env.AddMethod(ComponentTool)
+  env.AddMethod(OmahaUnittest)
+  env.AddMethod(GetAllInOneUnittestSources)
+  env.AddMethod(GetAllInOneUnittestLibs)
+  env.AddMethod(IsCoverageBuild)
+  env.AddMethod(CopyFileToDirectory)
 
   env['MIDLNOPROXYCOM'] = ('$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} '
                            '/h ${TARGETS[1]} /iid ${TARGETS[2]} '

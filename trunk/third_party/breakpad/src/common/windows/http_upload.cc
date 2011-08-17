@@ -30,7 +30,7 @@
 #include <assert.h>
 
 // Disable exception handler warnings.
-#pragma warning( disable : 4530 ) 
+#pragma warning( disable : 4530 )
 
 #include <fstream>
 
@@ -122,6 +122,7 @@ bool HTTPUpload::SendRequest(const wstring &url,
   }
 
   DWORD http_open_flags = secure ? INTERNET_FLAG_SECURE : 0;
+  http_open_flags |= INTERNET_FLAG_NO_COOKIES;
   AutoInternetHandle request(HttpOpenRequest(connection.get(),
                                              L"POST",
                                              path,
@@ -211,17 +212,19 @@ bool HTTPUpload::ReadResponse(HINTERNET request, wstring *response) {
 
   DWORD bytes_available;
   DWORD total_read = 0;
-  bool return_code;
+  BOOL return_code;
 
-  while ((return_code = InternetQueryDataAvailable(request, &bytes_available,
-                                                   0, 0) != 0) &&
-          bytes_available > 0) {
+  while (((return_code = InternetQueryDataAvailable(request, &bytes_available,
+	  0, 0)) != 0) && bytes_available > 0) {
+
     vector<char> response_buffer(bytes_available);
     DWORD size_read;
 
-    if ((return_code = InternetReadFile(request, &response_buffer[0],
-                                        bytes_available, &size_read) != 0) &&
-        size_read > 0) {
+    return_code = InternetReadFile(request,
+                                   &response_buffer[0],
+                                   bytes_available, &size_read);
+
+    if (return_code && size_read > 0) {
       total_read += size_read;
       response_body.append(&response_buffer[0], size_read);
     } else {
@@ -271,8 +274,7 @@ bool HTTPUpload::GenerateRequestBody(const map<wstring, wstring> &parameters,
                                      const wstring &boundary,
                                      string *request_body) {
   vector<char> contents;
-  GetFileContents(upload_file, &contents);
-  if (contents.empty()) {
+  if (!GetFileContents(upload_file, &contents)) {
     return false;
   }
 
@@ -319,7 +321,7 @@ bool HTTPUpload::GenerateRequestBody(const map<wstring, wstring> &parameters,
 }
 
 // static
-void HTTPUpload::GetFileContents(const wstring &filename,
+bool HTTPUpload::GetFileContents(const wstring &filename,
                                  vector<char> *contents) {
   // The "open" method on pre-MSVC8 ifstream implementations doesn't accept a
   // wchar_t* filename, so use _wfopen directly in that case.  For VC8 and
@@ -333,16 +335,16 @@ void HTTPUpload::GetFileContents(const wstring &filename,
 #endif  // _MSC_VER >= 1400
   if (file.is_open()) {
     file.seekg(0, ios::end);
-    int length = file.tellg();
+    std::streamoff length = file.tellg();
     contents->resize(length);
     if (length != 0) {
-        file.seekg(0, ios::beg);
-        file.read(&((*contents)[0]), length);
+      file.seekg(0, ios::beg);
+      file.read(&((*contents)[0]), length);
     }
     file.close();
-  } else {
-    contents->clear();
+    return true;
   }
+  return false;
 }
 
 // static

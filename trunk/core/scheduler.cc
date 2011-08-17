@@ -15,14 +15,14 @@
 
 #include "omaha/core/scheduler.h"
 #include <algorithm>
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/highres_timer-win32.h"
-#include "omaha/common/queue_timer.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/highres_timer-win32.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/queue_timer.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/core/core.h"
 #include "omaha/core/core_metrics.h"
-#include "omaha/goopdate/config_manager.h"
 
 namespace omaha {
 

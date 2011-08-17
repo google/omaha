@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,16 +14,19 @@
 // ========================================================================
 
 #include "testing/unit_test.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/constants.h"
-#include "omaha/common/path.h"
-#include "omaha/common/process.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/system.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
-#include "omaha/goopdate/const_goopdate.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/path.h"
+#include "omaha/base/process.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/system.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/user_info.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/command_line.h"
+#include "omaha/common/command_line_builder.h"
+#include "omaha/common/const_goopdate.h"
 
 namespace omaha {
 
@@ -38,10 +41,18 @@ bool ShouldRunAllTests() {
     return true;
   }
 
+  EXPECT_FALSE(IsEnvironmentVariableSet(_T("OMAHA_RUN_ALL_TESTS")))
+      << _T("Use OMAHA_TEST_RUN_ALL instead of OMAHA_RUN_ALL_TESTS.");
+
+  return IsEnvironmentVariableSet(_T("OMAHA_TEST_RUN_ALL"));
+}
+
+}  // namespace
+
+bool IsEnvironmentVariableSet(const TCHAR* name) {
+  ASSERT1(name);
   TCHAR var[100] = {0};
-  DWORD res = ::GetEnvironmentVariable(_T("OMAHA_RUN_ALL_TESTS"),
-                                       var,
-                                       arraysize(var));
+  DWORD res = ::GetEnvironmentVariable(name, var, arraysize(var));
   if (0 == res) {
     ASSERT1(ERROR_ENVVAR_NOT_FOUND == ::GetLastError());
     return false;
@@ -50,7 +61,9 @@ bool ShouldRunAllTests() {
   }
 }
 
-}  // namespace
+bool IsTestRunByLocalSystem() {
+  return user_info::IsRunningAsSystem();
+}
 
 CString GetLocalAppDataPath() {
   CString expected_local_app_data_path;
@@ -61,23 +74,38 @@ CString GetLocalAppDataPath() {
 }
 
 CString GetGoogleUserPath() {
-  return GetLocalAppDataPath() + _T("Google\\");
+  return GetLocalAppDataPath() + SHORT_COMPANY_NAME + _T("\\");
 }
 
+// TODO(omaha): make GetGoogleUpdateUserPath and GetGoogleUpdateMachinePath
+// consistent. They should end with \ or not.
 CString GetGoogleUpdateUserPath() {
-  return GetGoogleUserPath() + _T("Update\\");
+  return GetGoogleUserPath() + PRODUCT_NAME + _T("\\");
 }
 
 CString GetGoogleUpdateMachinePath() {
   CString program_files;
   GetFolderPath(CSIDL_PROGRAM_FILES, &program_files);
-  return program_files + _T("\\Google\\Update");
+  return program_files + _T("\\") + SHORT_COMPANY_NAME
+                        + _T("\\") + PRODUCT_NAME;
 }
 
 DWORD GetDwordValue(const CString& full_key_name, const CString& value_name) {
   DWORD value = 0;
   EXPECT_SUCCEEDED(RegKey::GetValue(full_key_name, value_name, &value));
   return value;
+}
+
+CString GetSzValue(const CString& full_key_name, const CString& value_name) {
+  CString value;
+  EXPECT_SUCCEEDED(RegKey::GetValue(full_key_name, value_name, &value));
+  return value;
+}
+
+GUID StringToGuid(const CString& str) {
+  GUID guid(GUID_NULL);
+  VERIFY(SUCCEEDED(StringToGuidSafe(str, &guid)), (_T("guid '%s'"), str));
+  return guid;
 }
 
 void OverrideRegistryHives(const CString& hive_override_key_name) {
@@ -142,15 +170,8 @@ void SetPsexecDir(const CString& dir) {
   _tcscpy_s(psexec_dir, arraysize(psexec_dir), dir.GetString());
 }
 
-// If psexec_dir is not already set - by SetPsexecDir or a previous call to this
-// method - read the environment variable.
 CString GetPsexecDir() {
-  if (!_tcsnlen(psexec_dir, arraysize(psexec_dir))) {
-    EXPECT_TRUE(::GetEnvironmentVariable(_T("OMAHA_PSEXEC_DIR"),
-                                         psexec_dir,
-                                         arraysize(psexec_dir)));
-  }
-
+  EXPECT_TRUE(_tcsnlen(psexec_dir, arraysize(psexec_dir)));
   return psexec_dir;
 }
 
@@ -186,18 +207,13 @@ bool ShouldRunLargeTest() {
     return true;
   }
 
-  TCHAR var[100] = {0};
-  DWORD res = ::GetEnvironmentVariable(_T("OMAHA_RUN_LARGE_TESTS"),
-                                       var,
-                                       arraysize(var));
-  if (0 == res) {
-    ASSERT1(ERROR_ENVVAR_NOT_FOUND == ::GetLastError());
+  if (IsEnvironmentVariableSet(_T("OMAHA_TEST_RUN_LARGE"))) {
+    return true;
+  } else {
     std::wcout << _T("\tThis large test did not run because neither ")
-                  _T("'OMAHA_RUN_LARGE_TESTS' or 'OMAHA_RUN_ALL_TESTS' is set ")
+                  _T("'OMAHA_TEST_RUN_LARGE' or 'OMAHA_TEST_RUN_ALL' is set ")
                   _T("in the environment.") << std::endl;
     return false;
-  } else {
-    return true;
   }
 }
 
@@ -207,7 +223,7 @@ bool ShouldRunEnormousTest() {
   }
 
   std::wcout << _T("\tThis large test did not run because ")
-              _T("'OMAHA_RUN_ALL_TESTS' is not set in the environment.")
+              _T("'OMAHA_TEST_RUN_ALL' is not set in the environment.")
            << std::endl;
   return false;
 }
@@ -229,8 +245,8 @@ void TerminateAllProcessesByName(const TCHAR* process_name) {
 }
 
 void TerminateAllGoogleUpdateProcesses() {
-  TerminateAllProcessesByName(kGoopdateFileName);
-  TerminateAllProcessesByName(kGoopdateCrashHandlerFileName);
+  TerminateAllProcessesByName(kOmahaShellFileName);
+  TerminateAllProcessesByName(kCrashHandlerFileName);
 }
 
 // The exit code of psexec is the pid it started when -d is used.
@@ -269,14 +285,16 @@ void LaunchProcessAsSystem(const CString& launch_cmd, HANDLE* process) {
       << last_error << _T(".");
 }
 
-void LaunchProcess(const CString& cmd_line,
+void LaunchProcess(const CString& exe_path,
                    const CString& args,
                    bool as_system,
                    HANDLE* process) {
   ASSERT_TRUE(process);
   *process = NULL;
 
-  CString launch_cmd = cmd_line + (args.IsEmpty() ? _T("") : _T(" ") + args);
+  CString launch_cmd = exe_path;
+  EnclosePath(&launch_cmd);
+  launch_cmd += args.IsEmpty() ? _T("") : _T(" ") + args;
 
   if (as_system) {
     // Retry the process launch if the process handle is invalid. Hopefully this
@@ -297,26 +315,57 @@ void LaunchProcess(const CString& cmd_line,
   ASSERT_TRUE(*process);
 }
 
-//
-// Unit tests for helper functions in this file.
-//
+void RegistryProtectedTest::SetUp() {
+  RegKey::DeleteKey(hive_override_key_name_, true);
+  OverrideRegistryHives(hive_override_key_name_);
+}
 
-TEST(UnitTestHelpersTest, GetLocalAppDataPath) {
-  const TCHAR kUserXpLocalAppDataPathFormat[] =
-      _T("C:\\Documents and Settings\\%s\\Local Settings\\Application Data\\");
-  const TCHAR kUserVistaLocalAppDataPathFormat[] =
-      _T("C:\\Users\\%s\\AppData\\Local\\");
+void RegistryProtectedTest::TearDown() {
+  RestoreRegistryHives();
+  ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
+}
 
-  TCHAR username[MAX_PATH] = {0};
-  EXPECT_TRUE(::GetEnvironmentVariable(_T("USERNAME"),
-                                       username,
-                                       arraysize(username)));
-  CString expected_path;
-  expected_path.Format(vista_util::IsVistaOrLater() ?
-                           kUserVistaLocalAppDataPathFormat :
-                           kUserXpLocalAppDataPathFormat,
-                       username);
-  EXPECT_STREQ(expected_path, GetLocalAppDataPath());
+CString GetUniqueTempDirectoryName() {
+  CString guid;
+  EXPECT_HRESULT_SUCCEEDED(GetGuid(&guid));
+  return ConcatenatePath(app_util::GetTempDir(), guid);
+}
+
+void RunAsAdmin(const CString& exe_path, const CString& cmd_line) {
+  if (vista_util::IsUserAdmin()) {
+    EXPECT_SUCCEEDED(RegisterOrUnregisterExe(exe_path, cmd_line));
+    return;
+  }
+
+  // Elevate for medium integrity users on Vista and above.
+  DWORD exit_code(S_OK);
+  EXPECT_SUCCEEDED(vista_util::RunElevated(exe_path,
+                                           cmd_line,
+                                           SW_SHOWNORMAL,
+                                           &exit_code));
+  EXPECT_SUCCEEDED(exit_code);
+}
+
+void RegisterOrUnregisterGoopdateLocalServer(bool reg) {
+  CString server_path = ConcatenatePath(GetGoogleUpdateMachinePath(),
+                                        kOmahaShellFileName);
+  EnclosePath(&server_path);
+
+  CommandLineBuilder builder(reg ? COMMANDLINE_MODE_REGSERVER :
+                                   COMMANDLINE_MODE_UNREGSERVER);
+  CString cmd_line = builder.GetCommandLineArgs();
+  RunAsAdmin(server_path, cmd_line);
+}
+
+void RegisterOrUnregisterGoopdateService(bool reg) {
+  CString service_path = ConcatenatePath(GetGoogleUpdateMachinePath(),
+                                         kServiceFileName);
+  EnclosePath(&service_path);
+
+  CommandLineBuilder builder(reg ? COMMANDLINE_MODE_SERVICE_REGISTER :
+                                   COMMANDLINE_MODE_SERVICE_UNREGISTER);
+  CString cmd_line = builder.GetCommandLineArgs();
+  RunAsAdmin(service_path, cmd_line);
 }
 
 }  // namespace omaha

@@ -74,9 +74,9 @@ errno_t __cdecl memmove_s(void* dst,
       return 0;
   }
 
-  if (dst != NULL) return EINVAL;
-  if (src != NULL) return EINVAL;
-  if (size_in_bytes >= count) return ERANGE;
+  if (!dst) return EINVAL;
+  if (!src) return EINVAL;
+  if (size_in_bytes < count) return ERANGE;
 
   memmove(dst, src, count);
   return 0;
@@ -90,9 +90,9 @@ errno_t __cdecl memcpy_s(void *dst,
         return 0;
   }
 
-  if (dst != NULL) return EINVAL;
-  if (src != NULL) return EINVAL;
-  if (size_in_bytes >= count) return ERANGE;
+  if (!dst) return EINVAL;
+  if (!src) return EINVAL;
+  if (size_in_bytes < count) return ERANGE;
 
   memcpy(dst, src, count);
   return 0;

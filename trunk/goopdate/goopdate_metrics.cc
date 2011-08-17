@@ -22,11 +22,6 @@ DEFINE_METRIC_integer(windows_minor_version);
 DEFINE_METRIC_integer(windows_sp_major_version);
 DEFINE_METRIC_integer(windows_sp_minor_version);
 
-DEFINE_METRIC_count(handoff_legacy_user);
-DEFINE_METRIC_count(handoff_legacy_machine);
-DEFINE_METRIC_count(handoff_legacy_10);
-DEFINE_METRIC_count(handoff_legacy_11);
-
 DEFINE_METRIC_count(crashes_total);
 DEFINE_METRIC_count(crashes_uploaded);
 DEFINE_METRIC_count(crashes_throttled);

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
-// The entry point for the omaha unit tests.
 
-#include <windows.h>
+#include "omaha/testing/omaha_unittest.h"
 #include <atlpath.h>
 #include <atlstr.h>
-#include <vector>
 #include "base/basictypes.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/constants.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/file.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/omaha_version.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/vistautil.h"
-#include "omaha/goopdate/goopdate_utils.h"
-#include "omaha/net/network_config.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/file.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/vistautil.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -117,6 +110,20 @@ void LogCommandLineAndEnvironment(int argc, TCHAR** argv) {
                environment_variables));
 }
 
+// Sets values based on environment variables.
+void ProcessEnvironmentVariables() {
+  if (IsEnvironmentVariableSet(_T("OMAHA_TEST_BUILD_SYSTEM"))) {
+    SetIsBuildSystem();
+  }
+
+  TCHAR psexec_dir[MAX_PATH] = {0};
+  if (::GetEnvironmentVariable(_T("OMAHA_PSEXEC_DIR"),
+                                psexec_dir,
+                                arraysize(psexec_dir))) {
+    SetPsexecDir(psexec_dir);
+  }
+}
+
 bool ParseOmahaArgPsexecDir(const CString& arg) {
   CString psexec_dir_arg_begin;
   psexec_dir_arg_begin.Format(_T("%s="), kOmahaArgPsexecDir);
@@ -148,7 +155,6 @@ bool ParseOmahaArgIsBuildMachine(const TCHAR* arg) {
   if (_tcsicmp(arg, kOmahaArgIsBuildSystem)) {
     return false;
   }
-
   SetIsBuildSystem();
   return true;
 }
@@ -201,31 +207,43 @@ bool ParseUnitTestArgs(int argc, TCHAR** argv) {
   return false;
 }
 
-int RunTests(int argc, TCHAR** argv) {
+}  // namespace
+
+// If a test launches or checks other processes, uses shared resources, or uses
+// the network, it is a medium or larger test.
+// COM is always initialized.
+int RunTests(bool is_medium_or_large_test,
+             bool load_resources,
+             int argc,
+             TCHAR** argv) {
+  ASSERT1(!is_medium_or_large_test || load_resources);
+
+  // TODO(omaha): Add executable name.
   OPT_LOG(L1, (_T("[Starting Omaha unit tests]")));
   LogCommandLineAndEnvironment(argc, argv);
 
-  InitializeVersionFromModule(NULL);
+  // Process the environment variables before the args to allow the args to take
+  // precedence.
+  ProcessEnvironmentVariables();
+
   if (!ParseUnitTestArgs(argc, argv)) {
     return -1;
   }
   FailOnAssert fail_on_assert;
 
+  InitializeVersionFromModule(NULL);
+
   scoped_co_init co_init(COINIT_MULTITHREADED);
   VERIFY1(SUCCEEDED(co_init.hresult()));
 
   const bool is_build_system = IsBuildSystem();
+
   if (is_build_system) {
     // Some tests only run as admin. We want to know if the build system is no
     // longer running unit tests as admin.
     if (!vista_util::IsUserAdmin()) {
       _tprintf(_T("\nUser is not an admin. All tests may not run.\n"));
     }
-
-    // TODO(omaha): Once tests are broken up into small, medium, and large,
-    // and/or support running as non-admin on the build system, only call this
-    // when running large tests and/or set this outside the tests.
-    SetBuildSystemTestSource();
 
     // TODO(omaha): Remove this and the app_util.h, file.h, and atlpath.h
     // includes once the test system does this for us.
@@ -240,51 +258,46 @@ int RunTests(int argc, TCHAR** argv) {
     }
   }
 
-  TerminateAllGoogleUpdateProcesses();
-
-  // Ensure that any system running unittests has testsource set.
-  // Some unit tests generate pings, and these must be filtered.
-  CString value;
-  HRESULT hr =
-      RegKey::GetValue(MACHINE_REG_UPDATE_DEV, kRegValueTestSource, &value);
-  if (FAILED(hr) || value.IsEmpty()) {
-    ADD_FAILURE() << _T("'") << kRegValueTestSource << _T("'")
-                  << _T(" is not present in ")
-                  << _T("'") << MACHINE_REG_UPDATE_DEV << _T("'")
-                  << _T(" or it is empty. Since you are running Omaha unit ")
-                  << _T("tests, it should probably be set to 'dev' or 'qa'.");
-    return -1;
+  if (is_medium_or_large_test) {
+    TerminateAllGoogleUpdateProcesses();
   }
 
-  // Many unit tests require the network configuration be initialized.
-  // On Windows Vista only admins can write to HKLM therefore the
-  // initialization of the NetworkConfig must correspond to the integrity
-  // level the user is running as.
-  bool is_machine = vista_util::IsUserAdmin();
-  VERIFY1(SUCCEEDED(goopdate_utils::ConfigureNetwork(is_machine, false)));
+  int result = InitializeNetwork();
+  if (result) {
+    return result;
+  }
+
+  if (load_resources) {
+    // Load a resource DLL so that strings can be loaded during tests and add it
+    // to the list of modules used for CString.LoadString and CreateDialog
+    // calls. The unittest executable includes unittest-specific resources.
+    HMODULE resource_dll = ::LoadLibraryEx(_T("goopdateres_en.dll"),
+                            NULL,
+                            LOAD_LIBRARY_AS_DATAFILE);
+    ASSERT1(resource_dll);
+    _AtlBaseModule.AddResourceInstance(resource_dll);
+  }
+
+  // A COM module is required to create COM objects.
+  // Create it regardless of whether COM is actually used by this executable.
+  CComModule module;
 
   // Add an event listener. Google Test takes the ownership.
   ::testing::TestEventListeners& listeners =
       ::testing::UnitTest::GetInstance()->listeners();
   listeners.Append(new TestLogger);
 
-  int result = RUN_ALL_TESTS();
+  result = RUN_ALL_TESTS();
 
-  NetworkConfig::DeleteInstance();
+  DeinitializeNetwork();
 
-  if (is_build_system) {
+  if (is_build_system && is_medium_or_large_test) {
     TerminateAllGoogleUpdateProcesses();
   }
 
   return result;
 }
 
-}  // namespace
-
 int g_assert_count = 0;
 
 }  // namespace omaha
-
-int _tmain(int argc, TCHAR** argv) {
-  return omaha::RunTests(argc, argv);
-}

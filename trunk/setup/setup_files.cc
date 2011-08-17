@@ -18,22 +18,24 @@
 #include <atlpath.h>
 #include <vector>
 #include "base/basictypes.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/file.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/omaha_version.h"
-#include "omaha/common/path.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/scoped_current_directory.h"
-#include "omaha/common/signaturevalidator.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
-#include "omaha/goopdate/config_manager.h"
-#include "omaha/goopdate/const_goopdate.h"
-#include "omaha/goopdate/goopdate_utils.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/file.h"
+#include "omaha/base/highres_timer-win32.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/path.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/scoped_current_directory.h"
+#include "omaha/base/signatures.h"
+#include "omaha/base/signaturevalidator.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/const_goopdate.h"
+#include "omaha/common/goopdate_utils.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/setup/setup_metrics.h"
 
@@ -127,14 +129,6 @@ HRESULT SetupFiles::Install() {
   ++metric_setup_files_total;
   HighresTimer metrics_timer;
 
-
-  SETUP_LOG(L3,
-      (_T("[IsAdmin=%d, IsNonElevatedAdmin=%d, SvcInstalled=%d, MachineApp=%d"),
-       vista_util::IsUserAdmin(),
-       vista_util::IsUserNonElevatedAdmin(),
-       goopdate_utils::IsServiceInstalled(),
-       is_machine_));
-
   const bool should_over_install = ConfigManager::Instance()->CanOverInstall();
 
   // Copy the core program files.
@@ -212,18 +206,6 @@ void SetupFiles::Uninstall() {
     SETUP_LOG(LE, (_T("[DeleteDirectory failed][%s][0x%08x]"),
                    install_dir, hr));
   }
-
-  // TODO(omaha): Remove this and GetMachineDownloadStorageDir() when legacy
-  // support is removed.
-  // This directory may have been used by previous Omaha versions. Delete it in
-  // case this install was upgraded from one of those.
-  if (is_machine_) {
-    CString dir(ConfigManager::Instance()->GetMachineDownloadStorageDir());
-    hr = DeleteDirectory(dir);
-    if (FAILED(hr)) {
-      SETUP_LOG(LE, (_T("[DeleteDirectory failed][%s][0x%08x]"), dir, hr));
-    }
-  }
 }
 
 HRESULT SetupFiles::CopyShell() {
@@ -246,7 +228,7 @@ HRESULT SetupFiles::CopyShell() {
     }
 
     std::vector<CString> shell_files;
-    shell_files.push_back(kGoopdateFileName);
+    shell_files.push_back(kOmahaShellFileName);
     CPath shell_dir(shell_path);
     VERIFY1(shell_dir.RemoveFileSpec());
     hr = CopyInstallFiles(shell_files, shell_dir, already_exists);
@@ -270,7 +252,7 @@ HRESULT SetupFiles::ShouldCopyShell(const CString& shell_install_path,
   *already_exists = false;
 
   CPath source_shell_path(app_util::GetCurrentModuleDirectory());
-  if (!source_shell_path.Append(kGoopdateFileName)) {
+  if (!source_shell_path.Append(kOmahaShellFileName)) {
     return GOOPDATE_E_PATH_APPEND_FAILED;
   }
 
@@ -323,7 +305,7 @@ HRESULT SetupFiles::SaveShellForRollback(const CString& shell_install_path) {
                          _T("gsh"),
                          0,
                          CStrBuf(temp_file, MAX_PATH))) {
-    DWORD error = ::GetLastError();
+    const DWORD error = ::GetLastError();
     SETUP_LOG(LEVEL_WARNING, (_T("[::GetTempFileName failed][%d]"), error));
     return HRESULT_FROM_WIN32(error);
   }
@@ -337,22 +319,38 @@ HRESULT SetupFiles::SaveShellForRollback(const CString& shell_install_path) {
   return S_OK;
 }
 
+// The list of files below needs to be kept in sync with payload_files in
+// omaha_version_utils.py.
 HRESULT SetupFiles::BuildFileLists() {
   ASSERT1(core_program_files_.empty());
   ASSERT1(optional_files_.empty());
 
   core_program_files_.clear();
-  core_program_files_.push_back(kGoopdateFileName);
-  core_program_files_.push_back(kGoopdateDllName);
-  core_program_files_.push_back(kGoopdateCrashHandlerFileName);
+  core_program_files_.push_back(kOmahaShellFileName);
+  core_program_files_.push_back(kOmahaDllName);
+  core_program_files_.push_back(kCrashHandlerFileName);
 
+  // TODO(omaha3): Try to not depend on ResourceManager. Maybe just find the
+  // files using wildcards.
   ResourceManager::GetSupportedLanguageDllNames(&core_program_files_);
 
   core_program_files_.push_back(kHelperInstallerName);
 
+  core_program_files_.push_back(kPSFileNameUser);
+  core_program_files_.push_back(kPSFileNameMachine);
+
+  // If files are removed from this list, unit tests such as
+  // ShouldInstall_SameVersionOptionalFileMissing may need to be updated.
   optional_files_.clear();
-  optional_files_.push_back(ACTIVEX_FILENAME);
+  optional_files_.push_back(UPDATE_PLUGIN_FILENAME);
+  optional_files_.push_back(kOmahaBrokerFileName);
+  optional_files_.push_back(kOmahaOnDemandFileName);
+  // Machine-specific files are always installed, to support cross installs from
+  // user to machine and machine to user.
+  // TODO(omaha3): Enable once it is being built.
+#if 0
   optional_files_.push_back(BHO_FILENAME);
+#endif
 
   return S_OK;
 }
@@ -362,7 +360,7 @@ HRESULT SetupFiles::CopyInstallFiles(const std::vector<CString>& file_names,
                                      const CString& destination_dir,
                                      bool overwrite) {
   SETUP_LOG(L1, (_T("[SetupFiles::CopyInstallFiles]")
-                _T("[destination dir=%s][overwrite=%d]"),
+                 _T("[destination dir=%s][overwrite=%d]"),
                 destination_dir, overwrite));
   ASSERT1(!file_names.empty());
 
@@ -408,17 +406,13 @@ HRESULT SetupFiles::CopyInstallFiles(const std::vector<CString>& file_names,
       return GOOPDATE_E_PATH_APPEND_FAILED;
     }
     destination_file_paths.push_back(file);
-
-    SETUP_LOG(L2, (_T("[from=%s][to=%s]"),
-                  source_file_paths[i],
-                  destination_file_paths[i]));
   }
 
   hr = CopyAndValidateFiles(source_file_paths,
                             destination_file_paths,
                             overwrite);
 
-  SETUP_LOG(L2, (_T("[SetupFiles::CopyInstallFiles - done")));
+  SETUP_LOG(L2, (_T("[SetupFiles::CopyInstallFiles][Done]")));
   return hr;
 }
 
@@ -447,7 +441,7 @@ HRESULT SetupFiles::CopyAndValidateFiles(
         hr = File::DeleteAfterReboot(dot_old);
         if (FAILED(hr)) {
           SETUP_LOG(LW, (_T("DeleteAfterReboot of %s failed with 0x%08x."),
-                        dot_old, hr));
+                         dot_old, hr));
         }
       } else {
         SETUP_LOG(L2, (_T("[failed to move][%s][0x%08x]"), cur_file, hr));
@@ -457,29 +451,40 @@ HRESULT SetupFiles::CopyAndValidateFiles(
   }
 
   for (size_t i = 0; i != source_file_paths.size(); ++i) {
+    const CString& source_file = source_file_paths[i];
+    const CString& destination_file = destination_file_paths[i];
+    SETUP_LOG(L2, (_T("[CopyAndValidateFiles][from=%s][to=%s][overwrite=%d]")
+        _T("[destination file exists=%d]"), source_file, destination_file,
+        overwrite, File::Exists(destination_file)));
+
     extra_code1_ = i + 1;  // 1-based; reserves 0 for success or not set.
 
-    HRESULT hr = VerifyFileSignature(source_file_paths[i]);
-    if (FAILED(hr)) {
-      OPT_LOG(LE, (_T("[pre-copy signature validation failed][from=%s][0x%x]"),
-                   source_file_paths[i], hr));
-      ++metric_setup_files_verification_failed_pre;
-      return hr;
+    if (overwrite || !File::Exists(destination_file)) {
+      HRESULT hr = VerifyFileSignature(source_file);
+      if (FAILED(hr)) {
+        OPT_LOG(LE, (_T("[precopy signature validation failed][from=%s][0x%x]"),
+                     source_file, hr));
+        ++metric_setup_files_verification_failed_pre;
+        return hr;
+      }
+
+      hr = File::Copy(source_file, destination_file, true);
+      if (FAILED(hr)) {
+        OPT_LOG(LE, (_T("[copy failed][from=%s][to=%s][0x%08x]"),
+                     source_file, destination_file, hr));
+        return hr;
+      }
     }
 
-    hr = File::Copy(source_file_paths[i], destination_file_paths[i], true);
-    if (FAILED(hr)) {
-      OPT_LOG(LE, (_T("[copy failed][from=%s][to=%s][0x%08x]"),
-                   source_file_paths[i], destination_file_paths[i], hr));
-      return hr;
-    }
+    HRESULT hr = File::AreFilesIdentical(source_file, destination_file) ?
+                    VerifyFileSignature(destination_file) :
+                    GOOPDATE_E_POST_COPY_VERIFICATION_FAILED;
 
-    hr = VerifyFileSignature(destination_file_paths[i]);
     if (FAILED(hr)) {
-      OPT_LOG(LE, (_T("[postcopy signature failed][from=%s][to=%s][0x%x]"),
-                   source_file_paths[i], destination_file_paths[i], hr));
+      OPT_LOG(LE, (_T("[postcopy verification failed][from=%s][to=%s][0x%x]"),
+                   source_file, destination_file, hr));
       ++metric_setup_files_verification_failed_post;
-      VERIFY1(SUCCEEDED(File::Remove(destination_file_paths[i])));
+      VERIFY1(SUCCEEDED(File::Remove(destination_file)));
       return hr;
     }
   }
@@ -494,6 +499,8 @@ HRESULT SetupFiles::VerifyFileSignature(const CString& filepath) {
   if (!is_machine_) {
     return S_OK;
   }
+
+  HighresTimer verification_timer;
 
   // Verify the Authenticode signature but use use only the local cache for
   // revocation checks.
@@ -514,6 +521,8 @@ HRESULT SetupFiles::VerifyFileSignature(const CString& filepath) {
     return GOOPDATE_E_VERIFY_SIGNEE_IS_GOOGLE_FAILED;
   }
 
+  CORE_LOG(L3, (_T("[SetupFiles::VerifyFileSignature succeeded][%d ms]"),
+                verification_timer.GetElapsedMs()));
   return S_OK;
 }
 

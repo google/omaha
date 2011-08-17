@@ -22,7 +22,7 @@
 #include <atlstr.h>
 #include <map>
 #include "base/basictypes.h"
-#include "omaha/goopdate/const_goopdate.h"
+#include "omaha/common/const_goopdate.h"
 #include "third_party/gtest/include/gtest/gtest_prod.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/crash_generation_server.h"
@@ -78,8 +78,15 @@ class Crash {
                               const google_breakpad::ClientInfo& client_info,
                               const CString& crash_filename);
 
-  // Reports a crash, uploads it is out of process or can_upload_in_process is
-  // true, saves a copy of the crash, and deletes the crash file.
+  // Reports a crash by logging it to the Windows event log, saving a copy of
+  // the crash, and uploading it. After reporting the crash, the function
+  // deletes the crash file. Crashes that have a custom info file are
+  // considered product crashes and they are always handled out-of-process.
+  // These crashes are always uploaded.
+  // Crashes that do not specify a custom info file are considered Omaha
+  // internal crashes and they are handled in-process. In this case, the
+  // upload behavior is controlled by the value of can_upload_in_process
+  // parameter.
   static HRESULT Report(bool can_upload_in_process,
                         const CString& crash_filename,
                         const CString& custom_info_filename,
@@ -167,6 +174,10 @@ class Crash {
                                EXCEPTION_POINTERS* exinfo,
                                MDRawAssertionInfo* assertion,
                                bool succeeded);
+
+  // Start an instance of /report.
+  static void StartReportCrash(bool is_interactive,
+                               const CString& crash_filename);
 
   // Returns true if the crash has happened in an Omaha process which
   // has a top level window up.

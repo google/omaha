@@ -20,6 +20,7 @@
 #include <tchar.h>
 #include <atlstr.h>
 #include "base/basictypes.h"
+#include "base/time.h"
 #include "omaha/net/network_request.h"
 
 namespace omaha {
@@ -35,6 +36,8 @@ class NetDiags : public NetworkRequestCallback {
  private:
   void Initialize();
   virtual void OnProgress(int bytes, int bytes_total, int, const TCHAR*);
+  virtual void OnRequestBegin();
+  virtual void OnRequestRetryScheduled(time64 next_retry_time);
 
   // http get.
   void DoGet(const CString& url);

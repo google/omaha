@@ -15,11 +15,11 @@
 //
 // Unit tests for the Omaha repair mechanism.
 
-#include "omaha/common/app_util.h"
-#include "omaha/common/file.h"
-#include "omaha/common/path.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/common/vistautil.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/file.h"
+#include "omaha/base/path.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/base/vistautil.h"
 #include "omaha/recovery/repair_exe/repair_goopdate.h"
 #include "omaha/setup/msi_test_utils.h"
 #include "omaha/testing/unit_test.h"

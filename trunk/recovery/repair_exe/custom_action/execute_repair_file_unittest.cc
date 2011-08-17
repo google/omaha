@@ -16,10 +16,10 @@
 //
 // Unit tests for the file execution module of the MSP custom action.
 
-#include "omaha/common/app_util.h"
-#include "omaha/common/file.h"
-#include "omaha/common/path.h"
-#include "omaha/common/vistautil.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/file.h"
+#include "omaha/base/path.h"
+#include "omaha/base/vistautil.h"
 #include "omaha/recovery/repair_exe/custom_action/execute_repair_file.h"
 #include "omaha/testing/unit_test.h"
 

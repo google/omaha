@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,21 +15,24 @@
 
 // Declares the usage metrics used by the setup module.
 
-#ifndef OMAHA_SETUP_SETUP_METRICS_H__
-#define OMAHA_SETUP_SETUP_METRICS_H__
+#ifndef OMAHA_SETUP_SETUP_METRICS_H_
+#define OMAHA_SETUP_SETUP_METRICS_H_
 
 #include "omaha/statsreport/metrics.h"
 
 namespace omaha {
 
-// How many times the Install() was called.
+// TODO(omaha3): These descriptions need to be updated to match Omaha 3.
+// They may also need to be moved to other files.
+
+// How many times the Install() function was called.
 DECLARE_METRIC_count(setup_install_total);
-// How many times the Install() method succeeded.
+// How many times the Install() function succeeded.
 DECLARE_METRIC_count(setup_install_succeeded);
 
-// How many times the UpdateSelfSilently() was called.
+// How many times the UpdateSelfSilently() function was called.
 DECLARE_METRIC_count(setup_update_self_total);
-// How many times the UpdateSelfSilently() method succeeded.
+// How many times the UpdateSelfSilently() function succeeded.
 DECLARE_METRIC_count(setup_update_self_succeeded);
 
 // How many times the Install() resulted in a Google Update install attempt.
@@ -37,25 +40,12 @@ DECLARE_METRIC_count(setup_do_self_install_total);
 // How many times the Install() succeeded in installing Google Update.
 DECLARE_METRIC_count(setup_do_self_install_succeeded);
 
-// How many times the Install() resulted in a handoff attempt.
-// Does not include legacy handoffs, which do not go through Setup.
-DECLARE_METRIC_count(setup_handoff_only_total);
-// How many times the Install() successfully handed off.
-// Does not include legacy handoffs, which do not go through Setup.
-DECLARE_METRIC_count(setup_handoff_only_succeeded);
-
 // Total time (ms) spent installing Google Update as measured by time between
 // when DoInstall() is called and Setup phase 2 completes. Excludes handoffs.
 DECLARE_METRIC_timing(setup_install_google_update_total_ms);
 
-// Time (ms) from Setup starts until hands off to existing Omaha installation.
-DECLARE_METRIC_timing(setup_handoff_ms);
 // Time (ms) from Setup starts until the hand off process displays its UI.
 DECLARE_METRIC_timing(setup_handoff_ui_ms);
-
-// How many times Setup was run when Omaha was already installed but the core
-// was not running. Only incremented if existing Omaha version >= 1.2.0.0.
-DECLARE_METRIC_count(setup_installed_core_not_running);
 
 //
 // ShouldInstall metrics
@@ -176,8 +166,6 @@ DECLARE_METRIC_timing(setup_helper_msi_install_ms);
 
 // How many times Setup failed to get any of the Setup locks.
 DECLARE_METRIC_count(setup_locks_failed);
-// How many times Setup failed to get the 1.1 Setup Lock.
-DECLARE_METRIC_count(setup_lock11_failed);
 // How many times Setup failed to get the 1.2 Setup Lock.
 DECLARE_METRIC_count(setup_lock12_failed);
 
@@ -193,12 +181,9 @@ DECLARE_METRIC_count(setup_process_wait_failed_unknown);
 DECLARE_METRIC_count(setup_process_wait_failed_core);
 DECLARE_METRIC_count(setup_process_wait_failed_report);
 DECLARE_METRIC_count(setup_process_wait_failed_update);
-DECLARE_METRIC_count(setup_process_wait_failed_ig);
 DECLARE_METRIC_count(setup_process_wait_failed_handoff);
-DECLARE_METRIC_count(setup_process_wait_failed_ug);
 DECLARE_METRIC_count(setup_process_wait_failed_ua);
 DECLARE_METRIC_count(setup_process_wait_failed_cr);
-DECLARE_METRIC_count(setup_process_wait_failed_legacy);  // Any legacy mode.
 DECLARE_METRIC_count(setup_process_wait_failed_other);   // All other modes.
 
 // Time (ms) spent waiting for processes to exit - both successes and failures.
@@ -225,4 +210,4 @@ DECLARE_METRIC_count(setup_machine_app_non_admin);
 
 }  // namespace omaha
 
-#endif  // OMAHA_SETUP_SETUP_METRICS_H__
+#endif  // OMAHA_SETUP_SETUP_METRICS_H_

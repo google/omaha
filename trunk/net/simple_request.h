@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,20 +20,22 @@
 //
 // TODO(omaha): receiving a response into a file is not implemented yet.
 
-#ifndef OMAHA_NET_SIMPLE_REQUEST_H__
-#define OMAHA_NET_SIMPLE_REQUEST_H__
+#ifndef OMAHA_NET_SIMPLE_REQUEST_H_
+#define OMAHA_NET_SIMPLE_REQUEST_H_
 
 #include <atlstr.h>
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/synchronized.h"
-#include "omaha/net/http_client.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/synchronized.h"
 #include "omaha/net/http_request.h"
 #include "omaha/net/network_config.h"
 
 namespace omaha {
+
+class WinHttpAdapter;
 
 class SimpleRequest : public HttpRequestInterface {
  public:
@@ -45,6 +47,10 @@ class SimpleRequest : public HttpRequestInterface {
   virtual HRESULT Send();
 
   virtual HRESULT Cancel();
+
+  virtual HRESULT Pause();
+
+  virtual HRESULT Resume();
 
   virtual std::vector<uint8> GetResponse() const;
 
@@ -58,25 +64,25 @@ class SimpleRequest : public HttpRequestInterface {
 
   virtual CString GetResponseHeaders() const;
 
-  virtual CString ToString() const { return _T("WinHTTP"); }
+  virtual CString ToString() const { return _T("winhttp"); }
 
   virtual void set_session_handle(HINTERNET session_handle) {
     session_handle_ = session_handle;
   }
 
-  virtual void set_url(const CString& url) { url_ = url; }
+  virtual void set_url(const CString& url);
 
   virtual void set_request_buffer(const void* buffer, size_t buffer_length) {
     request_buffer_ = buffer;
     request_buffer_length_ = buffer_length;
   }
 
-  virtual void set_network_configuration(const Config& network_config) {
-    network_config_ = network_config;
+  virtual void set_proxy_configuration(const ProxyConfig& proxy_config) {
+    proxy_config_ = proxy_config;
   }
 
   // Sets the filename to receive the response instead of the memory buffer.
-  virtual void set_filename(const CString& filename) { filename_ = filename; }
+  virtual void set_filename(const CString& filename);
 
   virtual void set_low_priority(bool low_priority) {
     low_priority_ = low_priority;
@@ -90,14 +96,31 @@ class SimpleRequest : public HttpRequestInterface {
     additional_headers_ = additional_headers;
   }
 
+  // This request always uses the specified protocol so it is fine to ignore
+  // this attribute.
+  virtual void set_preserve_protocol(bool preserve_protocol) {
+    UNREFERENCED_PARAMETER(preserve_protocol);
+  }
+
   virtual CString user_agent() const { return user_agent_; }
 
   virtual void set_user_agent(const CString& user_agent) {
     user_agent_ = user_agent;
   }
 
+  virtual void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config) {
+    proxy_auth_config_ = proxy_auth_config;
+  }
+
  private:
-  HRESULT DoSend();
+  HRESULT OpenDestinationFile(HANDLE* file_handle);
+  HRESULT PrepareRequest(HANDLE* file_handle);
+  HRESULT Connect();
+  HRESULT SendRequest();
+  HRESULT ReceiveData(HANDLE file_handle);
+  HRESULT RequestData(HANDLE file_handle);
+  bool IsResumeNeeded() const;
+  bool IsPauseSupported() const;
 
   void LogResponseHeaders();
 
@@ -105,19 +128,17 @@ class SimpleRequest : public HttpRequestInterface {
   void SetProxyInformation();
 
   struct TransientRequestState;
-  void CloseHandles(TransientRequestState* transient_request_state);
+  void CloseHandles();
 
   static uint32 ChooseProxyAuthScheme(uint32 supported_schemes);
-
-  static void __stdcall StatusCallback(HINTERNET handle,
-                                       uint32 context,
-                                       uint32 status,
-                                       void* info,
-                                       uint32 info_len);
 
   // Returns true if the request is a POST request, in other words, if there
   // is a request buffer to be sent to the server.
   bool IsPostRequest() const { return request_buffer_ != NULL; }
+
+  // When in pause state, caller will be blocked until Resume() is called.
+  // Returns immediately otherwise.
+  void WaitForResumeEvent();
 
   // Holds the transient state corresponding to a single http request. We
   // prefer to isolate the state of a request to avoid dirty state.
@@ -126,19 +147,15 @@ class SimpleRequest : public HttpRequestInterface {
         : port(0),
           http_status_code(0),
           proxy_authentication_scheme(0),
+          is_https(false),
           content_length(0),
-          current_bytes(0),
-          connection_handle(NULL),
-          request_handle(NULL) {}
-    ~TransientRequestState() {
-      ASSERT1(connection_handle == NULL);
-      ASSERT1(request_handle == NULL);
-    }
+          current_bytes(0) {}
 
     CString scheme;
     CString server;
     int     port;
     CString url_path;
+    bool    is_https;
 
     std::vector<uint8> response;
     int http_status_code;
@@ -147,13 +164,13 @@ class SimpleRequest : public HttpRequestInterface {
     CString proxy_bypass;
     int content_length;
     int current_bytes;
-
-    HINTERNET connection_handle;
-    HINTERNET request_handle;
   };
 
   LLock lock_;
   volatile bool is_canceled_;
+  volatile bool is_closed_;
+  volatile bool pause_happened_;
+  LLock ready_to_pause_lock_;
   HINTERNET session_handle_;  // Not owned by this class.
   CString url_;
   CString filename_;
@@ -161,16 +178,19 @@ class SimpleRequest : public HttpRequestInterface {
   size_t      request_buffer_length_;   // Length of the request body.
   CString additional_headers_;
   CString user_agent_;
-  Config network_config_;
+  ProxyAuthConfig proxy_auth_config_;
+  ProxyConfig proxy_config_;
   bool low_priority_;
   NetworkRequestCallback* callback_;
-  scoped_ptr<HttpClient> http_client_;
+  scoped_ptr<WinHttpAdapter> winhttp_adapter_;
   scoped_ptr<TransientRequestState> request_state_;
+  scoped_event event_resume_;
+  bool download_completed_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(SimpleRequest);
+  DISALLOW_COPY_AND_ASSIGN(SimpleRequest);
 };
 
 }   // namespace omaha
 
-#endif  // OMAHA_NET_SIMPLE_REQUEST_H__
+#endif  // OMAHA_NET_SIMPLE_REQUEST_H_
 

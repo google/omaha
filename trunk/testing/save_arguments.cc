@@ -20,8 +20,8 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <windows.h>
-#include "omaha/common/app_util.h"
-#include "omaha/common/scoped_any.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/scoped_any.h"
 
 namespace {
 

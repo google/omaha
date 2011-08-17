@@ -13,13 +13,11 @@
 // limitations under the License.
 // ========================================================================
 //
-// There are two phases of setup:
+// There are two phases of setup. Both are done in an instance running from a
+// temp location.
 //  1) Copy the Google Update files to the install location.
-//   * Executed by InstallGoogleUpdateAndApp().
-//   * This is done in an instance running from a temp location.
 //  2) Do everything else to install Google Update.
 //   * Executed by SetupGoogleUpdate().
-//   * This is done in an instance running from the installed location.
 //
 //  Uninstall() undoes both phases of setup.
 //  All methods assume the instance is running with the correct permissions.
@@ -32,7 +30,7 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/scoped_any.h"
+#include "omaha/base/scoped_any.h"
 
 namespace omaha {
 
@@ -40,89 +38,47 @@ class GLock;
 class HighresTimer;
 struct NamedObjectAttributes;
 
-struct CommandLineArgs;
 class SetupFiles;
 
 class Setup {
  public:
-  Setup(bool is_machine, const CommandLineArgs* args);
+  explicit Setup(bool is_machine);
   ~Setup();
 
-  // Installs Google Update, if necessary, and launches a worker to install app.
-  // Handles elevation.
-  HRESULT Install(const CString& cmd_line);
+  // Installs Omaha if necessary.
+  HRESULT Install(bool set_keepalive);
 
-  // Installs Google Update silently without installing an app.
-  HRESULT InstallSelfSilently();
+  // Acquires the Setup Lock and uninstalls all Omaha versions if Omaha can be
+  // uninstalled.
+  HRESULT Uninstall(bool send_uninstall_ping);
 
-  // Updates Google Update.
-  HRESULT UpdateSelfSilently();
-
-  // Repairs Google Update for Code Red recovery.
-  HRESULT RepairSilently();
-
-  // Completes installation from the installed location.
-  HRESULT SetupGoogleUpdate();
-
-  // Obtains the Setup Lock and uninstalls all Google Update versions if
-  // Google Update can be uninstalled.
-  HRESULT Uninstall();
-
-  // Verifies that Google Update is either properly installed or uninstalled
-  // completely. Returns whether Google Update is installed.
+  // Verifies that Omaha is either properly installed or uninstalled completely.
   // TODO(omaha): Consider making this and did_uninstall_ non-static after
   // refactoring Setup phases. May require a Setup member in Goopdate.
   static void CheckInstallStateConsistency(bool is_machine);
 
-  // Writes error info for silent updates to the registry so the installed Omaha
-  // can send an update failed ping.
-  static void PersistUpdateErrorInfo(bool is_machine,
-                                     HRESULT error,
-                                     int extra_code1,
-                                     const CString& version);
-
-  // Reads the error info for silent updates from the registry if present and
-  // deletes it. Returns true if the data is valid.
-  static bool ReadAndClearUpdateErrorInfo(bool is_machine,
-                                          DWORD* error_code,
-                                          DWORD* extra_code1,
-                                          CString* version);
-
-  // Marks Google Update EULA as accepted by deleting the registry value.
-  // Does not touch apps' EULA state.
-  static HRESULT SetEulaAccepted(bool is_machine);
-
   int extra_code1() const { return extra_code1_; }
 
- private:
-  // Defines the mode of the instance.
-  enum Mode {
-    MODE_UNKNOWN,
-    MODE_INSTALL,
-    MODE_SELF_INSTALL,
-    MODE_SELF_UPDATE,
-    MODE_REPAIR,
-    MODE_PHASE2,
-    MODE_UNINSTALL,
-  };
+  void set_is_self_update(bool is_self_update) {
+    is_self_update_ = is_self_update;
+  }
 
+ private:
   typedef std::vector<uint32> Pids;
 
-  // Does all non-elevation work for Install().
-  HRESULT DoInstall();
+  // Completes installation.
+  HRESULT SetupGoogleUpdate();
 
   // Handles Setup lock acquisition failures and returns the error to report.
   HRESULT HandleLockFailed(int lock_version);
 
   // Does the install work within all necessary locks, which have already been
-  // obtained.
-  // If handoff_process is not NULL on a successful return, the caller should
-  // wait for this process after releasing the locks.
-  HRESULT DoProtectedInstall(HANDLE* handoff_process);
+  // acquired.
+  HRESULT DoProtectedInstall(bool set_keepalive);
 
   // Uninstalls all Google Update versions after checking if Google Update can
   // be uninstalled.
-  HRESULT DoProtectedUninstall();
+  HRESULT DoProtectedUninstall(bool send_uninstall_ping);
 
   // Returns whether Google Update should be installed.
   bool ShouldInstall(SetupFiles* setup_files);
@@ -130,18 +86,11 @@ class Setup {
   // Returns whether the same version of Google Update should be over-installed.
   bool ShouldOverinstallSameVersion(SetupFiles* setup_files);
 
-  // Increments the usage stat if a core process is not running and the existing
-  // version is >= 1.2.0.0.
-  void UpdateCoreNotRunningMetric(const CString& existing_version);
-
   HRESULT DoProtectedGoogleUpdateInstall(SetupFiles* setup_files);
 
   // Rolls back the changes made during DoProtectedGoogleUpdateInstall().
   // Call when that method fails.
   void RollBack(SetupFiles* setup_files);
-
-  // Installs the Google Update files.
-  HRESULT InstallPhase1();
 
   // Tells other instances to stop.
   HRESULT StopGoogleUpdate();
@@ -149,24 +98,12 @@ class Setup {
   // Tells other instances to stop then waits for them to exit.
   HRESULT StopGoogleUpdateAndWait();
 
-  // Sets the non-legacy shutdown event to signal other instances for this user
-  // or machine to exit.
+  // Sets the shutdown event to signal other instances for this user or machine
+  // to exit.
   HRESULT SignalShutdownEvent();
-
-  // Signals the legacy quiet mode events to cause all legacy Google Update
-  // processes for this user or machine to exit.
-  HRESULT SignalLegacyShutdownEvents();
-
-  // Creates and sets the specified legacy event.
-  HRESULT CreateLegacyEvent(const CString& event_name,
-                            HANDLE* event_handle) const;
 
   // Releases all the shutdown events.
   void ReleaseShutdownEvents();
-
-  // Sets the setup complete event, signalling the other setup instance to
-  // release the Setup Lock.
-  void SetSetupCompleteEvent() const;
 
   // Waits for other instances of GoogleUpdate.exe to exit.
   HRESULT WaitForOtherInstancesToExit(const Pids& pids);
@@ -174,17 +111,22 @@ class Setup {
   // Gets the list of all the GoogleUpdate.exe processes to wait for.
   HRESULT GetPidsToWaitFor(Pids* pids) const;
 
-  // Gets the list of GoogleUpdate processes to wait for based on processes'
-  // command line.
+  // Gets a list of GoogleUpdate.exe processes for user or machine that are
+  // running from the respective official directory, except "/install" or
+  // "/registerproduct" instances.
+  // In the machine case we search in all the accounts since the workers can be
+  // running in any admin account and the machine update worker runs as SYSTEM.
+  // In the user case, we only search the user's account.
+  // In both cases, the command line location is used to determine the
+  // machine/user cases.
   HRESULT GetPidsToWaitForUsingCommandLine(Pids* pids) const;
 
   // Returns whether elevation is required to perform this install.
   bool IsElevationRequired() const;
 
-  // Starts Omaha elevated if possible and waits for it to exit.
-  // The same arguments are passed to the elevated instance.
-  HRESULT ElevateAndWait(const CString& cmd_line);
-
+// TODO(omaha3): Support offline builds. Prefer to detect and maybe copy outside
+// Setup.
+#if 0
   // Given a guid, finds and copies the offline manifest and binaries from the
   // current module directory to the offline_dir passed in. offline_dir is
   // typically the Google\Update\Offline\ directory. The offline manifest is
@@ -197,10 +139,7 @@ class Setup {
   // For all the applications that have been requested, copy the offline
   // binaries. Calls CopyOfflineFilesForGuid() for each app_guid.
   bool CopyOfflineFiles(const CString& offline_dir);
-
-  // Launches a worker process from the installed location to run setup phase 2,
-  // if specified, and install the app.
-  HRESULT LaunchInstalledWorker(bool do_setup_phase_2, HANDLE* process);
+#endif
 
   // Starts the core.
   HRESULT StartMachineCoreProcess() const;
@@ -215,21 +154,8 @@ class Setup {
   // Verifies that the appropriate core is running.
   bool IsCoreProcessRunning() const;
 
-  // Starts the installed long-lived process.
+  // Starts the long-lived Core process.
   HRESULT StartCore() const;
-
-  // Waits for the process or an event.
-  // If the process exits before the event is signaled, the exit code is
-  // returned in exit_code.
-  // The event should not be signaled until at least the point where the process
-  // is handling and reporting its own errors.
-  HRESULT WaitForProcessExitOrEvent(HANDLE process,
-                                    HANDLE event,
-                                    uint32* exit_code) const;
-
-  // Waits for the UI in the handoff worker to be initialized such that it can
-  // handle its own errors.
-  HRESULT WaitForHandoffWorker(HANDLE process) const;
 
   // Returns the SID to use for process searches, mutexes, etc. during this
   // installation.
@@ -238,40 +164,22 @@ class Setup {
   // Initializes the Setup Lock with correct name and security attributes.
   static bool InitSetupLock(bool is_machine, GLock* setup_lock);
 
-  // Initializes legacy Setup Locks with correct name and security attributes.
-  bool InitLegacySetupLocks(GLock* lock10,
-                            GLock* lock11_user,
-                            GLock* lock11_machine);
-
-  // Returns true if it can instantiate MSXML parser.
-  static bool HasXmlParser();
-
   // Returns true if GoogleUpdate can be uninstalled now.
   bool CanUninstallGoogleUpdate() const;
 
-  bool IsInteractiveInstall() const;
+  // Control the state of the DelayUninstall flag.  If set, uninstall will
+  // be delayed for at least 24 hours after initial install.
+  bool ShouldDelayUninstall() const;
+  HRESULT SetDelayUninstall(bool should_delay) const;
 
-  bool ShouldWaitForWorkerProcess() const;
-
-  // Sets values for OEM installs in the registry.
-  HRESULT SetOemInstallState();
-
-  // Marks Google Update EULA as not accepted if it is not already installed.
-  // Does not touch apps' EULA state.
-  static HRESULT SetEulaNotAccepted(bool is_machine);
+  // Sends the uninstall ping and waits for the ping to be sent.
+  HRESULT SendUninstallPing();
 
   const bool is_machine_;
-  Mode mode_;
-  const CommandLineArgs* const args_;
+  bool is_self_update_;
   CString saved_version_;  // Previous version saved for roll back.
-  scoped_event legacy_1_0_shutdown_event_;
-  scoped_event legacy_1_1_shutdown_event_;
   scoped_event shutdown_event_;
   int extra_code1_;
-
-  // Whether an offline worker has been launched. Not valid until worker has
-  // been launched. If true, this Setup instance is for offline metainstaller.
-  bool launched_offline_worker_;
 
   scoped_ptr<HighresTimer> metrics_timer_;
 

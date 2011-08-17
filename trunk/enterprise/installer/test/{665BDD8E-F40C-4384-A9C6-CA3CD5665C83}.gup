@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response protocol="3.0">
+  <app appid="{665BDD8E-F40C-4384-A9C6-CA3CD5665C83}" status="ok">
+    <updatecheck status="ok">
+      <urls>
+        <url codebase="http://dl.google.com/edgedl/chrome/install/${INSTALLER_VERSION}/"/>
+      </urls>
+      <manifest version="${INSTALLER_VERSION}">
+        <packages>
+          <package name="test_setup.exe" hash="${INSTALLER_HASH}" size="${INSTALLER_SIZE}" required="true"/>
+        </packages>
+        <actions>
+          <action event="install" run="test_setup.exe" arguments="" needsadmin="false"/>
+          <action event="postinstall" onsuccess="exitsilentlyonlaunchcmd"/>
+        </actions>
+      </manifest>
+    </updatecheck>
+  </app>
+</response>

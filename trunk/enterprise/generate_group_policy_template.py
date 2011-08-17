@@ -17,19 +17,19 @@
 
 """Generates a Group Policy template file for Google Update policies.
 
-This script only works on Windows because gpedit.msc requires Windows-style
-line endings (\r\n).
+The resulting strings and files use CRLF as required by gpedit.msc.
 
 To unit test this module, just run the file from the command line.
 """
 
+import codecs
 import filecmp
 import os
 import sys
 
 
 HORIZONTAL_RULE = ';%s\n' % ('-' * 78)
-MAIN_POLICY_KEY = "Software\Policies\Google\Update"
+MAIN_POLICY_KEY = 'Software\Policies\Google\Update'
 
 # pylint: disable-msg=C6004
 HEADER = """\
@@ -263,7 +263,12 @@ STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpda
 
 
 def GenerateGroupPolicyTemplate(apps):
+  # pylint: disable-msg=C6114
   """Generates a Group Policy template (ADM format)for the specified apps.
+
+  Replaces LF in strings above with CRLF as required by gpedit.msc.
+  When writing the resulting contents to a file, use binary mode to ensure the
+  CRLFs are preserved.
 
   Args:
     apps: A list of tuples containing information about each app.
@@ -272,11 +277,11 @@ def GenerateGroupPolicyTemplate(apps):
           * app ID
           * optional string to append to the auto-update explanation
             - Should start with a space or double new line (\n\n).
-    target_path: Output path of the .ADM template file.
 
   Returns:
     String containing the contents of the .ADM file.
   """
+  # pylint: enable-msg=C6114
 
   def _CreateLegalIdentifier(input_string):
     """Converts input_string to a legal identifier for ADM files.
@@ -319,7 +324,11 @@ def GenerateGroupPolicyTemplate(apps):
                         .replace('%', '')
                         .replace('^', '')
                         .replace('*', '')
-                        .replace('+', ''))
+                        .replace('+', '')
+                        .replace(u'\u00a9', '')   # Copyright (C).
+                        .replace(u'\u00ae', '')   # Registered Trademark (R).
+                        .replace(u'\u2122', ''))  # Trademark (TM).
+
     # pylint: enable-msg=C6004
 
   def _WriteTemplateForApp(template, app):
@@ -373,18 +382,39 @@ def GenerateGroupPolicyTemplate(apps):
       _WriteTemplateForAllApps(STRINGS_APP_POLICY_EXPLANATIONS_TEMPLATE, apps),
       ]
 
-  return ''.join(target_contents)
+  # Join the sections of content then replace LF with CRLF.
+  return ''.join(target_contents).replace('\n', '\r\n')
 
+
+def WriteGroupPolicyTemplate(target_path, apps):
+  """Writes a Group Policy template (ADM format)for the specified apps.
+
+  The file is UTF-16 and contains CRLF on all platforms.
+
+  Args:
+    target_path: Output path of the .ADM template file.
+    apps: A list of tuples containing information about each app.
+        Each element of the list is a tuple of:
+          * app name
+          * app ID
+          * optional string to append to the auto-update explanation
+            - Should start with a space or double new line (\n\n).
+  """  # pylint: disable-msg=C6114
+
+  contents = GenerateGroupPolicyTemplate(apps)
+  f = codecs.open(target_path, 'wb', 'utf-16')
+  f.write(contents)
+  f.close()
 
 # Run a unit test when the module is run directly.
 if __name__ == '__main__':
   TEST_APPS = [
-      ('Google Chrome',
-       '{8A69D345-D564-463C-AFF1-A69D9E530F96}',
-       ' Check http://www.google.com/chrome/.'),
-      ('Google Earth',
-       '{74AF07D8-FB8F-4D51-8AC7-927721D56EBB}',
-       ' Check http://earth.google.com/.'),
+      ('Google Test Foo',
+       '{D6B08267-B440-4c85-9F79-E195E80D9937}',
+       ' Check http://www.google.com/test_foo/.'),
+      (u'Google User Test Foo\u00a9\u00ae\u2122',
+       '{104844D6-7DDA-460b-89F0-FBF8AFDD0A67}',
+       ' Check http://www.google.com/user_test_foo/.'),
       ]
   TEST_GOLD_FILENAME = 'test_gold.adm'
   TEST_OUTPUT_FILENAME = 'test_out.adm'
@@ -393,11 +423,7 @@ if __name__ == '__main__':
   gold_path = os.path.join(module_dir, TEST_GOLD_FILENAME)
   output_path = os.path.join(module_dir, TEST_OUTPUT_FILENAME)
 
-  test_target_contents = GenerateGroupPolicyTemplate(TEST_APPS)
-
-  target = open(output_path, 'wt')
-  target.write(test_target_contents)
-  target.close()
+  WriteGroupPolicyTemplate(output_path, TEST_APPS)
 
   if filecmp.cmp(gold_path, output_path, shallow=False):
     print 'PASS: Contents equal.'

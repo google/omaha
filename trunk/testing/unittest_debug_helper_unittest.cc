@@ -14,7 +14,7 @@
 // ========================================================================
 
 
-#include "omaha/common/debug.h"
+#include "omaha/base/debug.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha{

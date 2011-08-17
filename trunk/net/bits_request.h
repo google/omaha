@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 // BITS is sending the following string as user agent:
 //    User-Agent: Microsoft BITS/6.6
 // where the version seems to be the version of %windir%\System32\QMgr.dll.
-// The user agent of BITS can't be controlled programmatically.
 //
 // TODO(omaha): the class interface is not stable yet, as a few more
 // getters and setters are still needed.
@@ -31,11 +30,14 @@
 #include <bits.h>
 #include <vector>
 #include "base/basictypes.h"
-#include "omaha/common/synchronized.h"
-#include "omaha/common/utils.h"
+#include "base/scoped_ptr.h"
+#include "omaha/base/synchronized.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/http_request.h"
 
 namespace omaha {
+
+class BitsJobCallback;
 
 class BitsRequest : public HttpRequestInterface {
  public:
@@ -47,6 +49,10 @@ class BitsRequest : public HttpRequestInterface {
   virtual HRESULT Send();
 
   virtual HRESULT Cancel();
+
+  virtual HRESULT Pause();
+
+  virtual HRESULT Resume();
 
   virtual std::vector<uint8> GetResponse() const {
     return std::vector<uint8>();
@@ -78,8 +84,8 @@ class BitsRequest : public HttpRequestInterface {
     request_buffer_length_ = buffer_length;
   }
 
-  virtual void set_network_configuration(const Config& network_config) {
-    network_config_ = network_config;
+  virtual void set_proxy_configuration(const ProxyConfig& proxy_config) {
+    proxy_config_ = proxy_config;
   }
 
   // Sets the filename to receive the response instead of the memory buffer.
@@ -97,10 +103,20 @@ class BitsRequest : public HttpRequestInterface {
     additional_headers_ = additional_headers;
   }
 
+  // This request always uses the specified protocol so it is fine to ignore
+  // this attribute.
+  virtual void set_preserve_protocol(bool preserve_protocol) {
+    UNREFERENCED_PARAMETER(preserve_protocol);
+  }
+
   virtual CString user_agent() const { return user_agent_; }
 
   virtual void set_user_agent(const CString& user_agent) {
     user_agent_ = user_agent;
+  }
+
+  virtual void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config) {
+    proxy_auth_config_ = proxy_auth_config;
   }
 
   // Sets the minimum length of time that BITS waits after encountering a
@@ -118,6 +134,9 @@ class BitsRequest : public HttpRequestInterface {
     no_progress_timeout_ = no_progress_timeout;
   }
 
+  // Handles that BITS job state has changed.
+  void OnBitsJobStateChanged();
+
  private:
   // Sets invariant job properties, such as the filename and the description.
   // These parameters can't change over the job life time.
@@ -125,6 +144,10 @@ class BitsRequest : public HttpRequestInterface {
 
   // Sets non-invariant job properties.
   HRESULT SetJobProperties();
+
+  // Sets additional_headers_ on the Job if IBackgroundCopyJobHttpOptions is
+  // supported.
+  HRESULT SetJobCustomHeaders();
 
   // Uses the SimpleRequest HttpClient to detect the proxy for the current
   // request.
@@ -156,8 +179,19 @@ class BitsRequest : public HttpRequestInterface {
   // are already set on the BITS job.
   HRESULT HandleProxyAuthenticationErrorCredsSet();
 
+  // Calls back with progress information if available.
+  HRESULT NotifyProgress();
+
   int WinHttpToBitsProxyAuthScheme(uint32 winhttp_scheme);
   uint32 BitsToWinhttpProxyAuthScheme(int bits_scheme);
+
+  // Sets up BITS callback so BITS can send job status changes to this class.
+  HRESULT SetupBitsCallback();
+
+  // Stops BITS callback to send further job change notifications to this class.
+  // It is important to do this before the object goes out of scope since BITS
+  // callback needs to reference this object.
+  void RemoveBitsCallback();
 
   // Creates or opens an existing job.
   // 'is_created' is true if the job has been created or false if the job
@@ -187,7 +221,8 @@ class BitsRequest : public HttpRequestInterface {
   size_t      request_buffer_length_;   // Length of the request body.
   CString additional_headers_;
   CString user_agent_;
-  Config network_config_;
+  ProxyAuthConfig proxy_auth_config_;
+  ProxyConfig proxy_config_;
   bool low_priority_;
   bool is_canceled_;
   HINTERNET session_handle_;  // Not owned by this class.
@@ -201,10 +236,21 @@ class BitsRequest : public HttpRequestInterface {
   // them out in sequence.
   bool creds_set_scheme_unknown_;
 
+  // Event that is set when the BITS job state is changed.
+  scoped_event bits_job_status_changed_event_;
+
+  BitsJobCallback*  bits_request_callback_;
+  uint32 last_progress_report_tick_;
+
   scoped_ptr<TransientRequestState> request_state_;
 
   // See http://b/1189928
   CComPtr<IBackgroundCopyManager> bits_manager_;
+
+  // BITS could call JobModification() callback very often during job transfer.
+  // This minumum interval is to prevent reporting job progress too often to
+  // BitsRequest.
+  static const int kJobProgressReportMinimumIntervalMs = 200;
 
   DISALLOW_EVIL_CONSTRUCTORS(BitsRequest);
 };

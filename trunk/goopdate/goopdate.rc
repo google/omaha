@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,15 +13,20 @@
 // limitations under the License.
 // ========================================================================
 
+// TODO(omaha3): Figure out what category of resources this file includes and
+// rename it and non_localized_resource.h. Is it DLL resources?
+
 #include <afxres.h>
-#include "omaha/goopdate/resource.h"
+#include "omaha/goopdate/non_localized_resource.h"
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
-IDR_GOOGLE_UPDATE_WORKER_CLASS          REGISTRY "omaha/common/generic_reg_file_local_server.rgs"
-IDR_GOOGLE_UPDATE_WORKER_CLASS_MACHINE  REGISTRY "omaha/common/generic_reg_file_elevation_localserver.rgs"
+IDI_ELEVATION_MONIKER_ICON        ICON "omaha/google_update/google_update.ico"
 
-IDR_GOOGLE_UPDATE_SERVICE_APPID         REGISTRY "omaha/common/generic_reg_file_appid.rgs"
-IDR_GOOGLE_UPDATE_CORE_CLASS            REGISTRY "omaha/common/generic_reg_file_localservice.rgs"
+IDR_LOCAL_SERVER_RGS              REGISTRY "omaha/base/generic_reg_file_local_server.rgs"
+IDR_LOCAL_SERVER_ELEVATION_RGS    REGISTRY "omaha/base/generic_reg_file_elevation_localserver.rgs"
+IDR_LOCAL_SERVER_IE_LOW_RGS       REGISTRY "omaha/base/generic_reg_file_ie_low_local_server.rgs"
+IDR_LOCAL_SERVICE_RGS             REGISTRY "omaha/base/generic_reg_file_localservice.rgs"
 
-IDI_ELEVATION_MONIKER_ICON              ICON "omaha/goopdate/goopdate.ico"
+IDR_GOOGLE_UPDATE3_SERVICE_APPID  REGISTRY "omaha/base/generic_reg_file_appid.rgs"
 
+1 TYPELIB "goopdate\\omaha3_idl.tlb"

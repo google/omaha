@@ -17,14 +17,14 @@
 
 #include "omaha/recovery/repair_exe/custom_action/execute_repair_file.h"
 #include <shlobj.h>
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/file.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/path.h"
-#include "omaha/common/string.h"
-#include "omaha/common/system.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/file.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/path.h"
+#include "omaha/base/string.h"
+#include "omaha/base/system.h"
+#include "omaha/base/utils.h"
 
 namespace omaha {
 

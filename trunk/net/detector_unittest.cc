@@ -17,8 +17,8 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/browser_utils.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/browser_utils.h"
 #include "omaha/net/detector.h"
 #include "omaha/net/network_config.h"
 #include "omaha/testing/unit_test.h"
@@ -67,7 +67,7 @@ class FirefoxProxyDetectorTest : public testing::Test {
 
   HRESULT ParsePrefsFile(const TCHAR* name,
                          const TCHAR* file_path,
-                         Config* config) {
+                         ProxyConfig* config) {
     return detector_->ParsePrefsFile(name, file_path, config);
   }
 
@@ -252,7 +252,7 @@ TEST_F(FirefoxProxyDetectorTest, ParsePrefsFile) {
                             _T("8080"),
                             &prefs_file);
   ASSERT_TRUE(res);
-  Config config;
+  ProxyConfig config;
   EXPECT_SUCCEEDED(ParsePrefsFile(_T(""), prefs_file, &config));
   EXPECT_FALSE(config.auto_detect);
   EXPECT_TRUE(config.auto_config_url.IsEmpty());
@@ -269,7 +269,7 @@ TEST_F(FirefoxProxyDetectorTest, ParsePrefsFile) {
                        _T("8080"),
                        &prefs_file);
   ASSERT_TRUE(res);
-  config = Config();
+  config = ProxyConfig();
   EXPECT_SUCCEEDED(ParsePrefsFile(_T(""), prefs_file, &config));
   EXPECT_FALSE(config.auto_detect);
   EXPECT_TRUE(config.auto_config_url.IsEmpty());
@@ -286,7 +286,7 @@ TEST_F(FirefoxProxyDetectorTest, ParsePrefsFile) {
                        _T("8080"),
                        &prefs_file);
   ASSERT_TRUE(res);
-  config = Config();
+  config = ProxyConfig();
   EXPECT_SUCCEEDED(ParsePrefsFile(_T(""), prefs_file, &config));
   EXPECT_FALSE(config.auto_detect);
   EXPECT_STREQ(config.auto_config_url, _T("http://foobar"));
@@ -303,7 +303,7 @@ TEST_F(FirefoxProxyDetectorTest, ParsePrefsFile) {
                        _T("8080"),
                        &prefs_file);
   ASSERT_TRUE(res);
-  config = Config();
+  config = ProxyConfig();
   EXPECT_SUCCEEDED(ParsePrefsFile(_T(""), prefs_file, &config));
   EXPECT_TRUE(config.auto_detect);
   EXPECT_TRUE(config.auto_config_url.IsEmpty());
@@ -318,7 +318,7 @@ TEST_F(FirefoxProxyDetectorTest, Detect) {
   if (FAILED(GetFirefoxDefaultProfile(&name, &path))) {
     return;
   }
-  Config config;
+  ProxyConfig config;
   EXPECT_SUCCEEDED(detector_->Detect(&config));
 }
 

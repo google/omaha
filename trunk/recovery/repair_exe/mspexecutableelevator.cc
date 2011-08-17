@@ -29,8 +29,9 @@
 #include "omaha/recovery/repair_exe/mspexecutableelevator.h"
 #include <atlpath.h>
 #include <msi.h>
-#include "omaha/common/debug.h"
-#include "omaha/common/string.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/safe_format.h"
+#include "omaha/base/string.h"
 
 namespace omaha {
 
@@ -94,12 +95,13 @@ HRESULT ExecuteGoogleSignedExe(const TCHAR* exe,
         // shared memory just created, the current process id, the executable
         // to launch, and the executable's arguments.
         CString command_line;
-        command_line.Format(_T("EXECUTABLECOMMANDLINE=\"%s %u \"\"%s\"\" %s\" ")
-                            _T("REINSTALL=ALL"),
-                            shared_memory_name,
-                            GetCurrentProcessId(),
-                            exe,
-                            args);
+        SafeCStringFormat(&command_line,
+                          _T("EXECUTABLECOMMANDLINE=\"%s %u \"\"%s\"\" %s\" ")
+                          _T("REINSTALL=ALL"),
+                          shared_memory_name,
+                          GetCurrentProcessId(),
+                          exe,
+                          args);
         // Generate path to patch using path to current module.
         TCHAR module_name[MAX_PATH] = {0};
         DWORD len = ::GetModuleFileName(_AtlBaseModule.GetModuleInstance(),

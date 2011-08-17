@@ -1,0 +1,26 @@
+// Copyright 2009 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+
+// These include headers with absolute paths, which Resource Editor cannot load.
+#ifndef APSTUDIO_INVOKED
+#include "omaha/base/const_config.h"
+#include "omaha/goopdate/google_update_ps_resource.h"
+#endif  // APSTUDIO_INVOKED
+
+IDR_INPROC_SERVER_RGS REGISTRY "omaha/base/generic_reg_file_dll.rgs"
+IDR_COM_PROXY_RGS     REGISTRY "omaha/base/generic_reg_file_dll_handler.rgs"
+
+1 TYPELIB "goopdate\\omaha3_idl.tlb"
+

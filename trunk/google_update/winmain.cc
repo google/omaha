@@ -42,10 +42,12 @@
 #include <atlpath.h>
 #include <atlstr.h>
 
-#include "omaha/common/constants.h"
-#include "omaha/common/error.h"
-#include "omaha/common/signaturevalidator.h"
-#include "omaha/goopdate/const_goopdate.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/error.h"
+#include "omaha/base/signaturevalidator.h"
+#include "omaha/common/const_goopdate.h"
+
+// TODO(omaha3): move to common.
 #include "omaha/goopdate/main.h"
 
 namespace omaha {
@@ -88,58 +90,6 @@ bool IsVistaOrLater() {
     known = true;
   }
   return is_vista;
-}
-
-// Adapted from vistautil.cc.
-HRESULT IsUserRunningSplitToken(bool* is_split_token) {
-  if (!IsVistaOrLater()) {
-    *is_split_token = false;
-    return S_OK;
-  }
-
-  HANDLE process_token = NULL;
-  if (!::OpenProcessToken(::GetCurrentProcess(),
-                          TOKEN_QUERY,
-                          &process_token)) {
-    HRESULT hr = HRESULTFromLastError();
-    ::CloseHandle(process_token);
-    return hr;
-  }
-
-  TOKEN_ELEVATION_TYPE elevation_type = TokenElevationTypeDefault;
-  DWORD size_returned = 0;
-  if (!::GetTokenInformation(process_token,
-                             TokenElevationType,
-                             &elevation_type,
-                             sizeof(elevation_type),
-                             &size_returned)) {
-    HRESULT hr = HRESULTFromLastError();
-    ::CloseHandle(process_token);
-    return hr;
-  }
-
-  ::CloseHandle(process_token);
-
-  *is_split_token = elevation_type == TokenElevationTypeFull ||
-                    elevation_type == TokenElevationTypeLimited;
-
-  return S_OK;
-}
-
-// Adapted from vistautil.cc.
-bool IsUACDisabled() {
-  if (!IsVistaOrLater()) {
-    return false;
-  }
-
-  // Split token indicates that UAC is on.
-  bool is_split_token = true;
-  if SUCCEEDED(IsUserRunningSplitToken(&is_split_token)) {
-    return !is_split_token;
-  } else {
-    // Return a safe value on failure.
-    return false;
-  }
 }
 
 // Checking the full path vs. just being somewhere in Program Files is important
@@ -217,10 +167,6 @@ HRESULT VerifySignatureIfNecessary(const TCHAR* file_path,
     return S_OK;
   }
 
-  if (IsUACDisabled()) {
-    return S_OK;
-  }
-
   // Verify the Authenticode signature but use only the local cache for
   // revocation checks.
   HRESULT hr = VerifySignature(file_path, false);
@@ -284,7 +230,7 @@ HRESULT GetDllPath(HINSTANCE instance, bool is_machine, CString* dll_path) {
 
   // Try the side-by-side DLL first.
   _tcscpy_s(path, arraysize(path), base_path);
-  if (!::PathAppend(path, omaha::kGoopdateDllName)) {
+  if (!::PathAppend(path, omaha::kOmahaDllName)) {
     return HRESULTFromLastError();
   }
   if (FileExists(path)) {
@@ -302,7 +248,7 @@ HRESULT GetDllPath(HINSTANCE instance, bool is_machine, CString* dll_path) {
   if (!::PathAppend(path, version)) {
     return HRESULTFromLastError();
   }
-  if (!::PathAppend(path, omaha::kGoopdateDllName)) {
+  if (!::PathAppend(path, omaha::kOmahaDllName)) {
     return HRESULTFromLastError();
   }
   if (!FileExists(path)) {

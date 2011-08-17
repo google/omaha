@@ -85,6 +85,14 @@
 
             <Component Id='ProductClientState'
                        Guid='6B528A57-0CD8-4b26-85F8-1CA05523B8F1'>
+              <!-- Clear the last UI string before running the installer so we know
+                   that any value present upon rollback is fresh. -->
+              <RemoveRegistryValue Key='$(var.UpdateKeyPath)\ClientState\$(var.ProductGuid)'
+                                   Name='LastInstallerResultUIString'
+                                   Root='HKLM' />
+              <RemoveRegistryValue Key='$(var.UpdateKeyPath)'
+                                   Name='LastInstallerResultUIString'
+                                   Root='HKLM' />
               <RegistryValue Id='NonEmptyComponent' Action='write'
                              Root='HKLM'
                              Key='$(var.UpdateKeyPath)\ClientState\$(var.ProductGuid)'
@@ -104,6 +112,9 @@
         in standalone_installer.py.-->
     <Binary Id='$(var.ProductNameLegalIdentifier)Installer'
             SourceFile='$(var.StandaloneInstallerPath)' />
+
+    <Binary Id='ShowInstallerResultUIStringDll'
+            SourceFile='$(var.ShowErrorCADll)' />
 
     <CustomAction Id='NewerVersionError' Error='4000'/>
 
@@ -136,6 +147,21 @@
                       Execute='immediate'
                       Return='check' />
     <?endif?>
+
+    <!-- Send the ProductGuid to the ShowInstallerResultUIString custom action.
+         The value is accessed through the "CustomActionData" property from
+         within the action itself. -->
+    <CustomAction Id='SetAppGuidProperty'
+      Property='ShowInstallerResultUIString'
+      Value='$(var.ProductGuid)' />
+
+    <!-- A custom action to be executed on rollback to log and display the
+         LastInstallerResultUIString. -->
+    <CustomAction Id='ShowInstallerResultUIString'
+      BinaryKey='ShowInstallerResultUIStringDll'
+      DllEntry='ShowInstallerResultUIString'
+      Execute='rollback'
+      Impersonate='no' />
 
     <CustomAction Id='DoInstall'
       BinaryKey='$(var.ProductNameLegalIdentifier)Installer'
@@ -180,7 +206,16 @@
               Before='BuildInstallCommand'>
         (($ProductClientState>2) OR REINSTALL) AND (BRAND &lt;&gt; "")
       </Custom>
-      <Custom Action='BuildInstallCommand' Before='DoInstall'>
+      <Custom Action='BuildInstallCommand'
+              Before='SetAppGuidProperty'>
+        (($ProductClientState>2) OR REINSTALL)
+      </Custom>
+      <Custom Action='SetAppGuidProperty'
+              Before='ShowInstallerResultUIString'>
+        (($ProductClientState>2) OR REINSTALL)
+      </Custom>
+      <Custom Action='ShowInstallerResultUIString'
+              Before='DoInstall'>
         (($ProductClientState>2) OR REINSTALL)
       </Custom>
 

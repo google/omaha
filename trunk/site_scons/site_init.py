@@ -15,6 +15,8 @@
 # limitations under the License.
 # ========================================================================
 
+"""Omaha site init for SCons."""
+
 # Nothing to see here.  This file just needs to exist so that SCons can load
 # the tools in the site_scons subdirectory.  Customization of environments and
 # their methods should be done via those tools.

@@ -1,4 +1,0 @@
-LIBRARY    "uninstall_action"
-
-EXPORTS
-  UninstallOmahaProduct         PRIVATE

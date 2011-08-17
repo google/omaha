@@ -26,7 +26,7 @@
 
 #include <windows.h>
 #include <msi.h>
-#include "omaha/common/constants.h"
+#include "omaha/base/constants.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {

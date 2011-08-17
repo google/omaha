@@ -22,7 +22,7 @@
 using namespace stats_report;
 
 #define APP_NAME_STRING L"aggregator-win32_unittest"
-#define PREFIX_KEY_STRING L"Software\\Google\\" 
+#define PREFIX_KEY_STRING L"Software\\" _T(SHORT_COMPANY_NAME_ANSI) L"\\"
 #define SUFFIX_KEY_STRING L"\\UsageStats\\Daily"
 #define ROOT_KEY_STRING PREFIX_KEY_STRING APP_NAME_STRING 
 #define KEY_STRING ROOT_KEY_STRING SUFFIX_KEY_STRING

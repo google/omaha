@@ -19,8 +19,8 @@
 #include <windows.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/shutdown_callback.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/shutdown_callback.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/crash_generation_server.h"
 

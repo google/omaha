@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+<response protocol="3.0">
   <app appid="{D6B08267-B440-4C85-9F79-E195E80D9937}" status="ok">
-    <updatecheck Version="${INSTALLER_VERSION}"
-                 arguments="REGISTER_LAUNCH_COMMAND=1"
-                 codebase="http://dl.google.com/foo/test_foo_v${INSTALLER_VERSION}.msi"
-                 hash="${INSTALLER_HASH}"
-                 needsadmin="true"
-                 size="${INSTALLER_SIZE}"
-                 status="ok"/>
+    <updatecheck status="ok">
+      <urls>
+        <url codebase="http://dl.google.com/foo/"/>
+      </urls>
+      <manifest version="${INSTALLER_VERSION}">
+        <packages>
+          <package name="test_foo_v${INSTALLER_VERSION}.msi" hash="${INSTALLER_HASH}" size="${INSTALLER_SIZE}" required="true"/>
+        </packages>
+        <actions>
+          <action event="install" run="test_foo_v${INSTALLER_VERSION}.msi" arguments="REGISTER_LAUNCH_COMMAND=1" needsadmin="true"/>
+        </actions>
+       </manifest>
+    </updatecheck>
   </app>
-</gupdate>
+</response>

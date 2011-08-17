@@ -17,11 +17,13 @@
 #include <pstore.h>
 #include <wincred.h>
 #include <wincrypt.h>
-#include "omaha/common/encrypt.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/smart_handle.h"
-#include "omaha/common/string.h"
-#include "omaha/common/system_info.h"
+#include "omaha/base/commontypes.h"
+#include "omaha/base/encrypt.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/smart_handle.h"
+#include "omaha/base/string.h"
+#include "omaha/base/system_info.h"
+#include "omaha/goopdate/cred_dialog.h"
 #include "omaha/third_party/smartany/scoped_any.h"
 
 using omaha::encrypt::EncryptData;
@@ -77,93 +79,50 @@ CString ProxyAuth::ExtractProxy(const CString& proxy_settings,
   return proxy_settings;
 }
 
-void ProxyAuth::ConfigureProxyAuth(const CString& caption,
-                                   const CString& message,
-                                   HWND parent,
+void ProxyAuth::ConfigureProxyAuth(bool is_machine,
                                    uint32 cancel_prompt_threshold) {
-  ASSERT1(!caption.IsEmpty());
-  ASSERT1(!message.IsEmpty());
-  ASSERT1(parent);
   ASSERT1(cancel_prompt_threshold);
 
-  proxy_prompt_caption_ = caption;
-  proxy_prompt_message_ = message;
-  parent_hwnd_ = parent;
+  proxy_prompt_is_machine_ = is_machine;
   cancel_prompt_threshold_ = cancel_prompt_threshold;
 }
 
-bool ProxyAuth::PromptUser(const CString& server) {
-  scoped_library credui_lib(::LoadLibrary(L"credui.dll"));
-  ASSERT1(credui_lib);
-  if (!credui_lib)
-    return false;
+bool ProxyAuth::PromptUser(const CString& server,
+                           const ProxyAuthConfig& proxy_auth_config) {
+  NET_LOG(L3, (_T("[ProxyAuth::PromptUser][%s][%s]"),
+               server, proxy_auth_config.ToString()));
 
-  typedef BOOL (__stdcall *CredUIPromptForCredentialsW_type)(
-      PCREDUI_INFO pUiInfo,
-      PCTSTR pszTargetName,
-      PCtxtHandle Reserved,
-      DWORD dwAuthError,
-      PCTSTR pszUserName,
-      ULONG ulUserNameMaxChars,
-      PCTSTR pszPassword,
-      ULONG ulPasswordMaxChars,
-      PBOOL pfSave,
-      DWORD dwFlags);
-  CredUIPromptForCredentialsW_type CredUIPromptForCredentialsW_fn =
-      reinterpret_cast<CredUIPromptForCredentialsW_type>(
-          GetProcAddress(get(credui_lib), "CredUIPromptForCredentialsW"));
-  ASSERT1(CredUIPromptForCredentialsW_fn || SystemInfo::IsRunningOnW2K());
-  if (!CredUIPromptForCredentialsW_fn)
-    return false;
+  CString user;
+  CString pass;
 
-  wchar_t username[CREDUI_MAX_USERNAME_LENGTH + 1];
-  wchar_t password[CREDUI_MAX_PASSWORD_LENGTH + 1];
-  BOOL check;
-  CREDUI_INFO info = {0};
-  info.cbSize = sizeof(info);
+  HRESULT hr = LaunchCredentialDialog(
+      proxy_prompt_is_machine_,
+      proxy_auth_config.parent_hwnd,
+      server,
+      proxy_auth_config.prompt_caption,
+      &user,
+      &pass);
 
-  ASSERT1(parent_hwnd_);
-  info.hwndParent = parent_hwnd_;
-
-  ASSERT1(!proxy_prompt_message_.IsEmpty());
-  ASSERT1(!proxy_prompt_caption_.IsEmpty());
-  CString message;
-  message.FormatMessage(proxy_prompt_message_, server);
-  info.pszMessageText = message.GetString();
-  info.pszCaptionText = proxy_prompt_caption_;
-
-  DWORD result;
-  do {
-    username[0] = L'\0';
-    password[0] = L'\0';
-    result = CredUIPromptForCredentialsW_fn(
-        &info,
-        server,
-        NULL,
-        0,
-        username,
-        CREDUI_MAX_USERNAME_LENGTH,
-        password,
-        CREDUI_MAX_PASSWORD_LENGTH,
-        &check,
-        CREDUI_FLAGS_ALWAYS_SHOW_UI | CREDUI_FLAGS_GENERIC_CREDENTIALS |
-        CREDUI_FLAGS_DO_NOT_PERSIST);
-    NET_LOG(L3, (_T("[CredUIPromptForCredentialsW returned %d]"), result));
-  } while (result == NO_ERROR && (!username[0] || !password[0]));
-
-  if (result == NO_ERROR) {
-    AddCred(server, username, password);
-  } else if (result == ERROR_CANCELLED) {
+  if (SUCCEEDED(hr)) {
+    AddCred(server, user, pass);
+  } else if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
     PromptCancelled();
   }
 
-  return result == NO_ERROR;
+  SecureZeroMemory(user.GetBuffer(), user.GetAllocLength() * sizeof(TCHAR));
+  SecureZeroMemory(pass.GetBuffer(), pass.GetAllocLength() * sizeof(TCHAR));
+
+  return SUCCEEDED(hr);
 }
 
 bool ProxyAuth::GetProxyCredentials(bool allow_ui, bool force_ui,
                                     const CString& proxy_server,
+                                    const ProxyAuthConfig& proxy_auth_config,
                                     CString* username, CString* password,
                                     uint32* auth_scheme) {
+  NET_LOG(L3, (_T("[ProxyAuth::GetProxyCredentials][%d][%s]"),
+               allow_ui, proxy_auth_config.ToString()));
+
   CString server(proxy_server);
   if (server.IsEmpty()) {
     server = kDefaultProxyServer;
@@ -176,7 +135,8 @@ bool ProxyAuth::GetProxyCredentials(bool allow_ui, bool force_ui,
 
   if (i == -1) {
     if (ReadFromIE7(server) || ReadFromPreIE7(server) ||
-        (allow_ui && parent_hwnd_ && IsPromptAllowed() && PromptUser(server))) {
+        (allow_ui && proxy_auth_config.parent_hwnd && IsPromptAllowed() &&
+         PromptUser(server, proxy_auth_config))) {
       i = servers_.GetSize() - 1;
     }
   }

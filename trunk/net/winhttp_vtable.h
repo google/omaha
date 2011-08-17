@@ -28,7 +28,7 @@
 
 #include <windows.h>
 #include <winhttp.h>
-#include "omaha/common/debug.h"
+#include "omaha/base/debug.h"
 
 namespace omaha {
 

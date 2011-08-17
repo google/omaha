@@ -13,33 +13,37 @@
 // limitations under the License.
 // ========================================================================
 
-#include "omaha/common/constants.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/goopdate/goopdate-internal.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/common/command_line.h"
+#include "omaha/goopdate/goopdate_internal.h"
 #include "omaha/testing/unit_test.h"
+
+namespace omaha {
 
 namespace {
 
 const TCHAR* const kAppMachineClientStatePath =
-    _T("HKLM\\Software\\Google\\Update\\ClientState\\")
-    _T("{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
+    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("\\ClientState\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 const TCHAR* const kApp2MachineClientStatePath =
-    _T("HKLM\\Software\\Google\\Update\\ClientState\\")
-    _T("{553B2D8C-E6A7-43ed-ACC9-A8BA5D34395F}\\");
+    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("\\ClientState\\{553B2D8C-E6A7-43ed-ACC9-A8BA5D34395F}\\");
 const TCHAR* const kAppUserClientStatePath =
-    _T("HKCU\\Software\\Google\\Update\\ClientState\\")
-    _T("{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
+    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("\\ClientState\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 const TCHAR* const kApp2UserClientStatePath =
-    _T("HKCU\\Software\\Google\\Update\\ClientState\\")
-    _T("{553B2D8C-E6A7-43ed-ACC9-A8BA5D34395F}\\");
+    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("\\ClientState\\{553B2D8C-E6A7-43ed-ACC9-A8BA5D34395F}\\");
 
 const TCHAR* const kAppMachineClientStateMediumPath =
-    _T("HKLM\\Software\\Google\\Update\\ClientStateMedium\\")
-    _T("{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
+    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("\\ClientStateMedium\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
+
+// Update this when new modes are added.
+const int kLastMode = COMMANDLINE_MODE_PING;
 
 }  // namespace
-
-namespace omaha {
 
 class GoopdateRegistryProtectedTest : public testing::Test {
  protected:
@@ -626,8 +630,8 @@ TEST_F(GoopdateRegistryProtectedTest,
 TEST_F(GoopdateRegistryProtectedTest,
        PromoteAppEulaAccepted_User_UpdateZero_MediumAppValueOneAndStateKey) {
   const TCHAR* const kAppUserClientStateMediumPath =
-      _T("HKCU\\Software\\Google\\Update\\ClientStateMedium\\")
-      _T("{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
+      _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+      _T("\\ClientStateMedium\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 
   EXPECT_SUCCEEDED(RegKey::CreateKey(kAppUserClientStatePath));
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
@@ -651,6 +655,348 @@ TEST_F(GoopdateRegistryProtectedTest,
                                     _T("eulaaccepted"),
                                     &value));
   EXPECT_EQ(1, value);
+}
+
+//
+// IsMachineProcess tests.
+//
+
+class GoopdateIsMachineProcessTest : public testing::Test {
+ protected:
+  bool FromMachineDirHelper(CommandLineMode mode) {
+    return internal::IsMachineProcess(mode,
+                                      true,
+                                      false,
+                                      false,
+                                      TRISTATE_NONE);
+  }
+
+  bool IsLocalSystemHelper(CommandLineMode mode) {
+    return internal::IsMachineProcess(mode,
+                                      false,
+                                      true,
+                                      false,
+                                      TRISTATE_NONE);
+  }
+
+  bool MachineOverrideHelper(CommandLineMode mode) {
+    return internal::IsMachineProcess(mode,
+                                      false,
+                                      false,
+                                      true,
+                                      TRISTATE_NONE);
+  }
+
+  bool NeedsAdminFalseHelper(CommandLineMode mode) {
+    return internal::IsMachineProcess(mode,
+                                      false,
+                                      false,
+                                      false,
+                                      TRISTATE_FALSE);
+  }
+
+  bool NeedsAdminTrueHelper(CommandLineMode mode) {
+    return internal::IsMachineProcess(mode,
+                                      false,
+                                      false,
+                                      false,
+                                      TRISTATE_TRUE);
+  }
+};
+
+// Unused function. Its sole purpose is to make sure that the unit tests below
+// were correctly updated when new modes were added.
+#pragma warning(push)
+// enumerator 'identifier' in switch of enum 'enumeration' is not explicitly
+// handled by a case label.
+// enumerator 'identifier' in switch of enum 'enumeration' is not handled.
+#pragma warning(1: 4061 4062)
+static void EnsureUnitTestUpdatedWithNewModes() {
+  CommandLineMode unused_mode;
+  switch (unused_mode) {
+    case COMMANDLINE_MODE_UNKNOWN:
+    case COMMANDLINE_MODE_NOARGS:
+    case COMMANDLINE_MODE_CORE:
+    case COMMANDLINE_MODE_SERVICE:
+    case COMMANDLINE_MODE_REGSERVER:
+    case COMMANDLINE_MODE_UNREGSERVER:
+    case COMMANDLINE_MODE_NETDIAGS:
+    case COMMANDLINE_MODE_CRASH:
+    case COMMANDLINE_MODE_REPORTCRASH:
+    case COMMANDLINE_MODE_INSTALL:
+    case COMMANDLINE_MODE_UPDATE:
+    case COMMANDLINE_MODE_HANDOFF_INSTALL:
+    case COMMANDLINE_MODE_UA:
+    case COMMANDLINE_MODE_RECOVER:
+    case COMMANDLINE_MODE_WEBPLUGIN:
+    case COMMANDLINE_MODE_CODE_RED_CHECK:
+    case COMMANDLINE_MODE_COMSERVER:
+    case COMMANDLINE_MODE_REGISTER_PRODUCT:
+    case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
+    case COMMANDLINE_MODE_SERVICE_REGISTER:
+    case COMMANDLINE_MODE_SERVICE_UNREGISTER:
+    case COMMANDLINE_MODE_CRASH_HANDLER:
+    case COMMANDLINE_MODE_COMBROKER:
+    case COMMANDLINE_MODE_ONDEMAND:
+    case COMMANDLINE_MODE_MEDIUM_SERVICE:
+    case COMMANDLINE_MODE_UNINSTALL:
+    case COMMANDLINE_MODE_PING:
+    //
+    // When adding a new mode, be sure to update kLastMode too.
+    //
+      break;
+  }
+}
+#pragma warning(pop)
+
+TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_MachineDirOnly) {
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_UNKNOWN));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_NOARGS));
+  EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_CORE));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_SERVICE));
+  }
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_REGSERVER));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_UNREGSERVER));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_NETDIAGS));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_CRASH));
+  // TODO(omaha): Change to machine.
+  EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_REPORTCRASH));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_INSTALL));
+  }
+  EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_UPDATE));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_HANDOFF_INSTALL));
+  }
+  EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_UA));
+  EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_RECOVER));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_WEBPLUGIN));
+  EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_CODE_RED_CHECK));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_COMSERVER));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_REGISTER_PRODUCT));
+  }
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_UNREGISTER_PRODUCT));
+  }
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_SERVICE_REGISTER));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_SERVICE_UNREGISTER));
+  EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_CRASH_HANDLER));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_COMBROKER));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_ONDEMAND));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(FromMachineDirHelper(COMMANDLINE_MODE_MEDIUM_SERVICE));
+  }
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_UNINSTALL));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_PING));
+  EXPECT_TRUE(FromMachineDirHelper(
+      static_cast<CommandLineMode>(kLastMode + 1)));
+}
+
+TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_IsLocalSystemOnly) {
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_UNKNOWN));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_NOARGS));
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_CORE));
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_SERVICE));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_REGSERVER));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_UNREGSERVER));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_NETDIAGS));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_CRASH));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_REPORTCRASH));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_INSTALL));
+  }
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_UPDATE));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_HANDOFF_INSTALL));
+  }
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_UA));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_RECOVER));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_WEBPLUGIN));
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_CODE_RED_CHECK));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_COMSERVER));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_REGISTER_PRODUCT));
+  }
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_UNREGISTER_PRODUCT));
+  }
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_SERVICE_REGISTER));
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_SERVICE_UNREGISTER));
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_CRASH_HANDLER));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_COMBROKER));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_ONDEMAND));
+  EXPECT_TRUE(IsLocalSystemHelper(COMMANDLINE_MODE_MEDIUM_SERVICE));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_UNINSTALL));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_PING));
+  EXPECT_FALSE(IsLocalSystemHelper(
+      static_cast<CommandLineMode>(kLastMode + 1)));
+}
+
+TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_MachineOverrideOnly) {
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_UNKNOWN));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_NOARGS));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_CORE));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_SERVICE));
+  }
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_REGSERVER));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_UNREGSERVER));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_NETDIAGS));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_CRASH));
+  EXPECT_TRUE(MachineOverrideHelper(COMMANDLINE_MODE_REPORTCRASH));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_INSTALL));
+  }
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_UPDATE));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_HANDOFF_INSTALL));
+  }
+  EXPECT_TRUE(MachineOverrideHelper(COMMANDLINE_MODE_UA));
+  EXPECT_TRUE(MachineOverrideHelper(COMMANDLINE_MODE_RECOVER));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_WEBPLUGIN));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_CODE_RED_CHECK));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_COMSERVER));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_REGISTER_PRODUCT));
+  }
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_UNREGISTER_PRODUCT));
+  }
+  EXPECT_TRUE(MachineOverrideHelper(COMMANDLINE_MODE_SERVICE_REGISTER));
+  EXPECT_TRUE(MachineOverrideHelper(COMMANDLINE_MODE_SERVICE_UNREGISTER));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_CRASH_HANDLER));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_COMBROKER));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_ONDEMAND));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_MEDIUM_SERVICE));
+  }
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_UNINSTALL));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_PING));
+  EXPECT_FALSE(MachineOverrideHelper(
+      static_cast<CommandLineMode>(kLastMode + 1)));
+}
+
+TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_NeedsAdminFalseOnly) {
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_UNKNOWN));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_NOARGS));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_CORE));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_SERVICE));
+  }
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_REGSERVER));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_UNREGSERVER));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_NETDIAGS));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_CRASH));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_REPORTCRASH));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_INSTALL));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_UPDATE));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_HANDOFF_INSTALL));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_UA));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_RECOVER));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_WEBPLUGIN));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_CODE_RED_CHECK));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_COMSERVER));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_REGISTER_PRODUCT));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_UNREGISTER_PRODUCT));
+  EXPECT_TRUE(NeedsAdminFalseHelper(COMMANDLINE_MODE_SERVICE_REGISTER));
+  EXPECT_TRUE(NeedsAdminFalseHelper(COMMANDLINE_MODE_SERVICE_UNREGISTER));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_CRASH_HANDLER));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_COMBROKER));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_ONDEMAND));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_MEDIUM_SERVICE));
+  }
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_UNINSTALL));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_PING));
+  EXPECT_FALSE(NeedsAdminFalseHelper(
+      static_cast<CommandLineMode>(kLastMode + 1)));
+}
+
+TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_NeedsAdminTrueOnly) {
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_UNKNOWN));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_NOARGS));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_CORE));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_SERVICE));
+  }
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_REGSERVER));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_UNREGSERVER));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_NETDIAGS));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_CRASH));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_REPORTCRASH));
+  EXPECT_TRUE(NeedsAdminTrueHelper(COMMANDLINE_MODE_INSTALL));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_UPDATE));
+  EXPECT_TRUE(NeedsAdminTrueHelper(COMMANDLINE_MODE_HANDOFF_INSTALL));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_UA));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_RECOVER));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_WEBPLUGIN));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_CODE_RED_CHECK));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_COMSERVER));
+  EXPECT_TRUE(NeedsAdminTrueHelper(COMMANDLINE_MODE_REGISTER_PRODUCT));
+  EXPECT_TRUE(NeedsAdminTrueHelper(COMMANDLINE_MODE_UNREGISTER_PRODUCT));
+  EXPECT_TRUE(NeedsAdminTrueHelper(COMMANDLINE_MODE_SERVICE_REGISTER));
+  EXPECT_TRUE(NeedsAdminTrueHelper(COMMANDLINE_MODE_SERVICE_UNREGISTER));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_CRASH_HANDLER));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_COMBROKER));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_ONDEMAND));
+  {
+    ExpectAsserts expect_asserts;
+    EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_MEDIUM_SERVICE));
+  }
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_UNINSTALL));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_PING));
+  EXPECT_FALSE(NeedsAdminTrueHelper(
+      static_cast<CommandLineMode>(kLastMode + 1)));
+}
+
+// Tests all modes plus an undefined one.
+TEST(GoopdateTest, CanDisplayUi_NotSilent) {
+  for (int mode = 0; mode <= kLastMode + 1; ++mode) {
+    const bool kExpected = mode == COMMANDLINE_MODE_UNKNOWN ||
+                           mode == COMMANDLINE_MODE_INSTALL ||
+                           mode == COMMANDLINE_MODE_HANDOFF_INSTALL ||
+                           mode == COMMANDLINE_MODE_UA;
+
+    EXPECT_EQ(kExpected,
+              internal::CanDisplayUi(static_cast<CommandLineMode>(mode),
+                                     false));
+  }
+}
+
+TEST(GoopdateTest, CanDisplayUi_Silent) {
+  int mode = 0;
+  // These two modes always return true.
+  for (; mode <= COMMANDLINE_MODE_UNKNOWN; ++mode) {
+    EXPECT_TRUE(internal::CanDisplayUi(static_cast<CommandLineMode>(mode),
+                                       true));
+  }
+
+  // Tests the remaining modes plus an undefined one.
+  for (; mode <= kLastMode + 1; ++mode) {
+    EXPECT_FALSE(internal::CanDisplayUi(static_cast<CommandLineMode>(mode),
+                                        true));
+  }
 }
 
 }  // namespace omaha

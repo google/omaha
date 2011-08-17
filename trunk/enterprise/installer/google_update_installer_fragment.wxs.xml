@@ -27,6 +27,14 @@
 
           <Component Id='ComponentGoogleUpdate'
                      Guid='6B528A57-0CD8-4b26-85F8-1CA05523B8F1'>
+            <!-- Clear the last UI string before running the installer so we know
+                 that any value present upon rollback is fresh. -->
+            <RemoveRegistryValue Key='$(var.UpdateKeyPath)\ClientState\$(var.ProductGuid)'
+                                 Name='LastInstallerResultUIString'
+                                 Root='HKLM' />
+            <RemoveRegistryValue Key='$(var.UpdateKeyPath)'
+                                 Name='LastInstallerResultUIString'
+                                 Root='HKLM' />
             <?ifdef UsingGoogleUpdate_1_2_171_OrLater?>
             <RegistryValue Id='NonEmptyComponent' Action='write'
                            Root='HKLM'

@@ -18,7 +18,8 @@
 
 #include "omaha/net/http_client.h"
 
-#include "omaha/common/debug.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/safe_format.h"
 
 namespace omaha {
 
@@ -49,7 +50,7 @@ CString HttpClient::BuildRequestHeader(const TCHAR* name, const TCHAR* value) {
   ASSERT1(name && *name);
   ASSERT1(value && *value);
   CString header;
-  header.Format(_T("%s: %s\r\n"), name, value);
+  SafeCStringFormat(&header, _T("%s: %s\r\n"), name, value);
   return header;
 }
 

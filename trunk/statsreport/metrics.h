@@ -19,8 +19,8 @@
 
 #include <iterator>
 #include "base/basictypes.h"
-#include "omaha/common/highres_timer-win32.h"
-#include "omaha/common/logging/logging.h"
+#include "omaha/base/highres_timer-win32.h"
+#include "omaha/base/logging/logging.h"
 
 /// Macros to declare & define named & typed metrics.
 /// Put declarations in headers or in cpp files, where you need access
@@ -269,14 +269,14 @@ extern MetricCollection &g_global_metrics;
 class IntegerMetricBase: public MetricBase {
 public:
   /// Sets the current value
-  void Set(uint64 value);
+  void Set(int64 value);
 
   /// Retrieves the current value
-  uint64 value() const;
+  int64 value() const;
 
   void operator ++ ()     { Increment(); }
   void operator ++ (int)  { Increment(); }
-  void operator += (uint64 addend) { Add(addend); }
+  void operator += (int64 addend) { Add(addend); }
 
 protected:
   IntegerMetricBase(const char *name,
@@ -284,16 +284,16 @@ protected:
                     MetricCollectionBase *coll)
       : MetricBase(name, type, coll), value_(0) {
   }
-  IntegerMetricBase(const char *name, MetricType type, uint64 value)
+  IntegerMetricBase(const char *name, MetricType type, int64 value)
       : MetricBase(name, type), value_(value) {
   }
 
   void Increment();
   void Decrement();
-  void Add(uint64 value);
-  void Subtract(uint64 value);
+  void Add(int64 value);
+  void Subtract(int64 value);
 
-  uint64 value_;
+  int64 value_;
 
 private:
   DISALLOW_EVIL_CONSTRUCTORS(IntegerMetricBase);
@@ -306,12 +306,12 @@ public:
       : IntegerMetricBase(name, kCountType, coll) {
   }
 
-  CountMetric(const char *name, uint64 value)
+  CountMetric(const char *name, int64 value)
       : IntegerMetricBase(name, kCountType, value) {
   }
 
   /// Nulls the metric and returns the current values.
-  uint64 Reset();
+  int64 Reset();
 
 private:
   DISALLOW_EVIL_CONSTRUCTORS(CountMetric);
@@ -323,9 +323,9 @@ public:
     uint32 count;
     uint32 align; // allow access to the alignment gap between count and sum,
                   // makes it esier to unittest.
-    uint64 sum; // ms
-    uint64 minimum; // ms
-    uint64 maximum; // ms
+    int64 sum; // ms
+    int64 minimum; // ms
+    int64 maximum; // ms
   };
 
   TimingMetric(const char *name, MetricCollectionBase *coll)
@@ -338,14 +338,14 @@ public:
   }
 
   uint32 count() const;
-  uint64 sum() const;
-  uint64 minimum() const;
-  uint64 maximum() const;
-  uint64 average() const;
+  int64 sum() const;
+  int64 minimum() const;
+  int64 maximum() const;
+  int64 average() const;
 
   /// Adds a single sample to the metric
   /// @param time_ms time (in milliseconds) for this sample
-  void AddSample(uint64 time_ms);
+  void AddSample(int64 time_ms);
 
   /// Adds count samples to the metric
   /// @note use this when capturing time over a variable number of items to
@@ -356,7 +356,7 @@ public:
   /// @note if count == 0, no sample will be recorded
   /// @param count number of samples to add
   /// @param total_time_ms the total time consumed by all the "count" samples
-  void AddSamples(uint64 count, uint64 total_time_ms);
+  void AddSamples(int64 count, int64 total_time_ms);
 
   /// Nulls the metric and returns the current values.
   TimingData Reset();
@@ -420,15 +420,15 @@ public:
       : IntegerMetricBase(name, kIntegerType, coll) {
   }
 
-  IntegerMetric(const char *name, uint64 value)
+  IntegerMetric(const char *name, int64 value)
       : IntegerMetricBase(name, kIntegerType, value) {
   }
 
-  void operator = (uint64 value)   { Set(value); }
+  void operator = (int64 value)   { Set(value); }
 
   void operator -- ()     { Decrement(); }
   void operator -- (int)  { Decrement(); }
-  void operator -= (uint64 sub)    { Subtract(sub); }
+  void operator -= (int64 sub)    { Subtract(sub); }
 
 private:
   DISALLOW_EVIL_CONSTRUCTORS(IntegerMetric);

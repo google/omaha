@@ -1,0 +1,13 @@
+'%HKROOT%' {
+  NoRemove Software {
+    NoRemove Classes {
+      NoRemove CLSID {
+        ForceRemove '%CLSID%' {
+          InprocHandler32 = s '%MODULE%' {
+            val ThreadingModel = s 'Both'
+          }
+        }
+      }
+    }
+  }
+}

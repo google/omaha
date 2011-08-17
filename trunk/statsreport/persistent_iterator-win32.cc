@@ -78,9 +78,10 @@ void PersistentMetricsIteratorWin32::Next() {
 
       // Get the next key and value
       LONG err = ::RegEnumValue(sub_key_, value_index_,
-                    CStrBuf(wide_value_name, value_name_len), &value_name_len,
-                    0, &value_type,
-                    buf, &value_len);
+                     CStrBuf(wide_value_name, static_cast<int>(value_name_len)),
+                     &value_name_len,
+                     0, &value_type,
+                     buf, &value_len);
 
       ++value_index_;
 
@@ -99,10 +100,10 @@ void PersistentMetricsIteratorWin32::Next() {
 
         switch (state_) {
          case kCounts:
-          if (value_len != sizeof(uint64))
+          if (value_len != sizeof(int64))
             continue;
           current_value_.reset(new CountMetric(current_value_name_ .GetString(),
-                                          *reinterpret_cast<uint64*>(&buf[0])));
+                                          *reinterpret_cast<int64*>(&buf[0])));
           break;
          case kTimings:
           if (value_len != sizeof(TimingMetric::TimingData))
@@ -111,11 +112,11 @@ void PersistentMetricsIteratorWin32::Next() {
                         *reinterpret_cast<TimingMetric::TimingData*>(&buf[0])));
           break;
          case kIntegers:
-          if (value_len != sizeof(uint64))
+          if (value_len != sizeof(int64))
             continue;
           current_value_.reset(new IntegerMetric(
                                       current_value_name_.GetString(),
-                                      *reinterpret_cast<uint64*>(&buf[0])));
+                                      *reinterpret_cast<int64*>(&buf[0])));
           break;
          case kBooleans:
           if (value_len != sizeof(uint32))
