@@ -19,24 +19,26 @@
 #include <windows.h>
 #include <atlstr.h>
 #include "base/basictypes.h"
-#include "omaha/common/constants.h"
+#include "omaha/base/constants.h"
 
 namespace omaha {
 
-struct CommandLineArgs;
-
 class SetupGoogleUpdate {
  public:
-  SetupGoogleUpdate(bool is_machine, const CommandLineArgs* args);
+  explicit SetupGoogleUpdate(bool is_machine);
   ~SetupGoogleUpdate();
 
   HRESULT FinishInstall();
+
+  HRESULT InstallBrowserPlugins();
 
   // Uninstalls Google Update registrations created by FinishInstall().
   void Uninstall();
 
   // Build the command line to execute the installed core.
   CString BuildCoreProcessCommandLine() const;
+
+  int extra_code1() const { return extra_code1_; }
 
  private:
   HRESULT FinishMachineInstall();
@@ -81,9 +83,7 @@ class SetupGoogleUpdate {
   // Uninstalls the helper (MSI).
   HRESULT UninstallMsiHelper();
 
-  HRESULT InstallOptionalComponents();
-
-  HRESULT UninstallOptionalComponents();
+  HRESULT UninstallBrowserPlugins();
 
   // Build the install file path for support files. For example,
   CString BuildSupportFileInstallPath(const CString& filename) const;
@@ -95,20 +95,20 @@ class SetupGoogleUpdate {
   // Uninstall previous versions after an overinstall of the new version. We do
   // the following:
   //   * Delete all sub-directories under Google\\Update, except the running
-  //     version's directory.
+  //     version's directory and the cache directory.
   //   * Uninstall the BHO, so IE does not load it in the future.
   HRESULT UninstallPreviousVersions();
 
   const bool is_machine_;
-  const CommandLineArgs* const args_;
   CString this_version_;
+  int extra_code1_;
 
 #ifdef _DEBUG
   bool have_called_uninstall_previous_versions_;
 #endif
 
   friend class SetupGoogleUpdateTest;
-  friend class AppManagerTest;
+  friend class AppManagerTestBase;
 
   DISALLOW_EVIL_CONSTRUCTORS(SetupGoogleUpdate);
 };

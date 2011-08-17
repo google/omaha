@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -92,6 +92,10 @@ int GetHttpStatusFromBitsError(HRESULT error);
 
 // Cancels a job.
 HRESULT CancelBitsJob(IBackgroundCopyJob* job);
+
+HRESULT PauseBitsJob(IBackgroundCopyJob* job);
+
+HRESULT ResumeBitsJob(IBackgroundCopyJob* job);
 
 // Converts a job state to a string.
 CString JobStateToString(BG_JOB_STATE job_state);

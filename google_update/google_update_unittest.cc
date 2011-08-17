@@ -14,18 +14,18 @@
 // ========================================================================
 
 #include <atlpath.h>
-#include "omaha/common/app_util.h"
-#include "omaha/common/file.h"
-#include "omaha/common/omaha_version.h"
-#include "omaha/common/utils.h"
-#include "omaha/goopdate/const_goopdate.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/file.h"
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
 
 TEST(GoogleUpdateTest, ShellVersion) {
   CPath actual_shell_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(actual_shell_path.Append(kGoopdateFileName));
+  ASSERT_TRUE(actual_shell_path.Append(kOmahaShellFileName));
 
   ASSERT_TRUE(File::Exists(actual_shell_path));
   const ULONGLONG actual_shell_version =

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,43 +20,24 @@
 #include "omaha/net/detector.h"
 
 #include "base/scoped_ptr.h"
-#include "omaha/common/atl_regexp.h"
-#include "omaha/common/browser_utils.h"
-#include "omaha/common/constants.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/file_reader.h"
-#include "omaha/common/path.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/common/string.h"
-#include "omaha/common/user_info.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/time.h"
+#include "omaha/base/atl_regexp.h"
+#include "omaha/base/browser_utils.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/file_reader.h"
+#include "omaha/base/path.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
+#include "omaha/base/string.h"
+#include "omaha/base/user_info.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/time.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/network_config.h"
 
 namespace omaha {
 
-namespace  {
-
-// Returns true if the caller's impersonation or process access token user
-// is LOCAL_SYSTEM.
-bool IsRunningAsSystem() {
-  CString sid;
-  HRESULT hr = user_info::GetCurrentThreadUser(&sid);
-  if (SUCCEEDED(hr)) {
-    return IsLocalSystemSid(sid);
-  }
-  sid.Empty();
-  hr = user_info::GetCurrentUser(NULL, NULL, &sid);
-  if (SUCCEEDED(hr)) {
-    return IsLocalSystemSid(sid);
-  }
-  return false;
-}
-
-}  // namespace
-
-HRESULT GoogleProxyDetector::Detect(Config* config) {
+HRESULT RegistryOverrideProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
   RegKey reg_key;
   HRESULT hr = reg_key.Open(reg_path_, KEY_READ);
@@ -73,23 +54,27 @@ HRESULT GoogleProxyDetector::Detect(Config* config) {
   if (FAILED(hr)) {
     return hr;
   }
-  *config = Config();
-  config->proxy.Format(_T("%s:%d"), proxy_host, proxy_port);
-  config->source = _T("Google");
+  *config = ProxyConfig();
+  SafeCStringFormat(&config->proxy, _T("%s:%d"), proxy_host, proxy_port);
+  config->source = source();
+  config->priority = ProxyConfig::PROXY_PRIORITY_OVERRIDE;
   return S_OK;
+}
+
+UpdateDevProxyDetector::UpdateDevProxyDetector()
+    : registry_detector_(MACHINE_REG_UPDATE_DEV) {
 }
 
 FirefoxProxyDetector::FirefoxProxyDetector()
     : cached_prefs_last_modified_(0),
-      cached_config_(new Config) {}
+      cached_config_(new ProxyConfig) {
+}
 
-FirefoxProxyDetector::~FirefoxProxyDetector() {}
-
-HRESULT FirefoxProxyDetector::Detect(Config* config) {
+HRESULT FirefoxProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
 
   // The Firefox profile is not available when running as a local system.
-  if (IsRunningAsSystem()) {
+  if (user_info::IsRunningAsSystem()) {
     return E_FAIL;
   }
 
@@ -123,6 +108,12 @@ HRESULT FirefoxProxyDetector::Detect(Config* config) {
 
   hr = ParsePrefsFile(name, path, config);
   if (SUCCEEDED(hr) && last_modified) {
+    // If FireFox is the default brower, promotes its proxy priority.
+    BrowserType browser_type(BROWSER_UNKNOWN);
+    if (SUCCEEDED(GetDefaultBrowserType(&browser_type)) &&
+        browser_type == BROWSER_FIREFOX) {
+      config->priority = ProxyConfig::PROXY_PRIORITY_DEFAULT_BROWSER;
+    }
     NET_LOG(L4, (_T("[cache FF profile][%s]"), path));
     cached_prefs_name_          = name;
     cached_prefs_file_path_     = path;
@@ -148,13 +139,13 @@ HRESULT FirefoxProxyDetector::Detect(Config* config) {
 // user_pref("network.proxy.type", 4);
 HRESULT FirefoxProxyDetector::ParsePrefsFile(const TCHAR* name,
                                              const TCHAR* file_path,
-                                             Config* config) {
+                                             ProxyConfig* config) {
   ASSERT1(name);
   ASSERT1(file_path);
   ASSERT1(config);
 
-  *config = Config();
-  config->source = _T("FireFox");
+  *config = ProxyConfig();
+  config->source = source();
 
   // TODO(omaha): implement optimization not to parse the file again if it
   // did not change.
@@ -272,9 +263,9 @@ HRESULT FirefoxProxyDetector::BuildProxyString(const CString& proxy_http_host,
   // Format the proxy string.
   CString str;
   if (!http_host.IsEmpty()) {
-    str.AppendFormat(_T("http=%s"), http_host);
+    SafeCStringAppendFormat(&str, _T("http=%s"), http_host);
     if (!http_port.IsEmpty()) {
-      str.AppendFormat(_T(":%s"), http_port);
+      SafeCStringAppendFormat(&str, _T(":%s"), http_port);
     }
   }
   if (!ssl_host.IsEmpty()) {
@@ -282,9 +273,9 @@ HRESULT FirefoxProxyDetector::BuildProxyString(const CString& proxy_http_host,
     if (!str.IsEmpty()) {
       str += _T(';');
     }
-    str.AppendFormat(_T("https=%s"), ssl_host);
+    SafeCStringAppendFormat(&str, _T("https=%s"), ssl_host);
     if (!ssl_port.IsEmpty()) {
-      str.AppendFormat(_T(":%s"), ssl_port);
+      SafeCStringAppendFormat(&str, _T(":%s"), ssl_port);
     }
   }
 
@@ -335,7 +326,7 @@ void FirefoxProxyDetector::ParsePrefsLine(const char* ansi_line,
   }
 }
 
-HRESULT DefaultProxyDetector::Detect(Config* config) {
+HRESULT DefaultProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
 
   scoped_ptr<HttpClient> http_client(CreateHttpClient());
@@ -355,8 +346,8 @@ HRESULT DefaultProxyDetector::Detect(Config* config) {
     return hr;
   }
   if (proxy_info.access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY) {
-    Config proxy_config;
-    proxy_config.source = _T("winhttp");
+    ProxyConfig proxy_config;
+    proxy_config.source = source();
     proxy_config.proxy = proxy_info.proxy;
     proxy_config.proxy_bypass = proxy_info.proxy_bypass;
     *config = proxy_config;
@@ -366,12 +357,12 @@ HRESULT DefaultProxyDetector::Detect(Config* config) {
   }
 }
 
-HRESULT IEProxyDetector::Detect(Config* config) {
+HRESULT IEProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
 
   // Internet Explorer proxy configuration is not available when running as
   // local system.
-  if (IsRunningAsSystem()) {
+  if (user_info::IsRunningAsSystem()) {
     return E_FAIL;
   }
 
@@ -391,11 +382,18 @@ HRESULT IEProxyDetector::Detect(Config* config) {
   if (FAILED(hr)) {
     return hr;
   }
-  config->source = _T("IE");
+  config->source = source();
   config->auto_detect = ie_proxy_config.auto_detect;
   config->auto_config_url = ie_proxy_config.auto_config_url;
   config->proxy = ie_proxy_config.proxy;
   config->proxy_bypass = ie_proxy_config.proxy_bypass;
+
+  // If IE is the default brower, promotes its proxy priority.
+  BrowserType browser_type(BROWSER_UNKNOWN);
+  if (SUCCEEDED(GetDefaultBrowserType(&browser_type)) &&
+      browser_type == BROWSER_IE) {
+    config->priority = ProxyConfig::PROXY_PRIORITY_DEFAULT_BROWSER;
+  }
 
   ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.auto_config_url));
   ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.proxy));

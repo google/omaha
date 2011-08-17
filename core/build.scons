@@ -15,19 +15,16 @@
 
 Import('env')
 
+local_env = env.Clone()
+
 inputs = [
     'core.cc',
     'core_metrics.cc',
     'crash_handler.cc',
     'google_update_core.cc',
-    'legacy_manifest_handler.cc',
     'scheduler.cc',
     'system_monitor.cc',
     ]
-
-# Create a local clone, so the parent environment is
-# unaffected by changes made here.
-local_env = env.Clone()
 
 local_env['CPPPATH'] += [
     '$MAIN_DIR/third_party/breakpad/src/',
@@ -38,4 +35,4 @@ local_env['CPPPATH'] += [
     '$OBJ_ROOT',
     ]
 
-local_env.ComponentLibrary('core', inputs)
+local_env.ComponentStaticLibrary('core', inputs)

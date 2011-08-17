@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,19 +18,19 @@
 #include <vector>
 #include "base/scoped_ptr.h"
 #include "base/basictypes.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/browser_utils.h"
-#include "omaha/common/constants.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/queue_timer.h"
-#include "omaha/common/scope_guard.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/scoped_ptr_address.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vista_utils.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/browser_utils.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/queue_timer.h"
+#include "omaha/base/scope_guard.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/scoped_ptr_address.h"
+#include "omaha/base/time.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vista_utils.h"
 #include "omaha/net/bits_request.h"
-#include "omaha/net/browser_request.h"
 #include "omaha/net/cup_request.h"
 #include "omaha/net/network_config.h"
 #include "omaha/net/network_request.h"
@@ -49,16 +49,19 @@ class NetworkRequestTest
   static void SetUpTestCase() {
     // Initialize the detection chain: GoogleProxy, FireFox if it is the
     // default browser, and IE.
-    NetworkConfig& network_config(NetworkConfig::Instance());
-    network_config.Clear();
-    network_config.Add(new GoogleProxyDetector(MACHINE_REG_UPDATE_DEV));
+    NetworkConfig* network_config = NULL;
+    EXPECT_HRESULT_SUCCEEDED(
+      NetworkConfigManager::Instance().GetUserNetworkConfig(&network_config));
+
+    network_config->Clear();
+    network_config->Add(new UpdateDevProxyDetector);
     BrowserType browser_type(BROWSER_UNKNOWN);
     GetDefaultBrowserType(&browser_type);
     if (browser_type == BROWSER_FIREFOX) {
-      network_config.Add(new FirefoxProxyDetector());
+      network_config->Add(new FirefoxProxyDetector);
     }
-    network_config.Add(new IEProxyDetector());
-    network_config.Add(new DefaultProxyDetector);
+    network_config->Add(new IEProxyDetector);
+    network_config->Add(new DefaultProxyDetector);
 
     vista::GetLoggedOnUserToken(&token_);
   }
@@ -67,12 +70,20 @@ class NetworkRequestTest
     if (token_) {
       ::CloseHandle(token_);
     }
-    NetworkConfig::Instance().Clear();
+
+    NetworkConfig* network_config = NULL;
+    EXPECT_HRESULT_SUCCEEDED(
+      NetworkConfigManager::Instance().GetUserNetworkConfig(&network_config));
+
+    network_config->Clear();
   }
 
   virtual void SetUp() {
-    const NetworkConfig::Session& session(NetworkConfig::Instance().session());
-    network_request_.reset(new NetworkRequest(session));
+    NetworkConfig* network_config = NULL;
+    EXPECT_HRESULT_SUCCEEDED(
+      NetworkConfigManager::Instance().GetUserNetworkConfig(&network_config));
+
+    network_request_.reset(new NetworkRequest(network_config->session()));
   }
 
   virtual void TearDown() {}
@@ -81,6 +92,20 @@ class NetworkRequestTest
     UNREFERENCED_PARAMETER(bytes);
     UNREFERENCED_PARAMETER(bytes_total);
     NET_LOG(L3, (_T("[downloading %d of %d]"), bytes, bytes_total));
+  }
+
+  virtual void OnRequestBegin() {
+    NET_LOG(L3, (_T("[download starts]")));
+  }
+
+  virtual void OnRequestRetryScheduled(time64 next_retry_time) {
+    UNREFERENCED_PARAMETER(next_retry_time);
+
+    time64 now = GetCurrent100NSTime();
+    ASSERT1(next_retry_time > now);
+
+    NET_LOG(L3, (_T("\n[Download will retry in %d seconds]\n"),
+                 CeilingDivide(next_retry_time - now, kSecsTo100ns)));
   }
 
   static void CancelCallback(QueueTimer* queue_timer) {
@@ -99,7 +124,10 @@ class NetworkRequestTest
     CString url = _T("http://www.google.com/robots.txt");
     network_request_->set_num_retries(2);
     EXPECT_HRESULT_SUCCEEDED(network_request_->Get(url, &response));
-    EXPECT_EQ(network_request_->http_status_code(), HTTP_STATUS_OK);
+
+    int http_status = network_request_->http_status_code();
+    EXPECT_TRUE(http_status == HTTP_STATUS_OK ||
+                http_status == HTTP_STATUS_PARTIAL_CONTENT);
   }
 
   // https get.
@@ -108,7 +136,10 @@ class NetworkRequestTest
     CString url = _T("https://www.google.com/robots.txt");
     network_request_->set_num_retries(2);
     EXPECT_HRESULT_SUCCEEDED(network_request_->Get(url, &response));
-    EXPECT_EQ(network_request_->http_status_code(), HTTP_STATUS_OK);
+
+    int http_status = network_request_->http_status_code();
+    EXPECT_TRUE(http_status == HTTP_STATUS_OK ||
+                http_status == HTTP_STATUS_PARTIAL_CONTENT);
   }
 
   // http post.
@@ -123,21 +154,28 @@ class NetworkRequestTest
                                                     request,
                                                     arraysize(request) - 1,
                                                     &response));
-    EXPECT_EQ(network_request_->http_status_code(), HTTP_STATUS_OK);
+
+    int http_status = network_request_->http_status_code();
+    EXPECT_TRUE(http_status == HTTP_STATUS_OK ||
+                http_status == HTTP_STATUS_PARTIAL_CONTENT);
 
     // Post an UTF8 string.
     CStringA utf8_request(reinterpret_cast<const char*>(request));
     EXPECT_HRESULT_SUCCEEDED(network_request_->PostUtf8String(url,
                                                               utf8_request,
                                                               &response));
-    EXPECT_EQ(network_request_->http_status_code(), HTTP_STATUS_OK);
+    http_status = network_request_->http_status_code();
+    EXPECT_TRUE(http_status == HTTP_STATUS_OK ||
+                http_status == HTTP_STATUS_PARTIAL_CONTENT);
 
     // Post a Unicode string.
     CString unicode_request(reinterpret_cast<const char*>(request));
     EXPECT_HRESULT_SUCCEEDED(network_request_->PostString(url,
                                                           unicode_request,
                                                           &response));
-    EXPECT_EQ(network_request_->http_status_code(), HTTP_STATUS_OK);
+    http_status = network_request_->http_status_code();
+    EXPECT_TRUE(http_status == HTTP_STATUS_OK ||
+                http_status == HTTP_STATUS_PARTIAL_CONTENT);
   }
 
   // Download http file.
@@ -153,7 +191,10 @@ class NetworkRequestTest
     network_request_->set_callback(this);
     EXPECT_HRESULT_SUCCEEDED(network_request_->DownloadFile(url, temp_file));
     EXPECT_TRUE(::DeleteFile(temp_file));
-    EXPECT_EQ(network_request_->http_status_code(), HTTP_STATUS_OK);
+
+    int http_status = network_request_->http_status_code();
+    EXPECT_TRUE(http_status == HTTP_STATUS_OK ||
+                http_status == HTTP_STATUS_PARTIAL_CONTENT);
   }
 
   void MultipleRequestsHelper() {
@@ -166,12 +207,15 @@ class NetworkRequestTest
                                                       request,
                                                       arraysize(request) - 1,
                                                       &response));
-      EXPECT_EQ(network_request_->http_status_code(), HTTP_STATUS_OK);
+
+      int http_status = network_request_->http_status_code();
+      EXPECT_TRUE(http_status == HTTP_STATUS_OK ||
+                  http_status == HTTP_STATUS_PARTIAL_CONTENT);
     }
   }
 
   void PostRequestHelper() {
-    CString response;
+    std::vector<uint8> response;
     CString url = _T("http://tools.google.com/service/update2");
     CString request = _T("<o:gupdate xmlns:o=\"http://www.google.com/update2/request\" testsource=\"dev\"/>");  // NOLINT
     EXPECT_HRESULT_SUCCEEDED(PostRequest(network_request_.get(),
@@ -182,7 +226,7 @@ class NetworkRequestTest
   }
 
   void PostRequestNegativeTestHelper() {
-    CString response;
+    std::vector<uint8> response;
     CString url = _T("http://no_such_host.google.com/service/update2");
     CString request = _T("<o:gupdate xmlns:o=\"http://www.google.com/update2/request\" testsource=\"dev\"/>");  // NOLINT
     EXPECT_HRESULT_FAILED(PostRequest(network_request_.get(),
@@ -197,8 +241,8 @@ class NetworkRequestTest
     // the retries are used up. Urlmon request is using IE's settings.
     // Therefore, it is possible a proxy is used. In this case, the http
     // response is '503 Service Unavailable'.
-    Config config;
-    network_request_->set_network_configuration(&config);
+    ProxyConfig config;
+    network_request_->set_proxy_configuration(&config);
     network_request_->set_num_retries(2);
     network_request_->set_time_between_retries(10);   // 10 miliseconds.
     std::vector<uint8> response;
@@ -224,18 +268,18 @@ class NetworkRequestTest
 
     // Try a direct connection to a non-existent host and keep retrying until
     // canceled by the timer.
-    Config config;
-    network_request_->set_network_configuration(&config);
+    ProxyConfig config;
+    network_request_->set_proxy_configuration(&config);
     network_request_->set_num_retries(10);
     network_request_->set_time_between_retries(10);  // 10 miliseconds.
     std::vector<uint8> response;
 
     CString url = _T("http://nohost/nofile");
 
-    EXPECT_EQ(OMAHA_NET_E_REQUEST_CANCELLED,
+    EXPECT_EQ(GOOPDATE_E_CANCELLED,
               network_request_->Get(url, &response));
 
-    EXPECT_EQ(OMAHA_NET_E_REQUEST_CANCELLED,
+    EXPECT_EQ(GOOPDATE_E_CANCELLED,
               network_request_->Get(url, &response));
   }
 
@@ -248,28 +292,24 @@ HANDLE NetworkRequestTest::token_ = NULL;
 // http get.
 TEST_F(NetworkRequestTest, HttpGet) {
   network_request_->AddHttpRequest(new SimpleRequest);
-  network_request_->AddHttpRequest(new BrowserRequest);
   HttpGetHelper();
 }
 
 // http get.
 TEST_F(NetworkRequestTest, HttpGetUrlmon) {
   network_request_->AddHttpRequest(new UrlmonRequest);
-  network_request_->AddHttpRequest(new BrowserRequest);
   HttpGetHelper();
 }
 
 // https get.
 TEST_F(NetworkRequestTest, HttpsGet) {
   network_request_->AddHttpRequest(new SimpleRequest);
-  network_request_->AddHttpRequest(new BrowserRequest);
   HttpsGetHelper();
 }
 
 // https get.
 TEST_F(NetworkRequestTest, HttpsGetUrlmon) {
   network_request_->AddHttpRequest(new UrlmonRequest);
-  network_request_->AddHttpRequest(new BrowserRequest);
   HttpsGetHelper();
 }
 
@@ -277,7 +317,6 @@ TEST_F(NetworkRequestTest, HttpsGetUrlmon) {
 TEST_F(NetworkRequestTest, HttpPost) {
   network_request_->AddHttpRequest(new CupRequest(new SimpleRequest));
   network_request_->AddHttpRequest(new SimpleRequest);
-  network_request_->AddHttpRequest(new CupRequest(new BrowserRequest));
   HttpPostHelper();
 }
 
@@ -285,7 +324,6 @@ TEST_F(NetworkRequestTest, HttpPost) {
 TEST_F(NetworkRequestTest, HttpPostUrlmon) {
   network_request_->AddHttpRequest(new CupRequest(new UrlmonRequest));
   network_request_->AddHttpRequest(new UrlmonRequest);
-  network_request_->AddHttpRequest(new CupRequest(new BrowserRequest));
   HttpPostHelper();
 }
 
@@ -301,7 +339,6 @@ TEST_F(NetworkRequestTest, Download) {
 
   network_request_->AddHttpRequest(bits_request);
   network_request_->AddHttpRequest(new SimpleRequest);
-  network_request_->AddHttpRequest(new BrowserRequest);
   DownloadHelper();
 }
 
@@ -314,7 +351,6 @@ TEST_F(NetworkRequestTest, DownloadUrlmon) {
 
   network_request_->AddHttpRequest(bits_request);
   network_request_->AddHttpRequest(new UrlmonRequest);
-  network_request_->AddHttpRequest(new BrowserRequest);
   DownloadHelper();
 }
 
@@ -323,7 +359,7 @@ TEST_F(NetworkRequestTest, MultipleRequests) {
   MultipleRequestsHelper();
 }
 
-TEST_F(NetworkRequestTest, DISABLED_MultipleRequestsUrlmon) {
+TEST_F(NetworkRequestTest, MultipleRequestsUrlmon) {
   network_request_->AddHttpRequest(new CupRequest(new UrlmonRequest));
   MultipleRequestsHelper();
 }
@@ -364,7 +400,7 @@ TEST_F(NetworkRequestTest, CancelTest_CannotReuse) {
   std::vector<uint8> response;
 
   CString url = _T("https://www.google.com/robots.txt");
-  EXPECT_EQ(OMAHA_NET_E_REQUEST_CANCELLED,
+  EXPECT_EQ(GOOPDATE_E_CANCELLED,
             network_request_->Get(url, &response));
 }
 
@@ -380,8 +416,8 @@ TEST_F(NetworkRequestTest, CancelTest_DownloadFile) {
 
   // Try a direct connection to a non-existent host and keep retrying until
   // canceled by the timer.
-  Config config;
-  network_request_->set_network_configuration(&config);
+  ProxyConfig config;
+  network_request_->set_proxy_configuration(&config);
 
   BitsRequest* bits_request(new BitsRequest);
   bits_request->set_minimum_retry_delay(60);
@@ -393,20 +429,15 @@ TEST_F(NetworkRequestTest, CancelTest_DownloadFile) {
 
   CString url = _T("http://nohost/nofile");
 
-  EXPECT_EQ(OMAHA_NET_E_REQUEST_CANCELLED,
+  EXPECT_EQ(GOOPDATE_E_CANCELLED,
             network_request_->DownloadFile(url, _T("c:\\foo")));
 
-  EXPECT_EQ(OMAHA_NET_E_REQUEST_CANCELLED,
+  EXPECT_EQ(GOOPDATE_E_CANCELLED,
             network_request_->DownloadFile(url, _T("c:\\foo")));
 }
 
 TEST_F(NetworkRequestTest, CancelTest_Get) {
   network_request_->AddHttpRequest(new SimpleRequest);
-  CancelTest_GetHelper();
-}
-
-TEST_F(NetworkRequestTest, CancelTest_GetUrlmon) {
-  network_request_->AddHttpRequest(new UrlmonRequest);
   CancelTest_GetHelper();
 }
 

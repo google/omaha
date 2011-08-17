@@ -23,7 +23,7 @@
 #include "omaha/testing/unit_test.h"
 #include "omaha/third_party/gtest/include/gtest/gtest.h"
 #include "omaha/tools/performondemand/performondemand.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/utils.h"
 #include <windows.h>
 #include <atltime.h>
 

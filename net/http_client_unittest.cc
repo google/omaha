@@ -20,7 +20,7 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/omaha_version.h"
+#include "omaha/base/omaha_version.h"
 #include "omaha/net/http_client.h"
 #include "omaha/testing/unit_test.h"
 
@@ -80,6 +80,7 @@ void HttpClientTest::GetUrl(const TCHAR* url, bool use_proxy) {
                                       HttpClient::kAccessTypeNoProxy,
                                       NULL,
                                       NULL,
+                                      0,    // Synchronous mode.
                                       &session_handle));
   if (use_proxy) {
     HttpClient::AutoProxyOptions autoproxy_options = {0};
@@ -119,7 +120,7 @@ void HttpClientTest::GetUrl(const TCHAR* url, bool use_proxy) {
                                              flags,
                                              &request_handle));
   ASSERT_SUCCEEDED(http_client_->SendRequest(request_handle,
-                                             NULL, 0, NULL, 0, 0));
+                                             NULL, 0, NULL, 0, 0, 0));
   ASSERT_SUCCEEDED(http_client_->ReceiveResponse(request_handle));
   CString content_type;
   EXPECT_SUCCEEDED(http_client_->QueryHeadersString(request_handle,
@@ -162,10 +163,18 @@ void HttpClientTest::GetUrl(const TCHAR* url, bool use_proxy) {
 }
 
 TEST_F(HttpClientTest, Get) {
+  if (IsTestRunByLocalSystem()) {
+    return;
+  }
+
   GetUrl(kTestUrlGet, false);
 }
 
 TEST_F(HttpClientTest, SecureGet) {
+  if (IsTestRunByLocalSystem()) {
+    return;
+  }
+
   GetUrl(kTestSecureUrlGet, false);
 }
 

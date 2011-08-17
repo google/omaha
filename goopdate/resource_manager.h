@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 // ========================================================================
 //
 // Omaha resource manager.
-// Design Notes: Currently the resource manager only supports one language.
 
 #ifndef OMAHA_GOOPDATE_RESOURCE_MANAGER_H__
 #define OMAHA_GOOPDATE_RESOURCE_MANAGER_H__
@@ -23,59 +22,72 @@
 #include <map>
 #include <vector>
 #include "base/basictypes.h"
+#include "base/synchronized.h"
 
 namespace omaha {
 
 class ResourceManager {
  public:
+  // Create must be called before going multithreaded.
+  static HRESULT CreateForDefaultLanguage(bool is_machine,
+                                          const CString& resource_dir);
+  static HRESULT Create(bool is_machine,
+                        const CString& resource_dir,
+                        const CString& lang);
+  static void Delete();
+
+  static ResourceManager& Instance();
+
+  static void GetSupportedLanguageDllNames(std::vector<CString>* filenames);
+
+  // Gets resource DLL handle for the given language. DLL will be loaded if
+  // necessary.
+  HRESULT GetResourceDll(const CString& language, HINSTANCE* dll_handle);
+
+ private:
+  struct ResourceDllInfo {
+    ResourceDllInfo() : dll_handle(NULL) {}
+
+    HMODULE dll_handle;
+    CString file_path;
+    CString language;
+  };
+
   ResourceManager(bool is_machine, const CString& resource_dir);
   ~ResourceManager();
 
-  // Loads the resource dll and sets it as the default resource dll in ATL.
   // The resource manager tries to load the resource dll corresponding to
   // the language in the following order:
   // 1. Language parameter.
   // 2. Language in the registry.
   // 3. First file returned by NTFS in the module directory.
-  HRESULT LoadResourceDll(const CString& language);
-  static CString GetDefaultUserLanguage();
-  static CString GetLanguageForLangID(LANGID langid);
-  static bool IsLanguageStringSupported(const CString& language);
-  static void GetSupportedLanguages(std::vector<CString>* codes);
-  static void GetSupportedLanguageDllNames(std::vector<CString>* filenames);
-  HMODULE resource_dll() const { return resource_dll_; }
-  CString language() const { return language_; }
-  CString resource_dll_filepath() const { return resource_dll_filepath_; }
+  HRESULT LoadResourceDll(const CString& language, ResourceDllInfo* dll_info);
+  HRESULT SetDefaultResourceByLanguage(const CString& language);
+  HRESULT LoadLibraryAsDataFile(const CString& filename,
+                                ResourceDllInfo* dll_info) const;
 
- private:
+  // Gets resource DLL info for the given language. DLL will be loaded if
+  // necessary.
+  HRESULT GetResourceDllInfo(const CString& language,
+                             ResourceDllInfo* dll_info);
+
   static CString GetResourceDllName(const CString& language);
-  HRESULT LoadResourceDllInternal(const CString& language);
-  HRESULT LoadLibraryAsDataFile(const CString& filename);
 
-  // The bool is only here as a key for the map.  This could be a hash_set but
-  // the compiler doesn't like hash_set<CString>.
-  static void GetDistinctLanguageMapFromTranslationTable(
-      std::map<CString, bool>* map_lang);
+  LLock lock_;
+  typedef std::map<CString, ResourceDllInfo> LanguageToResourceMap;
 
-  HMODULE resource_dll_;
   bool is_machine_;
   CString resource_dir_;
-  CString language_;
-  CString resource_dll_filepath_;
+  LanguageToResourceMap resource_map_;
+  HINSTANCE saved_atl_resource_;
 
-  // This is the structure of the table which contains the language identifier
-  // and the associated language string.
-  struct LangIDAndPath {
-    LANGID langid;
-    TCHAR lang[12];
-  };
-  static const LangIDAndPath kLanguageTranslationTable[];
+  static ResourceManager* instance_;
 
   friend class ResourceManagerTest;
 
   DISALLOW_EVIL_CONSTRUCTORS(ResourceManager);
 };
 
-}  // namespace omaha.
+}  // namespace omaha
 
 #endif  // OMAHA_GOOPDATE_RESOURCE_MANAGER_H__

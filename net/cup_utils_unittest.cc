@@ -16,9 +16,9 @@
 #include <windows.h>
 #include <cstring>
 #include <vector>
-#include "omaha/common/security/sha.h"
-#include "omaha/common/string.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/security/sha.h"
+#include "omaha/base/string.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/cup_utils.h"
 #include "omaha/testing/unit_test.h"
 

@@ -32,7 +32,7 @@ local_env.Append(
         'userenv.lib',
         'version.lib',
         'wtsapi32.lib',
-        '$LIB_DIR/common.lib',
+        '$LIB_DIR/base.lib',
         ],
     CPPDEFINES = [
         'UNICODE',
@@ -44,12 +44,12 @@ local_env.Append(
 local_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
 local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
-local_env.Dir('.').addRepository(local_env.Dir('$MAIN_DIR/common'))
+local_env.Dir('.').addRepository(local_env.Dir('$MAIN_DIR/base'))
 
 target_name = 'ApplyTag'
 
 inputs = [
-    'apply_tag.cc',  # Comes from $MAIN_DIR/common
+    'apply_tag.cc',  # Comes from $MAIN_DIR/base
     'apply_tag_tool.cc',
     ]
 if env.Bit('use_precompiled_headers'):

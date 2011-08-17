@@ -1,0 +1,45 @@
+%HKROOT%
+{
+  NoRemove SOFTWARE
+  {
+    NoRemove Classes
+    {
+      %PROGID%.%VERSION% = s '%DESCRIPTION%'
+      {
+        CLSID = s '%CLSID%'
+      }
+      %PROGID% = s '%DESCRIPTION%'
+      {
+        CLSID = s '%CLSID%'
+        CurVer = s '%PROGID%.%VERSION%'
+      }
+      NoRemove CLSID
+      {
+        ForceRemove %CLSID% = s '%DESCRIPTION%'
+        {
+          ProgID = s '%PROGID%.%VERSION%'
+          VersionIndependentProgID = s '%PROGID%'
+          LocalServer32 = s '%MODULE%'
+        }
+      }
+    }
+    NoRemove Microsoft
+    {
+      NoRemove 'Internet Explorer'
+      {
+        NoRemove 'Low Rights'
+        {
+          NoRemove 'ElevationPolicy'
+          {
+            ForceRemove '%CLSID%'
+            {
+              val CLSID = s '%CLSID%'
+              val Policy = d '3'
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

@@ -18,7 +18,7 @@
 
 #include <windows.h>
 #include <atlstr.h>
-#include "omaha/common/constants.h"
+#include "omaha/base/constants.h"
 #include "omaha/recovery/repair_exe/mspexecutableelevator.h"
 
 int main(int argc, char** argv) {

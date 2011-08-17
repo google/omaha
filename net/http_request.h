@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,10 @@
 //
 // TODO(omaha): the class interface is not stable yet, as a few more
 // getters and setters are still needed.
+//
+// TODO(omaha): provide a way to query how many bytes have been downloaded
+// when the Send() returns so that the code doesn't have to rely on a final
+// callback to update the progress information.
 
 #ifndef OMAHA_NET_HTTP_REQUEST_H__
 #define OMAHA_NET_HTTP_REQUEST_H__
@@ -43,6 +47,10 @@ class HttpRequestInterface {
 
   virtual HRESULT Cancel() = 0;
 
+  virtual HRESULT Pause() = 0;
+
+  virtual HRESULT Resume() = 0;
+
   virtual std::vector<uint8> GetResponse() const = 0;
 
   virtual int GetHttpStatusCode() const = 0;
@@ -62,7 +70,7 @@ class HttpRequestInterface {
   virtual void set_request_buffer(const void* buffer,
                                   size_t buffer_length) = 0;
 
-  virtual void set_network_configuration(const Config& network_config) = 0;
+  virtual void set_proxy_configuration(const ProxyConfig& proxy_config) = 0;
 
   // Sets the filename to receive the response instead of the memory buffer.
   virtual void set_filename(const CString& filename) = 0;
@@ -73,6 +81,8 @@ class HttpRequestInterface {
 
   virtual void set_additional_headers(const CString& additional_headers) = 0;
 
+  virtual void set_preserve_protocol(bool preserve_protocol) = 0;
+
   // Gets the user agent for this http request. The default user agent has
   // the following format: Google Update/a.b.c.d;req1;req2 where a.b.c.d is
   // the version of the client code and req1, req2,... are appended by
@@ -82,6 +92,8 @@ class HttpRequestInterface {
   virtual CString user_agent() const = 0;
 
   virtual void set_user_agent(const CString& user_agent) = 0;
+
+  virtual void set_proxy_auth_config(const ProxyAuthConfig& config) = 0;
 };
 
 }   // namespace omaha

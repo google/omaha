@@ -20,8 +20,8 @@
 
 
 #include "omaha/recovery/repair_exe/custom_action/executecustomaction.h"
-#include <Msiquery.h>
-#include "omaha/common/debug.h"
+#include <msiquery.h>
+#include "omaha/base/debug.h"
 #include "omaha/recovery/repair_exe/mspexecutableelevator.h"
 #include "omaha/recovery/repair_exe/custom_action/execute_repair_file.h"
 

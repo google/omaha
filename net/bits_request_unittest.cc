@@ -15,7 +15,7 @@
 
 #include <windows.h>
 #include <winhttp.h>
-#include "omaha/common/app_util.h"
+#include "omaha/base/app_util.h"
 #include "omaha/net/bits_request.h"
 #include "omaha/testing/unit_test.h"
 
@@ -23,6 +23,10 @@ namespace omaha {
 
 // Moves the job to error state if no progress at all is made for 10 seconds.
 TEST(BitsRequestTest, Send) {
+  if (IsTestRunByLocalSystem()) {
+    return;
+  }
+
   BitsRequest bits_request;
   bits_request.set_no_progress_timeout(10);   // 10 seconds.
   CString temp_dir = app_util::GetTempDir();

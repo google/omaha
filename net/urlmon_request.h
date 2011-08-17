@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@
 #include <map>
 #include <vector>
 #include "base/basictypes.h"
-#include "goopdate/google_update_idl.h"
-#include "omaha/common/debug.h"
+#include "omaha/base/debug.h"
+#include "omaha/net/bind_status_callback.h"
 #include "omaha/net/http_request.h"
 
 namespace omaha {
@@ -41,6 +41,10 @@ class UrlmonRequest : public HttpRequestInterface {
   virtual HRESULT Send();
 
   virtual HRESULT Cancel();
+
+  virtual HRESULT Pause();
+
+  virtual HRESULT Resume();
 
   virtual std::vector<uint8> GetResponse() const {
     return response_body_;
@@ -82,30 +86,44 @@ class UrlmonRequest : public HttpRequestInterface {
     request_buffer_length_ = buffer_length;
   }
 
-  virtual void set_network_configuration(const Config& network_config) {
-    network_config;
+  virtual void set_proxy_configuration(const ProxyConfig& proxy_config) {
+    proxy_config_ = proxy_config;
+  }
+
+  virtual void set_network_configuration(const ProxyConfig& network_config) {
+    UNREFERENCED_PARAMETER(network_config);
   }
 
   // Sets the filename to receive the response instead of the memory buffer.
   virtual void set_filename(const CString& filename) { filename_ = filename; }
 
   virtual void set_low_priority(bool low_priority) {
-    low_priority;
+    UNREFERENCED_PARAMETER(low_priority);
   }
 
   virtual void set_callback(NetworkRequestCallback* callback) {
     // TODO(Omaha) - Provide events.
-    callback;
+    UNREFERENCED_PARAMETER(callback);
   }
 
   virtual void set_additional_headers(const CString& additional_headers) {
     additional_headers_ = additional_headers;
   }
 
+  // This request always uses the specified protocol so it is fine to ignore
+  // this attribute.
+  virtual void set_preserve_protocol(bool preserve_protocol) {
+    UNREFERENCED_PARAMETER(preserve_protocol);
+  }
+
   virtual CString user_agent() const { return user_agent_; }
 
   virtual void set_user_agent(const CString& user_agent) {
     user_agent_ = user_agent;
+  }
+
+  virtual void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config) {
+    proxy_auth_config_ = proxy_auth_config;
   }
 
   virtual HRESULT SendRequest(BSTR url,
@@ -118,6 +136,8 @@ class UrlmonRequest : public HttpRequestInterface {
 
  protected:
   CString user_agent_;
+  ProxyAuthConfig proxy_auth_config_;
+  ProxyConfig proxy_config_;
 
  private:
   HRESULT ProcessResponseHeaders(const CComVariant& headers,
@@ -125,6 +145,7 @@ class UrlmonRequest : public HttpRequestInterface {
   HRESULT ProcessResponseFile(const CComBSTR& cache_filename);
   bool CreateBrowserHttpRequest();
 
+  CComObjectStackEx<BindStatusCallback> bsc_;
   CComBSTR url_;
   CString filename_;
   const void* request_buffer_;          // Contains the request body for POST.

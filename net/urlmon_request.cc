@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,12 +19,11 @@
 #include <atlcom.h>
 #include <atlcomcli.h>
 #include <vector>
-#include "omaha/common/error.h"
-#include "omaha/common/file.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/string.h"
-#include "omaha/common/utils.h"
-#include "omaha/net/bind_status_callback.h"
+#include "omaha/base/error.h"
+#include "omaha/base/file.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/string.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/network_request.h"
 #include "omaha/net/network_config.h"
@@ -42,6 +41,7 @@ const DWORD response_headers_needed[] = {
 UrlmonRequest::UrlmonRequest()
     : request_buffer_(NULL),
       request_buffer_length_(0),
+      proxy_auth_config_(NULL, CString()),
       http_status_code_(0),
       is_cancelled_(false) {
   NET_LOG(L3, (_T("[UrlmonRequest::UrlmonRequest]")));
@@ -58,23 +58,6 @@ HRESULT UrlmonRequest::Close() {
   raw_response_headers_.Empty();
   response_headers_map_.clear();
   return S_OK;
-}
-
-CComBSTR BuildRequestHeaders(const CString& user_agent,
-                             const CString& additional_headers) {
-  CString headers_to_send;
-  if (!user_agent.IsEmpty()) {
-    headers_to_send += _T("User-Agent: ");
-    headers_to_send += user_agent;
-    headers_to_send = String_MakeEndWith(headers_to_send, _T("\r\n"), false);
-  }
-
-  if (!additional_headers.IsEmpty()) {
-    headers_to_send += additional_headers;
-    headers_to_send = String_MakeEndWith(headers_to_send, _T("\r\n"), false);
-  }
-
-  return CComBSTR(headers_to_send);
 }
 
 HRESULT UrlmonRequest::ProcessResponseHeaders(
@@ -132,13 +115,14 @@ HRESULT UrlmonRequest::SendRequest(BSTR url,
                                    CComVariant* response_headers,
                                    DWORD* response_code,
                                    BSTR* cache_filename) {
-  HRESULT hr = BindStatusCallback::CreateAndSend(url,
-                                                 post_data,
-                                                 request_headers,
-                                                 response_headers_needed,
-                                                 response_headers,
-                                                 response_code,
-                                                 cache_filename);
+  HRESULT hr = bsc_.Send(url,
+                         post_data,
+                         request_headers,
+                         response_headers_needed,
+                         response_headers,
+                         response_code,
+                         cache_filename);
+
   NET_LOG(L3, (_T("[UrlmonRequest::SendRequest][0x%x][%d][%s]"),
                hr, *response_code, *cache_filename));
   if (!*response_code) {
@@ -151,12 +135,11 @@ HRESULT UrlmonRequest::SendRequest(BSTR url,
 HRESULT UrlmonRequest::Send() {
   NET_LOG(L3, (_T("[UrlmonRequest::Send]")));
   if (is_cancelled_) {
-    return OMAHA_NET_E_REQUEST_CANCELLED;
+    return GOOPDATE_E_CANCELLED;
   }
 
   ASSERT1(url_.Length() > 0);
-  CComBSTR headers_to_send(BuildRequestHeaders(user_agent(),
-                                               additional_headers_));
+  CComBSTR headers_to_send(additional_headers_);
   CComBSTR post_data;
   if (request_buffer_) {
     post_data.AppendBytes(static_cast<const char*>(request_buffer_),
@@ -186,11 +169,18 @@ HRESULT UrlmonRequest::Send() {
   return S_OK;
 }
 
-// TODO(omaha): cancel the underlying IBindStatusCallback object.
 HRESULT UrlmonRequest::Cancel() {
   NET_LOG(L2, (_T("[UrlmonRequest::Cancel]")));
   ::InterlockedExchange(&is_cancelled_, true);
-  return S_OK;
+  return bsc_.Cancel();
+}
+
+HRESULT UrlmonRequest::Pause() {
+  return E_NOTIMPL;
+}
+
+HRESULT UrlmonRequest::Resume() {
+  return E_NOTIMPL;
 }
 
 }  // namespace omaha

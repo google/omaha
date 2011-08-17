@@ -18,17 +18,17 @@
 // sessions. If the user has turned off crash reporting, this process will not
 // run.
 
+#include "omaha/base/const_object_names.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/program_instance.h"
+#include "omaha/base/reactor.h"
+#include "omaha/base/shutdown_handler.h"
+#include "omaha/base/utils.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/core/crash_handler.h"
-#include "omaha/common/const_object_names.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/reactor.h"
-#include "omaha/common/shutdown_handler.h"
-#include "omaha/common/utils.h"
-#include "omaha/goopdate/config_manager.h"
 #include "omaha/goopdate/crash.h"
-#include "omaha/goopdate/program_instance.h"
 
 namespace omaha {
 

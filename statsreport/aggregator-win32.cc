@@ -78,7 +78,7 @@ bool MetricsAggregatorWin32::EnsureKey(const wchar_t *name, CRegKey *key) {
 
 void MetricsAggregatorWin32::Aggregate(CountMetric &metric) {
   // do as little as possible if no value
-  uint64 value = metric.Reset();
+  int64 value = metric.Reset();
   if (0 == value)
     return;
 
@@ -86,13 +86,13 @@ void MetricsAggregatorWin32::Aggregate(CountMetric &metric) {
     return;
 
   CString name(metric.name());
-  uint64 reg_value = 0;
+  int64 reg_value = 0;
   if (!GetData(count_key_, name, &reg_value)) {
     // TODO(omaha): clean up??
   }
   reg_value += value;
 
-  DWORD err = count_key_.SetBinaryValue(name, &reg_value, sizeof(reg_value));
+  LONG err = count_key_.SetBinaryValue(name, &reg_value, sizeof(reg_value));
 }
 
 void MetricsAggregatorWin32::Aggregate(TimingMetric &metric) {
@@ -115,20 +115,20 @@ void MetricsAggregatorWin32::Aggregate(TimingMetric &metric) {
     reg_value.maximum = std::max(reg_value.maximum, value.maximum);
   }
 
-  DWORD err = timing_key_.SetBinaryValue(name, &reg_value, sizeof(reg_value));
+  LONG err = timing_key_.SetBinaryValue(name, &reg_value, sizeof(reg_value));
 }
 
 void MetricsAggregatorWin32::Aggregate(IntegerMetric &metric) {
   // do as little as possible if no value
-  uint64 value = metric.value();
+  int64 value = metric.value();
   if (0 == value)
     return;
 
   if (!EnsureKey(kIntegersKeyName, &integer_key_))
     return;
 
-  DWORD err = integer_key_.SetBinaryValue(CString(metric.name()),
-                                          &value, sizeof(value));
+  LONG err = integer_key_.SetBinaryValue(CString(metric.name()),
+                                         &value, sizeof(value));
 }
 
 void MetricsAggregatorWin32::Aggregate(BoolMetric &metric) {
@@ -140,8 +140,8 @@ void MetricsAggregatorWin32::Aggregate(BoolMetric &metric) {
   if (!EnsureKey(kBooleansKeyName, &bool_key_))
     return;
 
-  DWORD err = bool_key_.SetBinaryValue(CString(metric.name()),
-                                       &value, sizeof(value));
+  LONG err = bool_key_.SetBinaryValue(CString(metric.name()),
+                                      &value, sizeof(value));
 }
 
 } // namespace stats_report

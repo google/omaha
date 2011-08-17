@@ -27,15 +27,9 @@ DEFINE_METRIC_count(setup_update_self_succeeded);
 DEFINE_METRIC_count(setup_do_self_install_total);
 DEFINE_METRIC_count(setup_do_self_install_succeeded);
 
-DEFINE_METRIC_count(setup_handoff_only_total);
-DEFINE_METRIC_count(setup_handoff_only_succeeded);
-
 DEFINE_METRIC_timing(setup_install_google_update_total_ms);
 
-DEFINE_METRIC_timing(setup_handoff_ms);
 DEFINE_METRIC_timing(setup_handoff_ui_ms);
-
-DEFINE_METRIC_count(setup_installed_core_not_running);
 
 DEFINE_METRIC_count(setup_should_install_total);
 DEFINE_METRIC_count(setup_should_install_false_oc);
@@ -90,7 +84,6 @@ DEFINE_METRIC_count(setup_helper_msi_install_succeeded);
 DEFINE_METRIC_timing(setup_helper_msi_install_ms);
 
 DEFINE_METRIC_count(setup_locks_failed);
-DEFINE_METRIC_count(setup_lock11_failed);
 DEFINE_METRIC_count(setup_lock12_failed);
 
 DEFINE_METRIC_timing(setup_lock_acquire_ms);
@@ -100,12 +93,9 @@ DEFINE_METRIC_count(setup_process_wait_failed_unknown);
 DEFINE_METRIC_count(setup_process_wait_failed_core);
 DEFINE_METRIC_count(setup_process_wait_failed_report);
 DEFINE_METRIC_count(setup_process_wait_failed_update);
-DEFINE_METRIC_count(setup_process_wait_failed_ig);
 DEFINE_METRIC_count(setup_process_wait_failed_handoff);
-DEFINE_METRIC_count(setup_process_wait_failed_ug);
 DEFINE_METRIC_count(setup_process_wait_failed_ua);
 DEFINE_METRIC_count(setup_process_wait_failed_cr);
-DEFINE_METRIC_count(setup_process_wait_failed_legacy);
 DEFINE_METRIC_count(setup_process_wait_failed_other);
 
 DEFINE_METRIC_timing(setup_process_wait_ms);

@@ -22,9 +22,20 @@
 #include <atlstr.h>
 #include "base/scoped_ptr.h"
 #include "omaha/testing/unittest_debug_helper.h"
+#pragma warning(push)
+// C4628: digraphs not supported with -Ze.
+#pragma warning(disable : 4628)
+// C4826: Conversion from 'TYPE *' to 'testing::internal::UInt64' is
+// sign-extended. This may cause unexpected runtime behavior.
+// Caused by a hack in DefaultPrintTo.
+#pragma warning(disable : 4826)
+#include "omaha/third_party/gmock/include/gmock/gmock.h"
+#pragma warning(pop)
 #include "omaha/third_party/gtest/include/gtest/gtest.h"
 
 namespace omaha {
+
+const TCHAR* const kUnittestName = _T("omaha_unittest.exe");
 
 // Predicates needed by ASSERT_PRED1 for function returning an HRESULT.
 inline testing::AssertionResult Succeeded(const char* s, HRESULT hr) {
@@ -51,6 +62,12 @@ inline testing::AssertionResult Failed(const char* s, HRESULT hr) {
   }
 }
 
+// Returns true if the variable exists in the environment, even if it is "0".
+bool IsEnvironmentVariableSet(const TCHAR* name);
+
+// Returns true if current unit test process owner is LOCALSYSTEM.
+bool IsTestRunByLocalSystem();
+
 // Returns the path to the base local app data directory for the user on the
 // current OS.
 CString GetLocalAppDataPath();
@@ -70,8 +87,17 @@ CString GetGoogleUpdateMachinePath();
 // Useful for inline comparisons in EXPECT_EQ.
 DWORD GetDwordValue(const CString& full_key_name, const CString& value_name);
 
+// Returns a SZ registry value from the registry. Assumes the value exists.
+// Useful for inline comparisons in EXPECT_STREQ.
+CString GetSzValue(const CString& full_key_name, const CString& value_name);
+
+// Converts string to GUID. Assumes the string is a valid GUID.
+GUID StringToGuid(const CString& str);
+
 const TCHAR* const kRegistryHiveOverrideRoot =
-    _T("HKCU\\Software\\Google\\Update\\UnitTest\\");
+    _T("HKCU\\Software\\") _T(SHORT_COMPANY_NAME_ANSI)
+    _T("\\") _T(PRODUCT_NAME_ANSI)
+    _T("\\UnitTest\\");
 const TCHAR* const kCsidlSystemIdsRegKey =
     _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion");
 const TCHAR* const kCsidlProgramFilesRegValue =
@@ -131,12 +157,12 @@ bool IsBuildSystem();
 void SetBuildSystemTestSource();
 
 // Returns whether large tests should be run. Large tests are always run on the
-// build system and if the "OMAHA_RUN_LARGE_TESTS" or "OMAHA_RUN_ALL_TESTS"
+// build system and if the "OMAHA_TEST_RUN_LARGE" or "OMAHA_TEST_RUN_ALL"
 // environment variable is set.
 bool ShouldRunLargeTest();
 
 // Returns whether enourmous tests should be run. Enormous tests are always run
-// on the build system and if the "OMAHA_RUN_ALL_TESTS" environment variable is
+// on the build system and if the "OMAHA_TEST_RUN_ALL" environment variable is
 // set. This method should be used sparingly and only by tests that take a
 // really long time to complete.
 bool ShouldRunEnormousTest();
@@ -145,7 +171,7 @@ bool ShouldRunEnormousTest();
 void TerminateAllGoogleUpdateProcesses();
 
 // Launches a process and returns its handle.
-void LaunchProcess(const CString& cmd_line,
+void LaunchProcess(const CString& exe_path,
                    const CString& args,
                    bool as_system,
                    HANDLE* process);
@@ -154,8 +180,35 @@ void LaunchProcess(const CString& cmd_line,
 // psexec to run the process.
 void LaunchProcessAsSystem(const CString& launch_cmd, HANDLE* process);
 
+// Copies Omaha installation files under omaha_path.
+void CopyGoopdateFiles(const CString& omaha_path, const CString& version);
+
+// A generic test fixture that overrides the HKLM and HKCU hives.
+class RegistryProtectedTest : public testing::Test {
+ protected:
+  RegistryProtectedTest()
+      : hive_override_key_name_(kRegistryHiveOverrideRoot) {
+  }
+
+  virtual void SetUp();
+  virtual void TearDown();
+
+  const CString hive_override_key_name_;
+};
+
+// Returns the full path of a unique directory under the user temp directory.
+CString GetUniqueTempDirectoryName();
+
+// Runs the command as an administrator.
+void RunAsAdmin(const CString& exe_path, const CString& cmd_line);
+
+void RegisterOrUnregisterGoopdateLocalServer(bool reg);
+
+void RegisterOrUnregisterGoopdateService(bool reg);
+
 }  // namespace omaha
 
+// TODO(omaha): Replace custom predicates with EXPECT_HRESULT_SUCCEEDED/FAILED.
 #define ASSERT_SUCCEEDED(x) ASSERT_PRED_FORMAT1(omaha::Succeeded, x)
 #define EXPECT_SUCCEEDED(x) EXPECT_PRED_FORMAT1(omaha::Succeeded, x)
 #define ASSERT_FAILED(x) ASSERT_PRED_FORMAT1(omaha::Failed, x)
@@ -175,6 +228,20 @@ void LaunchProcessAsSystem(const CString& launch_cmd, HANDLE* process);
   GTEST_TEST_BOOLEAN_(!!(condition), #condition, false, true, \
                       GTEST_FATAL_FAILURE_)
 
-#define kUnittestName _T("omaha_unittest.exe")
+// GMock's ACTION* macros have 10 parameters, most of which go unused.
+// This macro can be used inside ACTION* definitions to suppress warning
+// C4100: unreferenced formal parameter.
+#define UNREFERENCED_ACTION_PARAMETERS \
+    UNREFERENCED_PARAMETER(args); \
+    UNREFERENCED_PARAMETER(arg0); \
+    UNREFERENCED_PARAMETER(arg1); \
+    UNREFERENCED_PARAMETER(arg2); \
+    UNREFERENCED_PARAMETER(arg3); \
+    UNREFERENCED_PARAMETER(arg4); \
+    UNREFERENCED_PARAMETER(arg5); \
+    UNREFERENCED_PARAMETER(arg6); \
+    UNREFERENCED_PARAMETER(arg7); \
+    UNREFERENCED_PARAMETER(arg8); \
+    UNREFERENCED_PARAMETER(arg9)
 
 #endif  // OMAHA_TESTING_UNIT_TEST_H_

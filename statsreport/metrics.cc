@@ -15,8 +15,7 @@
 //
 // Implements metrics and metrics collections
 #include "omaha/statsreport/metrics.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/synchronized.h"
+#include "omaha/base/synchronized.h"
 
 namespace stats_report {
 // Make sure global stats collection is placed in zeroed storage so as to avoid
@@ -87,16 +86,14 @@ MetricBase::~MetricBase() {
   }
 }
 
-void IntegerMetricBase::Set(uint64 value) {
+void IntegerMetricBase::Set(int64 value) {
   ObjectLock lock(this);
-  ASSERT1(value != kint64max);
   value_ = value;
 }
 
-uint64 IntegerMetricBase::value() const {
+int64 IntegerMetricBase::value() const {
   ObjectLock lock(this);
-  uint64 ret = value_;
-  ASSERT1(ret != kint64max);
+  int64 ret = value_;
   return ret;
 }
 
@@ -110,12 +107,12 @@ void IntegerMetricBase::Decrement() {
   --value_;
 }
 
-void IntegerMetricBase::Add(uint64 value){
+void IntegerMetricBase::Add(int64 value){
   ObjectLock lock(this);
   value_ += value;
 }
 
-void IntegerMetricBase::Subtract(uint64 value) {
+void IntegerMetricBase::Subtract(int64 value) {
   ObjectLock lock(this);
   if (value_ < value)
     value_ = 0;
@@ -123,9 +120,9 @@ void IntegerMetricBase::Subtract(uint64 value) {
     value_ -= value;
 }
 
-uint64 CountMetric::Reset() {
+int64 CountMetric::Reset() {
   ObjectLock lock(this);
-  uint64 ret = value_;
+  int64 ret = value_;
   value_ = 0;
   return ret;
 }
@@ -143,28 +140,28 @@ uint32 TimingMetric::count() const {
   return ret;
 }
 
-uint64 TimingMetric::sum() const {
+int64 TimingMetric::sum() const {
   ObjectLock lock(this);
-  uint64 ret = data_.sum;
+  int64 ret = data_.sum;
   return ret;
 }
 
-uint64 TimingMetric::minimum() const {
+int64 TimingMetric::minimum() const {
   ObjectLock lock(this);
-  uint64 ret = data_.minimum;
+  int64 ret = data_.minimum;
   return ret;
 }
 
-uint64 TimingMetric::maximum() const {
+int64 TimingMetric::maximum() const {
   ObjectLock lock(this);
-  uint64 ret = data_.maximum;
+  int64 ret = data_.maximum;
   return ret;
 }
 
-uint64 TimingMetric::average() const {
+int64 TimingMetric::average() const {
   ObjectLock lock(this);
 
-  uint64 ret = 0;
+  int64 ret = 0;
   if (0 == data_.count) {
     DCHECK_EQ(0, data_.sum);
   } else {
@@ -173,7 +170,7 @@ uint64 TimingMetric::average() const {
   return ret;
 }
 
-void TimingMetric::AddSample(uint64 time_ms) {
+void TimingMetric::AddSample(int64 time_ms) {
   ObjectLock lock(this);
   if (0 == data_.count) {
     data_.minimum = time_ms;
@@ -188,11 +185,11 @@ void TimingMetric::AddSample(uint64 time_ms) {
   data_.sum += time_ms;
 }
 
-void TimingMetric::AddSamples(uint64 count, uint64 total_time_ms) {
+void TimingMetric::AddSamples(int64 count, int64 total_time_ms) {
   if (0 == count)
     return;
 
-  uint64 time_ms = total_time_ms / count;
+  int64 time_ms = total_time_ms / count;
 
   ObjectLock lock(this);
   if (0 == data_.count) {

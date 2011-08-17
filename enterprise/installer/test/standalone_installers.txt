@@ -1,0 +1,1 @@
+('Failing Enterprise Test', 'TestStandaloneFailure', [('1.0.0.0', '$STAGING_DIR/test_setup.exe', '{665BDD8E-F40C-4384-A9C6-CA3CD5665C83}')], 'TestStandaloneFailureEnterprise', '', '/uninstall', True, '', '' )

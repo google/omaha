@@ -17,9 +17,4 @@
 
 Import('env')
 
-env.ComponentLibrary(
-    lib_name='lzma',
-    source='LzmaStateDecode.c',
-)
-
-
+env.BuildSConscript('v4_65')

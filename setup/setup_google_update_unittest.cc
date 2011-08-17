@@ -15,21 +15,20 @@
 
 #include <windows.h>
 #include <msi.h>
+#include <atlpath.h>
 #include "base/scoped_ptr.h"
-#include "goopdate/google_update_idl.h"
-#include "omaha/common/app_util.h"
-#include "omaha/common/atlregmapex.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/atlregmapex.h"
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/file.h"
+#include "omaha/base/path.h"
+#include "omaha/base/time.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/common/const_cmd_line.h"
-#include "omaha/common/omaha_version.h"
-#include "omaha/common/file.h"
-#include "omaha/common/path.h"
-#include "omaha/common/time.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
-#include "omaha/goopdate/command_line.h"
-#include "omaha/goopdate/config_manager.h"
-#include "omaha/goopdate/const_goopdate.h"
-#include "omaha/goopdate/goopdate_utils.h"
+#include "omaha/common/const_goopdate.h"
+#include "omaha/common/scheduled_task_utils.h"
 #include "omaha/setup/msi_test_utils.h"
 #include "omaha/setup/setup_google_update.h"
 #include "omaha/testing/unit_test.h"
@@ -45,38 +44,39 @@ const TCHAR kMsiUninstallKey[] =
 const TCHAR kRunKey[] =
     _T("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run");
 
-const TCHAR* const kExpectedIid = _T("{A972BB39-CCA3-4F25-9737-3308F5FA19B5}");
-const TCHAR* const kExpectedBrand = _T("GOOG");
-const TCHAR* const kExpectedClientId = _T("some_partner");
-
 const TCHAR* const kAppId1 = _T("{B7E61EF9-AAE5-4cdf-A2D3-E4C8DF975145}");
 const TCHAR* const kAppId2 = _T("{35F1A986-417D-4039-8718-781DD418232A}");
 
 const TCHAR kRegistryHiveOverrideRootInHklm[] =
-    _T("HKLM\\Software\\Google\\Update\\UnitTest\\");
+    _T("HKLM\\Software\\") _T(SHORT_COMPANY_NAME_ANSI)
+    _T("\\") _T(PRODUCT_NAME_ANSI)
+    _T("\\UnitTest\\");
 
 // Copies the shell and DLLs that FinishInstall needs.
 // Does not replace files if they already exist.
 void CopyFilesRequiredByFinishInstall(bool is_machine, const CString& version) {
-  ASSERT_FALSE(is_machine) << _T("machine installs not currently supported");
   const CString omaha_path = is_machine ?
       GetGoogleUpdateMachinePath() : GetGoogleUpdateUserPath();
   const CString expected_shell_path =
-      ConcatenatePath(omaha_path, _T("GoogleUpdate.exe"));
+      ConcatenatePath(omaha_path, kOmahaShellFileName);
   const CString version_path = ConcatenatePath(omaha_path, version);
 
   ASSERT_SUCCEEDED(CreateDir(omaha_path, NULL));
   ASSERT_SUCCEEDED(File::Copy(
       ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                      _T("GoogleUpdate.exe")),
+                      kOmahaShellFileName),
       expected_shell_path,
       false));
 
   ASSERT_SUCCEEDED(CreateDir(version_path, NULL));
 
-  const TCHAR* files[] = {_T("goopdate.dll"),
+  const TCHAR* files[] = {kOmahaDllName,
+                          kHelperInstallerName,
+// TODO(omaha3): Enable once this is being built.
+#if 0
                           _T("GoopdateBho.dll"),
-                          ACTIVEX_FILENAME};
+#endif
+                          UPDATE_PLUGIN_FILENAME};
   for (size_t i = 0; i < arraysize(files); ++i) {
     ASSERT_SUCCEEDED(File::Copy(
         ConcatenatePath(app_util::GetCurrentModuleDirectory(),
@@ -103,6 +103,8 @@ void SetupCOMLocalServerRegistration(bool is_machine) {
   CString base_clsid_key(is_machine ? _T("HKLM") : _T("HKCU"));
   base_clsid_key += _T("\\Software\\Classes\\CLSID\\");
   CString ondemand_clsid_key(base_clsid_key);
+// TODO(omaha3): Implement this for Omaha 3.
+#if 0
   ondemand_clsid_key += GuidToString(is_machine ?
                                      __uuidof(OnDemandMachineAppsClass) :
                                      __uuidof(OnDemandUserAppsClass));
@@ -133,6 +135,7 @@ void SetupCOMLocalServerRegistration(bool is_machine) {
   ASSERT_SUCCEEDED(RegKey::SetValue(igoogleupdate_interface_key,
                                     NULL,
                                     proxy_interface_value));
+#endif
 }
 
 void VerifyAccessRightsForTrustee(const CString& key_name,
@@ -181,7 +184,7 @@ void VerifyHklmKeyHasIntegrity(
 
   CString current_user_sid_string;
   EXPECT_SUCCEEDED(
-      user_info::GetCurrentUser(NULL, NULL, &current_user_sid_string));
+      user_info::GetProcessUser(NULL, NULL, &current_user_sid_string));
   PSID current_user_sid = NULL;
   EXPECT_TRUE(ConvertStringSidToSid(current_user_sid_string,
                                     &current_user_sid));
@@ -264,16 +267,8 @@ class SetupGoogleUpdateTest : public testing::Test {
       : is_machine_(is_machine) {
   }
 
-  void SetUp() {
-    GUID iid  = StringToGuid(kExpectedIid);
-    CommandLineAppArgs extra;
-    args_.extra.language = _T("en");
-    args_.extra.installation_id = iid;
-    args_.extra.brand_code = kExpectedBrand;
-    args_.extra.client_id = kExpectedClientId;
-    args_.extra.referral_id = _T("should not be used by setup");
-    args_.extra.apps.push_back(extra);
-    setup_google_update_.reset(new SetupGoogleUpdate(is_machine_, &args_));
+  virtual void SetUp() {
+    setup_google_update_.reset(new SetupGoogleUpdate(is_machine_));
   }
 
   HRESULT InstallRegistryValues() {
@@ -302,7 +297,6 @@ class SetupGoogleUpdateTest : public testing::Test {
 
   bool is_machine_;
   scoped_ptr<SetupGoogleUpdate> setup_google_update_;
-  CommandLineArgs args_;
 };
 
 class SetupGoogleUpdateUserTest : public SetupGoogleUpdateTest {
@@ -326,11 +320,11 @@ class SetupGoogleUpdateUserRegistryProtectedTest
       : SetupGoogleUpdateUserTest(),
         hive_override_key_name_(kRegistryHiveOverrideRoot) {
     const CString expected_shell_path =
-        ConcatenatePath(GetGoogleUpdateUserPath(), _T("GoogleUpdate.exe"));
+        ConcatenatePath(GetGoogleUpdateUserPath(), kOmahaShellFileName);
     expected_run_key_value_.Format(_T("\"%s\" /c"), expected_shell_path);
   }
 
-  void SetUp() {
+  virtual void SetUp() {
     RegKey::DeleteKey(hive_override_key_name_, true);
     // Do not override HKLM because it contains the CSIDL_* definitions.
     OverrideSpecifiedRegistryHives(hive_override_key_name_, false, true);
@@ -357,7 +351,7 @@ class SetupGoogleUpdateMachineRegistryProtectedTest
         hive_override_key_name_(kRegistryHiveOverrideRoot) {
   }
 
-  void SetUp() {
+  virtual void SetUp() {
     RegKey::DeleteKey(hive_override_key_name_, true);
     OverrideRegistryHives(hive_override_key_name_);
 
@@ -429,16 +423,18 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   // Check the system state.
 
   CPath expected_shell_path(GetGoogleUpdateUserPath());
-  expected_shell_path.Append(_T("GoogleUpdate.exe"));
+  expected_shell_path.Append(kOmahaShellFileName);
   CString shell_path;
   EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_UPDATE, _T("path"), &shell_path));
   EXPECT_STREQ(expected_shell_path, shell_path);
 
   CString value;
-  EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey, _T("Google Update"), &value));
+  EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey,
+                                    _T(OMAHA_APP_NAME_ANSI),
+                                    &value));
   EXPECT_STREQ(expected_run_key_value_, value);
-  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
-  EXPECT_FALSE(goopdate_utils::IsDisabledGoopdateTaskUA(false));
+  EXPECT_TRUE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
+  EXPECT_FALSE(scheduled_task_utils::IsDisabledGoopdateTaskUA(false));
 
   EXPECT_SUCCEEDED(
       RegKey::GetValue(USER_REG_UPDATE, kRegValueInstalledVersion, &value));
@@ -454,8 +450,8 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   // Clean up the launch mechanisms, at least one of which is not in the
   // overriding registry.
   UninstallLaunchMechanisms();
-  EXPECT_FALSE(RegKey::HasValue(kRunKey, _T("Google Update")));
-  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
+  EXPECT_FALSE(RegKey::HasValue(kRunKey, _T(OMAHA_APP_NAME_ANSI)));
+  EXPECT_FALSE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
 
   if (!had_pv) {
     // Delete the pv value. Some tests or shell .exe instances may see this
@@ -469,6 +465,10 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
 // TODO(omaha): Assumes GoogleUpdate.exe exists in the installed location, which
 // is not always true when run independently.
 TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
+  if (IsTestRunByLocalSystem()) {
+    return;
+  }
+
   // For this test only, we must also override HKLM in order to check that
   // MACHINE_REG_CLIENT_STATE_MEDIUM was not created.
   // Get the correct value of and set the CSIDL value needed by the test.
@@ -476,7 +476,7 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROFILE, &profile_path));
   OverrideSpecifiedRegistryHives(hive_override_key_name_, true, true);
   CString user_sid;
-  EXPECT_SUCCEEDED(user_info::GetCurrentUser(NULL, NULL, &user_sid));
+  EXPECT_SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid));
   const TCHAR* const kProfileListKey =
       _T("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\")
       _T("ProfileList\\");
@@ -513,36 +513,10 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
   EXPECT_EQ(1, client_state_key.GetSubkeyCount());
 
   CPath expected_shell_path(GetGoogleUpdateUserPath());
-  expected_shell_path.Append(_T("GoogleUpdate.exe"));
+  expected_shell_path.Append(kOmahaShellFileName);
   CString shell_path;
   EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_UPDATE, _T("path"), &shell_path));
   EXPECT_STREQ(expected_shell_path, shell_path);
-
-  CString iid;
-  EXPECT_SUCCEEDED(
-      RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE, _T("iid"), &iid));
-  EXPECT_STREQ(kExpectedIid, iid);
-
-  CString brand;
-  EXPECT_SUCCEEDED(
-      RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE, _T("brand"), &brand));
-  EXPECT_STREQ(kExpectedBrand, brand);
-
-  CString client_id;
-  EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE,
-                                    _T("client"),
-                                    &client_id));
-  EXPECT_STREQ(kExpectedClientId, client_id);
-
-  EXPECT_FALSE(
-      RegKey::HasValue(USER_REG_CLIENT_STATE_GOOPDATE, _T("referral")));
-
-  DWORD install_time(0);
-  EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE,
-                                    _T("InstallTime"),
-                                    &install_time));
-  EXPECT_GE(now, install_time);
-  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 
   CString product_version;
   EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE,
@@ -592,37 +566,13 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
 
   CString expected_shell_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &expected_shell_path));
-  expected_shell_path.Append(_T("\\Google\\Update\\GoogleUpdate.exe"));
+  expected_shell_path.Append(_T("\\") SHORT_COMPANY_NAME
+                             _T("\\") PRODUCT_NAME
+                             _T("\\GoogleUpdate.exe"));
   CString shell_path;
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("path"), &shell_path));
   EXPECT_STREQ(expected_shell_path, shell_path);
-
-  CString iid;
-  EXPECT_SUCCEEDED(
-      RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE, _T("iid"), &iid));
-  EXPECT_STREQ(kExpectedIid, iid);
-
-  CString brand;
-  EXPECT_SUCCEEDED(
-      RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE, _T("brand"), &brand));
-  EXPECT_STREQ(kExpectedBrand, brand);
-
-  CString client_id;
-  EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
-                                    _T("client"),
-                                    &client_id));
-  EXPECT_STREQ(kExpectedClientId, client_id);
-
-  EXPECT_FALSE(
-      RegKey::HasValue(MACHINE_REG_CLIENT_STATE_GOOPDATE, _T("referral")));
-
-  DWORD install_time(0);
-  EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
-                                    _T("InstallTime"),
-                                    &install_time));
-  EXPECT_GE(now, install_time);
-  EXPECT_GE(static_cast<uint32>(200), now - install_time);
 
   CString product_version;
   EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
@@ -723,19 +673,23 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
 
 TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
        InstallLaunchMechanisms_RunKeyValueExists) {
-  EXPECT_SUCCEEDED(RegKey::SetValue(kRunKey, _T("Google Update"), _T("fo /b")));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRunKey,
+                                    _T(OMAHA_APP_NAME_ANSI),
+                                    _T("fo /b")));
 
   EXPECT_SUCCEEDED(InstallLaunchMechanisms());
 
   CString value;
-  EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey, _T("Google Update"), &value));
+  EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey,
+                                    _T(OMAHA_APP_NAME_ANSI),
+                                    &value));
   EXPECT_STREQ(expected_run_key_value_, value);
-  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
-  EXPECT_FALSE(goopdate_utils::IsDisabledGoopdateTaskUA(false));
+  EXPECT_TRUE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
+  EXPECT_FALSE(scheduled_task_utils::IsDisabledGoopdateTaskUA(false));
 
   UninstallLaunchMechanisms();
-  EXPECT_FALSE(RegKey::HasValue(kRunKey, _T("Google Update")));
-  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
+  EXPECT_FALSE(RegKey::HasValue(kRunKey, _T(OMAHA_APP_NAME_ANSI)));
+  EXPECT_FALSE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
 }
 
 TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
@@ -745,14 +699,16 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   EXPECT_SUCCEEDED(InstallLaunchMechanisms());
 
   CString value;
-  EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey, _T("Google Update"), &value));
+  EXPECT_SUCCEEDED(RegKey::GetValue(kRunKey,
+                                    _T(OMAHA_APP_NAME_ANSI),
+                                    &value));
   EXPECT_STREQ(expected_run_key_value_, value);
-  EXPECT_TRUE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
-  EXPECT_FALSE(goopdate_utils::IsDisabledGoopdateTaskUA(false));
+  EXPECT_TRUE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
+  EXPECT_FALSE(scheduled_task_utils::IsDisabledGoopdateTaskUA(false));
 
   UninstallLaunchMechanisms();
-  EXPECT_FALSE(RegKey::HasValue(kRunKey, _T("Google Update")));
-  EXPECT_FALSE(goopdate_utils::IsInstalledGoopdateTaskUA(false));
+  EXPECT_FALSE(RegKey::HasValue(kRunKey, _T(OMAHA_APP_NAME_ANSI)));
+  EXPECT_FALSE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
 }
 
 // The helper can be installed when the test begins.
@@ -763,6 +719,8 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
   }
   const TCHAR* MsiInstallRegValueKey =
       ConfigManager::Instance()->machine_registry_update();
+
+  CopyFilesRequiredByFinishInstall(is_machine_, GetVersionString());
 
   if (vista_util::IsUserAdmin()) {
     // Prepare for the test - make sure the helper isn't installed.
@@ -840,6 +798,8 @@ TEST_F(SetupGoogleUpdateMachineTest,
       _T("unittest_support\\GoogleUpdateHelper.msi");
   const TCHAR* MsiInstallRegValueKey =
       ConfigManager::Instance()->machine_registry_update();
+
+  CopyFilesRequiredByFinishInstall(is_machine_, GetVersionString());
 
   CString different_msi_path(app_util::GetCurrentModuleDirectory());
   ASSERT_TRUE(::PathAppend(CStrBuf(different_msi_path, MAX_PATH),

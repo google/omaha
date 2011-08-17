@@ -21,26 +21,24 @@ Import('env')
 
 local_env = env.Clone()
 
-target_name = 'repair_goopdate.lib'
-
 inputs = [
     'mspexecutableelevator.cc',
     'repair_goopdate.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  inputs += local_env.EnablePrecompile(target_name)
 
-local_env.ComponentLibrary(target_name, inputs)
+repair_goopdate_lib = local_env.ComponentStaticLibrary('repair_goopdate',
+                                                       inputs)
 
+local_env.OmahaUnittest(
+    name='repair_exe_custom_action_unittest',
+    source=['mspexecutableelevator_unittest.cc', 'repair_goopdate_unittest.cc'],
+    LIBS=repair_goopdate_lib,
+)
 
 subdirs = [
     'custom_action',
+    'msp',
     ]
-
-if not env.Bit('min'):
-  subdirs += [
-      'msp',
-      ]
 
 for subdir in subdirs:
   env.BuildSConscript(subdir)

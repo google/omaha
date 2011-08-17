@@ -22,7 +22,7 @@
 #include <atlwin.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/registry_monitor_manager.h"
+#include "omaha/base/registry_monitor_manager.h"
 
 namespace omaha {
 

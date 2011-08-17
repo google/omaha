@@ -16,6 +16,7 @@
       Compressed="no"
       SummaryCodepage="1252" />
 
+    <!--TODO(omaha): Use kUrlMoreInformation for MoreInfoURL.-->
     <PatchMetadata
       Description="Patches Google Update"
       DisplayName="Google Update patch"

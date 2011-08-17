@@ -16,9 +16,9 @@
 #include "omaha/net/net_utils.h"
 #include <iphlpapi.h>
 #include "base/scoped_ptr.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/utils.h"
 
 namespace omaha {
 

@@ -15,17 +15,16 @@
 //
 // Internet-access utility functions via winhttp
 
-#include "omaha/net/http_client.h"
-
-#include <vector>                   // NOLINT
+#include "omaha/net/winhttp.h"
+#include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/string.h"
-#include "omaha/common/synchronized.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/string.h"
+#include "omaha/base/synchronized.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/winhttp_vtable.h"
 
 namespace omaha {
@@ -72,6 +71,7 @@ class WinHttp : public HttpClient {
                        uint32 access_type,
                        const TCHAR* proxy_name,
                        const TCHAR* proxy_bypass,
+                       DWORD flags,
                        HINTERNET* session_handle);
   virtual HRESULT OpenRequest(HINTERNET connection_handle,
                               const TCHAR* verb,
@@ -107,7 +107,8 @@ class WinHttp : public HttpClient {
                               DWORD headers_length,
                               const void* optional_data,
                               DWORD optional_data_length,
-                              DWORD content_length);
+                              DWORD content_length,
+                              DWORD_PTR context);
   virtual HRESULT SetCredentials(HINTERNET request_handle,
                                  uint32 auth_targets,
                                  uint32 auth_scheme,
@@ -153,15 +154,14 @@ WinHttp::WinHttp() : is_initialized_(false) {
 }
 
 HRESULT WinHttp::Initialize() {
+  __mutexScope(WinHttp::lock_);
   if (is_initialized_) {
     return S_OK;
   }
-  __mutexBlock(WinHttp::lock_) {
-    if (!winhttp_.Load()) {
-      HRESULT hr = HRESULTFromLastError();
-      NET_LOG(LEVEL_ERROR, (_T("[failed to load winhttp][0x%08x]"), hr));
-      return hr;
-    }
+  if (!winhttp_.Load()) {
+    HRESULT hr = HRESULTFromLastError();
+    NET_LOG(LEVEL_ERROR, (_T("[failed to load winhttp][0x%08x]"), hr));
+    return hr;
   }
   is_initialized_ = true;
   return S_OK;
@@ -171,30 +171,16 @@ HRESULT WinHttp::Open(const TCHAR* user_agent,
                       uint32 access_type,
                       const TCHAR* proxy_name,
                       const TCHAR* proxy_bypass,
+                      DWORD flags,
                       HINTERNET* session_handle) {
   *session_handle = winhttp_.WinHttpOpen(user_agent,
                                          access_type,
                                          proxy_name,
                                          proxy_bypass,
-                                         0);   // Synchronous mode always.
+                                         flags);
   return *session_handle ? S_OK : HRESULTFromLastError();
 }
 
-// Quoting from the MSDN documentation:
-//    "Operations on a WinHTTP request handle should be synchronized.
-//    For example, an application should avoid closing a request handle on one
-//    thread while another thread is sending or receiving a request.
-//    To terminate an asynchronous request, close the request handle during
-//    a callback notification. To terminate a synchronous request, close the
-//    handle when the previous WinHTTP call returns."
-// Synchronizing on the request handle adds quite a bit of complexity to the
-// code. Blocking WinHTTP calls can block for quite a while: by default the
-// connect time out is 60 seconds, the send or receive timeout is 30 seconds,
-// and the receive response timeout is 90 seconds. Waiting as much to
-// cancel a request in progress is not acceptable. We noticed that closing
-// the request handle from a different thread makes the blocking WinHTTP
-// thread return right away. We are not fixing this for now, as the benefit
-// seems to be minimal while increasing the complexity of the code.
 HRESULT WinHttp::Close(HINTERNET handle) {
   ASSERT1(handle);
   return winhttp_.WinHttpCloseHandle(handle) ? S_OK : HRESULTFromLastError();
@@ -208,9 +194,9 @@ HRESULT WinHttp::Connect(HINTERNET session_handle,
   ASSERT1(port <= INTERNET_MAX_PORT_NUMBER_VALUE);
 
   *connection_handle = winhttp_.WinHttpConnect(session_handle,
-                                              server,
-                                              static_cast<INTERNET_PORT>(port),
-                                              0);
+                                               server,
+                                               static_cast<INTERNET_PORT>(port),
+                                               0);
   return *connection_handle ? S_OK : HRESULTFromLastError();
 }
 
@@ -237,7 +223,8 @@ HRESULT WinHttp::SendRequest(HINTERNET request_handle,
                              DWORD headers_length,
                              const void* optional_data,
                              DWORD optional_data_length,
-                             DWORD content_length) {
+                             DWORD content_length,
+                             DWORD_PTR context) {
   bool res = !!winhttp_.WinHttpSendRequest(
                             request_handle,
                             headers,
@@ -245,7 +232,7 @@ HRESULT WinHttp::SendRequest(HINTERNET request_handle,
                             const_cast<void*>(optional_data),
                             optional_data_length,
                             content_length,
-                            reinterpret_cast<DWORD_PTR>(this));
+                            context);
   return res ? S_OK : HRESULTFromLastError();
 }
 
@@ -256,12 +243,7 @@ HRESULT WinHttp::ReceiveResponse(HINTERNET request_handle) {
 
 HRESULT WinHttp::QueryDataAvailable(HINTERNET request_handle,
                                     DWORD* num_bytes) {
-  ASSERT1(num_bytes);
-
-  DWORD bytes_available = 0;
-  bool res = !!winhttp_.WinHttpQueryDataAvailable(request_handle,
-                                                  &bytes_available);
-  *num_bytes = bytes_available;
+  bool res = !!winhttp_.WinHttpQueryDataAvailable(request_handle, num_bytes);
   return res ? S_OK : HRESULTFromLastError();
 }
 
@@ -279,22 +261,16 @@ HRESULT WinHttp::SetTimeouts(HINTERNET handle,
 }
 
 HRESULT WinHttp::ReadData(HINTERNET request_handle,
-                         void* buffer,
-                         DWORD buffer_length,
-                         DWORD* bytes_read) {
+                          void* buffer,
+                          DWORD buffer_length,
+                          DWORD* bytes_read) {
   ASSERT1(buffer);
-  ASSERT1(bytes_read);
 
-  DWORD bytes_read_local = 0;
   bool res = !!winhttp_.WinHttpReadData(request_handle,
                                         buffer,
                                         buffer_length,
-                                        &bytes_read_local);
-  if (!res) {
-    return HRESULTFromLastError();
-  }
-  *bytes_read = bytes_read_local;
-  return S_OK;
+                                        bytes_read);
+  return res ? S_OK : HRESULTFromLastError();
 }
 
 HRESULT WinHttp::WriteData(HINTERNET request_handle,
@@ -302,14 +278,11 @@ HRESULT WinHttp::WriteData(HINTERNET request_handle,
                            DWORD bytes_to_write,
                            DWORD* bytes_written) {
   ASSERT1(buffer);
-  ASSERT1(bytes_written);
 
-  DWORD bytes_written_local = 0;
   bool res = !!winhttp_.WinHttpWriteData(request_handle,
                                          buffer,
                                          bytes_to_write,
-                                         &bytes_written_local);
-  *bytes_written = bytes_written_local;
+                                         bytes_written);
   return res ? S_OK : HRESULTFromLastError();
 }
 

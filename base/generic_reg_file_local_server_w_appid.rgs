@@ -1,0 +1,62 @@
+HKCR
+{
+  '%PROGID%.%VERSION%' = s '%DESCRIPTION%'
+  {
+    CLSID = s '%CLSID%'
+  }
+  '%PROGID%' = s '%DESCRIPTION%'
+  {
+    CLSID = s '%CLSID%'
+    CurVer = s '%PROGID%.%VERSION%'
+  }
+  NoRemove CLSID
+  {
+    ForceRemove '%CLSID%' = s '%DESCRIPTION%'
+    {
+      ProgID = s '%PROGID%.%VERSION%'
+      VersionIndependentProgID = s '%PROGID%'
+      ForceRemove 'Programmable'
+      LocalServer32 = s '%MODULE%'
+      {
+        val ThreadingModel = s '%THREADING%'
+      }
+      val AppID = s '%APPID%'
+      'TypeLib' = s '%LIBID%'
+    }
+  }
+  NoRemove AppID
+  {
+    ForceRemove '%APPID%' = s '%DESCRIPTION%'
+    {
+
+    }
+    ForceRemove '%OBJECTFILENAME%'
+    {
+      val AppID = s '%APPID%'
+    }
+  }
+}
+HKLM
+{
+  NoRemove SOFTWARE
+  {
+    NoRemove Microsoft
+    {
+      NoRemove 'Internet Explorer'
+      {
+        NoRemove 'Low Rights'
+        {
+          NoRemove ElevationPolicy
+          {
+            ForceRemove '%APPID%'
+            {
+              val AppName = s '%OBJECTFILENAME%'
+              val AppPath = s '%MODULEPATH%'
+              val Policy = d '3'
+            }
+          }
+        }
+      }
+    }
+  }
+}

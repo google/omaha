@@ -17,10 +17,10 @@
 // elevated using the MSP.
 
 #include "omaha/recovery/repair_exe/repair_goopdate.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
 #include "omaha/recovery/repair_exe/mspexecutableelevator.h"
 
 namespace omaha {

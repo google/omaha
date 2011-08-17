@@ -14,7 +14,7 @@
 // ========================================================================
 //
 // Defines SharedMemoryProxy to encapsulate marshaling and unmarshaling of
-// IGoogleUpdate and other interface pointers across process boundaries.
+// IGoogleUpdate3 and other interface pointers across process boundaries.
 //
 // TODO(omaha): seems possible to make it general purpose and move it to common.
 #ifndef OMAHA_GOOPDATE_GOOGLE_UPDATE_PROXY_H__
@@ -23,14 +23,13 @@
 #include <atlbase.h>
 #include <atlsecurity.h>
 #include "base/basictypes.h"
-#include "goopdate/google_update_idl.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/shared_memory_ptr.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/shared_memory_ptr.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
 
 namespace omaha {
 

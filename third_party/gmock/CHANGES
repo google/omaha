@@ -1,0 +1,39 @@
+Changes for 1.4.0 (we skipped 1.2.* and 1.3.* to match the version of
+Google Test):
+
+ * Works in more environments: Symbian and minGW, Visual C++ 7.1.
+ * Lighter weight: comes with our own implementation of TR1 tuple (no
+   more dependency on Boost!).
+ * New feature: --gmock_catch_leaked_mocks for detecting leaked mocks.
+ * New feature: ACTION_TEMPLATE for defining templatized actions.
+ * New feature: the .After() clause for specifying expectation order.
+ * New feature: the .With() clause for for specifying inter-argument
+   constraints.
+ * New feature: actions ReturnArg<k>(), ReturnNew<T>(...), and
+   DeleteArg<k>().
+ * New feature: matchers Key(), Pair(), Args<...>(), AllArgs(), IsNull(),
+   and Contains().
+ * New feature: utility class MockFunction<F>, useful for checkpoints, etc.
+ * New feature: functions Value(x, m) and SafeMatcherCast<T>(m).
+ * New feature: copying a mock object is rejected at compile time.
+ * New feature: a script for fusing all Google Mock and Google Test
+   source files for easy deployment.
+ * Improved the Google Mock doctor to diagnose more diseases.
+ * Improved the Google Mock generator script.
+ * Compatibility fixes for Mac OS X and gcc.
+ * Bug fixes and implementation clean-ups.
+
+Changes for 1.1.0:
+
+ * New feature: ability to use Google Mock with any testing framework.
+ * New feature: macros for easily defining new matchers
+ * New feature: macros for easily defining new actions.
+ * New feature: more container matchers.
+ * New feature: actions for accessing function arguments and throwing
+   exceptions.
+ * Improved the Google Mock doctor script for diagnosing compiler errors.
+ * Bug fixes and implementation clean-ups.
+
+Changes for 1.0.0:
+
+ * Initial Open Source release of Google Mock

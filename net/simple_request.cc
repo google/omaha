@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,61 +18,174 @@
 // The transient state of the request is maintained by request_state_.
 // The state is created by SimpleRequest::Send and it is destroyed by
 // SimpleRequest::Close. The only concurrent access to the object state can
-// happened during calling SimpleRequest::Cancel. Cancel closes the
-// connection and the request handles. This makes any of the WinHttp calls
-// on these handles fail and SimpleRequest::Send return to the caller.
+// happen during calling SimpleRequest::Cancel(), Pause() and Resume(). Cancel
+// closes the connection and the request handles. This makes any of the WinHttp
+// calls on these handles fail and SimpleRequest::Send return to the caller.
+// Pause() also closes the handles but SimpleRequest automatically reopens
+// them when Resume() is called. During resume stage, SimpleRequest sends a
+// range request to continue download. During these actions, the caller is still
+// blocked.
 
 #include "omaha/net/simple_request.h"
-
 #include <atlconv.h>
 #include <climits>
+#include <memory>
 #include <vector>
-#include "omaha/common/const_addresses.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/scope_guard.h"
-#include "omaha/common/string.h"
-#include "omaha/net/http_client.h"
+#include "omaha/base/const_addresses.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/scope_guard.h"
+#include "omaha/base/string.h"
 #include "omaha/net/network_config.h"
 #include "omaha/net/network_request.h"
 #include "omaha/net/proxy_auth.h"
+#include "omaha/net/winhttp_adapter.h"
 
 namespace omaha {
 
 SimpleRequest::SimpleRequest()
     : request_buffer_(NULL),
       request_buffer_length_(0),
+      proxy_auth_config_(NULL, CString()),
       is_canceled_(false),
+      is_closed_(false),
       session_handle_(NULL),
       low_priority_(false),
-      callback_(NULL) {
+      callback_(NULL),
+      download_completed_(false),
+      pause_happened_(false) {
   user_agent_.Format(_T("%s;winhttp"), NetworkConfig::GetUserAgent());
-  http_client_.reset(CreateHttpClient());
+
+  // Create a manual reset event to wait on during network transfer.
+  // The event is signaled by default meaning the network transferring is
+  // enabled. Pause() resets this event to stop network activity. Resume()
+  // does the opposite as Pause(). Close() and Cancel() also set the event.
+  // This unlocks the thread if it is in paused state and returns control
+  // to the caller.
+  reset(event_resume_, ::CreateEvent(NULL, true, true, NULL));
+  ASSERT1(valid(event_resume_));
 }
 
+// TODO(omaha): we should attempt to cleanup the file only if we
+// created it in the first place.
 SimpleRequest::~SimpleRequest() {
   Close();
   callback_ = NULL;
+
+  // If download failed, try to clean up the target file.
+  if (!download_completed_ && !filename_.IsEmpty()) {
+    if (!::DeleteFile(filename_) && ::GetLastError() != ERROR_FILE_NOT_FOUND) {
+      NET_LOG(LW, (_T("[SimpleRequest][Failed to delete file: %s][0x%08x]."),
+                   filename_.GetString(), HRESULTFromLastError()));
+    }
+  }
+}
+
+void SimpleRequest::set_url(const CString& url) {
+  __mutexScope(lock_);
+  if (url_ != url) {
+    url_ = url;
+    CloseHandles();
+    request_state_.reset();
+  }
+}
+
+void SimpleRequest::set_filename(const CString& filename) {
+  __mutexScope(lock_);
+  if (filename_ != filename) {
+    filename_ = filename;
+    CloseHandles();
+    request_state_.reset();
+  }
 }
 
 HRESULT SimpleRequest::Close() {
   NET_LOG(L3, (_T("[SimpleRequest::Close]")));
-  __mutexBlock(lock_) {
-    CloseHandles(request_state_.get());
-    request_state_.reset();
-  }
-  return S_OK;
+
+  __mutexScope(lock_);
+  is_closed_ = true;
+  CloseHandles();
+  request_state_.reset();
+  winhttp_adapter_.reset();
+
+  // Resume the downloading thread if it is blocked. It is still fine if the
+  // event is set since the operation is like no-op in that case.
+  return Resume();
 }
 
 HRESULT SimpleRequest::Cancel() {
   NET_LOG(L3, (_T("[SimpleRequest::Cancel]")));
-  __mutexBlock(lock_) {
-    is_canceled_ = true;
-    CloseHandles(request_state_.get());
+
+  __mutexScope(lock_);
+  is_canceled_ = true;
+  CloseHandles();
+
+  // Resume the downloading thread if it is blocked. It is still fine if the
+  // event is set since the operation is like no-op in that case.
+  return Resume();
+}
+
+void SimpleRequest::CloseHandles() {
+  if (winhttp_adapter_.get()) {
+    winhttp_adapter_->CloseHandles();
   }
-  return S_OK;
+}
+
+bool SimpleRequest::IsResumeNeeded() const {
+  __mutexScope(lock_);
+  if (!IsPauseSupported() || is_canceled_ || is_closed_) {
+    return false;
+  }
+
+  return pause_happened_;
+}
+
+bool SimpleRequest::IsPauseSupported() const {
+  __mutexScope(lock_);
+  return valid(event_resume_) && !IsPostRequest() && !filename_.IsEmpty();
+}
+
+HRESULT SimpleRequest::Pause() {
+  NET_LOG(L3, (_T("[SimpleRequest::Pause]")));
+
+  if (!IsPauseSupported()) {
+    return HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED);
+  }
+
+  __mutexScope(ready_to_pause_lock_);
+  __mutexScope(lock_);
+
+  pause_happened_ = true;
+  CloseHandles();
+  return ::ResetEvent(get(event_resume_)) ? S_OK : HRESULTFromLastError();
+}
+
+HRESULT SimpleRequest::Resume() {
+  NET_LOG(L3, (_T("[SimpleRequest::Resume]")));
+
+  __mutexScope(lock_);
+  HRESULT hr = S_OK;
+  if (IsPauseSupported()) {
+    hr = ::SetEvent(get(event_resume_)) ? S_OK : HRESULTFromLastError();
+  }
+  return hr;
+}
+
+void SimpleRequest::WaitForResumeEvent() {
+  if (!event_resume_) {
+    return;
+  }
+
+  // Reset pause_happened_ state to indicate that pause has not yet happened
+  // during new resume stage.
+  __mutexBlock(lock_) {
+    pause_happened_ = false;
+  }
+
+  VERIFY1(::WaitForSingleObject(get(event_resume_), INFINITE) != WAIT_FAILED);
 }
 
 HRESULT SimpleRequest::Send() {
@@ -80,147 +193,251 @@ HRESULT SimpleRequest::Send() {
 
   ASSERT1(!url_.IsEmpty());
   if (!session_handle_) {
-    // Winhttp could not be loaded.
-    NET_LOG(LW, (_T("[SimpleRequest: session_handle_ is NULL.]")));
-    // TODO(omaha): This makes an assumption that only WinHttp is
-    // supported by the network code.
+    NET_LOG(LE, (_T("[SimpleRequest: session_handle_ is NULL]")));
     return OMAHA_NET_E_WINHTTP_NOT_AVAILABLE;
   }
 
-  __mutexBlock(lock_) {
-    CloseHandles(request_state_.get());
-    request_state_.reset(new TransientRequestState);
+  HRESULT hr = S_OK;
+
+  __mutexBlock(ready_to_pause_lock_) {
+    __mutexBlock(lock_) {
+      winhttp_adapter_.reset(new WinHttpAdapter());
+      hr = winhttp_adapter_->Initialize();
+      if (FAILED(hr)) {
+        return hr;
+      }
+
+      if (!IsPauseSupported() || request_state_ == NULL) {
+        request_state_.reset(new TransientRequestState);
+      } else {
+        // Discard all previous download states except content_length and
+        // current_bytes for resume purpose. These two states will be validated
+        // against the previously (partially) downloaded file when reopens the
+        // target file.
+        scoped_ptr<TransientRequestState> request_state(
+            new TransientRequestState);
+        request_state->content_length = request_state_->content_length;
+        request_state->current_bytes = request_state_->current_bytes;
+
+        request_state_.swap(request_state);
+      }
+    }
   }
 
-  HRESULT hr = DoSend();
-  int status_code(GetHttpStatusCode());
-  if (hr == HRESULT_FROM_WIN32(ERROR_WINHTTP_OPERATION_CANCELLED) ||
-      is_canceled_) {
-    hr = OMAHA_NET_E_REQUEST_CANCELLED;
+  for (bool first_time = true, cancelled = false;
+       !cancelled;
+       first_time = false) {
+    scoped_hfile file_handle;
+
+    __mutexBlock(ready_to_pause_lock_) {
+      if (!first_time) {
+        if (IsResumeNeeded()) {
+          NET_LOG(L3, (_T("[SimpleRequest::Send paused.]")));
+          WaitForResumeEvent();
+          NET_LOG(L3, (_T("[SimpleRequest::Send resumed.]")));
+        } else {
+          if (is_canceled_) {
+            hr = GOOPDATE_E_CANCELLED;
+
+            // Once cancelled, we should set downloaded bytes to 0
+            request_state_->current_bytes = 0;
+          }
+
+          // Macro __mutexBlock has a hidden loop built-in and thus one break
+          // is not enough to exit the loop. Uses a flag instead.
+          cancelled = true;
+        }
+      }
+
+      if (!cancelled) {
+        hr = PrepareRequest(address(file_handle));
+      }
+    }
+
+    if (SUCCEEDED(hr) && !cancelled) {
+      ASSERT1(request_state_->current_bytes <= request_state_->content_length);
+
+      // Only requests data if there is more data to download.
+      if (request_state_->content_length == 0 ||
+          request_state_->current_bytes < request_state_->content_length) {
+        hr = RequestData(get(file_handle));
+      }
+    }
   }
-  NET_LOG(L3, (_T("[SimpleRequest::Send][0x%08x][%d]"), hr, status_code));
+
+  NET_LOG(L3,
+          (_T("[SimpleRequest::Send][0x%08x][%d]"), hr, GetHttpStatusCode()));
   return hr;
 }
 
-HRESULT SimpleRequest::DoSend() {
-  // First chance to see if it is canceled.
-  if (is_canceled_) {
-    return OMAHA_NET_E_REQUEST_CANCELLED;
-  }
-
-  HRESULT hr = http_client_->Initialize();
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  hr = http_client_->CrackUrl(url_,
-                              ICU_DECODE,
-                              &request_state_->scheme,
-                              &request_state_->server,
-                              &request_state_->port,
-                              &request_state_->url_path,
-                              NULL);
+HRESULT SimpleRequest::Connect() {
+  HRESULT hr = winhttp_adapter_->CrackUrl(url_,
+                                          ICU_DECODE,
+                                          &request_state_->scheme,
+                                          &request_state_->server,
+                                          &request_state_->port,
+                                          &request_state_->url_path,
+                                          NULL);
   if (FAILED(hr)) {
     return hr;
   }
   ASSERT1(!request_state_->scheme.CompareNoCase(kHttpProtoScheme) ||
           !request_state_->scheme.CompareNoCase(kHttpsProtoScheme));
 
-  hr = http_client_->Connect(session_handle_,
-                             request_state_->server,
-                             request_state_->port,
-                             &request_state_->connection_handle);
+  hr = winhttp_adapter_->Connect(session_handle_,
+                                 request_state_->server,
+                                 request_state_->port);
   if (FAILED(hr)) {
     return hr;
   }
 
   // TODO(omaha): figure out the accept types.
   //              figure out more flags.
+  request_state_->is_https = false;
   DWORD flags = WINHTTP_FLAG_REFRESH;
-  bool is_https = false;
   if (request_state_->scheme == kHttpsProtoScheme) {
-    is_https = true;
+    request_state_->is_https = true;
     flags |= WINHTTP_FLAG_SECURE;
   }
   const TCHAR* verb = IsPostRequest() ? _T("POST") : _T("GET");
-  hr = http_client_->OpenRequest(request_state_->connection_handle,
-                                 verb, request_state_->url_path,
-                                 NULL, WINHTTP_NO_REFERER,
-                                 WINHTTP_DEFAULT_ACCEPT_TYPES, flags,
-                                 &request_state_->request_handle);
+  hr = winhttp_adapter_->OpenRequest(verb, request_state_->url_path,
+                                     NULL, WINHTTP_NO_REFERER,
+                                     WINHTTP_DEFAULT_ACCEPT_TYPES, flags);
   if (FAILED(hr)) {
     return hr;
   }
 
   // Disable redirects for POST requests.
   if (IsPostRequest()) {
-    VERIFY1(SUCCEEDED(http_client_->SetOptionInt(request_state_->request_handle,
-                                                 WINHTTP_OPTION_DISABLE_FEATURE,
-                                                 WINHTTP_DISABLE_REDIRECTS)));
+    VERIFY1(SUCCEEDED(
+        winhttp_adapter_->SetRequestOptionInt(WINHTTP_OPTION_DISABLE_FEATURE,
+                                              WINHTTP_DISABLE_REDIRECTS)));
   }
 
-  additional_headers_.AppendFormat(_T("User-Agent: %s\r\n"), user_agent_);
-  uint32 header_flags = WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE;
-  hr = http_client_->AddRequestHeaders(request_state_->request_handle,
-                                       additional_headers_,
-                                       -1,
-                                       header_flags);
-  if (FAILED(hr)) {
-    return hr;
+  CString additional_headers = additional_headers_;
+
+  // If the target has been partially downloaded, send a range request to resume
+  // download, instead of starting from scratch again.
+  if (request_state_->current_bytes != 0 &&
+      request_state_->current_bytes != request_state_->content_length) {
+    ASSERT1(request_state_->current_bytes < request_state_->content_length);
+    additional_headers.AppendFormat(_T("Range: bytes=%d-\r\n"),
+                                    request_state_->current_bytes);
+  }
+  if (!additional_headers.IsEmpty()) {
+    uint32 header_flags = WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE;
+    hr = winhttp_adapter_->AddRequestHeaders(additional_headers,
+                                             -1,
+                                             header_flags);
+    if (FAILED(hr)) {
+      return hr;
+    }
   }
 
   // If the WPAD detection fails, allow the request to go direct connection.
   SetProxyInformation();
 
-  // The purpose of the status callback is informational only.
-  HttpClient::StatusCallback old_callback =
-      http_client_->SetStatusCallback(request_state_->request_handle,
-                                      &SimpleRequest::StatusCallback,
-                                      WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS);
-  // No previous callback should be there for this handle or the callback
-  // could not be installed, for example, when the request handle has been
-  // canceled already.
-  const HttpClient::StatusCallback kInvalidStatusCallback =
-      reinterpret_cast<HttpClient::StatusCallback>(
-          WINHTTP_INVALID_STATUS_CALLBACK);
-  ASSERT1(old_callback == NULL ||
-          old_callback == kInvalidStatusCallback);
+  return S_OK;
+}
 
-  // Up to this point nothing has been sent over the wire.
-  // Second chance to see if it is canceled.
-  if (is_canceled_) {
-    return OMAHA_NET_E_REQUEST_CANCELLED;
+HRESULT SimpleRequest::OpenDestinationFile(HANDLE* file_handle) {
+  ASSERT1(!filename_.IsEmpty());
+  ASSERT1(file_handle);
+
+  DWORD create_disposition = request_state_->content_length == 0 ?
+                             CREATE_ALWAYS : OPEN_ALWAYS;
+
+  scoped_hfile file(::CreateFile(filename_, GENERIC_WRITE, 0, NULL,
+                                 create_disposition, FILE_ATTRIBUTE_NORMAL,
+                                 NULL));
+
+  if (!file) {
+    return HRESULTFromLastError();
   }
 
+  if (request_state_->content_length != 0) {
+    DWORD raw_file_size = ::GetFileSize(get(file), NULL);
+    if (INVALID_FILE_SIZE == raw_file_size || raw_file_size > INT_MAX) {
+      return E_FAIL;
+    }
+    int file_size = static_cast<int>(raw_file_size);
+
+    // Local file size should not be greater than remote file size and file
+    // size must match the number of bytes we previously downloaded. If not,
+    // reset the local file.
+    bool need_reset_file = file_size > request_state_->content_length;
+    need_reset_file |= file_size != request_state_->current_bytes;
+
+    if (need_reset_file) {
+      // Need to download from byte 0. Reopen the file with truncation.
+      request_state_->current_bytes = 0;
+      reset(file, ::CreateFile(filename_, GENERIC_WRITE, 0, NULL,
+                               CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL));
+
+      if (!file) {
+        return HRESULTFromLastError();
+      }
+    } else {
+      LARGE_INTEGER start_pos;
+      start_pos.LowPart = static_cast<DWORD>(request_state_->current_bytes);
+      start_pos.HighPart = 0;
+      if (!::SetFilePointerEx(get(file), start_pos, NULL, FILE_BEGIN)) {
+        return HRESULTFromLastError();
+      }
+    }
+  } else {
+    // Always start from byte 0 if we don't know remote file size.
+    request_state_->current_bytes = 0;
+  }
+
+  *file_handle = release(file);
+  return S_OK;
+}
+
+HRESULT SimpleRequest::SendRequest() {
   int proxy_retry_count = 0;
   int max_proxy_retries = 1;
   CString username;
   CString password;
+  HRESULT hr = S_OK;
 
   bool done = false;
   while (!done) {
     uint32& request_scheme = request_state_->proxy_authentication_scheme;
     if (request_scheme) {
-      NET_LOG(L3, (_T("[SR::DoSend][auth_scheme][%d]"), request_scheme));
-      http_client_->SetCredentials(request_state_->request_handle,
-                                   WINHTTP_AUTH_TARGET_PROXY,
-                                   request_scheme,
-                                   username, password);
+      NET_LOG(L3, (_T("[SimpleRequest::SendRequest][auth_scheme][%d]"),
+          request_scheme));
+      winhttp_adapter_->SetCredentials(WINHTTP_AUTH_TARGET_PROXY,
+                                       request_scheme,
+                                       username, password);
+
+      CString headers;
+      headers.Format(_T("%s: %d\r\n"),
+                     kHeaderXProxyRetryCount, proxy_retry_count);
+      if (!username.IsEmpty()) {
+        headers.AppendFormat(_T("%s: 1\r\n"), kHeaderXProxyManualAuth);
+      }
+      uint32 flags = WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE;
+      VERIFY1(SUCCEEDED(winhttp_adapter_->AddRequestHeaders(headers,
+                                                            -1,
+                                                            flags)));
     }
 
     size_t bytes_to_send = request_buffer_length_;
-    hr = http_client_->SendRequest(request_state_->request_handle,
-                                   NULL,
-                                   0,
-                                   request_buffer_,
-                                   bytes_to_send,
-                                   bytes_to_send);
+    hr = winhttp_adapter_->SendRequest(NULL,
+                                       0,
+                                       request_buffer_,
+                                       bytes_to_send,
+                                       bytes_to_send);
     if (FAILED(hr)) {
       return hr;
     }
-    NET_LOG(L3, (_T("[SimpleRequest::DoSend][request sent]")));
+    NET_LOG(L3,
+        (_T("[SimpleRequest::SendRequest][request sent][server: %s][IP: %s]"),
+         winhttp_adapter_->server_name(),
+         winhttp_adapter_->server_ip()));
 
-    hr = http_client_->ReceiveResponse(request_state_->request_handle);
+    hr = winhttp_adapter_->ReceiveResponse();
 #if DEBUG
     LogResponseHeaders();
 #endif
@@ -232,11 +449,11 @@ HRESULT SimpleRequest::DoSend() {
       return hr;
     }
 
-    hr = http_client_->QueryHeadersInt(request_state_->request_handle,
-                                       WINHTTP_QUERY_STATUS_CODE,
-                                       NULL,
-                                       &request_state_->http_status_code,
-                                       NULL);
+    hr = winhttp_adapter_->QueryRequestHeadersInt(
+        WINHTTP_QUERY_STATUS_CODE,
+        NULL,
+        &request_state_->http_status_code,
+        NULL);
     if (FAILED(hr)) {
       return hr;
     }
@@ -245,6 +462,7 @@ HRESULT SimpleRequest::DoSend() {
       return E_FAIL;
     }
 
+    NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
     switch (request_state_->http_status_code) {
       case HTTP_STATUS_DENIED:
         // 401 responses are not supported. Omaha does not have to authenticate
@@ -263,17 +481,17 @@ HRESULT SimpleRequest::DoSend() {
         }
         if (!request_scheme) {
           uint32 supported_schemes(0), first_scheme(0), auth_target(0);
-          hr = http_client_->QueryAuthSchemes(request_state_->request_handle,
-                                              &supported_schemes,
-                                              &first_scheme,
-                                              &auth_target);
+          hr = winhttp_adapter_->QueryAuthSchemes(&supported_schemes,
+                                                  &first_scheme,
+                                                  &auth_target);
           if (FAILED(hr)) {
             return hr;
           }
           ASSERT1(auth_target == WINHTTP_AUTH_TARGET_PROXY);
           request_scheme = ChooseProxyAuthScheme(supported_schemes);
           ASSERT1(request_scheme);
-          NET_LOG(L3, (_T("[SR::DoSend][Auth scheme][%d]"), request_scheme));
+          NET_LOG(L3, (_T("[SimpleRequest::SendRequest][Auth scheme][%d]"),
+              request_scheme));
           if (request_scheme == WINHTTP_AUTH_SCHEME_NEGOTIATE ||
               request_scheme == WINHTTP_AUTH_SCHEME_NTLM) {
             // Increases the retry count. Tries to do an autologon at first, and
@@ -285,15 +503,21 @@ HRESULT SimpleRequest::DoSend() {
 
         uint32 auth_scheme = UNKNOWN_AUTH_SCHEME;
         // May prompt the user for credentials, or get cached credentials.
-        NetworkConfig& network_config = NetworkConfig::Instance();
-        if (!network_config.GetProxyCredentials(true,
-                                                false,
-                                                request_state_->proxy,
-                                                is_https,
-                                                &username,
-                                                &password,
-                                                &auth_scheme)) {
-          NET_LOG(LE, (_T("[SimpleRequest::DoSend][GetProxyCreds failed]")));
+        NetworkConfig* network_config = NULL;
+        hr = network_manager.GetUserNetworkConfig(&network_config);
+        if (FAILED(hr)) {
+          return hr;
+        }
+        if (!network_config->GetProxyCredentials(true,
+                                                 false,
+                                                 request_state_->proxy,
+                                                 proxy_auth_config_,
+                                                 request_state_->is_https,
+                                                 &username,
+                                                 &password,
+                                                 &auth_scheme)) {
+          NET_LOG(LE,
+                  (_T("[SimpleRequest::SendRequest][GetProxyCreds failed]")));
           done = true;
           break;
         }
@@ -307,46 +531,48 @@ HRESULT SimpleRequest::DoSend() {
       default:
         // We got some kind of response. If we have a valid username, we
         // record the auth scheme with the NetworkConfig, so it can be cached
-        // for future use within this process.
+        // for future use within this process for current user..
         if (!username.IsEmpty()) {
-          VERIFY1(SUCCEEDED(NetworkConfig::Instance().SetProxyAuthScheme(
-              request_state_->proxy, is_https, request_scheme)));
+          NetworkConfig* network_config = NULL;
+          hr = network_manager.GetUserNetworkConfig(&network_config);
+          if (SUCCEEDED(hr)) {
+            VERIFY1(SUCCEEDED(network_config->SetProxyAuthScheme(
+                request_state_->proxy, request_state_->is_https,
+                request_scheme)));
+          }
         }
         done = true;
         break;
     }
   }
 
+  return hr;
+}
+
+HRESULT SimpleRequest::ReceiveData(HANDLE file_handle) {
+  ASSERT1(file_handle != INVALID_HANDLE_VALUE || filename_.IsEmpty());
+
+  HRESULT hr = S_OK;
+
   // In the case of a "204 No Content" response, WinHttp blocks when
   // querying or reading the available data. According to the RFC,
   // the 204 response must not include a message-body, and thus is always
   // terminated by the first empty line after the header fields.
-  // It appears WinHttp does not internally handles the 204 response.If this,
+  // It appears WinHttp does not internally handles the 204 response. If this,
   // condition is not handled here explicitly, WinHttp will timeout when
   // waiting for the data instead of returning right away.
   if (request_state_->http_status_code == HTTP_STATUS_NO_CONTENT) {
     return S_OK;
   }
 
-  http_client_->QueryHeadersInt(request_state_->request_handle,
-                                WINHTTP_QUERY_CONTENT_LENGTH,
-                                WINHTTP_HEADER_NAME_BY_INDEX,
-                                &request_state_->content_length,
-                                WINHTTP_NO_HEADER_INDEX);
-
-  // Read the remaining bytes of the body. If we have a file to save the
-  // response into, create the file.
-  // TODO(omaha): we should attempt to cleanup the file only if we
-  // created it in the first place.
-  ScopeGuard delete_file_guard = MakeGuard(::DeleteFile, filename_);
-  scoped_hfile file_handle;
-  if (!filename_.IsEmpty()) {
-    reset(file_handle, ::CreateFile(filename_, GENERIC_WRITE, 0, NULL,
-                                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
-                                    NULL));
-    if (!file_handle) {
-      return HRESULTFromLastError();
-    }
+  int content_length = 0;
+  winhttp_adapter_->QueryRequestHeadersInt(WINHTTP_QUERY_CONTENT_LENGTH,
+                                           WINHTTP_HEADER_NAME_BY_INDEX,
+                                           &content_length,
+                                           WINHTTP_NO_HEADER_INDEX);
+  if (request_state_->content_length == 0) {
+    request_state_->content_length = content_length;
+    request_state_->current_bytes = 0;
   }
 
   const bool is_http_success =
@@ -356,17 +582,35 @@ HRESULT SimpleRequest::DoSend() {
   std::vector<uint8> buffer;
   do  {
     DWORD bytes_available(0);
-    http_client_->QueryDataAvailable(request_state_->request_handle,
-                                     &bytes_available);
+    winhttp_adapter_->QueryDataAvailable(&bytes_available);
     buffer.resize(1 + bytes_available);
-    hr = http_client_->ReadData(request_state_->request_handle,
-                                &buffer.front(),
-                                buffer.size(),
-                                &bytes_available);
+    hr = winhttp_adapter_->ReadData(&buffer.front(),
+                                    buffer.size(),
+                                    &bytes_available);
     if (FAILED(hr)) {
       return hr;
     }
 
+    buffer.resize(bytes_available);
+    if (!buffer.empty()) {
+      if (!filename_.IsEmpty()) {
+        DWORD num_bytes(0);
+        if (!::WriteFile(file_handle,
+                         reinterpret_cast<const char*>(&buffer.front()),
+                         buffer.size(), &num_bytes, NULL)) {
+          return HRESULTFromLastError();
+        }
+        ASSERT1(num_bytes == buffer.size());
+      } else {
+        request_state_->response.insert(request_state_->response.end(),
+                                        buffer.begin(),
+                                        buffer.end());
+      }
+    }
+
+    // Update current_bytes after those bytes are serialized in case we
+    // pause before current_bytes is updated, we can throw away the last
+    // batch of bytes received and resume.
     request_state_->current_bytes += bytes_available;
     if (request_state_->content_length) {
       ASSERT1(request_state_->current_bytes <= request_state_->content_length);
@@ -379,34 +623,44 @@ HRESULT SimpleRequest::DoSend() {
                             WINHTTP_CALLBACK_STATUS_READ_COMPLETE,
                             NULL);
     }
-
-    buffer.resize(bytes_available);
-    if (!buffer.empty()) {
-      if (!filename_.IsEmpty()) {
-        DWORD num_bytes(0);
-        if (!::WriteFile(get(file_handle),
-                         reinterpret_cast<const char*>(&buffer.front()),
-                         buffer.size(), &num_bytes, NULL)) {
-          return HRESULTFromLastError();
-        }
-        ASSERT1(num_bytes == buffer.size());
-      } else {
-        request_state_->response.insert(request_state_->response.end(),
-                                        buffer.begin(),
-                                        buffer.end());
-      }
-    }
   } while (!buffer.empty());
 
   NET_LOG(L3, (_T("[bytes downloaded %d]"), request_state_->current_bytes));
-  if (file_handle) {
+  if (file_handle != INVALID_HANDLE_VALUE) {
     // All bytes must be written to the file in the file download case.
-    ASSERT1(::SetFilePointer(get(file_handle), 0, NULL, FILE_CURRENT) ==
+    ASSERT1(::SetFilePointer(file_handle, 0, NULL, FILE_CURRENT) ==
             static_cast<DWORD>(request_state_->current_bytes));
   }
 
-  delete_file_guard.Dismiss();
-  return S_OK;
+  download_completed_ = true;
+  return hr;
+}
+
+HRESULT SimpleRequest::PrepareRequest(HANDLE* file_handle) {
+  // Read the remaining bytes of the body. If we have a file to save the
+  // response into, create the file.
+  HRESULT hr = S_OK;
+  if (!filename_.IsEmpty()) {
+    hr = OpenDestinationFile(file_handle);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  } else {
+    // Always restarts if downloading to memory.
+    request_state_->current_bytes = 0;
+    request_state_->response.clear();
+  }
+
+  return Connect();
+}
+
+HRESULT SimpleRequest::RequestData(HANDLE file_handle) {
+  HRESULT hr = SendRequest();
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  return ReceiveData(file_handle);
 }
 
 std::vector<uint8> SimpleRequest::GetResponse() const {
@@ -418,28 +672,21 @@ HRESULT SimpleRequest::QueryHeadersString(uint32 info_level,
                                           const TCHAR* name,
                                           CString* value) const {
   // Name can be null when the info_level specifies the header to query.
-  ASSERT1(value);
-  if (!http_client_.get() ||
-      !request_state_.get() ||
-      !request_state_->request_handle) {
+  if (winhttp_adapter_.get()) {
+    return winhttp_adapter_->QueryRequestHeadersString(info_level,
+                                                       name,
+                                                       value,
+                                                       WINHTTP_NO_HEADER_INDEX);
+  } else {
     return E_UNEXPECTED;
   }
-
-  return http_client_->QueryHeadersString(request_state_->request_handle,
-                                          info_level,
-                                          name,
-                                          value,
-                                          WINHTTP_NO_HEADER_INDEX);
 }
 
 CString SimpleRequest::GetResponseHeaders() const {
   CString response_headers;
-  if (http_client_.get() &&
-      request_state_.get() &&
-      request_state_->request_handle) {
+  if (winhttp_adapter_.get()) {
     CString response_headers;
-    if (SUCCEEDED(http_client_->QueryHeadersString(
-        request_state_->request_handle,
+    if (SUCCEEDED(winhttp_adapter_->QueryRequestHeadersString(
         WINHTTP_QUERY_RAW_HEADERS_CRLF,
         WINHTTP_HEADER_NAME_BY_INDEX,
         &response_headers,
@@ -449,7 +696,6 @@ CString SimpleRequest::GetResponseHeaders() const {
   }
   return CString();
 }
-
 
 uint32 SimpleRequest::ChooseProxyAuthScheme(uint32 supported_schemes) {
   // It is the server's responsibility only to accept
@@ -481,35 +727,42 @@ uint32 SimpleRequest::ChooseProxyAuthScheme(uint32 supported_schemes) {
 void SimpleRequest::SetProxyInformation() {
   bool uses_proxy = false;
   CString proxy, proxy_bypass;
-  int access_type = NetworkConfig::GetAccessType(network_config_);
+  int access_type = NetworkConfig::GetAccessType(proxy_config_);
   if (access_type == WINHTTP_ACCESS_TYPE_AUTO_DETECT) {
     HttpClient::ProxyInfo proxy_info = {0};
-    HRESULT hr = NetworkConfig::Instance().GetProxyForUrl(
-        url_,
-        network_config_.auto_config_url,
-        &proxy_info);
+    NetworkConfig* network_config = NULL;
+    NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+    HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
     if (SUCCEEDED(hr)) {
-      // The result of proxy auto-detection could be that either a proxy is
-      // found, or direct connection is allowed for the specified url.
-      ASSERT(proxy_info.access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY ||
-             proxy_info.access_type == WINHTTP_ACCESS_TYPE_NO_PROXY,
-             (_T("[Unexpected access_type][%d]"), proxy_info.access_type));
+      hr = network_config->GetProxyForUrl(
+          url_,
+          proxy_config_.auto_config_url,
+          &proxy_info);
+      if (SUCCEEDED(hr)) {
+        // The result of proxy auto-detection could be that either a proxy is
+        // found, or direct connection is allowed for the specified url.
+        ASSERT(proxy_info.access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY ||
+               proxy_info.access_type == WINHTTP_ACCESS_TYPE_NO_PROXY,
+               (_T("[Unexpected access_type][%d]"), proxy_info.access_type));
 
-      uses_proxy = proxy_info.access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY;
+        uses_proxy = proxy_info.access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY;
 
-      proxy = proxy_info.proxy;
-      proxy_bypass = proxy_info.proxy_bypass;
+        proxy = proxy_info.proxy;
+        proxy_bypass = proxy_info.proxy_bypass;
 
-      ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy));
-      ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy_bypass));
+        ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy));
+        ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy_bypass));
+        } else {
+        ASSERT1(!uses_proxy);
+        NET_LOG(LW, (_T("[GetProxyForUrl failed][0x%08x]"), hr));
+      }
     } else {
-      ASSERT1(!uses_proxy);
-      NET_LOG(LW, (_T("[GetProxyForUrl failed][0x%08x]"), hr));
+      NET_LOG(LW, (_T("[GetUserNetworkConfig failed][0x%08x]"), hr));
     }
   } else if (access_type == WINHTTP_ACCESS_TYPE_NAMED_PROXY) {
     uses_proxy = true;
-    proxy = network_config_.proxy;
-    proxy_bypass = network_config_.proxy_bypass;
+    proxy = proxy_config_.proxy;
+    proxy_bypass = proxy_config_.proxy_bypass;
   }
 
   // If a proxy is going to be used, modify the state of the object and
@@ -526,98 +779,19 @@ void SimpleRequest::SetProxyInformation() {
     proxy_info.proxy_bypass = request_state_->proxy_bypass;
 
     NET_LOG(L3, (_T("[using proxy %s]"), proxy_info.proxy));
-    VERIFY1(SUCCEEDED(http_client_->SetOption(request_state_->request_handle,
-                                              WINHTTP_OPTION_PROXY,
-                                              &proxy_info,
-                                              sizeof(proxy_info))));
+    VERIFY1(SUCCEEDED(winhttp_adapter_->SetRequestOption(WINHTTP_OPTION_PROXY,
+                                                         &proxy_info,
+                                                         sizeof(proxy_info))));
   }
 }
 
 void SimpleRequest::LogResponseHeaders() {
   CString response_headers;
-  http_client_->QueryHeadersString(request_state_->request_handle,
-                                   WINHTTP_QUERY_RAW_HEADERS_CRLF,
-                                   WINHTTP_HEADER_NAME_BY_INDEX,
-                                   &response_headers,
-                                   WINHTTP_NO_HEADER_INDEX);
+  winhttp_adapter_->QueryRequestHeadersString(WINHTTP_QUERY_RAW_HEADERS_CRLF,
+                                              WINHTTP_HEADER_NAME_BY_INDEX,
+                                              &response_headers,
+                                              WINHTTP_NO_HEADER_INDEX);
   NET_LOG(L3, (_T("[response headers...]\r\n%s"), response_headers));
-}
-
-void __stdcall SimpleRequest::StatusCallback(HINTERNET handle,
-                                             uint32 context,
-                                             uint32 status,
-                                             void* info,
-                                             size_t info_len) {
-  UNREFERENCED_PARAMETER(context);
-
-  CString status_string;
-  CString info_string;
-  switch (status) {
-    case WINHTTP_CALLBACK_STATUS_RESOLVING_NAME:
-      status_string = _T("resolving");
-      info_string.SetString(static_cast<TCHAR*>(info), info_len);  // host name
-      break;
-    case WINHTTP_CALLBACK_STATUS_NAME_RESOLVED:
-      status_string = _T("resolved");
-      info_string.SetString(static_cast<TCHAR*>(info), info_len);  // host ip
-      break;
-    case WINHTTP_CALLBACK_STATUS_CONNECTING_TO_SERVER:
-      status_string = _T("connecting");
-      info_string.SetString(static_cast<TCHAR*>(info), info_len);  // host ip
-      break;
-    case WINHTTP_CALLBACK_STATUS_CONNECTED_TO_SERVER:
-      status_string = _T("connected");
-      info_string.SetString(static_cast<TCHAR*>(info), info_len);  // host ip
-      break;
-    case WINHTTP_CALLBACK_STATUS_SENDING_REQUEST:
-      status_string = _T("sending");
-      break;
-    case WINHTTP_CALLBACK_STATUS_REQUEST_SENT:
-      status_string = _T("sent");
-      break;
-    case WINHTTP_CALLBACK_STATUS_RECEIVING_RESPONSE:
-      status_string = _T("receiving");
-      break;
-    case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:
-      status_string = _T("received");
-      break;
-    case WINHTTP_CALLBACK_STATUS_CLOSING_CONNECTION:
-      status_string = _T("closing");
-      break;
-    case WINHTTP_CALLBACK_STATUS_CONNECTION_CLOSED:
-      status_string = _T("closed");
-      break;
-    case WINHTTP_CALLBACK_STATUS_REDIRECT:
-      status_string = _T("redirect");
-      info_string.SetString(static_cast<TCHAR*>(info), info_len);  // url
-      break;
-    default:
-      break;
-  }
-  CString log_line;
-  log_line.AppendFormat(_T("[HttpClient::StatusCallback][0x%08x]"), handle);
-  if (!status_string.IsEmpty()) {
-    log_line.AppendFormat(_T("[%s]"), status_string);
-  } else {
-    log_line.AppendFormat(_T("[0x%08x]"), status);
-  }
-  if (!info_string.IsEmpty()) {
-    log_line.AppendFormat(_T("[%s]"), info_string);
-  }
-  NET_LOG(L3, (_T("%s"), log_line));
-}
-
-void SimpleRequest::CloseHandles(TransientRequestState* request_state) {
-  if (request_state) {
-    if (request_state->request_handle) {
-      http_client_->Close(request_state->request_handle);
-      request_state->request_handle = NULL;
-    }
-    if (request_state->connection_handle) {
-      http_client_->Close(request_state->connection_handle);
-      request_state->connection_handle = NULL;
-    }
-  }
 }
 
 }  // namespace omaha

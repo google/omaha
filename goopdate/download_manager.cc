@@ -1,0 +1,614 @@
+// Copyright 2007-2010 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+//
+// The download manager uses the network request to download the remote file.
+// Once the download is complete, the download manager stores the file in
+// the package cache, then it copies the file out to a location specified
+// by the caller.
+
+// TODO(omaha): the path where to copy the file is hardcoded. Change the
+// class interface to allow the path as a parameter.
+
+#include "omaha/goopdate/download_manager.h"
+#include <algorithm>
+#include <vector>
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/file.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/path.h"
+#include "omaha/base/scoped_impersonation.h"
+#include "omaha/base/safe_format.h"
+#include "omaha/base/string.h"
+#include "omaha/base/synchronized.h"
+#include "omaha/base/user_rights.h"
+#include "omaha/base/utils.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/const_goopdate.h"
+#include "omaha/goopdate/model.h"
+#include "omaha/goopdate/package_cache.h"
+#include "omaha/goopdate/server_resource.h"
+#include "omaha/goopdate/string_formatter.h"
+#include "omaha/goopdate/worker_metrics.h"
+#include "omaha/goopdate/worker_utils.h"
+#include "omaha/net/bits_request.h"
+#include "omaha/net/http_client.h"
+#include "omaha/net/network_request.h"
+#include "omaha/net/net_utils.h"
+#include "omaha/net/simple_request.h"
+
+namespace omaha {
+
+namespace {
+
+// Creates and initializes an instance of the NetworkRequest for the
+// DownloadManager to use. Defines the fallback chain: BITS, WinHttp.
+HRESULT CreateNetworkRequest(NetworkRequest** network_request_ptr) {
+  NetworkConfig* network_config = NULL;
+  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
+  HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  const NetworkConfig::Session& session(network_config->session());
+  NetworkRequest* network_request(new NetworkRequest(session));
+
+  // TODO(omaha): provide a mechanism for different timeout values in
+  // silent and interactive downloads.
+
+  // BITS transfers files only when the job owner is logged on. If the process
+  // "Run As" another user, an empty BITS job gets created in suspended state
+  // but there is no way to manipulate the job, nor cancel it.
+  bool is_logged_on = false;
+  hr = UserRights::UserIsLoggedOnInteractively(&is_logged_on);
+  if (SUCCEEDED(hr) && is_logged_on) {
+    BitsRequest* bits_request(new BitsRequest);
+    bits_request->set_minimum_retry_delay(kSecPerMin);
+    bits_request->set_no_progress_timeout(5 * kSecPerMin);
+    network_request->AddHttpRequest(bits_request);
+  }
+
+  network_request->AddHttpRequest(new SimpleRequest);
+
+  network_request->set_num_retries(3);
+  *network_request_ptr = network_request;
+  return S_OK;
+}
+
+// TODO(omaha): Unit test this method.
+HRESULT ValidateSize(const CString& file_path, uint64 expected_size) {
+  CORE_LOG(L3, (_T("[ValidateSize][%s][%lld]"), file_path, expected_size));
+  ASSERT1(File::Exists(file_path));
+  ASSERT1(expected_size != 0);
+  ASSERT(expected_size <= UINT_MAX,
+         (_T("TODO(omaha): Add uint64 support to GetFileSizeUnopen().")));
+
+  uint32 file_size(0);
+  HRESULT hr = File::GetFileSizeUnopen(file_path, &file_size);
+  ASSERT1(SUCCEEDED(hr));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (0 == file_size) {
+    return GOOPDATEDOWNLOAD_E_FILE_SIZE_ZERO;
+  } else if (file_size < expected_size) {
+    return GOOPDATEDOWNLOAD_E_FILE_SIZE_SMALLER;
+  } else if (file_size > expected_size) {
+    return GOOPDATEDOWNLOAD_E_FILE_SIZE_LARGER;
+  }
+
+  ASSERT1(file_size == expected_size);
+  return S_OK;
+}
+
+}  // namespace
+
+DownloadManager::DownloadManager(bool is_machine)
+    : lock_(NULL), is_machine_(false) {
+  CORE_LOG(L3, (_T("[DownloadManager::DownloadManager]")));
+
+  omaha::interlocked_exchange_pointer(&lock_,
+                                      static_cast<Lockable*>(new LLock));
+  __mutexScope(lock());
+
+  is_machine_ = is_machine;
+
+  package_cache_root_ =
+      is_machine ?
+      ConfigManager::Instance()->GetMachineSecureDownloadStorageDir() :
+      ConfigManager::Instance()->GetUserDownloadStorageDir();
+
+  CORE_LOG(L3, (_T("[package_cache_root][%s]"), package_cache_root()));
+
+  package_cache_.reset(new PackageCache);
+}
+
+DownloadManager::~DownloadManager() {
+  CORE_LOG(L3, (_T("[DownloadManager::~DownloadManager]")));
+
+  ASSERT1(!IsBusy());
+
+  delete &lock();
+  omaha::interlocked_exchange_pointer(&lock_, static_cast<Lockable*>(NULL));
+}
+
+const Lockable& DownloadManager::lock() const {
+  return *omaha::interlocked_exchange_pointer(&lock_, lock_);
+}
+
+bool DownloadManager::is_machine() const {
+  __mutexScope(lock());
+  return is_machine_;
+}
+
+CString DownloadManager::package_cache_root() const {
+  __mutexScope(lock());
+  return package_cache_root_;
+}
+
+PackageCache* DownloadManager::package_cache() {
+  __mutexScope(lock());
+  return package_cache_.get();
+}
+
+const PackageCache* DownloadManager::package_cache() const {
+  __mutexScope(lock());
+  return package_cache_.get();
+}
+
+HRESULT DownloadManager::Initialize() {
+  HRESULT hr = package_cache()->Initialize(package_cache_root());
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[failed to initialize the package cache]0x%08x]"), hr));
+    return hr;
+  }
+
+  hr = package_cache()->PurgeOldPackagesIfNecessary();
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[PurgeOldPackagesIfNecessary failed][0x%08x]"), hr));
+  }
+
+  return S_OK;
+}
+
+CString DownloadManager::GetMessageForError(const ErrorContext& error_context,
+                                            const CString& language) {
+  CString message;
+  StringFormatter formatter(language);
+
+  switch (error_context.error_code) {
+    case SIGS_E_INVALID_SIGNATURE:
+    case GOOPDATEDOWNLOAD_E_FILE_SIZE_ZERO:
+    case GOOPDATEDOWNLOAD_E_FILE_SIZE_SMALLER:
+    case GOOPDATEDOWNLOAD_E_FILE_SIZE_LARGER:
+      VERIFY1(SUCCEEDED(formatter.LoadString(IDS_DOWNLOAD_HASH_MISMATCH,
+                                             &message)));
+      break;
+    case GOOPDATEDOWNLOAD_E_CACHING_FAILED:
+      VERIFY1(SUCCEEDED(formatter.FormatMessage(
+          &message, IDS_CACHING_ERROR, error_context.extra_code1, &message)));
+      break;
+    default:
+      if (!worker_utils::FormatMessageForNetworkError(error_context.error_code,
+                                                      language,
+                                                      &message)) {
+        VERIFY1(SUCCEEDED(formatter.LoadString(IDS_DOWNLOAD_ERROR, &message)));
+      }
+      break;
+  }
+
+  ASSERT1(!message.IsEmpty());
+  return message;
+}
+
+HRESULT DownloadManager::DownloadApp(App* app) {
+  CORE_LOG(L3, (_T("[DownloadManager::DownloadApp][0x%p]"), app));
+  ASSERT1(app);
+
+  // TODO(omaha3): Maybe rename these to include "app_". Maybe add package
+  // metrics too.
+  ++metric_worker_download_total;
+
+  // We assume the number of packages does not change after download is started.
+  // TODO(omaha3): Could be a problem if we allow installers to request more
+  // packages (http://b/1969071), but we will have lots of other problems then.
+  AppVersion* app_version = app->working_version();
+  const size_t num_packages = app_version->GetNumberOfPackages();
+
+  State* state = NULL;
+  HRESULT hr = CreateStateForApp(app, &state);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[CreateStateForApp failed][0x%08x]"), hr));
+    return hr;
+  }
+
+  app->Downloading();
+
+  CString message;
+  hr = S_OK;
+
+  for (size_t i = 0; i < num_packages; ++i) {
+    Package* package(app_version->GetPackage(i));
+    hr = DoDownloadPackage(package, state);
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[DoDownloadPackage failed][%s][%s][0x%08x][%Iu]"),
+                    app->display_name(), package->filename(), hr, i));
+      message = GetMessageForError(ErrorContext(hr, error_extra_code1()),
+                                   app->app_bundle()->display_language());
+      break;
+    }
+  }
+
+  if (SUCCEEDED(hr)) {
+    app->DownloadComplete();
+
+    // TODO(omaha3): Extract and apply differential update if necessary.
+
+    app->MarkReadyToInstall();
+  } else {
+    app->Error(ErrorContext(hr, error_extra_code1()), message);
+  }
+
+  if (SUCCEEDED(hr)) {
+    ++metric_worker_download_succeeded;
+  }
+
+  VERIFY1(SUCCEEDED(DeleteStateForApp(app)));
+
+  return hr;
+}
+
+HRESULT DownloadManager::DownloadPackage(Package* package) {
+  CORE_LOG(L3, (_T("[DownloadManager::DownloadPackage][0x%p]"), package));
+  ASSERT1(package);
+
+  UNREFERENCED_PARAMETER(package);
+
+  // TODO(omaha): implement in terms of DoDownloadPackage.
+
+  return E_NOTIMPL;
+}
+
+HRESULT DownloadManager::GetPackage(const Package* package,
+                                    const CString& dir) const {
+  const CString app_id(package->app_version()->app()->app_guid_string());
+  const CString version(package->app_version()->version());
+  const CString package_name(package->filename());
+
+  const PackageCache::Key key(app_id, version, package_name);
+
+  CORE_LOG(L3, (_T("[DownloadManager::GetPackage][%s]"), key.ToString()));
+
+  const CString dest_file(ConcatenatePath(dir, package_name));
+  CORE_LOG(L3, (_T("[destination file is '%s']"), dest_file));
+
+  const CString hash(package->expected_hash());
+  HRESULT hr = package_cache()->Get(key, dest_file, hash);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[failed to get from cache][0x%08x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+bool DownloadManager::IsPackageAvailable(const Package* package) const {
+  const CString app_id(package->app_version()->app()->app_guid_string());
+  const CString version(package->app_version()->version());
+  const CString package_name(package->filename());
+
+  const PackageCache::Key key(app_id, version, package_name);
+
+  CORE_LOG(L3, (_T("[DownloadManager::IsPackageAvailable][%s]"),
+      key.ToString()));
+
+  const CString hash(package->expected_hash());
+  return package_cache()->IsCached(key, hash);
+}
+
+// Attempts a package download by trying the fallback urls. It does not
+// retry the download if the file validation fails.
+// Assumes the packages are not created or destroyed while method is running.
+HRESULT DownloadManager::DoDownloadPackage(Package* package, State* state) {
+  ASSERT1(package);
+  ASSERT1(state);
+
+  App* app = package->app_version()->app();
+  const CString app_id(app->app_guid_string());
+  const CString version(package->app_version()->version());
+  const CString package_name(package->filename());
+
+  const ConfigManager& cm = *ConfigManager::Instance();
+  // TODO(omaha): Since we don't currently have is_manual, check the least
+  // restrictive case of true. It would be nice if we had is_manual. We'll see.
+  ASSERT(SUCCEEDED(app->CheckGroupPolicy()),
+         (_T("Downloading package app for disallowed app.")));
+
+  if (app_id.IsEmpty() || package_name.IsEmpty()) {
+    return E_INVALIDARG;
+  }
+
+  PackageCache::Key key(app_id, version, package_name);
+
+  CORE_LOG(L3, (_T("[DownloadManager::DoDownloadPackage][%s]"),
+      key.ToString()));
+
+  const CString hash(package->expected_hash());
+
+  if (!package_cache()->IsCached(key, hash)) {
+    CORE_LOG(L3, (_T("[The package is not cached]")));
+
+    // TODO(omaha3): May need to consider the DownloadPackage case. Also, we may
+    // want a error code that does not include "UPDATE". If this is a valid
+    // case, need to add message for
+    // GOOPDATE_E_APP_UPDATE_DISABLED_EULA_NOT_ACCEPTED to GetMessageForError().
+    // As of 9/7/2010, the offline case does not allow downloading if the
+    // package cannot be found, so offline scenarios should never get here.
+    if (!app->is_eula_accepted()) {
+      ASSERT(false, (_T("Can't download because app EULA is not accepted.")));
+      return GOOPDATE_E_APP_UPDATE_DISABLED_EULA_NOT_ACCEPTED;
+    }
+
+    if (!ConfigManager::Instance()->CanUseNetwork(is_machine_)) {
+      CORE_LOG(LE, (_T("[DoDownloadPackage][network use prohibited]")));
+      return GOOPDATE_E_CANNOT_USE_NETWORK;
+    }
+
+    CString unique_filename_path;
+    HRESULT hr = BuildUniqueFileName(package_name, &unique_filename_path);
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[BuildUniqueFileName failed][0x%08x]"), hr));
+      return hr;
+    }
+
+    NetworkRequest* network_request = state->network_request();
+
+    network_request->set_callback(package);
+
+    const std::vector<CString> download_base_urls(
+        package->app_version()->download_base_urls());
+
+    hr = E_FAIL;
+    for (size_t i = 0; i < download_base_urls.size() && FAILED(hr); ++i) {
+      // TODO(omaha3): Append nicely.
+      const CString url = download_base_urls[i] + package_name;
+
+      if (i > 0) {
+        CORE_LOG(L3, (_T("[retrying download with fallback base url][%s]"),
+                      url));
+      }
+      // TODO(omaha3): Increment a usage stat for the ith url being used.
+      // Supporting 3 or 4 should be enough.
+
+      CORE_LOG(L3, (_T("[starting file download][from '%s'][to '%s']"),
+                   url, unique_filename_path));
+
+      // Downloading a file is a blocking call. It assumes the model is not
+      // locked by the calling thread, otherwise other threads won't be able to
+      // to access the model until the file download is complete.
+      ASSERT1(!package->model()->IsLockedByCaller());
+
+      hr = network_request->DownloadFile(url, unique_filename_path);
+      if (FAILED(hr)) {
+        CORE_LOG(LW, (_T("[DownloadFile failed from url][0x%08x]['%s']['%s']"),
+                      hr, package_name, download_base_urls[i]));
+        worker_utils::AddHttpRequestDataToEventLog(
+            hr,
+            network_request->http_status_code(),
+            network_request->trace(),
+            is_machine_);
+        continue;
+      }
+
+      // A file has been successfully downloaded from current url. Validate
+      // and cache it.
+      hr = CallAsSelfAndImpersonate2(
+          this,
+          &DownloadManager::CachePackage,
+          static_cast<const Package*>(package),
+          static_cast<const CString*>(&unique_filename_path));
+      if (SUCCEEDED(hr)) {
+        break;
+      }
+
+      CORE_LOG(LE, (_T("[failed to cache package][0x%08x]"), hr));
+    }
+    VERIFY1(SUCCEEDED(network_request->Close()));
+    DeleteBeforeOrAfterReboot(unique_filename_path);
+
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[DownloadFile/caching failed from all urls][0x%08x]"),
+                    hr));
+      return hr;
+    }
+
+    // Assumes that downloaded bytes equal to the expected package size.
+    app->UpdateNumBytesDownloaded(package->expected_size());
+  } else {
+    CORE_LOG(L3, (_T("[package is cached]")));
+
+    // TODO(omaha3): We probably need to update the download stats that
+    // Package::OnProgress would set. It may be misleading to set
+    // bytes_downloaded to anything other than zero, but App uses this to
+    // calculate progress. I suppose we could add an is_complete field instead.
+    // There is a related issue with the callback not being called with the
+    // final size. See the TODO in the unit tests.
+  }
+
+  ASSERT1(package_cache()->IsCached(key, hash));
+  return S_OK;
+}
+
+void DownloadManager::Cancel(App* app) {
+  CORE_LOG(L3, (_T("[DownloadManager::Cancel][0x%p]"), app));
+  ASSERT1(app);
+
+  __mutexScope(lock());
+
+  for (size_t i = 0; i != download_state_.size(); ++i) {
+    if (app == download_state_[i]->app()) {
+      VERIFY1(SUCCEEDED(download_state_[i]->CancelNetworkRequest()));
+    }
+  }
+}
+
+void DownloadManager::CancelAll() {
+  CORE_LOG(L3, (_T("[DownloadManager::CancelAll]")));
+
+  __mutexScope(lock());
+
+  for (size_t i = 0; i != download_state_.size(); ++i) {
+    VERIFY1(SUCCEEDED(download_state_[i]->CancelNetworkRequest()));
+  }
+}
+
+bool DownloadManager::IsBusy() const {
+  __mutexScope(lock());
+  return !download_state_.empty();
+}
+
+HRESULT DownloadManager::PurgeAppLowerVersions(const CString& app_id,
+                                               const CString& version) {
+  return package_cache()->PurgeAppLowerVersions(app_id, version);
+}
+
+HRESULT DownloadManager::CachePackage(const Package* package,
+                                      const CString* filename_path) {
+  ASSERT1(package);
+  ASSERT1(filename_path);
+
+  const CString app_id(package->app_version()->app()->app_guid_string());
+  const CString version(package->app_version()->version());
+  const CString package_name(package->filename());
+  PackageCache::Key key(app_id, version, package_name);
+
+  const CString hash(package->expected_hash());
+
+  HRESULT hr = package_cache()->Put(key, *filename_path, hash);
+  if (hr != SIGS_E_INVALID_SIGNATURE) {
+    if (FAILED(hr)) {
+      set_error_extra_code1(static_cast<int>(hr));
+      return GOOPDATEDOWNLOAD_E_CACHING_FAILED;
+    }
+    return hr;
+  }
+
+  // Get a more specific error if possible.
+  // TODO(omaha): It would be nice to detect that we downloaded a proxy
+  // page and tell the user this. It would be even better if we could
+  // display it; that would require a lot more plumbing.
+  HRESULT size_hr = ValidateSize(*filename_path, package->expected_size());
+  if (FAILED(size_hr)) {
+    hr = size_hr;
+  }
+
+  return hr;
+}
+
+// The file is initially downloaded to a temporary unique name, to account
+// for the case where the same file is downloaded by multiple callers.
+HRESULT DownloadManager::BuildUniqueFileName(const CString& filename,
+                                             CString* unique_filename) {
+  ASSERT1(unique_filename);
+
+  GUID guid(GUID_NULL);
+  HRESULT hr = ::CoCreateGuid(&guid);
+  if (FAILED(hr)) {
+    CORE_LOG(L3, (_T("[CoCreateGuid failed][0x%08x]"), hr));
+    return hr;
+  }
+
+  // Format of the unique file name is: <temp_download_dir>/<guid>-<filename>.
+  const CString temp_dir(ConfigManager::Instance()->GetTempDownloadDir());
+  CString temp_filename;
+  SafeCStringFormat(&temp_filename, _T("%s-%s"), GuidToString(guid), filename);
+  *unique_filename = ConcatenatePath(temp_dir, temp_filename);
+
+  return unique_filename->IsEmpty() ?
+         GOOPDATEDOWNLOAD_E_UNIQUE_FILE_PATH_EMPTY : S_OK;
+}
+
+HRESULT DownloadManager::CreateStateForApp(App* app, State** state) {
+  ASSERT1(app);
+  ASSERT1(state);
+
+  *state = NULL;
+
+  NetworkRequest* network_request = NULL;
+  HRESULT hr = CreateNetworkRequest(&network_request);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  ASSERT1(network_request);
+
+  const bool use_background_priority =
+                  (app->app_bundle()->priority() < INSTALL_PRIORITY_HIGH);
+  network_request->set_low_priority(use_background_priority);
+
+  network_request->set_proxy_auth_config(
+      app->app_bundle()->GetProxyAuthConfig());
+
+  scoped_ptr<State> state_ptr(new State(app, network_request));
+
+  __mutexBlock(lock()) {
+    download_state_.push_back(state_ptr.release());
+    *state = download_state_.back();
+  }
+
+  return S_OK;
+}
+
+HRESULT DownloadManager::DeleteStateForApp(App* app) {
+  ASSERT1(app);
+
+  __mutexScope(lock());
+
+  typedef std::vector<State*>::iterator Iter;
+  for (Iter it(download_state_.begin()); it != download_state_.end(); ++it) {
+    if (app == (*it)->app()) {
+      delete *it;
+      download_state_.erase(it);
+      return S_OK;
+    }
+  }
+
+  ASSERT1(false);
+
+  return E_UNEXPECTED;
+}
+
+DownloadManager::State::State(App* app, NetworkRequest* network_request)
+    : app_(app), network_request_(network_request) {
+  ASSERT1(app);
+  ASSERT1(network_request);
+}
+
+DownloadManager::State::~State() {
+}
+
+NetworkRequest* DownloadManager::State::network_request() const {
+  ASSERT1(ConfigManager::Instance()->CanUseNetwork(
+                                         app_->app_bundle()->is_machine()));
+
+  return network_request_.get();
+}
+
+HRESULT DownloadManager::State::CancelNetworkRequest() {
+  return network_request_->Cancel();
+}
+
+}  // namespace omaha

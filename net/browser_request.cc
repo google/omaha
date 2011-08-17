@@ -37,9 +37,9 @@
 #include "omaha/net/browser_request.h"
 #include <atlbase.h>
 #include <atlcom.h>
-#include "omaha/common/logging.h"
-#include "omaha/common/system.h"
-#include "omaha/common/vista_utils.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/system.h"
+#include "omaha/base/vista_utils.h"
 #include "omaha/goopdate/google_update_proxy.h"
 
 namespace omaha {

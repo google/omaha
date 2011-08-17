@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,25 +23,39 @@
 
 namespace omaha {
 
-struct Config;
+struct ProxyConfig;
 
 class ProxyDetectorInterface {
  public:
   // Detects proxy information.
-  virtual HRESULT Detect(Config* config) = 0;
+  virtual HRESULT Detect(ProxyConfig* config) = 0;
+  virtual const TCHAR* source() = 0;
   virtual ~ProxyDetectorInterface() {}
 };
 
 // Detects proxy override information in the specified registry key.
-class GoogleProxyDetector : public ProxyDetectorInterface {
+class RegistryOverrideProxyDetector : public ProxyDetectorInterface {
  public:
-  explicit GoogleProxyDetector(const CString& reg_path)
+  explicit RegistryOverrideProxyDetector(const CString& reg_path)
       : reg_path_(reg_path) {}
 
-  virtual HRESULT Detect(Config* config);
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("RegistryOverride"); }
  private:
   CString reg_path_;
-  DISALLOW_EVIL_CONSTRUCTORS(GoogleProxyDetector);
+  DISALLOW_EVIL_CONSTRUCTORS(RegistryOverrideProxyDetector);
+};
+
+class UpdateDevProxyDetector : public ProxyDetectorInterface {
+ public:
+   UpdateDevProxyDetector();
+  virtual HRESULT Detect(ProxyConfig* config) {
+    return registry_detector_.Detect(config);
+  }
+  virtual const TCHAR* source() { return _T("UpdateDev"); }
+ private:
+  RegistryOverrideProxyDetector registry_detector_;
+  DISALLOW_EVIL_CONSTRUCTORS(UpdateDevProxyDetector);
 };
 
 // Detects winhttp proxy information. This is what the winhttp proxy
@@ -51,8 +65,8 @@ class GoogleProxyDetector : public ProxyDetectorInterface {
 class DefaultProxyDetector : public ProxyDetectorInterface {
  public:
   DefaultProxyDetector() {}
-  virtual HRESULT Detect(Config* config);
-
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("winhttp"); }
  private:
   DISALLOW_EVIL_CONSTRUCTORS(DefaultProxyDetector);
 };
@@ -70,15 +84,14 @@ class FirefoxProxyDetector : public ProxyDetectorInterface {
   };
 
   FirefoxProxyDetector();
-  virtual ~FirefoxProxyDetector();
 
-  virtual HRESULT Detect(Config* config);
-
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("Firefox"); }
  private:
   // Parses the prefs.js file.
   HRESULT ParsePrefsFile(const TCHAR* name,
                          const TCHAR* file_path,
-                         Config* config);
+                         ProxyConfig* config);
 
   // Parse one line of the prefs file.
   void ParsePrefsLine(const char* ansi_line,
@@ -100,7 +113,7 @@ class FirefoxProxyDetector : public ProxyDetectorInterface {
   CString            cached_prefs_name_;
   CString            cached_prefs_file_path_;
   int64              cached_prefs_last_modified_;
-  scoped_ptr<Config> cached_config_;
+  scoped_ptr<ProxyConfig> cached_config_;
 
   friend class FirefoxProxyDetectorTest;
   DISALLOW_EVIL_CONSTRUCTORS(FirefoxProxyDetector);
@@ -112,8 +125,8 @@ class FirefoxProxyDetector : public ProxyDetectorInterface {
 class IEProxyDetector : public ProxyDetectorInterface {
  public:
   IEProxyDetector() {}
-  virtual HRESULT Detect(Config* config);
-
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("IE"); }
  private:
   DISALLOW_EVIL_CONSTRUCTORS(IEProxyDetector);
 };

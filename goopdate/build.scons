@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,9 +20,56 @@ import omaha_version_utils
 
 Import('env')
 
+def BuildCOMForwarder(cmd_line_switch,
+                      signed_exe_name):
+  com_forwarder_env = env.Clone()
+
+  com_forwarder_env.FilterOut(CCFLAGS=['/GL', '/RTC1', '/GS'])
+  com_forwarder_env.FilterOut(LINKFLAGS=['/LTCG'])
+
+  com_forwarder_env.Append(
+      CCFLAGS=[
+          '/GS-',
+          '/Zl',
+      ],
+      CPPDEFINES = [
+          'CMD_LINE_SWITCH=_T(\\"%s\\")' % cmd_line_switch,
+      ],
+      LINKFLAGS=[
+          '/ENTRY:WinMainCRTStartup',
+      ],
+      LIBS=[
+          'libcmt.lib',
+          'shlwapi.lib',
+      ],
+  )
+  # The resource file used is the same as the one for GoogleUpdate.exe.
+  # The version resource used is the same as the one for goopdate.dll.
+  com_forwarder_inputs = [
+       com_forwarder_env.ComponentObject('%s.obj' % signed_exe_name,
+                                         'com_forwarder.cc'),
+       com_forwarder_env.RES('%s.res' % signed_exe_name,
+                             '../google_update/resource.rc'),
+       '$OBJ_ROOT/goopdate/goopdate_version.res',
+  ]
+
+  unsigned_broker = com_forwarder_env.ComponentProgram(
+      prog_name='%s_unsigned' % signed_exe_name,
+      source=com_forwarder_inputs,
+  )
+  signed_broker = com_forwarder_env.SignedBinary(
+      target='%s.exe' % signed_exe_name,
+      source=unsigned_broker,
+  )
+  env.Replicate('$STAGING_DIR', signed_broker)
+
+
+# Build the broker forwarder and legacy on-demand.
+BuildCOMForwarder('/broker', 'GoogleUpdateBroker')
+BuildCOMForwarder('/ondemand', 'GoogleUpdateOnDemand')
 
 #
-# Build Goopdate library
+# Build COM libraries and headers.
 #
 midl_env = env.Clone()
 midl_env.Tool('midl')
@@ -30,59 +77,201 @@ midl_env['MIDLFLAGS'] += [
     '/Oicf',  # generate optimized stubless proxy/stub code
     ]
 
-# Compile the .idl file into .c & .h files
-midl_env.TypeLibrary('google_update_idl.idl')
+#
+# Generate omaha3_idl.idl. The output is an IDL file with a variant CLSID
+# for coclass GoogleComProxyMachineClass and GoogleComProxyUserClass.
+#
+generated_idl = env.Command(
+    target='omaha3_idl.idl',
+    source='$MAIN_DIR/goopdate/omaha3_idl.idl',
+    action=('python %s/tools/generate_omaha3_idl.py --idl_template_file '
+        '$SOURCE --idl_output_file $TARGET' % env['MAIN_DIR'])
+)
 
+# Compile the .idl file into .tlb, .c & .h files
+midl_input = 'omaha3_idl.idl'
+midl_outputs = midl_env.TypeLibrary(generated_idl)
+
+# Save the .idl and the produced .tlb and .h files so we can provide
+# them to clients.
+env.Replicate('$STAGING_DIR/idls', midl_input)
+for node in midl_outputs:
+  if not str(node).endswith('.c'):
+    env.Replicate('$STAGING_DIR/idls', node)
+
+midl_env.ComponentLibrary(
+    lib_name='omaha3_idl',
+    source='omaha3_idl_i.c',
+)
+
+handler_common_env = env.Clone()
+handler_common_env.Append(
+    CPPDEFINES = [
+        '_ATL_FREE_THREADED',
+    ],
+    CPPPATH = [
+        '$OBJ_ROOT',  # Needed for generated files.
+    ],
+    LIBS = [
+        '$LIB_DIR/base.lib',
+        '$LIB_DIR/goopdate_lib.lib',
+        ('atls.lib', 'atlsd.lib')[env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
+        'psapi.lib',
+        'netapi32.lib',
+        'rasapi32.lib',
+        'shlwapi.lib',
+        'userenv.lib',
+        'version.lib',
+        'wtsapi32.lib',
+    ],
+)
+
+def BuildGoogleUpdateHandlerDll(omaha_version_info, is_machine_handler, psname):
+  version_string = omaha_version_info.GetVersionString()
+  prefix = omaha_version_info.filename_prefix
+  handler_env = handler_common_env.Clone(COMPONENT_STATIC = False)
+
+  if prefix == 'TEST_':
+    handler_env['OBJPREFIX'] = handler_env.subst('test/$OBJPREFIX')
+  elif prefix:
+    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+
+  handler_env.Append(
+      CPPDEFINES = [
+          'IS_MACHINE_HANDLER=%d' % is_machine_handler,
+      ],
+      LIBS = [
+          '$LIB_DIR/common.lib',
+          'wininet.lib',
+          'rpcrt4.lib',
+      ],
+      RCFLAGS = [
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+      ],
+  )
+
+  resource = handler_env.RES(target='%s%s_resource.res' % (prefix, psname),
+                             source='google_update_ps_resource.rc')
+
+  handler_env.Depends(
+      resource,
+      ['$MAIN_DIR/VERSION',
+       '$MAIN_DIR/base/generic_reg_file_dll_handler.rgs'])
+
+  target_name = '%s%s_unsigned' % (prefix, psname)
+
+  inputs = [
+      'google_update_ps.def',
+      resource,
+      prefix + 'goopdate_version.res',
+      ]
+  inputs += handler_env.Object('google_update_ps_%s.obj' % psname,
+                               '$OBJ_ROOT/goopdate/google_update_ps.cc')
+  inputs += handler_env.Object('omaha3_idl_datax_%s.obj' % psname,
+                               '$OBJ_ROOT/goopdate/omaha3_idl_datax.c')
+
+  unsigned_dll = handler_env.ComponentLibrary(
+      lib_name=target_name,
+      source=inputs,
+  )
+
+  signed_dll = handler_env.SignedBinary(
+      target='%s%s.dll' % (prefix, psname),
+      source=unsigned_dll,
+  )
+
+  env.Replicate('$STAGING_DIR', signed_dll)
+  env.Replicate('$STAGING_DIR', [f for f in unsigned_dll if f.suffix == '.pdb'])
+
+
+for omaha_version_info in env['omaha_versions_info']:
+  BuildGoogleUpdateHandlerDll(omaha_version_info, 1, 'psmachine')
+  BuildGoogleUpdateHandlerDll(omaha_version_info, 0, 'psuser')
 
 gd_env = env.Clone()
 
+# TODO(omaha3): Is it okay that other libs, such as common, do not define this.
+gd_env['CPPDEFINES'] += [
+    '_ATL_FREE_THREADED',
+    ]
+
 # Need to look in output dir to find .h files generated by midl compiler.
 gd_env['CPPPATH'] += [
-    '$OBJ_ROOT',
+    '$OBJ_ROOT',  # Needed for generated files.
     '$MAIN_DIR/third_party/breakpad/src/',
     ]
 
-target_name = 'goopdate_dll.lib'
+target_name = 'goopdate_lib'
 
 gd_inputs = [
-    #'browser_ping.cc',
-    'browser_launcher.cc',
-    'command_line.cc',
-    'command_line_builder.cc',
-    'command_line_parser.cc',
-    'command_line_validator.cc',
-    'config_manager.cc',
+    'app.cc',
+    'app_bundle.cc',
+    'app_bundle_state.cc',
+    'app_bundle_state_busy.cc',
+    'app_bundle_state_init.cc',
+    'app_bundle_state_initialized.cc',
+    'app_bundle_state_paused.cc',
+    'app_bundle_state_ready.cc',
+    'app_bundle_state_stopped.cc',
+    'app_command.cc',
+    'app_manager.cc',
+    'app_state.cc',
+    'app_state_error.cc',
+    'app_state_init.cc',
+    'app_state_checking_for_update.cc',
+    'app_state_download_complete.cc',
+    'app_state_downloading.cc',
+    'app_state_install_complete.cc',
+    'app_state_installing.cc',
+    'app_state_no_update.cc',
+    'app_state_ready_to_install.cc',
+    'app_state_update_available.cc',
+    'app_state_waiting_to_check_for_update.cc',
+    'app_state_waiting_to_download.cc',
+    'app_state_waiting_to_install.cc',
+    'app_version.cc',
+    'application_usage_data.cc',
+    'code_red_check.cc',
     'crash.cc',
-    'extra_args_parser.cc',
-    'event_logger.cc',
+    'cocreate_async.cc',
+    'cred_dialog.cc',
+    'current_state.cc',
+    'download_complete_ping_event.cc',
+    'download_manager.cc',
     'google_update.cc',
     'goopdate.cc',
-    'goopdate_command_line_validator.cc',
-    'goopdate_helper.cc',
     'goopdate_metrics.cc',
-    'goopdate_utils.cc',
-    'goopdate_xml_parser.cc',
-    'program_instance.cc',
-    'request.cc',
-    'stats_uploader.cc',
+    'install_manager.cc',
+    'installer_wrapper.cc',
+    'job_observer.cc',
+    'model.cc',
+    'model_object.cc',
+    'ondemand.cc',
+    'oneclick_process_launcher.cc',
+    'offline_utils.cc',
+    'string_formatter.cc',
+    'package.cc',
+    'package_cache.cc',
+    'process_launcher.cc',
     'resource_manager.cc',
-    'ui_displayed_event.cc',
-    'webplugin_utils.cc',
+    'update3web.cc',
+    'update_request_utils.cc',
+    'update_response_utils.cc',
+    'worker.cc',
+    'worker_utils.cc',
+    'worker_metrics.cc',
     ]
 if env.Bit('use_precompiled_headers'):
   gd_inputs += gd_env.EnablePrecompile(target_name)
 
 # Compile the library.
 gd_env.ComponentLibrary(target_name, gd_inputs)
-
-
-#
-# Build Goopdate proxy/stub library separately, because it is not compatible
-# with precompiled headers.
-#
-no_precomp_env = env.Clone()
-no_precomp_env['CPPPATH'] += ['$OBJ_ROOT']
-no_precomp_env.ComponentLibrary('google_update_ps', 'google_update_idl_datax.c')
 
 
 #
@@ -105,43 +294,48 @@ for omaha_version_info in env['omaha_versions_info']:
   temp_env.Append(
       CPPPATH = [
           '$MAIN_DIR/third_party/breakpad/src/',
+          '$OBJ_ROOT',
           ],
 
       # Do not add static dependencies on system import libraries. Prefer delay
-      # loading when possible. When running as 'core', only what is necessary
-      # must be loaded in the memory space.
+      # loading when possible. Only what is necessary must be loaded in the
+      # memory space when long-running.
       LIBS = [
+          '$LIB_DIR/base.lib',
           '$LIB_DIR/breakpad.lib',
+          '$LIB_DIR/client.lib',
           '$LIB_DIR/common.lib',
           '$LIB_DIR/core.lib',
-          '$LIB_DIR/goopdate_dll.lib',
-          '$LIB_DIR/google_update_ps.lib',
           '$LIB_DIR/google_update_recovery.lib',
+          '$LIB_DIR/goopdate_lib.lib',
           '$LIB_DIR/logging.lib',
           '$LIB_DIR/net.lib',
-          '$LIB_DIR/repair_goopdate.lib',
+          '$LIB_DIR/omaha3_idl.lib',
           '$LIB_DIR/security.lib',
           '$LIB_DIR/service.lib',
           '$LIB_DIR/setup.lib',
           '$LIB_DIR/statsreport.lib',
-          '$LIB_DIR/worker.lib',
+          '$LIB_DIR/ui.lib',
           ('atls.lib', 'atlsd.lib')[temp_env.Bit('debug')],
           ('libcmt.lib', 'libcmtd.lib')[temp_env.Bit('debug')],
           ('libcpmt.lib', 'libcpmtd.lib')[temp_env.Bit('debug')],
+          # TODO(omaha3): This must be linked in because we have UI in the DLL.
+          'bits.lib',
           'comctl32.lib',
           'crypt32.lib',
           'delayimp.lib',
           'iphlpapi.lib',
-          'netapi32.lib',
           'msi.lib',
+          'msimg32.lib',
           'mstask.lib',
+          'netapi32.lib',
           'psapi.lib',
           'rasapi32.lib',
           'rpcns4.lib',
           'rpcrt4.lib',
           'shlwapi.lib',
+          'taskschd.lib',
           'version.lib',
-          'urlmon.lib',
           'userenv.lib',
           'wininet.lib',
           'wintrust.lib',
@@ -149,20 +343,13 @@ for omaha_version_info in env['omaha_versions_info']:
           'wtsapi32.lib',
           ],
       LINKFLAGS = [
-          '/DELAYLOAD:comctl32.dll',
-          '/DELAYLOAD:crypt32.dll',
-          '/DELAYLOAD:iphlpapi.dll',
-          '/DELAYLOAD:msi.dll',
           '/DELAYLOAD:oleaut32.dll',
           '/DELAYLOAD:psapi.dll',
           '/DELAYLOAD:rasapi32.dll',
           '/DELAYLOAD:shell32.dll',
           '/DELAYLOAD:shlwapi.dll',
-          '/DELAYLOAD:urlmon.dll',
           '/DELAYLOAD:userenv.dll',
           '/DELAYLOAD:version.dll',
-          '/DELAYLOAD:wininet.dll',
-          '/DELAYLOAD:wintrust.dll',
           '/DELAYLOAD:wtsapi32.dll',
 
           # Forces the dependency on ws2_32.lib.
@@ -182,9 +369,17 @@ for omaha_version_info in env['omaha_versions_info']:
               omaha_version_info.GetVersionString()),
 
           # goopdate.dll is resource neutral.
-          '/DLANGAUGE_STRING=\\"en\\"',
+          '/DLANGUAGE_STRING=\\"en\\"',
           ],
   )
+
+  resource_res = temp_env.RES(
+      target=prefix + 'goopdate.res',
+      source='goopdate.rc',
+  )
+
+  # Force a rebuild when the .tlb changes.
+  temp_env.Depends(resource_res, '$OBJ_ROOT/goopdate/omaha3_idl.tlb')
 
   version_res = temp_env.RES(
       target=prefix + 'goopdate_version.res',
@@ -194,7 +389,7 @@ for omaha_version_info in env['omaha_versions_info']:
   # Force a rebuild when the version changes.
   env.Depends(version_res, '$MAIN_DIR/VERSION')
 
-  target_name = prefix + 'goopdate_unsigned.dll'
+  target_name = prefix + 'goopdate_unsigned'
 
   # main.cc is included here because the linker gets confused if we try to
   # create a DLL without an entry point. There's probably a more accurate
@@ -202,7 +397,7 @@ for omaha_version_info in env['omaha_versions_info']:
   inputs = [
       'goopdate.def',
       'main.cc',
-      temp_env.RES(prefix + 'goopdate.res', 'goopdate.rc'),
+      resource_res,
       version_res,
       ]
   if env.Bit('use_precompiled_headers'):
@@ -227,6 +422,31 @@ for omaha_version_info in env['omaha_versions_info']:
 
   env.Replicate('$STAGING_DIR', signed_dll)
   env.Replicate('$STAGING_DIR', [f for f in unsigned_dll if f.suffix == '.pdb'])
+
+
+customization_test_env = env.Clone()
+
+customization_test_env.Append(
+    LIBS = [
+        '$LIB_DIR/common.lib',
+    ],
+)
+
+customization_test_env['CPPPATH'] += [
+    '$OBJ_ROOT',  # Needed for generated files.
+    ]
+customization_test = customization_test_env.OmahaUnittest(
+    name='omaha_customization_goopdate_apis_unittest',
+    source=[
+        'omaha_customization_goopdate_apis_unittest.cc',
+        'omaha3_idl_i.obj',  # Needed for LIBID_*.
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+)
+
+# The test uses the DLL for its TypeLib.
+customization_test_env.Depends(customization_test, '$STAGING_DIR/goopdate.dll')
 
 
 # Build all the resource dlls.

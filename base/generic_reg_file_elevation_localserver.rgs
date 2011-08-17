@@ -1,0 +1,34 @@
+HKLM
+{
+  NoRemove SOFTWARE
+  {
+    NoRemove Classes
+    {
+      '%PROGID%.%VERSION%' = s '%DESCRIPTION%'
+      {
+        CLSID = s '%CLSID%'
+      }
+      '%PROGID%' = s '%DESCRIPTION%'
+      {
+        CLSID = s '%CLSID%'
+        CurVer = s '%PROGID%.%VERSION%'
+      }
+      NoRemove CLSID
+      {
+        ForceRemove '%CLSID%' = s '%DESCRIPTION%'
+        {
+          ProgID = s '%PROGID%.%VERSION%'
+          VersionIndependentProgID = s '%PROGID%'
+          LocalServer32 = s '%MODULE%'
+          val LocalizedString = s '@%MODULE_RAW%,-%STRINGRESID%'
+          Elevation
+          {
+            val Enabled = d '1'
+            val IconReference = s '@%MODULE_RAW%,-%ICONRESID%'
+          }
+        }
+      }
+    }
+  }
+}
+

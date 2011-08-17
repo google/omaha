@@ -25,16 +25,16 @@ namespace omaha {
 // These modes are invoked by or on metainstallers or by the OneClick plugin  .
 //
 
-// The "install" switch indicates installing Google Update and the app.
+// The "install" switch indicates installing Omaha and the app.
 const TCHAR* const kCmdLineInstall = _T("install");
 
 // The "installelevated" switch indicates installing after elevating.
 const TCHAR* const kCmdLineInstallElevated = _T("installelevated");
 
-// The "update" switch indicates a self-update Google Update.
+// The "update" switch indicates an Omaha self-update.
 const TCHAR* const kCmdLineUpdate = _T("update");
 
-// The "recover" switch indicates Google Update is to be repaired due to a
+// The "recover" switch indicates Omaha is to be repaired due to a
 // Code Red scenario.
 const TCHAR* const kCmdLineRecover = _T("recover");
 
@@ -63,27 +63,22 @@ const TCHAR* const kCmdLineCrashHandler = _T("crashhandler");
 // an application.
 const TCHAR* const kCmdLineAppHandoffInstall = _T("handoff");
 
-// The "ig" switch indicates a worker to finish installing Google Update and
-// perform an interactive install of an application.
+// The "ig" switch was used in Omaha 2 to indicate a worker to finish installing
+// Omaha and perform an interactive install of an application.
 // ig = Install Google Update.
-const TCHAR* const kCmdLineFinishGoogleUpdateInstall = _T("ig");
+const TCHAR* const kCmdLineLegacyFinishGoogleUpdateInstall = _T("ig");
 
 // The "ua" switch indicates a worker to perform an update check for all
 // applications.
 // ua = Update Applications.
 const TCHAR* const kCmdLineUpdateApps = _T("ua");
 
-// The "ug" switch indicates a worker to finish updating Google Update.
-// No application update checks are performed.
-// ug = Update Google Update.
-const TCHAR* const kCmdLineFinishGoogleUpdateUpdate = _T("ug");
-
 // The "cr" switch indicates that the worker has been invoked to perform a Code
 // Red check.
 const TCHAR* const kCmdLineCodeRedCheck = _T("cr");
 
 // The "registerproduct" switch will register a product GUID in Clients and
-// install only goopdate.
+// install only Omaha.
 const TCHAR* const kCmdLineRegisterProduct = _T("registerproduct");
 
 // The "unregisterproduct" switch will unregister a product GUID from Clients.
@@ -93,8 +88,13 @@ const TCHAR* const kCmdLineUnregisterProduct = _T("unregisterproduct");
 // Minor modes
 //
 
-// The "svc" switch indicates that goopdate runs as a service.
+// The "svc" switch indicates that Omaha runs as a service that only accepts
+// calls from high integrity COM callers.
 const TCHAR* const kCmdLineService = _T("svc");
+
+// The "medsvc" switch indicates that Omaha runs as a service that accepts
+// calls from medium integrity COM callers.
+const TCHAR* const kCmdLineMediumService = _T("medsvc");
 
 // The "regsvc" switch is used to register the service. Only used by unit
 // tests at the moment.
@@ -108,11 +108,11 @@ const TCHAR* const kCmdLineUnregisterService = _T("unregsvc");
 // This switch will be passed in via ServiceParameters.
 const TCHAR* const kCmdLineServiceComServer = _T("/comsvc");
 
-// The "regserver" switch indicates that goopdate should do its Windows
+// The "regserver" switch indicates that Omaha should do its Windows
 // service COM server registration including coclasses and its APPID.
 const TCHAR* const kCmdRegServer = _T("regserver");
 
-// The "unregserver" switch indicates that goopdate should undo its
+// The "unregserver" switch indicates that Omaha should undo its
 // COM registration.
 const TCHAR* const kCmdUnregServer = _T("unregserver");
 
@@ -129,26 +129,20 @@ const TCHAR* const kCmdLineCustomInfoFileName = _T("custom_info_filename");
 const TCHAR* const kCmdLineComServer = _T("Embedding");
 const TCHAR* const kCmdLineComServerDash = _T("-Embedding");
 
-//
-// Legacy support modes
-//
+// Activates broker mode. Broker mode is intended to facilitate communication
+// between low-integrity clients and the high-integrity Omaha DCOM service.
+const TCHAR* const kCmdLineComBroker = _T("/broker");
 
-// The legacy "UI" switch supports hand-off machine installs from Omaha 1.
-const TCHAR* const kCmdLineLegacyUi = _T("ui");
+// Activates OnDemand mode.
+const TCHAR* const kCmdLineOnDemand = _T("/ondemand");
 
-// The legacy "lang" switch supports /lang for the /ui command.  No one else
-// should be sending /lang as a command line switch to goopdate.
-const TCHAR* const kCmdLineLegacyLang = _T("lang");
+// The "uninstall" switch indicates that Omaha should uninstall if appropriate.
+const TCHAR* const kCmdLineUninstall = _T("uninstall");
 
-// The "uiuser" switch is used to support hand off of of Omaha 1 user manifests.
-const TCHAR* const kCmdLineLegacyUserManifest = _T("uiuser");
-
-// The "extra" switch was used to provide a string containing additional
-// arguments. Extra args are now passed as an argument to the respective switch.
-const TCHAR* const kCmdLineLegacyExtra = _T("extra");
-
-// Passed to the new instance when launching it elevated.
-const TCHAR* const kCmdLineLegacyVistaInstall = _T("installelevated");
+// The "ping" switch makes Omaha send a ping with the specified string. The
+// string is expected to be web safe base64 encoded and it will be decoded
+// before sending it to the server.
+const TCHAR* const kCmdLinePing = _T("ping");
 
 //
 // Non-product modes
@@ -158,7 +152,7 @@ const TCHAR* const kCmdLineLegacyVistaInstall = _T("installelevated");
 // Run network diagnostics.
 const TCHAR* const kCmdLineNetDiags = _T("netdiags");
 
-// The "crash" switch indicates that goopdate should crash upon startup.
+// The "crash" switch indicates that Omaha should crash upon startup.
 // This option is used to test the crash reporting system.
 const TCHAR* const kCmdLineCrash = _T("crash");
 
@@ -170,7 +164,8 @@ const TCHAR* const kCmdLineCrash = _T("crash");
 // silently.
 const TCHAR* const kCmdLineSilent = _T("silent");
 
-const TCHAR* const kCmdLineOfflineInstall = _T("offlineinstall");
+const TCHAR* const kCmdLineLegacyOfflineInstall = _T("offlineinstall");
+const TCHAR* const kCmdLineOfflineDir = _T("offlinedir");
 
 // The "oem" switch specifies that this is an OEM install in Sysprep mode in an
 // OEM factory.
@@ -185,36 +180,52 @@ const TCHAR* const kCmdLineEulaRequired = _T("eularequired");
 // when doing a recover setup.
 const TCHAR* const kCmdLineMachine = _T("machine");
 
-// The "uninstall" switch is an option to /ua to tell it to skip the update
-// check and proceed with an uninstall.
-const TCHAR* const kCmdLineUninstall = _T("uninstall");
-
 // The "i" switch indicates that the crash has happend in an
 // interactive process which has a UI up. The switch is an option for
 // the "report" switch.
 const TCHAR* const kCmdLineInteractive = _T("i");
 
+// The "sessionid" switch indicates that a specific session ID should be used by
+// this instance of Omaha for network requests.  This switch is an option for
+// the "install", "handoff", and "update" modes.
+const TCHAR* const kCmdLineSessionId = _T("sessionid");
+
 // The "installsource" switch that is used to pass the source of installation
 // for ping tracking.  For example:  "/installsource OneClick".
 const TCHAR* const kCmdLineInstallSource = _T("installsource");
 
-// This is a valid value for installsource that means it's a OneClick install.
+// installsource values generated internally by Omaha.
+const TCHAR* const kCmdLineInstallSource_TaggedMetainstaller = _T("taggedmi");
 const TCHAR* const kCmdLineInstallSource_OneClick = _T("oneclick");
-
+const TCHAR* const kCmdLineInstallSource_ClickOnce = _T("clickonce");
+const TCHAR* const kCmdLineInstallSource_Offline = _T("offline");
+const TCHAR* const kCmdLineInstallSource_InstallDefault = _T("otherinstallcmd");
+const TCHAR* const kCmdLineInstallSource_Scheduler = _T("scheduler");
+const TCHAR* const kCmdLineInstallSource_Core = _T("core");
 const TCHAR* const kCmdLineInstallSource_OnDemandUpdate = _T("ondemandupdate");
 const TCHAR* const kCmdLineInstallSource_OnDemandCheckForUpdate =
     _T("ondemandcheckforupdate");
+const TCHAR* const kCmdLineInstallSource_OnDemandUA = _T("ondemandua");
+const TCHAR* const kCmdLineInstallSource_SelfUpdate = _T("selfupdate");
+const TCHAR* const kCmdLineInstallSource_Update3Web = _T("update3web");
+const TCHAR* const kCmdLineInstallSource_Update3Web_NewApps =
+    _T("update3web-newapps");
+const TCHAR* const kCmdLineInstallSource_Update3Web_OnDemand =
+    _T("update3web-ondemand");
+const TCHAR* const kCmdLineInstallSource_Update3Web_Components =
+    _T("update3web-components");
 
-const TCHAR* const kCmdLineInstallSource_ClickOnce = _T("clickonce");
-
-const TCHAR* const kCmdLineInstallSource_Offline = _T("offline");
-
-const TCHAR* const kCmdLineInstallSourceScheduler = _T("scheduler");
-const TCHAR* const kCmdLineInstallSourceCore = _T("core");
+// This install source is not used as a command line argument but internally
+// created by Omaha.
+const TCHAR* const kInstallSource_Uninstall = _T("uninstall");
 
 //
 // "Extra" arguments provided in the metainstaller tag.
 //
+
+// "bundlename" extra argument is the name of the bundle being installed. If not
+// specified, the first app's appname is used.
+const TCHAR* const kExtraArgBundleName = _T("bundlename");
 
 // "lang" extra argument tells Omaha the language of the product the user is
 // installing.
@@ -239,19 +250,30 @@ const TCHAR* const kExtraArgBrandCode = _T("brand");
 // This value is used to set the initial client for Omaha and the client app.
 const TCHAR* const kExtraArgClientId = _T("client");
 
+// "experiments" extra argument is a set of experiment labels used to track
+// installs that are included in experiments.  Use "experiments" for
+// per-app arguments; use "omahaexperiments" for Omaha-specific labels.
+const TCHAR* const kExtraArgExperimentLabels = _T("experiments");
+const TCHAR* const kExtraArgOmahaExperimentLabels = _T("omahaexperiments");
+
 // "referral" extra argument is a referral ID used for tracking referrals.
 const TCHAR* const kExtraArgReferralId = _T("referral");
 
-// '" extra argument tells Omaha to set the ap value in the registry.
+// "ap" extra argument tells Omaha to set the ap value in the registry.
 const TCHAR* const kExtraArgAdditionalParameters = _T("ap");
 
-// "tt_token" extra argument tells Omaha to set the TT value in the registry.
+// "tttoken" extra argument tells Omaha to set the TT value in the registry.
 const TCHAR* const kExtraArgTTToken = _T("tttoken");
-
 
 // "browser" extra argument tells Omaha which browser to restart on
 // successful install.
 const TCHAR* const kExtraArgBrowserType = _T("browser");
+
+// "runtime" extra argument tells Omaha to only install itself, staying on
+// the system without any associated application for at least 24 hours.
+// This is used to expose our COM API to a process that will install
+// applications via that API after the meta-installer exits.
+const TCHAR* const kExtraArgRuntime = _T("runtime");
 
 // The list of arguments that are needed for a meta-installer, to
 // indicate which application is being installed. These are stamped

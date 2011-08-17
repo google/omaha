@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
 // limitations under the License.
 // ========================================================================
 
-#include "omaha/common/constants.h"
-#include "omaha/common/path.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/common/synchronized.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/path.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/base/synchronized.h"
+#include "omaha/common/const_goopdate.h"
 #include "omaha/core/system_monitor.h"
-#include "omaha/goopdate/const_goopdate.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {

@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 #
-# Copyright 2009 Google Inc.
+# Copyright 2009-2011 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 Import('env')
 
 #
-# Build uninstall_action.dll
+# Build show_error_action.dll
 #
 dll_env = env.Clone(
     # Build a dll, not a lib.
@@ -27,25 +27,18 @@ dll_env = env.Clone(
 
 dll_env.Append(
     LIBS = [
-        ('atls.lib', 'atlsd.lib')[dll_env.Bit('debug')],
         ('libcmt.lib', 'libcmtd.lib')[dll_env.Bit('debug')],
         ('libcpmt.lib', 'libcpmtd.lib')[dll_env.Bit('debug')],
         'msi.lib',
-        'shlwapi.lib',
-        ],
-
-    CPPDEFINES = [
-        '_USRDLL',
-        '_WIN32_IE=0x0602',  # Need this for the Shell reg functions.
         ],
 )
 
-signed_target_name = 'uninstall_action'
+signed_target_name = 'show_error_action'
 target_name = signed_target_name + '_unsigned'
 
 dll_inputs = [
-    'uninstall_action.cc',
-    'uninstall_action.def',
+    'show_error_action.cc',
+    'show_error_action.def',
     ]
 
 unsigned_dll = dll_env.ComponentLibrary(

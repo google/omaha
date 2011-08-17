@@ -14,13 +14,13 @@
 // ========================================================================
 
 #include "omaha/core/system_monitor.h"
-#include "omaha/common/constants.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/reg_key.h"
-#include "omaha/goopdate/const_goopdate.h"
-#include "omaha/goopdate/goopdate_utils.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/common/app_registry_utils.h"
+#include "omaha/common/const_goopdate.h"
 
 namespace omaha {
 
@@ -135,7 +135,7 @@ void SystemMonitor::RegistryKeyChangeCallback(const TCHAR* key_name,
 
   const bool is_machine = system_monitor->is_machine_;
   size_t num_clients(0);
-  if (SUCCEEDED(goopdate_utils::GetNumClients(is_machine, &num_clients)) &&
+  if (SUCCEEDED(app_registry_utils::GetNumClients(is_machine, &num_clients)) &&
       num_clients <= 1) {
     system_monitor->observer_->NoRegisteredClients();
   }

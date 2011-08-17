@@ -30,7 +30,7 @@ struct Files {
 class SetupFiles {
  public:
   explicit SetupFiles(bool is_machine);
-  virtual ~SetupFiles();
+  ~SetupFiles();
 
   HRESULT Init();
 
@@ -39,9 +39,7 @@ class SetupFiles {
 
   // Installs Google Update files but does not register or install any other
   // applications. Returns whether Google Update was installed.
-  // TODO(omaha3): Remove the virtual methods from this class. They are only
-  // needed for unit tests and can be eliminated in the upcoming redesign.
-  virtual HRESULT Install();
+  HRESULT Install();
 
   // Rolls back the changes made during Install(). Call when Setup fails.
   // Returns S_OK if there is nothing to do.

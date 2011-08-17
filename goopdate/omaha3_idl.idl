@@ -1,0 +1,972 @@
+// Copyright 2009-2010 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+// When adding interfaces to this file:
+//  * Do not use "Google" or "GoogleUpdate" directly. Instead, use preprocessor
+//    defines.
+//  * Add a test for the Google-specific value to
+//    omaha_customization_goopdate_apis_unittest.cc.
+
+//
+// Enums.
+// These values can be passed to interface methods and/or compared to their
+// output.
+//
+
+// Must be kept in sync with the enum in base/browser_utils.h.
+typedef enum BrowserType {
+  BROWSER_UNKNOWN           = 0,
+  BROWSER_DEFAULT           = 1,
+  BROWSER_INTERNET_EXPLORER = 2,
+  BROWSER_FIREFOX           = 3,
+  BROWSER_CHROME            = 4,
+} BrowserType;
+
+// The normal install flow proceeds from STATE_INIT through
+// STATE_INSTALL_COMPLETE in order, skipping states that are not relevant.
+// All exceptions and terminal states are start with STATE_INSTALL_COMPLETE.
+typedef enum CurrentState {
+  STATE_INIT = 1,
+  STATE_WAITING_TO_CHECK_FOR_UPDATE = 2,
+  STATE_CHECKING_FOR_UPDATE = 3,
+  STATE_UPDATE_AVAILABLE = 4,
+  STATE_WAITING_TO_DOWNLOAD = 5,
+  STATE_RETRYING_DOWNLOAD = 6,
+  STATE_DOWNLOADING = 7,
+  STATE_DOWNLOAD_COMPLETE = 8,
+  STATE_EXTRACTING = 9,
+  STATE_APPLYING_DIFFERENTIAL_PATCH = 10,
+  // TODO(omaha3): Should we move STATE_DOWNLOAD_COMPLETE here and eliminate
+  // STATE_READY_TO_INSTALL?
+  STATE_READY_TO_INSTALL = 11,
+  STATE_WAITING_TO_INSTALL = 12,
+  STATE_INSTALLING = 13,
+  STATE_INSTALL_COMPLETE = 14,
+  STATE_PAUSED = 15,
+  STATE_NO_UPDATE = 16,
+  STATE_ERROR = 17,
+} CurrentState;
+
+typedef enum InstallPriority {
+  INSTALL_PRIORITY_LOW = 0,
+  INSTALL_PRIORITY_HIGH = 10,
+} InstallPriority;
+
+// Specifies what the client should do after installation.
+typedef enum PostInstallAction {
+  POST_INSTALL_ACTION_DEFAULT = 0,
+
+  // Caller should exit silently.
+  POST_INSTALL_ACTION_EXIT_SILENTLY = 1,
+
+  // Caller should launch the command.
+  POST_INSTALL_ACTION_LAUNCH_COMMAND = 2,
+
+  // Caller should launch the command and exit silently.
+  POST_INSTALL_ACTION_EXIT_SILENTLY_ON_LAUNCH_COMMAND = 3,
+
+  // The caller should ask the user to restart the browser. If the value of
+  // IApp's browser is supported and postInstallUrl is valid, the client should
+  // offer to restart the browser. If the user chooses to do so, the client
+  // should launch the ICurrentState::postInstallUrl after shutting down and
+  // restarting the browser.
+  POST_INSTALL_ACTION_RESTART_BROWSER = 4,
+
+  // Similar to POST_INSTALL_ACTION_RESTART_BROWSER, but ask the user to shut
+  // down all browsers.
+  POST_INSTALL_ACTION_RESTART_ALL_BROWSERS = 5,
+
+  // The caller should ask the user to reboot the machine.
+  POST_INSTALL_ACTION_REBOOT = 6,
+} PostInstallAction;
+
+[
+  object,
+  dual,
+  uuid(76607e7e-c0ff-4dd3-b134-7fc3724ee66a),
+  helpstring("IGoogleUpdate3 Interface"),
+  pointer_default(unique)
+]
+interface IGoogleUpdate3 : IDispatch {
+  // TODO(Omaha): Perhaps this interface exposes helpers such as
+  // RestartBrowsers, etc.
+
+  // Returns the count of the AppBundles in this IGoogleUpdate3 interface.
+  [id(1), propget] HRESULT Count([out, retval] long* count);
+
+  // Returns an IDispatch of the AppBundle in this IGoogleUpdate3 interface at
+  // the specified 0-based index. This property has the dispid of DISPID_VALUE
+  // to make it the default property of IGoogleUpdate3.
+  [id(DISPID_VALUE), propget] HRESULT Item([in] long index,
+                                           [out, retval] IDispatch** bundle);
+  // Returns an IDispatch to a newly created empty AppBundle.
+  [id(2)] HRESULT createAppBundle([out, retval] IDispatch** app_bundle);
+}
+
+[
+  object,
+  dual,
+  uuid(9a527c99-02cb-49eb-a14f-225c25cb76dc),
+  helpstring("IAppBundle Interface"),
+  pointer_default(unique)
+]
+interface IAppBundle : IDispatch {
+  // TODO(omaha3): AppBundle::display_name_ is never used. Should we remove?
+  [propget] HRESULT displayName([out, retval] BSTR*);
+  [propput] HRESULT displayName([in] BSTR);
+
+  [propget] HRESULT displayLanguage([out, retval] BSTR*);
+  [propput] HRESULT displayLanguage([in] BSTR);
+
+  [propget] HRESULT installSource([out, retval] BSTR*);
+  [propput] HRESULT installSource([in] BSTR);
+
+  [propget] HRESULT originURL([out, retval] BSTR*);
+  [propput] HRESULT originURL([in] BSTR);
+
+  [propget] HRESULT offlineDirectory([out, retval] BSTR* offline_dir);
+  [propput] HRESULT offlineDirectory([in] BSTR offline_dir);
+
+  [propget] HRESULT sessionId([out, retval] BSTR* session_id);
+  [propput] HRESULT sessionId([in] BSTR session_id);
+
+  // The priority property determines download speed/priority and the number/
+  // frequency of retries.  Use values from the InstallPriority enum.
+  [propget] HRESULT priority([out, retval] long* priority);
+  [propput] HRESULT priority([in] long priority);
+
+  // Returns the count of the Apps in the AppBundle.
+  [id(1), propget] HRESULT Count([out, retval] long* count);
+
+  // Returns an IDispatch of the App in the AppBundle at the specified 0-based
+  // index. This property has the dispid of DISPID_VALUE to make it the default
+  // property of IAppBundle.
+  [id(DISPID_VALUE), propget] HRESULT Item([in] long index,
+                                           [out, retval] IDispatch** app);
+
+  // Impersonation and primary tokens set by the client. Typically only
+  // set by the gupdatem service. The gupdatem service exposes a narrow
+  // interface to medium integrity clients. When a medium integrity client calls
+  // into the gupdatem service, the gupdatem service captures the token of the
+  // caller, and then calls put_altTokens() on the gupdate service, so that the
+  // gupdate service can use it for future download() and install() requests.
+  [propput] HRESULT altTokens([in] ULONG_PTR impersonation_token,
+                              [in] ULONG_PTR primary_token,
+                              [in] DWORD caller_proc_id);
+
+  // Sets a HWND to associate with the client, if any.  This will be used as
+  // the parent window for any dialogs that the server may need to display.
+  [propput] HRESULT parentHWND([in] ULONG_PTR hwnd);
+
+  // Initializes the bundle with the properties that have been set.
+  [id(2)] HRESULT initialize();
+
+  // Returns an IDispatch to a new App for the specified app id.
+  // The App is added to the Bundle.
+  [id(3)] HRESULT createApp([in] BSTR app_id,
+                            [out, retval] IDispatch** app);
+
+  // Returns an IDispatch to a newly created App for the specified app ID. The
+  // App is populated with information from the existing installation and added
+  // to the Bundle. Fails if the specified app is not installed.
+  [id(4)] HRESULT createInstalledApp([in] BSTR app_id,
+                                     [out, retval] IDispatch** app);
+
+  // Creates App instances for all installed apps managed by this Omaha
+  // instance. Each App is populated with information from the existing install.
+  [id(5)] HRESULT createAllInstalledApps();
+
+  // These methods are non-blocking. The operation is scheduled.
+  [id(6)] HRESULT checkForUpdate();
+  [id(7)] HRESULT download();
+  [id(8)] HRESULT install();
+
+  // All-in-one function for automatically updating all apps. Populates the
+  // bundle then schedules the update, which includes the update check and
+  // download and install, if necessary.
+  [id(9)] HRESULT updateAllApps();
+
+  // These three methods are non-blocking. The operation is requested.
+  [id(10)] HRESULT stop();
+  [id(11)] HRESULT pause();
+  [id(12)] HRESULT resume();
+
+  // Returns true if the bundle has an uncompleted non-blocking request.
+  [id(13)] HRESULT isBusy([out, retval] VARIANT_BOOL* is_busy);
+
+  // Downloads a package of an installed application.
+  [id(14)] HRESULT downloadPackage([in] BSTR app_id, [in] BSTR package_name);
+
+  // TODO(omaha): Define this aggregated bundle state. Is this really a property
+  // or should it be getCurrentState?
+  // The server and bundle are the only thing that can provide aggregated
+  // time estimates for downloads. Also, aggregate percentage is not currently
+  // available to the client because the total bytes to download is not
+  // available from App in all post-update check states.
+  // To do this, we will probably need to know the total expected download
+  // size for all packages to be installed - those that are required or in use -
+  // by the time the update check phase is complete.
+  [id(15), propget] HRESULT currentState([out, retval] VARIANT* current_state);
+};
+
+[
+  object,
+  dual,
+  uuid(2ea2902f-31b3-45fe-a27a-62bb796e74c0),
+  helpstring("IApp Interface"),
+  pointer_default(unique)
+]
+interface IApp : IDispatch {
+  // Returns a version IDispatch object.
+  [id(1), propget] HRESULT currentVersion([out, retval] IDispatch** current);
+  [id(2), propget] HRESULT nextVersion([out, retval] IDispatch** next);
+
+  [propget] HRESULT appId([out, retval] BSTR*);
+
+  [propget] HRESULT displayName([out, retval] BSTR*);
+  [propput] HRESULT displayName([in] BSTR);
+
+  [propget] HRESULT language([out, retval] BSTR*);
+  [propput] HRESULT language([in] BSTR);
+
+  [propget] HRESULT ap([out, retval] BSTR*);
+  [propput] HRESULT ap([in] BSTR);
+
+  [propget] HRESULT ttToken([out, retval] BSTR*);
+  [propput] HRESULT ttToken([in] BSTR);
+
+  [propget] HRESULT iid([out, retval] BSTR*);
+  [propput] HRESULT iid([in] BSTR);
+
+  [propget] HRESULT brandCode([out, retval] BSTR*);
+  [propput] HRESULT brandCode([in] BSTR);
+
+  [propget] HRESULT clientId([out, retval] BSTR*);
+  [propput] HRESULT clientId([in] BSTR);
+
+  [propget] HRESULT labels([out, retval] BSTR*);
+  [propput] HRESULT labels([in] BSTR);
+
+  [propget] HRESULT referralId([out, retval] BSTR*);
+  [propput] HRESULT referralId([in] BSTR);
+
+  // Use values from the BrowserType enum.
+  [propget] HRESULT browserType([out, retval] UINT*);
+  [propput] HRESULT browserType([in] UINT);
+
+  [propget] HRESULT clientInstallData([out, retval] BSTR*);
+  [propput] HRESULT clientInstallData([in] BSTR);
+
+  [propget] HRESULT serverInstallDataIndex([out, retval] BSTR*);
+  [propput] HRESULT serverInstallDataIndex([in] BSTR);
+
+  // Set as soon as possible. Error pings are disabled until set to true.
+  [propget] HRESULT isEulaAccepted([out, retval] VARIANT_BOOL*);
+  [propput] HRESULT isEulaAccepted([in] VARIANT_BOOL);
+
+  [propget] HRESULT usageStatsEnable([out, retval] UINT*);
+  [propput] HRESULT usageStatsEnable([in] UINT);
+
+  [propget] HRESULT installTimeDiffSec([out, retval] UINT*);
+
+  // Returns an ICurrentState interface. The object underlying the interface has
+  // static data that does not get updated as the server state changes. To get
+  // the most "current" state, the currentState property needs to be queried
+  // again.
+  [propget] HRESULT currentState([out, retval] IDispatch**);
+};
+
+[
+  object,
+  dual,
+  uuid(6f5a84a3-867a-47bb-848b-a4cd8ffa8fce),
+  helpstring("IAppVersion Interface"),
+  pointer_default(unique)
+]
+interface IAppVersion : IDispatch {
+  [propget] HRESULT version([out, retval] BSTR*);
+
+  // [propget] HRESULT installManifest([out, retval] BSTR*);
+
+  // Returns the count of the Packages in the AppVersion.
+  [propget] HRESULT packageCount([out, retval] long* count);
+
+  // Returns an IDispatch of the Package in the AppVersion at the specified
+  // 0-based index.
+  [propget] HRESULT package([in] long index,
+                            [out, retval] IDispatch** package);
+};
+
+[
+  object,
+  dual,
+  uuid(593e29d1-4adf-4f5d-ade8-a0836155c8a3),
+  helpstring("IPackage Interface"),
+  pointer_default(unique)
+]
+interface IPackage : IDispatch {
+  // Retrieves the package from the package cache and copies it to the
+  // directory provided. Returns an error is the package is not available
+  // locally.
+  [id(1)] HRESULT get([in] BSTR dir);
+
+  // Returns true if the package has been downloaded and is available
+  // locally.
+  [propget] HRESULT isAvailable([out, retval] VARIANT_BOOL*);
+
+  // Returns the manifest name of the package.
+  [propget] HRESULT filename([out, retval] BSTR*);
+};
+
+// TODO(omaha3): We should figure out what else we are going to want in this
+// interface before dogfood even if we do not implement it.
+[
+  object,
+  dual,
+  uuid(9df22aa7-720e-4216-9cb4-727781edac1a),
+  helpstring("ICurrentState Interface"),
+  pointer_default(unique)
+]
+interface ICurrentState : IDispatch {
+  // This interface is exposed to web clients!
+  // TODO(omaha3): Update valid comments once we settle on an implementation.
+
+  // A value from the CurrentState enum. This value determines which of the
+  // properties below are valid.
+  [propget] HRESULT stateValue([out, retval] LONG*);
+
+  // The remaining properties are only valid in the specified states. For all
+  // other states, the values are not specified.
+
+  // This property is valid only when stateValue is STATE_UPDATE_AVAILABLE.
+  [propget] HRESULT availableVersion([out, retval] BSTR*);
+
+  // The following three properties are only valid when stateValue is
+  // STATE_WAITING_TO_DOWNLOAD, STATE_RETRYING_DOWNLOAD, STATE_DOWNLOADING,
+  // STATE_DOWNLOAD_COMPLETE, STATE_EXTRACTING,
+  // STATE_APPLYING_DIFFERENTIAL_PATCH, or STATE_READY_TO_INSTALL.
+
+  // Bytes downloaded so far.
+  [propget] HRESULT bytesDownloaded([out, retval] ULONG*);
+
+  // Total bytes to download.
+  [propget] HRESULT totalBytesToDownload([out, retval] ULONG*);
+
+  // Estimated download time remaining in ms. -1 indicates unknown.
+  // Progress may not always be available, so clients should handle the -1 case.
+  [propget] HRESULT downloadTimeRemainingMs([out, retval] LONG*);
+
+  [propget] HRESULT nextRetryTime([out, retval] ULONGLONG*);
+
+  // TODO(omaha): Need some way to indicate reconnecting, retrying, etc.
+
+  // The following two properties are only valid when stateValue is
+  // STATE_INSTALLING or STATE_INSTALL_COMPLETE.
+
+  // Current install progress in percentage from 0 to 100. -1 indicates unknown.
+  // Progress may not always be available, so clients should handle the -1 case.
+  [propget] HRESULT installProgress([out, retval] LONG*);
+
+  // Estimated download time remaining in ms. -1 indicates unknown.
+  // Progress may not always be available, so clients should handle the -1 case.
+  [propget] HRESULT installTimeRemainingMs([out, retval] LONG*);
+
+  // The following four properties are only valid when stateValue is
+  // STATE_ERROR:
+
+  // Returns true if the app has been canceled.
+  [propget] HRESULT isCanceled([out, retval] VARIANT_BOOL* is_canceled);
+
+  // Error code.
+  [propget] HRESULT errorCode([out, retval] LONG*);
+
+  // Error extra code.
+  [propget] HRESULT extraCode1([out, retval] LONG*);
+
+  // The following three properties are only valid when stateValue is
+  // STATE_ERROR or STATE_INSTALL_COMPLETE.
+  // TODO(omaha3): If STATE_DOWNLOAD_COMPLETE or STATE_READY_TO_INSTALL becomes
+  // a terminal state, does it support completion messages?
+
+  // Completion message, localized in the specified language.
+  // TODO(omaha3): If we're going to have bundle error messages too, should the
+  // language be at bundle level? Should bundle have its own language setter?
+  [propget] HRESULT completionMessage([out, retval] BSTR*);
+
+  // Application installer result code. This is to be used as additional
+  // information only. Success/failure should be determined using errorCode.
+  // This is an error if errorCode is GOOPDATEINSTALL_E_INSTALLER_FAILED.
+  [propget] HRESULT installerResultCode([out, retval] LONG*);
+
+  // Application installer extra code.
+  [propget] HRESULT installerResultExtraCode1([out, retval] LONG*);
+
+  // A command that needs to be launched by the client after installation.
+  [propget] HRESULT postInstallLaunchCommandLine([out, retval] BSTR*);
+
+  // URL to be launched after restarting the browser.
+  [propget] HRESULT postInstallUrl([out, retval] BSTR*);
+
+  // Returns a PostInstallAction value indicating the action to be taken by the
+  // client after installation.
+  [propget] HRESULT postInstallAction([out, retval] LONG*);
+}
+
+[
+  object,
+  dual,
+  uuid(9f2f5f08-a28f-414f-8fe5-31d77b2af211),
+  helpstring("IRegistrationUpdateHook Interface"),
+  pointer_default(unique),
+]
+interface IRegistrationUpdateHook : IDispatch {
+  HRESULT UpdateRegistry([in] BSTR app_id, [in] VARIANT_BOOL is_machine);
+};
+
+[
+  object,
+  uuid(a3c270b9-98bd-4998-91a4-3f11adad0377),
+  helpstring("ICredentialDialog Interface"),
+  pointer_default(unique),
+]
+interface ICredentialDialog : IUnknown {
+  HRESULT QueryUserForCredentials([in] ULONG_PTR owner_hwnd,
+                                  [in] BSTR server,
+                                  [in] BSTR message,
+                                  [out] BSTR* username,
+                                  [out] BSTR* password);
+};
+
+// BEGIN gupdatem interfaces.
+
+// The following interfaces are exposed as a narrower version of the
+// IGoogleUpdate3 interface from the gupdatem service. These interfaces are
+// meant for use from medium and low integrity clients.
+
+[
+  object,
+  dual,
+  uuid(c90fc75b-9bdc-47aa-9f3c-59f416c91aef),
+  helpstring("IGoogleUpdate3Web Interface"),
+  pointer_default(unique),
+]
+interface IGoogleUpdate3Web : IDispatch {
+  HRESULT createAppBundleWeb([out, retval] IDispatch** app_bundle_web);
+};
+
+[
+  object,
+  uuid(d8f0740e-8970-44e4-ad03-46394ba7d3e7),
+  helpstring("IGoogleUpdate3WebSecurity Interface"),
+  pointer_default(unique),
+]
+interface IGoogleUpdate3WebSecurity : IUnknown {
+  HRESULT setOriginURL([in] BSTR origin_url);
+};
+
+[
+  object,
+  dual,
+  uuid(3aaa8bbc-dc93-49d9-9b87-c8ded3b2bb40),
+  helpstring("IAppBundleWeb Interface"),
+  pointer_default(unique),
+]
+interface IAppBundleWeb : IDispatch {
+  [id(2)] HRESULT createApp([in] BSTR app_guid,
+                            [in] BSTR brand_code,
+                            [in] BSTR language,
+                            [in] BSTR ap);
+  [id(3)] HRESULT createInstalledApp([in] BSTR app_id);
+  [id(4)] HRESULT createAllInstalledApps();
+
+  [propget] HRESULT displayLanguage([out, retval] BSTR*);
+  [propput] HRESULT displayLanguage([in] BSTR);
+
+  [propput] HRESULT parentHWND([in] ULONG_PTR hwnd);
+
+  [propget] HRESULT length([out, retval] int* index);
+  [id(DISPID_VALUE), propget] HRESULT appWeb(
+      [in] int index, [out, retval] IDispatch** app_web);
+
+  HRESULT initialize();
+
+  HRESULT checkForUpdate();
+  HRESULT download();
+  HRESULT install();
+
+  HRESULT pause();
+  HRESULT resume();
+  HRESULT cancel();
+
+  HRESULT downloadPackage([in] BSTR app_id, [in] BSTR package_name);
+
+  [propget] HRESULT currentState([out, retval] VARIANT* current_state);
+};
+
+[
+  object,
+  dual,
+  uuid(973d746a-1df2-404a-b66b-ea632417866f),
+  helpstring("IAppWeb Interface"),
+  pointer_default(unique),
+]
+interface IAppWeb : IDispatch {
+  [propget] HRESULT appId([out, retval] BSTR*);
+
+  // Returns an IAppVersionWeb IDispatch object.
+  [propget] HRESULT currentVersionWeb([out, retval] IDispatch** current);
+  [propget] HRESULT nextVersionWeb([out, retval] IDispatch** next);
+
+  HRESULT cancel();
+  [propget] HRESULT currentState([out, retval] IDispatch** current_state);
+  HRESULT launch();
+  HRESULT uninstall();
+};
+
+[
+  object,
+  dual,
+  uuid(afc15738-2cc4-4aac-9b19-c1831428d04f),
+  helpstring("IAppVersionWeb Interface"),
+  pointer_default(unique)
+]
+interface IAppVersionWeb : IDispatch {
+  [propget] HRESULT version([out, retval] BSTR*);
+
+  // Returns the count of the Packages in the AppVersion.
+  [propget] HRESULT packageCount([out, retval] long* count);
+
+  // TODO(omaha3): Implement this after a security review.
+  // Returns an IDispatch of the Package in the AppVersion at the specified
+  // 0-based index.
+  [propget] HRESULT packageWeb([in] long index,
+                               [out, retval] IDispatch** package);
+};
+
+[
+  object,
+  dual,
+  uuid(4dafb7ab-e8d8-4003-87b8-678e15b4c221),
+  helpstring("ICoCreateAsyncStatus Interface"),
+  pointer_default(unique)
+]
+interface ICoCreateAsyncStatus : IDispatch {
+  [propget] HRESULT isDone([out, retval] VARIANT_BOOL* is_done);
+  [propget] HRESULT completionHResult([out, retval] LONG* hr);
+  [propget] HRESULT createdInstance([out, retval] IDispatch** instance);
+};
+
+[
+  object,
+  uuid(7fbb29e7-6703-4624-ad84-c8500f57c5c4),
+  helpstring("ICoCreateAsync Interface"),
+  pointer_default(unique)
+]
+interface ICoCreateAsync : IUnknown {
+  HRESULT createOmahaMachineServerAsync(
+      [in] BSTR origin_url,
+      [in] BOOL create_elevated,
+      [out, retval] ICoCreateAsyncStatus** status);
+};
+
+// END gupdatem interfaces.
+
+// BEGIN Legacy google_update_idl interfaces.
+
+[
+  object,
+  uuid(791df12c-01ff-43a1-a3d7-5b1b98a9248a),
+  oleautomation,
+  nonextensible,
+  pointer_default(unique)
+]
+interface IBrowserHttpRequest2 : IUnknown {
+  // This method will send request/data from the browser process.
+  // @param url                     URL where request will be send.
+  // @param post_data               POST data, if any. Can be NULL.
+  // @param request_headers         HTTP request headers, if any. Can be NULL.
+  // @param response_headers_needed HTTP response headers that are needed.
+  //                                Should be one of the values listed here:
+  //                                    http://msdn.microsoft.com/aa385351.aspx
+  //                                The input is a SAFEARRAY of DWORD. Can be a
+  //                                VT_EMPTY.
+  // @param response_headers        HTTP response headers, returned as SAFEARRAY
+  //                                of BSTR. The values corresponding one-to-one
+  //                                with the response_headers_needed values. Can
+  //                                be NULL if response_headers_needed==VT_EMPTY
+  // @param response_code           HTTP response code.
+  // @param cache_filename          Cache file that contains the response data.
+  HRESULT Send([in] BSTR url,
+               [in] BSTR post_data,
+               [in] BSTR request_headers,
+               [in] VARIANT response_headers_needed,
+               [out] VARIANT* response_headers,
+               [out] DWORD* response_code,
+               [out] BSTR* cache_filename);
+};
+
+[
+  object,
+  oleautomation,
+  uuid(28839a52-cddf-4c7c-ac21-b1c4fc1be7ef),
+  helpstring("Google Update IProcessLauncher Interface"),
+  pointer_default(unique)
+]
+interface IProcessLauncher : IUnknown {
+  // @param cmd_line The full command line to execute.
+  HRESULT LaunchCmdLine([in, string] const WCHAR* cmd_line);
+
+  // @param browser_type The browser to start.
+  // @param url The url to launch the browser with.
+  HRESULT LaunchBrowser([in] DWORD browser_type,
+                        [in, string] const WCHAR* url);
+
+  // @param app_id Unique id to identify the calling client application
+  // @param event_id Unique id for the command
+  // @param caller_proc_id The process id of the calling process
+  // @param proc_handle The process handle valid in the caller's context
+  HRESULT LaunchCmdElevated([in, string] const WCHAR* app_guid,
+                            [in, string] const WCHAR* cmd_id,
+                            [in] DWORD caller_proc_id,
+                            [out] ULONG_PTR* proc_handle);
+};
+
+[
+  object,
+  oleautomation,
+  uuid(4d3a05b9-5ef2-46f9-a4fe-81b01637ed47),
+  helpstring("Google Update IOneClickProcessLauncher Interface"),
+  pointer_default(unique)
+]
+interface IOneClickProcessLauncher : IUnknown {
+  HRESULT LaunchAppCommand([in, string] const WCHAR* app_guid,
+                           [in, string] const WCHAR* cmd_id);
+};
+
+typedef enum {
+  COMPLETION_CODE_SUCCESS = 1,
+  COMPLETION_CODE_SUCCESS_CLOSE_UI,
+  COMPLETION_CODE_ERROR,
+  COMPLETION_CODE_RESTART_ALL_BROWSERS,
+  COMPLETION_CODE_REBOOT,
+  COMPLETION_CODE_RESTART_BROWSER,
+  COMPLETION_CODE_RESTART_ALL_BROWSERS_NOTICE_ONLY,
+  COMPLETION_CODE_REBOOT_NOTICE_ONLY,
+  COMPLETION_CODE_RESTART_BROWSER_NOTICE_ONLY,
+  COMPLETION_CODE_RUN_COMMAND,
+} LegacyCompletionCodes;
+
+[
+  object,
+  oleautomation,
+  uuid(cd858925-6866-4f02-b9e9-b5b08e353be7),
+  helpstring("GoogleUpdate UI-specific events Interface"),
+  pointer_default(unique)
+]
+interface IProgressWndEvents : IUnknown {
+  // The UI is closing down. The user has clicked on either the "X" or the
+  // other buttons of the UI to close the window.
+  HRESULT DoClose();
+
+  // Pause has been clicked on.
+  HRESULT DoPause();
+
+  // Resume has been clicked on.
+  HRESULT DoResume();
+
+  // RestartBrowsers button has been clicked on.
+  HRESULT DoRestartBrowsers();
+
+  // Reboot button has been clicked on.
+  HRESULT DoReboot();
+
+  // Launch Browser.
+  HRESULT DoLaunchBrowser([in, string] const WCHAR* url);
+};
+
+
+[
+  object,
+  oleautomation,
+  uuid(ff612905-d787-4f53-ab5e-5ab5971b10a7),
+  helpstring("IJobObserver Interface"),
+  pointer_default(unique)
+]
+interface IJobObserver : IUnknown {
+  HRESULT OnShow();
+  HRESULT OnCheckingForUpdate();
+  HRESULT OnUpdateAvailable([in, string] const WCHAR* version_string);
+  HRESULT OnWaitingToDownload();
+  HRESULT OnDownloading([in] int time_remaining_ms, [in] int pos);
+  HRESULT OnWaitingToInstall();
+  HRESULT OnInstalling();
+  HRESULT OnPause();
+  HRESULT OnComplete([in] LegacyCompletionCodes code,
+                     [in, string] const WCHAR* reserved);
+  HRESULT SetEventSink([in] IProgressWndEvents* ui_sink);
+};
+
+[
+  object,
+  oleautomation,
+  uuid(a62c03e7-56ef-4109-a920-d3c06665223e),
+  helpstring("IGoogleUpdate Interface"),
+  pointer_default(unique)
+]
+interface IGoogleUpdate : IUnknown {
+  // @param guid The guid for the app to be updated.
+  // @param observer The eventing interface.
+  HRESULT CheckForUpdate([in, string] const WCHAR* guid,
+                         [in] IJobObserver* observer);
+
+  // @param guid The guid for the app to be updated.
+  // @param observer The eventing interface.
+  HRESULT Update([in, string] const WCHAR* guid,
+                 [in] IJobObserver* observer);
+};
+
+// IGoogleUpdateCore is an internal Omaha interface.
+[
+  object,
+  oleautomation,
+  uuid(857a3d7a-6b13-45f3-a19b-75870d0c2823),
+  helpstring("Google Update Core Interface"),
+  pointer_default(unique)
+]
+interface IGoogleUpdateCore : IUnknown
+{
+  // Runs a command elevated.
+  //
+  // @param app_id Unique id to identify the calling client application
+  // @param event_id Unique id for the command
+  // @param caller_proc_id The process id of the calling process
+  // @param proc_handle The process handle valid in the caller's context
+  HRESULT LaunchCmdElevated([in, string] const WCHAR* app_guid,
+                            [in, string] const WCHAR* cmd_id,
+                            [in] DWORD caller_proc_id,
+                            [out] ULONG_PTR* proc_handle);
+};
+
+// END Legacy google_update_idl interfaces.
+
+[
+  uuid(5e3de9e9-0248-4fab-ac1c-01b86cf9790e),
+  version(1.0),
+  helpstring("Omaha 3.0 Type Library")
+]
+library GoogleUpdate3Lib {
+  importlib("stdole2.tlb");
+
+  // These Interfaces are forward declared to ensure that they are described in
+  // the generated TLB file. This is required for ATL to correctly implement the
+  // corresponding IDispatch interfaces.
+  interface IGoogleUpdate3;
+  interface IAppBundle;
+  interface IApp;
+  interface IAppVersion;
+  interface IPackage;
+  interface ICurrentState;
+
+  interface IGoogleUpdate3Web;
+  interface IAppBundleWeb;
+  interface IAppWeb;
+  interface IAppVersionWeb;
+  interface ICoCreateAsyncStatus;
+
+  [
+    uuid(cec92c56-68e4-4494-ba79-eb3a71ad8473),
+    helpstring("GoogleUpdate3 Class for per-user applications")
+  ]
+  coclass GoogleUpdate3UserClass {
+    [default] interface IDispatch;
+  }
+
+  [
+    uuid(edc2caa1-2001-4835-a04a-565a5cde5f7f),
+    helpstring("GoogleUpdate3 Service Class for machine applications")
+  ]
+  coclass GoogleUpdate3ServiceClass {
+    [default] interface IDispatch;
+  }
+
+  [
+    uuid(b5bae3dd-809e-4be3-a421-f5d3f17a03db),
+    helpstring("GoogleUpdate3Web for user applications")
+  ]
+  coclass GoogleUpdate3WebUserClass {
+    [default] interface IDispatch;
+  }
+
+  [
+    uuid(31e52f9c-5dba-4a20-b7d4-4ade46fbf9e9),
+    helpstring("Pass-through broker for the GoogleUpdate3WebServiceClass")
+  ]
+  coclass GoogleUpdate3WebMachineClass {
+    [default] interface IDispatch;
+  }
+
+  [
+    uuid(2e119b1c-8a13-4e21-92c2-1b34cab1f028),
+    helpstring("GoogleUpdate3Web")
+  ]
+  coclass GoogleUpdate3WebServiceClass {
+    [default] interface IDispatch;
+  }
+
+  [
+    uuid(0e2ee4d0-7ef1-45d0-aae8-2506c0ba649c),
+    helpstring("Fallback mechanism if GoogleUpdate3WebServiceClass fails")
+  ]
+  coclass GoogleUpdate3WebMachineFallbackClass {
+    [default] interface IDispatch;
+  }
+
+  [
+    uuid(733eb758-7cf0-4927-a3b9-75eb28490613),
+    helpstring("CurrentStateUserClass")
+  ]
+  coclass CurrentStateUserClass {
+    [default] interface ICurrentState;
+  }
+
+  [
+    uuid(dad290ab-07df-443d-9a5a-4434474353ed),
+    helpstring("CurrentStateMachineClass")
+  ]
+  coclass CurrentStateMachineClass {
+    [default] interface ICurrentState;
+  }
+
+  [
+    uuid(5e79da64-77df-4c1f-9184-c6b5f035e3d9),
+    helpstring("CoCreateAsyncClass")
+  ]
+  coclass CoCreateAsyncClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(a663a8e3-b533-4153-8ef6-3c5823de9280),
+    helpstring("CredentialDialogUserClass")
+  ]
+  coclass CredentialDialogUserClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(341390f2-6214-4981-a2ae-738205e73590),
+    helpstring("CredentialDialogMachineClass")
+  ]
+  coclass CredentialDialogMachineClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(___AUTO_GENERATED_GUID___),
+    helpstring("GoogleComProxyMachineClass")
+  ]
+  coclass GoogleComProxyMachineClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(___AUTO_GENERATED_GUID___),
+    helpstring("GoogleComProxyUserClass")
+  ]
+  coclass GoogleComProxyUserClass {
+    [default] interface IUnknown;
+  }
+
+  // BEGIN Legacy google_update_idl coclasses.
+
+  [
+    uuid(f235f88c-3de7-4195-a0e9-105ba38344cc),
+    helpstring("ProcessLauncherClass Class")
+  ]
+  coclass ProcessLauncherClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(bb42bfd1-b0eb-449c-8882-fb810c2738d0),
+    helpstring("OneClickUserProcessLauncherClass Class")
+  ]
+  coclass OneClickUserProcessLauncherClass {
+    [default] interface IOneClickProcessLauncher;
+  }
+
+  [
+    uuid(5457eff7-c0b3-4672-a6b4-58f93951f1e0),
+    helpstring("OneClickMachineProcessLauncherClass Class")
+  ]
+  coclass OneClickMachineProcessLauncherClass {
+    [default] interface IOneClickProcessLauncher;
+  }
+
+  [
+    uuid(660baf72-a9ef-4fb1-81ae-9395ca6c39cf),
+    helpstring("OnDemand updates for per-user applications.")
+  ]
+  coclass OnDemandUserAppsClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(0dd31efc-0cf5-4ec5-9799-f1a8819acea4),
+    helpstring("OnDemand pass-through broker for machine applications.")
+  ]
+  coclass OnDemandMachineAppsClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(19c06b1a-7202-40b4-9903-62927d08f943),
+    helpstring("OnDemand updates for per-machine applications.")
+  ]
+  coclass OnDemandMachineAppsServiceClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(107e2437-bfe7-4e17-91d9-2866e1373e00),
+    helpstring("Fallback for if OnDemandMachineAppsServiceClass fails.")
+  ]
+  coclass OnDemandMachineAppsFallbackClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(b0f72540-f2a8-4027-aac8-a39deb0470ad),
+    helpstring("GoogleUpdateCore Class")
+  ]
+  coclass GoogleUpdateCoreClass
+  {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(b15e7b58-2a81-4f3e-8381-f5db7d3a1f84),
+    helpstring("GoogleUpdateCore Machine Class")
+  ]
+  coclass GoogleUpdateCoreMachineClass
+  {
+    [default] interface IUnknown;
+  }
+
+  // END Legacy google_update_idl coclasses.
+};

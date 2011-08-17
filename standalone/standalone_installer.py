@@ -43,7 +43,6 @@ class OfflineInstaller(object):
   def __init__(self,
                friendly_product_name,
                exe_base_name,
-               version,
                binaries,
                msi_base_name,
                custom_tag_params,
@@ -53,7 +52,6 @@ class OfflineInstaller(object):
                installers_txt_filename):
     self.friendly_product_name = friendly_product_name
     self.exe_base_name = exe_base_name
-    self.version = version
     self.binaries = binaries
     self.msi_base_name = msi_base_name
     self.custom_tag_params = custom_tag_params
@@ -82,7 +80,6 @@ def ReadOfflineInstallersFile(env, offline_installers_file_path):
     if len(line) and not line.startswith('#'):
       (friendly_product_name,
        exe_base_name,
-       version,
        binaries,
        msi_base_name,
        custom_tag_params,
@@ -92,7 +89,6 @@ def ReadOfflineInstallersFile(env, offline_installers_file_path):
        installers_txt_filename) = eval(line)
       installer = OfflineInstaller(friendly_product_name,
                                    exe_base_name,
-                                   version,
                                    binaries,
                                    msi_base_name,
                                    custom_tag_params,
@@ -143,6 +139,77 @@ def BuildOfflineInstallersVersion(env,
     )
 
 
+def _GenerateUpdateResponseFile(target, source, env):
+  """Generate GUP file based on a list of sources.
+
+  Don't call function directly from this script. source may be
+  generated as part of build. Use function as action in env.Command.
+
+  Args:
+    target: Target GUP file name.
+    source: A list of source files. Source files should be listed as manifest1,
+      binary1, manifest2, binary2 and so on. Order is important so that
+      manifests and installers can be differentiated and 'INSTALLER_VERSIONS'
+      can be applied properly.
+    env: Construct environment. This environment must contain environment
+      variable 'INSTALLER_VERSIONS', which contains a list of versions for
+      corresponding binaries in source and should be in same order.
+
+  Raises:
+    Exception: When build encounters error.
+  """
+  xml_header = '<?xml version="1.0" encoding="UTF-8"?>\n'
+  response_header = '<response protocol="3.0">'
+  response_footer = '</response>'
+
+  local_env = env.Clone()
+
+  version_list = local_env['INSTALLER_VERSIONS']
+  if not version_list:
+    raise Exception('INSTALLER_VERSIONS is missing from environment.')
+
+  manifest_content_list = [xml_header, response_header]
+  for file_index in xrange(0, len(source), 2):
+    source_manifest_path = source[file_index]
+    binary_path = source[file_index + 1]
+    size = os.stat(binary_path.abspath).st_size
+    installer_file = open(binary_path.abspath, mode='rb')
+    data = array.array('B')
+    data.fromfile(installer_file, size)
+    installer_file.close()
+    s = sha.new(data)
+    hash_value = base64.b64encode(s.digest())
+
+    manifest_file = open(source_manifest_path.abspath)
+    manifest_content = manifest_file.read()
+    response_body_start_index = manifest_content.find('<response')
+    if response_body_start_index < 0:
+      raise Exception('GUP file does not contain response element.')
+    # + 1 to include the closing > in header
+    response_body_start_index = manifest_content.find(
+        '>', response_body_start_index)
+    if response_body_start_index < 0:
+      raise Exception('GUP file does not contain response element.')
+    response_body_start_index += 1
+    response_body_end_index = manifest_content.find(
+        '</response>', response_body_start_index)
+    if response_body_end_index < 0:
+      raise Exception('GUP file is not in valid response format.')
+    local_env['INSTALLER_SIZE'] = str(size)
+    local_env['INSTALLER_HASH'] = hash_value
+    local_env['INSTALLER_VERSION'] = version_list[file_index/2]
+    manifest_content_list.append(local_env.subst(
+        manifest_content[response_body_start_index:response_body_end_index],
+        raw=1))
+    manifest_file.close()
+  manifest_content_list.append(response_footer)
+
+  manifest_content_str = ''.join(manifest_content_list)
+  output_file = open(target[0].abspath, 'w')
+  output_file.write(manifest_content_str)
+  output_file.close()
+
+
 def BuildOfflineInstaller(
     env,
     offline_installer,
@@ -155,7 +222,7 @@ def BuildOfflineInstaller(
     is_official=False,
     installers_sources_path='$MAIN_DIR/installers',
     enterprise_installers_sources_path='$MAIN_DIR/enterprise/installer',
-    lzma_path='$MAIN_DIR/third_party/lzma/lzma.exe',
+    lzma_path='$MAIN_DIR/third_party/lzma/v4_65/files/lzma.exe',
     resmerge_path='$MAIN_DIR/tools/resmerge'):
   """Builds the standalone installers specified by offline_installer.
 
@@ -184,7 +251,6 @@ def BuildOfflineInstaller(
   Raises:
     Exception: Missing or invalid data specified in offline_installer.
   """
-
   standalone_installer_base_name = offline_installer.exe_base_name
   if not standalone_installer_base_name:
     raise Exception('Product name not specified.')
@@ -210,63 +276,53 @@ def BuildOfflineInstaller(
   additional_payload_contents = []
   if not offline_installer.binaries:
     raise Exception('No binaries specified.')
-  manifests_to_dump = []
+
+  manifest_target = ''
+  manifest_source = []
+  version_list = []
   for binary in offline_installer.binaries:
-    (binary_name, guid) = binary
-    if not binary_name or not guid:
-      raise Exception('Binary specification incomplete.')
+    (version, installer_path, guid) = binary
+    if not installer_path or not guid or not version:
+      raise Exception('Application specification is incomplete.')
 
-    output_file = os.path.basename(binary_name) + '.' + guid
-
-    def _SubstituteStringsInUpdateResponseFile(target, source, env):
-      # Don't call funtion directly from this script. source may be
-      # generated as part of build. Use function as action in env.Command.
-      source_manifest_path = source[0]
-      binary_path = source[1]
-      size = os.stat(binary_path.abspath).st_size
-      installer_file = open(binary_path.abspath, mode='rb')
-      data = array.array('B')
-      data.fromfile(installer_file, size)
-      installer_file.close()
-      s = sha.new(data)
-      hash_value = base64.b64encode(s.digest())
-      manifest_content = open(source_manifest_path.abspath).read()
-      env = env.Clone(
-          INSTALLER_SIZE='%d' % size,
-          INSTALLER_HASH=hash_value
-      )
-      output_file = open(target[0].abspath, 'w')
-      output_file.write(env.subst(manifest_content, raw=1))
-      output_file.close()
-
-    # Place the generated manifests in a subdirectory. This allows a single
-    # build to generate installers for multiple versions of the same app.
-    manifest_file_path = env.Command(
-        target=guid + offline_installer.version + '/' + guid + '.gup',
-        source=[
-            manifest_files_path + '/' + guid + '.gup',
-            output_file,
-        ],
-        action=[_SubstituteStringsInUpdateResponseFile],
-        # TODO(omaha): This does not work for bundled apps because the
-        # .txt file only has one version for all apps in the bundle.
-        INSTALLER_VERSION=offline_installer.version,
-    )
-
+    installer_path_modified = os.path.basename(installer_path) + '.' + guid
     # Have to use Command('copy') here instead of replicate, as the
     # file is being renamed in the process.
     env.Command(
-        target=output_file,
-        source=binary_name,
+        target=installer_path_modified,
+        source=installer_path,
         action='@copy /y $SOURCES $TARGET'
     )
 
-    manifests_to_dump += [manifest_file_path]
-    additional_payload_contents += [output_file, manifest_file_path]
+    manifest_source.extend([
+        manifest_files_path + '/' + guid + '.gup', installer_path_modified])
+    version_list.append(version)
+    additional_payload_contents.append(installer_path_modified)
+
+    # TODO(omaha): Use full guid and version to generate unique string, use
+    #   hash of the unique string as target directory name.
+    manifest_target += guid[0:4] + version
 
     # Log info about the app.
     log_text += '\n\n*** App: ' + guid + ' ***\n'
-    log_text += '\nINSTALLER:\n' + binary_name + '\n'
+    log_text += '\nVersion:' + version + '\n'
+    log_text += '\nINSTALLER:\n' + installer_path + '\n'
+
+  # Place the generated manifests in a subdirectory. This allows a single
+  # build to generate installers for multiple versions of the same app.
+  manifest_target += '/OfflineManifest.gup'
+  manifest_file_path = env.Command(
+      target=manifest_target,
+      source=manifest_source,
+      action=[_GenerateUpdateResponseFile],
+      INSTALLER_VERSIONS=version_list
+      )
+
+  # Use the BCJ2 tool from the official build we're using to generate this
+  # metainstaller, not the current build directory.
+  bcj2_path = omaha_files_path + '/bcj2.exe'
+
+  additional_payload_contents.append(manifest_file_path)
 
   def WriteLog(target, source, env):
     """Writes the log of what is being built."""
@@ -288,7 +344,7 @@ def BuildOfflineInstaller(
 
   env.Command(
       target='%s/%s' % (output_dir, log_name),
-      source=manifests_to_dump,
+      source=manifest_file_path,
       action=WriteLog,
       write_data=log_text
   )
@@ -307,7 +363,8 @@ def BuildOfflineInstaller(
       output_dir=output_dir,
       installers_sources_path=installers_sources_path,
       lzma_path=lzma_path,
-      resmerge_path=resmerge_path
+      resmerge_path=resmerge_path,
+      bcj2_path=bcj2_path
   )
 
   standalone_installer_path = '%s/%s' % (output_dir, target_name)
@@ -315,21 +372,23 @@ def BuildOfflineInstaller(
   # Build an enterprise installer.
   if offline_installer.should_build_enterprise_msi:
     # TODO(omaha): Add support for bundles here and to
-    # BuildEnterpriseInstallerFromStandaloneInstaller().
+    #   BuildEnterpriseInstallerFromStandaloneInstaller().
+    # TODO(omaha): Determine how product_version should be decided for MSI in
+    #   bundle scenarios.
+    # TODO(omaha): custom tag, silent uninstall args, distribution data may need
+    #   to be made per-app.
     if 1 < len(offline_installer.binaries):
       raise Exception('Enterprise installers do not currently support bundles.')
-    (binary_name, product_guid) = offline_installer.binaries[0]
+    (product_version, installer_path, product_guid) = offline_installer.binaries[0]
 
     # Note: msi_base_name should not include version info and cannot change!
-
     friendly_product_name = offline_installer.friendly_product_name
-    product_version = offline_installer.version
     msi_base_name = offline_installer.msi_base_name
     custom_tag_params = offline_installer.custom_tag_params
     silent_uninstall_args = offline_installer.silent_uninstall_args
     msi_installer_data = offline_installer.msi_installer_data
 
-    # Only custom_tag_params is optional.
+    # custom_tag_params and msi_installer_data are optional.
     if (not product_version or not friendly_product_name or not msi_base_name or
         not silent_uninstall_args):
       raise Exception('Field required to build enterprise MSI is missing.')
@@ -347,6 +406,7 @@ def BuildOfflineInstaller(
                     silent_uninstall_args,
                     msi_installer_data,
                     standalone_installer_path,
+                    omaha_files_path + '/show_error_action.dll',
                     prefix + msi_base_name,
                     enterprise_installers_sources_path,
                     output_dir=output_dir

@@ -14,19 +14,21 @@
 // ========================================================================
 
 #include "omaha/mi_exe_stub/process.h"
-#include <strsafe.h>
 
-static bool run_and_wait(const CString &command_line,
-                         DWORD* exit_code,
-                         bool wait,
-                         int cmd_show) {
+namespace omaha {
+
+namespace {
+
+bool run_and_wait(const CString& command_line,
+                  DWORD* exit_code,
+                  bool wait,
+                  int cmd_show) {
   CString cmd_line(command_line);
-  STARTUPINFO si = {0};
-  PROCESS_INFORMATION pi = {0};
+  STARTUPINFO si = {};
+  PROCESS_INFORMATION pi = {};
 
   GetStartupInfo(&si);
-  si.dwFlags |= STARTF_FORCEOFFFEEDBACK;
-  si.dwFlags |= STARTF_USESHOWWINDOW;
+  si.dwFlags |= STARTF_FORCEOFFFEEDBACK | STARTF_USESHOWWINDOW;
   si.wShowWindow = static_cast<WORD>(cmd_show);
 
   BOOL create_process_result = CreateProcess(NULL,
@@ -59,14 +61,18 @@ static bool run_and_wait(const CString &command_line,
   return result;
 }
 
-bool RunAndWaitHidden(const CString &command_line, DWORD *exit_code) {
+}  // namespace
+
+bool RunAndWaitHidden(const CString& command_line, DWORD *exit_code) {
   return run_and_wait(command_line, exit_code, true, SW_HIDE);
 }
 
-bool RunAndWait(const CString &command_line, DWORD *exit_code) {
+bool RunAndWait(const CString& command_line, DWORD *exit_code) {
   return run_and_wait(command_line, exit_code, true, SW_SHOWNORMAL);
 }
 
-bool Run(const CString &command_line) {
+bool Run(const CString& command_line) {
   return run_and_wait(command_line, NULL, false, SW_SHOWNORMAL);
 }
+
+}  // namespace omaha

@@ -24,7 +24,8 @@
 #include <atlcom.h>
 #include <atlsafe.h>
 #include <atlstr.h>
-#include "omaha/common/scoped_any.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/synchronized.h"
 
 namespace omaha {
 
@@ -33,13 +34,15 @@ class ATL_NO_VTABLE BindStatusCallback
       public IBindStatusCallback,
       public IHttpNegotiate {
  public:
-  static HRESULT CreateAndSend(BSTR url,
-                               BSTR post_data,
-                               BSTR request_headers,
-                               VARIANT response_headers_needed,
-                               VARIANT* response_headers,
-                               DWORD* response_code,
-                               BSTR* cache_filename);
+  HRESULT Send(BSTR url,
+               BSTR post_data,
+               BSTR request_headers,
+               VARIANT response_headers_needed,
+               VARIANT* response_headers,
+               DWORD* response_code,
+               BSTR* cache_filename);
+
+  HRESULT Cancel();
 
   // C4505: unreferenced IUnknown local functions have been removed
   #pragma warning(disable : 4505)
@@ -73,21 +76,15 @@ class ATL_NO_VTABLE BindStatusCallback
   virtual ~BindStatusCallback() {}
 
  private:
-  HRESULT Init(BSTR post_data,
-               BSTR request_headers,
-               VARIANT response_headers_needed,
-               VARIANT* response_headers,
-               DWORD* response_code);
-
- private:
+  LLock lock_;
   BINDVERB              http_verb_;
   scoped_hglobal        post_data_;
   DWORD                 post_data_byte_count_;
   CString               request_headers_;
   CComSafeArray<DWORD>  response_headers_needed_;
-  VARIANT*              response_headers_;
-  DWORD*                response_code_;
-  CComPtr<IBinding>     binding_;
+  CComVariant           response_headers_;
+  DWORD                 response_code_;
+  CComGITPtr<IBinding>  binding_git_;
 };
 
 }  // namespace omaha

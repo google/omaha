@@ -28,8 +28,8 @@ breakpad_env.Append(
         '$MAIN_DIR/third_party/breakpad/src/',
         ],
     CCFLAGS = [
-        # Remove this after submitting breakpad fix.
-        '/wd4706',  # assignment within conditional expression
+        '/wd4061',  # enumerator in switch is not handled by a case label
+        '/wd4826',  # conversion is sign-extended
         ],
     CPPDEFINES = [
         # Make breakpad not use a TerminateThread call to clean up one of its
@@ -38,7 +38,7 @@ breakpad_env.Append(
         ],
 )
 
-target_name = 'breakpad.lib'
+target_name = 'breakpad'
 
 breakpad_inputs = [
     'src/common/windows/guid_string.cc',

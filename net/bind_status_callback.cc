@@ -17,10 +17,10 @@
 
 #include "omaha/net/bind_status_callback.h"
 #include <wininet.h>
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/utils.h"
 
 namespace omaha {
 
@@ -54,81 +54,29 @@ HRESULT QueryHttpInfo(IWinInetHttpInfo* http_info, DWORD query, CString* info) {
 BindStatusCallback::BindStatusCallback()
     : http_verb_(BINDVERB_GET),
       post_data_byte_count_(0),
-      response_headers_(NULL),
       response_code_(0) {
 }
 
-HRESULT BindStatusCallback::CreateAndSend(BSTR url,
-                                          BSTR data,
-                                          BSTR request_headers,
-                                          VARIANT response_headers_needed,
-                                          VARIANT* response_headers,
-                                          DWORD* response_code,
-                                          BSTR* cache_filename) {
-  if (!url || !*url) {
-    return E_INVALIDARG;
-  }
-  if (!cache_filename) {
-    return E_INVALIDARG;
-  }
-  *cache_filename = NULL;
-
-  // Using CComObjectNoLock. For the BHO, the DLL is always locked into memory,
-  // and for the exe case, goopdate.dll is always loaded, so using the NoLock
-  // version works well.
-  CComObjectNoLock<BindStatusCallback>* bsc_obj =
-      new CComObjectNoLock<BindStatusCallback>;
-  if (!bsc_obj) {
-    CORE_LOG(LE, (_T("[BindStatusCallback creation failed]")));
-    return E_OUTOFMEMORY;
-  }
-
-  // Implicit AddRef() to bring the refcount to 1.
-  CComPtr<IBindStatusCallback> bsc(bsc_obj);
-  HRESULT hr = bsc_obj->Init(data,
-                             request_headers,
-                             response_headers_needed,
-                             response_headers,
-                             response_code);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  CString filename;
-  hr = ::URLDownloadToCacheFile(NULL,
-                                url,
-                                CStrBuf(filename, MAX_PATH),
-                                MAX_PATH,
-                                0,
-                                bsc);
-  CORE_LOG(L2, (_T("URLDownloadToCacheFile 0x%x %s"), hr, url));
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  ASSERT1(!filename.IsEmpty());
-  CORE_LOG(L2, (_T("[BrowserHttpRequest::Send][cache file][%s]"), filename));
-  *cache_filename = filename.AllocSysString();
-  return hr;
-}
-
-HRESULT BindStatusCallback::Init(BSTR post_data,
+HRESULT BindStatusCallback::Send(BSTR url,
+                                 BSTR post_data,
                                  BSTR request_headers,
                                  VARIANT response_headers_needed,
                                  VARIANT* response_headers,
-                                 DWORD* response_code) {
-  ASSERT1(response_code);
-  if (!response_code) {
+                                 DWORD* response_code,
+                                 BSTR* cache_filename) {
+  if (!url || !*url || !response_code || !cache_filename) {
     return E_INVALIDARG;
   }
+
   *response_code = 0;
+  *cache_filename = NULL;
 
   if (V_VT(&response_headers_needed) != VT_EMPTY) {
     if ((V_VT(&response_headers_needed) != (VT_ARRAY | VT_UI4)) ||
         !response_headers) {
       return E_INVALIDARG;
     }
-    response_headers->vt = VT_EMPTY;
+    V_VT(response_headers) = VT_NULL;
     response_headers_needed_ = response_headers_needed.parray;
     if (!response_headers_needed_.GetCount()) {
       return E_INVALIDARG;
@@ -136,34 +84,56 @@ HRESULT BindStatusCallback::Init(BSTR post_data,
   }
 
   request_headers_ = request_headers;
-  response_code_ = response_code;
-  response_headers_ = response_headers;
   if (!post_data) {
     http_verb_ = BINDVERB_GET;
-    return S_OK;
+  } else {
+    http_verb_ = BINDVERB_POST;
+    post_data_byte_count_ = ::SysStringByteLen(post_data);
+    reset(post_data_, ::GlobalAlloc(GPTR, post_data_byte_count_));
+    if (!post_data_) {
+      HRESULT hr = HRESULTFromLastError();
+      CORE_LOG(LE, (_T("[::GlobalAlloc failed][0x%x]"), hr));
+      return hr;
+    }
+
+    memcpy(get(post_data_), post_data, post_data_byte_count_);
   }
 
-  http_verb_ = BINDVERB_POST;
-  post_data_byte_count_ = ::SysStringByteLen(post_data);
-  reset(post_data_, ::GlobalAlloc(GPTR, post_data_byte_count_));
-  if (!post_data_) {
-    HRESULT hr = HRESULTFromLastError();
-    CORE_LOG(LE, (_T("[BindStatusCallback Init failed 0x%x]"), hr));
+  CComPtr<IBindStatusCallback> bsc(this);
+  CString filename;
+  HRESULT hr = ::URLDownloadToCacheFile(NULL,
+                                        url,
+                                        CStrBuf(filename, MAX_PATH),
+                                        MAX_PATH,
+                                        0,
+                                        bsc);
+
+  if (response_headers) {
+    response_headers_.Detach(response_headers);
+  }
+  *response_code = response_code_;
+
+  CORE_LOG(L2, (_T("[URLDownloadToCacheFile][0x%x][%s]"), hr, url));
+  if (FAILED(hr)) {
     return hr;
   }
 
-  memcpy(get(post_data_), post_data, post_data_byte_count_);
-  return S_OK;
+  ASSERT1(!filename.IsEmpty());
+  CORE_LOG(L2, (_T("[BindStatusCallback::Send][cache file][%s]"), filename));
+  *cache_filename = filename.AllocSysString();
+  return hr;
 }
 
 // IBindStatusCallback methods.
 
 STDMETHODIMP BindStatusCallback::OnStartBinding(DWORD, IBinding* binding) {
-  binding_ = binding;
+  __mutexScope(lock_);
+  binding_git_.Attach(binding);
   return S_OK;
 }
 
-STDMETHODIMP BindStatusCallback::GetPriority(LONG*) {
+STDMETHODIMP BindStatusCallback::GetPriority(LONG* priority) {
+  UNREFERENCED_PARAMETER(priority);
   return E_NOTIMPL;
 }
 
@@ -176,7 +146,22 @@ STDMETHODIMP BindStatusCallback::OnProgress(ULONG, ULONG, ULONG, LPCWSTR) {
 }
 
 STDMETHODIMP BindStatusCallback::OnStopBinding(HRESULT, LPCWSTR) {
-  CComQIPtr<IWinInetHttpInfo> http_info(binding_);
+  CComPtr<IBinding> binding;
+
+  __mutexBlock(lock_) {
+    if (!binding_git_) {
+      return S_OK;
+    }
+
+    HRESULT hr = binding_git_.CopyTo(&binding);
+    VERIFY1(SUCCEEDED(binding_git_.Revoke()));
+    if (FAILED(hr)) {
+      CORE_LOG(LW, (_T("[binding_git_.CopyTo failed][0x%x]"), hr));
+      return S_OK;
+    }
+  }
+
+  CComQIPtr<IWinInetHttpInfo> http_info(binding);
   if (!http_info) {
     return S_OK;
   }
@@ -186,13 +171,12 @@ STDMETHODIMP BindStatusCallback::OnStopBinding(HRESULT, LPCWSTR) {
                               HTTP_QUERY_STATUS_CODE,
                               &response_code_buf)) &&
       !response_code_buf.IsEmpty()) {
-    *response_code_ = _ttoi(response_code_buf);
+    response_code_ = _ttoi(response_code_buf);
   }
 
   if (!response_headers_needed_) {
     return S_OK;
   }
-  ASSERT1(response_headers_);
   int count = response_headers_needed_.GetCount();
   ASSERT1(count > 0);
   int lower_bound = response_headers_needed_.GetLowerBound();
@@ -205,8 +189,8 @@ STDMETHODIMP BindStatusCallback::OnStopBinding(HRESULT, LPCWSTR) {
     response_array[i] = response_header_buf.AllocSysString();
   }
 
-  response_headers_->vt = VT_ARRAY | VT_BSTR;
-  response_headers_->parray = response_array.Detach();
+  V_VT(&response_headers_) = VT_ARRAY | VT_BSTR;
+  V_ARRAY(&response_headers_) = response_array.Detach();
   return S_OK;
 }
 
@@ -313,6 +297,24 @@ STDMETHODIMP BindStatusCallback::OnResponse(DWORD response_code,
 
   *additional_headers = NULL;
   return S_OK;
+}
+
+HRESULT BindStatusCallback::Cancel() {
+  CComPtr<IBinding> binding;
+
+  __mutexBlock(lock_) {
+    if (!binding_git_) {
+      return S_OK;
+    }
+
+    HRESULT hr = binding_git_.CopyTo(&binding);
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[binding_git_.CopyTo failed][0x%x]"), hr));
+      return hr;
+    }
+  }
+
+  return binding->Abort();
 }
 
 }  // namespace omaha

@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2009-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,155 +13,232 @@
 // limitations under the License.
 // ========================================================================
 //
-// Contains the ATL exe server used for OnDemand, as well as the ProcessLauncher
-// server used to launch a process.
-// The ProcessLauncher server is to be used only by the machine google update.
-// The idea is that the machine Google Update is elevated and launching
-// a process, say a browser, from that elevated process. This will cause the
-// browser to run elevated, which is a bad idea.
-// What is needed is the ability to run medium integrity processes from a
-// high integrity process. This can be done in two ways:
-// 1. Create a service and expose some form of IPC. A service is required
-//    because admins (even elevated) cannot call CreateProcessAsUser. Admins
-//    do not posess the required privilege. However the local system account
-//    has this privilege to call CreateProcessAsUser and hence can be used to
-//    start the browser with the token of a medium integrity process.
-// 2. Create a COM local server. Impersonate a medium integrity user in the
-//    client. Fortunately the impersonation works, then create instance the COM
-//    local server. If the COM security is set to use DYNAMIC_CLOAKING, then
-//    the local server will be created using the thread credentials, allowing
-//    the COM local server to be launched as medium integrity.
-// This class implements the second method listed above.
-// The server listens to the machine google update's shut down event.
+// Contains the ATL exe server registration.
 
 #include "omaha/goopdate/google_update.h"
-
-#include <windows.h>
-#include "omaha/common/debug.h"
-#include "omaha/common/event_handler.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/const_object_names.h"
-#include "omaha/common/reactor.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/utils.h"
-#include "omaha/goopdate/command_line.h"
-#include "omaha/goopdate/const_goopdate.h"
-#include "omaha/goopdate/google_update_idl_datax.h"
-#include "omaha/goopdate/goopdate_utils.h"
-#include "omaha/worker/worker.h"
+#include "goopdate/omaha3_idl.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/common/goopdate_utils.h"
+#include "omaha/core/google_update_core.h"
+#include "omaha/goopdate/broker_class_factory.h"
+#include "omaha/goopdate/cocreate_async.h"
+#include "omaha/goopdate/cred_dialog.h"
+#include "omaha/goopdate/google_update3.h"
+#include "omaha/goopdate/omaha3_idl_datax.h"
+#include "omaha/goopdate/ondemand.h"
+#include "omaha/goopdate/oneclick_process_launcher.h"
+#include "omaha/goopdate/process_launcher.h"
+#include "omaha/goopdate/update3web.h"
+#include "omaha/goopdate/worker.h"
 
 namespace omaha {
 
-GoogleUpdate::GoogleUpdate() {}
+// Template arguments need to be non-const TCHAR arrays.
+TCHAR kOnDemandMachineBrokerProgId[] = kProgIDOnDemandMachine;
+TCHAR kUpdate3WebMachineBrokerProgId[] = kProgIDUpdate3WebMachine;
+TCHAR kHKRootUser[] = _T("HKCU");
+TCHAR kHKRootMachine[] = _T("HKLM");
+TCHAR kProgIDUpdate3COMClassUserLocal[] = kProgIDUpdate3COMClassUser;
 
-GoogleUpdate::~GoogleUpdate() {}
+BEGIN_OBJECT_MAP(object_map_update3_user_mode)
+  OBJECT_ENTRY(__uuidof(GoogleUpdate3UserClass), Update3COMClassUser)
+END_OBJECT_MAP()
+
+BEGIN_OBJECT_MAP(object_map_broker_machine_mode)
+  OBJECT_ENTRY(__uuidof(OnDemandMachineAppsClass), OnDemandMachineBroker)
+  OBJECT_ENTRY(__uuidof(GoogleUpdate3WebMachineClass), Update3WebMachineBroker)
+  OBJECT_ENTRY(__uuidof(CoCreateAsyncClass), CoCreateAsync)
+  OBJECT_ENTRY(__uuidof(OneClickMachineProcessLauncherClass),
+                        OneClickProcessLauncher)
+END_OBJECT_MAP()
+
+BEGIN_OBJECT_MAP(object_map_ondemand_user_mode)
+  OBJECT_ENTRY(__uuidof(GoogleUpdate3WebUserClass), Update3WebUser)
+  OBJECT_ENTRY(__uuidof(OnDemandUserAppsClass), OnDemandUser)
+  OBJECT_ENTRY(__uuidof(CredentialDialogUserClass), CredentialDialogUser)
+  OBJECT_ENTRY(__uuidof(OneClickUserProcessLauncherClass),
+                        OneClickProcessLauncher)
+END_OBJECT_MAP()
+
+BEGIN_OBJECT_MAP(object_map_ondemand_machine_mode)
+  OBJECT_ENTRY(__uuidof(ProcessLauncherClass), ProcessLauncher)
+  OBJECT_ENTRY(__uuidof(GoogleUpdateCoreMachineClass), GoogleUpdateCoreMachine)
+  OBJECT_ENTRY(__uuidof(OnDemandMachineAppsFallbackClass),
+               OnDemandMachineFallback)
+  OBJECT_ENTRY(__uuidof(GoogleUpdate3WebMachineFallbackClass),
+               Update3WebMachineFallback)
+  OBJECT_ENTRY(__uuidof(CredentialDialogMachineClass), CredentialDialogMachine)
+END_OBJECT_MAP()
+
+_ATL_OBJMAP_ENTRY* GoogleUpdate::GetObjectMap() {
+  if (mode_ == kUpdate3Mode && !is_machine_) {
+    return object_map_update3_user_mode;
+  }
+
+  if (mode_ == kBrokerMode && is_machine_) {
+    return object_map_broker_machine_mode;
+  }
+
+  if (mode_ == kOnDemandMode && !is_machine_) {
+    return object_map_ondemand_user_mode;
+  }
+
+  if (mode_ == kOnDemandMode && is_machine_) {
+    return object_map_ondemand_machine_mode;
+  }
+
+  return NULL;
+}
+
+GoogleUpdate::GoogleUpdate(bool is_machine, ComServerMode mode)
+    : is_machine_(is_machine), mode_(mode) {
+  // Disable the delay on shutdown mechanism in CAtlExeModuleT.
+  m_bDelayShutdown = false;
+}
+
+GoogleUpdate::~GoogleUpdate() {
+  // GoogleUpdate is typically created on the stack. We reset the _pAtlModule
+  // here, to allow for cases such as /RegServer, where multiple instances of
+  // GoogleUpdate are created and destroyed serially.
+  _pAtlModule = NULL;
+}
 
 HRESULT GoogleUpdate::Main() {
-  // Disable the delay on shutdown mechanism inside ATL.
-  m_bDelayShutdown = false;
+  HRESULT hr = E_FAIL;
+  if (!ParseCommandLine(::GetCommandLine(), &hr)) {
+    // This was either /RegServer or /UnregServer. Return early.
+    return hr;
+  }
+
+  hr = InitializeServerSecurity(is_machine_);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  DisableCOMExceptionHandling();
+
+  // TODO(omaha3): We do not call worker_->Run() from anywhere. This means that
+  // the ThreadPool and the ShutdownHandler within the Worker are not
+  // initialized. We need to eventually fix this.
+
+  CORE_LOG(L2, (_T("[Calling CAtlExeModuleT<GoogleUpdate>::WinMain]")));
   return CAtlExeModuleT<GoogleUpdate>::WinMain(0);
 }
 
-bool ShouldRegisterClsid(const CLSID& clsid) {
-  bool is_machine = goopdate_utils::IsRunningFromOfficialGoopdateDir(true);
-
-  // Machine-only CLSIDs.
-  if (IsEqualGUID(clsid, __uuidof(ProcessLauncherClass)) ||
-      IsEqualGUID(clsid, __uuidof(OnDemandMachineAppsClass))) {
-    return is_machine;
-  }
-
-  // User-only CLSIDs.
-  if (IsEqualGUID(clsid, __uuidof(OnDemandUserAppsClass))) {
-    return !is_machine;
-  }
-
-  // Unknown CLSIDs.
-  ASSERT(false, (_T("[Unknown CLSID][%s]"), GuidToString(clsid)));
-  return false;
-}
-
 HRESULT GoogleUpdate::RegisterClassObjects(DWORD, DWORD) throw() {
-  HRESULT hr = S_FALSE;
-  for (_ATL_OBJMAP_ENTRY** entry = _AtlComModule.m_ppAutoObjMapFirst;
-       entry < _AtlComModule.m_ppAutoObjMapLast && SUCCEEDED(hr);
+  CORE_LOG(L3, (_T("[RegisterClassObjects]")));
+
+  for (_ATL_OBJMAP_ENTRY* entry = GetObjectMap();
+       entry && entry->pclsid != NULL;
        entry++) {
-    if (*entry != NULL && ShouldRegisterClsid(*(*entry)->pclsid)) {
-      hr = (*entry)->RegisterClassObject(CLSCTX_LOCAL_SERVER,
-                                           REGCLS_SINGLEUSE | REGCLS_SUSPENDED);
+    HRESULT hr = entry->RegisterClassObject(CLSCTX_LOCAL_SERVER,
+                                            REGCLS_MULTIPLEUSE |
+                                            REGCLS_SUSPENDED);
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[RegisterClassObject failed][%s][0x%x]"),
+                    GuidToString(*entry->pclsid), hr));
+      return hr;
     }
   }
 
-  return hr;
+  return S_OK;
 }
+
 HRESULT GoogleUpdate::RevokeClassObjects() throw() {
-    return AtlComModuleRevokeClassObjects(&_AtlComModule);
-}
+  CORE_LOG(L3, (_T("[RevokeClassObjects]")));
 
-HRESULT RegisterOrUnregisterExe(bool is_register) {
-  HRESULT hr = S_FALSE;
-  for (_ATL_OBJMAP_ENTRY** entry = _AtlComModule.m_ppAutoObjMapFirst;
-       entry < _AtlComModule.m_ppAutoObjMapLast && SUCCEEDED(hr);
+  for (_ATL_OBJMAP_ENTRY* entry = GetObjectMap();
+       entry && entry->pclsid != NULL;
        entry++) {
-    if (*entry != NULL) {
-      const CLSID& clsid = *(*entry)->pclsid;
-      if (!ShouldRegisterClsid(clsid)) {
-        continue;
-      }
-
-      hr = is_register ? _AtlComModule.RegisterServer(false, &clsid) :
-                         _AtlComModule.UnregisterServer(false, &clsid);
-      ASSERT(SUCCEEDED(hr), (_T("[RegisterOrUnregisterExe fail][%d][0x%x][%s]"),
-                             is_register, hr, GuidToString(clsid)));
+    HRESULT hr = entry->RevokeClassObject();
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[RevokeClassObject failed][%s][0x%x]"),
+                    GuidToString(*entry->pclsid), hr));
+      return hr;
     }
   }
 
-  return hr;
+  return S_OK;
 }
 
-HRESULT RegisterOrUnregisterProxy(bool is_register) {
-  HRESULT hr = is_register ? PrxDllRegisterServer() : PrxDllUnregisterServer();
-  if (FAILED(hr)) {
-    CORE_LOG(LW, (_T("[RegisterOrUnregisterProxy failed][%d][0x%x]"),
-                  is_register, hr));
+HRESULT GoogleUpdate::RegisterOrUnregisterExe(bool is_register) {
+  CORE_LOG(L3, (_T("[RegisterOrUnregisterExe][%d]"), is_register));
+
+  for (_ATL_OBJMAP_ENTRY* entry = GetObjectMap();
+       entry && entry->pclsid != NULL;
+       entry++) {
+    HRESULT hr = entry->pfnUpdateRegistry(is_register);
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[pfnUpdateRegistry failed][%d][0x%x][%s]"),
+                    is_register, hr, GuidToString(*entry->pclsid)));
+      return hr;
+    }
   }
-  return hr;
+
+  return S_OK;
+}
+
+HRESULT GoogleUpdate::RegisterOrUnregisterExe(void* data,
+                                              bool is_register) {
+  ASSERT1(data);
+  return reinterpret_cast<GoogleUpdate*>(data)->RegisterOrUnregisterExe(
+      is_register);
+}
+
+HRESULT RegisterOrUnregisterProxies(void* data, bool is_register) {
+  ASSERT1(data);
+  bool is_machine = *reinterpret_cast<bool*>(data);
+  CORE_LOG(L3, (_T("[RegisterOrUnregisterProxies][%d][%d]"),
+                is_machine, is_register));
+
+  CPath ps_dll(app_util::GetCurrentModuleDirectory());
+  if (!ps_dll.Append(is_machine ? kPSFileNameMachine : kPSFileNameUser)) {
+    return HRESULTFromLastError();
+  }
+
+  ASSERT1(!is_register || ps_dll.FileExists());
+  HRESULT hr = is_register ? RegisterDll(ps_dll) : UnregisterDll(ps_dll);
+  CORE_LOG(L3, (_T("[  PS][%s][0x%x]"), ps_dll, hr));
+  if (FAILED(hr) && is_register) {
+    return hr;
+  }
+
+  return S_OK;
 }
 
 HRESULT GoogleUpdate::RegisterServer(BOOL, const CLSID*) throw() {
   HRESULT hr = goopdate_utils::RegisterOrUnregisterModule(
-      true, &RegisterOrUnregisterProxy);
+      is_machine_, true, &RegisterOrUnregisterProxies, &is_machine_);
   if (FAILED(hr)) {
     return hr;
   }
 
-  return goopdate_utils::RegisterOrUnregisterModule(true,
-                                                    &RegisterOrUnregisterExe);
+  return goopdate_utils::RegisterOrUnregisterModule(
+      is_machine_,
+      true,
+      &GoogleUpdate::RegisterOrUnregisterExe,
+      this);
 }
 
 HRESULT GoogleUpdate::UnregisterServer(BOOL, const CLSID*) throw() {
   HRESULT hr = goopdate_utils::RegisterOrUnregisterModule(
-      false, &RegisterOrUnregisterExe);
+      is_machine_, false, &GoogleUpdate::RegisterOrUnregisterExe, this);
   if (FAILED(hr)) {
     return hr;
   }
 
-  return goopdate_utils::RegisterOrUnregisterModule(false,
-                                                    &RegisterOrUnregisterProxy);
+  return goopdate_utils::RegisterOrUnregisterModule(
+      is_machine_, false, &RegisterOrUnregisterProxies, &is_machine_);
 }
 
 HRESULT GoogleUpdate::PreMessageLoop(int show_cmd) throw() {
-  bool is_machine = goopdate_utils::IsRunningFromOfficialGoopdateDir(true);
-  worker_.reset(new Worker(is_machine));
   return CAtlExeModuleT<GoogleUpdate>::PreMessageLoop(show_cmd);
 }
 
 HRESULT GoogleUpdate::PostMessageLoop() throw() {
-  HRESULT hr = CAtlExeModuleT<GoogleUpdate>::PostMessageLoop();
-  worker_.reset();
-  return hr;
+  return CAtlExeModuleT<GoogleUpdate>::PostMessageLoop();
 }
 
 }  // namespace omaha
-

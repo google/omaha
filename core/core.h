@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,21 +27,24 @@
 #include <string>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/shutdown_callback.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/shutdown_callback.h"
 #include "omaha/core/google_update_core.h"
 #include "omaha/core/system_monitor.h"
+#include "omaha/goopdate/google_update3.h"
 
 namespace omaha {
 
 class Reactor;
 class Scheduler;
 class ShutdownHandler;
-class LegacyManifestHandler;
 
+// To support hosting ATL COM objects, Core derives from CAtlExeModuleT. Other
+// than the ATL module count, no functionality of CAtlExeModuleT is used.
 class Core
     : public ShutdownCallback,
-      public SystemMonitorObserver {
+      public SystemMonitorObserver,
+      public CAtlExeModuleT<Core> {
  public:
   Core();
   virtual ~Core();
@@ -56,9 +59,6 @@ class Core
   // Starts a code red process.
   HRESULT StartCodeRed() const;
 
-  // Starts an install worker process.
-  HRESULT StartInstallWorker();
-
   // Starts the crash handler.
   HRESULT StartCrashHandler() const;
 
@@ -67,6 +67,12 @@ class Core
 
   Reactor* reactor() const { return reactor_.get(); }
   bool is_system() const { return is_system_; }
+
+  virtual LONG Unlock() throw() {
+    // We are long-running independent of the ATL module count, therefore
+    // transition to zero does not by itself unload the process.
+    return CAtlModuleT<Core>::Unlock();
+  }
 
  private:
 
@@ -91,14 +97,6 @@ class Core
 
   HRESULT DoRun();
   HRESULT DoHandleEvents();
-  HRESULT CleanUpInitialManifestDirectory();
-  HRESULT InitializeManifestDirectoryWatcher();
-
-  // Makes available the COM interface implemented by the core.
-  HRESULT RegisterCoreProxy();
-
-  // Revokes the COM interface.
-  void UnregisterCoreProxy();
 
   // Collects ambient core metrics.
   void CollectMetrics()const;
@@ -112,10 +110,8 @@ class Core
 
   scoped_ptr<Reactor>               reactor_;
   scoped_ptr<ShutdownHandler>       shutdown_handler_;
-  scoped_ptr<LegacyManifestHandler> legacy_manifest_handler_;
   scoped_ptr<Scheduler>             scheduler_;
   scoped_ptr<SystemMonitor>         system_monitor_;
-  scoped_ptr<GoogleUpdateCoreProxy> google_update_core_proxy_;
 
   friend class CoreUtilsTest;
 
@@ -125,4 +121,3 @@ class Core
 }  // namespace omaha
 
 #endif  // OMAHA_CORE_CORE_H_
-

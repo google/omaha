@@ -22,7 +22,8 @@
 #include <atlsimpcoll.h>
 #include <atlstr.h>
 #include <vector>
-#include "omaha/common/synchronized.h"
+#include "omaha/base/synchronized.h"
+#include "omaha/common/goopdate_utils.h"
 
 #define UNKNOWN_AUTH_SCHEME  0x0000FFFF
 const TCHAR* const kDefaultProxyServer = _T("<Default Proxy>");
@@ -30,17 +31,32 @@ const uint32 kDefaultCancelPromptThreshold = 1;
 
 namespace omaha {
 
+struct ProxyAuthConfig {
+  ProxyAuthConfig(HWND hwnd, const CString& caption)
+      : parent_hwnd(hwnd), prompt_caption(caption) {}
+
+  CString ToString() const {
+    CString result;
+    result.Format(_T("[ProxyAuthConfig][0x%x][%s]"),
+                  parent_hwnd, prompt_caption);
+    return result;
+  }
+
+  HWND parent_hwnd;
+  CString prompt_caption;
+};
+
 // A class that reads and stores the Internet Explorer saved proxy
 // authentication info.  Works with versions of IE up to and including 7.
 class ProxyAuth {
  public:
   ProxyAuth() : prompt_cancelled_(0),
-                cancel_prompt_threshold_(kDefaultCancelPromptThreshold),
-                parent_hwnd_(NULL) {}
+                proxy_prompt_is_machine_(
+                    goopdate_utils::IsRunningFromOfficialGoopdateDir(true)),
+                cancel_prompt_threshold_(kDefaultCancelPromptThreshold) {}
   ~ProxyAuth() {}
 
-  void ConfigureProxyAuth(const CString& caption, const CString& message,
-                          HWND parent, uint32 cancel_prompt_threshold);
+  void ConfigureProxyAuth(bool is_machine, uint32 cancel_prompt_threshold);
 
   // Retrieves the saved proxy credentials for Internet Explorer currently.
   // In the future, there may be other sources of credentials.
@@ -51,8 +67,8 @@ class ProxyAuth {
   // @param password The stored password for this proxy server
   // @returns true if credentials were found, otherwise false
   bool GetProxyCredentials(bool allow_ui, bool force_ui, const CString& server,
-                           CString* username, CString* password,
-                           uint32* auth_scheme);
+                           const ProxyAuthConfig& config, CString* username,
+                           CString* password, uint32* auth_scheme);
 
   static CString ExtractProxy(const CString& proxy_settings, bool isHttps);
 
@@ -83,15 +99,11 @@ class ProxyAuth {
   // after this many authentication prompt cancellations, stop prompting.
   uint32 cancel_prompt_threshold_;
 
-  CString proxy_prompt_caption_;
-  CString proxy_prompt_message_;
-
-  // Parent window for the credentials prompt.
-  HWND parent_hwnd_;
+  bool proxy_prompt_is_machine_;
 
   bool ReadFromIE7(const CString& server);
   bool ReadFromPreIE7(const CString& server);
-  bool PromptUser(const CString& server);
+  bool PromptUser(const CString& server, const ProxyAuthConfig& config);
 
   DISALLOW_EVIL_CONSTRUCTORS(ProxyAuth);
 };

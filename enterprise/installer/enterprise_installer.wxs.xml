@@ -84,6 +84,9 @@
     <Binary Id='$(var.ProductNameLegalIdentifier)Installer'
             SourceFile='$(var.ProductInstallerPath)' />
 
+    <Binary Id='ShowInstallerResultUIStringDll'
+            SourceFile='$(var.ShowErrorCADll)' />
+
     <Feature Id='Complete' Level='1'>
       <ComponentRef Id='ComponentGoogleUpdate' />
     </Feature>
@@ -102,6 +105,21 @@
              $(var.ProductInstallerDisableUpdateRegistrationArg)'
       Execute='immediate'
       Return='check' />
+    <!-- Send the ProductGuid to the ShowInstallerResultUIString custom action.
+         The value is accessed through the "CustomActionData" property from
+         within the action itself. -->
+    <CustomAction Id='SetAppGuidProperty'
+      Property='ShowInstallerResultUIString'
+      Value='$(var.ProductGuid)' />
+
+    <!-- A custom action to be executed on rollback to log and display the
+         LastInstallerResultUIString. -->
+    <CustomAction Id='ShowInstallerResultUIString'
+      BinaryKey='ShowInstallerResultUIStringDll'
+      DllEntry='ShowInstallerResultUIString'
+      Execute='rollback'
+      Impersonate='no' />
+
     <CustomAction Id='Install$(var.ProductNameLegalIdentifier)'
       BinaryKey='$(var.ProductNameLegalIdentifier)Installer'
       Impersonate='no'
@@ -160,8 +178,16 @@
               After='SetInstallerInstallCommandProperty'>
         (($ComponentGoogleUpdate>2) OR REINSTALL) AND DISABLE_UPDATES
       </Custom>
-      <Custom Action='Install$(var.ProductNameLegalIdentifier)'
+      <Custom Action='SetAppGuidProperty'
               After='AppendDisableUpdateRegistrationArgToInstallerInstallCommandProperty'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL)
+      </Custom>
+      <Custom Action='ShowInstallerResultUIString'
+              After='SetAppGuidProperty'>
+        (($ComponentGoogleUpdate>2) OR REINSTALL)
+      </Custom>
+      <Custom Action='Install$(var.ProductNameLegalIdentifier)'
+              After='ShowInstallerResultUIString'>
         (($ComponentGoogleUpdate>2) OR REINSTALL)
       </Custom>
 

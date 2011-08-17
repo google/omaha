@@ -15,18 +15,23 @@
 
 
 #include "omaha/mi_exe_stub/tar.h"
-#include <strsafe.h>
+#include <windows.h>
+#pragma warning(push)
+// C4310: cast truncates constant value
+#pragma warning(disable : 4310)
+#include "base/basictypes.h"
+#pragma warning(pop)
 
-#define USTAR_MAGIC "ustar"
-#define USTAR_OFFSET 257
-#define USTAR_DONE "\0\0\0\0\0"
+namespace omaha {
 
-template <typename T, size_t N>
-char (&ArraySizeHelper(T (&array)[N]))[N];    // NOLINT
-#define arraysize(array) (sizeof(ArraySizeHelper(array)))
+namespace {
 
+const char kUstarMagic[] = "ustar";
+const char kUstarDone[5] = { '\0', '\0', '\0', '\0', '\0' };
 
-Tar::Tar(const char *target_dir, HANDLE file_handle, bool delete_when_done)
+}  // namespace
+
+Tar::Tar(const CString& target_dir, HANDLE file_handle, bool delete_when_done)
     : target_directory_name_(target_dir),
       file_handle_(file_handle),
       delete_when_done_(delete_when_done),
@@ -55,48 +60,48 @@ bool Tar::ExtractOneFile(bool *done) {
   bool result = true;
   BOOL file_result;
 
-  file_result = ReadFile(file_handle_, &header, sizeof(USTARHeader),
-    &bytes_handled, NULL);
+  file_result = ::ReadFile(file_handle_, &header, sizeof(USTARHeader),
+      &bytes_handled, NULL);
   if (!file_result || bytes_handled != sizeof(USTARHeader)) {
     return false;
   }
-  if (0 == memcmp(header.magic, USTAR_DONE, arraysize(USTAR_DONE) - 1)) {
+  if (0 == memcmp(header.magic, kUstarDone, arraysize(kUstarDone) - 1)) {
     // We're probably done, since we read the final block of all zeroes.
     *done = true;
     return true;
   }
-  if (0 != memcmp(header.magic, USTAR_MAGIC, arraysize(USTAR_MAGIC) - 1)) {
+  if (0 != memcmp(header.magic, kUstarMagic, arraysize(kUstarMagic) - 1)) {
     return false;
   }
   CString new_filename(target_directory_name_);
   new_filename += "\\";
   new_filename += header.name;
-  HANDLE new_file = CreateFile(new_filename, GENERIC_WRITE, 0, NULL,
-    CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
+  HANDLE new_file = ::CreateFile(new_filename, GENERIC_WRITE, 0, NULL,
+      CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
   if (new_file == INVALID_HANDLE_VALUE) {
     return false;
   }
   // We don't check for conversion errors because the input data is fixed at
   // build time, so it'll either always work or never work, and we won't ship
   // one that never works.
-  DWORD tar_file_size = strtol(header.size, NULL, 8);
-  DWORD next_offset = SetFilePointer(file_handle_, 0, NULL, FILE_CURRENT) +
+  DWORD tar_file_size = strtol(header.size, NULL, 8);  // NOLINT
+  DWORD next_offset = ::SetFilePointer(file_handle_, 0, NULL, FILE_CURRENT) +
       tar_file_size + (512 - tar_file_size & 0x1ff);
   while (tar_file_size > 0) {
-    const int COPY_BUFFER_SIZE = 256 * 1024;
-    char copy_buffer[COPY_BUFFER_SIZE];
-    DWORD bytes_to_handle = COPY_BUFFER_SIZE;
+    const int kCopyBufferSize = 256 * 1024;
+    char copy_buffer[kCopyBufferSize];
+    DWORD bytes_to_handle = kCopyBufferSize;
     if (bytes_to_handle > tar_file_size) {
       bytes_to_handle = tar_file_size;
     }
-    file_result = ReadFile(file_handle_, copy_buffer, bytes_to_handle,
-      &bytes_handled, NULL);
+    file_result = ::ReadFile(file_handle_, copy_buffer, bytes_to_handle,
+        &bytes_handled, NULL);
     if (!file_result) {
       result = false;
       break;
     } else {
-      file_result = WriteFile(new_file, copy_buffer, bytes_to_handle,
-        &bytes_handled, NULL);
+      file_result = ::WriteFile(new_file, copy_buffer, bytes_to_handle,
+          &bytes_handled, NULL);
       if (!file_result) {
         result = false;
         break;
@@ -121,3 +126,5 @@ bool Tar::ExtractOneFile(bool *done) {
 
   return result;
 }
+
+}  // namespace omaha

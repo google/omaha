@@ -38,10 +38,10 @@ public:
 
   /// Add typed metrics to the output string
   /// @{
-  void AddCount(const char *name, uint64 value);
-  void AddTiming(const char *name, uint64 num, uint64 avg, uint64 min,
-                 uint64 max);
-  void AddInteger(const char *name, uint64 value);
+  void AddCount(const char *name, int64 value);
+  void AddTiming(const char *name, int64 num, int64 avg, int64 min,
+                 int64 max);
+  void AddInteger(const char *name, int64 value);
   void AddBoolean(const char *name, bool value);
   /// @}
 

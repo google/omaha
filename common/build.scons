@@ -1,4 +1,4 @@
-# Copyright 2009 Google Inc.
+# Copyright 2009-2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,85 +15,52 @@
 
 Import('env')
 
-env.BuildSConscript('logging')
-env.BuildSConscript('security')
-
-inputs = [
-    'accounts.cc',
-    'app_util.cc',
-    'atl_regexp.cc',
-    'browser_utils.cc',
-    'cgi.cc',
-    'clipboard.cc',
-    'commands.cc',
-    'crc.cc',
-    'debug.cc',
-    'disk.cc',
-    'dynamic_link_dbghelp.cc',
-    'dynamic_link_kernel32.cc',
-    'encrypt.cc',
-    'error.cc',
-    'exception_barrier.cc',
-    'exception_barrier_lowlevel.asm',
-    'exception_utils.cc',
-    'extractor.cc',
-    'file.cc',
-    'file_reader.cc',
-    'file_store.cc',
-    'file_ver.cc',
-    'firewall_product_detection.cc',
-    'highres_timer-win32.cc',
-    'localization.cc',
-    'logging.cc',
-    'md5.cc',
-    'module_utils.cc',
-    'omaha_version.cc',
-    'path.cc',
-    'pe_utils.cc',
-    'popup_menu.cc',
-    'process.cc',
-    'proc_utils.cc',
-    'queue_timer.cc',
-    'reactor.cc',
-    'reg_key.cc',
-    'regexp.cc',
-    'registry_hive.cc',
-    'registry_monitor_manager.cc',
-    'registry_store.cc',
-    'serializable_object.cc',
-    'service_utils.cc',
-    'sha.cc',
-    'shell.cc',
-    'shutdown_handler.cc',
-    'signatures.cc',
-    'signaturevalidator.cc',
-    'single_instance.cc',
-    'sta.cc',
-    'string.cc',
-    'synchronized.cc',
-    'system.cc',
-    'system_info.cc',
-    '../third_party/smartany/shared_any.cc',
-    'thread.cc',
-    'thread_pool.cc',
-    'time.cc',
-    'timer.cc',
-    'tr_rand.cc',
-    'unittest_utils.cc',
-    'user_info.cc',
-    'user_rights.cc',
-    'utils.cc',
-    'vista_utils.cc',
-    'vistautil.cc',
-    'window_utils.cc',
-    'wmi_query.cc',
-    'xml_utils.cc',
-    ]
-
 local_env = env.Clone()
 
-# Required by the exception barrier code.
-local_env.Append(ASFLAGS = ['/safeseh'])
+local_env['CPPPATH'] += [
+    '$OBJ_ROOT',  # Needed for generated files.
+    ]
+
+inputs = [
+    'app_registry_utils.cc',
+    'command_line.cc',
+    'command_line_builder.cc',
+    'config_manager.cc',
+    'event_logger.cc',
+    'experiment_labels.cc',
+    'extra_args_parser.cc',
+    'goopdate_command_line_validator.cc',
+    'goopdate_utils.cc',
+    'lang.cc',
+    'oem_install_utils.cc',
+    'ping.cc',
+    'ping_event.cc',
+    'scheduled_task_utils.cc',
+    'stats_uploader.cc',
+    'update3_utils.cc',
+    'update_request.cc',
+    'update_response.cc',
+    'webplugin_utils.cc',
+    'web_services_client.cc',
+    'xml_const.cc',
+    'xml_parser.cc',
+    '$LIB_DIR/logging.lib',       # Required by statsreport below
+    '$LIB_DIR/omaha3_idl.lib',    # Required by common
+    '$LIB_DIR/statsreport.lib',   # Required by common
+    ]
 
 # Build these into a library.
-local_env.ComponentLibrary('common', inputs)
+local_env.ComponentStaticLibrary('common', inputs)
+
+customization_test_env = env.Clone()
+customization_test_env.OmahaUnittest(
+    name='omaha_customization_unittest',
+    source=[
+        'omaha_customization_unittest.cc',
+    ],
+    LIBS=[
+        '$LIB_DIR/common',
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+)

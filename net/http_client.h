@@ -66,7 +66,7 @@
 #define WINHTTP_ACCESS_TYPE_AUTO_DETECT 2
 
 #include "base/basictypes.h"
-#include "omaha/common/object_factory.h"
+#include "omaha/base/object_factory.h"
 
 namespace omaha {
 
@@ -195,6 +195,7 @@ class HttpClient {
                        uint32 access_type,
                        const TCHAR* proxy_name,
                        const TCHAR* proxy_bypass,
+                       DWORD flags,
                        HINTERNET* session_handle) = 0;
 
   // Specifies the http request.
@@ -250,7 +251,8 @@ class HttpClient {
                               DWORD headers_length,
                               const void* optional_data,
                               DWORD optional_data_length,
-                              DWORD content_length) = 0;
+                              DWORD content_length,
+                              DWORD_PTR context) = 0;
 
   // Sets the authentication credentials.
   virtual HRESULT SetCredentials(HINTERNET request_handle,
@@ -336,6 +338,10 @@ class HttpClient {
 // Creates an http client, depending on what is available on the platform.
 // WinHttp is preferred over WinInet.
 HttpClient* CreateHttpClient();
+
+const HttpClient::StatusCallback kInvalidStatusCallback =
+    reinterpret_cast<HttpClient::StatusCallback>(
+        WINHTTP_INVALID_STATUS_CALLBACK);
 
 }  // namespace omaha
 

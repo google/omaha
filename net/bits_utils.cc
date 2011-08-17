@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <cstring>
-#include "omaha/common/debug.h"
-#include "omaha/common/error.h"
-#include "omaha/common/logging.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/scoped_ptr_cotask.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/error.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/scoped_ptr_cotask.h"
 
 namespace omaha {
 
@@ -126,6 +126,39 @@ HRESULT CancelBitsJob(IBackgroundCopyJob* job) {
       HRESULT hr = job->Cancel();
       if (FAILED(hr)) {
         NET_LOG(LW, (_T("[CancelBitsJob failed][0x%08x]"), hr));
+      }
+      return hr;
+    }
+  }
+  return S_OK;
+}
+
+HRESULT PauseBitsJob(IBackgroundCopyJob* job) {
+  if (job) {
+    BG_JOB_STATE job_state = BG_JOB_STATE_ERROR;
+    HRESULT hr = job->GetState(&job_state);
+    if (SUCCEEDED(hr) &&
+        job_state != BG_JOB_STATE_TRANSFERRED &&
+        job_state != BG_JOB_STATE_ACKNOWLEDGED &&
+        job_state != BG_JOB_STATE_CANCELLED) {
+      HRESULT hr = job->Suspend();
+      if (FAILED(hr)) {
+        NET_LOG(LW, (_T("[PauseBitsJob failed][0x%08x]"), hr));
+      }
+      return hr;
+    }
+  }
+  return S_OK;
+}
+
+HRESULT ResumeBitsJob(IBackgroundCopyJob* job) {
+  if (job) {
+    BG_JOB_STATE job_state = BG_JOB_STATE_ERROR;
+    HRESULT hr = job->GetState(&job_state);
+    if (SUCCEEDED(hr) && job_state == BG_JOB_STATE_SUSPENDED) {
+      HRESULT hr = job->Suspend();
+      if (FAILED(hr)) {
+        NET_LOG(LW, (_T("[ResumeBitsJob failed][0x%08x]"), hr));
       }
       return hr;
     }

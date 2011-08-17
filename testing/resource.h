@@ -13,18 +13,17 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_TESTING_RESOURCE_H__
-#define OMAHA_TESTING_RESOURCE_H__
+#ifndef OMAHA_TESTING_RESOURCE_H_
+#define OMAHA_TESTING_RESOURCE_H_
 
-#define IDS_EXPECTED_UPDATE_REQUEST1                8102
-#define IDS_EXPECTED_UPDATE_REQUEST_TTTOKEN         8103
-#define IDS_EXPECTED_UPDATE_REQUEST_UPDATE_DISABLED 8104
-#define IDS_EXPECTED_UPDATE_REQUEST2                8105
-#define IDS_EXPECTED_UPDATE_REQUEST3                8106
-#define IDS_EXPECTED_UPDATE_REQUEST4                8107
-#define IDS_EXPECTED_UPDATE_REQUEST5                8108
 #define IDS_ESCAPE_TEST                             8120
 #define IDS_ESCAPE_TEST1                            8121
+#define IDS_BUNDLE_INSTALLED_SUCCESSFULLY           8130
+#define IDS_INSTALLER_FAILED_WITH_MESSAGE           8131
 
-#endif  // OMAHA_TESTING_RESOURCE_H__
+#define IDR_OMAHA3_TLB                              1
 
+// Needed for SetupServiceTest.
+#include "omaha/goopdate/non_localized_resource.h"
+
+#endif  // OMAHA_TESTING_RESOURCE_H_

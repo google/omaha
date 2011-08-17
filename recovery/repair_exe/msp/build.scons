@@ -24,9 +24,10 @@ import stat
 
 Import('env')
 
+_repair_exe_obj_dir = '$OBJ_ROOT/recovery/repair_exe/'
 
 _custom_actions_path = (
-    '$OBJ_ROOT/recovery/repair_exe/custom_action/executecustomaction.dll')
+    _repair_exe_obj_dir + 'custom_action/executecustomaction.dll')
 _cert_file = env.File(GetOption('patching_certificate')).abspath
 _required_file = '$MAIN_DIR/recovery/repair_exe/msp/requiredfile.txt'
 
@@ -75,13 +76,12 @@ new_unsigned_env.Append(
         ],
 )
 
-# Output to a subdirectory to avoid having
-# 2 intermediate wixobj files with the same name and path.
+# Output to a subdirectory to avoid build breaks caused by two different actions
+# referencing files with the same name and path.
 new_unsigned_env['WIXOBJPREFIX'] = new_unsigned_env['WIXOBJPREFIX'] + 'new/'
-new_unsigned_env['WIXMSIPREFIX'] = new_unsigned_env['WIXMSIPREFIX'] + 'new/'
 
 new_unsigned_output = new_unsigned_env.WiX(
-    target='GoogleUpdateHelper_unsigned.msi',
+    target='new/GoogleUpdateHelper_unsigned.msi',
     source='patchableinstaller.wxs'
 )
 
@@ -132,7 +132,7 @@ if os.path.exists(_temp_dir):
   rm_rf(_temp_dir)
 
 unsigned_msp_name = 'GoogleUpdateHelperPatch_unsigned.msp'
-unsigned_msp_path = '$OBJ_ROOT/recovery/repair_exe/msp/' + unsigned_msp_name
+unsigned_msp_path = _repair_exe_obj_dir + 'msp/' + unsigned_msp_name
 
 msp_output = msp_env.Command(
     target=unsigned_msp_name,

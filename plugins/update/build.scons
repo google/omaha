@@ -1,0 +1,286 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+
+Import('env')
+
+# Need to do all these modifications to the non-default env because calling
+# EnablePrecompile on the main environment, which customization_test_env clones.
+# causes the opt build to fail.
+# TODO(omaha): How much of this needs to be used by all libraries that get built
+# and how much can be moved to BuildNpGoogleUpdateDll?
+update_env = env.Clone()
+update_env.Append(
+    CPPDEFINES = [
+        # TODO(omaha): ActiveX plugins are usually apartment-threaded. There's
+        # no problem with compiling at a higher threading level than required,
+        # but there is a slight performance penalty for AddRef()/Release(). At
+        # some point, it may be desirable to switch back to apartment threaded,
+        # once the unit tests are fixed.
+        # We also take a 1KiB penalty for using _ATL_FREE_THREADED =)
+        '_ATL_FREE_THREADED',
+    ],
+    CPPFLAGS = [
+        # TODO(omaha): use PCH so we get /Wall. Need to figure out why half of
+        # the old plugin builds with PCH, and the other half of it builds
+        # without...
+        '/Wall',
+        # omaha/third_party/base/basictypes.h
+        '/wd4310',  # cast truncates constant value
+        # ATL
+        '/wd4263',  # member function does not override any base class virtual
+                    # member function
+        '/wd4264',  # no override available for virtual member function;
+                    # function is hidden
+        '/wd4265',  # class has virtual functions, but destructor is not virtual
+        # vector
+        '/wd4548',  # expression before comma has no effect; expected expression
+                    # with side-effect
+    ],
+    CPPPATH = [
+        '$OBJ_ROOT',  # Needed for generated files.
+    ],
+    LIBS = [
+        '$LIB_DIR/base.lib',
+        '$LIB_DIR/breakpad.lib',
+        '$LIB_DIR/client.lib',
+        '$LIB_DIR/core.lib',
+        '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/goopdate_lib.lib',
+        '$LIB_DIR/logging.lib',
+        '$LIB_DIR/net.lib',
+        '$LIB_DIR/omaha3_idl.lib',
+        '$LIB_DIR/security.lib',
+        '$LIB_DIR/service.lib',
+        '$LIB_DIR/setup.lib',
+        '$LIB_DIR/statsreport.lib',
+        '$LIB_DIR/ui.lib',
+        ('atls.lib', 'atlsd.lib')[env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
+        'bits.lib',
+        'comctl32.lib',
+        'crypt32.lib',
+        'iphlpapi.lib',
+        'msi.lib',
+        'msimg32.lib',
+        'mstask.lib',
+        'psapi.lib',
+        'netapi32.lib',
+        'rasapi32.lib',
+        'shlwapi.lib',
+        'taskschd.lib',
+        'userenv.lib',
+        'version.lib',
+        'wintrust.lib',
+        'wtsapi32.lib',
+    ],
+    LINKFLAGS = [
+        '/DYNAMICBASE',   # Enable ASLR.
+        '/NXCOMPAT',      # Enable NX support.
+    ],
+)
+
+
+# COM stuff.
+midl_env = env.Clone()
+midl_env.Tool('midl')
+# Generate optimized, stubless proxy/stub code.
+midl_env['MIDLFLAGS'] += [ '/Oicf', ]
+
+# For some reason, calling TypeLibrary() twice on the same environment causes a
+# re-link of the test executable when alternating between "hammer" and
+# "hammer run_all_tests".
+# To work around this, clone the original environment and call TypeLibrary once
+# on each. Note that:
+#  1) Cloning midl_env BEFORE TypeLibrary() is called does not solve this
+#     problem. The environment must be cloned from the original env.
+#  2) Moving the following code down near npapi_testing_midl_env.TypeLibrary
+#     does not solve the problem either.
+#  3) This problem does not occur if 'update_npapi_testing.lib' is passed as
+#     a source to other builders instead of as a LIB.
+npapi_testing_midl_env = env.Clone()
+npapi_testing_midl_env.Tool('midl')
+# Generate optimized, stubless proxy/stub code.
+npapi_testing_midl_env['MIDLFLAGS'] += [ '/Oicf', ]
+
+midl_env.TypeLibrary('activex/update_control_idl.idl')
+
+# Generate the GUIDs with no precompile option set, otherwise we get an error.
+update_control_idl_guids_lib = env.ComponentStaticLibrary(
+    lib_name='update_control_idl_guids_lib',
+    source='$OBJ_ROOT/plugins/update/activex/update_control_idl_i.c',
+    use_pch_default=False,
+)
+
+# Built as library to enable unit testing.
+inputs = [
+    'activex/update3web_control.cc',
+    'activex/oneclick_control.cc',
+    'npapi/dispatch_host.cc',
+    'npapi/npfunction_host.cc',
+    'npapi/urlpropbag.cc',
+    'npapi/np_update.cc',
+    'npapi/variant_utils.cc',
+    'config.cc',
+    'site_lock.cc',
+    ]
+update_lib = update_env.ComponentStaticLibrary(
+    lib_name='update',
+    source=inputs,
+)
+
+
+def BuildNpGoogleUpdateDll(omaha_version_info):
+  version_string = omaha_version_info.GetVersionString()
+  prefix = omaha_version_info.filename_prefix
+
+  plugin_env = update_env.Clone(COMPONENT_STATIC = False)
+
+  if prefix == 'TEST_':
+    plugin_env['OBJPREFIX'] = plugin_env.subst('test/$OBJPREFIX')
+  elif prefix:
+    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+
+  plugin_env.Append(
+      LIBS = [
+          '$LIB_DIR/common.lib',
+          '$LIB_DIR/plugin_base.lib',
+          'wininet.lib',
+          update_control_idl_guids_lib,
+          update_lib,
+      ],
+      RCFLAGS = [
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % version_string,
+      ],
+  )
+
+
+  resource = plugin_env.RES(target='%sresource.res' % prefix,
+                            source='resource.rc')
+  plugin_env.Depends(
+      resource,
+      ['$MAIN_DIR/VERSION',
+       '$OBJ_ROOT/plugins/update/activex/update_control_idl.tlb',
+       'oneclick.rgs'])
+
+  target_name = '%s%s' % (
+      prefix,
+      omaha_version_info.plugin_signed_file_info.unsigned_filename_base)
+
+  inputs = [
+      'module.def',
+      'module.cc',
+      resource,
+      ]
+
+  unsigned_dll = plugin_env.ComponentDll(
+      lib_name=target_name,
+      source=inputs,
+  )
+
+  signed_dll = plugin_env.SignedBinary(
+      target='%s%s' % (prefix,
+                       omaha_version_info.plugin_signed_file_info.filename),
+      source=unsigned_dll,
+  )
+
+  env.Replicate('$STAGING_DIR', signed_dll)
+  env.Replicate('$STAGING_DIR', [f for f in unsigned_dll if f.suffix == '.pdb'])
+
+
+for omaha_version_info in env['omaha_versions_info']:
+  BuildNpGoogleUpdateDll(omaha_version_info)
+
+
+#
+# Tests
+#
+
+# NPAPI unit test helper library
+npapi_testing_midl_env.TypeLibrary('npapi/testing/dispatch_host_test_idl.idl')
+inputs = [
+    'npapi/testing/dispatch_host_test_interface.cc',
+    'npapi/testing/stubs.cc',
+    ]
+update_test_helpers_lib = update_env.ComponentStaticLibrary(
+    lib_name='update_test_helpers',
+    source=inputs,
+)
+
+npapi_test_lib_resources = update_env.RES(
+    target='npapi/testing/dispatch_host_test.res',
+    source='npapi/testing/dispatch_host_test.rc'),
+# TODO(omaha): we should really just make a proper .rc file scanner.
+update_env.Depends(
+    npapi_test_lib_resources,
+    '$OBJ_ROOT/plugins/update/npapi/testing/dispatch_host_test_idl.tlb')
+
+# TODO(omaha): Fix OmahaUnittest() so that MODE=all does not break.
+update_env.OmahaUnittest(
+    name='update_plugin_unittest',
+    source=[
+        'activex/update3web_control_unittest.cc',
+        'npapi/dispatch_host_unittest.cc',
+        'npapi/npfunction_host_unittest.cc',
+        'npapi/variant_utils_unittest.cc',
+        'site_lock_unittest.cc',
+        npapi_test_lib_resources,
+    ],
+    LIBS=[
+        '$LIB_DIR/common.lib',
+        'wininet',
+        update_control_idl_guids_lib,
+        update_lib,
+        update_test_helpers_lib,
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+)
+
+
+customization_test_env = env.Clone()
+customization_test_env.Append(
+    LIBS = [
+        '$LIB_DIR/common.lib',
+    ]
+)
+customization_test_env['CPPPATH'] += [
+    '$OBJ_ROOT',  # Needed for generated files.
+    ]
+customization_test = customization_test_env.OmahaUnittest(
+    name='omaha_customization_update_apis_unittest',
+    source=[
+        'omaha_customization_update_apis_unittest.cc',
+        'omaha_customization_update_unittest.cc',
+    ],
+    LIBS=[
+        update_control_idl_guids_lib,  # Needed for LIBID_*.
+        update_lib,
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+)
+
+# The test uses the DLL for its TypeLib.
+customization_test_env.Depends(
+    customization_test,
+    '$STAGING_DIR/%s' % env['omaha_versions_info'][0].update_plugin_filename)

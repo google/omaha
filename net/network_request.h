@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "omaha/common/string.h"
+#include "omaha/base/string.h"
+#include "omaha/base/time.h"
 #include "omaha/net/network_config.h"
 
 namespace omaha {
@@ -45,17 +46,23 @@ class NetworkRequestCallback {
  public:
   virtual ~NetworkRequestCallback() {}
 
+  // Notifies download begins. This gives the callee a chance to initialize its
+  // download state, such as resetting the download progress.
+  virtual void OnRequestBegin() = 0;
+
   // Indicates the progress of the NetworkRequest.
   //
   // bytes - Current number of bytes transferred, relative to the expected
   //         maximum indicated by the bytes_total.
-  // bytes_max - The expected number of total bytes to transfer This is usually
-  //             the content length value or 0 if the content length is not
-  //             available.
+  // bytes_total - The expected total number of bytes to transfer. This is
+  //               usually the content length value or 0 if the content length
+  //               is not available.
   // status - WinHttp status codes regarding the progress of the request.
   // status_text - Additional information, when available.
   virtual void OnProgress(int bytes, int bytes_total,
                           int status, const TCHAR* status_text) = 0;
+
+  virtual void OnRequestRetryScheduled(time64 next_retry_time) = 0;
 };
 
 class  HttpRequestInterface;
@@ -122,8 +129,14 @@ class NetworkRequest {
   // Downloads a url to a file.
   HRESULT DownloadFile(const CString& url, const CString& filename);
 
-  // Temporarily stops the network request.
+  // Enables a separate thread to temporarily stops the network downloading.
+  // The downloading thread will be blocked inside NetworkRequest::Post/Get
+  // infinitely by an event until Resume/Cancel/Close is called.
   HRESULT Pause();
+
+  // Enables a separate thread to resume current network request if it is in
+  // pause state.
+  HRESULT Resume();
 
   // Adds a request header. The header with the same name is only added once.
   // The method is only good enough for what Omaha needs and it is not good
@@ -145,6 +158,8 @@ class NetworkRequest {
   // Returns a trace of the request for logging purposes.
   CString trace() const;
 
+  void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config);
+
   // Sets the number of retries for the request. The retry mechanism uses
   // exponential backoff to decrease the rate of the retries.
   void set_num_retries(int num_retries);
@@ -163,7 +178,9 @@ class NetworkRequest {
   // Overrides detecting the network configuration and uses the configuration
   // specified. If parameter is NULL, it defaults to detecting the configuration
   // automatically.
-  void set_network_configuration(const Config* network_configuration);
+  void set_proxy_configuration(const ProxyConfig* proxy_configuration);
+
+  void set_preserve_protocol(bool preserve_protocol);
 
  private:
   // Uses pimpl idiom to minimize dependencies on implementation details.
@@ -179,12 +196,12 @@ HRESULT PostRequest(NetworkRequest* network_request,
                     bool fallback_to_https,
                     const CString& url,
                     const CString& request_string,
-                    CString* response);
+                    std::vector<uint8>* response);
 
 // Gets a request.
 HRESULT GetRequest(NetworkRequest* network_request,
                    const CString& url,
-                   CString* response);
+                   std::vector<uint8>* response);
 
 }   // namespace omaha
 

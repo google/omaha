@@ -21,36 +21,44 @@ Import('env')
 #
 # Build google_update_recovery library for Google app consumption.
 #
-rec_env = env.Clone()
+rec_env = env.Clone(COMPONENT_LIBRARY_PUBLISH=True)
 recovery_inputs = [
-    '../common/google_update_recovery.cc',
-    '../common/signaturevalidator.cc',
+    'client/google_update_recovery.cc',
+    '../base/signaturevalidator.cc',
     ]
 
 # Need to add custom suffix to avoid target conflict with
 # common/signaturevalidator.obj
 rec_env['OBJSUFFIX'] = '_rec' + rec_env['OBJSUFFIX']
 
-rec_env.ComponentLibrary('google_update_recovery.lib', recovery_inputs)
+rec_env.ComponentLibrary('google_update_recovery', recovery_inputs)
 
-# Save the lib to the main build directory, so we have it saved with each
-# official build.
-env.Replicate('$STAGING_DIR', ['$LIB_DIR/google_update_recovery.lib',
-                               '$MAIN_DIR/common/google_update_recovery.h'])
+# Save the header to the main build directory, so we have it saved with each
+# official build. The lib is already published to this directory.
+rec_env.Replicate('$STAGING_DIR',
+                  '$MAIN_DIR/recovery/client/google_update_recovery.h')
 
 
 #
 # Build the test
 #
-test_env = env.Clone()
+# TODO(omaha3): Switch entirely to hammer running tests. For now, we must make
+# the test not runnable because it will be run during the build. See main.scons.
+import os
+if 'HAMMER_RUNS_TESTS' in os.environ.keys():
+  test_env = env.Clone()
+else:
+  test_env = env.Clone(COMPONENT_TEST_RUNNABLE=False)
+
+# This is a console application.
 test_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+test_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+
 test_env.Append(
-    LINKFLAGS = [
-        '/SUBSYSTEM:CONSOLE'
-        ],
     LIBS = [
-        '$LIB_DIR/common.lib',
+        '$LIB_DIR/base.lib',
         '$LIB_DIR/net.lib',
+        '$LIB_DIR/common.lib',
         '$LIB_DIR/google_update_recovery.lib',
         '$LIB_DIR/security.lib',
         ('atls.lib', 'atlsd.lib')[test_env.Bit('debug')],
@@ -59,7 +67,7 @@ test_env.Append(
         'crypt32.lib',
         'wintrust.lib',
 
-        # These are required by common_lib
+        # These are required by base.lib
         'netapi32.lib',
         'psapi.lib',
         'rasapi32.lib',
@@ -81,10 +89,11 @@ test_inputs = [
 if env.Bit('use_precompiled_headers'):
   test_inputs += test_env.EnablePrecompile(target_name)
 
+# TODO(omaha): This test asserts when run so we cannot include it in
+# run_all_tests. Fix it and consider adding to run_all_tests.
 test_env.ComponentTestProgram(target_name,
                               test_inputs,
-                              COMPONENT_TEST_RUNNABLE=False
-)
+                              COMPONENT_TEST_DISABLED=True)
 
 
 env.BuildSConscript('repair_exe')

@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2008-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,22 +27,6 @@
 
 namespace omaha {
 
-// The cup credentials are persisted across sessions. The sk is encrypted
-// while on the disk so only a user with the same login credentials as
-// the encryptor can decrypt it. The credentials are protected
-// using the system default security, so users can't modify each other's
-// credentials. In case of elevated administrators, the credentials are
-// protected from the non-elevated administrators, so the latter can't
-// read the keys and attack the elevated administrator.
-//
-// Cup credentials can be negotiated using either production keys or
-// test keys. There is a registry value override to specify that test keys
-// be used. For the change to be effective, the old credentials must be cleared.
-struct CupCredentials {
-  std::vector<uint8> sk;             // shared key (sk)
-  CStringA c;                        // client cookie (c)
-};
-
 namespace detail {
 
 // The implementation uses the pimpl idiom or bridge design pattern to
@@ -65,6 +49,10 @@ class CupRequest : public HttpRequestInterface {
 
   virtual HRESULT Cancel();
 
+  virtual HRESULT Pause();
+
+  virtual HRESULT Resume();
+
   virtual std::vector<uint8> GetResponse() const;
 
   virtual HRESULT QueryHeadersString(uint32 info_level,
@@ -82,7 +70,7 @@ class CupRequest : public HttpRequestInterface {
 
   virtual void set_request_buffer(const void* buffer, size_t buffer_length);
 
-  virtual void set_network_configuration(const Config& network_config);
+  virtual void set_proxy_configuration(const ProxyConfig& proxy_config);
 
   // Sets the filename to receive the response instead of the memory buffer.
   virtual void set_filename(const CString& filename);
@@ -93,9 +81,13 @@ class CupRequest : public HttpRequestInterface {
 
   virtual void set_additional_headers(const CString& additional_headers);
 
+  virtual void set_preserve_protocol(bool preserve_protocol);
+
   virtual CString user_agent() const;
 
   virtual void set_user_agent(const CString& user_agent);
+
+  virtual void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config);
 
   // Sets random bytes provided by the caller. This is useful for testing
   // purposes and it is not be called by production code.

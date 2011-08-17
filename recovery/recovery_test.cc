@@ -1,4 +1,4 @@
-// Copyright 2007-2009 Google Inc.
+// Copyright 2007-2010 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,19 +16,20 @@
 // Test app for the Google Update recovery mechanism.
 #include <windows.h>
 #include <atlstr.h>
-#include "omaha/common/const_addresses.h"
-#include "omaha/common/constants.h"
-#include "omaha/common/debug.h"
-#include "omaha/common/google_update_recovery.h"
-#include "omaha/common/logging.h"
+#include "omaha/base/const_addresses.h"
+#include "omaha/base/constants.h"
+#include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
 #include "omaha/net/network_config.h"
 #include "omaha/net/network_request.h"
+#include "omaha/recovery/client/google_update_recovery.h"
 
-using omaha::GoogleProxyDetector;
+using omaha::UpdateDevProxyDetector;
 using omaha::FirefoxProxyDetector;
 using omaha::IEProxyDetector;
 using omaha::NetworkRequest;
 using omaha::NetworkConfig;
+using omaha::NetworkConfigManager;
 
 namespace {
 
@@ -52,15 +53,23 @@ HRESULT DownloadFile(const TCHAR* url, const TCHAR* file_path, void*) {
 #endif
 
   // Initialize the network for user with no impersonation required.
-  NetworkConfig& network_config = NetworkConfig::Instance();
-  network_config.Initialize(false, NULL);
-  network_config.Add(new GoogleProxyDetector(MACHINE_REG_UPDATE_DEV));
-  network_config.Add(new FirefoxProxyDetector());
-  network_config.Add(new IEProxyDetector());
+  NetworkConfigManager::set_is_machine(false);
+  NetworkConfig* network_config = NULL;
+  HRESULT hr = S_OK;
+  hr = NetworkConfigManager::Instance().GetUserNetworkConfig(&network_config);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[GetUserNetworkConfig failed][0x%08x]"), hr));
+    return hr;
+  }
+  network_config->Clear();
+  network_config->Add(new UpdateDevProxyDetector);
+  network_config->Add(new FirefoxProxyDetector);
+  network_config->Add(new IEProxyDetector);
 
-  NetworkRequest network_request(network_config.session());
-  HRESULT hr = network_request.DownloadFile(test_url, CString(file_path));
+  NetworkRequest network_request(network_config->session());
+  hr = network_request.DownloadFile(test_url, CString(file_path));
 
+  hr = network_request.DownloadFile(test_url, CString(file_path));
   if (FAILED(hr)) {
     UTIL_LOG(LE, (_T("[DownloadFile failed][%s][0x%08x]"), test_url, hr));
     return hr;

@@ -51,6 +51,7 @@
 
 import copy
 import os
+import sys
 
 import omaha_version_utils
 
@@ -60,53 +61,83 @@ import omaha_version_utils
 # VC2008/VC90 is 1500.
 _msc_ver = 1400
 
-# TODO(Omaha) - Change this to match the official product name
-_PUBLISHER_NAME = 'Google'
+_sdk_path = os.environ['OMAHA_VISTASDK_DIR']
+
+_signtool_path = os.path.join(_sdk_path, 'bin/signtool.exe')
+
+# Build the "Google Update", the Google-specific version of Omaha.
+# TODO(omaha): Set based on an environment variable and/or Hammer arg.
+is_google_update_build = False
+
+#
+# Begin vendor-specific constants.
+#
+# These values must be changed when customizing open source Omaha.
+# You may also wish to replace the language-neutral constants in the individual
+# *generated_resources_*.rc files with localized strings.
+_FULL_COMPANY_NAME = 'OmahaCompanyName Inc.'
+_SHORT_COMPANY_NAME = 'OmahaCompanyName'
 _PRODUCT_NAME = 'Update'
+_COMPANY_DOMAIN_BASE = 'google'
+_COMPANY_DOMAIN = _COMPANY_DOMAIN_BASE + '.com'
+_MAIN_EXE_BASE_NAME = 'GoogleUpdate'
+# TODO(omaha): Use this throughout the build files where goopdate and
+# goopdateres are referenced.
+_MAIN_DLL_BASE_NAME = 'goopdate'
+# "Google Inc." must not be removed from the copyright string. This literal also
+# appears as LegalCopyright in the VERSIONINFO section of .rc files.
+# TODO(omaha): Use this variable in .wxs files, etc.
+_OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2007-2010 Google Inc.'
+
+
+# TODO(omaha): Allow open source Omaha to be built without the Recovery MSI,
+# which requires an extra certificate file and is unlikely to be used, or
+# ClickOnce, which requires specifying a certificate hash. Disabling Recovery
+# by default also means the open source build will work by default without
+# having to check in SaveArguments.exe to SVN every 100 days.
+# TODO(omaha3): Allow open source Omaha to be built without support for
+# Omaha 2's COM APIs.
 
 # The hash comes from the Thumbprint item in the Details tab of the file
 # properties for the public key .cer file.
 # TODO(omaha): Can we automate reading this and/or pass it on the command line?
-_BUILD_SERVER_CERTIFICATE_HASH = 'fe5008fe0da7a2033816752d6eafe95214f5a7e1'
+_BUILD_SERVER_CERTIFICATE_HASH = 'cafd39335d6e76f0e26d81296e7cbbfbdf16a720'
 
-# COM proxy setting.
-# The proxy clsid needs to be changed anytime the interfaces in
-# google_update_idl.idl change, or when a new interface is added. Use
-# guidgen.exe to generate new clsids in the format 'static const struct GUID'.
-# PROXY_CLSID_IS = {29A96789-9595-4947-BEDB-0FCC776F7DB8}
-_PROXY_CLSID_IS = ('{0x29a96789, 0x9595, 0x4947, '
-    '{0xbe, 0xdb, 0xf, 0xcc, 0x77, 0x6f, 0x7d, 0xb8}}')
+#
+# End vendor-specific constants.
+#
 
 
 # Windows is the only environment we bulid for, so create a specialized base
 # environment for Windows.
-win_env = Environment()
-
-# Make sure we use the Vista SDK.
-# NOTE: This must be set before the 'component_setup' tool is used.
-win_env['PLATFORM_SDK_DIR'] = '$PLATFORM_SDK_VISTA_6_0_DIR'
-
-win_env.Tool('component_setup')
-win_env.Tool('target_platform_windows')
-
-# Need to use 'masm' to override the 'as' tool currently used
-# by default in 'target_platform_windows'
-win_env.Tool('masm')
-
-win_env.Tool('atlmfc_vc80')
-
-# Visual Studio 2008 does not ship the sign tool. Use the sign tool from
-# the Platform SDK.
-win_env.Tool('code_signing')
-_signtool_path = os.path.join(os.environ['OMAHA_VISTASDK_DIR'],
-                             'bin\\signtool.exe')
-win_env['SIGNTOOL'] = '"' + _signtool_path + '"'
+win_env = Environment(
+    # For internal builds only, it is a good idea to have set before the
+    # 'component_setup' tool is used even though we add the SDK directories to
+    # the appropriate environment variables manually below.
+    PLATFORM_SDK_DIR = _sdk_path,
+    tools=[
+        'component_setup',
+        'target_platform_windows',
+        # Need to use 'masm' to override the 'as' tool currently used
+        # by default in 'target_platform_windows'
+        'masm',
+        'atlmfc_vc80',
+        'code_signing',
+        'component_targets_msvs',
+        'omaha_builders',
+    ],
+    msc_ver = _msc_ver,
+    build_server_certificate_hash = _BUILD_SERVER_CERTIFICATE_HASH,
+    # Visual Studio 2008 does not ship the sign tool. Use the sign tool from
+    # the Platform SDK. This must come after the 'code_signing' tool is used.
+    # Remove this if http://code.google.com/p/swtoolkit/issues/detail?id=16 is
+    # fixed.
+    SIGNTOOL = '"' + _signtool_path + '"',
+)
 
 # Remove this value because it conflicts with a #define
 # in shlwapi.h in the Vista SDK
 win_env.FilterOut(CPPDEFINES = ['OS_WINDOWS=OS_WINDOWS'])
-
-win_env.Tool('component_targets_msvs')
 
 # We pre-generate our own manifests, so make sure hammer does not generate
 # default ones for us
@@ -121,10 +152,6 @@ if win_env['ENV'].has_key('SYSTEMROOT'):
 
 # Work around http://code.google.com/p/swtoolkit/issues/detail?id=10.
 win_env['COMPONENT_TEST_SUBSYSTEM_WINDOWS'] = 1
-
-win_env['msc_ver'] = _msc_ver;
-
-win_env['build_server_certificate_hash'] = _BUILD_SERVER_CERTIFICATE_HASH
 
 # Declare command line options relating to code signing
 # authenticode_file and authenticode_password are used by the normal signing
@@ -166,6 +193,33 @@ AddOption(
     default=None
 )
 
+# Declare option for specifying the set of official app installers to build.
+# The value describes the name of the directory containing the official
+# installer manifests and definitions.
+AddOption(
+    '--official_installer_app',
+    action='store',
+    nargs=1,
+    type='string',
+    default=None
+)
+
+AddOption(
+    '--official_installer_file',
+    action='store',
+    nargs=1,
+    type='string',
+    default=None
+)
+
+AddOption(
+    '--build_number',
+    action='store',
+    nargs=1,
+    type='string',
+    default=''
+)
+
 # Declare various boolean states.
 DeclareBit('use_precompiled_headers', 'Use precompiled headers in build')
 DeclareBit('official_installers', 'Building using checked-in binaries')
@@ -176,6 +230,7 @@ DeclareBit('bin', 'Building from pre-built binaries')
 DeclareBit('min', 'Building minimal set of projects')
 DeclareBit('all', 'Building all Projects')
 DeclareBit('msvs', 'Building Visual Studio solution files')
+DeclareBit('no-tests', 'Do not build the unit tests')
 
 # Build official installers if --official_installers is on the command line.
 win_env.SetBitFromOption('official_installers', False)
@@ -197,6 +252,9 @@ win_env.SetBitFromOption('all', False)
 
 # Build Visual Studio solution files if --msvs is on the command line.
 win_env.SetBitFromOption('msvs', False)
+
+# Do not build the unit tests if the bit is set.
+win_env.SetBitFromOption('no-tests', False)
 
 # Build all directories and two versions if this is the build server.
 if win_env.Bit('build_server'):
@@ -243,8 +301,6 @@ win_env.SetBitFromOption('use_precompiled_headers', True)
 if win_env.Bit('use_precompiled_headers'):
   print 'Using precompiled headers.'
 
-win_env.Tool('omaha_builders')
-
 
 #
 # Set up version info.
@@ -261,8 +317,20 @@ if win_env.Bit('build_two_versions'):
 print 'Building versions: %s' % ', '.join(
     [version_info.GetVersionString() for version_info in omaha_versions_info])
 
+build_number = GetOption('build_number')
+if build_number:
+  print 'Build number: %s' % build_number
+
 win_env['omaha_versions_info'] = omaha_versions_info
 
+if is_google_update_build:
+    win_env.Append(
+        CPPDEFINES = ['GOOGLE_UPDATE_BUILD'],
+        RCFLAGS = ['/DGOOGLE_UPDATE_BUILD=1'],
+    )
+
+# Make sure python.exe can be located.
+win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])
 
 win_env.Append(
     # Add windows specific compiler flags.
@@ -315,6 +383,7 @@ win_env.Append(
         '$MAIN_DIR',
         '$MAIN_DIR/..',
         '$MAIN_DIR/third_party/chrome',
+        '$MAIN_DIR/third_party/gtest/include',
         ],
 
     # Defines for windows environment.
@@ -334,6 +403,7 @@ win_env.Append(
         '_ATL_NO_PERF_SUPPORT',
         '_ATL_NO_TRACK_HEAP',
         '_ATL_NO_UUIDOF',
+        '_ATL_STATIC_REGISTRY',
         '_CRT_RAND_S',      # rand_s support available in Windows XP only.
         '_WTL_NO_CSTRING',  # WTL uses ATL CString instead.
 
@@ -352,23 +422,35 @@ win_env.Append(
         # don't define min and max in windef.h
         'NOMINMAX',
 
-        # Logging is enabled in all modes for
-        # diagnostics purposes.
+        # Logging is enabled in all modes for diagnostics purposes.
         'LOGGING',
-        'PUBLISHER_NAME_ANSI=\\"%s\\"' % _PUBLISHER_NAME,
+
+        'FULL_COMPANY_NAME_ANSI=\\"%s\\"' % _FULL_COMPANY_NAME,
+        'SHORT_COMPANY_NAME_ANSI=\\"%s\\"' % _SHORT_COMPANY_NAME,
         'PRODUCT_NAME_ANSI=\\"%s\\"' % _PRODUCT_NAME,
-        # TODO(omaha): Rename to ONECLICK_ACTIVEX_NAME in source files.
-        'ACTIVEX_NAME=_T(\\"%s\\")' % (
-            omaha_version_utils.GetONECLICK_ACTIVEX_NAME()),
-        'PROXY_CLSID_IS=%s' % _PROXY_CLSID_IS,
+        'COMPANY_DOMAIN_BASE_ANSI=\\"%s\\"' % _COMPANY_DOMAIN_BASE,
+        'COMPANY_DOMAIN_ANSI=\\"%s\\"' % _COMPANY_DOMAIN,
+        'OMAHA_APP_NAME_ANSI=\\"%s %s\\"' % (
+            _SHORT_COMPANY_NAME, _PRODUCT_NAME),
+        'MAIN_EXE_BASE_NAME_ANSI=\\"%s\\"' % _MAIN_EXE_BASE_NAME,
+        'MAIN_DLL_BASE_NAME_ANSI=\\"%s\\"' % _MAIN_DLL_BASE_NAME,
         'OFFICIAL_BUILD=%d' % win_env.Bit('build_server'),
         'TEST_CERTIFICATE=%d' % win_env.Bit('test_certificate'),
-        'ACTIVEX_FILENAME=_T(\\"%s\\")' % (
-            omaha_version_info.oneclick_plugin_filename),
-        'ACTIVEX_VERSION_ANSI=\\"%d\\"' % (
+        'ONECLICK_PLUGIN_NAME=_T(\\"%s\\")' % (
+            omaha_version_utils.GetONECLICK_PLUGIN_NAME()),
+        'ONECLICK_PLUGIN_VERSION_ANSI=\\"%d\\"' % (
             omaha_version_info.oneclick_plugin_version),
+        'ONECLICK_PLUGIN_FILENAME=_T(\\"%s\\")' % (
+            omaha_version_info.oneclick_plugin_filename),
+        'UPDATE_PLUGIN_NAME=_T(\\"%s\\")' % (
+            omaha_version_utils.GetUPDATE_PLUGIN_NAME()),
+        'UPDATE_PLUGIN_VERSION_ANSI=\\"%d\\"' % (
+            omaha_version_info.update_plugin_version),
+        'UPDATE_PLUGIN_FILENAME=_T(\\"%s\\")' % (
+            omaha_version_info.update_plugin_filename),
         'BHO_NAME=_T(\\"%s\\")' % omaha_version_utils.GetBHO_NAME(),
         'BHO_FILENAME=_T(\\"%s\\")' % omaha_version_info.bho_filename,
+        'CRASH_HANDLER_NAME=_T(\\"%s\\")' % omaha_version_utils.GetCRASH_HANDLER_NAME(),
         ],
 
     # Link in some windows libraries.
@@ -395,6 +477,9 @@ win_env.Append(
         '/RELEASE',
         '/MAP',
         '/NODEFAULTLIB',
+        '/DYNAMICBASE',   # Enable ASLR. See http://goo.gl/k2IE.
+        '/NXCOMPAT',      # Enable NX support. See http://goo.gl/k2IE.
+        '/SAFESEH',
         ],
 
     # Shared library specific linker flags.
@@ -405,19 +490,12 @@ win_env.Append(
         ],
 
     # Resource compiler flags.
+    # Defines in CCFLAGS are automatically included.
     RCFLAGS = [
         '/l 1033',  # /l == default language ID
-        '/DOFFICIAL_BUILD=%d' % win_env.Bit('build_server'),
-        '/DPUBLISHER_NAME_ANSI=\\"%s\\"' % _PUBLISHER_NAME,
-        '/DPRODUCT_NAME_ANSI=\\"%s\\"' % _PRODUCT_NAME,
-        '/DACTIVEX_NAME=_T(\\"%s\\")' % (
-            omaha_version_utils.GetONECLICK_ACTIVEX_NAME()),
-        '/DACTIVEX_FILENAME=_T(\\"%s\\")' % (
-            omaha_version_info.oneclick_plugin_filename),
-        '/DACTIVEX_VERSION_ANSI=\\"%d\\"' % (
-            omaha_version_info.oneclick_plugin_version),
-        '/DBHO_NAME=_T(\\"%s\\")' % omaha_version_utils.GetBHO_NAME(),
-        '/DBHO_FILENAME=_T(\\"%s\\")' % omaha_version_info.bho_filename,
+        '/DBUILD_NUMBER=\\"%s\\"' % build_number,
+        '/DOMAHA_COPYRIGHT_STRING_ENGLISH=\\"%s\\"' % (
+            _OMAHA_COPYRIGHT_STRING_ENGLISH),
         ],
 )
 
@@ -427,11 +505,11 @@ if win_env.Bit('build_server'):
   print 'TEST_CERTIFICATE=%d' % win_env.Bit('test_certificate')
 
 
-# Make sure python.exe can be located.
-win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])
+# Add the parent directory of the main omaha directory to the Python path so
+# that we can import using the format "omaha.subdir.module".
+sys.path.append(os.path.split(win_env.Dir('$MAIN_DIR').abspath)[0])
 
 # Make sure Vista SDK in all the important paths earlier in path than VC80.
-_sdk_path = os.environ['OMAHA_VISTASDK_DIR']
 for mid_dir in ['', 'vc']:
   for env_var, sub_dir in [('PATH', 'bin'),
                            ('INCLUDE', 'include'),
@@ -446,73 +524,97 @@ if not win_env.Bit('official_installers'):
   # Make sure csc.exe can be located.
   win_env.AppendENVPath('PATH', os.environ['OMAHA_NET_DIR'])
 
+  sys.path.append('tools')  # for import proxy_clsid_utils.py
+  import proxy_clsid_utils
+
+  # Generate uniqe proxy CLSIDs for each build.
+  win_env.Execute('python $MAIN_DIR\\tools\\proxy_clsid_utils.py')
+  win_env.Append(
+      CPPDEFINES = [
+        'PROXY_CLSID_IS_MACHINE=%s' % proxy_clsid_utils.GetMachineProxyClsid(),
+        'PROXY_CLSID_IS_USER=%s' % proxy_clsid_utils.GetUserProxyClsid(),
+      ],
+  )
+
 # WiX path has to be added before the WiX tool can be called.
 win_env.AppendENVPath('PATH', os.environ['OMAHA_WIX_DIR'])
 
 win_env.Tool('wix')
 
+
 _base_dirs = [
-    '.',      # ./build.scons is used to copy some files to staging.
+    '.',
+    'base',
+    'clickonce',
+    'client',
     'common',
     'core',
-    'goopdate',
     'google_update',
-    'mi_exe_stub',
+    'goopdate',
     'net',
-    'recovery',
     'service',
     'setup',
     'statsreport',
-    'testing',
     'third_party',
     'tools',
-    'worker',
+    'ui',
     ]
 
 _normal_dirs = [
-    'bho',
-    'clickonce',
     'installers',
+    'mi_exe_stub',
     'plugins',
+    'recovery',
     ]
 
 _official_installers_dirs = [
-    'enterprise',
     'installers',
     ]
 
 _extra_dirs = [
     'enterprise',
     'standalone',
-    'test',
     ]
 
 #
 # Need to decide which subdirs need to be built.
 #
-_dirs_to_build = set()
+_dirs_to_build_set = set()
 
 if win_env.Bit('official_installers'):
   # Only want to build very specific subdirs.
-  _dirs_to_build.update(_official_installers_dirs)
+  win_env.SetBits('no-tests')
+  _dirs_to_build_set.update(_official_installers_dirs)
 elif not win_env.Bit('bin'):
   # All other configs get the base dirs.
-  _dirs_to_build.update(_base_dirs)
+  _dirs_to_build_set.update(_base_dirs)
 
   if win_env.Bit('min'):
     print '*** Building Minimal Set of Projects ***'
   else:
-    _dirs_to_build.update(_normal_dirs)
+    _dirs_to_build_set.update(_normal_dirs)
 
   if win_env.Bit('all'):
-    _dirs_to_build.update(_extra_dirs)
+    _dirs_to_build_set.update(_extra_dirs)
 
 # Build Google application-specific metainstallers.
 if os.path.exists(win_env.Dir('$MAIN_DIR/internal').abspath):
-  _dirs_to_build.update(['internal'])
+  _dirs_to_build_set.update(['internal'])
+
+_dirs_to_build = list(_dirs_to_build_set)
+
+# This must be the last directory.
+if not win_env.Bit('no-tests'):
+  _dirs_to_build.append('testing')
 
 # Instruct Hammer which dirs to build.
-win_env['BUILD_SCONSCRIPTS'] = list(_dirs_to_build)
+win_env['BUILD_SCONSCRIPTS'] = _dirs_to_build
+
+# These are used by the Omaha Builder OmahaUnittest(). They must be added to the
+# environment because there must be one per-mode.
+win_env['all_in_one_unittest_sources'] = []
+win_env['all_in_one_unittest_libs'] = set()
+
 
 # Create the leaf debug Windows environment.
 windows_debug_env = win_env.Clone(
@@ -590,15 +692,17 @@ for env_var in os.environ:
 
 # Create a target that covers everything in the staging dir, as many of those
 # files will be required for the unittests to run successfully.
+# TODO(omaha3): This may not be necessary when using ComponentTestProgram. If it
+# is, it needs to be changed to use test/ instead of $STAGING_DIR/.
 windows_coverage_env.Alias(
-    'run_omaha_unittest',
+    'run_omaha_unittest_for_coverage',
     '$STAGING_DIR',
     '$STAGING_DIR/omaha_unittest.exe'
 )
 windows_coverage_env.Append(
     # TODO(omaha): We cannot run our unit tests on the new build system. Ensure
     # coverage works with the new test execution system.
-    # COVERAGE_TARGETS=['run_omaha_unittest'],
+    # COVERAGE_TARGETS=['run_omaha_unittest_for_coverage'],
     COVERAGE_INSTRUMENTATION_PATHS=['$STAGING_DIR'],
     # This value should only be used in code if absolutely necessary.
     CPPDEFINES=['COVERAGE_ENABLED'],
@@ -692,6 +796,16 @@ BuildEnvironments(
       windows_coverage_env,
     ]
 )
+
+if 'HAMMER_RUNS_TESTS' in os.environ.keys():
+  # Hammer sets the default target to 'scons-out'. This causes run_* aliases
+  # to also be built, which means the tests run by default. To avoid this, clear
+  # Default and set the default to just build the programs.
+  Default(None)
+  # TODO(omaha): Not all of our core binaries are included in these three
+  # aliases. This is because SignedBinary() and Command() do not add the outputs
+  # to a group. Fix this.
+  Default(['all_programs', 'all_libraries', 'all_test_programs'])
 
 if win_env.Bit('msvs'):
   source_project = win_env.ComponentVSDirProject('all_source', ['$MAIN_DIR'])

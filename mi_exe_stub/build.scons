@@ -15,46 +15,81 @@
 
 Import('env')
 
-def AddCommonOptions(env):
-  # Make the target compile mbcs by removing the UNICODE define and defining
-  # MBCS instead.
-  env.FilterOut(CPPDEFINES=['UNICODE', '_UNICODE'])
+# Build subdirectories before switching to use WDK
+env.BuildSConscript('x86_encoder')
+
+# Build at warning level 4.
+env.FilterOut(CCFLAGS=['/W3'])
+env.Append(
+    CCFLAGS = [
+        '/W4',
+        '/Wall',
+    ],
+)
+
+def _UseWdkCrt(env):
+  env.Prepend(
+      WDK_PATH = '$GOOGLECLIENT/third_party/windows_driver_kit_vc80/files',
+      CPPPATH = [
+          '$WDK_PATH/inc/api/crt/stl70',
+          '$WDK_PATH/inc/crt',
+          '$WDK_PATH/inc/crt/atl71',
+      ],
+      LIBPATH = [
+          '$WDK_PATH/lib/atl/i386',
+          '$WDK_PATH/lib/crt/i386',
+      ],
+  )
+  # Magic for STL to work. Note that even though we're using ATL, a few things
+  # from STL are still required to correctly build, e.g. the iosfwd header.
   env.Append(
       CPPDEFINES = [
-          '_MBCS',
-          '_ATL_MIN_CRT',
-          '_ATL_SECURE_NO_DEPRECATE',
           '_CRT_SECURE_NO_WARNINGS',
-          ],
+          '_STATIC_CPPLIB',   # Taken from WDK makefile.
+          '_STL70_',          # Taken from WDK makefile.
+          # Prefer ATL CRT replacements to system CRT. This makes a big
+          # difference on calls to CStringT::Format style functions--in testing,
+          # I measured a 5 KiB difference.
+          '_ATL_MIN_CRT',
+          '_ATL_CSTRING_NO_CRT',
+      ],
       CCFLAGS = [
           '/D_SECURE_SCL=0',
-          '/D_SECURE_ATL=0',
-          ],
+          '/EHsc',
+          '/FI$MAIN_DIR/mi_exe_stub/ptrdiff_t.h',
+          '/wd4068',  # unknown pragma (ATL uses PreFAST pragmas)
+      ],
   )
-
+  env.FilterOut(
+      CPPDEFINES = [
+          'NOMINMAX',
+      ],
+      CCFLAGS = [
+          '/D_HAS_EXCEPTIONS=0',
+          '/RTC1',
+      ],
+  )
 
 for omaha_version_info in env['omaha_versions_info']:
   prefix = omaha_version_info.filename_prefix
-
   temp_env = env.Clone()
-  AddCommonOptions(temp_env)
 
   if prefix == 'TEST_':
     temp_env['OBJPREFIX'] = temp_env.subst('test/$OBJPREFIX')
   elif prefix:
     raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
 
-  # MI stub links with the minicrt.lib in the non-debug builds.
-  # This gets its size down to about 27K and it saves about 40K in library code
   temp_env.Append(
       LIBS = [
-          'lzma.lib',
-          'mi_exe_stub.lib',
-          ('atls.lib',  'atlsd.lib')[temp_env.Bit('debug')],
-          ('minicrt.lib', 'libcmtd.lib')[temp_env.Bit('debug')],
-          ('',          'libcpmtd.lib')[temp_env.Bit('debug')],
-          'shlwapi.lib',
-          'version.lib',
+          'lzma',
+          'mi_exe_stub_lib',
+          ('atls', 'atlsd')[temp_env.Bit('debug')],
+          ('msvcrt', 'libcmtd')[temp_env.Bit('debug')],
+          ('msvcprt', 'libcpmtd')[temp_env.Bit('debug')],
+          # 'msvcprt_btowc.lib',
+          # 'ntstc_msvcrt',  # Only required if STL classes are used.
+          'shlwapi',
+          'version',
           ],
       RCFLAGS = [
           '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
@@ -75,7 +110,9 @@ for omaha_version_info in env['omaha_versions_info']:
 
   exe_inputs = temp_env.RES(
       target=prefix + 'mi.res',
-      source='mi.rc'
+      source=[
+          'mi.rc',
+      ],
   )
 
   # Force a rebuild when the version changes.
@@ -88,22 +125,30 @@ for omaha_version_info in env['omaha_versions_info']:
         source=base_name + '.rc',
     )
 
-  temp_env.ComponentProgram(prefix + 'mi_exe_stub.exe', exe_inputs)
+  if not temp_env.Bit('debug'):
+    # Stubs for W2k compatibility.
+    exe_inputs += '$WDK_PATH/lib/w2k/i386/msvcrt_win2000.obj',
+
+  temp_env.ComponentProgram(
+      prog_name = prefix + 'mi_exe_stub',
+      source = exe_inputs,
+  )
 
 
 local_env = env.Clone()
-AddCommonOptions(local_env)
 
 # Avoid target conflicts over extractor.obj
 local_env['OBJSUFFIX'] = '_mi' + local_env['OBJSUFFIX']
 
 local_inputs = [
-    # "../test/step_test.cc",  # This is commented until dependencies of libs
-                                # are sorted out, such as printf.
     'mi.cc',
     'process.cc',
     'tar.cc',
-    '../common/extractor.cc'
-    ]
+    '../base/extractor.cc',
+]
 
-local_env.ComponentLibrary('mi_exe_stub', local_inputs)
+# Precompiled headers cannot be used because debug builds must link against
+# base.lib due to base/ inclusions in precompile.h.
+local_env.ComponentStaticLibrary('mi_exe_stub_lib',
+                                 local_inputs,
+                                 use_pch_default=False)

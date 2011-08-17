@@ -14,10 +14,11 @@
 // ========================================================================
 
 #include <windows.h>
-#include "omaha/common/logging.h"
-#include "omaha/common/utils.h"
-#include "omaha/goopdate/google_update_idl_datax.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/utils.h"
 #include "omaha/goopdate/goopdate.h"
+#include "omaha/goopdate/omaha3_idl_datax.h"
 
 namespace {
 
@@ -28,10 +29,11 @@ HINSTANCE dll_instance = NULL;
 // Captures the module instance. Never call ::DisableThreadLibraryCalls in a
 // module that statically links with LIBC and it is not using
 // _beginthreadex for the thread creation. This will leak the _tiddata.
-extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void* res) {
+extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void*) {
   switch (reason) {
     case DLL_PROCESS_ATTACH:
       dll_instance = instance;
+      omaha::InitializeVersionFromModule(instance);
       break;
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
@@ -40,7 +42,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void* res) {
       break;
   }
 
-  return PrxDllMain(instance, reason, res);
+  return TRUE;
 }
 
 // Since this entry point is called by a tiny shell we've built without
@@ -56,6 +58,7 @@ extern "C" int APIENTRY DllEntry(TCHAR* cmd_line, int cmd_show) {
 
   bool is_local_system =  false;
   HRESULT hr = omaha::IsSystemProcess(&is_local_system);
+  assert(SUCCEEDED(hr));   // Assert because we cannot display UI here.
   if (SUCCEEDED(hr)) {
     omaha::Goopdate goopdate(is_local_system);
     hr = goopdate.Main(dll_instance, cmd_line, cmd_show);
@@ -66,13 +69,5 @@ extern "C" int APIENTRY DllEntry(TCHAR* cmd_line, int cmd_show) {
 
   OPT_LOG(L1, (_T("[DllEntry exit][0x%08x]"), hr));
   return static_cast<int>(hr);
-}
-
-extern "C" STDAPI DllCanUnloadNow() {
-  return PrxDllCanUnloadNow();
-}
-
-extern "C" STDAPI DllGetClassObject(REFCLSID clsid, REFIID iid, LPVOID* ptr) {
-  return PrxDllGetClassObject(clsid, iid, ptr);
 }
 
