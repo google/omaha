@@ -11,6 +11,8 @@ http://omaha.googlecode.com/svn/wiki/ServerProtocol_Images/omahaprotocol2.jpg
 
 An HTTP request may concatenate multiple applications in one XML body; similarly, multiple request-actions may be included for any application.  The server responds with a status and other information (as appropriate) for each action, organized in a similar nested XML structure.
 
+==== Custom HTTP Headers ====
+The Client can attach one or more custom HTTP headers to the POST request.  They are purely advisory in nature, and their presence and content are not required in order to provide responses to update checks.
 
 == Examples ==
 === Update Check ===
@@ -40,7 +42,7 @@ There is not an update for either of the apps. The app and ping elements are ack
 <?xml version="1.0" encoding="UTF-8"?>
 <response protocol="3.0" server="prod">
   <daystart elapsed_seconds="56508"/>
-  <app appid="{430FD4D0-B729-4F61-AA34-91526481799D}" status="ok>
+  <app appid="{430FD4D0-B729-4F61-AA34-91526481799D}" status="ok">
     <updatecheck status="noupdate"/>
     <ping status="ok"/>
   </app>
@@ -142,103 +144,105 @@ _Response:_
 
 == Reference ==
 A terse description of the XML elements and attributes follows.
-=== request Element ===
+=== `request` Element ===
 This is the envelope around the entire request.  The request attributes describe global data describing the machine or the Omaha client instance.  The response attributes are minimal.
 
 _Request Attributes_
-   * protocol: Always "3.0".
-   * version: The version number of the Omaha client.
-   * ismachine: 0 or 1, depending on whether the Omaha client is a per-user or per-machine instance.
-   * requestid: A random GUID generated for each request.  (This is used to de-duplicate requests that are sent multiple times by buggy network stacks and/or proxy servers.)
-   * sessionid: A random GUID associated with the current task - a clean install, a update check, etc.  If a task requires sending multiple requests from different processes (for example, an Omaha self-update that sends event pings both before and afterwards), those requests will have identical session IDs.
-   * userid (optional): A random GUID associated with the logged-in user.  There will be a different userid for each username on the machine, as well as for the per-machine instance.  UIDs are opt-in and will not be generated if not opted into.
-   * installsource (optional): An arbitrary string that can mark the source of a request; set by the client driving Omaha.  Typical examples: "scheduledtask", "ondemandupdate", "selfupdate", "update3web", "oneclick", and so on.
-   * originurl (optional): If Omaha is invoked via a web browser plugin, contains the URL of the page invoking it.
-   * testsource (optional): Identifies requests related to development and testing.  May be omitted, or one of "dev", "qa", "prober", "auto", "ossdev".
+   * `protocol`: Always `"3.0"`.
+   * `version`: The version number of the Omaha client.
+   * `ismachine`: `0` or `1`, depending on whether the Omaha client is a per-user or per-machine instance.
+   * `requestid`: A random GUID generated for each request.  (This is used to identify duplicate requests that are sent multiple times by buggy network stacks and/or proxy servers.)
+   * `sessionid`: A random GUID associated with the current task - a clean install, a update check, etc.  If a task requires sending multiple requests from different processes (for example, an Omaha self-update that sends event pings both before and afterwards), those requests will have identical session IDs.
+   * `userid` (optional): A random GUID associated with the logged-in user.  There will be a different userid for each username on the machine, as well as for the per-machine instance.  UIDs are opt-in and will not be generated if not opted into.
+   * `installsource` (optional): An arbitrary string that can mark the source of a request.  This is set by the client driving Omaha.  Typical examples: `"scheduledtask"`, `"ondemandupdate"`, `"selfupdate"`, `"update3web"`, `"oneclick"`, and so on.
+   * `originurl` (optional): If Omaha is invoked via a web browser plugin, contains the URL of the page invoking it.
+   * `testsource` (optional): Identifies requests related to development and testing.  May be omitted, or one of `"dev"`, `"qa"`, `"prober"`, `"auto"`, `"ossdev"`.
 
 _Response Attributes_
-   * protocol: Always "3.0".
-   * server: A string identifying the server that provided the response, mostly for diagnostic purposes.  Typical examples: "prod", "unittest", etc.
+   * `protocol`: Always `"3.0"`.
+   * `server`: A string identifying the server that provided the response, mostly for diagnostic purposes.  Typical examples: `"prod"`, `"unittest"`, etc.
 
-=== os Element ===
-Inside the request envelope, but prior to any app-request elements, is an os element that describes the O/S of the machine.  The server never supplies an os element in the response.
+=== `os` Element ===
+Inside the request envelope, but prior to any app-request elements, is an `os` element that describes the O/S of the machine.  The server never supplies an `os` element in the response.
 
 _Request Attributes_
-   * platform: One of "win", "mac".
-   * version: On Windows, the major-minor O/S version, e.g. "5.1", on the Mac, it is "MacOSX".
-   * sp: On Windows, the service-pack version, e.g. "Service Pack 2", on the Mac, OS version and processor architecture, like "10.5.6_i486" or "10.4.11_ppc750".
-   * arch: One of "x86", "x64".
+   * `platform`: One of `"win"`, `"mac"`.
+   * `version`: On Windows, the major-minor O/S version, e.g. `"5.1"`, on the Mac, it is `"MacOSX"`.
+   * `sp`: On Windows, the service-pack version, e.g. `"Service Pack 2"`, on the Mac, OS version and processor architecture, like `"10.5.6_i486"` or `"10.4.11_ppc750"`.
+   * `arch`: One of `"x86"`, `"x64"`.
 
 _Response Attributes_
 
 N/A
 
-=== daystart Element ===
-Inside the request envelope, but prior to any app-response elements, is a daystart element that gives the number of seconds since midnight at the server's locale.  This is used by the client to calculate days-since attributes in pings.
+=== `daystart` Element ===
+Inside the request envelope, but prior to any app-response elements, is a `daystart` element that gives the number of seconds since midnight at the server's locale.  This is used by the client to calculate days-since attributes in pings.
 
 _Request Attributes_
 
 N/A
 
 _Response Attributes_
-  * elapsed_seconds: Number of seconds since midnight at the server's locale.
+  * `elapsed_second`s: Number of seconds since midnight at the server's locale.
 
-=== app Element ===
-The app element may be repeated in the request any number of times.  The server will reply with a corresponding app element for each request app element; In practice, the app elements of the response will be in the same order as the request.
+=== `app` Element ===
+The `app` element may be repeated in the request any number of times.  The server will reply with a corresponding app element for each request app element; In practice, the `app` elements of the response will be in the same order as the request.
 
 _Request Attributes_
-   * appid: The id of the app.  On Windows this is a GUID, including the braces ({}); on Mac it is a bundle ID of the form com.google.appname.  You can use GUIDs on the Mac, but it's usually easier to just get the application's bundle ID.
-   * version: The dotted-quad version of the app.  A "" value is interpreted as "0.0.0.0", namely a new install.
-   * nextversion: The dotted-quad version of the app upgrade in progress.  This is mainly used for sending events during or after an upgrade; it will be "" for initial update checks.
-   * lang: Language of the app install. Should be in BCP 47 representation.
-   * brand: Brand code specified at install time, if any. These are typically used to tabulate partner deals and website promotions.
-   * client: Similar to brand code.
-   * ap (optional): Additional parameters specified at install time, if any. These are usually used to denote experimental branches/tracks.
-   * experiments (optional): An experiment key/value list, if any.  This can be specified at install time, or set by the server in previous update responses. These are usually used to denote experimental branches/tracks.
-   * iid (optional): A random GUID used to uniquely count install attempts. For example, if a user fails to install then re-runs the installer and succeeds, we might want to count that as one "attempt".
-   * installage (optional): The number of days since the app was first installed.  A new install should use -1 days.
+   * `appid`: The id of the app.  On Windows this is a GUID, including the braces ({}); on Mac it is a bundle ID of the form _com.google.appname_.  You can use GUIDs on the Mac, but it's usually easier to just get the application's bundle ID.
+   * `version`: The dotted-quad version of the app.  A `""` value is interpreted as `"0.0.0.0"`, namely a new install.
+   * `nextversion`: The dotted-quad version of the app upgrade in progress.  This is mainly used for sending events during or after an upgrade; it will be `""` for initial update checks.
+   * `lang`: Language of the app install. Should be in BCP 47 representation.
+   * `brand`: Brand code specified at install time, if any. These are typically used to tabulate partner deals and website promotions.
+   * `client`: Similar to brand code.
+   * `ap` (optional): Additional parameters specified at install time, if any. These are usually used to denote experimental branches/tracks.
+   * `experiments` (optional): An experiment key/value list, if any.  This can be specified at install time, or set by the server in previous update responses. These are usually used to denote experimental branches/tracks.
+   * `iid` (optional): A random GUID used to uniquely count install attempts. For example, if a user fails to install then re-runs the installer and succeeds, we might want to count that as one "attempt".
+   * `installage` (optional): The number of days since the app was first installed.  A new install should use -1 days.
 
 _Response Attributes_
-   * appid: The id of the app. See Request Attributes.
-   * status: One of:
-      * "ok": The appid was recognized and action elements are included in the response.
-      * "error-unknownApplication": The appid was not recognized and no action elements are included.
-      * "error-invalidAppId": The appid is not properly formed; no action elements are included.
-      * "error-restricted": The application is not available to this user (usually based on country export restrictions).
-      * ...any other string prefixed by "error-": Added to the protocol as needed.
-   * experiments (optional): An experiment key/value list, if any.  If the server responds with any entries in this attribute, the client should save those experiments in the Registry or other store, and include them in later requests.
+   * `appid`: The id of the app. See Request Attributes.
+   * `status`: One of:
+      * `"ok"`: The appid was recognized; see the status attribute on the child `updatecheck` or `event` tags for further status.
+      * `"restricted"`: The appid was recognized, but the application is not available to this user (usually based on country export restrictions).
+      * `"error-unknownApplication"`: The appid was not recognized and no action elements are included.
+      * `"error-invalidAppId"`: The appid is not properly formed; no action elements are included.
+      * ...any other string prefixed by `"error-"`: Added to the protocol as needed.
+   * `experiments` (optional): An experiment key/value list, if any.  If the server responds with any entries in this attribute, the client should save those experiments in the Registry or other store, and include them in later requests.
 
 === App Action Elements ===
 Actions are always the child of an app element and pertain to that app.
 
-==== updatecheck ====
+==== `updatecheck` Element ====
 Request whether a newer version of the application is available.
 
 _Request Attributes_
-   * tttoken (optional): An access token for protected downloads.  The request should be sent over SSL if this attribute is present.
-   * updatedisabled (optional): `"true"` indicates that an update response will not be applied because it is disallowed by Group Policy.
+   * `tttoken` (optional): An access token for protected downloads.  The request should be sent over SSL if this attribute is present.
+   * `updatedisabled` (optional): `"true"` indicates that an update response will not be applied because it is disallowed by Group Policy.
 
 _Response Attributes_
 
-The "status" attribute is always present; the rest are supplied only if an update is available.
+The `"status"` attribute is always present; the rest are supplied only if an update is available.
 
 The update check is over a secure channel.  By providing the size and hash of the download binary, the binary itself may be fetched over an insecure channel and still be verified.
 
-   * status: One of:
-      * "noupdate": No update is available.
-      * "ok": An update specification is included.
-      * "error-hash": Internal error in obtaining the hash of the installer binary.
-      * "error-osnotsupported": The operating system version is not supported.
-      * "error-internal": Other internal error.
-   * tttoken (optional): An access token for protected downloads.  The request should be sent over SSL if this attribute is present.
-   * errorurl (optional): A URL that provides more information for the error in status. The Omaha client supports this for "error-osnotsupported".
+   * `status`: One of:
+      * `"noupdate"`: No update is available.
+      * `"ok"`: An update specification is included.
+      * `"error-osnotsupported"`: The operating system version is not supported by this application.
+      * `"error-unsupportedProtocol"`: The update specification cannot be expressed in this version of the protocol.
+      * `"error-pluginRestrictedHost"`: This application is restricted to only be installable from specific domains.
+      * `"error-hash"`: An internal error occurred on the server while obtaining the hash of the installer binary.
+      * `"error-internal"`: Other internal error.
+   * `tttoken` (optional): An access token for protected downloads.  The request should be sent over SSL if this attribute is present.
+   * `errorurl` (optional): A URL that provides more information for the error in status. The Omaha client supports this for "error-osnotsupported".
 
-On a status value of "ok", additional children will be included.
-==== event ====
-The event response is always status="ok", meaning the data were successfully received.
+On a status value of `"ok"`, additional children will be included.
+==== `event` Element ====
+Notifies the server of the progress or result of an install/update in progress.
 
 _Request Attributes_
-   * eventtype: One of
+   * `eventtype`: One of
       * 0: unknown
       * 1: download complete
       * 2: install complete
@@ -262,7 +266,7 @@ _Request Attributes_
       * 100: setup failure
       * 102: COM server failure
       * 103: setup update failure
-   * eventresult: One of
+   * `eventresult`: One of
       * 0: error
       * 1: success
       * 2: success reboot
@@ -274,96 +278,130 @@ _Request Attributes_
       * 8: error installer system
       * 9: update deferred
       * 10: handoff error
-   * errorcode: (optional)
-      * For eventresult==0: Omaha error code
-      * For eventresult=={1 | 2 | 3| 5 | 6 | 8}: Application-specific installer exit/result code.
-   * extracode1: (optional) Additional numerical information related to errorcode.
+   * `errorcode`: (optional)
+      * For `eventresult`==0: Omaha error code
+      * For `eventresult`=={1 | 2 | 3| 5 | 6 | 8}: Application-specific installer exit/result code.
+   * `extracode1`: (optional) Additional numerical information related to errorcode.
 
 _Response Attributes_
-   * status: Always "ok"
+   * `status`: Always `"ok"`.
 
-==== ping ====
-The ping response is always status="ok", meaning the data were successfully received.
+==== `ping` Element ====
+Reports the activity level of this application since the previous update check.
 
 _Request Attributes_
-In either case, the special value "-1" indicates a new install.  An attr may be omitted if the value is "0"; and the entire ping may be omitted if both values are zero.
-   * a: The app was active since the last report; the value is the number of days since the app last reported active.  The attr is omitted if the app was not active.
-   * r: The app is present; the value is the number of the days since the app last reported present.
+
+In either case, the special value "-1" indicates a new install.  An attribute may be omitted if the value is "0"; the entire element may be omitted if both values are zero.
+   * `a`: If present, the app was active since the last report; the value is the number of days since the app last reported active.  The attr is omitted if the app was not active.
+   * `r`: The app is present; the value is the number of the days since the app last reported present.
 
 _Response Attributes_
-   * status: Always "ok"
+   * `status`: Always `"ok"`.
 
-==== data ====
-The metainstaller or install command line includes an insecure data "index", which corresponds to a specific blob of install data on the server.  The client securely requests the data for this index from the server using the "data" element.
+==== `data` Element ====
+The metainstaller or install command line includes an insecure data "index", which corresponds to a specific blob of install data on the server.  The client securely requests the data for this index from the server using the `data` element.
 
 _Request Attributes_
-   * name: A collection specifier (must be alphanumeric; at the moment, is hard-wired on Windows to "install".)
-   * index: The requested element of the collection (must be alphanumeric)
+   * `name`: A collection specifier (must be alphanumeric; at the moment, the Windows client hard-wires this to `"install"`.)
+   * `index`: The requested element of the collection (must be alphanumeric)
 
 _Response Attributes_
-   * status: One of:
-      * "ok": Data blob included
-      * "error-invalidargs": the name or index was not alphanumeric
-      * "error-nodata": the named collection or index was not found
-   * name: The collection specifier.  (Windows expects this to be "install".)
-   * index: The requested element of the collection.
+   * `status`: One of:
+      * `"ok"`: Data blob included.
+      * `"error-invalidargs"`: the name or index was not alphanumeric.
+      * `"error-nodata"`: the named collection or index was not found.
+   * `name`: The collection specifier.  (Windows expects this to be `"install"`.)
+   * `index`: The requested element of the collection.
 
 The data itself is returned as a text element child of the data element.
-==== unknown ====
-If the client sends an unrecognized child element of the app element, the server will respond with an "unknown" element in the corresponding position of the response.  The status will always be "error".  (This is meant to maintain the structure of the response, which mirrors the app and action elements of the request.)
+==== `unknown` Element ====
+If the client sends an unrecognized child element of the app element, the server may respond with an `"unknown"` element in the corresponding position of the response.  It will always have a `status` attribute with a value of `"error"`.  (This is meant to maintain the structure of the response, which mirrors the app and action elements of the request.)
 
 === UpdateCheck Response Elements ===
-When an updatecheck response element has a status of "ok", the following child elements are included, describing the method for performing the update check.
+When an `updatecheck` response element has a status of "ok", the following child elements are included, describing the method for performing the update check.
 
-==== urls ====
+==== `urls` Element ====
+Describes a set of locations where installer binaries can be downloaded.
+
 Contains no attributes.  Contains one or more url child elements describing URLs prefixes where a package can be downloaded.
 
-===== url =====
-Contains the URL prefix where packages can be found.
+===== `url` Element =====
+Contains a URL fragment where packages in the following `manifest` element can be found.  A complete URL to each installer binary may be formed by appending the filename in a `package` element to this URL fragment.
 
-==== manifest ====
+The URL fragment is stored as a text child element.
+
+==== `manifest` Element ====
+Describes the files needed to install the new version of an application, and the actions needed to be taken with those files.
+
 _Request Attributes_
     N/A
 
 _Response Attributes_
-   * version (optional): Contains the version that this manifest should deliver when finished.
+   * `version` (optional): Contains the version that this manifest should deliver when finished.
 
-The manifest contains two child elements - packages and actions.
+The `manifest` element should contain two child elements - one `packages` element and one `actions` element.
 
-==== packages ====
-Contains no attributes.  Contains one or more package child elements.
+==== `packages` Element ====
+Describes the set of files needed to install the application.
 
-===== package =====
+Contains no attributes.  Contains one or more `package` child elements.
+
+===== `package` Element =====
+Describes a single file needed to install the application.
+
 _Request Attributes_
     N/A
 
 _Response Attributes_
-   * name: Contains a filename to download.  Omaha will sequentially attempt to build a URL by appending this name to each url in the urls element and download it.
-   * is_required: Contains `"true"` or `"false"`.  Denotes whether or not the file is required for the install to succeed.
-   * size: Contains the size in bytes of the installer binary.
-   * hash: Contains the SHA-1 hash of the installer binary, encoded in base64.
+   * `name`: Contains a filename to download.  Omaha will sequentially attempt to build a URL by appending this name to each url in the `urls` element and download it.
+   * `is_required`: Contains `"true"` or `"false"`.  Denotes whether or not the file is required for the install to succeed.
+   * `size`: Contains the size in bytes of the installer binary.
+   * `hash`: Contains the SHA-1 hash of the installer binary, encoded in base64.
 
-==== actions ====
-Contains no attributes.  Contains one or more action child elements.
+==== `actions` Element ====
+Describes the actions to perform to install the application once all required files in the `packages` element have been successfully downloaded.
 
-===== action =====
+Contains no attributes.  Contains one or more `action` child elements.
+
+===== `action` Element =====
+Describes a single action to perform as part of the install process.
+
 _Request Attributes_
     N/A
 
 _Response Attributes_
-   * event: Contains a fixed string denoting when this action should be run.  One of:
+   * `event`: Contains a fixed string denoting when this action should be run.  One of:
       * `"preinstall"`
       * `"install"`
       * `"postinstall"`
       * `"update"`
-   * run (optional): The name of an installer binary to run.  (Typically, this binary was specified to be downloaded in the prior packages element.)
-   * arguments (optional): Arguments to be passed to that installer binary.
-   * successurl (optional): A URL to be opened using the system's default web browser on a successful install.
-   * terminateallbrowsers (optional): If `"true"`, close all browser windows before starting the installer binary.
-   * successsaction (optional): Contains a fixed string denoting some action to take in response to a successful install.  One of:
+   * `run` (optional): The name of an installer binary to run.  (Typically, this binary was specified to be downloaded in the prior `packages` element.)
+   * `arguments` (optional): Arguments to be passed to that installer binary.
+   * `successurl` (optional): A URL to be opened using the system's default web browser on a successful install.
+   * `terminateallbrowsers` (optional): If `"true"`, close all browser windows before starting the installer binary.
+   * `successsaction` (optional): Contains a fixed string denoting some action to take in response to a successful install.  One of:
      * `"default"`
      * `"exitsilently"`
      * `"exitsilentlyonlaunchcmd`"
+
+== Advisory HTTP Headers ==
+The Windows Client currently attaches some custom HTTP headers to the request; they are mostly provided to aid the server in statistics generation.  The client may send none, some, or all of them as appropriate for the current request.
+
+=== Network Diagnostics Headers ===
+
+If any of these headers are present, they imply that the network request was unsuccessful in the past and has been retried at least once.
+
+  * `X-Retry-Count` -- Contains the total number of times that this network request has been retried.
+  * `X-Last-HR` -- Contains the HRESULT error code returned from `NetworkRequestImpl::DoSendHttpRequest()` for the previous attempt.
+  * `X-Last-HTTP-Status-Code` -- Contains the HTTP status code, if any, that we received for the previous attempt.
+  * `X-Proxy-Retry-Count` -- If this header is present, it means that the request is being sent via at least one proxy that required authentication.  Contains the number of times that we've received a HTTP 407 (Proxy Authentication Required) status code in the process of sending this request.
+  * `X-Proxy-Manual-Auth` -- If this header is present, it means that this request is being sent through at least one proxy that required authentication *and* that Omaha had no cached credentials and displayed a UI to prompt the user.  The header's value is always `1`.
+
+=== Persisted Ping Headers ===
+
+There may be cases where Omaha completes an update/install, but the network connection fails during the install, and the event ping notifying the server of the success/failure cannot be sent.  (This is particularly common on laptops with wireless connections.)  In this case, the client will serialize the event ping to the Registry, and attempt to resend it at a later date when the network connection is available again.
+
+  * `X-RequestAge` -- If this header is present, it means that this request is an event ping that was persisted and is now being re-sent.  The value is the age in seconds between the current time and the time at which the ping request was originally attempted.
 
 == Security Headers ==
 The response must be secure: the client must be sure the response data blob came from Google and that it was not tampered with.  This is done by either
@@ -373,10 +411,10 @@ The response must be secure: the client must be sure the response data blob came
 If the client elects to use SSL, no further integrity checking is needed.  If CUP is used, the following HTTP headers and parameters will be added, which allow a signature to be supplied by the server and verified by the client.  The [http://omaha.googlecode.com/svn/wiki/cup.html CUP design document] describes the protocol in detail.
 
 === CUP Request ===
-   * w (URL parameter): Encodes a proposed private key.  Provides nonce for protection against replay in the signed response.
-   * If-Match (HTTP header): Signature that proves the client knows its own private key.
-   * Cookie (HTTP header): (optional)  Encrypted copy of the client's private verification key. (Not related to any browser cookie.)
+   * `w` (URL parameter): Encodes a proposed private key.  Provides nonce for protection against replay in the signed response.
+   * `If-Match` (HTTP header): Signature that proves the client knows its own private key.
+   * `Cookie` (HTTP header): (optional)  Encrypted copy of the client's private verification key. (Not related to any browser cookie.)
 
 === CUP Response ===
-   * ETag (HTTP header): Response signature
-   * Set-Cookie (HTTP header): (optional)  Encrypted copy of the client's private key, for the client to send in the next request. (Not related to any browser cookie.)
+   * `ETag` (HTTP header): Response signature
+   * `Set-Cookie` (HTTP header): (optional)  Encrypted copy of the client's private key, for the client to send in the next request. (Not related to any browser cookie.)
