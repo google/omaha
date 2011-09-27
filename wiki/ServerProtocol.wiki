@@ -291,9 +291,13 @@ Reports the activity level of this application since the previous update check.
 
 _Request Attributes_
 
-In either case, the special value "-1" indicates a new install.  An attribute may be omitted if the value is "0"; the entire element may be omitted if both values are zero.
+   * `active`: "1" if the app was active since the last report; "0" otherwise.
    * `a`: If present, the app was active since the last report; the value is the number of days since the app last reported active.  The attr is omitted if the app was not active.
    * `r`: The app is present; the value is the number of the days since the app last reported present.
+
+For both `a` and `r`, the special value "-1" indicates a new install.  Any attribute may be omitted if its value is "0"; the entire element may be omitted if all values are zero.
+
+If `a` is nonzero, `active` should be set to "1".
 
 _Response Attributes_
    * `status`: Always `"ok"`.
