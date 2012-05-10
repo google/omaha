@@ -219,6 +219,7 @@ Request whether a newer version of the application is available.
 _Request Attributes_
    * `tttoken` (optional): An access token for protected downloads.  The request should be sent over SSL if this attribute is present.
    * `updatedisabled` (optional): `"true"` indicates that an update response will not be applied because it is disallowed by Group Policy.
+   * `targetversionprefix` (optional): A prefix of the update version that the client is ok receiving. If ended with $ then the version string must match exactly. (It may be ignored by the server.)
 
 _Response Attributes_
 
