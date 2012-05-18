@@ -61,6 +61,10 @@ There is an update available for only the second app. The app and ping elements 
 <response protocol="3.0" server="prod">
   <daystart elapsed_seconds="56508"/>
   <app appid="{430FD4D0-B729-4F61-AA34-91526481799D}" status="ok">
+    <updatecheck status="noupdate"/>
+    <ping status="ok"/>
+  </app>
+  <app appid="{D0AB2EBC-931B-4013-9FEB-C9C4C2225C8C}" status="ok">
     <updatecheck status="ok">
       <urls>
         <url codebase="http://cache.pack.google.com/edgedl/chrome/install/782.112/"/>
@@ -75,10 +79,6 @@ There is an update available for only the second app. The app and ping elements 
         </actions>
       </manifest>
     </updatecheck>
-    <ping status="ok"/>
-  </app>
-  <app appid="{D0AB2EBC-931B-4013-9FEB-C9C4C2225C8C}" status="ok">
-    <updatecheck status="noupdate"/>
     <ping status="ok"/>
   </app>
 </response>
