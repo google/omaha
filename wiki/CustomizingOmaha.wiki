@@ -6,7 +6,7 @@ When initially checked out, the open-source Omaha builds "Google Update".  Googl
 
 The main difference between code compiled from this site and Google Update is the Authenticode signature and version number, and the CLSIDs of the COM objects. (To restore the original CLSIDs and build a complete Google Update clone, see the files in the official/ folder of the source.)
 
-In order to use Omaha for your application or organization, you must customize the source code for your organization, and prevent it from conflicting with Google Update (or other forks of Omaha) on users' computers.
+In order to use Omaha for your application or organization, you must customize the source code for your organization, and prevent it from conflicting with Google Update (or other forks of Omaha) on users' computers.  You must also create your own update server.
 
 = Mandatory Changes =
 
