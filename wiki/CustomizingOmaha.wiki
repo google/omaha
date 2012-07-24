@@ -12,10 +12,6 @@ In order to use Omaha for your application or organization, you must customize t
 
 The following items *MUST* be changed before releasing a fork of Omaha.  Preferably, make these changes as soon as you start development:
 
-  * *`omaha\VERSION`*
-
-       Adjust your version numbering.
-
   * *`omaha\main.scons`*
 
        Ensure that *`is_google_update_build`* is set to False, and adjust the vendor-specific constant strings.  ("Google", "Update", etc.)  In particular, once you have your update server functional, be sure to change the domain from google.com to your company's server.
@@ -63,3 +59,9 @@ We strongly recommend making these changes before you release:
   * Change the value of the reference GUID used to identify your fork of Omaha when self-updating.  This is defined in *`kGoopdateGuid`* and *`GOOPDATE_APP_ID`* in `omaha\base\constants.h` and verified in several unit tests.
 
   * Do a general search for strings that reference Google or Google Update, and revise them.  This should include debug logging statements.
+
+= Versioning =
+
+The version number stored in all outputs is set in the file *`omaha\VERSION`*.  Omaha has some functionality in it from Google Update related to bug workarounds when upgrading from prior versions, so don't set the VERSION to any lower than 1.3.23.0.
+
+When releasing your fork of Omaha, we recommend starting the version at 1.3.25.0.  Remember to bump the version up whenever releasing an updated version.
