@@ -75,7 +75,7 @@ There is an update available for only the second app. The app and ping elements 
         </packages>
         <actions>
           <action arguments="--do-not-launch-chrome" event="install" run="chrome_installer.exe"/>
-          <action Version="13.0.782.112" event="postinstall" onsuccess="exitsilentlyonlaunchcmd"/>
+          <action version="13.0.782.112" event="postinstall" onsuccess="exitsilentlyonlaunchcmd"/>
         </actions>
       </manifest>
     </updatecheck>
