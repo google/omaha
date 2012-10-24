@@ -166,10 +166,10 @@ _Response Attributes_
 Inside the request envelope, but prior to any app-request elements, is an `os` element that describes the O/S of the machine.  The server never supplies an `os` element in the response.
 
 _Request Attributes_
-   * `platform`: One of `"win"`, `"mac"`.
-   * `version`: On Windows, the major-minor O/S version, e.g. `"5.1"`, on the Mac, it is `"MacOSX"`.
+   * `platform`: One of `"win"`, `"mac"`, `"ios"`.
+   * `version`: On Windows, the major-minor O/S version, e.g. `"5.1"`, on the Mac, it is `"MacOSX"`. On iOS, `"4.3"`, `"5.1.1"`, etc.
    * `sp`: On Windows, the service-pack version, e.g. `"Service Pack 2"`, on the Mac, OS version and processor architecture, like `"10.5.6_i486"` or `"10.4.11_ppc750"`.
-   * `arch`: One of `"x86"`, `"x64"`.
+   * `arch`: One of `"x86"`, `"x64"`, `"arm"`.
 
 _Response Attributes_
 
@@ -359,7 +359,7 @@ _Request Attributes_
 
 _Response Attributes_
    * `name`: Contains a filename to download.  Omaha will sequentially attempt to build a URL by appending this name to each url in the `urls` element and download it.
-   * `is_required`: Contains `"true"` or `"false"`.  Denotes whether or not the file is required for the install to succeed.
+   * `required`: Contains `"true"` or `"false"`.  Denotes whether or not the file is required for the install to succeed.
    * `size`: Contains the size in bytes of the installer binary.
    * `hash`: Contains the SHA-1 hash of the installer binary, encoded in base64.
 
