@@ -159,6 +159,7 @@ _Request Attributes_
    * `installsource` (optional): An arbitrary string that can mark the source of a request.  This is set by the client driving Omaha.  Typical examples: `"scheduledtask"`, `"ondemandupdate"`, `"selfupdate"`, `"update3web"`, `"oneclick"`, and so on.
    * `originurl` (optional): If Omaha is invoked via a web browser plugin, contains the URL of the page invoking it.
    * `testsource` (optional): Identifies requests related to development and testing.  May be omitted, or one of `"dev"`, `"qa"`, `"prober"`, `"auto"`, `"ossdev"`.
+   * `dedup`: Identifies the algorithm used for reporting application activity. It may be either `"cr"` or `"uid"`, for client regulated and unique user id respectively. In its recent versions, Omaha is always using `"cr"`. Please see the description of attributes for the `"ping"` element in this document for how the application activity is reported. 
 
 _Response Attributes_
    * `protocol`: Always `"3.0"`.
