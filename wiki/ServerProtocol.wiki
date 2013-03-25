@@ -307,7 +307,7 @@ _Response Attributes_
    * `status`: Always `"ok"`.
 
 ==== `data` Element ====
-The metainstaller or install command line includes an insecure data "index", which corresponds to a specific blob of install data on the server.  The client securely requests the data for this index from the server using the `data` element.  Extra data are passed by "untrusteddata", which are also included by the metainstaller or install command line.
+The metainstaller or install command line includes an insecure data "index", which corresponds to a specific blob of install data on the server.  The client securely requests the data for this index from the server using the `data` element.  Extra data are passed by "untrusteddata". The source for the "untrusted data" is usually a metainstaller tag, which is subsequently passed to the Google Update runtime as an extra argument of the command line. Upon receiving the "untrusteddata" in the request, the  server can further validate it. The server will reply with a status of `"error-invalidargs"` if the "untrusteddata" is invalid for any reason.
 
 _Request Attributes_
    * `name`: A collection specifier (must be alphanumeric; at the moment, the Windows client hard-wires this to `"install"`).
