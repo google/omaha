@@ -317,7 +317,7 @@ _Request Attributes_
 _Response Attributes_
    * `status`: One of:
       * `"ok"`: Data blob included.
-      * `"error-invalidargs"`: the name, index, or untrusteddata was not alphanumeric or were invalid for any reason.
+      * `"error-invalidargs"`: the name, index, or untrusteddata were not alphanumeric or were invalid for any reason.
       * `"error-nodata"`: the named collection or index was not found.
    * `name`: The collection specifier.  (Windows expects this to be `"install"`.)
    * `index`: The requested element of the collection.
