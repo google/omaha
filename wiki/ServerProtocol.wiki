@@ -307,22 +307,30 @@ _Response Attributes_
    * `status`: Always `"ok"`.
 
 ==== `data` Element ====
-The metainstaller or install command line includes an insecure data "index", which corresponds to a specific blob of install data on the server.  The client securely requests the data for this index from the server using the `data` element.  Extra data are passed by "untrusteddata". The source for the "untrusted data" is usually a metainstaller tag, which is subsequently passed to the Google Update runtime as an extra argument of the command line. Upon receiving the "untrusteddata" in the request, the  server can further validate it. The server will reply with a status of `"error-invalidargs"` if the "untrusteddata" is invalid for any reason.
+This element provides a way to pass data to the application installer.  There can be many data elements in a request. In general, this data represents application configuration or some kind of run time parameter that the application installer needs, for a particular installation context. This data is less _trusted_ in the sense that it is usually provided by 3rd parties and it is more vulnerable to attacks, such as MITM. The application code must take steps to harden and sanitize the data before use. 
+
+Currently, two mechanisms are provided here: `install` and `untrusted`.
+
+In the case of `install`, the metainstaller or install command line includes an insecure data `index`, which corresponds to a specific blob of install data on the server.  The client securely requests the data for this index from the server using the `data` element.   
+
+Additional arbitrary data can be passed by using `untrusted`. The source for the `untrusted` is usually a metainstaller tag, which is subsequently passed to the Google Update run time as an extra argument of the command line.  Upon receiving the `untrusted` in the request, the  server is expected do to additional validation. The server will reply with a status of `"error-invalidargs"` if the `untrusted` is invalid for any reason.
 
 _Request Attributes_
-   * `name`: A collection specifier (must be alphanumeric; at the moment, the Windows client hard-wires this to `"install"`).
-   * `index`: The requested element of the collection (must be alphanumeric).
-   * `untrusteddata` (optional): Application-specific data to be passed to a client installer.
+   * `name`: A collection specifier (must be alphanumeric;  `"install"` and `"untrusted"` are currently implemented).
+   * `index`: For `"install"`, the requested element of the collection (must be alphanumeric).
+
+For `"untrusted"`, the data itself is sent as a text element of the data element.
 
 _Response Attributes_
    * `status`: One of:
       * `"ok"`: Data blob included.
       * `"error-invalidargs"`: the name, index, or untrusteddata were not alphanumeric or were invalid for any reason.
       * `"error-nodata"`: the named collection or index was not found.
-   * `name`: The collection specifier.  (Windows expects this to be `"install"`.)
-   * `index`: The requested element of the collection.
+   * `name`: The collection specifier; could be `"install"` or `"untrusted"` respectively.
+   * `index`: For `"install"`, the requested element of the collection.
 
-The data itself is returned as a text element child of the data element.
+For `"install"`, the data itself is returned as a text element child of the data element. There is no data returned for `"untrusted"`.
+
 ==== `unknown` Element ====
 If the client sends an unrecognized child element of the app element, the server may respond with an `"unknown"` element in the corresponding position of the response.  It will always have a `status` attribute with a value of `"error"`.  (This is meant to maintain the structure of the response, which mirrors the app and action elements of the request.)
 
