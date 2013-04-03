@@ -125,7 +125,8 @@ _Request:_
   <os platform="win" version="6.1" sp="" arch="x64"/>
   <app appid="{430FD4D0-B729-4F61-AA34-91526481799D}" version="1.3.23.0" nextversion="" lang="en" brand="GGLS" client="someclientid" installage="39">
     <updatecheck/>
-    <data name="install" index="verboselogging" untrusteddata="a=1&amp;b=2"/>
+    <data name="install" index="verboselogging"/>
+    <data name="untrusted">Some untrusted data</data>
     <ping r="1"/>
   </app>
 </request>
@@ -140,6 +141,7 @@ _Response:_
     <data index="verboselogging" name="install" status="ok">
       app-specific values here
     </data>
+    <data name="untrusted" status="ok"/>
   </app>
 </response>
 }}}
