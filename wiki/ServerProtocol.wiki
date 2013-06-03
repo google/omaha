@@ -291,8 +291,8 @@ _Request Attributes_
    * `download_time_ms`: (optional) time taken for the download (if there had been one, note for cached app, download time is 0)
    * `downloaded`: (optional) bytes downloaded
    * `total`:(optional) sum of all packages sizes in this app
-   *  update_check_time_ms : (optional) time taken to do an update check for the app.
-   *  install_time_ms: (optional) time take to install Omaha or an app.
+   * `update_check_time_ms`: (optional) time taken to do an update check for the app.
+   * `install_time_ms`: (optional) time take to install Omaha or an app.
 
 
 _Response Attributes_
