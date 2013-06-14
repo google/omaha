@@ -293,7 +293,10 @@ _Request Attributes_
    * `total`:(optional) sum of all packages sizes in this app
    * `update_check_time_ms`: (optional) time taken to do an update check for the app.
    * `install_time_ms`: (optional) time take to install Omaha or an app.
-
+   * `source_url_index`: (optional) Index of the URL that served app installer download.
+   * `state_cancelled`: (optional) App state when user cancels installation.
+   * `time_since_update_available_ms`: (optional) Time interval between update is available and user cancels installation.
+   * `time_since_download_start_ms`: (optional) Time interval between update download starts and user cancels installation.
 
 _Response Attributes_
    * `status`: Always `"ok"`.
