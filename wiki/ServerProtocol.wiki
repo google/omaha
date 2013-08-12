@@ -295,6 +295,24 @@ _Request Attributes_
    * `install_time_ms`: (optional) time take to install Omaha or an app.
    * `source_url_index`: (optional) Index of the URL that served app installer download.
    * `state_cancelled`: (optional) App state when user cancels installation.
+      * 0: unknown
+      * 1: init
+      * 2: waiting to check for update
+      * 3: checking for update
+      * 4: update available
+      * 5: waiting to download
+      * 6: retrying download
+      * 7: downloading
+      * 8: download complete
+      * 9: extracting
+      * 10: applying differential patch
+      * 11: ready to install
+      * 12: waiting to install
+      * 13: installing
+      * 14: install complete
+      * 15: paused
+      * 16: no update
+      * 17: error
    * `time_since_update_available_ms`: (optional) Time interval between update is available and user cancels installation.
    * `time_since_download_start_ms`: (optional) Time interval between update download starts and user cancels installation.
 
