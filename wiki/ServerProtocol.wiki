@@ -317,8 +317,8 @@ _Request Attributes_
    * `time_since_download_start_ms`: (optional) Time interval between update download starts and user cancels installation.
    * `nextversion`: (optional) The version of the app that an update was attempted to (regardless of whether or not the update succeeded).
    * `previousversion`: (optional) The version of the app prior to the update attempt.
-   * `nextfingerprint`: (optional) A short representation of the binary payload that an update was attempted to. This is a SHA-256 hash of the download, when a SHA-256 hash is available.
-   * `previousfingerprint`: (optional) A short representation of the binary payload of the most recent update / installation. This is a SHA-256 hash of the previous download, when a SHA-256 hash is available.
+   * `nextfp`: (optional) A short representation of the binary payload that an update was attempted to. This is a SHA-256 hash of the download, when a SHA-256 hash is available.
+   * `previousfp`: (optional) A short representation of the binary payload of the most recent update / installation. This is a SHA-256 hash of the previous download, when a SHA-256 hash is available.
 
 _Response Attributes_
    * `status`: Always `"ok"`.
