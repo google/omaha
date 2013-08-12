@@ -294,7 +294,7 @@ _Request Attributes_
    * `update_check_time_ms`: (optional) time taken to do an update check for the app.
    * `install_time_ms`: (optional) time take to install Omaha or an app.
    * `source_url_index`: (optional) Index of the URL that served app installer download.
-   * `state_cancelled`: (optional) App state when user cancels installation.
+   * `state_cancelled`: (optional) App state when user cancels installation. One of:
       * 0: unknown
       * 1: init
       * 2: waiting to check for update
@@ -315,6 +315,10 @@ _Request Attributes_
       * 17: error
    * `time_since_update_available_ms`: (optional) Time interval between update is available and user cancels installation.
    * `time_since_download_start_ms`: (optional) Time interval between update download starts and user cancels installation.
+   * `nextversion`: (optional) The version of the app that an update was attempted to (regardless of whether or not the update succeeded).
+   * `previousversion`: (optional) The version of the app prior to the update attempt.
+   * `nextfingerprint`: (optional) A short representation of the binary payload that an update was attempted to. This is a SHA-256 hash of the download, when a SHA-256 hash is available.
+   * `previousfingerprint`: (optional) A short representation of the binary payload of the most recent update / installation. This is a SHA-256 hash of the previous download, when a SHA-256 hash is available.
 
 _Response Attributes_
    * `status`: Always `"ok"`.
