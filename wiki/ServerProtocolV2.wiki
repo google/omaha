@@ -281,7 +281,10 @@ _Request Attributes_
       * For eventresult==0: Omaha error code
       * For eventresult=={1 | 2 | 3| 5 | 6 | 8}: Application-specific installer exit/result code.
    * extracode: (optional) Additional numerical information related to errorcode.
-   * previousversion: (optional) If type is update, this is set to the application's old version
+   * nextversion: (optional) The version of the app that an update was attempted to (regardless of whether or not the update succeeded).
+   * previousversion: (optional) The version of the app prior to the update attempt.
+   * nextfp: (optional) A short representation of the binary payload that an update was attempted to. This is a SHA-256 hash of the download, when a SHA-256 hash is available.
+   * previousfp: (optional) A short representation of the binary payload of the most recent update / installation. This is a SHA-256 hash of the previous download, when a SHA-256 hash is available.
 
 _Response Attributes_
    * status: Always "ok"
