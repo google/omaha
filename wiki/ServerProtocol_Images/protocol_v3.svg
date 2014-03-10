@@ -1,0 +1,169 @@
+<?xml version="1.0" standalone="yes"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 260" preserveAspectRatio="xMidYMid">
+  <defs>
+    <style type="text/css"><![CDATA[
+      rect {
+        stroke: #000000;
+        stroke-width: 1;
+      }
+      text {
+        font-size: 6.1225pt;
+        font-family: sans-serif;
+      }
+      g rect {
+        width: 128;
+        fill: #4586f4;
+      }
+      g text {
+        fill: #ffffff;
+      }
+      g g rect {
+        fill: #f4b400;
+      }
+      g g text {
+        fill: #000000;
+      }
+      g g g rect {
+        fill: #0f9d58;
+      }
+      g g g text {
+        fill: #ffffff;
+      }
+      g g g g rect {
+        fill: #ffffff;
+      }
+      g g g g text {
+        fill: #000000;
+      }
+      g g g g g rect {
+        fill: #db4437;
+      }
+      g g g g g text {
+        fill: #ffffff;
+      }
+      g g g g g g rect {
+        fill: #656565;
+      }
+      g g g g g g text {
+        fill: #ffffff;
+      }
+    ]]></style>
+  </defs>
+  <!-- Request Element -->
+  <g>
+    <rect x="1" y="1" width="128" height="259"/>
+    <text x="2" y="8.5">Request ('request')</text>
+    <g transform="translate(3, 12)">
+      <rect x="1" y="1" width="122" height="9.5"/>
+      <text x="2" y="8.5">Hardware Attributes ('hw')</text>
+    </g>
+    <g transform="translate(3, 24)">
+      <rect x="1" y="1" width="122" height="9.5"/>
+      <text x="2" y="8.5">OS Attributes ('os')</text>
+    </g>
+    <g transform="translate(3, 48)">
+      <rect x="1" y="1" width="122" height="181"/>
+      <text x="2" y="8.5">App 1 ('app')</text>
+      <g transform="translate(3, 12)">
+        <rect x="1" y="1" width="115" height="142"/>
+        <text x="2" y="8.5">Update Check ('updatecheck')</text>
+      </g>
+      <g transform="translate(3, 157)">
+        <rect x="1" y="1" width="115" height="9.5"/>
+        <text x="2" y="8.5">Data ('data')</text>
+      </g>
+      <g transform="translate(3, 169)">
+        <rect x="1" y="1" width="115" height="9.5"/>
+        <text x="2" y="8.5">Ping ('ping')</text>
+      </g>
+    </g>
+    <g transform="translate(3, 232)">
+      <rect x="1" y="1" width="122" height="24"/>
+      <text x="2" y="8.5">App 2 ('app')</text>
+      <g transform="translate(3, 12)">
+        <rect x="1" y="1" width="115" height="9.5"/>
+        <text x="2" y="8.5">Event Ping ('event')</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Response Element -->
+  <g transform="translate(140, 0)">
+    <rect x="1" y="1" width="128" height="259"/>
+    <text x="2" y="8.5">Response ('response')</text>
+    <g transform="translate(3, 36)">
+      <rect x="1" y="1" width="122" height="9.5"/>
+      <text x="2" y="8.5">Server Time ('daystart')</text>
+    </g>
+    <g transform="translate(3, 48)">
+      <rect x="1" y="1" width="122" height="181"/>
+      <text x="2" y="8.5">App 1 ('app')</text>
+      <g transform="translate(3, 12)">
+        <rect x="1" y="1" width="115" height="142"/>
+        <text x="2" y="8.5">Update Check ('updatecheck')</text>
+        <g transform="translate(3, 12)">
+          <rect x="1" y="1" width="108" height="36"/>
+          <text x="2" y="8.5">URLs ('urls')</text>
+          <g transform="translate(3, 12)">
+            <rect x="1" y="1" width="101" height="9.5"/>
+            <text x="2" y="8.5">Base URL 1 ('url')</text>
+          </g>
+          <g transform="translate(3, 24)">
+            <rect x="1" y="1" width="101" height="9.5"/>
+            <text x="2" y="8.5">Base URL 2 ('url')</text>
+          </g>
+        </g>
+        <g transform="translate(3, 50)">
+          <rect x="1" y="1" width="108" height="89"/>
+          <text x="2" y="8.5">Manifest ('manifest')</text>
+          <g transform="translate(3, 12)">
+            <rect x="1" y="1" width="101" height="36"/>
+            <text x="2" y="8.5">Packages ('packages')</text>
+            <g transform="translate(3, 12)">
+              <rect x="1" y="1" width="94" height="9.5"/>
+              <text x="2" y="8.5">Package 1 ('package')</text>
+            </g>
+            <g transform="translate(3, 24)">
+              <rect x="1" y="1" width="94" height="9.5"/>
+              <text x="2" y="8.5">Package 2 ('package')</text>
+            </g>
+          </g>
+          <g transform="translate(3, 50)">
+            <rect x="1" y="1" width="101" height="36"/>
+            <text x="2" y="8.5">Actions ('actions')</text>
+            <g transform="translate(3, 12)">
+              <rect x="1" y="1" width="94" height="9.5"/>
+              <text x="2" y="8.5">Action 1 ('action')</text>
+            </g>
+            <g transform="translate(3, 24)">
+              <rect x="1" y="1" width="94" height="9.5"/>
+              <text x="2" y="8.5">Action 2 ('action')</text>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g transform="translate(3, 157)">
+        <rect x="1" y="1" width="115" height="9.5"/>
+        <text x="2" y="8.5">Data ('data')</text>
+      </g>
+      <g transform="translate(3, 169)">
+        <rect x="1" y="1" width="115" height="9.5"/>
+        <text x="2" y="8.5">Ping ('ping')</text>
+      </g>
+    </g>
+    <g transform="translate(3, 232)">
+      <rect x="1" y="1" width="122" height="24"/>
+      <text x="2" y="8.5">App 2 ('app')</text>
+      <g transform="translate(3, 12)">
+        <rect x="1" y="1" width="115" height="9.5"/>
+        <text x="2" y="8.5">Event Ping ('event')</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Arrows -->
+  <g>
+    
+  </g>
+</svg>
