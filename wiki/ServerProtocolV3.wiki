@@ -1,0 +1,53 @@
+#summary Protocol that Omaha V3 uses to communicate with the update server
+= Omaha Client-Server Protocol V3 =
+
+This document is a work-in-progress rewrite of [ServerProtocol]. Please consult that page instead of this one for the time being.
+
+This document describes version 3 of the Omaha client-server protocol.  Omaha launched on Windows with this version of the protocol in May 2011.  (Version 2 of the protocol launched in May 2007 on Windows and May 2008 on Mac; Version 1 of the protocol was never deployed publicly.)
+
+Version 2 is documented [ServerProtocolV2 here]. An older description of the the V3 protocol is [ServerProtocol here].
+
+== Introduction ==
+The Omaha protocol is designed to facilitate the acquisition, delivery, and metrics of software updates over the Internet. It is an application-layer protocol on top of HTTP.
+
+The client sends requests via HTTP POST with an XML data body. The response is an XML data body. For Omaha Client, the request and response are secured by [http://omaha.googlecode.com/svn/wiki/cup.html CUP] or SSL.
+
+Diagram of an example request-response pair:
+
+http://omaha.googlecode.com/svn/wiki/ServerProtocol_Images/protocol_v3.svg
+
+== Terminology ==
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in [https://www.ietf.org/rfc/rfc2119.txt RFC 2119].
+
+The following terms also have specific meaning in this document:
+  * *Client*: A host with updateable software, seeking knowledge about updates. The client sends *requests* to the server.
+  * *Server*: A host reachable over the Internet that has knowledge about updates. The server sends *responses* to requests.
+  * *Omaha Client*: A specific instantiation of a compatible client - this project's client.
+  * *Omaha Server*: A specific instantiation of a compatible server. This server is owned by Google, Inc and has not been open-sourced.
+
+== HTTP Post Body ==
+
+
+== HTTP Headers ==
+Compatible clients MAY include [ServerProtocolV3# additional headers] in requests to the server. Such headers are purely advisory in nature, and their presence and content MUST NOT be required in order to provide responses to update checks. Compatible servers MUST be able to tolerate unexpected headers.
+
+Compatible servers MAY include additional headers in responses to the client. Compatible clients MUST be able to tolerate unexpected headers.
+
+Omaha Client uses additional headers in the request and response to implement [http://omaha.googlecode.com/svn/wiki/cup.html CUP], as well as send network diagnostics. Omaha Client sends the following custom headers:
+  * `X-Last-HR`: On a retry, contains the HRESULT error code returned from `NetworkRequestImple::DoSendHttpRequestion()` for the previous attempt.
+  * `X-Last-HTTP-Status-Code`: On a retry, contains the HTTP status code of the previous attempt, if any HTTP status code was received.
+  * `X-Proxy-Manual-Auth`: When present, this header indicates that the request was sent through at least one proxy that required authentication and that Omaha had no cached credentials for the proxy, causing it to display a UI to prompt the user. The header's value, when present, is always `1`.
+  * `X-Proxy-Retry-Count`: On a retry, contains the number of times an HTTP 407 status code was received.
+  * `X-Retry-Count`: The total number of times that this network request has been retried (e.g. using different proxy settings, different DNS servers, or simple retries).
+
+Omaha Client uses CUP to secure the request and response. The following request headers are used to implement CUP:
+  * If-Match: A signature that proves that the client knows the client's private key.
+  * Cookie: An encrypted copy of the client's private verification key. Only early versions of Omaha Client send this.
+
+The following response headers are used to implement CUP in Omaha Client:
+  * ETag: Contains the signature of the response.
+  * Set-Cookie: Encrypted copy of the client's private key, for the client to send in the next request. Omaha Server no longer sets this.
+
+Additionally, Omaha Client uses a URL parameter `w` to encode a proposed private key.
+
+== Examples ==
