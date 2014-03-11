@@ -174,7 +174,7 @@ Inside the request envelope is an `hw` element that describes the hardware featu
 
 _Request Attributes_
    * `sse2`: "1" if the machine's hardware supports the SSE2 instruction set. "0" if the machine's hardware does not support SSE2. "-1" if unknown. Default: "-1".
-   * `physmemory`: The physical memory the machine has available to it, in bytes, or "-1" if unknown. This value is intended to reflect the maximum theoretical storage capacity of the hardware, not including any hard drive or paging to a hard drive or peripheral. Omaha client truncates the available physical memory down to the nearest gibibyte. Default: "-1".
+   * `physmemory`: The physical memory the machine has available to it, in bytes, or "-1" if unknown. This value is intended to reflect the maximum theoretical storage capacity of the hardware, not including any hard drive or paging to a hard drive or peripheral. Omaha client truncates the available physical memory down to the nearest gigabyte. Default: "-1".
 
 _Response Attributes_
 
