@@ -23,13 +23,130 @@ The following terms also have specific meaning in this document:
   * *Client*: A host with updateable software, seeking knowledge about updates. The client sends *requests* to the server.
   * *Server*: A host reachable over the Internet that has knowledge about updates. The server sends *responses* to requests.
   * *Omaha Client*: A specific instantiation of a compatible client - this project's client.
-  * *Omaha Server*: A specific instantiation of a compatible server. This server is owned by Google, Inc and has not been open-sourced.
+  * *Update Flow*: A sequence of update check, update attempt, and event ping (if an update was available), or an update attempt if no update was available. See [ServerProtocolV3#Update_Flow Update Flow] for more details.
+
+== Update Flow ==
+A complete update sequence is formed by the following steps:
+  # The client sends a request that includes information about each updateable piece of software (an "app"), asking for information about whether an update is available for any of them. This is called an "update check".
+  # The server responds for each app either that an update is available, or that there is no update available, or that an error was encountered.
+  # If there are any available updates, they are downloaded and applied by the client.
+  # If there were any available updates, the client sends a request including information about the outcome of the update back to the server. This is called an "event ping".
+  # The server responds, acknowledging receipt of the event ping.
+
+Both request and response data are XML, carried in the body of an HTTP Post request and response.
+
+If any attribute specified by this protocol is missing in an element, the specified default value is assumed. Compatible clients and servers MAY decide not to implement or transmit any attributes that have a defined default. Compatible clients and servers SHOULD assume the defined default value if the attribute is missing.
+
+Compatible clients and servers MUST be able to tolerate unexpected elements. Compatible clients and servers MUST be able to tolerate unexpected attributes.
+
+For each app in a request, there are two types of messages: an update check or an event ping. If an `<app>` contains an `<updatecheck>`, the message is an update check for that app. If an `<app>` contains an `<event>`, the message is an event ping for that app. A client MUST NOT combine the two types of messages for the same `<app>`.
+
+== Version Numbers ==
+The Omaha protocol handles the transmission of several version numbers. Servers SHOULD publicize the versioning schemes that they understand, and clients interacting with those servers SHOULD use a published versioning scheme.
+
+Compatible clients and servers SHOULD implement the following versioning scheme: A version is a 4-tuple encoded in dot-decimal notation, e.g. `1.0.66.44`. An element (and the separating dot) may be omitted if that element and every following element is zero. For example, `1.2` is equivalent to `1.2.0.0`. Leading zeroes are ignored in each element - so `1.001` and `1.1` are both equivalent to `1.1.0.0`, and `1.005` is a higher version than `1.4`.
+
+Versions are members of an ordered set. A version `A` is greater than a version `B` if and only if there is at least one element in `A` that is greater than the corresponding element in `B`, and all elements preceding that element in `A` are equal to their corresponding elements in `B`. Two versions are equal if and only if all their elements are equal.
+
+== GUIDs ==
+The Omaha protocol deals with globally-unique identifiers in multiple places. For the purpose of the protocol, a GUID is a 128-bit value, serialized as a string of hexadecimal digits as follows: "`{00000000-1111-2222-3333-444444444444}`" (e.g. "`{430FD4D0-B729-4F61-AA34-91526481799D}`").
+
+== Counting Algorithms ==
+One of the goals of the Omaha protocol is to provide the server with information about the success and failure rates of updates, as well as access to other metrics such as retention and usage, without compromising the client's privacy.
+
+The core aspect of counting unique users is being able to de-duplicate requests from the same user. The protocol supports three different de-duplication schemes, described briefly here:
+
+=== User-ID Counting ===
+In User-ID counting, the server MAY de-duplicate metrics by discarding multiple requests with the same User-ID.
+
+However, as user IDs can be used to track users across days, Omaha Client only supports them on an opt-in basis.
+
+=== Client-Regulated Counting (Days-Based) ===
+In client-regulated counting, the client transmits with each request the number of days since the previous time it sent a message. If the timestamp of the request, minus the number of days since the previous message is within the server's counting window, the request can be discarded as a duplicate.
+
+=== Client-Regulated Counting (Date-Based) ===
+Due to issues with time-zones, client clock unreliability, and daylight-savings transitions, in date-based client-regulated counting, the server transmits with each response an authoritative date, representing the date it received the request. The client stores this date, and then with the next request echoes it back to the server. If the date transmitted with a request is within the server's counting window, the request can be discarded as a duplicate.
 
 == HTTP Post Body ==
 
+=== Request ===
+An Omaha V3 request MUST contain exactly one `<request>` element at the root level.
+----
+==== `<request>` ====
 
+===== Attributes =====
+  * `dedup`: Specifies the preferred de-duplication algorithm for this request. Either "" (unknown or no-preference), "cr" (client-regulated) or "uid" (user-id). Default: "". Omaha Client sends "cr" in all cases.
+  * `installsource`: A string specifying the cause of the update flow. For example: "ondemand", or "scheduledtask". Default: "".
+  * `ismachine`: "1" if the client is known to be installed with system-level or administrator privileges. "0" otherwise. Default: "0".
+  * `originurl`: If the update flow is invoked from a web page, contains the URL of that page. Otherwise, "". Default: "".
+  * `protocol`: The version of the Omaha protocol. Compatible clients MUST provide a value of "3.0". Default: Undefined - compatible clients MUST always transmit this attribute.
+  * `requestid`: A randomly-generated (uniformly distributed) GUID. Each request attempt SHOULD have (with high probability) a unique `requestid`. Default: "".
+  * `sessionid`: A randomly-generated (uniformly distributed) GUID. Each single update flow (an update check, update application, event ping sequence) SHOULD have (with high probability) a single unique `sessionid`. Default: "".
+  * `testsource`: Either "", "`dev`", "`qa`", "`prober`", "`auto`", or "`ossdev`". Any value except "" indicates that the request is a test and should not be counted toward normal metrics. Default: "".
+  * `updaterchannel`: If present, identifies the distribution channel of the client (e.g. "stable", "beta", "dev", "canary"). Default: "".
+  * `userid`: A randomly-generated (uniformly distributed) GUID. Each instance of the client SHOULD have (with high probability) either a single unique `userid`, or no `userid` at all (""). Default: "". Omaha Client transmits `userid` only for opt-in users.
+  * `version`: The ID and version number of the client. Default: Undefined - compatible clients MUST always transmit this attribute. The version number MUST be one of the two following forms:
+    # "`A-V`" where `A` is a client identifier, and `V` is the version number of client (e.g. "chromiumcrx-31.1.0.112").
+    # "`V`" where `V` is the version number of the client (e.g. "1.3.23.9"). Compatible clients SHOULD NOT use this form, as it is reserved for Omaha Client.
+
+===== Legal Child Elements =====
+  * Any number of `<app>`
+  * At most 1 `<hw>`
+  * At most 1 `<os>`
+
+----
+==== `<hw>` ====
+Contains information about the capabilities of the client's hardware.
+===== Attributes =====
+  * `sse2`: "1" if the client's hardware supports the SSE2 instruction set. "0" if the client's hardware does not. "-1" if unknown. Default: "-1".
+  * `physmemory`: The physical memory the client has available to it, measured in bytes, or "-1" if unknown. This value is intended to reflect the maximum theoretical storage capacity of the client, not including any hard drive or paging to a hard drive or peripheral. Omaha Client truncates the available physical memory down to the nearest gibibyte. Default: "-1".
+
+
+===== Legal Child Elements =====
+None.
+
+----
+==== `<os>` ====
+Contains information about the operating system that the client is running under.
+===== Attributes =====
+  * `platform`: The operating system family that the client is running within (e.g. "win", "mac", "linux", "ios", "android"), or "" if unknown. The operating system name should be transmitted in lowercase with minimal formatting. Default: "".
+  * `version`: The primary version of the operating system, or "" if unknown. Default: "".
+    * On Windows, the major-minor OS version (e.g. "5.1", "6.2").
+    * On Mac OSX, "MacOSX".
+    * On iOS, the version number (e.g. "4.3", "5.1.1").
+    * On Android, the version number (e.g. "4.1.1", "4.3").
+  * `sp`: The secondary version of the operating system, or "" if unknown. Default: "".
+    * On Windows, the service pack (e.g. "Service Pack 2").
+    * On Mac OSX, the OS version and processor architecture (e.g. "10.5.6_i486").
+  * `arch`: The architecture of the operating system (e.g. "x86", "x64", "arm"), or "" if unknown. Default: "".
+===== Legal Child Elements =====
+None.
+
+----
+==== `<app>` (Request) ====
+===== Attributes =====
+===== Legal Child Elements =====
+
+----
+=== Response ===
+----
+==== `<response>` ====
+===== Attributes =====
+===== Legal Child Elements =====
+
+----
+==== `<daystart>` ====
+===== Attributes =====
+===== Legal Child Elements =====
+
+----
+==== `<app>` (Response) ====
+===== Attributes =====
+===== Legal Child Elements =====
+
+----
 == HTTP Headers ==
-Compatible clients MAY include [ServerProtocolV3# additional headers] in requests to the server. Such headers are purely advisory in nature, and their presence and content MUST NOT be required in order to provide responses to update checks. Compatible servers MUST be able to tolerate unexpected headers.
+Compatible clients MAY include additional headers in requests to the server. Such headers are purely advisory in nature, and their presence and content MUST NOT be required in order to provide responses to update checks. Compatible servers MUST be able to tolerate unexpected headers.
 
 Compatible servers MAY include additional headers in responses to the client. Compatible clients MUST be able to tolerate unexpected headers.
 
@@ -39,6 +156,7 @@ Omaha Client uses additional headers in the request and response to implement [h
   * `X-Proxy-Manual-Auth`: When present, this header indicates that the request was sent through at least one proxy that required authentication and that Omaha had no cached credentials for the proxy, causing it to display a UI to prompt the user. The header's value, when present, is always `1`.
   * `X-Proxy-Retry-Count`: On a retry, contains the number of times an HTTP 407 status code was received.
   * `X-Retry-Count`: The total number of times that this network request has been retried (e.g. using different proxy settings, different DNS servers, or simple retries).
+  * `X-Request-Age`: The presence of this header indicates that this request originally failed to send, and was persisted and later retried. The value of the header is the time interval in seconds between the client's current time and the client time at which the request was originally attempted.
 
 Omaha Client uses CUP to secure the request and response. The following request headers are used to implement CUP:
   * If-Match: A signature that proves that the client knows the client's private key.
@@ -46,7 +164,7 @@ Omaha Client uses CUP to secure the request and response. The following request 
 
 The following response headers are used to implement CUP in Omaha Client:
   * ETag: Contains the signature of the response.
-  * Set-Cookie: Encrypted copy of the client's private key, for the client to send in the next request. Omaha Server no longer sets this.
+  * Set-Cookie: Encrypted copy of the client's private key, for the client to send in the next request. Only early versions of Omaha Client send this.
 
 Additionally, Omaha Client uses a URL parameter `w` to encode a proposed private key.
 
