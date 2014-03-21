@@ -50,7 +50,9 @@ Compatible clients and servers SHOULD implement at minimum the following version
 Versions are members of an ordered set. A version `A` is greater than a version `B` if and only if there is at least one element in `A` that is greater than the corresponding element in `B`, and all elements preceding that element in `A` are equal to their corresponding elements in `B`. Two versions are equal if and only if all their elements are equal.
 
 == GUIDs ==
-The Omaha protocol deals with globally-unique identifiers in multiple places. For the purpose of the protocol, a GUID is a 128-bit value, serialized as a string of hexadecimal digits as follows: "`{00000000-1111-2222-3333-444444444444}`" (e.g. "`{430FD4D0-B729-4F61-AA34-91526481799D}`").
+The Omaha protocol deals with globally-unique identifiers in multiple places. For the purpose of the protocol, a GUID one of the following formats:
+  # a 128-bit value, serialized as a string of hexadecimal digits as follows: "`{00000000-1111-2222-3333-444444444444}`" (e.g. "`{430FD4D0-B729-4F61-AA34-91526481799D}`").
+  # A lowercase Mac bundle ID (for example `com.google.chrome`). This format is only allowed to identify a product.
 
 == Counting Algorithms ==
 One of the goals of the Omaha protocol is to provide the server with information about the success and failure rates of updates, as well as access to other metrics such as retention and usage, without compromising the client's privacy.
