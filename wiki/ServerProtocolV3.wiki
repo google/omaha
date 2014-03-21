@@ -23,7 +23,8 @@ The following terms also have specific meaning in this document:
   * *Client*: A host with updateable software, seeking knowledge about updates. The client sends *requests* to the server.
   * *Server*: A host reachable over the Internet that has knowledge about updates. The server sends *responses* to requests.
   * *Omaha Client*: A specific instantiation of a compatible client - this project's client.
-  * *Update Flow*: A sequence of update check, update attempt, and event ping (if an update was available), or an update attempt if no update was available. See [ServerProtocolV3#Update_Flow Update Flow] for more details.
+  * *Update Flow*: A sequence of update check, update attempt, and event ping (if an update was available), or simply an update check (if no update was available). See [ServerProtocolV3#Update_Flow Update Flow] for more details.
+  * *Product*: A piece of software that the client is responsible for keeping up to date. The client itself may be a product.
 
 == Update Flow ==
 A complete update sequence is formed by the following steps:
@@ -31,7 +32,7 @@ A complete update sequence is formed by the following steps:
   # The server responds for each app either that an update is available, or that there is no update available, or that an error was encountered.
   # If there are any available updates, they are downloaded and applied by the client.
   # If there were any available updates, the client sends a request including information about the outcome of the update back to the server. This is called an "event ping".
-  # The server responds, acknowledging receipt of the event ping.
+  # If an event ping was sent, the server responds, acknowledging receipt of the event ping.
 
 Both request and response data are XML, carried in the body of an HTTP Post request and response.
 
@@ -44,7 +45,7 @@ For each app in a request, there are two types of messages: an update check or a
 == Version Numbers ==
 The Omaha protocol handles the transmission of several version numbers. Servers SHOULD publicize the versioning schemes that they understand, and clients interacting with those servers SHOULD use a published versioning scheme.
 
-Compatible clients and servers SHOULD implement the following versioning scheme: A version is a 4-tuple encoded in dot-decimal notation, e.g. `1.0.66.44`. An element (and the separating dot) may be omitted if that element and every following element is zero. For example, `1.2` is equivalent to `1.2.0.0`. Leading zeroes are ignored in each element - so `1.001` and `1.1` are both equivalent to `1.1.0.0`, and `1.005` is a higher version than `1.4`.
+Compatible clients and servers SHOULD implement at minimum the following versioning scheme: A version is a 4-tuple encoded in dot-decimal notation, e.g. `1.0.66.44`. An element (and the preceding separating dot) may be omitted if that element and every following element is zero. For example, `1.2` is equivalent to `1.2.0.0`. Leading zeroes are ignored in each element - so `1.001` and `1.1` are both equivalent to `1.1.0.0`, and `1.005` is a higher version than `1.4`.
 
 Versions are members of an ordered set. A version `A` is greater than a version `B` if and only if there is at least one element in `A` that is greater than the corresponding element in `B`, and all elements preceding that element in `A` are equal to their corresponding elements in `B`. Two versions are equal if and only if all their elements are equal.
 
@@ -62,10 +63,10 @@ In User-ID counting, the server MAY de-duplicate metrics by discarding multiple 
 However, as user IDs can be used to track users across days, Omaha Client only supports them on an opt-in basis.
 
 === Client-Regulated Counting (Days-Based) ===
-In client-regulated counting, the client transmits with each request the number of days since the previous time it sent a message. If the timestamp of the request, minus the number of days since the previous message is within the server's counting window, the request can be discarded as a duplicate.
+In client-regulated counting, the client transmits with each request the number of days since the previous time it sent a message. If the timestamp of the request minus the number of days since the previous message is within the server's counting window, the request can be discarded as a duplicate.
 
 === Client-Regulated Counting (Date-Based) ===
-Due to issues with time-zones, client clock unreliability, and daylight-savings transitions, in date-based client-regulated counting, the server transmits with each response an authoritative date, representing the date it received the request. The client stores this date, and then with the next request echoes it back to the server. If the date transmitted with a request is within the server's counting window, the request can be discarded as a duplicate.
+In date-based client-regulated counting, the server transmits with each response an authoritative date, representing the date it received the request. The client stores this date, and then with the next request echoes it back to the server. If the date transmitted with a request is within the server's counting window, the request can be discarded as a duplicate.
 
 == HTTP Post Body ==
 
@@ -124,6 +125,7 @@ None.
 
 ----
 ==== `<app>` (Request) ====
+Each product that is contained in the updatecheck is represented by exactly one `<app>` tag.
 ===== Attributes =====
 ===== Legal Child Elements =====
 
