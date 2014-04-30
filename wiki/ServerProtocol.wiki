@@ -180,7 +180,7 @@ _Request Attributes_
    * `sse41`: "1" if the machine's hardware supports the SSE4.1 instruction set. "0" if the machine's hardware does not support SSE4.1. "-1" if unknown. Default: "-1".
    * `sse42`: "1" if the machine's hardware supports the SSE4.2 instruction set. "0" if the machine's hardware does not support SSE4.2. "-1" if unknown. Default: "-1"
    * `avx`: "1" if the machine's hardware supports the AVX instruction set. "0" if the machine's hardware does not support AVX. "-1" if unknown. Default: "-1"
-   * `physmemory`: The physical memory the machine has available to it, or "-1" if unknown. This value could be slightly different than the amount of memory installed in the machine. Omaha client truncates the available physical memory down to the nearest gigabyte. Default: "-1".
+   * `physmemory`: The physical memory the machine has available to it, or "-1" if unknown. This value could be slightly different than the amount of memory installed in the machine. Omaha client truncates the available physical memory to the nearest gigabyte. Default: "-1".
 
 _Response Attributes_
 
