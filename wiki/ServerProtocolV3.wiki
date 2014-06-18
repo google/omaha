@@ -70,6 +70,11 @@ In client-regulated counting, the client transmits with each request the number 
 === Client-Regulated Counting (Date-Based) ===
 In date-based client-regulated counting, the server transmits with each response an authoritative date, representing the date it received the request. The client stores this date, and then with the next request echoes it back to the server. If the date transmitted with a request is within the server's counting window, the request can be discarded as a duplicate.
 
+== Packages & Fingerprints ==
+An individual version of an app may have multiple files (some of which may be optional). Such files are called "Packages". Every app has at least one package: that package is the file that is downloaded (and run by Omaha Client) to conduct the update. Product installation versions are identified by a version number, but individual package binary versions are identified by a "fingerprint". A fingerprint is a string of the form A.B, where A is a fingerprint type, and B is fingerprint data. The two currently supported fingerprint types are:
+  * "1", indicating that the fingerprint data should be interpreted as a SHA256 hash of the binary, represented as a lowercase hexadecimal string. Example: "1.cf937d3ba4d4a7bcc68dba806d16752e12ef7f3f96e964385a9db0f28da19e92"
+  * "2", indicating that the fingerprint data should be interpreted as a dotted-quad version number. This is primarily for legacy purposes: format "1" is preferred. Example: "2.35.1.119.154"
+
 == HTTP Post Body ==
 
 === Request ===
@@ -127,7 +132,55 @@ None.
 
 ----
 ==== `<app>` (Request) ====
-Each product that is contained in the updatecheck is represented by exactly one `<app>` tag.
+Each product that is contained in the request is represented by exactly one `<app>` tag.
+===== Attributes =====
+  * `appid`: The GUID that identifies the product. See [#GUIDs]. Default: Undefined - Compatible clients MUST transmit this attribute.
+  * `version`: The version of the product install. See [#VersionNumbers]. Default: "0.0.0.0".
+  * `lang`: The language of the product install, in BCP 47 representation. Default: "".
+  * `brand`: The brand code that the product was installed under, if any. A brand code is a short (4-character) string used to identify installations that took place as a result of partner deals or website promotions. Default: "".
+  * `client`: A generalized form of brand code that can accept a wider range of values but is used for similar purposes to `brand`. Default: "".
+  * `experiments`: A key/value list of experiment identifiers. Experiment labels are used to track membership in different experimental groups, and may be set at install or update time. The experiments string is formatted as a semicolon-delimited concatenation of experiment label strings. An experiment label string is an experiment name, followed by a '=' character, followed by an experimental label value. For example: "crdiff=got_bsdiff;optimized=O3". Default: "".
+  * `iid`: A GUID that identifies an installation flow. For example, each download of a product installer is tagged with a unique GUID. Attempts to install using that installer can then be grouped. A client SHOULD NOT persist the iid GUID after the installation flow of a product is complete.
+  * `installage`: The number of PST8PDT calendar days since the app was first installed. The first communication to the server should use a special value of "-1". Compatible clients MAY fuzz this value to the week granularity (e.g. send "0" for 0 through 6, "7" for 7 through 13, etc). Default: "0"
+  * `installdate`: The date-based counting equivalent of installage: this is a numeric calendar day that the app was installed on. (This value is provided by the server in the response to the first request in the installation flow. See [#DateBasedCounting]) The first communication to the server should use a special value of "-1". A value of "-2" indicates that this value is not known. Default: "-2".
+  * `installsource`: A string indicating the cause of this install or update flow. As examples:  "organic" indicating an organic web download, "scheduler" indicating a scheduled update, "ondemand" indicating a user-prompted update. Default: "".
+  * `tag`: An field for a client to transmit arbitrary update parameters in string form. Compatible clients and servers MAY use this attribute to negotiate special update rules. Alternatively, they MAY extend the protocol to represent the information more clearly in another parameter. As an example, Omaha Client uses this field to transmit whether a Google Chrome installation is on the "stable", "dev", or "beta" channel, which affects how the server issues update responses for that installation. Default: "".
+  * `fingerprint`: If there is only one package, the fingerprint for that package may be transmitted at the <app> level. See [#Packages&Fingerprints]
+===== Legal Child Elements =====
+  * At most one `<packages>`.
+  * At most one `<ping>`.
+  * At most one of the following:
+    * One or more `<event>`.
+    * Exactly one `<updatecheck>`.
+
+----
+==== `<packages>` (Request) ====
+A `<packages>` tag simply contains several `<package>`s.
+===== Attributes =====
+None.
+===== Legal Child Elements =====
+  * At least one `<package>`
+
+----
+==== `<package>` (Request) ====
+A `<package>` tag gives information about an installed package.
+===== Attributes =====
+  * `fingerprint`: The fingerprint identifying the installed package. See [#Packages&Fingerprints].
+===== Legal Child Elements =====
+None.
+
+----
+==== `<ping>` (Request) ====
+===== Attributes =====
+===== Legal Child Elements =====
+
+----
+==== `<event>` (Request) ====
+===== Attributes =====
+===== Legal Child Elements =====
+
+----
+==== `<updatecheck>` (Request) ====
 ===== Attributes =====
 ===== Legal Child Elements =====
 
