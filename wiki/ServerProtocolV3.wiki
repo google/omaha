@@ -149,6 +149,7 @@ Each product that is contained in the request is represented by exactly one `<ap
 ===== Legal Child Elements =====
   * At most one `<packages>`.
   * At most one `<ping>`.
+  * Any number of `<data>`.
   * At most one of the following:
     * One or more `<event>`.
     * Exactly one `<updatecheck>`.
@@ -172,17 +173,52 @@ None.
 ----
 ==== `<ping>` (Request) ====
 ===== Attributes =====
+  * `active`:
+  * `a`:
+  * `r`:
+  * `ad`:
+  * `rd`:
 ===== Legal Child Elements =====
+None.
 
 ----
 ==== `<event>` (Request) ====
 ===== Attributes =====
+  * `eventtype`: 
+  * `eventresult`: 
+  * `errorcode`: 
+  * `extracode1`: 
+  * `errorcat`: 
+  * `download_time_ms`: 
+  * `downloaded`: 
+  * `total`: 
+  * `update_check_time_ms`: 
+  * `install_time_ms`: 
+  * `source_url_index`: 
+  * `state_cancelled`: 
+  * `time_since_update_available_ms`: 
+  * `time_since_download_start_ms`: 
+  * `nextversion`: 
+  * `previousversion`: 
 ===== Legal Child Elements =====
+None.
+
+----
+==== `<data>` (Request) ====
+===== Attributes =====
+  * `name`: 
+  * `index`: 
+===== Legal Child Elements =====
+None.
 
 ----
 ==== `<updatecheck>` (Request) ====
 ===== Attributes =====
+  * `tttoken`: 
+  * `updatedisabled`: 
+  * `targetversionprefix`: 
 ===== Legal Child Elements =====
+None.
 
 ----
 === Response ===
