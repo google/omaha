@@ -5,7 +5,7 @@ This document is a work-in-progress rewrite of [ServerProtocol]. Please consult 
 
 This document describes version 3 of the Omaha client-server protocol.  Omaha launched on Windows with this version of the protocol in May 2011.  (Version 2 of the protocol launched in May 2007 on Windows and May 2008 on Mac; Version 1 of the protocol was never deployed publicly.)
 
-Version 2 is documented [ServerProtocolV2 here]. An older description of the the V3 protocol is [ServerProtocol here].
+Version 2 is documented [ServerProtocolV2 here]. An older description of the V3 protocol is [ServerProtocol here].
 
 == Introduction ==
 The Omaha protocol is designed to facilitate the acquisition, delivery, and metrics of software updates over the Internet. It is an application-layer protocol on top of HTTP.
@@ -182,6 +182,14 @@ None.
 None.
 
 ----
+==== `<data>` (Request) ====
+===== Attributes =====
+  * `name`: 
+  * `index`: 
+===== Legal Child Elements =====
+  * May contain arbitrary non-XML textual information.
+
+----
 ==== `<event>` (Request) ====
 ===== Attributes =====
   * `eventtype`: 
@@ -200,14 +208,8 @@ None.
   * `time_since_download_start_ms`: 
   * `nextversion`: 
   * `previousversion`: 
-===== Legal Child Elements =====
-None.
-
-----
-==== `<data>` (Request) ====
-===== Attributes =====
-  * `name`: 
-  * `index`: 
+  * `nextfp`: 
+  * `previousfp`: 
 ===== Legal Child Elements =====
 None.
 
@@ -225,17 +227,134 @@ None.
 ----
 ==== `<response>` ====
 ===== Attributes =====
+  * `protocol`: 
+  * `server`: 
 ===== Legal Child Elements =====
+  * At most one `<daystart>`.
+  * Any number of `<app>`.
 
 ----
 ==== `<daystart>` ====
 ===== Attributes =====
+  * `elapsed_seconds`: 
+  * `elapsed_days`: 
 ===== Legal Child Elements =====
+None.
 
 ----
 ==== `<app>` (Response) ====
 ===== Attributes =====
+  * `appid`:
+  * `status`:
+  * `experiments`:
 ===== Legal Child Elements =====
+  * At most one `<ping>`.
+  * Any number of `<data>`.
+  * At most one of:
+    * Any number of `<event>`.
+    * Exactly one `<updatecheck>`.
+  * Any number of `<unknown>`.
+
+----
+==== `<ping>` (Response) ====
+===== Attributes =====
+  * `status`: 
+===== Legal Child Elements =====
+None.
+
+----
+==== `<data>` (Response) ====
+===== Attributes =====
+  * `status`: 
+  * `name`: 
+  * `index`: 
+===== Legal Child Elements =====
+  * May contain arbitrary non-XML textual information.
+
+----
+==== `<event>` (Response) ====
+===== Attributes =====
+  * `status`: 
+===== Legal Child Elements =====
+None.
+
+----
+==== `<updatecheck>` (Response) ====
+===== Attributes =====
+===== Legal Child Elements =====
+  * At most one `<urls>`.
+  * At most one `<manifest>`.
+
+----
+==== `<urls>` (Response) ====
+===== Attributes =====
+===== Legal Child Elements =====
+  * At least one `<url>`.
+
+----
+==== `<url>` (Response) ====
+===== Attributes =====
+  * `codebase`: 
+  * `codebasediff`: 
+===== Legal Child Elements =====
+  * None.
+
+----
+==== `<manfiest>` (Response) ====
+  * `version`: 
+===== Attributes =====
+===== Legal Child Elements =====
+  * Exactly one `<packages>`.
+  * Exactly one `<actions>`.
+
+----
+==== `<packages>` (Response) ====
+===== Attributes =====
+None.
+===== Legal Child Elements =====
+  * At least one `<package>`.
+
+----
+==== `<package>` (Response) ====
+===== Attributes =====
+  * `name`: 
+  * `namediff`: 
+  * `required`: 
+  * `size`: 
+  * `sizediff`: 
+  * `hash`: 
+  * `hashdiff`: 
+  * `hash_sha256`: 
+  * `hashdiff_sha256`: 
+  * `fp`: 
+===== Legal Child Elements =====
+None.
+
+----
+==== `<actions>` (Response) ====
+===== Attributes =====
+None.
+===== Legal Child Elements =====
+  * At least one `<action>`.
+
+----
+==== `<action>` (Response) ====
+===== Attributes =====
+  * `event`: 
+  * `run`: 
+  * `arguments`: 
+  * `successurl`: 
+  * `terminateallbrowsers`: 
+  * `successaction`: 
+===== Legal Child Elements =====
+None.
+
+----
+==== `<unknown>` (Response) ====
+===== Attributes =====
+  * `status`: 
+===== Legal Child Elements =====
+None.
 
 ----
 == HTTP Headers ==
