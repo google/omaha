@@ -139,6 +139,7 @@ Each product that is contained in the request is represented by exactly one `<ap
   * `lang`: The language of the product install, in BCP 47 representation. Default: "".
   * `brand`: The brand code that the product was installed under, if any. A brand code is a short (4-character) string used to identify installations that took place as a result of partner deals or website promotions. Default: "".
   * `client`: A generalized form of brand code that can accept a wider range of values but is used for similar purposes to `brand`. Default: "".
+  * `enabled`: Tracks whether the app is enabled on the client. Apps may be disabled for a variety of reasons. A value of "-1" indicates that the enabled status is unknown. "0" indicates that the app is disabled. "1" indicates that the app is enabled. Default: "-1"
   * `experiments`: A key/value list of experiment identifiers. Experiment labels are used to track membership in different experimental groups, and may be set at install or update time. The experiments string is formatted as a semicolon-delimited concatenation of experiment label strings. An experiment label string is an experiment name, followed by a '=' character, followed by an experimental label value. For example: "crdiff=got_bsdiff;optimized=O3". Default: "".
   * `iid`: A GUID that identifies an installation flow. For example, each download of a product installer is tagged with a unique GUID. Attempts to install using that installer can then be grouped. A client SHOULD NOT persist the iid GUID after the installation flow of a product is complete.
   * `installage`: The number of PST8PDT calendar days since the app was first installed. The first communication to the server should use a special value of "-1". Compatible clients MAY fuzz this value to the week granularity (e.g. send "0" for 0 through 6, "7" for 7 through 13, etc). Default: "0"
@@ -147,12 +148,28 @@ Each product that is contained in the request is represented by exactly one `<ap
   * `tag`: An field for a client to transmit arbitrary update parameters in string form. Compatible clients and servers MAY use this attribute to negotiate special update rules. Alternatively, they MAY extend the protocol to represent the information more clearly in another parameter. As an example, Omaha Client uses this field to transmit whether a Google Chrome installation is on the "stable", "dev", or "beta" channel, which affects how the server issues update responses for that installation. Default: "".
   * `fingerprint`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages_&_Fingerprints].  Default: "".
 ===== Legal Child Elements =====
+  * Any number of `<data>`.
+  * Any number of `<disabled>`.
   * At most one `<packages>`.
   * At most one `<ping>`.
-  * Any number of `<data>`.
   * At most one of the following:
     * One or more `<event>`.
     * Exactly one `<updatecheck>`.
+
+----
+==== `<data>` (Request) ====
+===== Attributes =====
+  * `name`: 
+  * `index`: 
+===== Legal Child Elements =====
+  * May contain arbitrary non-XML textual information.
+
+----
+==== `<disabled>` (Request) ====
+===== Attributes =====
+  * `reason`: an integral reason that the app is disabled. This protocol does not require or suggest a meaning for the values, except for "0", which indicates the lack of a reason. Default: "0".
+===== Legal Child Elements =====
+None.
 
 ----
 ==== `<packages>` (Request) ====
@@ -180,14 +197,6 @@ None.
   * `rd`:
 ===== Legal Child Elements =====
 None.
-
-----
-==== `<data>` (Request) ====
-===== Attributes =====
-  * `name`: 
-  * `index`: 
-===== Legal Child Elements =====
-  * May contain arbitrary non-XML textual information.
 
 ----
 ==== `<event>` (Request) ====
