@@ -160,7 +160,7 @@ Each product that is contained in the request is represented by exactly one `<ap
 ==== `<data>` (Request) ====
 Each `<data>` tag in the request represents either a request for additional textual information from the server, or provides additional textual information to the server.
 ===== Attributes =====
-  * `name`: Indicates the type of data request this is. Legal values are "install", "untrusted", or "". Additions to the protocol must be alphanumeric (that is, they must match [a-zA-Z0-9]*). Default: "".
+  * `name`: Indicates the type of data request this is. Legal values are "install", "untrusted", or "". Additions to the protocol must be alphanumeric (that is, they must match [a-zA-Z0-9]+). Default: "".
   * `index`: If `name` is "install", the numeric index of the requested installation data blob. Otherwise, undefined. Default: "0".
 ===== Legal Child Elements =====
   * May contain arbitrary textual information. Compatible clients and compatible servers SHOULD perform sanitization of this data both when it is sent and received. In practice, this data is frequently supplied by untrusted third parties.
