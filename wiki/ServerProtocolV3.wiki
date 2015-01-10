@@ -158,11 +158,12 @@ Each product that is contained in the request is represented by exactly one `<ap
 
 ----
 ==== `<data>` (Request) ====
+Each `<data>` tag in the request represents either a request for additional textual information from the server, or provides additional textual information to the server.
 ===== Attributes =====
-  * `name`: 
-  * `index`: 
+  * `name`: Indicates the type of data request this is. Legal values are "install", "untrusted", or "". Additions to the protocol must be alphanumeric (that is, they must match [a-zA-Z0-9]*). Default: "".
+  * `index`: If `name` is "install", the numeric index of the requested installation data blob. Otherwise, undefined. Default: "0".
 ===== Legal Child Elements =====
-  * May contain arbitrary non-XML textual information.
+  * May contain arbitrary textual information. Compatible clients and compatible servers SHOULD perform sanitization of this data both when it is sent and received. In practice, this data is frequently supplied by untrusted third parties.
 
 ----
 ==== `<disabled>` (Request) ====
@@ -189,29 +190,73 @@ None.
 
 ----
 ==== `<ping>` (Request) ====
+Any `<ping>`s contained in a request are used to count active users and potentially deduplicate requests from the same client. See [#Counting_Algorithms].
+
+A request containing any `<ping>` is called a "ping". Typically, pings are combined with update checks into a single request.
+A request containing a `<ping>` with the `active="1"`, `a`, or `ad` attributes explicitly transmitted is further called an "active ping".
+
+New clients are recommended to use the `ad` and `rd` attributes of the `<ping>`, and ignore the others. Existing clients should consider transitioning, as date-based counting does not rely on unreliable client clocks.
 ===== Attributes =====
-  * `active`:
-  * `a`:
-  * `r`:
-  * `ad`:
-  * `rd`:
+  * `active`: "1" if the app was active since the previous request that contained a `<ping>`. Otherwise, "0". If `a` or `ad` is explicitly transmitted, `active` may be omitted. Default: "0". 
+  * `a`: If transmitted, the app was active since the request that contained a `<ping>`. In this case, the value is the number of integral 24-hour periods that have elapsed since the start of the America/Los_Angeles calendar day that the previous active ping was sent on. See [#Client-Regulated_Counting_(Days-Based)]. A value of "-1" signifies that there was no previous active ping.
+  * `r`: The number of integral 24-hour periods that have elapsed sine the start of the America/Los_Angeles calendar day that the previous ping was sent on. See [#Client-Regulated_Counting_(Days-Based)]. A value of "-1" signifies that there was no previous active ping. Default: "0".
+  * `ad`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous active ping. See [#Client-Regulated_Counting_(Date-Based)]. A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
+  * `rd`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous ping. See [#Client-Regulated_Counting_(Date-Based)]. A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
 ===== Legal Child Elements =====
 None.
 
 ----
 ==== `<event>` (Request) ====
+Throughout and at the end of an update flow, the client MAY send event reports by sending one or more requests containing an `<event>`.
+
+`<event>`s should never appear in the same request as an `<updatecheck>`.
 ===== Attributes =====
-  * `eventtype`: 
-  * `eventresult`: 
-  * `errorcode`: 
-  * `extracode1`: 
-  * `errorcat`: 
-  * `download_time_ms`: 
-  * `downloaded`: 
-  * `total`: 
-  * `update_check_time_ms`: 
-  * `install_time_ms`: 
-  * `source_url_index`: 
+  * `eventtype`: A special value indicating the type of the event. The following values are defined, all others are reserved. Default: "0".
+    * `0`: unknown
+    * `1`: download complete
+    * `2`: install complete (for the initial installation of the app)
+    * `3`: update complete (for an upgrade in the version of the app)
+    * `4`: uninstall complete
+    * `5`: download started
+    * `6`: install started
+    * `9`: new application install started
+    * `10`: setup started
+    * `11`: setup finished
+    * `12`: update started
+    * `13`: update download started
+    * `14`: update download complete
+    * `15`: update install started
+    * `16`: setup update begin
+    * `17`: setup update complete
+    * `20`: register product complete
+    * `30`: OEM install first check
+    * `40`: app-specific command started
+    * `41`: app-specific command ended
+    * `50`: update-check failure (to avoid doubling server load during an outage, this event should only be transmitted a small fraction of the time the client encounters a failure on the update check)
+    * `100`: setup failure
+    * `102`: COM server failure
+    * `103`: setup update failure
+  * `eventresult`: The result of the event. The following values are defined, all others are reserved. Default: "0".
+    * `0`: error
+    * `1`: success
+    * `2`: success, but a system restart is required
+    * `3`: success, but a browser restart is required
+    * `4`: cancelled
+    * `5`: error in installer MSI
+    * `6`: error in installer (non-MSI)
+    * `7`: server instructed "no-update"
+    * `8`: error in installer (system)
+    * `9`: update deferred (another, higher-priority update will be doen first, and launch a new update flow - this should be sent if the updater, for example, must first update itself.)
+    * `10`: error during handoff to existing updater
+  * `errorcode`: The error code (if any) of the operation, encoded as a signed base-10 integer. Default: "0".
+  * `extracode1`: Additional numeric information about the operation's result, encoded as a signed base-10 integer. Default: "0".
+  * `errorcat`: An error category, for use in distinguishing between different classes of error codes, encoded as a signed base-10 integer. Default: "0".
+  * `download_time_ms`: For events representing a download, the time elapsed between the start of the download and the end of the download, in milliseconds. For events representing an entire update flow, the sum of all such download times over the course of the update flow. Default: "0".
+  * `downloaded`: For events representing a download, the number of bytes successfully downloaded. For events representing an entire update flow, the sum of all such successfully downloaded bytes over the course of the update flow. Default: "0".
+  * `total`: For events representing a download, the number of bytes expected to be downloaded. For events representing an entire update flow, the sum of all such expeccted bytes over the course of the update flow. Default: "0".
+  * `update_check_time_ms`: For events representing an entire update flow, the time elapsed between the start of the update check and the end of the update check, in milliseconds. Default: "0".
+  * `install_time_ms`: For events representing an install, the time elapsed between the start of the install and the end of the install, in milliseconds. For events representing an entire update flow, the sum of all such durations. Default: "0".
+  * `source_url_index`: For events representing a download, the position of the download URL in the list of URLs supplied by the server in a `<urls>` tag.
   * `state_cancelled`: 
   * `time_since_update_available_ms`: 
   * `time_since_download_start_ms`: 
