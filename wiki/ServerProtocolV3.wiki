@@ -211,7 +211,7 @@ Throughout and at the end of an update flow, the client MAY send event reports b
 
 `<event>`s should never appear in the same request as an `<updatecheck>`.
 ===== Attributes =====
-  * `eventtype`: A special value indicating the type of the event. The following values are defined, all others are reserved. Default: "0".
+  * `eventtype`: A special value indicating the type of the event. The following values are defined, all others are reserved. There is no default, the eventtype must always be specified.
     * `0`: unknown
     * `1`: download complete
     * `2`: install complete (for the initial installation of the app)
