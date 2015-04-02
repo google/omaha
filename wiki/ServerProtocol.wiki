@@ -223,6 +223,9 @@ _Request Attributes_
    * `experiments` (optional): An experiment key/value list, if any.  This can be specified at install time, or set by the server in previous update responses. These are usually used to denote experimental branches/tracks.
    * `iid` (optional): A random GUID used to uniquely count install attempts. For example, if a user fails to install then re-runs the installer and succeeds, we might want to count that as one "attempt".
    * `installage` (optional): The number of days since the app was first installed.  A new install should use -1 days.
+   * `cohort` (optional): A machine-readable string identifying the release cohort (channel) that the app belongs to. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters.
+   * `cohorthint` (optional): An machine-readable enum indicating that the client has a desire to switch to a different release cohort. The exact legal values are app-specific and should be shared between the server and app implementations. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters.
+   * `cohortname` (optional): A stable machine-readable enum indicating which (if any) set of messages the app should display to the user. For example, an app with a cohortname of "beta" might display beta-specific branding to the user. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters.
 
 _Response Attributes_
    * `appid`: The id of the app. See Request Attributes.
@@ -233,6 +236,9 @@ _Response Attributes_
       * `"error-invalidAppId"`: The appid is not properly formed; no action elements are included.
       * ...any other string prefixed by `"error-"`: Added to the protocol as needed.
    * `experiments` (optional): An experiment key/value list, if any.  If the server responds with any entries in this attribute, the client should save those experiments in the Registry or other store, and include them in later requests.
+   * `cohort` (optional): See cohort in the request. If this attribute is transmitted in the response (even if the value is empty-string), the client should overwrite the current cohort of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters.
+   * `cohorthint` (optional): See cohorthint in the request. If sent (even if the value is empty-string), the client should overwrite the current cohorthint of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters.
+   * `cohortname` (optional): See cohortname in the request. If sent (even if the value is empty-string), the client should overwrite the current cohortname of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters.
 
 === App Action Elements ===
 Actions are always the child of an app element and pertain to that app.
@@ -457,8 +463,8 @@ The Windows Client currently attaches some custom HTTP headers to the request; t
 === Network Diagnostics Headers ===
 
 If any of these headers are present, they imply that the network request was unsuccessful in the past and has been retried at least once.
-
-  * `X-Retry-Count` -- Contains the total number of times that this network request has been retried.
+  * `X-Retry-Count` -- Contains the total number of times that this network request has been tried (not counting proxy or protocol fallbacks).
+  * `X-HTTP-Attempts` -- Contains the total number of times that this network request has been tried (counting proxy and protocol fallbacks).
   * `X-Last-HR` -- Contains the HRESULT error code returned from `NetworkRequestImpl::DoSendHttpRequest()` for the previous attempt.
   * `X-Last-HTTP-Status-Code` -- Contains the HTTP status code, if any, that we received for the previous attempt.
   * `X-Proxy-Retry-Count` -- If this header is present, it means that the request is being sent via at least one proxy that required authentication.  Contains the number of times that we've received a HTTP 407 (Proxy Authentication Required) status code in the process of sending this request.
