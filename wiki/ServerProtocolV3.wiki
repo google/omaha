@@ -430,6 +430,7 @@ Omaha Client uses additional headers in the request and response to implement [h
   * `X-Proxy-Retry-Count`: On a retry, contains the number of times an HTTP 407 status code was received.
   * `X-Retry-Count`: The total number of times that this network request has been retried (e.g. using different proxy settings, different DNS servers, or simple retries).
   * `X-Request-Age`: The presence of this header indicates that this request originally failed to send, and was persisted and later retried. The value of the header is the time interval in seconds between the client's current time and the client time at which the request was originally attempted.
+  * `X-GoogleUpdate-Interactivity` -- Either 'fg' or 'bg' when present, 'fg' indicating a user-initiated foreground update. 'bg' indicates that the request is part of a background update. If the server is under extremely high load, it may use this to prioritize 'fg' requests over 'bg' requests.
 
 Omaha Client uses CUP to secure the request and response. The following request headers are used to implement CUP:
   * If-Match: A signature that proves that the client knows the client's private key.
