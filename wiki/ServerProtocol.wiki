@@ -483,6 +483,9 @@ The response must be secure: the client must be sure the response data blob came
 
 If the client elects to use SSL, no further integrity checking is needed.  If CUP is used, the following HTTP headers and parameters will be added, which allow a signature to be supplied by the server and verified by the client.  The [http://omaha.googlecode.com/svn/wiki/cup.html CUP design document] describes the protocol in detail.
 
+== Other Headers ==
+  * `X-GoogleUpdate-Interactivity` -- Either 'fg' or 'bg' when present, 'fg' indicating a user-initiated foreground update. 'bg' indicates that the request is part of a background update. If the server is under extremely high load, it may use this to prioritize 'fg' requests over 'bg' requests.
+
 === CUP Request ===
    * `w` (URL parameter): Encodes a proposed private key.  Provides nonce for protection against replay in the signed response.
    * `If-Match` (HTTP header): Signature that proves the client knows its own private key.
