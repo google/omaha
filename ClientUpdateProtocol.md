@@ -1,0 +1,1 @@
+The design doc for the Client Update Protocol (CUP) used to securely provide update information over HTTP is available at http://omaha.googlecode.com/svn/wiki/cup.html.

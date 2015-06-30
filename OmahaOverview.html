@@ -1,0 +1,1358 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html>
+
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<base target="_top">
+<style type="text/css">
+
+
+/* default css */
+
+table {
+  font-size: 1em;
+  line-height: inherit;
+  border-collapse: collapse;
+}
+
+
+tr {
+
+  text-align: left;
+
+}
+
+
+div, address, ol, ul, li, option, select {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+p {
+  margin: 0px;
+}
+
+
+pre {
+  font-family: Courier New;
+  white-space: pre-wrap;
+  margin:0;
+}
+
+body {
+  margin: 6px;
+  padding: 0px;
+  font-family: Verdana, sans-serif;
+  font-size: 10pt;
+  background-color: #ffffff;
+}
+
+
+img {
+  -moz-force-broken-image-icon: 1;
+}
+
+@media screen {
+  html.pageview {
+    background-color: #f3f3f3 !important;
+  }
+
+
+
+  body {
+    min-height: 1100px;
+
+    counter-reset: __goog_page__;
+  }
+  * html body {
+    height: 1100px;
+  }
+  .pageview body {
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+    border-right: 2px solid #bbb;
+    border-bottom: 2px solid #bbb;
+    width: 648px !important;
+    margin: 15px auto 25px;
+    padding: 40px 50px;
+  }
+  /* IE6 */
+  * html {
+    overflow-y: scroll;
+  }
+  * html.pageview body {
+    overflow-x: auto;
+  }
+  /* Prevent repaint errors when scrolling in Safari. This "Star-7" css hack
+     targets Safari 3.1, but not WebKit nightlies and presumably Safari 4.
+     That's OK because this bug is fixed in WebKit nightlies/Safari 4 :-). */
+  html*#wys_frame::before {
+    content: '\A0';
+    position: fixed;
+    overflow: hidden;
+    width: 0;
+    height: 0;
+    top: 0;
+    left: 0;
+  }
+
+
+
+
+    .writely-callout-data {
+      display: none;
+      *display: inline-block;
+      *width: 0;
+      *height: 0;
+      *overflow: hidden;
+    }
+    .writely-footnote-marker {
+      background-image: url('MISSING');
+      background-color: transparent;
+      background-repeat: no-repeat;
+      width: 7px;
+      overflow: hidden;
+      height: 16px;
+      vertical-align: top;
+
+
+      -moz-user-select: none;
+    }
+    .editor .writely-footnote-marker {
+      cursor: move;
+    }
+    .writely-footnote-marker-highlight {
+      background-position: -15px 0;
+      -moz-user-select: text;
+    }
+    .writely-footnote-hide-selection ::-moz-selection, .writely-footnote-hide-selection::-moz-selection {
+      background: transparent;
+    }
+    .writely-footnote-hide-selection ::selection, .writely-footnote-hide-selection::selection {
+      background: transparent;
+    }
+    .writely-footnote-hide-selection {
+      cursor: move;
+    }
+
+
+    .editor .writely-comment-yellow {
+      background-color: #FF9;
+      background-position: -240px 0;
+    }
+    .editor .writely-comment-yellow-hover {
+      background-color: #FF0;
+      background-position: -224px 0;
+    }
+    .editor .writely-comment-blue {
+      background-color: #C0D3FF;
+      background-position: -16px 0;
+    }
+    .editor .writely-comment-blue-hover {
+      background-color: #6292FE;
+      background-position: 0 0;
+    }
+    .editor .writely-comment-orange {
+      background-color: #FFDEAD;
+      background-position: -80px 0;
+    }
+    .editor .writely-comment-orange-hover {
+      background-color: #F90;
+      background-position: -64px 0;
+    }
+    .editor .writely-comment-green {
+      background-color: #99FBB3;
+      background-position: -48px 0;
+    }
+    .editor .writely-comment-green-hover {
+      background-color: #00F442;
+      background-position: -32px 0;
+    }
+    .editor .writely-comment-cyan {
+      background-color: #CFF;
+      background-position: -208px 0;
+    }
+    .editor .writely-comment-cyan-hover {
+      background-color: #0FF;
+      background-position: -192px 0;
+    }
+    .editor .writely-comment-purple {
+      background-color: #EBCCFF;
+      background-position: -144px 0;
+    }
+    .editor .writely-comment-purple-hover {
+      background-color: #90F;
+      background-position: -128px 0;
+    }
+    .editor .writely-comment-magenta {
+      background-color: #FCF;
+      background-position: -112px 0;
+    }
+    .editor .writely-comment-magenta-hover {
+      background-color: #F0F;
+      background-position: -96px 0;
+    }
+    .editor .writely-comment-red {
+      background-color: #FFCACA;
+      background-position: -176px 0;
+    }
+    .editor .writely-comment-red-hover {
+      background-color: #FF7A7A;
+      background-position: -160px 0;
+    }
+
+    .editor .writely-comment-marker {
+      background-image: url('MISSING');
+      background-color: transparent;
+      padding-right: 11px;
+      background-repeat: no-repeat;
+      width: 16px;
+      height: 16px;
+      -moz-user-select: none;
+    }
+
+    .editor .writely-comment-hidden {
+      padding: 0;
+      background: none;
+    }
+    .editor .writely-comment-marker-hidden {
+      background: none;
+      padding: 0;
+      width: 0;
+    }
+    .editor .writely-comment-none {
+      opacity: .2;
+      filter:progid:DXImageTransform.Microsoft.Alpha(opacity=20);
+      -moz-opacity: .2;
+    }
+    .editor .writely-comment-none-hover {
+      opacity: .2;
+      filter:progid:DXImageTransform.Microsoft.Alpha(opacity=20);
+      -moz-opacity: .2;
+    }
+
+
+
+
+  .br_fix br:not(:-moz-last-node):not(:-moz-first-node) {
+
+    position:relative;
+
+    left: -1ex
+
+  }
+
+  .br_fix br+br {
+    position: static !important
+  }
+
+
+  #cb-p-tgt {
+    font-size: 8pt;
+    padding: .4em;
+    font-style: oblique;
+    background-color: #FFF1A8;
+    border: 1px solid #000;
+  }
+}
+
+h6 { font-size: 8pt }
+h5 { font-size: 8pt }
+h4 { font-size: 10pt }
+h3 { font-size: 12pt }
+h2 { font-size: 14pt }
+h1 { font-size: 18pt }
+
+blockquote {padding: 10px; border: 1px #000 solid; max-width: 65em; }
+
+.webkit-indent-blockquote { border: none; }
+
+a img {border: 0}
+
+.pb {
+  border-width: 0;
+  page-break-after: always;
+  /* We don't want this to be resizeable, so enforce a width and height
+     using !important */
+  height: 1px !important;
+  width: 100% !important;
+}
+
+.editor .pb {
+  border-top: 1px dashed #C0C0C0;
+  border-bottom: 1px dashed #C0C0C0;
+}
+
+div.google_header, div.google_footer {
+  position: relative;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+
+/* Table of contents */
+.editor div.writely-toc {
+  background-color: #f3f3f3;
+  border: 1px solid #ccc;
+}
+.writely-toc > ol {
+  padding-left: 3em;
+  font-weight: bold;
+}
+ol.writely-toc-subheading {
+  padding-left: 1em;
+  font-weight: normal;
+}
+/* IE6 only */
+* html writely-toc ol {
+  list-style-position: inside;
+}
+.writely-toc-none {
+  list-style-type: none;
+}
+.writely-toc-decimal {
+  list-style-type: decimal;
+}
+.writely-toc-upper-alpha {
+  list-style-type: upper-alpha;
+}
+.writely-toc-lower-alpha {
+  list-style-type: lower-alpha;
+}
+.writely-toc-upper-roman {
+  list-style-type: upper-roman;
+}
+.writely-toc-lower-roman {
+  list-style-type: lower-roman;
+}
+.writely-toc-disc {
+  list-style-type: disc;
+}
+
+/* Ordered lists converted to numbered lists can preserve ordered types, and
+   vice versa. This is confusing, so disallow it */
+ul[type="i"], ul[type="I"], ul[type="1"], ul[type="a"], ul[type="A"] {
+  list-style-type: disc;
+}
+
+ol[type="disc"], ol[type="circle"], ol[type="square"] {
+  list-style-type: decimal;
+}
+
+/* end default css */
+
+
+  /* default print css */
+
+  @media print {
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    div.google_header, div.google_footer {
+      display: block;
+      min-height: 0;
+      border: none;
+    }
+
+    div.google_header {
+      flow: static(header);
+    }
+
+    /* used to insert page numbers */
+    div.google_header::before, div.google_footer::before {
+      position: absolute;
+      top: 0;
+    }
+
+    div.google_footer {
+      flow: static(footer);
+    }
+
+    /* always consider this element at the start of the doc */
+    div#google_footer {
+      flow: static(footer, start);
+    }
+
+    span.google_pagenumber {
+      content: counter(page);
+    }
+
+    span.google_pagecount {
+      content: counter(pages);
+    }
+
+
+    callout.google_footnote {
+
+      display: prince-footnote;
+      footnote-style-position: inside;
+      /* These styles keep the footnote from taking on the style of the text
+         surrounding the footnote marker. They can be overridden in the
+         document CSS. */
+      color: #000;
+      font-family: Verdana;
+      font-size: 10.0pt;
+      font-weight: normal;
+    }
+
+    /* Table of contents */
+    #WritelyTableOfContents a::after {
+      content: leader('.') target-counter(attr(href), page);
+    }
+
+    #WritelyTableOfContents a {
+      text-decoration: none;
+      color: black;
+    }
+  }
+
+  @page {
+    @top {
+      content: flow(header);
+    }
+    @bottom {
+      content: flow(footer);
+    }
+    @footnotes {
+      border-top: solid black thin;
+      padding-top: 8pt;
+    }
+  }
+  /* end default print css */
+
+
+/* custom css */
+
+
+/* end custom css */
+
+/* ui edited css */
+
+body {
+  font-family: Verdana;
+
+  font-size: 10.0pt;
+  line-height: normal;
+  background-color: #ffffff;
+}
+/* end ui edited css */
+
+
+/* editor CSS */
+.editor a:visited {color: #551A8B}
+.editor table.zeroBorder {border: 1px dotted gray}
+.editor table.zeroBorder td {border: 1px dotted gray}
+.editor table.zeroBorder th {border: 1px dotted gray}
+
+
+.editor div.google_header, .editor div.google_footer {
+  border: 2px #DDDDDD dashed;
+  position: static;
+  width: 100%;
+  min-height: 2em;
+}
+
+.editor .misspell {background-color: yellow}
+
+.editor .writely-comment {
+  font-size: 9pt;
+  line-height: 1.4;
+  padding: 1px;
+  border: 1px dashed #C0C0C0
+}
+
+
+/* end editor CSS */
+
+</style>
+
+
+  <title>Omaha Overview</title>
+
+</head>
+
+<body
+
+    >
+
+
+
+<h1 style="TEXT-ALIGN:center; COLOR:#000000">
+  <a id=Omaha_Overview_557876980645557 name=Omaha_Overview_557876980645557></a> Omaha Overview
+</h1>
+<p style=TEXT-ALIGN:center>
+</p>
+<div class=writely-toc id=WritelyTableOfContents toctype=none+none>
+  <ol class=writely-toc-none>
+    <li>
+      <a href=#Omaha_Overview_557876980645557 target=_self>Omaha Overview</a>
+      <ol class="writely-toc-subheading writely-toc-none" style=MARGIN-LEFT:0pt>
+        <li>
+          <a href=#Objective_7019525641643078_755 target=_self>Objective</a>
+        </li>
+        <li>
+          <a href=#Background_6422932686388471_05_6525109282178109 target=_self>Background</a>
+        </li>
+        <li>
+          <a href=#Requirements_5905276878306371__22087349700971537 target=_self>High Level Requirements</a>
+        </li>
+        <li>
+          <a href=#Scenarios_6862592830137267_767_2528653450132532 target=_self>Scenarios</a>
+          <ol class="writely-toc-subheading writely-toc-none" style=MARGIN-LEFT:0pt>
+            <ol class="writely-toc-subheading writely-toc-none" style=MARGIN-LEFT:0pt>
+              <li>
+                <a href=#New_Install_11735879456058473__478679787179643 target=_self>New Install</a>
+              </li>
+              <li>
+                <a href=#Secondary_Install_341693409729 target=_self>Secondary Install</a>
+              </li>
+              <li>
+                <a href=#Uninstall_8547792917996097_159_18397868965040365 target=_self>Uninstall</a>
+              </li>
+            </ol>
+          </ol>
+        </li>
+        <li>
+          <a href=#High_Level_Design_35002431538890344 target=_self>High Level Design</a>
+          <ol class="writely-toc-subheading writely-toc-none" style=MARGIN-LEFT:0pt>
+            <li>
+              <a href=#Client_5744913934500867_534952_6541269505551884 target=_self>Client</a>
+              <ol class="writely-toc-subheading writely-toc-none" style=MARGIN-LEFT:0pt>
+                <li>
+                  <a href=#Client_Runtime_254817943899105 target=_self>Client Runtime</a>
+                  <ol class="writely-toc-subheading writely-toc-none" style=MARGIN-LEFT:0pt>
+                    <li>
+                    <a href=#Execution_Model_24640798594543 target=_self>Execution Model</a>
+                    </li>
+                    <li>
+                    <a href=#Application_Registration_24675 target=_self>Application Registration</a>
+                    </li>
+                    <li>
+                    <a href=#Automatic_Startup_380733538131 target=_self>Automatic Startup</a>
+                    </li>
+                    <li>
+                    <a href=#Scheduler_007823295652064743_5_09283186493616913 target=_self>Scheduler</a>
+                    </li>
+                    <li>
+                    <a href=#Resource_and_Timing_Constrains target=_self>Resource and Timing Constrains</a>
+                    </li>
+                  </ol>
+                </li>
+                <li>
+                  <a href=#Web_Browser_Control_3988285736 target=_self>Web Browser Control</a>
+                </li>
+                <li>
+                  <a href=#Crash_Reporting_55876700359408 target=_self>Crash Reporting</a>
+                </li>
+              </ol>
+            </li>
+            <li>
+              <a href=#_Meta_Installer_ target=_self>Meta-Installer</a>
+            </li>
+            <li>
+              <a href=#_Server_ target=_self>Server</a>
+            </li>
+            <li>
+              <a href=#_Rollout_Process_ target=_self>Rollout Process</a>
+            </li>
+          </ol>
+        </li>
+        <li>
+          <a href=#Installation_Update_Overview_3869469889665914 target=_self>Installation/Update Details</a>
+          <ol class="writely-toc-subheading writely-toc-none" style=MARGIN-LEFT:0pt>
+            <li>
+              <a href=#_End_User_Installation_ target=_self>End-User Installation</a>
+            </li>
+            <li>
+              <a href=#_Auto_Updates_5963041225089013 target=_self>Auto-Updates</a>
+            </li>
+          </ol>
+        </li>
+      </ol>
+    </li>
+  </ol>
+</div>
+<h2 id=s1>
+  <a id=Objective_7019525641643078_755 name=Objective_7019525641643078_755></a> Objective
+</h2>
+<p>
+  The Omaha project provides a shared autoupdate and install system for Windows client products at Google that works on multiple Windows platforms, including Windows Vista. Goals include the following:
+</p>
+<ul>
+  <li>
+    One autoupdate mechanism which allows teams to roll out updates with no dependencies on other product teams, without having to write their own client or server logic
+    <ul>
+      <li>
+        One autoupdate server that handles all autoupdate requests - each product team will not need to roll out and manage their own server
+      </li>
+      <li>
+        One desktop autoupdate client shared by all desktop client software - there will not be separate programs running for each installed application
+      </li>
+    </ul>
+  </li>
+  <li>
+    A tiny meta-installer which includes the update client (and knows how to install it if necessary) and a reference to the desired application which the update client can then download and install
+  </li>
+  <li>
+    One-click web install of applications once the update client is installed
+  </li>
+  <li>
+    Support for rich update deploy logic allowing multiple tracks for public release, beta, development and "canary" experiments
+  </li>
+  <li>
+    Support for restricted user environments; for example, users without administrator privileges
+  </li>
+  <li>
+    Providing a shared runtime for other functionality common to all Google client applications:
+    <ul>
+      <li>
+        Crash reporting
+      </li>
+    </ul>
+  </li>
+</ul>
+<p>
+  <br>
+</p>
+<p>
+  Non-goals include the following:
+</p>
+<ul>
+  <li>
+    Support of platforms other than Windows 2000 (SP4+), Windows XP, Windows Vista, and Windows 7; in other words, we will not support OS X, Linux, non-NT versions of Windows, or any NT version of Windows preceding Windows 2000 SP4. (Although it should be possible for other platform teams to develop their own equivalent shared client and to use the same server that's being used for Windows)
+  </li>
+</ul>
+<br>
+<h2 id=s2>
+  <a id=Background_6422932686388471_05_6525109282178109 name=Background_6422932686388471_05_6525109282178109></a> Background &nbsp;
+</h2>
+<p>
+  Google client products have the capability to update themselves to a newer version without end-user intervention. This capability is called "autoupdating."
+</p>
+<p>
+  <br>
+</p>
+<p>
+  Although our client products shared the autoupdate feature, they did not all share autoupdate code. Some had implemented their own autoupdate solutions, and others had taken advantage of the common autoupdater code and the common autoupdate server.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  It was obviously desirable for products to avoid unnecessary duplication of code and for Google to avoid maintaining multiple servers that perform identical functionality. This reason alone was enough to consider unifying all client products under a single autoupdate solution. In addition, the evolution of Microsoft Windows made this unification almost mandatory. Windows Vista features a strict security model that limits the ability of most applications on a machine to perform system-changing activities, such as modifying the Windows registry, writing to the Program Files directory, or in some cases writing any persistent change to the system at all. Updating a program installation requires all these capabilities; thus, on Vista, most traditional autoupdating will fail.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  Another problem caused by lack of shared code is that each autoupdate mechanism had its own subset of desired features. Most did not have a way to do canary experiments. Most did not have a way to have multiple update tracks. Most did not define a consistent versioning mechanism. Some of these features were not optional as user base size increased. By unifying the code we could deploy a rich set of autoupdate capabilities to all client applications.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  Also, as the number of Google applications increased, it became more and more desirable to improve the overall install user experience. The browser typically prompted the user with a long series of techy, confusing and scary dialogs all trying to convince the user not to install. Then the user was prompted with a wizard filled with choices that they did not need to or know how to decide amongst. These factors combined to form a bad user experience and large drop-off during the app installation process.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  To address the goals of Vista compatibility, reduction of duplicative effort at Google, improvement of deploy and autoupdate capabilities, and application install user experience improvement, we proposed to develop shared client infrastructure that handles all installation and autoupdating tasks for Google Windows client products. This client communicates with a single Google autoupdate server. Taken together, this server and client is named Google Update. The project code name is Omaha.&nbsp;
+</p>
+<p>
+  <br>
+</p>
+<h2 id=s3>
+  <a id=Requirements_5905276878306371__22087349700971537 name=Requirements_5905276878306371__22087349700971537></a> High Level Requirements
+</h2>
+<table border=1 bordercolor=#111111 cellpadding=5 cellspacing=0 width=878>
+  <tbody>
+  <tr>
+    <th bgcolor=#f0f0f0>
+      Feature
+    </th>
+  </tr>
+  <tr>
+    <td width=739>
+      Solve pushing server content and binary changes at the same time
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Allow our partners to add their own versions of their product to Omaha without our intervention or a server push on our end
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Allow our partners to be able to test new versions integrated with Omaha without making the URL live to the rest of the world
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Be able to offer different versions of the same product, including beta software at different URLs
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Continue to support at least as good one-click install experience as we have now
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Offer better non-admin/limited user account support, i.e. downloading and running the product over offering a link
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Be able to install product updates without the product running
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Optionally be able to automatically run the product after the installation completes
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Be able to show no UI vs. a small progress bar - e.g. Earth install vs. Offline Gmail
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Provide decent proxy support, i.e. reliable downloads outside the browser
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Optionally don't require interactive installers/uninstallers for Omaha so product teams can rely on our translations for them.
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Offer a small stub executable
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Make the Omaha UI super fast to load<br>
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Omaha to support localization in the top X languages&nbsp;<br>
+    </td>
+  </tr>
+  <tr>
+    <td width=739>
+      Be able to save the installer for later use
+    </td>
+  </tr>
+  </tbody>
+</table>
+<p>
+  &nbsp;
+</p>
+<a id=Overview name=Overview></a>
+<h2 id=s5>
+  <a id=Scenarios_6862592830137267_767_2528653450132532 name=Scenarios_6862592830137267_767_2528653450132532></a> Scenarios
+</h2>
+Omaha consists of three principal parts: a client-side run time, a meta-installer (which simply wraps the client run time and either the application installer or a micro reference to the application), and a server. The client and server communicate with each other over HTTP or HTTPS. When a user wishes to install a new Google application, in actuality he or she merely downloads a meta-installer wrapping the selected application, which either installs the client or confirms that the currently-installed Omaha is up to date, and then exits after requesting that Omaha install the desired Google application. If that application is not already installed on the user's system, the Omaha installs it (using the wrapped installer or downloading the most recent version from the server). Omaha then periodically checks for updates to products installed on the system, and when appropriate, installs those updates. Omaha also provides elevated-privilege functionality to lower-privilege Google applications on the system.<br>
+<br>
+<h4>
+  <a id=New_Install_11735879456058473__478679787179643 name=New_Install_11735879456058473__478679787179643></a> New Install
+</h4>
+<p>
+  User downloads a meta-installer from a Google website, going through standard browser file download steps. Once the user figures out how to launch the meta-installer, the meta-installer installs and runs the Omaha client. On Windows platforms, such as Windows Vista, with UAC, an elevation prompt is displayed when installing applications per-machine. The client then begins downloading and installing the app referenced by the micro reference. &nbsp;<br>
+</p>
+<h4>
+  <a id=Secondary_Install_341693409729 name=Secondary_Install_341693409729></a> Secondary Install
+</h4>
+<p>
+  Google website detects that Omaha client is installed, and instead of delivering a downloadable EXE or MSI, it vends an application micro-reference via an ActiveX (or equivalent) object. In this case, the user didn't have to go through any complicated download steps. They just clicked on a web link and the download starts. The rest of this scenario is the same as the initial install scenario.
+</p>
+<h4>
+  <a id=Uninstall_8547792917996097_159_18397868965040365 name=Uninstall_8547792917996097_159_18397868965040365></a> Uninstall
+</h4>
+Omaha uninstalls itself when there is no application registered with it for updates.<br>
+<br>
+The overall sequence diagram is below:<br>
+<br>
+<p>
+  &nbsp;<img src=Omaha_Overview_images/1.jpg style="WIDTH:648px; HEIGHT:339.655px">
+</p>
+<ol>
+  <li>
+    For organic installs, the user downloads an installer called AppNameSetup.exe, which is actually the Omaha meta installer plus a data tag containing the name and ID of the managed app (AppName, in this case)
+  </li>
+  <li>
+    Execution of AppNameSetup.exe installs Omaha. &nbsp;Omaha reads the data tag (to get the name of the app it's installing) and immediately contacts the Update Server to get the download location of the current version of AppName. The AppName installer is downloaded and executed on the user PC. &nbsp;Omaha itself takes no part in the installation process; it merely executes the provided installer
+  </li>
+  <li>
+    Omaha periodically (every 5 hours, as of this writing) checks for updates for all of its managed applications. &nbsp;If an update is available, Omaha downloads the indicated binary and executes it
+  </li>
+</ol>
+<br>
+There is also support for offline installers (Omaha and the AppName installer bundled into the initial download) and partner distribution<br>
+<br>
+<div>
+  <a id=Installation_Update_Overview_8 name=Installation_Update_Overview_8></a>
+</div>
+<a id=_Uninstall_02577887525699052 name=_Uninstall_02577887525699052></a>
+<h2>
+  <a id=High_Level_Design_35002431538890344 name=High_Level_Design_35002431538890344></a> High Level Design<br>
+</h2>
+<h3 id=s6>
+  <a id=Client_5744913934500867_534952_6541269505551884 name=Client_5744913934500867_534952_6541269505551884></a> Client
+</h3>
+<p>
+  The Omaha client is a Windows application, installed by a custom Windows installer. It performs several functions:
+</p>
+<ul>
+  <li>
+    Installs and updates Google applications for the host machine
+  </li>
+  <li>
+    Periodically talks to the update server to determine whether an update is necessary
+  </li>
+  <li>
+    Provides a simple progress UI to notify users that the initial installation of the Omaha client is happening
+  </li>
+  <li>
+    The elevation functionality in the Omaha client allows applications to update themselves even if they are running in low-rights mode<br>
+  </li>
+  <li>
+    Provides infrastructure for applications to report crashes (from the Breakpad project)
+  </li>
+</ul>
+<p>
+  <br>
+</p>
+<p>
+  The client is able to handle multiple downloads in parallel, multiple sequential installs, and it is able to resume or restart partial downloads.<br>
+</p>
+<p>
+  <br>
+</p>
+<p>
+  The client is not a separate application in the sense that it can be uninstalled independently of Google applications. Instead, it is considered a required feature of applications. It will uninstall itself when the last Google app using it is uninstalled by the user.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  In addition to specific reporting related to installation and update, Omaha includes a generic crash-reporting facility for Google applications. The Breakpad project's network library is used, and the client will handle local minidump storage and queuing of reports.
+</p>
+<p>
+  &nbsp;
+</p>
+<p>
+  The Omaha client consists of two major parts:
+</p>
+<ol>
+  <li>
+    Runtime, which handles all necessary update and install services
+  </li>
+  <li>
+    Web browser control (ActiveX for Internet Explorer and NPAPI for other browsers), which allows Google web pages and Google applications to ask the run time to do tasks on their behalf
+  </li>
+</ol>
+<br>
+<h4>
+  <a id=Client_Runtime_254817943899105 name=Client_Runtime_254817943899105></a> Client Runtime
+</h4>
+<p>
+  The runtime has the following functionality:
+</p>
+<ul>
+  <li>
+    automatic startup so that it is always available to applocations
+  </li>
+  <li>
+    on-demand privilege elevation for install and autoupdate
+  </li>
+  <li>
+    autoupdate polling
+  </li>
+  <li>
+    downloading installers from Google download server
+  </li>
+  <li>
+    execution of Google installers
+  </li>
+  <li>
+    a persistent work queue for handling parallel restartable downloads and installs
+  </li>
+  <li>
+    progress and status notification hooks for UI&nbsp;
+  </li>
+  <li>
+    self-uninstall when the last registered app is uninstalled
+  </li>
+  <li>
+    reporting of install success / failure pings<br>
+  </li>
+  <li>
+    opt-in usage stat collection
+  </li>
+  <li>
+    crash reporting infrastructure for other Google applications
+  </li>
+  <li>
+    authentication and verification of installers
+  </li>
+</ul>
+<h5>
+  <a id=Execution_Model_24640798594543 name=Execution_Model_24640798594543></a> Execution Model
+</h5>
+<p>
+  The runtime functionality is divided between a couple of processes, most notable a core process and many worker process. There are a few reasons for the separation: robustness, running code with the least privilege, executing Google installers in the context of the logged in users as much as possible, and avoiding resource leaks and resource consumption in long-lived processes.<br>
+</p>
+<p>
+  <br>
+</p>
+<p>
+  The execution model for the runtime code depends on how Omaha is actually installed. There are two main scenarios here:<br>
+</p>
+<ol>
+  <li>
+    Omaha is installed for the machine. This requires the user has administrator privileges. In this case, a Windows service runs all the time as SYSTEM and, at the right time, it kicks off worker processes to do the bulk of the work. To update per-machine applications, the worker process runs as SYSTEM as well. The worker process terminates when there is no more work to do.<br>
+  </li>
+  <li>
+    Omaha is installed installs for the current user. Consequently, there is no service and no machine updates are possible. In this case, the execution model solely relies on a goopdate worker process that runs all the time in each interactive session as the user.
+  </li>
+</ol>
+<br>
+It is important the same binary works the same way on different operating systems: Windows 2000, XP, and Vista. The process execution model is almost identical, in both machine and user cases. For the most part, the machine and user instances of Omaha run in isolated security contexts and they share nothing.<br>
+<br>
+<p id=lt7k49>
+  The Omaha core runs in a local system process for the machine, and one process for each logged in user. Typically, there will be two core processes running. There is potential for an optimization here, as the local system process can create a process that runs as the logged in user when it needs to.<br>
+</p>
+<br id=lt7k50>
+<p id=lt7k51>
+  The machine Omaha core process is started at boot time by a system service that terminates soon after. There is a reason for not running the Omaha core in a service: a bug in XP prevents us from further updating the service if the service has crashed. More investigation will have to be done here, especially since having a service is quite nice and eliminates the need for another process. The user Omaha core process is started by the shell from the user's run key. To eliminate a single point of failure, there are fallbacks implemented using the Windows system scheduler to attempt to start the core process if for some reason it is not running. It should be desirable to measure the overall availability of the core process. &nbsp;We strive to be as available as the Windows OS is in terms of uptime of the Omaha core.<br id=lt7k52>
+</p>
+<br id=lt7k53>
+<p id=lt7k54>
+  The Omaha core is highly reliable and lightweight:<br>
+</p>
+<ul id=lt7k55>
+  <li id=lt7k56>
+    It does very few things well: scheduling of workers for silent updates, elevation, and support for breakpad crashes<br id=lt7k57>
+  </li>
+</ul>
+<ul id=lt7k58>
+  <li id=lt7k59>
+    Removes the core dependencies on several Windows modules: no msxml, no shell, no network, no UI, no crypto, no wintrust, etc<br id=lt7k60>
+  </li>
+  <li id=lt7k61>
+    Reduces the working set and the resource consumption
+  </li>
+  <li id=lt7k62>
+    By the virtue of less code and closer to the OS layer, the Omaha core can be made reliable, reliable, reliable
+  </li>
+  <li id=lt7k63>
+    Everything else runs out of process<br id=lt7k64>
+  </li>
+</ul>
+<p id=lt7k65>
+  <br id=lt7k66>
+</p>
+<p id=lt7k67>
+  The Omaha worker processes do most of the actual work:<br id=lt7k68>
+</p>
+<ul id=lt7k69>
+  <li id=lt7k70>
+    A unified IPC mechanism is desirable<br>
+  </li>
+  <li id=lt7k72>
+    The communication and synchronization between worker processes is kept to the minimum, according to the isolation and share-nothing concepts of the design
+  </li>
+  <li id=lt7k73>
+    The workers use the new network stack and the new CUP - client update protocol, which uses HMACs over plain HTTP instead of HTTPS
+  </li>
+  <li id=lt7k74>
+    To facilitate firewall traversals, a constant shell is used
+  </li>
+</ul>
+<br>
+<h5>
+  <a id=Application_Registration_24675 name=Application_Registration_24675></a> Application Registration
+</h5>
+<p>
+  In order for an application to receive updates, the application must register with Omaha. The application registration mechanism is based on Windows registry. There are primarily two update policies supported by Omaha, which directly affect how an Omaha aware application registers with the Omaha runtime:
+</p>
+<ol>
+  <li>
+    per-machine updates
+  </li>
+  <li>
+    per-user updates
+  </li>
+</ol>
+<p>
+  <br>
+</p>
+<p>
+  In the case of per-machine updates, each application installed per-machine creates a key HKLM/Software/Google/Update/Clients/{GUID}. Under this key, the application creates the following values:
+</p>
+<ul>
+  <li>
+    pv (current product version - e.g. 1.0.20.0)
+  </li>
+  <li>
+    name (ignored but useful for debugging)
+  </li>
+</ul>
+<p>
+  <br>
+</p>
+<p>
+  In the case of per-user updates, the only difference is the location to where the key is created. In this case, the key is HKCU/Software/Google/Update/Clients/{GUID}.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  When the update loop kicks in, Omaha runs the per-machine updates as SYSTEM and per-user updates as the logged in user. This assumes that the user has an active session, in other words, updates for per-user installed applications will not run if the user has not logged in. As long as there is anything under these keys, Omaha keeps pinging for updates and updating these applications. It is possible that the application is dead and its registration with Omaha still active, for example, in the case where the user just deleted the application files. Unfortunately, Omaha does not detect such conditions and it is going to download and apply updates for it until the application cleanly unregisters.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  Exposing registry keys and low level implementation details to applications has disadvantages. It breaks the encapsulation of Omaha. An argument can be made that such implementation details would be better to be abstracted out in a code library that the application code links with. However, there is a great advantage for the current registration mechanism. Registry keys can be created easily directly from the installer script for applications that are using off the shelf installer technology thus making the integration with Omaha easier.
+</p>
+<h5>
+  <a id=Automatic_Startup_380733538131 name=Automatic_Startup_380733538131></a> Automatic Startup
+</h5>
+<p>
+  The service is set to auto run when Omaha is installed per-machine. The SCM failover mechanism is used to restart the service in case of a crash. When Omaha is installed per-user, the goopdate worker process is started by the Windows shell from HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run.
+</p>
+<h5>
+  <a id=Scheduler_007823295652064743_5_09283186493616913 name=Scheduler_007823295652064743_5_09283186493616913></a> Scheduler
+</h5>
+<p>
+  The client runtime runs periodic tasks, such as the update check request to the server to discover updates. These tasks are kicked off by a scheduler. The scheduler code runs inside the Omaha core process. The main requirement for the scheduler is to execute a worker process once in a while.<br>
+</p>
+<p>
+  <br>
+</p>
+<p>
+  A lot of consideration was given to using the built in Windows scheduler instead of building our own. The windows task <span class=st id=st name=st> scheduler</span> on Vista seems to be greatly improved. On XP and Windows 2003 there are some limitations to the windows task <span class=st id=st name=st>scheduler</span>:
+</p>
+<ol>
+  <li>
+    Credentials are an issue with the pre-Vista <span class=st id=st name=st>scheduler</span>. The issue is that the <span class=st id=st name=st>scheduler</span> used to cache the credentials for the user that registered a scheduled event and if the user password changed, then the task was broken. It has been fixed in Vista.
+  </li>
+  <li>
+    On Windows 2003 the use of the task <span class=st id=st name=st> scheduler</span> service is restricted to Administrators only.
+  </li>
+  <li>
+    If the machine is in a sleep state there are some hardware on which the task will not be scheduled. There are situations in which the scheduled tasks fail because of suspected ACPI interactions. One extreme case was a machine not able to schedule tasks when the LAN cable was disconnected.
+  </li>
+</ol>
+<br>
+<h5>
+  <a id=Resource_and_Timing_Constrains name=Resource_and_Timing_Constrains></a> Resource and Timing Constrains
+</h5>
+<p>
+  The runtime follows a few constraints regarding resource usage and timing.
+</p>
+<p>
+  Limiting resource use:
+</p>
+<ul>
+  <li>
+    check to make sure we do not use all of the user's disk space
+  </li>
+  <li>
+    use little memory and delay load the modules that are not needed. This is very important for the resident core<br>
+  </li>
+  <li>
+    try not to autoupdate unless the user has an internet connection (important for dial-up users so that we do not auto-dial their connection)
+  </li>
+  <li>
+    limit the bandwidth usage during background downloads
+  </li>
+  <li>
+    attempt to update application when the user's machine is idle
+  </li>
+</ul>
+<p>
+  <br>
+</p>
+<p>
+  Timing:
+</p>
+<ul>
+  <li>
+    Check for updates at least once a day &nbsp;
+  </li>
+  <li>
+    Serialize downloads and installs
+  </li>
+</ul>
+<h4>
+  <a id=Web_Browser_Control_3988285736 name=Web_Browser_Control_3988285736></a> Web Browser Control &nbsp;
+</h4>
+<p>
+  The web browser control exposes a high level interface to Google web pages and client applications, enabling features such as one-click web installs and rich update clients such as Pack. It needs to limit access so that only authorized Google web pages and applications have access to the services offered by the client run time. The interface is defined by very coarse-granularity functions. Rather than "download file X from server Y" it would instead offer "download application id X from Google". In the event that the client had a security hole, it's important that the interface limit the amount of damage that can be done.
+</p>
+<h4>
+  <a id=Crash_Reporting_55876700359408 name=Crash_Reporting_55876700359408></a> Crash Reporting
+</h4>
+<p>
+  There are two major parts to crash reporting on Windows: generating the minidump and reporting it to the server.&nbsp; With Omaha, each application would still be responsible for catching exceptions and signaling Omaha to generate and transmit the minidump to Google servers. The minidump is created in a secure directory which Omaha can write to.&nbsp; It has code to try to minimize possible accidental self-DDOS as a result of frequent crashes while still reporting important data, perhaps determining when a duplicate minidump was generated, or reporting the number of crashes that have been generated but not reported.
+</p>
+<a id=Meta_Installer_629907087253701_6177440132694033 name=Meta_Installer_629907087253701_6177440132694033></a><br>
+<h3 id=s7>
+  <a id=_Meta_Installer_ name=_Meta_Installer_></a> Meta-Installer
+</h3>
+<p>
+  The Omaha meta-installer is a simple wrapper that includes the client as well as information necessary to install one or more Google applications. It performs the following functions:
+</p>
+<ul>
+  <li>
+    Installs the client if it is not installed
+  </li>
+  <li>
+    Upgrades the client if it contains a more recent version
+  </li>
+  <li>
+    Starts the client if it's installed but not running
+  </li>
+  <li>
+    Queues install requests to the client for the applications that it wraps
+  </li>
+</ul>
+<p>
+  <br>
+</p>
+<p>
+  Our goal is that the minimal installer will be less than 172KB (which takes less than one minute to download over a 28.8kbps link at 10 wire bits per 8 data bits, representing what's likely the slowest modem still in operation today). The current size of the matainstaller is larger than that. We are looking for ways to keep the download size down.&nbsp;
+</p>
+<a id=Server_9279756884871906_508349 name=Server_9279756884871906_508349></a>
+<h3 id=s8>
+  <a id=_Server_ name=_Server_></a> Server
+</h3>
+<p>
+<blockquote>The Google Update server is not part of the Omaha open source project. Providing updates for applications requires a server that implements the
+<a href=http://code.google.com/p/omaha/wiki/ServerProtocol target=_self>Omaha Server Protocol</a>.</blockquote>
+</p>
+<p>
+  Omaha has two server components: autoupdate and download. This separation of server responsibilities is desirable because the requirements are different: downloading large binaries takes high bandwidth and can tolerate relatively high latency, whereas small transactions such as update pings may be much more frequent but require extremely low bandwidth per transaction. These differences allow Google to provision the two servers appropriately.
+</p>
+<p>
+  <br>
+</p>
+<p>
+  The autoupdate server provides the following functionality:
+</p>
+<ul>
+  <li>
+    Responds to update pings that come from individual Omaha clients, telling them whether and how to update the set of client products on that machine.
+  </li>
+  <li>
+    Provides a rich enough configuration schema that individual product teams should not have to implement their own servers. Client products will be able to provide arbitrary flags to Omaha that will be passed through to the server during an update ping, and it will be possible to configure the server to behave differently according to the presence or absence of those flags.
+  </li>
+  <li>
+    Allows Google to run experiments on stable subsets of users. For example, a team might wish to deploy a new version of its product to 0.01% of its users for a week in order to confirm that it causes no unexpected problems before deploying more widely.
+  </li>
+</ul>
+<p>
+  <br>
+</p>
+<p>
+  The download server's primary job is to host binaries.&nbsp; In order to support private betas and other restricted software updates, the download server can restrict access to certain downloads.<br>
+</p>
+<a id=Rollout_Process_07727772537739_49556704644163774 name=Rollout_Process_07727772537739_49556704644163774></a>
+<h3 id=s9>
+  <a id=_Rollout_Process_ name=_Rollout_Process_></a> Rollout Process
+</h3>
+<p>
+  To the greatest extent possible, teams will be able to reconfigure their area of the update server without affecting other teams.<br>
+</p>
+<p>
+  <br>
+</p>
+<h2>
+  <a id=Installation_Update_Overview_3869469889665914 name=Installation_Update_Overview_3869469889665914></a> <b><font size=4>Installation/Update Details</font></b>
+</h2>
+<div>
+  <br>
+</div>
+<div>
+  <div id=qymz style=TEXT-ALIGN:left>
+    <div id=hu:p style=TEXT-ALIGN:left>
+      <div id=mb9w style=TEXT-ALIGN:left>
+        <div id=k.4q style=TEXT-ALIGN:left>
+          <img src=Omaha_Overview_images/2.png style="WIDTH:953px; HEIGHT:970px">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<a id=_End_User_Installation_1958517_7547810387728776 name=_End_User_Installation_1958517_7547810387728776></a><br>
+<h3 style=TEXT-ALIGN:left>
+  <a id=_End_User_Installation_ name=_End_User_Installation_></a> End-User Installation<br>
+</h3>
+<ol>
+  <li style=TEXT-ALIGN:left>
+    When a user clicks "download", the website provides tagging parameters to the dl server that tell it how to customize the untagged metainstaller before sending it to the user.<br>
+  </li>
+  <ol>
+    <li>
+      The custom information includes the following (plus more):<br>
+    </li>
+    <ul>
+      <li>
+        Unique Omaha app ID corresponding to this application<br>
+      </li>
+      <li>
+        Localized name of the application<br>
+      </li>
+      <li>
+        Whether to install the app per-machine or per-user<br>
+      </li>
+      <li>
+        Language (optional)<br>
+      </li>
+      <li>
+        Brand (optional)<br>
+      </li>
+    </ul>
+    <li>
+      OneClick and ClickOnce installs work similarly except this information is provided on the command line.<br>
+    </li>
+  </ol>
+  <li>
+    The user receives AppNameSetup.exe, which has been customized for this application and it is specific to this install (language, iid, etc.).<br>
+  </li>
+  <li>
+    When the user runs AppNameSetup.exe<br>
+  </li>
+  <ol>
+    <li>
+      The metainstaller:<br>
+    </li>
+    <ol>
+      <li>
+        Extracts all the Omaha files to a temporary directory.<br>
+      </li>
+      <li>
+        Reads the tag<br>
+      </li>
+      <li>
+        Launches the extracted GoogleUpdate.exe with the /install parameter and the contents of the tag<br>
+      </li>
+    </ol>
+    <li>
+      The temporary instance of GoogleUpdate.exe:<br>
+    </li>
+    <ol>
+      <li>
+        Determines whether to install per-user or per-machine<br>
+      </li>
+      <li>
+        Requests elevation (UAC prompt) if necessary<br>
+      </li>
+      <li>
+        Stops any existing instances of GoogleUpdate.exe<br>
+      </li>
+      <li>
+        Installs Omaha<br>
+      </li>
+      <li>
+        Launches the installed instance of Omaha to complete installation of the application.<br>
+      </li>
+    </ol>
+    <li>
+      The installed instance of GoogleUpdate.exe:<br>
+    </li>
+    <ol>
+      <li>
+        Displays a progress UI<br>
+      </li>
+      <li>
+        Performs an update check for the application specified in the tag.<br>
+      </li>
+      <ol>
+        <li>
+          The server uses the update config rules to determine the response. Only rules for version 0.0.0.0 are used for installs<br>
+        </li>
+      </ol>
+      <li>
+        Downloads the app installer specified in the update response<br>
+      </li>
+      <li>
+        Runs the app installer<br>
+      </li>
+      <li>
+        Displays any error or success unless configured to exit silently<br>
+      </li>
+    </ol>
+  </ol>
+</ol>
+<h3>
+  <a id=_Auto_Updates_5963041225089013 name=_Auto_Updates_5963041225089013></a> Auto-Updates<br>
+</h3>
+All of this is completely silent.<br>
+<ol>
+  <li>
+    The core is always running. This will change in the future.&nbsp;
+  </li>
+  <ol>
+    <li>
+      The core runs as the current user for per-user applications and as Local System for per-machine applications<br>
+    </li>
+    <li>
+      The per-machine instance runs even if no users are logged in<br>
+    </li>
+    <li>
+      There may be as many as one instance per logged-in user plus one instance for the system<br>
+    </li>
+  </ol>
+  <li>
+    The Omaha core periodically launches an update worker<br>
+  </li>
+  <li>
+    The update worker:<br>
+  </li>
+  <ol>
+    <li>
+      Checks whether it should perform an update check<br>
+    </li>
+    <li>
+      If so:<br>
+    </li>
+    <ol>
+      <li>
+        Finds all applications registered in the Clients key<br>
+      </li>
+      <li>
+        Sends and update check request containing all applications<br>
+      </li>
+      <ol>
+        <li>
+          The server uses the update config rules to determine the response based on the installed version<br>
+        </li>
+      </ol>
+      <li>
+        Performs updates (download and install) for any application that needs to be updated as specified in the update response<br>
+      </li>
+      <ol>
+        <li>
+          If Omaha itself needs to be updated, no other applications are updated during that update check
+        </li>
+      </ol>
+    </ol>
+  </ol>
+</ol>
+<br></body>
+</html>
