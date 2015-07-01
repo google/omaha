@@ -42,7 +42,7 @@ TEST_F(OmahaCustomizationUpdateComInterfaceTest, TypeLib) {
   EXPECT_GU_ID_EQ(_T("{b627c883-e979-4873-80b3-ddd0b658b56a}"),
                   LIBID_GoogleUpdateControlLib);
 
-  EXPECT_SUCCEEDED(GetDocumentation(-1));
+  EXPECT_SUCCEEDED(GetTypeLibDocumentation());
   EXPECT_STREQ(_T("GoogleUpdateControlLib"), item_name_);
   EXPECT_GU_STREQ(_T("Google Update Browser Plugins 3.0 Type Library"),
                   item_doc_string_);
@@ -56,8 +56,7 @@ TEST_GU_INT_F(OmahaCustomizationUpdateComInterfaceTest,
   EXPECT_GU_ID_EQ(_T("{6F65D62B-2F32-4483-9028-176C30B2389D}"),
                   __uuidof(IGoogleUpdateOneClick));
 
-  EXPECT_SUCCEEDED(GetDocumentation(0));
-  EXPECT_STREQ(_T("IGoogleUpdateOneClick"), item_name_);
+  EXPECT_SUCCEEDED(GetDocumentation(_T("IGoogleUpdateOneClick")));
   EXPECT_STREQ(_T("Google Update OneClick Control"), item_doc_string_);
   EXPECT_EQ(0, help_context_);
   EXPECT_TRUE(!help_file_);
@@ -69,8 +68,7 @@ TEST_GU_INT_F(OmahaCustomizationUpdateComInterfaceTest,
   EXPECT_GU_ID_EQ(_T("{57E37502-65A5-484a-A035-C1608B2626EA}"),
                   __uuidof(IGoogleUpdate3WebControl));
 
-  EXPECT_SUCCEEDED(GetDocumentation(1));
-  EXPECT_STREQ(_T("IGoogleUpdate3WebControl"), item_name_);
+  EXPECT_SUCCEEDED(GetDocumentation(_T("IGoogleUpdate3WebControl")));
   EXPECT_STREQ(_T("GoogleUpdate3Web Control"), item_doc_string_);
   EXPECT_EQ(0, help_context_);
   EXPECT_TRUE(!help_file_);
@@ -81,8 +79,7 @@ TEST_GU_INT_F(OmahaCustomizationUpdateComInterfaceTest,
   EXPECT_GU_ID_EQ(_T("{c442ac41-9200-4770-8cc0-7cdb4f245c55}"),
                   __uuidof(GoogleUpdateOneClickControlCoClass));
 
-  EXPECT_SUCCEEDED(GetDocumentation(2));
-  EXPECT_STREQ(_T("GoogleUpdateOneClickControlCoClass"), item_name_);
+  EXPECT_SUCCEEDED(GetDocumentation(_T("GoogleUpdateOneClickControlCoClass")));
   EXPECT_STREQ(_T("Google Update OneClick Control Class"), item_doc_string_);
   EXPECT_EQ(0, help_context_);
   EXPECT_TRUE(!help_file_);
@@ -93,8 +90,7 @@ TEST_GU_INT_F(OmahaCustomizationUpdateComInterfaceTest,
   EXPECT_GU_ID_EQ(_T("{c3101a8b-0ee1-4612-bfe9-41ffc1a3c19d}"),
                   __uuidof(GoogleUpdate3WebControlCoClass));
 
-  EXPECT_SUCCEEDED(GetDocumentation(3));
-  EXPECT_STREQ(_T("GoogleUpdate3WebControlCoClass"), item_name_);
+  EXPECT_SUCCEEDED(GetDocumentation(_T("GoogleUpdate3WebControlCoClass")));
   EXPECT_STREQ(_T("GoogleUpdate3Web Control Class"), item_doc_string_);
   EXPECT_EQ(0, help_context_);
   EXPECT_TRUE(!help_file_);
@@ -102,7 +98,7 @@ TEST_GU_INT_F(OmahaCustomizationUpdateComInterfaceTest,
 
 // Verifies there are no new interfaces in the TypeLib.
 TEST_F(OmahaCustomizationUpdateComInterfaceTest, VerifyNoNewInterfaces) {
-  EXPECT_EQ(TYPE_E_ELEMENTNOTFOUND, GetDocumentation(4))
+  EXPECT_EQ(4, type_lib_->GetTypeInfoCount())
       << _T("A new interface may have been added. If so, roll ")
       << _T("the plugin version and add test(s) for new interface(s).");
 }

@@ -240,8 +240,12 @@ HRESULT GetNumberFormatForLCID(const LCID & lcid, NUMBERFMT * fmt,
                                size_t thousand_buf_len) {  // including null
   ASSERT1(fmt);
 
+  if (decimal_buf_len > INT_MAX || thousand_buf_len > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
   TCHAR buf[64] = {_T('\0')};
-  size_t buf_len = arraysize(buf);
+  const int buf_len = arraysize(buf);
 
   HRESULT hr = S_OK;
   int retval = GetLocaleInfo(lcid, LOCALE_IDIGITS, buf, buf_len);
@@ -300,7 +304,7 @@ HRESULT GetNumberFormatForLCID(const LCID & lcid, NUMBERFMT * fmt,
 
   // GetLocaleInfo doesn't write more than 4 chars for this field (per MSDN)
   retval = GetLocaleInfo(lcid, LOCALE_SDECIMAL, fmt_decimal_buf,
-                         decimal_buf_len);
+                         static_cast<int>(decimal_buf_len));
   if (!retval) {
     CORE_LOG(LEVEL_WARNING, (_T("[App::Impl::InitializeLocaleSettings - ")
                              _T("Failed to load LOCALE_SDECIMAL]")));
@@ -311,7 +315,7 @@ HRESULT GetNumberFormatForLCID(const LCID & lcid, NUMBERFMT * fmt,
 
   // GetLocaleInfo doesn't write more than 4 chars for this field (per MSDN)
   retval = GetLocaleInfo(lcid, LOCALE_STHOUSAND, fmt_thousand_buf,
-                         thousand_buf_len);
+                         static_cast<int>(thousand_buf_len));
   if (!retval) {
     CORE_LOG(LEVEL_WARNING, (_T("[App::Impl::InitializeLocaleSettings - ")
                              _T("Failed to load LOCALE_STHOUSAND]")));

@@ -1,4 +1,4 @@
-// Copyright 2005-2009 Google Inc.
+// Copyright 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 #include "rc4.h"
 
-#include <inttypes.h>
+#include <stdint.h>
 
 void RC4_setKey(RC4_CTX* ctx, const uint8_t* key, int len) {
   uint8_t* S = ctx->S;

@@ -1,4 +1,4 @@
-// Copyright 2006-2009 Google Inc.
+// Copyright 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 #include "rsa.h"
 
 #include <stddef.h>
-#include <inttypes.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -183,7 +183,7 @@ int RSA::verify(const uint8_t* data, int data_len,
 
   uint8_t md5[16];
 
-  MD5(res, reslen - 16, md5);
+  MD5_hash(res, reslen - 16, md5);
 
   for (int i = 0; i < 16; ++i) {
     res[reslen - 16 + i] ^= md5[i];
@@ -204,7 +204,7 @@ int RSA::verify(const uint8_t* data, int data_len,
   bool result = true;
 
   // Verify high part is hash of random in low part.
-  MD5(res + 1, res[0] + 16, md5);
+  MD5_hash(res + 1, res[0] + 16, md5);
   for (int i = 0; i < 16; ++i) {
     result = result && (res[reslen - 16 + i] == md5[i]);
   }
@@ -239,7 +239,7 @@ int RSA::encrypt(const uint8_t* msg, int msg_len,
 
   // Hash of message. Least significant SHA_DIGEST_SIZE bytes of RSA number.
   uint8_t* hash = &output[header_size - SHA_DIGEST_SIZE];
-  SHA(msg, msg_len, hash);
+  SHA_hash(msg, msg_len, hash);
 
   // Hash(Hash(message) | seed).
   SHA_CTX sha;

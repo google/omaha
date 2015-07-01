@@ -22,18 +22,22 @@ Import('env')
 local_env = env.Clone()
 local_env.Append(
     LIBS = [
-        ('atls.lib', 'atlsd.lib')[local_env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[local_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[local_env.Bit('debug')],
+        'advapi32.lib',
+        'kernel32.lib',
         'netapi32.lib',
+        'ole32.lib',
         'psapi.lib',
         'rasapi32.lib',
+        'shell32.lib',
         'shlwapi.lib',
+        'user32.lib',
         'userenv.lib',
         'version.lib',
         'wtsapi32.lib',
-
-        '$LIB_DIR/common.lib',
+        local_env['atls_libs'][local_env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[local_env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[local_env.Bit('debug')],
+        '$LIB_DIR/base.lib',
         ],
     CPPDEFINES = [
         'UNICODE',

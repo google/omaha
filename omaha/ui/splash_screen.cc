@@ -21,14 +21,15 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/smart_handle.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/window_utils.h"
 #include "omaha/client/client_utils.h"
 #include "omaha/client/resource.h"
 #include "omaha/common/lang.h"
 #include "omaha/google_update/resource.h"   // For the IDI_APP
+#include "omaha/goopdate/non_localized_resource.h"
 #include "omaha/ui/scoped_gdi.h"
+#include "omaha/ui/ui.h"
 
 namespace {
 
@@ -55,7 +56,7 @@ SplashScreen::SplashScreen(const CString& bundle_name)
       timer_created_(false) {
   CORE_LOG(L3, (_T("[SplashScreen::SplashScreen]")));
   caption_ = client_utils::GetInstallerDisplayName(bundle_name);
-  text_.FormatMessage(IDS_SPLASH_SCREEN_MESSAGE, caption_);
+  text_.LoadString(IDS_SPLASH_SCREEN_MESSAGE);
 
   SwitchToState(STATE_CREATED);
 }
@@ -121,7 +122,6 @@ HRESULT SplashScreen::Initialize() {
   VERIFY1(SetWindowText(caption_));
 
   EnableSystemButtons(false);
-  GetDlgItem(IDC_IMAGE).ShowWindow(SW_HIDE);
 
   CWindow text_wnd = GetDlgItem(IDC_INSTALLER_STATE_TEXT);
   text_wnd.ShowWindow(SW_SHOWNORMAL);
@@ -140,6 +140,37 @@ HRESULT SplashScreen::Initialize() {
   if (FAILED(hr)) {
     CORE_LOG(LW, (_T("[SetWindowIcon failed][0x%08x]"), hr));
   }
+
+  // 9-pixel-high "Segoe UI".
+  VERIFY1(default_font_.CreatePointFont(90, _T("Segoe UI")));
+  SendMessageToDescendants(
+      WM_SETFONT,
+      reinterpret_cast<WPARAM>(static_cast<HFONT>(default_font_)),
+      0);
+
+  // 15-pixel-high "Segoe UI".
+  VERIFY1(font_.CreatePointFont(150, _T("Segoe UI")));
+  GetDlgItem(IDC_INSTALLER_STATE_TEXT).SetFont(font_);
+  GetDlgItem(IDC_INFO_TEXT).SetFont(font_);
+  GetDlgItem(IDC_COMPLETE_TEXT).SetFont(font_);
+  GetDlgItem(IDC_ERROR_TEXT).SetFont(font_);
+
+  CreateOwnerDrawTitleBar(m_hWnd, GetDlgItem(IDC_TITLE_BAR_SPACER), kBkColor);
+  SetCustomDlgColors(kTextColor, kBkColor);
+
+  (EnableFlatButtons(m_hWnd));
+
+  omaha_dll_.Attach(::LoadLibraryEx(kOmahaDllName,
+                                    NULL,
+                                    LOAD_LIBRARY_AS_DATAFILE));
+  ASSERT1(omaha_dll_.IsValid());
+  VERIFY1(Animate_OpenEx(GetDlgItem(IDC_MARQUEE),
+                         omaha_dll_.handle(),
+                         MAKEINTRESOURCE(IDR_MARQUEE)));
+  VERIFY1(Animate_Play(GetDlgItem(IDC_MARQUEE), 0, -1, -1));
+
+  GetDlgItem(IDC_MARQUEE).ShowWindow(SW_SHOW);
+
   SwitchToState(STATE_INITIALIZED);
   return S_OK;
 }
@@ -151,22 +182,30 @@ void SplashScreen::EnableSystemButtons(bool enable) {
     SetWindowLong(GWL_STYLE, GetWindowLong(GWL_STYLE) | kSysStyleMask);
   } else {
     SetWindowLong(GWL_STYLE, GetWindowLong(GWL_STYLE) & ~kSysStyleMask);
+
+    // Remove Close/Minimize/Maximize from the System Menu.
+    HMENU menu(::GetSystemMenu(*this, false));
+    ASSERT1(menu);
+    VERIFY1(::RemoveMenu(menu, SC_CLOSE, MF_BYCOMMAND) != -1);
+    VERIFY1(::RemoveMenu(menu, SC_MINIMIZE, MF_BYCOMMAND) != -1);
+    VERIFY1(::RemoveMenu(menu, SC_MAXIMIZE, MF_BYCOMMAND) != -1);
   }
 }
 
 void SplashScreen::InitProgressBar() {
-  const LONG kStyle = WS_CHILD | WS_VISIBLE | PBS_MARQUEE | PBS_SMOOTH;
+  progress_bar_.SubclassWindow(GetDlgItem(IDC_PROGRESS));
+
+  const LONG kStyle = WS_CHILD | WS_VISIBLE | PBS_SMOOTH;
 
   CWindow progress_bar = GetDlgItem(IDC_PROGRESS);
   LONG style = progress_bar.GetWindowLong(GWL_STYLE) | kStyle;
   progress_bar.SetWindowLong(GWL_STYLE, style);
-  progress_bar.SendMessage(PBM_SETMARQUEE, TRUE, 60);
 }
 
 LRESULT SplashScreen::OnTimer(UINT message,
                               WPARAM wparam,
                               LPARAM lparam,
-                              BOOL& handled) {
+                              BOOL& handled) {  // NOLINT
   UNREFERENCED_PARAMETER(message);
   UNREFERENCED_PARAMETER(wparam);
   UNREFERENCED_PARAMETER(lparam);
@@ -190,10 +229,14 @@ LRESULT SplashScreen::OnTimer(UINT message,
 LRESULT SplashScreen::OnClose(UINT message,
                               WPARAM wparam,
                               LPARAM lparam,
-                              BOOL& handled) {
+                              BOOL& handled) {  // NOLINT
   UNREFERENCED_PARAMETER(message);
   UNREFERENCED_PARAMETER(wparam);
   UNREFERENCED_PARAMETER(lparam);
+
+  GetDlgItem(IDC_MARQUEE).ShowWindow(SW_HIDE);
+
+  VERIFY1(Animate_Stop(GetDlgItem(IDC_MARQUEE)));
 
   DestroyWindow();
   handled = TRUE;
@@ -203,7 +246,7 @@ LRESULT SplashScreen::OnClose(UINT message,
 LRESULT SplashScreen::OnDestroy(UINT message,
                                 WPARAM wparam,
                                 LPARAM lparam,
-                                BOOL& handled) {
+                                BOOL& handled) {  // NOLINT
   UNREFERENCED_PARAMETER(message);
   UNREFERENCED_PARAMETER(wparam);
   UNREFERENCED_PARAMETER(lparam);

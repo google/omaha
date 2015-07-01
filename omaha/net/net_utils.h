@@ -17,8 +17,11 @@
 #define OMAHA_NET_NET_UTILS_H__
 
 #include <atlstr.h>
+
 #include <vector>
+
 #include "base/basictypes.h"
+#include "omaha/base/string.h"
 
 namespace omaha {
 
@@ -32,6 +35,18 @@ bool IsMachineConnectedToNetwork();
 // Non-printable characters are converted to '.'.
 CString BufferToPrintableString(const void* buffer, size_t length);
 CString VectorToPrintableString(const std::vector<uint8>& response);
+
+// Returns true of the url starts with http://, case insensitive.
+bool IsHttpUrl(const CString& url);
+
+// Returns true of the url starts with https://, case insensitive.
+bool IsHttpsUrl(const CString& url);
+
+// Changes the protocol scheme of an url to http.
+CString MakeHttpUrl(const CString& url);
+
+// Changes the protocol scheme of an url to https.
+CString MakeHttpsUrl(const CString& url);
 
 }  // namespace omaha
 

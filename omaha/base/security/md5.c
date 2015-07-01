@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #define rol(bits, value) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
@@ -31,7 +31,7 @@ static const char Kr[64] =
   6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21
 };
 
-static const int KK[64] =
+static const uint32_t KK[64] =
 {
   0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
   0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
@@ -105,7 +105,7 @@ static const HASH_VTAB MD5_VTAB = {
   MD5_init,
   MD5_update,
   MD5_final,
-  MD5,
+  MD5_hash,
   MD5_DIGEST_SIZE
 };
 
@@ -119,8 +119,8 @@ void MD5_init(MD5_CTX* ctx) {
 }
 
 
-void MD5_update(MD5_CTX* ctx, const void* data, int len) {
-  int i = ctx->count & 63;
+void MD5_update(MD5_CTX* ctx, const void* data, unsigned int len) {
+  unsigned int i = (unsigned int)(ctx->count & 63);
   const uint8_t* p = (const uint8_t*)data;
 
   ctx->count += len;
@@ -145,7 +145,7 @@ const uint8_t* MD5_final(MD5_CTX* ctx) {
     MD5_update(ctx, (uint8_t*)"\0", 1);
   }
   for (i = 0; i < 8; ++i) {
-    uint8_t tmp = cnt >> (i * 8);
+    uint8_t tmp = (uint8_t) (cnt >> (i * 8));
     MD5_update(ctx, &tmp, 1);
   }
 
@@ -162,7 +162,7 @@ const uint8_t* MD5_final(MD5_CTX* ctx) {
 
 
 /* Convenience function */
-const uint8_t* MD5(const void* data, int len, uint8_t* digest) {
+const uint8_t* MD5_hash(const void* data, unsigned int len, uint8_t* digest) {
   MD5_CTX ctx;
   MD5_init(&ctx);
   MD5_update(&ctx, data, len);

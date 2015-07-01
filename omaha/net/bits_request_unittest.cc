@@ -15,7 +15,7 @@
 
 #include <windows.h>
 #include <winhttp.h>
-#include "omaha/base/app_util.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/bits_request.h"
 #include "omaha/testing/unit_test.h"
 
@@ -29,10 +29,10 @@ TEST(BitsRequestTest, Send) {
 
   BitsRequest bits_request;
   bits_request.set_no_progress_timeout(10);   // 10 seconds.
-  CString temp_dir = app_util::GetTempDir();
-  CString temp_file;
-  EXPECT_TRUE(::GetTempFileName(temp_dir, _T("tmp"), 0,
-                                CStrBuf(temp_file, MAX_PATH)));
+
+  CString temp_file = GetTempFilename(_T("tmp"));
+  ASSERT_FALSE(temp_file.IsEmpty());
+
   bits_request.set_filename(temp_file);
   bits_request.set_url(_T("http://dl.google.com/update2/UpdateData.bin"));
   EXPECT_HRESULT_SUCCEEDED(bits_request.Send());

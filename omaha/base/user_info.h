@@ -18,8 +18,8 @@
 //
 // TODO(omaha): seems we can merge this module with user_rights.
 
-#ifndef OMAHA_COMMON_USER_INFO_H__
-#define OMAHA_COMMON_USER_INFO_H__
+#ifndef OMAHA_BASE_USER_INFO_H_
+#define OMAHA_BASE_USER_INFO_H_
 
 #include <windows.h>
 #include <atlsecurity.h>
@@ -59,8 +59,15 @@ bool IsRunningAsSystem();
 // Returns true if the current thread is impersonating.
 bool IsThreadImpersonating();
 
+// Returns the names of the account and the domain associated with the caller.
+// The function is using the thread token if available or the process token.
+// When looking up the names, the local system is used first, then the domain
+// controllers.
+HRESULT GetUserAccountAndDomainNames(CString* account_name,
+                                     CString* domain_name);
+
 }  // namespace user_info
 
 }  // namespace omaha
 
-#endif  // OMAHA_COMMON_USER_INFO_H__
+#endif  // OMAHA_BASE_USER_INFO_H_

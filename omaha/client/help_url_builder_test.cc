@@ -52,7 +52,8 @@ int VerifyOSInUrl(const CString& url, int* length) {
   // substring of the version we are looking for.
   // TODO(omaha): This is a maintenance problem. Consider eliminating the
   // "&sp=" at the very least.
-  const TCHAR* kExpectedOsStrings[] = {_T("6.1&sp=Service%20Pack%201"),
+  const TCHAR* kExpectedOsStrings[] = {_T("6.3&sp=9600.17031"),
+                                       _T("6.1&sp=Service%20Pack%201"),
                                        _T("6.1&sp="),
                                        _T("6.0&sp=Service%20Pack%201"),
                                        _T("6.0&sp="),
@@ -69,7 +70,7 @@ int VerifyOSInUrl(const CString& url, int* length) {
     this_pos = url.Find(kExpectedOsStrings[i]);
     if (-1 != this_pos) {
       found = true;
-      *length = _tcslen(kExpectedOsStrings[i]);
+      *length = static_cast<int>(_tcslen(kExpectedOsStrings[i]));
       break;
     }
   }
@@ -124,9 +125,7 @@ class HelpUrlBuilderTest : public testing::Test {
 
 TEST_F(HelpUrlBuilderTest, BuildHttpGetString_MachineNoTestSource) {
   CString expected_str_before_os(
-      _T("http://www.google.com/hello.py?code=123&hl=en&")
-      _T("app.0=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
-      _T("ec.0=0xa&ex.0=22&")
+      _T("https://www.google.com/hello.py?code=123&hl=en&")
       _T("guver=1.0.51.0&m=1&os="));
   CString expected_str_after_os(
       _T("&iid=%7B0F973A20-C484-462B-952C-5D9A459E3326%7D")  // Upper case 'B'.
@@ -144,7 +143,7 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_MachineNoTestSource) {
   std::vector<HelpUrlBuilder::AppResult> app_results;
   app_results.push_back(HelpUrlBuilder::AppResult(kAppGuid, 10, 22));
   EXPECT_SUCCEEDED(BuildHttpGetString(
-      _T("http://www.google.com/hello.py?code=123&"),
+      _T("https://www.google.com/hello.py?code=123&"),
       app_results,
       _T("1.0.51.0"),
       true,
@@ -195,9 +194,9 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_UserWithTestSource) {
                                     _T("dev")));
 
   const CString expected_str_before_os(
-      _T("http://www.google.com/hello.py?hl=de&")
-      _T("app.0=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
-      _T("ec.0=0xffffffff&ex.0=99&")
+      _T("https://www.google.com/hello.py?hl=de&")
+      _T("product=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
+      _T("error=0xffffffff&extra_code=99&")
       _T("guver=foo%20bar&m=0&os="));
   const CString expected_str_after_os(
       _T("&iid=%7B0F973A20-C484-462B-952C-5D9A459E3326%7D")  // Upper case 'B'.
@@ -208,7 +207,7 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_UserWithTestSource) {
   std::vector<HelpUrlBuilder::AppResult> app_results;
   app_results.push_back(HelpUrlBuilder::AppResult(kAppGuid, 0xffffffff, 99));
   EXPECT_SUCCEEDED(BuildHttpGetString(
-      _T("http://www.google.com/hello.py?"),
+      _T("https://www.google.com/hello.py?"),
       app_results,
       _T("foo bar"),
       false,
@@ -243,9 +242,9 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_UserWithTestSource) {
 // IID and brand code are emtpy if not present.
 TEST_F(HelpUrlBuilderTest, BuildHttpGetString_NoIidOrBrandCode) {
   const CString expected_str_before_os(
-      _T("http://www.google.com/hello.py?hl=en&")
-      _T("app.0=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
-      _T("ec.0=0xffffffff&ex.0=99&")
+      _T("https://www.google.com/hello.py?hl=en&")
+      _T("product=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
+      _T("error=0xffffffff&extra_code=99&")
       _T("guver=foo%20bar&m=1&os="));
   const CString expected_str_after_os(_T("&iid=&brand=&source=cluck"));
 
@@ -254,7 +253,7 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_NoIidOrBrandCode) {
   app_results.push_back(HelpUrlBuilder::AppResult(
       _T("{B7BAF788-9D64-49c3-AFDC-B336AB12F332}"), 0xffffffff, 99));
   EXPECT_SUCCEEDED(BuildHttpGetString(
-      _T("http://www.google.com/hello.py?"),
+      _T("https://www.google.com/hello.py?"),
       app_results,
       _T("foo bar"),
       true,
@@ -290,7 +289,7 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_UrlTooLong) {
   app_results.push_back(HelpUrlBuilder::AppResult(
       _T("{B7BAF788-9D64-49c3-AFDC-B336AB12F332}"), 0xffffffff, 99));
   EXPECT_EQ(E_FAIL, BuildHttpGetString(
-      _T("http://www.google.com/hello.py?"),
+      _T("https://www.google.com/hello.py?"),
       app_results,
       _T("foo bar"),
       true,
@@ -303,11 +302,9 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_UrlTooLong) {
 
 TEST_F(HelpUrlBuilderTest, BuildHttpGetString_MultipleApps) {
   CString expected_str_before_os(
-      _T("http://www.google.com/hello.py?code=123&hl=en&")
-      _T("app.0=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
-      _T("ec.0=0x80000001&ex.0=1000&")
-      _T("app.1=%7B6D2DF75B-11F0-41CA-9874-79DE4568527C%7D&")
-      _T("ec.1=0x0&ex.1=0&")
+      _T("https://www.google.com/hello.py?code=123&hl=en&")
+      _T("product=%7BB7BAF788-9D64-49c3-AFDC-B336AB12F332%7D&")
+      _T("error=0x80000001&extra_code=1000&")
       _T("guver=1.0.51.22&m=1&os="));
   CString expected_str_after_os(
       _T("&iid=%7B0F973A20-C484-462B-952C-5D9A459E3326%7D")  // Upper case 'B'.
@@ -323,10 +320,11 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_MultipleApps) {
 
   CString url_req;
   std::vector<HelpUrlBuilder::AppResult> app_results;
+  app_results.push_back(HelpUrlBuilder::AppResult(_T("SucceededApp1"), 0, 0));
   app_results.push_back(HelpUrlBuilder::AppResult(kAppGuid, 0x80000001, 1000));
   app_results.push_back(HelpUrlBuilder::AppResult(kAppGuid2, 0, 0));
   EXPECT_SUCCEEDED(BuildHttpGetString(
-      _T("http://www.google.com/hello.py?code=123&"),
+      _T("https://www.google.com/hello.py?code=123&"),
       app_results,
       _T("1.0.51.22"),
       true,
@@ -374,10 +372,10 @@ TEST_F(HelpUrlBuilderTest, BuildHttpGetString_MultipleApps) {
 // Machine ID must be set or it will be randomly generated in some cases.
 TEST_F(HelpUrlBuilderTest, BuildGetHelpUrl_User) {
   // The URL has a begin, middle which is OS-specific and not checked, and end.
-  const CString kExpetedUrlBegin =
-      _T("http://www.google.com/support/installer/?hl=en-GB&")
-      _T("app.0=%7Btest-user-app-id%7D&ec.0=0x80004005&ex.0=-2147418113&")
-      _T("guver=5.6.7.8&m=0&os=");
+  const CString kExpectedUrlBegin =
+      _T("https://www.google.com/support/installer/?hl=en-GB&")
+      _T("product=%7Btest-user-app-id%7D&error=0x80004005&")
+      _T("extra_code=-2147418113&guver=5.6.7.8&m=0&os=");
   const CString kExpectedUrlAfterOs = _T("iid=&brand=&source=gethelp")
 #if defined(DEBUG) || !OFFICIAL_BUILD
       // TestSource is always set for these builds.
@@ -396,7 +394,7 @@ TEST_F(HelpUrlBuilderTest, BuildGetHelpUrl_User) {
                                 static_cast<DWORD>(E_UNEXPECTED)));
   EXPECT_SUCCEEDED(url_builder.BuildUrl(app_results, &url));
 
-  EXPECT_STREQ(kExpetedUrlBegin, url.Left(kExpetedUrlBegin.GetLength()));
+  EXPECT_STREQ(kExpectedUrlBegin, url.Left(kExpectedUrlBegin.GetLength()));
   EXPECT_NE(-1, url.Find(kExpectedUrlAfterOs))
       << kExpectedUrlAfterOs.GetString() << std::endl
       << _T(" not found in ") << std::endl << url.GetString();
@@ -404,10 +402,10 @@ TEST_F(HelpUrlBuilderTest, BuildGetHelpUrl_User) {
 
 TEST_F(HelpUrlBuilderTest, BuildGetHelpUrl_Machine) {
   // The URL has a begin, middle which is OS-specific and not checked, and end.
-  const CString kExpetedUrlBegin =
-      _T("http://www.google.com/support/installer/?hl=en-GB&")
-      _T("app.0=%7Btest-machine-app-id%7D&ec.0=0x80004004&ex.0=99&")
-      _T("guver=5.6.7.8&m=1&os=");
+  const CString kExpectedUrlBegin =
+      _T("https://www.google.com/support/installer/?hl=en-GB&")
+      _T("product=%7Btest-machine-app-id%7D&error=0x80004004&")
+      _T("extra_code=99&guver=5.6.7.8&m=1&os=");
   const CString kExpectedUrlAfterOs =
       _T("iid=%7B326ADA1D-06AA-4C16-8101-5FC3FEBC852A%7D&")  // Upper case 'C'.
       _T("brand=GOOG&source=gethelp")
@@ -428,7 +426,72 @@ TEST_F(HelpUrlBuilderTest, BuildGetHelpUrl_Machine) {
                                                   99));
   EXPECT_SUCCEEDED(url_builder.BuildUrl(app_results, &url));
 
-  EXPECT_STREQ(kExpetedUrlBegin, url.Left(kExpetedUrlBegin.GetLength()));
+  EXPECT_STREQ(kExpectedUrlBegin, url.Left(kExpectedUrlBegin.GetLength()));
+  EXPECT_NE(-1, url.Find(kExpectedUrlAfterOs))
+      << kExpectedUrlAfterOs.GetString() << std::endl
+      << _T(" not found in ") << std::endl << url.GetString();
+}
+
+// Use extra code instead if it exists when installer error happens.
+TEST_F(HelpUrlBuilderTest, BuildGetHelpUrl_InstallerErrorWithExtraCode) {
+  // The URL has a begin, middle which is OS-specific and not checked, and end.
+  const CString kExpectedUrlBegin =
+      _T("https://www.google.com/support/installer/?hl=en-GB&")
+      _T("product=AppName&error=1666&from_extra_code=1&")
+      _T("guver=5.6.7.8&m=1&os=");
+  const CString kExpectedUrlAfterOs =
+      _T("iid=%7B326ADA1D-06AA-4C16-8101-5FC3FEBC852A%7D&")  // Upper case 'C'.
+      _T("brand=GOOG&source=gethelp")
+#if defined(DEBUG) || !OFFICIAL_BUILD
+      // TestSource is always set for these builds.
+      _T("&testsource=");
+#else
+      // TestSource never set for other builds because registry is overridden.
+      ;  // NOLINT
+#endif
+
+  const GUID kIid = StringToGuid(_T("{326ADA1D-06AA-4c16-8101-5FC3FEBC852A}"));
+  CString url;
+  HelpUrlBuilder url_builder(true, _T("en-GB"), kIid, _T("GOOG"));
+  std::vector<HelpUrlBuilder::AppResult> app_results;
+  app_results.push_back(HelpUrlBuilder::AppResult(
+      _T("AppName"), GOOPDATEINSTALL_E_INSTALLER_FAILED, 1666));
+  EXPECT_SUCCEEDED(url_builder.BuildUrl(app_results, &url));
+
+  EXPECT_STREQ(kExpectedUrlBegin, url.Left(kExpectedUrlBegin.GetLength()));
+  EXPECT_NE(-1, url.Find(kExpectedUrlAfterOs))
+      << kExpectedUrlAfterOs.GetString() << std::endl
+      << _T(" not found in ") << std::endl << url.GetString();
+}
+
+// Keep using error code if extra code does not have meaningful value when
+// installer error happens.
+TEST_F(HelpUrlBuilderTest, BuildGetHelpUrl_InstallerErrorWithoutExtraCode) {
+  // The URL has a begin, middle which is OS-specific and not checked, and end.
+  const CString kExpectedUrlBegin =
+      _T("https://www.google.com/support/installer/?hl=en-GB&")
+      _T("product=AppName&error=0x80040902&extra_code=0&")
+      _T("guver=5.6.7.8&m=1&os=");
+  const CString kExpectedUrlAfterOs =
+      _T("iid=%7B326ADA1D-06AA-4C16-8101-5FC3FEBC852A%7D&")  // Upper case 'C'.
+      _T("brand=GOOG&source=gethelp")
+#if defined(DEBUG) || !OFFICIAL_BUILD
+      // TestSource is always set for these builds.
+      _T("&testsource=");
+#else
+      // TestSource never set for other builds because registry is overridden.
+      ;  // NOLINT
+#endif
+
+  const GUID kIid = StringToGuid(_T("{326ADA1D-06AA-4c16-8101-5FC3FEBC852A}"));
+  CString url;
+  HelpUrlBuilder  url_builder(true, _T("en-GB"), kIid, _T("GOOG"));
+  std::vector<HelpUrlBuilder::AppResult> app_results;
+  app_results.push_back(HelpUrlBuilder::AppResult(
+      _T("AppName"), GOOPDATEINSTALL_E_INSTALLER_FAILED, 0));
+  EXPECT_SUCCEEDED(url_builder.BuildUrl(app_results, &url));
+
+  EXPECT_STREQ(kExpectedUrlBegin, url.Left(kExpectedUrlBegin.GetLength()));
   EXPECT_NE(-1, url.Find(kExpectedUrlAfterOs))
       << kExpectedUrlAfterOs.GetString() << std::endl
       << _T(" not found in ") << std::endl << url.GetString();

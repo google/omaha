@@ -44,7 +44,7 @@ const TCHAR* const kProcessWorkerDescription =
 class ATL_NO_VTABLE ProcessLauncher
     : public CComObjectRootEx<CComMultiThreadModel>,
       public CComCoClass<ProcessLauncher, &__uuidof(ProcessLauncherClass)>,
-      public IProcessLauncher,
+      public IProcessLauncher2,
       public StdMarshalInfo {
  public:
   ProcessLauncher();
@@ -71,6 +71,7 @@ class ATL_NO_VTABLE ProcessLauncher
   // C4505: unreferenced IUnknown local functions have been removed
   #pragma warning(disable : 4505)
   BEGIN_COM_MAP(ProcessLauncher)
+    COM_INTERFACE_ENTRY(IProcessLauncher2)
     COM_INTERFACE_ENTRY(IProcessLauncher)
     COM_INTERFACE_ENTRY(IStdMarshalInfo)
   END_COM_MAP()
@@ -86,6 +87,12 @@ class ATL_NO_VTABLE ProcessLauncher
                                const WCHAR* cmd_id,
                                DWORD caller_proc_id,
                                ULONG_PTR* proc_handle);
+
+  // Launches a command line at medium integrity and returns the process HANDLE.
+  STDMETHOD(LaunchCmdLineEx)(const TCHAR* cmd_line,
+                             DWORD* server_proc_id,
+                             ULONG_PTR* proc_handle,
+                             ULONG_PTR* stdout_handle);
 
  private:
   DISALLOW_EVIL_CONSTRUCTORS(ProcessLauncher);

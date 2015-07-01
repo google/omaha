@@ -19,10 +19,14 @@
 namespace omaha {
 
 // Test what happens when we hit an ATLASSERT within ATL code.
-// The CComPtr expects the parameter to be 0.
+// The & operator of CComPtr class expects the parameter to be NULL, otherwise
+// the object will leak.
 TEST(AtlAssertTest, AtlAssert) {
   ExpectAsserts expect_asserts;
-  CComPtr<IUnknown> p(1);
+  CComPtr<IMalloc> p;
+  EXPECT_HRESULT_SUCCEEDED(::CoGetMalloc(1, &p));
+  EXPECT_TRUE(p != NULL);
+  ::CoGetMalloc(1, &p);     // This line is expected to asserts.
 }
 
 }  // namespace omaha

@@ -21,6 +21,11 @@ if not env.Bit('min'):
   subdirs += [
       'ApplyTag',
       'CrashProcess',
+      'CrashHandlerClient',
+      'MsiTagger',
+      'performondemand',
+      'ReadTag',
+      'SetShutDownEvent'
       ]
 
 for dir in subdirs:

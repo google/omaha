@@ -14,11 +14,52 @@
 // ========================================================================
 
 #include "omaha/common/ping_event.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/xml_utils.h"
 #include "omaha/common/xml_const.h"
 
 namespace omaha {
+
+PingEvent::PingEvent(Types type,
+                     Results result,
+                     int error_code,
+                     int extra_code1)
+    : event_type_(type),
+      event_result_(result),
+      error_code_(error_code),
+      extra_code1_(extra_code1),
+      source_url_index_(-1),
+      update_check_time_ms_(0),
+      download_time_ms_(0),
+      num_bytes_downloaded_(0),
+      app_size_(0),
+      install_time_ms_(0) {
+  ASSERT1(EVENT_UNKNOWN != event_type_);
+}
+
+PingEvent::PingEvent(Types type,
+                     Results result,
+                     int error_code,
+                     int extra_code1,
+                     int source_url_index,
+                     int update_check_time_ms,
+                     int download_time_ms,
+                     uint64 num_bytes_downloaded,
+                     uint64 app_size,
+                     int install_time_ms)
+    : event_type_(type),
+      event_result_(result),
+      error_code_(error_code),
+      extra_code1_(extra_code1),
+      source_url_index_(source_url_index),
+      update_check_time_ms_(update_check_time_ms),
+      download_time_ms_(download_time_ms),
+      num_bytes_downloaded_(num_bytes_downloaded),
+      app_size_(app_size),
+      install_time_ms_(install_time_ms) {
+  ASSERT1(EVENT_UNKNOWN != event_type_);
+}
 
 HRESULT PingEvent::ToXml(IXMLDOMNode* parent_node) const {
   HRESULT hr = AddXMLAttributeNode(parent_node,
@@ -45,10 +86,75 @@ HRESULT PingEvent::ToXml(IXMLDOMNode* parent_node) const {
     return hr;
   }
 
-  return AddXMLAttributeNode(parent_node,
+  hr = AddXMLAttributeNode(parent_node,
+                           xml::kXmlNamespace,
+                           xml::attribute::kExtraCode1,
+                           itostr(extra_code1_));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (source_url_index_ >= 0) {
+    hr = AddXMLAttributeNode(parent_node,
                              xml::kXmlNamespace,
-                             xml::attribute::kExtraCode1,
-                             itostr(extra_code1_));
+                             xml::attribute::kSourceUrlIndex,
+                             itostr(source_url_index_));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (update_check_time_ms_ != 0) {
+    hr = AddXMLAttributeNode(parent_node,
+                             xml::kXmlNamespace,
+                             xml::attribute::kUpdateCheckTime,
+                             itostr(update_check_time_ms_));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (download_time_ms_ != 0) {
+    hr = AddXMLAttributeNode(parent_node,
+                             xml::kXmlNamespace,
+                             xml::attribute::kDownloadTime,
+                             itostr(download_time_ms_));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (num_bytes_downloaded_ != 0) {
+    hr = AddXMLAttributeNode(parent_node,
+                             xml::kXmlNamespace,
+                             xml::attribute::kAppBytesDownloaded,
+                             String_Uint64ToString(num_bytes_downloaded_, 10));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (app_size_ != 0) {
+    hr = AddXMLAttributeNode(parent_node,
+                             xml::kXmlNamespace,
+                             xml::attribute::kAppBytesTotal,
+                             String_Uint64ToString(app_size_, 10));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (install_time_ms_ != 0) {
+    hr = AddXMLAttributeNode(parent_node,
+                             xml::kXmlNamespace,
+                             xml::attribute::kInstallTime,
+                             itostr(install_time_ms_));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  return S_OK;
 }
 
 CString PingEvent::ToString() const {
@@ -59,8 +165,35 @@ CString PingEvent::ToString() const {
       xml::attribute::kErrorCode, itostr(error_code_),
       xml::attribute::kExtraCode1, itostr(extra_code1_));
 
+  if (source_url_index_ >= 0) {
+    ping_str.AppendFormat(_T(", %s=%s"),
+                          xml::attribute::kSourceUrlIndex,
+                          itostr(source_url_index_));
+  }
+
+  if (update_check_time_ms_ != 0) {
+    ping_str.AppendFormat(_T(", %s=%s"),
+                          xml::attribute::kUpdateCheckTime,
+                          itostr(update_check_time_ms_));
+  }
+
+  if (app_size_ != 0) {
+    ping_str.AppendFormat(_T(", %s=%s, %s=%s, %s=%s"),
+                          xml::attribute::kDownloadTime,
+                          itostr(download_time_ms_),
+                          xml::attribute::kAppBytesDownloaded,
+                          String_Uint64ToString(num_bytes_downloaded_, 10),
+                          xml::attribute::kAppBytesTotal,
+                          String_Uint64ToString(app_size_, 10));
+  }
+
+  if (install_time_ms_ != 0) {
+    ping_str.AppendFormat(_T(", %s=%s"),
+                          xml::attribute::kInstallTime,
+                          itostr(install_time_ms_));
+  }
+
   return ping_str;
 }
 
 }  // namespace omaha
-

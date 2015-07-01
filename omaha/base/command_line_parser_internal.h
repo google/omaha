@@ -38,24 +38,25 @@ class CommandLineParserArgs {
 
   // Gets the number of switches in the parsed command line.  Will return 0 for
   // count if a parse has not occurred.
-  int GetSwitchCount() const;
+  size_t GetSwitchCount() const;
 
   // Returns the switch at a particular index.
   // This is meant for iteration only and is not guaranteed to be in the order
   // of the switches in the parsed command line.
-  HRESULT GetSwitchNameAtIndex(int index, CString* switch_name) const;
+  HRESULT GetSwitchNameAtIndex(size_t index, CString* switch_name) const;
 
   // Returns true if a switch with the name switch_name is found.
   bool HasSwitch(const CString& switch_name) const;
 
   // Returns the number of arguments for switch_name.  Will fail if switch_name
   // is not a valid switch.
-  HRESULT GetSwitchArgumentCount(const CString& switch_name, int* count) const;
+  HRESULT GetSwitchArgumentCount(const CString& switch_name,
+                                 size_t* count) const;
 
   // Returns the value of a switch argument at the specified offset.
   // Fails if switch_name is not a valid switch.
   HRESULT GetSwitchArgumentValue(const CString& switch_name,
-                                 int argument_index,
+                                 size_t argument_index,
                                  CString* argument_value) const;
 
   void Reset();

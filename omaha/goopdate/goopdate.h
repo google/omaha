@@ -46,7 +46,9 @@ class Goopdate {
   // Runs the entry point for the application.
   HRESULT Main(HINSTANCE instance, const TCHAR* cmd_line, int cmd_show);
 
-  HRESULT QueueUserWorkItem(UserWorkItem* work_item, uint32 flags);
+  HRESULT QueueUserWorkItem(UserWorkItem* work_item,
+                            DWORD coinit_flags,
+                            uint32 flags);
 
   void Stop();
 

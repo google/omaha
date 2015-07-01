@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_AES_H__
-#define OMAHA_COMMON_SECURITY_AES_H__
+#ifndef OMAHA_BASE_SECURITY_AES_H_
+#define OMAHA_BASE_SECURITY_AES_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,4 +34,4 @@ void AES_encrypt_block(const uint8_t* key,
 }
 #endif
 
-#endif  // OMAHA_COMMON_SECURITY_AES_H__
+#endif  // OMAHA_BASE_SECURITY_AES_H_

@@ -30,4 +30,4 @@ inputs = [
     ]
 
 # Build these into a library.
-local_env.ComponentLibrary('service', inputs)
+local_env.ComponentStaticLibrary('service', inputs)

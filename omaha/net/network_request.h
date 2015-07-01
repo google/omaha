@@ -13,16 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
-//
-// TODO(omaha): implement a way to get the last network error.
-//
-// TODO(omaha): might have to do some working regarding the cookie handling.
-// WinHttp keeps a per session cookie cache. We are currently tearing down
-// the session after each request, so cookies are lost. Normally we don't
-// need cookies at Omaha except for CUP.
-
-#ifndef OMAHA_NET_NETWORK_REQUEST_H__
-#define OMAHA_NET_NETWORK_REQUEST_H__
+#ifndef OMAHA_NET_NETWORK_REQUEST_H_
+#define OMAHA_NET_NETWORK_REQUEST_H_
 
 #include <windows.h>
 #include <winhttp.h>
@@ -32,15 +24,16 @@
 #include "base/scoped_ptr.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
+#include "omaha/common/ping_event_download_metrics.h"
 #include "omaha/net/network_config.h"
 
 namespace omaha {
 
-namespace detail {
+namespace internal {
 
 class NetworkRequestImpl;
 
-}   // namespace detail
+}   // namespace internal
 
 class NetworkRequestCallback {
  public:
@@ -109,8 +102,8 @@ class NetworkRequest {
 
   // Posts an UTF-8 string to a url.
   HRESULT PostUtf8String(const CString& url,
-               const CStringA& request,
-               std::vector<uint8>* response) {
+                         const CStringA& request,
+                         std::vector<uint8>* response) {
     const uint8* buffer = reinterpret_cast<const uint8*>(request.GetString());
     size_t length = request.GetLength();
     return Post(url, buffer, length, response);
@@ -158,13 +151,24 @@ class NetworkRequest {
   // Returns a trace of the request for logging purposes.
   CString trace() const;
 
+  // Returns the download metrics corresponding to a download request.
+  std::vector<DownloadMetrics> download_metrics() const;
+
   void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config);
 
   // Sets the number of retries for the request. The retry mechanism uses
   // exponential backoff to decrease the rate of the retries.
   void set_num_retries(int num_retries);
 
+  // Sets the initial time, in milliseconds, between retries.  This will be
+  // the base amount for the exponential delay growth.  (Default value is set
+  // in network_request_impl.h -- currently, it is 5 seconds.)
   void set_time_between_retries(int time_between_retries_ms);
+
+  // Sets a +/- jitter, in milliseconds, to be applied to each retry delay.
+  // Set to 0 (or any negative value) to disable delay jittering.  (Default
+  // value is set in network_request_impl.h -- currently, it is 3 seconds.)
+  void set_retry_delay_jitter(int jitter_ms);
 
   // Sets an external observer for the request. The ownership of the callback
   // remains with the caller. The current implementation provides callback
@@ -180,30 +184,13 @@ class NetworkRequest {
   // automatically.
   void set_proxy_configuration(const ProxyConfig* proxy_configuration);
 
-  void set_preserve_protocol(bool preserve_protocol);
-
  private:
   // Uses pimpl idiom to minimize dependencies on implementation details.
-  scoped_ptr<detail::NetworkRequestImpl> impl_;
+  scoped_ptr<internal::NetworkRequestImpl> impl_;
   DISALLOW_EVIL_CONSTRUCTORS(NetworkRequest);
 };
 
-
-// Posts a request, falling back from http to https if the http request failed.
-// Returns S_OK if the request is successfully sent. Returns the error
-// corresponding to the http request in case of errors.
-HRESULT PostRequest(NetworkRequest* network_request,
-                    bool fallback_to_https,
-                    const CString& url,
-                    const CString& request_string,
-                    std::vector<uint8>* response);
-
-// Gets a request.
-HRESULT GetRequest(NetworkRequest* network_request,
-                   const CString& url,
-                   std::vector<uint8>* response);
-
 }   // namespace omaha
 
-#endif  // OMAHA_NET_NETWORK_REQUEST_H__
+#endif  // OMAHA_NET_NETWORK_REQUEST_H_
 

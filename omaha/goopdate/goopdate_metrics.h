@@ -27,6 +27,8 @@ DECLARE_METRIC_integer(windows_minor_version);
 DECLARE_METRIC_integer(windows_sp_major_version);
 DECLARE_METRIC_integer(windows_sp_minor_version);
 
+DECLARE_METRIC_integer(windows_user_profile_type);
+
 // Crash metrics.
 //
 // A crash can be handled in one of the following ways: uploaded, rejected by
@@ -42,25 +44,17 @@ DECLARE_METRIC_count(crashes_failed);
 
 // Out of process crash reporting metrics.
 // The number of crashes requested by the applications should be close to the
-// total number of crashes handled by Omaha.
-DECLARE_METRIC_count(oop_crashes_requested);
+// total number of crashes handled by Omaha.  (Note that crashhandler also has
+// some metrics reported here.)
 DECLARE_METRIC_count(oop_crashes_total);
 DECLARE_METRIC_count(oop_crashes_uploaded);
 DECLARE_METRIC_count(oop_crashes_throttled);
 DECLARE_METRIC_count(oop_crashes_rejected);
 DECLARE_METRIC_count(oop_crashes_failed);
-DECLARE_METRIC_count(oop_crashes_crash_filename_empty);
-DECLARE_METRIC_count(oop_crashes_createcustominfofile_failed);
-DECLARE_METRIC_count(oop_crashes_startsenderwithcommandline_failed);
 DECLARE_METRIC_count(oop_crash_start_sender);
 
 // Increments every time GoopdateImpl::HandleReportCrash is called.
 DECLARE_METRIC_count(goopdate_handle_report_crash);
-
-// How many times StartCrashServer() was called.
-DECLARE_METRIC_count(crash_start_server_total);
-// How many times StartCrashServer() succeeded.
-DECLARE_METRIC_count(crash_start_server_succeeded);
 
 // How many times the Code Red check process was launched.
 DECLARE_METRIC_count(cr_process_total);

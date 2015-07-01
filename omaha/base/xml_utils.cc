@@ -18,9 +18,9 @@
 // Utilities for working with XML files via MSXML.
 
 #include "omaha/base/xml_utils.h"
-
 #include <msxml2.h>
 #include <atlsafe.h>
+#include <intsafe.h>
 #include <vector>
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -148,7 +148,7 @@ HRESULT LoadXMLFromRawData(const std::vector<byte>& xmldata,
   ASSERT1(!*xmldoc);
 
   *xmldoc = NULL;
-  if (!xmldata.size()) {
+  if (xmldata.empty() || xmldata.size() > ULONG_MAX) {
     return E_INVALIDARG;
   }
 
@@ -158,7 +158,7 @@ HRESULT LoadXMLFromRawData(const std::vector<byte>& xmldata,
                               VARIANT_BOOL(preserve_whitespace)));
 
   CComSafeArray<byte> xmlsa;
-  xmlsa.Add(xmldata.size(), &xmldata.front());
+  xmlsa.Add(static_cast<ULONG>(xmldata.size()), &xmldata.front());
   CComVariant xmlvar(xmlsa);
 
   VARIANT_BOOL is_successful(VARIANT_FALSE);
@@ -541,7 +541,7 @@ HRESULT GetXMLChildByName(IXMLDOMElement* xmlnode,
 
 HRESULT InsertXMLBeforeItem(IXMLDOMNode* xmlnode,
                             IXMLDOMNode* new_child,
-                            size_t item_number) {
+                            long item_number) {  // NOLINT
   ASSERT1(xmlnode);
   ASSERT1(new_child);
 
@@ -664,6 +664,69 @@ bool HasAttribute(IXMLDOMNode* node, const TCHAR* attr_name) {
   }
 
   return attribute_node != NULL;
+}
+
+HRESULT ReadAttributeAt(IXMLDOMNode* node,
+                        int index,
+                        CString* attr_name,
+                        CString* attr_value) {
+  CORE_LOG(L4, (_T("[ReadAttributeAt][%d]"), index));
+  ASSERT1(node);
+  ASSERT1(attr_name);
+  ASSERT1(attr_value);
+
+  CComPtr<IXMLDOMNamedNodeMap> attributes;
+  HRESULT hr = node->get_attributes(&attributes);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[get_attributes failed][0x%x]"), hr));
+    return hr;
+  }
+
+  if (!attributes) {
+    CORE_LOG(LE, (_T("[Msxml S_FALSE return]")));
+    return E_FAIL;  // Protect against msxml S_FALSE return.
+  }
+
+  CComPtr<IXMLDOMNode> attr;
+  hr = attributes->get_item(index, &attr);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[get_item failed][0x%x]"), hr));
+    return hr;
+  }
+
+  if (!attr) {
+    CORE_LOG(LE, (_T("[Msxml S_FALSE return]")));
+    return E_FAIL;  // Protect against msxml S_FALSE return.
+  }
+
+  CComBSTR node_name;
+  hr = attr->get_nodeName(&node_name);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[get_nodeName failed][0x%x]"), hr));
+    return hr;
+  }
+
+  if (!node_name.Length()) {
+    CORE_LOG(LE, (_T("[Msxml S_FALSE return]")));
+    return E_FAIL;  // Protect against msxml S_FALSE return.
+  }
+
+  CComBSTR node_value;
+  hr = attr->get_text(&node_value);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[get_text failed][0x%x]"), hr));
+    return hr;
+  }
+
+  if (!node_value.Length()) {
+    CORE_LOG(LE, (_T("[Msxml S_FALSE return]")));
+    return E_FAIL;  // Protect against msxml S_FALSE return.
+  }
+
+  *attr_name = node_name;
+  *attr_value = node_value;
+
+  return S_OK;
 }
 
 HRESULT ReadBooleanAttribute(IXMLDOMNode* node,

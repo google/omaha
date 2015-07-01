@@ -48,6 +48,13 @@ DECLARE_METRIC_count(core_cr_succeeded);
 DECLARE_METRIC_integer(core_cr_expected_timer_interval_ms);
 DECLARE_METRIC_integer(core_cr_actual_timer_interval_ms);
 
+// OS upgrade detection metrics.
+DECLARE_METRIC_count(core_osupgrade_started);
+DECLARE_METRIC_count(core_osupgrade_failed_to_enumerate);
+DECLARE_METRIC_count(core_osupgrade_failed_to_load_command);
+DECLARE_METRIC_count(core_osupgrade_failed_to_create_process);
+DECLARE_METRIC_count(core_osupgrade_completed);
+
 // How many times StartCrashHandler() was called.
 DECLARE_METRIC_count(core_start_crash_handler_total);
 // How many times StartCrashHandler() succeeded.

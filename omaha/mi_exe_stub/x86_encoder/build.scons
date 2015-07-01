@@ -18,7 +18,7 @@ Import('env')
 local_env = env.Clone()
 local_env.FilterOut(CPPDEFINES=['_ATL_DEBUG_INTERFACES'])
 
-bcj2_lib = local_env.ComponentStaticLibrary(
+bcj2_lib = local_env.ComponentLibrary(
     lib_name='bcj2_lib',
     source=[
         'bcj2_encoder.cc',
@@ -27,13 +27,22 @@ bcj2_lib = local_env.ComponentStaticLibrary(
 )
 
 bin_env = local_env.Clone()
-bin_env.FilterOut(LINKFLAGS=['/SUBSYSTEM:WINDOWS'])
+bin_env.FilterOut(LINKFLAGS=['/SUBSYSTEM:WINDOWS,5.01'])
 bin_env.Append(
-    LINKFLAGS=['/SUBSYSTEM:CONSOLE'],
+    LINKFLAGS=['/SUBSYSTEM:CONSOLE,5.01'],
     LIBS=[
-        ('libcmt.lib', 'libcmtd.lib')[local_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[local_env.Bit('debug')],
+        bin_env['atls_libs'][bin_env.Bit('debug')],
+        ('libcmt.lib', 'libcmtd.lib')[bin_env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[bin_env.Bit('debug')],
         'kernel32.lib',
+        'netapi32.lib',
+        'psapi.lib',
+        'rasapi32.lib',
+        'shlwapi.lib',
+        'userenv.lib',
+        'version.lib',
+        'wtsapi32.lib',
+        '$LIB_DIR/base.lib',
         '$LIB_DIR/lzma.lib',
     ],
 )
@@ -63,6 +72,8 @@ local_env.OmahaUnittest(
         bcj2_lib,
         '$LIB_DIR/common.lib',
         '$LIB_DIR/lzma.lib',
+        '$LIB_DIR/security.lib',
+        'crypt32.lib',
     ],
     all_in_one=False,
     COMPONENT_TEST_SIZE='small',

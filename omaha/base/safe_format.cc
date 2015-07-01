@@ -13,9 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/base/safe_format.h"
+#include <intsafe.h>
 #include <algorithm>
 #include "omaha/base/debug.h"
-#include "omaha/base/safe_format.h"
 
 namespace omaha {
 
@@ -71,8 +72,12 @@ HRESULT InternalCStringVPrintf(
   size_t buf_length = std::max(InternalStrlen(format_str),
                                static_cast<size_t>(256));
 
+  if (buf_length > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
   for (;;) {
-    CStrBufT<CharType> str_buf(dest_str, buf_length);
+    CStrBufT<CharType> str_buf(dest_str, static_cast<int>(buf_length));
     HRESULT hr = InternalStringCchVPrintf(static_cast<CharType*>(str_buf),
                                     buf_length - 1,
                                     format_str,

@@ -27,7 +27,7 @@
 
 // 4284 warning for operator-> returning non-pointer;
 //      compiler issues it even if -> is not used for the specific instance
-#pragma warning(disable: 4284) 
+#pragma warning(disable: 4284)
 
 namespace detail
 {
@@ -42,7 +42,7 @@ class scoped_any
 {
     // disallow copy and assignment
     scoped_any( scoped_any<T,close_policy,invalid_value,unique> const & );
-    scoped_any<T,close_policy,invalid_value,unique> & operator=( 
+    scoped_any<T,close_policy,invalid_value,unique> & operator=(
         scoped_any<T,close_policy,invalid_value,unique> const & );
 
     // disallow comparison of scoped_any's
@@ -83,7 +83,7 @@ public:
     {
         #ifdef SMART_ANY_PTS
         // You better not be applying operator-> to a handle!
-        static detail::static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
+        static detail::smartany_static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
         #endif
         assert( valid() );
         return safe_types::to_pointer( m_t );
@@ -105,8 +105,8 @@ public:
     // if this scoped_any is managing an array, we can use operator[] to index it
     typename detail::deref<T>::type operator[]( int i ) const
     {
-        static detail::static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
-        static detail::static_assert<!detail::is_delete<close_policy>::value> const accessed_like_an_array_but_not_deleted_like_an_array;
+        static detail::smartany_static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
+        static detail::smartany_static_assert<!detail::is_delete<close_policy>::value> const accessed_like_an_array_but_not_deleted_like_an_array;
         assert( valid() );
         return m_t[ i ];
     }
@@ -116,7 +116,7 @@ public:
     // foo & f = *pfoo;
     reference_type operator*() const
     {
-        static detail::static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
+        static detail::smartany_static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
         assert( valid() );
         return smart_types::to_reference( m_t );
     }
@@ -224,7 +224,7 @@ inline void reset( scoped_any<T,close_policy,invalid_value,unique> & t, U newT )
 // WARNING: this will assert if the value of the resource is
 // anything other than invalid_value.
 template<typename T,class close_policy,class invalid_value,int unique>
-inline typename scoped_any<T,close_policy,invalid_value,unique>::element_type* 
+inline typename scoped_any<T,close_policy,invalid_value,unique>::element_type*
     address( scoped_any<T,close_policy,invalid_value,unique> & t )
 {
     return detail::scoped_any_helper<T,close_policy,invalid_value,unique>::address( t );

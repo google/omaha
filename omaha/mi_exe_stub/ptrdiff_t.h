@@ -22,7 +22,7 @@
 namespace std {
 
 #ifdef _WIN64
-typedef __intr64 ptrdiff_t;
+typedef __int64 ptrdiff_t;
 #else
 typedef int ptrdiff_t;
 #endif

@@ -32,6 +32,7 @@ HINSTANCE dll_instance = NULL;
 extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void*) {
   switch (reason) {
     case DLL_PROCESS_ATTACH:
+      omaha::InitializeShellVersion();
       dll_instance = instance;
       omaha::InitializeVersionFromModule(instance);
       break;

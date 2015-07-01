@@ -21,10 +21,13 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "omaha/base/synchronized.h"
+#include "omaha/common/protocol_definition.h"
+#include "goopdate/omaha3_idl.h"
 
 namespace omaha {
 
 class App;
+struct Cohort;
 class RegKey;
 
 typedef std::vector<CString> AppIdVector;
@@ -102,6 +105,11 @@ class AppManager {
   // is not there. For other cases, the install time diff will be -1 day.
   void ReadAppInstallTimeDiff(App* app);
 
+  // Populates the app object with the day of install based on the return
+  // value of GetDayOfInstall(). See comment of GetDayOfInstall() below for
+  // how the value is determined.
+  void ReadDayOfInstall(App* app);
+
   // Populates the app object with the persisted state for an uninstalled app
   // stored in the registry.
   HRESULT ReadUninstalledAppPersistentData(App* app);
@@ -136,6 +144,17 @@ class AppManager {
   // successful install.
   void PersistSuccessfulInstall(const App& app);
 
+  // Functions that operate on the ClientState\{AppID}\CurrentState key.
+  HRESULT ResetCurrentStateKey(const CString& app_guid);
+  HRESULT WriteStateValue(const App& app, CurrentState state_value);
+  HRESULT WriteDownloadProgress(const App& app,
+                                uint64 bytes_downloaded,
+                                uint64 bytes_total,
+                                LONG download_time_remaining_ms);
+  HRESULT WriteInstallProgress(const App& app,
+                               LONG install_progress_percentage,
+                               LONG install_time_remaining_ms);
+
   // Copies product version and language from client key to client state key.
   // Returns S_OK when the client key does not exist.
   HRESULT SynchronizeClientState(const GUID& app_guid);
@@ -144,6 +163,7 @@ class AppManager {
   // successfully sent to the server.
   HRESULT PersistUpdateCheckSuccessfullySent(
       const App& app,
+      int elpased_days_since_datum,
       int elapsed_seconds_since_day_start);
 
   // TODO(omaha3): Most of these methods should be eliminated or moved (i.e. to
@@ -176,6 +196,18 @@ class AppManager {
   // installed before installtime was implemented.
   uint32 GetInstallTimeDiffSec(const GUID& app_guid) const;
 
+  // Returns the number of days since datum when installation happened.
+  // This value is from server's response to the first install ping. That means
+  // it could be different than the actual value if the ping is not sent right
+  // after installation.
+  // Special cases:
+  //   Returns -1 for for newly installed apps (first installation ping only).
+  //   Returns 0 for unregistered/uninstalled apps.
+  //   Returns 0 for existing apps that were installed before day_of_install
+  //       was implemented.
+  // Omaha will not send day_of_install if it is 0.
+  uint32 GetDayOfInstall(const GUID& app_guid) const;
+
 #if 0
   HRESULT RegisterProduct(const GUID& product_guid,
                           const CString& product_name);
@@ -203,25 +235,50 @@ class AppManager {
                              REGSAM sam_desired,
                              RegKey* client_state_key) const;
   // Creates the app's ClientState key.
-  HRESULT CreateClientStateKey(const GUID& app_guid, RegKey* client_state_key);
+  HRESULT CreateClientStateKey(const GUID& app_guid,
+                               RegKey* client_state_key) const;
+
+  // Reads name/value pairs that have a '_' prefix under the
+  // ClientState/ClientStateMedium key.
+  HRESULT ReadAppDefinedAttributes(
+      const CString& app_id, std::vector<StringPair>* attributes) const;
+  HRESULT ReadAppDefinedAttributeValues(
+      RegKey* app_id_key, std::vector<StringPair>* attributes) const;
+  // Aggregates are '_' prefixed subkeys that store values that need to be
+  // aggregated. The only aggregate supported at the moment is "sum".
+  HRESULT ReadAppDefinedAttributeSubkeys(
+      RegKey* app_id_key, std::vector<StringPair>* attributes) const;
 
   // Write the TT Token with what the server returned.
-  HRESULT SetTTToken(const App& app);
+  HRESULT SetTTToken(const App& app) const;
+
+  CString GetCohortKeyName(const GUID& app_guid) const;
+  HRESULT DeleteCohortKey(const GUID& app_guid) const;
+  HRESULT ReadCohort(const GUID& app_guid, Cohort* cohort) const;
+  HRESULT WriteCohort(const App& app) const;
 
   // Stores information about the update available event for the app.
   // Call each time an update is available.
-  void UpdateUpdateAvailableStats(const GUID& app_guid);
+  void UpdateUpdateAvailableStats(const GUID& app_guid) const;
 
-  HRESULT ClearInstallationId(const App& app);
+  HRESULT ClearInstallationId(const App& app) const;
 
-  // Writes the day start time when last active ping/roll call happened to
-  // registry.
-  void SetLastPingDayStartTime(const App& app,
-                               int elapsed_seconds_since_day_start);
+  // Writes the elapsed days since datum and day start time when last active
+  // ping/roll call happened to registry.
+  void SetLastPingTimeMetrics(const App& app,
+                              int elpased_days_since_datum,
+                              int elapsed_seconds_since_day_start) const;
+
+  // Update DayOfInstall if it is -1 in registry. If it does not exist, save
+  // it to a temporary registry value which will be picked up during branding.
+  void UpdateDayOfInstallIfNecessary(const App& app,
+                                     int elpased_days_since_datum) const;
 
   bool IsRegistryStableStateLockedByCaller() const {
     return ::GetCurrentThreadId() == registry_stable_state_lock_.GetOwner();
   }
+
+  CString GetCurrentStateKeyName(const CString& app_guid) const;
 
   const bool is_machine_;
 

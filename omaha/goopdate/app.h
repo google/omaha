@@ -22,6 +22,9 @@
 
 #include <atlbase.h>
 #include <atlcom.h>
+
+#include <vector>
+
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "goopdate/omaha3_idl.h"
@@ -29,11 +32,16 @@
 #include "omaha/base/constants.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/ping_event.h"
+#include "omaha/common/protocol_definition.h"
 #include "omaha/goopdate/com_wrapper_creator.h"
 #include "omaha/goopdate/installer_result_info.h"
 #include "omaha/goopdate/model_object.h"
 
 namespace omaha {
+
+// Number of stages in the Chrome Installer. Keep this value in sync with the
+// InstallerStage enum in chromium/src/chrome/installer/util/util_constants.h.
+const DWORD kChromeInstallerNumStages = 21;
 
 // Stores the error codes associated with a particular error.
 struct ErrorContext {
@@ -46,6 +54,12 @@ struct ErrorContext {
   int     extra_code1;
 
   // Add more extra codes here as needed.
+};
+
+struct Cohort {
+  CString cohort;  // Opaque string.
+  CString hint;    // Server may use to move the app to a new cohort.
+  CString name;    // Human-readable interpretation of the cohort.
 };
 
 class DownloadManagerInterface;
@@ -65,6 +79,7 @@ class UpdateResponse;
 }  // namespace xml
 
 class AppBundle;
+class AppCommandModel;
 class AppVersion;
 class CurrentAppState;
 
@@ -78,6 +93,9 @@ class App : public ModelObject {
 
   AppVersion* next_version();
   const AppVersion* next_version() const;
+
+  AppCommandModel* command(const CString& command_id);
+  const AppCommandModel* command(const CString& command_id) const;
 
   AppBundle* app_bundle();
   const AppBundle* app_bundle() const;
@@ -98,6 +116,9 @@ class App : public ModelObject {
 
   bool is_install() const { return !is_update(); }
   bool is_update() const;
+
+  // Whether this app is bundled together with other apps.
+  bool is_bundled() const;
 
   bool has_update_available() const;
   void set_has_update_available(bool has_update_available);
@@ -123,6 +144,8 @@ class App : public ModelObject {
 
   uint32 install_time_diff_sec() const;
 
+  int day_of_install() const;
+
   ActiveStates did_run() const;
 
   int days_since_last_active_ping() const;
@@ -131,11 +154,27 @@ class App : public ModelObject {
   int days_since_last_roll_call() const;
   void set_days_since_last_roll_call(int days);
 
+  int day_of_last_activity() const;
+  void set_day_of_last_activity(int day_num);
+
+  int day_of_last_roll_call() const;
+  void set_day_of_last_roll_call(int day_num);
+
+  int day_of_last_response() const;
+  void set_day_of_last_response(int day_num);
+
   CString ap() const;
+
+  std::vector<StringPair> app_defined_attributes() const;
 
   CString tt_token() const;
 
+  Cohort cohort() const;
+  void set_cohort(const Cohort& cohort);
+
   CString server_install_data_index() const;
+
+  CString untrusted_data() const;
 
   HRESULT error_code() const;
 
@@ -149,6 +188,20 @@ class App : public ModelObject {
 
   AppVersion* working_version();
   const AppVersion* working_version() const;
+
+  bool can_skip_signature_verification() const;
+  void set_can_skip_signature_verification(
+      bool can_skip_signature_verification);
+
+  void set_external_updater_event(HANDLE event_handle);
+
+  int source_url_index() const;
+
+  void set_source_url_index(int index);
+
+  CurrentState state_cancelled() const;
+
+  void set_state_cancelled(CurrentState state_cancelled);
 
   // IApp.
   STDMETHOD(get_appId)(BSTR* app_id);
@@ -201,6 +254,10 @@ class App : public ModelObject {
   STDMETHOD(put_usageStatsEnable)(UINT usage_stats_enable);
 
   STDMETHOD(get_currentState)(IDispatch** current_state);
+
+  // IApp2.
+  STDMETHOD(get_untrustedData)(BSTR* index);
+  STDMETHOD(put_untrustedData)(BSTR index);
 
   // Sets the error context and the completion message.
   void SetNoUpdate(const ErrorContext& error_context, const CString& message);
@@ -273,31 +330,53 @@ class App : public ModelObject {
   void LogTextAppendFormat(const TCHAR* format, ...);
 
   // Adds an event to the app's ping, which is sent when the bundle is
-  // destroyed. In most cases, pings should be added in
-  // AppState::CreatePingEvent().
+  // destroyed.
   void AddPingEvent(const PingEventPtr& ping_event);
 
   // Returns an error if update/install, as determined by is_update_, is
   // disabled by Group Policy.
   HRESULT CheckGroupPolicy() const;
 
-  // Sets current time as download start time.
-  void SetDownloadStartTime();
-
-  // Sets current time as download complete time.
-  void SetDownloadCompleteTime();
-
   // Updates num bytes downloaded by adding newly downloaded bytes.
   void UpdateNumBytesDownloaded(uint64 num_bytes);
-
-  // Returns how long it takes for the download manager to download this app.
-  int GetDownloadTimeMs() const;
 
   // Returns how many bytes are actually downloaded.
   uint64 num_bytes_downloaded() const;
 
   // Returns the size sum of all packages for this app.
   uint64 GetPackagesTotalSize() const;
+
+  enum TimeMetricType {
+    TIME_UPDATE_AVAILABLE = 0,
+    TIME_DOWNLOAD_START = 1,
+    TIME_DOWNLOAD_COMPLETE = 2,
+    TIME_INSTALL_START = 3,
+    TIME_INSTALL_COMPLETE = 4,
+    TIME_UPDATE_CHECK_START = 5,
+    TIME_UPDATE_CHECK_COMPLETE = 6,
+    TIME_CANCELLED = 7,
+
+    // Add new metrics above this line.
+    TIME_METRICS_MAX
+  };
+
+  // Sets current time as specified time.
+  void SetCurrentTimeAs(TimeMetricType time_type);
+
+  // Returns how long it takes for the download manager to download this app.
+  int GetDownloadTimeMs() const;
+
+  // Returns how long it takes for the install manager to install this app.
+  int GetInstallTimeMs() const;
+
+  // Returns how long it takes to do the update check.
+  int GetUpdateCheckTimeMs() const;
+
+  // Returns the time interval between update is available and user cancel.
+  int GetTimeSinceUpdateAvailable() const;
+
+  // Returns the time interval between update is available and user cancel.
+  int GetTimeSinceDownloadStart() const;
 
  private:
   // TODO(omaha): accessing directly the data members bypasses locking. Review
@@ -318,8 +397,15 @@ class App : public ModelObject {
                               uint64* bytes_total,
                               LONG* time_remaining_ms,
                               uint64* next_retry_time);
+  HRESULT GetInstallProgress(LONG* install_progress_percentage,
+                             LONG* install_time_remaining_ms);
+  HRESULT GetInstallProgressChrome(LONG* install_progress_percentage,
+                                   LONG* install_time_remaining_ms);
 
   void ChangeState(fsm::AppState* app_state);
+
+  int GetTimeDifferenceMs(TimeMetricType time_start_metric_type,
+                          TimeMetricType time_end_metric_type) const;
 
   scoped_ptr<fsm::AppState> app_state_;
 
@@ -351,8 +437,10 @@ class App : public ModelObject {
   CString display_name_;
 
   // These values are stored in ClientState.
+  std::vector<StringPair> app_defined_attributes_;
   CString ap_;
   CString tt_token_;
+  Cohort cohort_;
   GUID iid_;
   CString brand_code_;
   CString client_id_;
@@ -364,6 +452,14 @@ class App : public ModelObject {
   int days_since_last_active_ping_;
   int days_since_last_roll_call_;
 
+  // The values are number of days since a particular datum when the event
+  // happened. The datum is chosen by server side. They are from server's
+  // response.
+  int day_of_last_activity_;
+  int day_of_last_roll_call_;
+  int day_of_install_;
+  int day_of_last_response_;
+
   // This value is stored in ClientState but not currently populated from there.
   Tristate usage_stats_enable_;
 
@@ -373,6 +469,9 @@ class App : public ModelObject {
   // This value is not currently persisted in the registry.
   CString server_install_data_index_;
 
+  // This value is not currently persisted in the registry.
+  CString untrusted_data_;
+
   // Contains the installer data string specified by the client (usually
   // contained in /appdata).
   CString client_install_data_;
@@ -380,6 +479,10 @@ class App : public ModelObject {
   // Contains the installer data string returned by the server for
   // server_install_data_index_.
   CString server_install_data_;
+
+  // The packages of the app have been trusted by other means and the
+  // signature verification can be omitted.
+  bool can_skip_signature_verification_;
 
   bool is_canceled_;
   ErrorContext error_context_;
@@ -391,20 +494,34 @@ class App : public ModelObject {
   CString post_install_url_;
   PostInstallAction post_install_action_;
 
+  // Index of the URL that this app installer is downloaded from.
+  int source_url_index_;
+
+  // At which state is the app cancelled.
+  CurrentState state_cancelled_;
+
+  // We hold onto these just to be able to free them when the model is
+  // destroyed. We don't actually return the same instance multiple times;
+  // repeated queries for the same ID return distinct instances.
+  std::vector<AppCommandModel*> loaded_app_commands_;
+
+  // Handle to the global event used to suppress external updaters from running.
+  // Should be released when this object is destroyed.
+  scoped_event external_updater_event_;
+
   uint64 previous_total_download_bytes_;
 
-  // Values for download metrics.
-  uint64 download_start_time_ms_;
-  uint64 download_complete_time_ms_;
+  // Metrics values.
   uint64 num_bytes_downloaded_;
+  uint64 time_metrics_[TIME_METRICS_MAX];
 
   DISALLOW_COPY_AND_ASSIGN(App);
 };
 
 class ATL_NO_VTABLE AppWrapper
     : public ComWrapper<AppWrapper, App>,
-      public IDispatchImpl<IApp,
-                          &__uuidof(IApp),
+      public IDispatchImpl<IApp2,
+                          &__uuidof(IApp2),
                           &CAtlModule::m_libid,
                           kMajorTypeLibVersion,
                           kMinorTypeLibVersion> {
@@ -412,6 +529,7 @@ class ATL_NO_VTABLE AppWrapper
   // IApp.
   STDMETHOD(get_currentVersion)(IDispatch** current);
   STDMETHOD(get_nextVersion)(IDispatch** next);
+  STDMETHOD(get_command)(BSTR command_id, IDispatch** command);
   STDMETHOD(get_currentState)(IDispatch** current_state_disp);
 
   STDMETHOD(get_appId)(BSTR* app_id);
@@ -463,11 +581,16 @@ class ATL_NO_VTABLE AppWrapper
   STDMETHOD(get_usageStatsEnable)(UINT* usage_stats_enable);
   STDMETHOD(put_usageStatsEnable)(UINT usage_stats_enable);
 
+  // IApp2.
+  STDMETHOD(get_untrustedData)(BSTR* index);
+  STDMETHOD(put_untrustedData)(BSTR index);
+
  protected:
   AppWrapper() {}
   virtual ~AppWrapper() {}
 
   BEGIN_COM_MAP(AppWrapper)
+    COM_INTERFACE_ENTRY(IApp2)
     COM_INTERFACE_ENTRY(IApp)
     COM_INTERFACE_ENTRY(IDispatch)
   END_COM_MAP()

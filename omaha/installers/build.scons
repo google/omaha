@@ -51,6 +51,7 @@ def _GenerateDeploymentForOneLanguage(omaha_version_info, language):
       ' -Version %s -Processor x86 -AppManifest $SOURCE -AppCodeBase %s' %
       (omaha_version_info.GetVersionString(), clickonce_manifest_name))
 
+
   # Have to set up a clear chain of source->target1->target2->target3->etc so
   # that declarative Hammer will know the order in which to run each command.
   clickonce_target_1 = env.Command(
@@ -176,7 +177,7 @@ def _BuildSetupVersion(omaha_version_info,
       target_name=target_name,
       empty_metainstaller_path=source_binary,
       omaha_files_path='$STAGING_DIR',
-      prefix=prefix
+      prefix=prefix,
   )
 
   # Generate the i18n ClickOnce deployment manifest for languages that we

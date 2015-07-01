@@ -19,11 +19,14 @@
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
 #include "omaha/client/resource.h"
+#include "omaha/ui/owner_draw_title_bar.h"
 
 namespace omaha {
 
 class YesNoDialog
     : public CAxDialogImpl<YesNoDialog>,
+      public OwnerDrawTitleBar,
+      public CustomDlgColors,
       public CMessageFilter {
   typedef CAxDialogImpl<YesNoDialog> Base;
 
@@ -52,6 +55,8 @@ class YesNoDialog
     MESSAGE_HANDLER(WM_CLOSE, OnClose)
     MESSAGE_HANDLER(WM_NCDESTROY, OnNCDestroy)
     CHAIN_MSG_MAP(Base)
+    CHAIN_MSG_MAP(OwnerDrawTitleBar)
+    CHAIN_MSG_MAP(CustomDlgColors)
   END_MSG_MAP()
 
  private:
@@ -75,6 +80,8 @@ class YesNoDialog
 
   // Handle to large icon to show when ALT-TAB.
   scoped_hicon hicon_;
+
+  CFont default_font_;
 
   DISALLOW_COPY_AND_ASSIGN(YesNoDialog);
 };

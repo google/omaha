@@ -26,7 +26,9 @@
 
 using omaha::UpdateDevProxyDetector;
 using omaha::FirefoxProxyDetector;
-using omaha::IEProxyDetector;
+using omaha::IEWPADProxyDetector;
+using omaha::IEPACProxyDetector;
+using omaha::IENamedProxyDetector;
 using omaha::NetworkRequest;
 using omaha::NetworkConfig;
 using omaha::NetworkConfigManager;
@@ -64,7 +66,9 @@ HRESULT DownloadFile(const TCHAR* url, const TCHAR* file_path, void*) {
   network_config->Clear();
   network_config->Add(new UpdateDevProxyDetector);
   network_config->Add(new FirefoxProxyDetector);
-  network_config->Add(new IEProxyDetector);
+  network_config->Add(new IEWPADProxyDetector);
+  network_config->Add(new IEPACProxyDetector);
+  network_config->Add(new IENamedProxyDetector);
 
   NetworkRequest network_request(network_config->session());
   hr = network_request.DownloadFile(test_url, CString(file_path));

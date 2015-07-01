@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-#include "omaha/third_party/gtest/include/gtest/gtest.h"
-#include "const-win32.h"
-#include "aggregator-win32_unittest.h"
-#include "persistent_iterator-win32.h"
+
 #include <atlbase.h>
 #include <atlcom.h>
 #include <iterator>
 #include <map>
+
+#include "omaha/statsreport/aggregator-win32_unittest.h"
+#include "omaha/statsreport/const-win32.h"
+#include "omaha/statsreport/persistent_iterator-win32.h"
+
+#include "third_party/gtest/include/gtest/gtest.h"
 
 using namespace stats_report;
 

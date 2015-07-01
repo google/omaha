@@ -61,6 +61,11 @@ HRESULT InstallApplications(bool is_machine,
 // The same arguments are passed to the elevated instance.
 HRESULT ElevateAndWait(const CString& cmd_line, DWORD* exit_code);
 
+// IsOfflineInstall() checks if the offline manifest and offline files for the
+// 'apps' exist in the current directory.
+bool IsOfflineInstall(const std::vector<CommandLineAppArgs>& apps);
+bool IsOfflineInstallForApp(const CString& app_id);
+
 // CopyOfflineManifest() and CopyOfflineFilesForApp() find and copy the offline
 // manifest and offline files respectively, from the current module directory to
 // the offline_dir. offline_dir is typically an unique directory under the
@@ -100,6 +105,7 @@ void HandleInstallError(HRESULT error,
                         bool is_interactive,
                         bool is_eula_required,
                         bool is_oem_install,
+                        bool is_enterprise_install,
                         const CString& current_version,
                         const CString& install_source,
                         const CommandLineExtraArgs& extra_args,

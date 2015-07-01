@@ -23,16 +23,17 @@
 #include <atlcom.h>
 
 #include "omaha/base/error.h"
-#include "omaha/base/exception_barrier.h"
 #include "omaha/base/file.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
+#include "omaha/base/system.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/common/command_line.h"
 #include "omaha/common/command_line_builder.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/goopdate_utils.h"
+#include "omaha/common/update3_utils.h"
 #include "omaha/common/webplugin_utils.h"
 #include "omaha/goopdate/app_command.h"
 #include "omaha/goopdate/app_manager.h"
@@ -66,10 +67,22 @@ STDMETHODIMP OneClickControl::Install(BSTR cmd_line_args,
     return E_INVALIDARG;
   }
 
+  const TCHAR kExtraArgsInstallPrefix[] = _T("/install \"");
+  const TCHAR kExtraArgsSuffix[] = _T("\"");
+  if (!String_StartsWith(cmd_line_args, kExtraArgsInstallPrefix, false) ||
+      !String_EndsWith(cmd_line_args, kExtraArgsSuffix, false)) {
+    return E_INVALIDARG;
+  }
+
   CORE_LOG(L2, (_T("[OneClickControl::Install][cmd_line \"%s\"]"),
                 CW2CT(cmd_line_args)));
 
-  HRESULT hr = DoInstall(CString(cmd_line_args));
+  // We trim cmd_line_args to just the extra args and thunk to Install2().
+  CString extra_args(cmd_line_args);
+  extra_args = extra_args.Mid(arraysize(kExtraArgsInstallPrefix) - 1);
+  extra_args.Delete(extra_args.GetLength() - 1);
+
+  HRESULT hr = Install2(extra_args.AllocSysString());
   if (SUCCEEDED(hr)) {
     InvokeJavascriptCallback(success_callback, NULL);
   } else {
@@ -98,9 +111,43 @@ STDMETHODIMP OneClickControl::Install2(BSTR extra_args) {
   CORE_LOG(L2, (_T("[OneClickControl::Install2][extra_args \"%s\"]"),
                 CW2CT(extra_args)));
 
-  CommandLineBuilder builder(COMMANDLINE_MODE_INSTALL);
-  builder.set_extra_args(CString(extra_args));
-  return DoInstall(builder.GetCommandLineArgs());
+  CString browser_url;
+  HRESULT hr = site_lock_.GetCurrentBrowserUrl(this, &browser_url);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  CString url_domain;
+  hr = SiteLock::GetUrlDomain(browser_url, &url_domain);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // To protect against XSS attacks where an arbitrary extra_args could be
+  // passed into Install/Install2, BuildWebPluginCommandLine escapes all unsafe
+  // characters such as space, slash, double-quotes. ShellExecuteProcess is then
+  // passed a command line that is safe to interpret by the command line parser.
+  CString final_cmd_line_args;
+  hr = webplugin_utils::BuildWebPluginCommandLine(url_domain,
+                                                  extra_args,
+                                                  &final_cmd_line_args);
+
+  CPath webpluginexe_path(app_util::GetCurrentModuleDirectory());
+  VERIFY1(webpluginexe_path.Append(kOmahaWebPluginFileName));
+
+  scoped_process process_webpluginexe;
+  hr = System::ShellExecuteProcess(webpluginexe_path,
+                                   final_cmd_line_args,
+                                   NULL,
+                                   address(process_webpluginexe));
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[OneClickControl::Install2]")
+                  _T("[ShellExecuteProcess failed][%s][%s][0x%x]"),
+                  webpluginexe_path, final_cmd_line_args, hr));
+    return hr;
+  }
+
+  return S_OK;
 }
 
 STDMETHODIMP OneClickControl::GetInstalledVersion(BSTR guid_string,
@@ -155,15 +202,12 @@ STDMETHODIMP OneClickControl::LaunchAppCommand(BSTR app_guid,
 
   CORE_LOG(L2, (_T("[OneClickControl::LaunchAppCommand]")));
 
-  ExceptionBarrier barrier;
-
   CComPtr<IOneClickProcessLauncher> process_launcher;
-  HRESULT hr = E_UNEXPECTED;
-
-  hr = process_launcher.CoCreateInstance(
+  HRESULT hr = update3_utils::CoCreateWithProxyBlanket(
       is_machine ?
-          CLSID_OneClickMachineProcessLauncherClass :
-          CLSID_OneClickUserProcessLauncherClass);
+          __uuidof(OneClickMachineProcessLauncherClass) :
+          __uuidof(OneClickUserProcessLauncherClass),
+      &process_launcher);
 
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[OneClickControl::LaunchAppCommand]")
@@ -189,70 +233,6 @@ HRESULT OneClickControl::DoGetInstalledVersion(const TCHAR* guid_string,
   }
 
   return AppManager::ReadAppVersionNoLock(is_machine, app_guid, version_string);
-}
-
-HRESULT OneClickControl::DoInstall(const TCHAR* cmd_line_args) {
-  ASSERT1(cmd_line_args);
-
-  CORE_LOG(L2, (_T("[OneClickControl::DoInstall][%s]"), cmd_line_args));
-
-#ifdef _DEBUG
-  // If the args are exactly __DIRECTNOTIFY__ then just fire the event
-  // out of this thread.  This allows for easy testing of the
-  // browser interface without requiring launch of
-  // google_update.exe.
-  if (0 == _wcsicmp(L"__DIRECTNOTIFY__", cmd_line_args)) {
-    return S_OK;
-  }
-#endif
-
-  CString browser_url;
-  HRESULT hr = site_lock_.GetCurrentBrowserUrl(this, &browser_url);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  CString url_domain;
-  hr = SiteLock::GetUrlDomain(browser_url, &url_domain);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  CString url_domain_encoded;
-  CString cmd_line_args_encoded;
-  hr = StringEscape(url_domain, false, &url_domain_encoded);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  hr = StringEscape(cmd_line_args, false, &cmd_line_args_encoded);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  CommandLineBuilder builder(COMMANDLINE_MODE_WEBPLUGIN);
-  builder.set_webplugin_url_domain(url_domain_encoded);
-  builder.set_webplugin_args(cmd_line_args_encoded);
-  builder.set_install_source(kCmdLineInstallSource_OneClick);
-  CString final_cmd_line_args = builder.GetCommandLineArgs();
-
-  CORE_LOG(L2, (_T("[OneClickControl::DoInstall]")
-                _T("[Final command line params: %s]"),
-                final_cmd_line_args));
-
-  scoped_process process_goopdate;
-
-  hr = goopdate_utils::StartGoogleUpdateWithArgs(
-          goopdate_utils::IsRunningFromOfficialGoopdateDir(true),
-          final_cmd_line_args,
-          address(process_goopdate));
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[OneClickControl::DoInstall]")
-                  _T("[Failed StartGoogleUpdateWithArgs][0x%x]"), hr));
-    return hr;
-  }
-
-  return S_OK;
 }
 
 bool OneClickControl::VariantIsValidCallback(const VARIANT* callback) {
@@ -317,15 +297,6 @@ HRESULT OneClickControl::InvokeJavascriptCallback(VARIANT* callback,
                                       NULL,
                                       &arg_err);
   }
-}
-
-// This works during Setup because IsRunningFromOfficialGoopdateDir checks the
-// location of the DLL not the exe, which is running from a temp location.
-CString OneClickControl::GetGoopdateShellPathForRegMap() {
-  ASSERT1(goopdate_utils::IsRunningFromOfficialGoopdateDir(false) ||
-          goopdate_utils::IsRunningFromOfficialGoopdateDir(true));
-  return goopdate_utils::BuildGoogleUpdateExeDir(
-      goopdate_utils::IsRunningFromOfficialGoopdateDir(true));
 }
 
 }  // namespace omaha

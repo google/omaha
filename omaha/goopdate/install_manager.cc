@@ -71,8 +71,8 @@ InstallManager::InstallManager(const Lockable* model_lock, bool is_machine)
       ConfigManager::Instance()->GetUserInstallWorkingDir();
   CORE_LOG(L3, (_T("[install_working_dir][%s]"), install_working_dir()));
 
-  VERIFY1(SUCCEEDED(DeleteDirectory(install_working_dir_)));
   VERIFY1(SUCCEEDED(CreateDir(install_working_dir_, NULL)));
+  VERIFY1(SUCCEEDED(DeleteDirectoryFiles(install_working_dir_)));
 
   installer_wrapper_.reset(new InstallerWrapper(is_machine_));
 }
@@ -126,9 +126,8 @@ void InstallManager::InstallApp(App* app,  const CString& dir) {
                           installer_wrapper_.get(),
                           app,
                           dir);
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[InstallApp failed][0x%p][0x%08x]"), app, hr));
-  }
+
+  CORE_LOG(LE, (_T("[InstallApp returned][0x%p][0x%08x]"), app, hr));
 
   app->LogTextAppendFormat(_T("Install result=0x%08x"), hr);
 
@@ -234,22 +233,32 @@ HRESULT InstallManager::InstallApp(bool is_machine,
     }
   }
 
-  OPT_LOG(L1, (_T("[Installing][%s][%s][%s][%s][%s]"),
-               app->display_name(),
-               GuidToString(app_guid),
-               installer_path,
-               manifest_arguments,
-               installer_data));
+  const int install_priority = app->app_bundle()->priority();
+  OPT_LOG(L1, (
+      _T("[Installing][display name: %s][app id: %s][installer path: %s]")
+      _T("[manifest args: %s][installer data: %s][untrusted data: %s]")
+      _T("[priority: %d]"),
+      app->display_name(),
+      GuidToString(app_guid),
+      installer_path,
+      manifest_arguments,
+      installer_data,
+      app->untrusted_data(),
+      install_priority));
 
   InstallerResultInfo result_info;
 
+  app->SetCurrentTimeAs(App::TIME_INSTALL_START);
   HRESULT hr = installer_wrapper->InstallApp(user_token,
                                              app_guid,
                                              installer_path,
                                              manifest_arguments,
                                              installer_data,
                                              language,
+                                             app->untrusted_data(),
+                                             install_priority,
                                              &result_info);
+  app->SetCurrentTimeAs(App::TIME_INSTALL_COMPLETE);
 
   OPT_LOG(L1, (_T("[InstallApp returned][0x%x][%s][type:%d][code: %d][%s][%s]"),
                hr, GuidToString(app_guid), result_info.type, result_info.code,
@@ -295,7 +304,7 @@ HRESULT InstallManager::InstallApp(bool is_machine,
       // instead of installer_path.
       const CString message = InstallerWrapper::GetMessageForError(
                                   hr, installer_path, language);
-      app->Error(ErrorContext(hr), message);
+      app->Error(ErrorContext(hr, result_info.extra_code1), message);
     }
 
     return hr;

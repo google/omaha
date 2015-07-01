@@ -32,14 +32,9 @@ TEST(GoogleUpdateTest, ShellVersion) {
       app_util::GetVersionFromFile(actual_shell_path);
 
   EXPECT_TRUE(actual_shell_version);
-#if TEST_CERTIFICATE
   EXPECT_EQ(OMAHA_BUILD_VERSION, actual_shell_version);
   EXPECT_STREQ(OMAHA_BUILD_VERSION_STRING,
                StringFromVersion(actual_shell_version));
-#else
-  // This version must be updated whenever the saved shell is updated.
-  EXPECT_STREQ(_T("1.2.183.21"), StringFromVersion(actual_shell_version));
-#endif
 }
 
 }  // namespace omaha

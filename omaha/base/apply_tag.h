@@ -13,8 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_APPLY_TAG_H__
-#define OMAHA_COMMON_APPLY_TAG_H__
+#ifndef OMAHA_BASE_APPLY_TAG_H_
+#define OMAHA_BASE_APPLY_TAG_H_
 
 #include <atlbase.h>
 #include <atlstr.h>
@@ -58,7 +58,7 @@ class ApplyTag {
   static void PutUint32(uint32 i, void* p);
   bool ReadExistingTag(std::vector<byte>* binary);
   bool CreateBufferToWrite();
-  bool ApplyTagToBuffer(int* output_len);
+  bool ApplyTagToBuffer();
   bool IsValidTagString(const char* tag_string);
 
   // The string to be tagged into the binary.
@@ -69,9 +69,6 @@ class ApplyTag {
 
   // This is prev_tag_string_.size - 1, to exclude the terminating null.
   int prev_tag_string_length_;
-
-  // Length of the certificate inside the binary.
-  int prev_cert_length_;
 
   // The input binary to be tagged.
   CString signed_exe_file_;
@@ -87,11 +84,11 @@ class ApplyTag {
 
   // The output buffer that contains the original binary
   // data with the tagged information.
-  std::vector<char> buffer_data_;
+  std::vector<byte> buffer_data_;
 
   DISALLOW_EVIL_CONSTRUCTORS(ApplyTag);
 };
 
 }  // namespace omaha
 
-#endif  // OMAHA_COMMON_APPLY_TAG_H__
+#endif  // OMAHA_BASE_APPLY_TAG_H_

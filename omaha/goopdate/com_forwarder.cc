@@ -21,6 +21,17 @@
 #include "omaha/base/constants.h"
 #include "omaha/common/const_cmd_line.h"
 
+// TODO(omaha): Use the base libraries instead of selectively pulling in
+// functionality such as HRESULTFromLastError(). May increase size, but the
+// resulting code quality may be worth it.
+
+// This is defined in error.cc, but that pulls in debug.cc, which has a lot
+// of additional dependencies we do not want.
+HRESULT HRESULTFromLastError() {
+  DWORD error_code = ::GetLastError();
+  return (error_code != NO_ERROR) ? HRESULT_FROM_WIN32(error_code) : E_FAIL;
+}
+
 // TODO(omaha): Use a registry override instead.
 #if !OFFICIAL_BUILD
 bool IsRunningFromStaging(const WCHAR* const command_line) {
@@ -29,18 +40,23 @@ bool IsRunningFromStaging(const WCHAR* const command_line) {
 }
 #endif
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous_instance,
-                   LPSTR cmd_line, int show) {
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous_instance,
+                    LPTSTR cmd_line, int show) {
   UNREFERENCED_PARAMETER(instance);
   UNREFERENCED_PARAMETER(previous_instance);
   UNREFERENCED_PARAMETER(cmd_line);
   UNREFERENCED_PARAMETER(show);
 
-  WCHAR command_line[MAX_PATH * 2] = {};
-  if (0 == ::GetModuleFileName(NULL,
-                               command_line,
-                               arraysize(command_line))) {
-    return E_UNEXPECTED;
+  // TODO(omaha3): We should probably update this code to use app_util
+  // and CPath to find the path to the constant shell.  Maybe once we've
+  // done the base/minibase refactoring for mi_exe_stub, we can do this.
+  WCHAR command_line_quoted[MAX_PATH * 2] = { L"\"" };
+  WCHAR* command_line = command_line_quoted + 1;
+  DWORD command_line_size = arraysize(command_line_quoted) - 1;
+
+  DWORD err = ::GetModuleFileName(NULL, command_line, command_line_size);
+  if (err == 0 || err >= command_line_size) {
+    return HRESULTFromLastError();
   }
 
   // TODO(omaha): Use the registry to get the path of the constant shell.
@@ -59,14 +75,24 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous_instance,
 #endif
 
   if (!::PathAppend(command_line, omaha::kOmahaShellFileName)) {
-    return E_UNEXPECTED;
+    return HRESULTFromLastError();
   }
 
-  if (FAILED(StringCchCat(command_line, arraysize(command_line), L" ")) ||
-      FAILED(StringCchCat(command_line, arraysize(command_line),
-                          CMD_LINE_SWITCH))) {
-    return E_UNEXPECTED;
+  HRESULT hr = StringCchCat(command_line_quoted,
+                            arraysize(command_line_quoted),
+                            L"\" " CMD_LINE_SWITCH L" ");
+  if (FAILED(hr)) {
+    return hr;
   }
+
+#if SHOULD_APPEND_CMD_LINE
+  hr = StringCchCat(command_line_quoted,
+                    arraysize(command_line_quoted),
+                    cmd_line);
+  if (FAILED(hr)) {
+    return hr;
+  }
+#endif
 
   STARTUPINFO si = { sizeof(si) };
   // XXX: Normally, you should close the handles returned in
@@ -75,7 +101,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous_instance,
   PROCESS_INFORMATION pi = {};
   if (!::CreateProcess(
           NULL,
-          command_line,
+          command_line_quoted,
           NULL,
           NULL,
           FALSE,
@@ -84,7 +110,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous_instance,
           NULL,
           &si,
           &pi)) {
-    return E_UNEXPECTED;
+    return HRESULTFromLastError();
   }
 
   return 0;

@@ -16,6 +16,7 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/client/install_self_internal.h"
 #include "omaha/testing/omaha_unittest.h"
@@ -29,28 +30,6 @@
 // does not use them. See the TODO in the build.scons. Rather than link against
 // more libs, define these symbols here.
 //
-// From omaha3_idl.lib.
-EXTERN_C const GUID IID_IGoogleUpdate3 = GUID_NULL;
-EXTERN_C const GUID IID_IAppBundle = GUID_NULL;
-EXTERN_C const GUID IID_IApp = GUID_NULL;
-EXTERN_C const GUID IID_IAppVersion = GUID_NULL;
-EXTERN_C const GUID IID_IPackage = GUID_NULL;
-EXTERN_C const GUID IID_ICurrentState = GUID_NULL;
-EXTERN_C const GUID IID_IGoogleUpdate3Web = GUID_NULL;
-EXTERN_C const GUID IID_IGoogleUpdate3WebSecurity = GUID_NULL;
-EXTERN_C const GUID IID_IAppBundleWeb = GUID_NULL;
-EXTERN_C const GUID IID_IAppWeb = GUID_NULL;
-EXTERN_C const GUID IID_IAppVersionWeb = GUID_NULL;
-EXTERN_C const GUID CLSID_ProcessLauncherClass = GUID_NULL;
-EXTERN_C const GUID IID_IGoogleUpdate = GUID_NULL;
-EXTERN_C const GUID IID_IGoogleUpdateCore = GUID_NULL;
-EXTERN_C const GUID IID_IProgressWndEvents = GUID_NULL;
-EXTERN_C const GUID LIBID_GoogleUpdate3Lib = GUID_NULL;
-EXTERN_C const GUID IID_ICoCreateAsync = GUID_NULL;
-EXTERN_C const GUID IID_ICoCreateAsyncStatus = GUID_NULL;
-EXTERN_C const GUID IID_IOneClickProcessLauncher = GUID_NULL;
-EXTERN_C const GUID IID_ICredentialDialog = GUID_NULL;
-EXTERN_C const GUID IID_IProcessLauncher = GUID_NULL;
 // From bits.lib.
 EXTERN_C const GUID IID_IBackgroundCopyCallback = GUID_NULL;
 // From iphlpapi.lib.
@@ -59,12 +38,30 @@ DWORD WINAPI GetIfTable(PMIB_IFTABLE, PULONG, BOOL) { return 0; }
 
 namespace omaha {
 
+namespace {
+  bool ShouldRunRegistryProtectedTests() {
+    CString path;
+    if (FAILED(GetFolderPath(CSIDL_PROGRAM_FILES, &path))) {
+      std::wcout << _T("\tTest skipped, running under locked down environment.")
+                 << std::endl;
+      return false;
+    }
+
+    if (!vista_util::IsVistaOrLater()) {
+      std::wcout << _T("\tTest did not run because it requires Vista or later.")
+                 << std::endl;
+      return false;
+    }
+
+    return true;
+  }
+}  // namespace
+
 TEST_F(RegistryProtectedTest, InstallOmaha_XmlParserNotPresent) {
-  if (!vista_util::IsVistaOrLater()) {
-    std::wcout << _T("\tTest did not run because it requires Vista or later.")
-               << std::endl;
+  if (!ShouldRunRegistryProtectedTests()) {
     return;
   }
+
   int extra_code1 = 0;
   EXPECT_EQ(GOOPDATE_E_RUNNING_INFERIOR_MSXML,
             install_self::internal::DoInstallSelf(false,
@@ -78,22 +75,20 @@ TEST_F(RegistryProtectedTest, InstallOmaha_XmlParserNotPresent) {
 
 // Overriding HKLM causes HasXmlParser() to fail on Vista.
 TEST_F(RegistryProtectedTest, CheckSystemRequirements_XmlParserNotPresent) {
-  if (!vista_util::IsVistaOrLater()) {
-    std::wcout << _T("\tTest did not run because it requires Vista or later.")
-               << std::endl;
+  if (!ShouldRunRegistryProtectedTests()) {
     return;
   }
+
   EXPECT_EQ(GOOPDATE_E_RUNNING_INFERIOR_MSXML,
             install_self::internal::CheckSystemRequirements());
 }
 
 // Overriding HKLM causes HasXmlParser() to fail on Vista.
 TEST_F(RegistryProtectedTest, HasXmlParser_NotPresent) {
-  if (!vista_util::IsVistaOrLater()) {
-    std::wcout << _T("\tTest did not run because it requires Vista or later.")
-               << std::endl;
+  if (!ShouldRunRegistryProtectedTests()) {
     return;
   }
+
   EXPECT_FALSE(install_self::internal::HasXmlParser());
 }
 

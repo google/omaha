@@ -175,6 +175,10 @@ const TCHAR* const kCmdLineOem = _T("oem");
 // checking for updates or pinging.
 const TCHAR* const kCmdLineEulaRequired = _T("eularequired");
 
+// The "enterprise" switch indicates that no pings should be sent during the
+// install.
+const TCHAR* const kCmdLineEnterprise = _T("enterprise");
+
 // The "machine" switch specifies to repair machine Omaha when specified with
 // "recover". Also used to tell the setup phase 2 worker to do a machine install
 // when doing a recover setup.
@@ -194,7 +198,8 @@ const TCHAR* const kCmdLineSessionId = _T("sessionid");
 // for ping tracking.  For example:  "/installsource OneClick".
 const TCHAR* const kCmdLineInstallSource = _T("installsource");
 
-// installsource values generated internally by Omaha.
+// "installsource" values generated internally by Omaha. The server code needs
+// to be updated when these values change or new values are defined.
 const TCHAR* const kCmdLineInstallSource_TaggedMetainstaller = _T("taggedmi");
 const TCHAR* const kCmdLineInstallSource_OneClick = _T("oneclick");
 const TCHAR* const kCmdLineInstallSource_ClickOnce = _T("clickonce");
@@ -214,10 +219,24 @@ const TCHAR* const kCmdLineInstallSource_Update3Web_OnDemand =
     _T("update3web-ondemand");
 const TCHAR* const kCmdLineInstallSource_Update3Web_Components =
     _T("update3web-components");
+const TCHAR* const kCmdLineInstallSource_ChromeRecovery = _T("chromerecovery");
+// Update the server side code when values are added above this comment line.
 
 // This install source is not used as a command line argument but internally
 // created by Omaha.
 const TCHAR* const kInstallSource_Uninstall = _T("uninstall");
+
+// The "no_mi_tag" switch tells a tagged metainstaller to not append its tag
+// to the command line when launching.  This switch MUST be the last tag in
+// the command line, and will be removed by the MI prior to launching the
+// constant shell.
+const TCHAR* const kCmdLineNoMetainstallerTag = _T("nomitag");
+
+// The /installerdata=file.dat switch is passed to an installer if an
+// installdataindex is specified in the tag or if installerdata is passed in via
+// /appargs. The corresponding installerdata is written to file.dat with an UTF8
+// encoding as well as a UTF8 Signature.
+const TCHAR* const kCmdLineInstallerData = _T("/installerdata=");
 
 //
 // "Extra" arguments provided in the metainstaller tag.
@@ -282,6 +301,7 @@ const TCHAR* const kExtraArgAppGuid = _T("appguid");
 const TCHAR* const kExtraArgAppName = _T("appname");
 const TCHAR* const kExtraArgNeedsAdmin = _T("needsadmin");
 const TCHAR* const kExtraArgInstallDataIndex = _T("installdataindex");
+const TCHAR* const kExtraArgUntrustedData = _T("untrusteddata");
 
 // App arguments are arguments explicitly passed on the command line. They are
 // formatted similar to the regular extra args. For example:

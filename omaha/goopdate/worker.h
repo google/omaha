@@ -75,6 +75,8 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
   // Initializes the instance.
   HRESULT Initialize(bool is_machine);
 
+  HRESULT EnsureSingleInstance();
+
   // Cleans up the class instance.
   static void DeleteInstance();
 
@@ -145,8 +147,6 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
   // TODO(omaha): rename this as it overloads WorkerModelInterface::Stop.
   void Stop();
 
-  bool EnsureSingleInstance();
-
   void CollectAmbientUsageStats();
 
   void DoPreUpdateCheck(AppBundle* app_bundle,
@@ -161,13 +161,18 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
                          HRESULT update_check_result,
                          xml::UpdateResponse* update_response);
 
+  void PersistRetryAfter(int retry_after_sec) const;
+
+  void PersistUpdateCheckSuccessfullySent(
+      AppBundle* app_bundle, int daynum, int daystart);
+
   HRESULT QueueDeferredFunctionCall0(
-      AppBundle* app_bundle,
+      shared_ptr<AppBundle> app_bundle,
       void (Worker::*deferred_function)(shared_ptr<AppBundle>));
 
   template <typename P1>
   HRESULT QueueDeferredFunctionCall1(
-      AppBundle* app_bundle,
+      shared_ptr<AppBundle> app_bundle,
       P1 p1,
       void (Worker::*deferred_function)(shared_ptr<AppBundle>, P1));
 
@@ -177,6 +182,8 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
                      const CString& event_text);
 
   bool is_machine_;
+  int lock_count_;
+  HRESULT single_instance_hr_;
   scoped_ptr<ProgramInstance> single_instance_;
   scoped_ptr<Reactor>         reactor_;
   scoped_ptr<ShutdownHandler> shutdown_handler_;

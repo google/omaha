@@ -134,9 +134,7 @@ TEST_F(GetBundleCompletionMessageTest, SingleAppSucceeded) {
                                        false);  // is_canceled
   // Bundle install succeeded, the completion message should be based on
   // IDS_BUNDLE_INSTALLED_SUCCESSFULLY.
-  CString expected_message;
-  expected_message.Format(_T("Thanks for installing %s."), kBundleDisplayName);
-
+  CString expected_message(_T("Installation complete."));
   EXPECT_STREQ(expected_message, bundle_message);
 }
 
@@ -152,8 +150,7 @@ TEST_F(GetBundleCompletionMessageTest, MultipleAppsSucceeded) {
                                        false);  // is_canceled
   // Bundle install succeeded, the completion message should be based on
   // IDS_BUNDLE_INSTALLED_SUCCESSFULLY.
-  CString expected_message;
-  expected_message.Format(_T("Thanks for installing %s."), kBundleDisplayName);
+  CString expected_message(_T("Installation complete."));
 
   EXPECT_STREQ(expected_message, bundle_message);
 }
@@ -170,9 +167,9 @@ TEST_F(GetBundleCompletionMessageTest, OneFailedAppWithSuccessApps) {
                                        false);  // is_canceled
 
   CString expected_message =
-      _T("An application failed to install.\n\n")
-      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded3\n")
-      _T("<b>Failed:</b> AppFailed2");
+      _T("An application failed to install.\n")
+      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded3    ")
+      _T("<b>Failed:</b> AppFailed2<B> </B>");
   EXPECT_STREQ(expected_message, bundle_message);
 }
 
@@ -190,9 +187,9 @@ TEST_F(GetBundleCompletionMessageTest, MulitpleFailedAppsWithSuccessApps) {
                                        false);  // is_canceled
 
   CString expected_message =
-      _T("Some applications failed to install.\n\n")
-      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded3\n")
-      _T("<b>Failed:</b> AppFailed2, AppFailed4, AppFailed5");
+      _T("Some applications failed to install.\n")
+      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded3    ")
+      _T("<b>Failed:</b> AppFailed2, AppFailed4, AppFailed5<B> </B>");
   EXPECT_STREQ(expected_message, bundle_message);
 }
 
@@ -282,9 +279,9 @@ TEST_F(GetBundleCompletionMessageTest, AppCanceledWithSuccesses) {
                                        true);   // is_canceled
 
   CString expected_message =
-      _T("Installation completed before it could be canceled.\n\n")
-      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded2, AppSucceeded3\n")
-      _T("<b>Canceled:</b> AppCanceled4, AppCanceled5");
+      _T("Installation completed before it could be canceled.\n")
+      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded2, AppSucceeded3    ")
+      _T("<b>Canceled:</b> AppCanceled4, AppCanceled5<B> </B>");
   EXPECT_STREQ(expected_message, bundle_message);
 }
 
@@ -302,10 +299,10 @@ TEST_F(GetBundleCompletionMessageTest, AppsCanceledWithSuccessesAndOneFailure) {
                                        false,   // is_only_no_update
                                        true);   // is_canceled
   CString expected_message =
-      _T("An application failed to install.\n\n")
-      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded2\n")
-      _T("<b>Failed:</b> AppFailed3\n")
-      _T("<b>Canceled:</b> AppCanceled4, AppCanceled5, AppCanceled6");
+      _T("An application failed to install.\n")
+      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded2    ")
+      _T("<b>Failed:</b> AppFailed3    ")
+      _T("<b>Canceled:</b> AppCanceled4, AppCanceled5, AppCanceled6<B> </B>");
   EXPECT_STREQ(expected_message, bundle_message);
 }
 
@@ -325,10 +322,10 @@ TEST_F(GetBundleCompletionMessageTest,
                                        true);   // is_canceled
 
   CString expected_message =
-      _T("Some applications failed to install.\n\n")
-      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded2\n")
-      _T("<b>Failed:</b> AppFailed3, AppFailed4\n")
-      _T("<b>Canceled:</b> AppCanceled5, AppCanceled6");
+      _T("Some applications failed to install.\n")
+      _T("<b>Succeeded:</b> AppSucceeded1, AppSucceeded2    ")
+      _T("<b>Failed:</b> AppFailed3, AppFailed4    ")
+      _T("<b>Canceled:</b> AppCanceled5, AppCanceled6<B> </B>");
   EXPECT_STREQ(expected_message, bundle_message);
 }
 
@@ -344,9 +341,9 @@ TEST_F(GetBundleCompletionMessageTest, AppsCanceledWithOneFailure) {
                                        true);   // is_canceled
 
   CString expected_message =
-      _T("An application failed to install.\n\n")
-      _T("<b>Failed:</b> AppFailed1\n")
-      _T("<b>Canceled:</b> AppCanceled2, AppCanceled3");
+      _T("An application failed to install.\n")
+      _T("<b>Failed:</b> AppFailed1    ")
+      _T("<b>Canceled:</b> AppCanceled2, AppCanceled3<B> </B>");
   EXPECT_STREQ(expected_message, bundle_message);
 }
 
@@ -377,9 +374,9 @@ TEST_F(GetBundleCompletionMessageTest, AppsCanceledWithMultipleFailures) {
                                        true);   // is_canceled
 
   CString expected_message =
-      _T("Some applications failed to install.\n\n")
-      _T("<b>Failed:</b> AppFailed1, AppFailed2, AppFailed3\n")
-      _T("<b>Canceled:</b> AppCanceled4, AppCanceled5, AppCanceled6");
+      _T("Some applications failed to install.\n")
+      _T("<b>Failed:</b> AppFailed1, AppFailed2, AppFailed3    ")
+      _T("<b>Canceled:</b> AppCanceled4, AppCanceled5, AppCanceled6<B> </B>");
   EXPECT_STREQ(expected_message, bundle_message);
 }
 

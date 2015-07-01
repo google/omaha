@@ -17,7 +17,7 @@
 // The code below is not thread safe.
 
 #include "omaha/net/http_client.h"
-
+#include <intsafe.h>
 #include "omaha/base/debug.h"
 #include "omaha/base/safe_format.h"
 
@@ -139,31 +139,41 @@ HRESULT HttpClient::QueryOptionString(HINTERNET handle,
 HRESULT HttpClient::QueryOptionInt(HINTERNET handle,
                                    uint32 option,
                                    int* value) {
-  ASSERT1(value);
-  DWORD val = 0;
-  DWORD num_bytes = sizeof(val);
-  HRESULT hr = QueryOption(handle, option, &val, &num_bytes);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  ASSERT1(num_bytes == sizeof(val));
-  *value = val;
-  return S_OK;
+  return QueryOptionT(handle, option, value);
 }
+
+HRESULT HttpClient::QueryOptionPtr(HINTERNET handle,
+                                   uint32 option,
+                                   DWORD_PTR* value) {
+  return QueryOptionT(handle, option, value);
+}
+
 
 HRESULT HttpClient::SetOptionString(HINTERNET handle,
                                     uint32 option,
                                     const TCHAR* value) {
   ASSERT1(value);
+
+  const size_t value_length = _tcslen(value);
+  if (value_length > DWORD_MAX / sizeof(TCHAR)) {
+    return E_INVALIDARG;
+  }
+
   const void* buffer = value;
-  DWORD buffer_length = _tcslen(value) * sizeof(TCHAR);
+  DWORD buffer_length = static_cast<DWORD>(value_length * sizeof(TCHAR));
   return SetOption(handle, option, buffer, buffer_length);
 }
 
 HRESULT HttpClient::SetOptionInt(HINTERNET handle, uint32 option, int value) {
-  DWORD val = value;
-  return SetOption(handle, option, &val, sizeof(val));
+  return SetOptionT(handle, option, value);
 }
+
+HRESULT HttpClient::SetOptionPtr(HINTERNET handle,
+                                 uint32 option,
+                                 DWORD_PTR value) {
+  return SetOptionT(handle, option, value);
+}
+
 
 }  // namespace omaha
 

@@ -23,7 +23,8 @@
 
 namespace omaha {
 
-// TODO(omaha3): Should this be in a class or namespace?
+// Returns true if a server update check is due.
+bool ShouldCheckForUpdates(bool is_machine);
 
 // Performs the duties of the silent auto-update process /ua.
 HRESULT UpdateApps(bool is_machine,

@@ -26,7 +26,7 @@ namespace omaha {
 HRESULT g_crash_specific_error = 0;
 
 void CrashIfSpecificError(HRESULT hr) {
-  if (g_crash_specific_error && hr == g_crash_specific_error) {
+  if (g_crash_specific_error != 0 && hr == g_crash_specific_error) {
     ::RaiseException(0, EXCEPTION_NONCONTINUABLE, 0, NULL);
   }
 }

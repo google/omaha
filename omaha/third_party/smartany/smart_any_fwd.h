@@ -165,12 +165,12 @@ namespace detail
 
     // for compile-time assertions
     template<bool>
-    struct static_assert;
+    struct smartany_static_assert;
 
     template<>
-    struct static_assert<true>
+    struct smartany_static_assert<true>
     {
-        static_assert() {}
+        smartany_static_assert() {}
     };
 
     template<typename T>
@@ -640,11 +640,11 @@ struct close_delete
     static void close( T * p )
     {
         // This will fail only if T is an incomplete type.
-        static detail::static_assert<0 != sizeof( T )> const cannot_delete_an_incomplete_type;
+        static detail::smartany_static_assert<0 != sizeof( T )> const cannot_delete_an_incomplete_type;
 
         #ifdef SMART_ANY_PTS
         // This checks to make sure we're not calling delete on a HANDLE
-        static detail::static_assert<!detail::is_handle<T*>::value> const cannot_delete_a_handle;
+        static detail::smartany_static_assert<!detail::is_handle<T*>::value> const cannot_delete_a_handle;
         #endif
 
         delete p;
@@ -666,11 +666,11 @@ struct close_delete_array
     static void close( T * p )
     {
         // This will fail only if T is an incomplete type.
-        static detail::static_assert<0 != sizeof( T )> const cannot_delete_an_incomplete_type;
+        static detail::smartany_static_assert<0 != sizeof( T )> const cannot_delete_an_incomplete_type;
 
         #ifdef SMART_ANY_PTS
         // This checks to make sure we're not calling delete on a HANDLE
-        static detail::static_assert<!detail::is_handle<T*>::value> const cannot_delete_a_handle;
+        static detail::smartany_static_assert<!detail::is_handle<T*>::value> const cannot_delete_a_handle;
         #endif
 
         delete [] p;

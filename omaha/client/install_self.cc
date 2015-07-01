@@ -30,7 +30,9 @@
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
+#include "omaha/common/experiment_labels.h"
 #include "omaha/common/ping.h"
+#include "omaha/common/ping_event.h"
 #include "omaha/setup/setup.h"
 #include "omaha/setup/setup_metrics.h"
 
@@ -195,14 +197,36 @@ HRESULT SetInstallationId(const CString& omaha_client_state_key_path,
 // once it's on the machine, Google Update's experiment labels will be read
 // and modified like any other app on the system.
 HRESULT SetExperimentLabels(const CString& omaha_client_state_key_path,
-                            const CString& experiment_labels) {
-  if (!experiment_labels.IsEmpty()) {
-    return RegKey::SetValue(omaha_client_state_key_path,
-                            kRegValueExperimentLabels,
-                            experiment_labels);
+                            const CString& new_labels) {
+  if (new_labels.IsEmpty()) {
+    return S_FALSE;
   }
 
-  return S_OK;
+  if (!ExperimentLabels::IsStringValidLabelSet(new_labels)) {
+    OPT_LOG(LE, (_T("[New experiment labels are unparsable][%s]"), new_labels));
+    return E_INVALIDARG;
+  }
+
+  CString labels_to_write = new_labels;
+
+  // Do we have any existing values in the registry?
+  CString old_labels;
+  if (SUCCEEDED(RegKey::GetValue(omaha_client_state_key_path,
+                                 kRegValueExperimentLabels,
+                                 &old_labels))) {
+    if (!ExperimentLabels::MergeLabelSets(old_labels,
+                                          new_labels,
+                                          &labels_to_write)) {
+      // If we can't merge successfully, take the old labels.
+      CORE_LOG(LE, (_T("[MergeLabelSets() failed; using new labels only]")));
+      labels_to_write = new_labels;
+    }
+  }
+
+  // Write the merged (or new) label set to the registry.
+  return RegKey::SetValue(omaha_client_state_key_path,
+                          kRegValueExperimentLabels,
+                          labels_to_write);
 }
 
 void PersistUpdateErrorInfo(bool is_machine,
@@ -279,12 +303,14 @@ HRESULT SetEulaAccepted(bool is_machine) {
 HRESULT InstallSelf(bool is_machine,
                     bool is_eula_required,
                     bool is_oem_install,
+                    bool is_enterprise_install,
                     const CString& current_version,
                     const CString& install_source,
                     const CommandLineExtraArgs& extra_args,
                     const CString& session_id,
                     int* extra_code1) {
   CORE_LOG(L2, (_T("[InstallSelf]")));
+  time64 install_start_time = GetCurrentMsTime();
 
   HRESULT hr = internal::DoInstallSelf(is_machine,
                                        false,
@@ -314,9 +340,13 @@ HRESULT InstallSelf(bool is_machine,
       extra_args.brand_code,
       extra_args.client_id)));
 
-  if (is_eula_required || is_oem_install) {
+  if (is_eula_required || is_oem_install || is_enterprise_install) {
     return S_OK;
   }
+
+  time64 install_end_time = GetCurrentMsTime();
+  ASSERT1(install_end_time >= install_start_time);
+  int install_time = static_cast<int>(install_end_time - install_start_time);
 
   // Send a successful EVENT_INSTALL_COMPLETE ping and do not wait for the
   // completion of the ping. This reduces the overall latency of Omaha
@@ -327,7 +357,13 @@ HRESULT InstallSelf(bool is_machine,
       new PingEvent(PingEvent::EVENT_INSTALL_COMPLETE,
                     PingEvent::EVENT_RESULT_SUCCESS,
                     hr,
-                    *extra_code1));
+                    *extra_code1,
+                    -1,  // No source URL to report.
+                    0,  // No update check time to report.
+                    0,
+                    0,
+                    0,  // App size 0 so no download time report.
+                    install_time));
   const CString next_version(GetVersionString());
   install_ping.LoadAppDataFromExtraArgs(extra_args);
   install_ping.BuildOmahaPing(current_version,

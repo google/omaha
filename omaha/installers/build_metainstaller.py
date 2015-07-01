@@ -38,7 +38,7 @@ def BuildMetaInstaller(
     additional_payload_contents_dependencies=None,
     output_dir='$STAGING_DIR',
     installers_sources_path='$MAIN_DIR/installers',
-    lzma_path='$MAIN_DIR/third_party/lzma/v4_65/files/lzma.exe',
+    lzma_path='$THIRD_PARTY/lzma/files/lzma.exe',
     resmerge_path='$MAIN_DIR/tools/resmerge.exe',
     bcj2_path='$OBJ_ROOT/mi_exe_stub/x86_encoder/bcj2.exe'):
   """Build a meta-installer.
@@ -169,9 +169,15 @@ def BuildMetaInstaller(
       action= '%s --copyappend $SOURCES $TARGET' % resmerge_path
   )
 
-  signed_exe = env.SignedBinary(
-      target=target_name,
+  authenticode_signed_target_prefix = 'authenticode_'
+  authenticode_signed_exe = env.SignedBinary(
+      target=authenticode_signed_target_prefix + target_name,
       source=merged_output,
+      )
+
+  ready_for_tagging_exe = env.OmahaCertificateTagExe(
+      target=target_name,
+      source=authenticode_signed_exe,
   )
 
-  return env.Replicate(output_dir, signed_exe)
+  return env.Replicate(output_dir, ready_for_tagging_exe)

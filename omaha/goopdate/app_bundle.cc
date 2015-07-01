@@ -15,20 +15,23 @@
 
 #include"omaha/goopdate/app_bundle.h"
 #include <atlsafe.h>
+#include <intsafe.h>
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_impersonation.h"
+#include "omaha/base/thread_pool_callback.h"
 #include "omaha/base/user_rights.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/lang.h"
-#include "omaha/common/ping.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/update_response.h"
 #include "omaha/common/web_services_client.h"
 #include "omaha/goopdate/app_bundle_state_init.h"
 #include "omaha/goopdate/app_manager.h"
+#include "omaha/goopdate/goopdate.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/update_request_utils.h"
 
@@ -45,6 +48,7 @@ AppBundle::AppBundle(bool is_machine, Model* model)
       install_source_(kDefaultInstallSource),
       is_machine_(is_machine),
       is_auto_update_(false),
+      send_pings_(true),
       priority_(INSTALL_PRIORITY_HIGH),
       parent_hwnd_(NULL),
       user_work_item_(NULL),
@@ -61,8 +65,10 @@ AppBundle::~AppBundle() {
   // the same time.
   ASSERT1(!model()->IsLockedByCaller());
 
-  HRESULT hr = SendPingEvents();
-  CORE_LOG(L3, (_T("[SendPingEvents returned 0x%x]"), hr));
+  if (send_pings_) {
+    HRESULT hr = SendPingEventsAsync();
+    CORE_LOG(L3, (_T("[SendPingEventsAsync returned 0x%x]"), hr));
+  }
 
   __mutexScope(model()->lock());
   for (size_t i = 0; i < apps_.size(); ++i) {
@@ -187,8 +193,8 @@ CString AppBundle::FetchAndResetLogText() {
   return event_log_text;
 }
 
-HRESULT AppBundle::SendPingEvents() {
-  CORE_LOG(L3, (_T("[AppBundle::SendPingEvents]")));
+HRESULT AppBundle::SendPingEventsAsync() {
+  CORE_LOG(L3, (_T("[AppBundle::SendPingEventsAsync]")));
 
   scoped_impersonation impersonate_user(impersonation_token());
 
@@ -197,28 +203,71 @@ HRESULT AppBundle::SendPingEvents() {
     return S_OK;
   }
 
-  Ping ping(is_machine_, session_id_, install_source_);
+  scoped_ptr<Ping> ping(new Ping(is_machine_, session_id_, install_source_));
 
   __mutexBlock(model()->lock()) {
     for (size_t i = 0; i != apps_.size(); ++i) {
       if (apps_[i]->is_eula_accepted()) {
-        ping.BuildRequest(apps_[i], false);
+        ping->BuildRequest(apps_[i], false);
       }
     }
 
     for (size_t i = 0; i != uninstalled_apps_.size(); ++i) {
       if (uninstalled_apps_[i]->is_eula_accepted()) {
-        ping.BuildRequest(uninstalled_apps_[i], false);
+        ping->BuildRequest(uninstalled_apps_[i], false);
       }
     }
   }
 
-  CORE_LOG(L3, (_T("[AppBundle::SendPingEvents][sending ping events]")
+  CORE_LOG(L3, (_T("[AppBundle::SendPingEventsAsync][sending ping events]")
                 _T("[%d uninstalled apps]"), uninstalled_apps_.size()));
+
+  CAccessToken token;
+  if (impersonation_token()) {
+    VERIFY1(SUCCEEDED(DuplicateTokenIntoCurrentProcess(::GetCurrentProcess(),
+                                                       impersonation_token(),
+                                                       &token)));
+  }
+
+  typedef StaticThreadPoolCallBack1<internal::SendPingEventsParameters> CB;
+  Gate send_ping_events_gate;
+  scoped_ptr<CB> callback(new CB(&AppBundle::SendPingEvents,
+                          internal::SendPingEventsParameters(
+                              ping.get(),
+                              token.GetHandle(),
+                              &send_ping_events_gate)));
+  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
+                                                      COINIT_MULTITHREADED,
+                                                      WT_EXECUTELONGFUNCTION);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[QueueUserWorkItem failed][0x%x]"), hr));
+    return hr;
+  }
+
+  ping.release();
+  token.Detach();
+  callback.release();
+  VERIFY1(send_ping_events_gate.Wait(INFINITE));
+
+  return S_OK;
+}
+
+void AppBundle::SendPingEvents(internal::SendPingEventsParameters params) {
+  CORE_LOG(L3, (_T("[AppBundle::SendPingEvents]")));
+
+  _pAtlModule->Lock();
+  ON_SCOPE_EXIT_OBJ(*_pAtlModule, &CAtlModule::Unlock);
+
+  scoped_ptr<Ping> ping(params.ping);
+  scoped_handle impersonation_token(params.impersonation_token);
+  scoped_impersonation impersonate_user(get(impersonation_token));
+
+  VERIFY1(params.send_ping_events_gate->Open());
 
   // TODO(Omaha): Add sample to metric_ping_succeeded_ms or
   // metric_ping_failed_ms based on the result of Send().
-  return ping.Send(false);
+  HRESULT hr = ping->Send(false);
+  CORE_LOG(L3, (_T("[AppBundle::SendPingEvents][0x%x]"), hr));
 }
 
 // IAppBundle.
@@ -286,6 +335,21 @@ STDMETHODIMP AppBundle::put_sessionId(BSTR session_id) {
   CORE_LOG(L3, (_T("[AppBundle::put_sessionId][%s]"), session_id));
   __mutexScope(model()->lock());
   return app_bundle_state_->put_sessionId(this, session_id);
+}
+
+STDMETHODIMP AppBundle::get_sendPings(VARIANT_BOOL* send_pings) {
+  ASSERT1(send_pings);
+  __mutexScope(model()->lock());
+  *send_pings = send_pings_ ? VARIANT_TRUE : VARIANT_FALSE;
+  return S_OK;
+}
+
+STDMETHODIMP AppBundle::put_sendPings(VARIANT_BOOL send_pings) {
+  CORE_LOG(L3, (_T("[AppBundle::put_send_pings][%d]"),
+                static_cast<int>(send_pings)));
+  __mutexScope(model()->lock());
+  send_pings_ = send_pings != VARIANT_FALSE;
+  return S_OK;
 }
 
 STDMETHODIMP AppBundle::get_priority(long* priority) {  // NOLINT
@@ -466,7 +530,12 @@ STDMETHODIMP AppBundle::get_Count(long* count) {  // NOLINT
 
   __mutexScope(model()->lock());
 
-  *count = apps_.size();
+  const size_t num_apps = apps_.size();
+  if (num_apps > LONG_MAX) {
+    return E_FAIL;
+  }
+
+  *count = static_cast<long>(num_apps);  // NOLINT
 
   return S_OK;
 }
@@ -739,6 +808,16 @@ STDMETHODIMP AppBundleWrapper::get_sessionId(BSTR* session_id) {
 STDMETHODIMP AppBundleWrapper::put_sessionId(BSTR session_id) {
   __mutexScope(model()->lock());
   return wrapped_obj()->put_sessionId(session_id);
+}
+
+STDMETHODIMP AppBundleWrapper::get_sendPings(VARIANT_BOOL* send_pings) {
+  __mutexScope(model()->lock());
+  return wrapped_obj()->get_sendPings(send_pings);
+}
+
+STDMETHODIMP AppBundleWrapper::put_sendPings(VARIANT_BOOL send_pings) {
+  __mutexScope(model()->lock());
+  return wrapped_obj()->put_sendPings(send_pings);
 }
 
 STDMETHODIMP AppBundleWrapper::get_priority(long* priority) {  // NOLINT

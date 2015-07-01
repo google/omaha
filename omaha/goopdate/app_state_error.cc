@@ -15,8 +15,10 @@
 
 #include "omaha/goopdate/app_state_error.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/goopdate/model.h"
+#include "omaha/goopdate/ping_event_cancel.h"
 
 namespace omaha {
 
@@ -78,8 +80,31 @@ const PingEvent* AppStateError::CreatePingEvent(
   // uncertainty where the client did not get far enough to know if it was
   // told by the server to update or not.
   const bool can_ping = app->is_install() || app->has_update_available();
-  return can_ping ? new PingEvent(event_type, result, error_code, extra_code1) :
-                    NULL;
+  if (!can_ping) {
+    return NULL;
+  }
+
+  if (result == PingEvent::EVENT_RESULT_CANCELLED) {
+    return new PingEventCancel(event_type,
+                               result,
+                               error_code,
+                               extra_code1,
+                               app->is_bundled(),
+                               app->state_cancelled(),
+                               app->GetTimeSinceUpdateAvailable(),
+                               app->GetTimeSinceDownloadStart());
+  }
+
+  return new PingEvent(event_type,
+                       result,
+                       error_code,
+                       extra_code1,
+                       app->source_url_index(),
+                       app->GetUpdateCheckTimeMs(),
+                       app->GetDownloadTimeMs(),
+                       app->num_bytes_downloaded(),
+                       app->GetPackagesTotalSize(),
+                       app->GetInstallTimeMs());
 }
 
 void AppStateError::DownloadComplete(App* app) {

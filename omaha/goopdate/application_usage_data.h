@@ -25,10 +25,9 @@
 #include <windows.h>
 #include <atlstr.h>
 #include "base/basictypes.h"
+#include "common/const_goopdate.h"
 
 namespace omaha {
-
-enum ActiveStates;
 
 class ApplicationUsageData {
  public:

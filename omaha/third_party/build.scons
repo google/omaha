@@ -15,16 +15,119 @@
 # limitations under the License.
 # ========================================================================
 
-
 Import('env')
 
-subdirs = [
-    'breakpad',
-    'gmock',
-    'gtest',
-    'lzma',
-    'minicrt',
+#
+# Build BreakPad library.
+#
+breakpad_env = env.Clone()
+breakpad_env.Dir('breakpad').addRepository(env.Dir('$THIRD_PARTY/breakpad'))
+breakpad_env.Append(
+    CCFLAGS = [
+        '/wd4061',  # enumerator in switch is not handled by a case label
+        '/wd4826',  # conversion is sign-extended
+        ],
+    CPPDEFINES = [
+        # Make breakpad not use a TerminateThread call to clean up one of its
+        # worker threads. This is required in order to pass App Verifier tests.
+        'BREAKPAD_NO_TERMINATE_THREAD',
+        ],
+)
+
+_bsrc = 'breakpad/src/'
+target_name = 'breakpad'
+breakpad_inputs = [
+    _bsrc + 'common/windows/guid_string.cc',
+    _bsrc + 'common/windows/http_upload.cc',
+    _bsrc + 'client/windows/crash_generation/client_info.cc',
+    _bsrc + 'client/windows/crash_generation/crash_generation_client.cc',
+    _bsrc + 'client/windows/crash_generation/crash_generation_server.cc',
+    _bsrc + 'client/windows/crash_generation/minidump_generator.cc',
+    _bsrc + 'client/windows/handler/exception_handler.cc',
+    _bsrc + 'client/windows/sender/crash_report_sender.cc',
     ]
 
-for dir in subdirs:
-  env.BuildSConscript(dir)
+breakpad_env.ComponentStaticLibraryMultiarch(target_name, breakpad_inputs)
+
+#
+# Build gtest library.
+#
+gtest_env = env.Clone()
+gtest_env.Dir('gtest').addRepository(env.Dir('$THIRD_PARTY/gtest'))
+gtest_env.Append(
+    CPPPATH = [
+        '$THIRD_PARTY/gtest',
+        '$THIRD_PARTY/gtest/include',
+        ],
+    CCFLAGS = [
+        '/wd4061',  # enumerator in switch is not handled by a case label
+        '/wd4100',  # unreferenced formal parameter
+        '/wd4640',  # construction of local static object is not thread-safe
+        '/wd4505',  # unreferenced local function has been removed
+        '/wd4548',  # expression before comma has no effect
+        '/wd4826',  # conversion from 'type1 ' to 'type_2' is sign-extended.
+        ],
+    CPPDEFINES = [
+        '_CRT_NONSTDC_NO_DEPRECATE',
+        ],
+)
+
+target_name = 'gtest'
+
+gtest_inputs = [ 'gtest/src/gtest-all.cc' ]
+if env.Bit('use_precompiled_headers'):
+  gtest_inputs += gtest_env.EnablePrecompile(target_name)
+
+gtest_env.ComponentLibrary(
+    lib_name=target_name,
+    source=gtest_inputs,
+)
+
+#
+# Build gmock library.
+#
+gmock_env = env.Clone()
+gmock_env.Dir('gmock').addRepository(env.Dir('$THIRD_PARTY/gmock'))
+gmock_env.Append(
+    CPPPATH = [
+        '$THIRD_PARTY/gmock',
+        '$THIRD_PARTY/gmock/include',
+        '$THIRD_PARTY/gtest/include',
+        ],
+    CCFLAGS = [
+        '/wd4061',  # enumerator is not explicitly handled by a case label
+        '/wd4242',  # conversion from type1 to type2, possible loss of data
+        '/wd4244',  # conversion from type1 to type2, possible loss of data
+        '/wd4628',  # digraphs not supported with -Ze
+        '/wd4640',  # construction of local static object is not thread-safe
+        '/wd4826',  # conversion from 'type1 ' to 'type_2' is sign-extended.
+        ],
+)
+
+target_name = 'gmock'
+
+gmock_inputs = [ 'gmock/src/gmock-all.cc' ]
+
+if env.Bit('use_precompiled_headers'):
+    gmock_inputs += gmock_env.EnablePrecompile(target_name)
+
+gmock_env.ComponentLibrary(
+    lib_name=target_name,
+    source=gmock_inputs,
+)
+
+#
+# Build LZMA library.
+#
+lzma_env = env.Clone()
+lzma_env.Dir('lzma').addRepository(env.Dir('$THIRD_PARTY/lzma'))
+lzma_env.FilterOut(CCFLAGS=['/RTC1'])
+lzma_env.ComponentLibrary(
+    lib_name='lzma',
+    source=[
+        'lzma/files/C/Bcj2.c',
+        'lzma/files/C/Bra86.c',
+        'lzma/files/C/LzmaDec.c',
+    ],
+)
+

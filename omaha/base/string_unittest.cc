@@ -23,6 +23,8 @@
 #include "omaha/testing/resource.h"
 #include "omaha/testing/unit_test.h"
 
+using std::string;
+
 namespace omaha {
 
 TEST(StringTest, IntToString) {
@@ -823,49 +825,49 @@ void TestIsSpace (char *s) {
     Timer t3 (false);
 
     // int iterations = 10000;
-    int iterations = 100;
-    int len = strlen (s);
+    size_t iterations = 100;
+    size_t len = strlen (s);
 
     // used to try to clear the processor cache
-    int dlen = 100000;
+    size_t dlen = 100000;
     char *dummy = new char [dlen];
-    for (int i = 0; i < dlen; i++) {
+    for (size_t i = 0; i < dlen; i++) {
       dummy[i] = static_cast<char>(tr_rand() % 256);
     }
 
-    int num_spaces = 0;
-    int n = iterations * len;
-    for (int i = 0; i < iterations; i++) {
+    size_t num_spaces = 0;
+    size_t n = iterations * len;
+    for (size_t i = 0; i < iterations; i++) {
         t1.Start();
-        for (int j = 0; j < len; j++) {
+        for (size_t j = 0; j < len; j++) {
             num_spaces += IsSpaceA1 (s[j]);
         }
         t1.Stop();
         // this cache clearing code gets optimized out in release mode
-        int d2 = 0;
-        for (int i = 0; i < dlen; i++) { d2 += dummy[i]; }
+        size_t d2 = 0;
+        for (size_t i = 0; i < dlen; i++) { d2 += dummy[i]; }
     }
 
     num_spaces = 0;
-    for (int i = 0; i < iterations; i++) {
+    for (size_t i = 0; i < iterations; i++) {
         t2.Start();
-        for (int j = 0; j < len; j++) {
+        for (size_t j = 0; j < len; j++) {
             num_spaces += IsSpaceA2 (s[j]);
         }
         t2.Stop();
-        int d2 = 0;
-        for (int i = 0; i < dlen; i++) { d2 += dummy[i]; }
+        size_t d2 = 0;
+        for (size_t i = 0; i < dlen; i++) { d2 += dummy[i]; }
     }
 
     num_spaces = 0;
-    for (int i = 0; i < iterations; i++) {
+    for (size_t i = 0; i < iterations; i++) {
         t3.Start();
-        for (int j = 0; j < len; j++) {
+        for (size_t j = 0; j < len; j++) {
             num_spaces += IsSpaceA3 (s[j]);
         }
         t3.Stop();
-        int d2 = 0;
-        for (int i = 0; i < dlen; i++) { d2 += dummy[i]; }
+        size_t d2 = 0;
+        for (size_t i = 0; i < dlen; i++) { d2 += dummy[i]; }
     }
 }
 
@@ -1578,8 +1580,8 @@ TEST(StringTest, String_ToUpper) {
 
 TEST(StringTest, FormatResourceMessage_Valid) {
   EXPECT_STREQ(
-      _T("Thanks for installing Gears."),
-      FormatResourceMessage(IDS_BUNDLE_INSTALLED_SUCCESSFULLY, _T("Gears")));
+      _T("Installation complete."),
+      FormatResourceMessage(IDS_BUNDLE_INSTALLED_SUCCESSFULLY));
 
   EXPECT_STREQ(
       _T("The installer encountered error 12345: Action failed."),
@@ -1745,6 +1747,64 @@ TEST(StringTest, ConvertFileUriToLocalPath) {
     _T("http://uri_uses_another_scheme.com/test.txt"), &path_out));
   EXPECT_HRESULT_FAILED(ConvertFileUriToLocalPath(_T("not_a_uri"), &path_out));
   EXPECT_HRESULT_FAILED(ConvertFileUriToLocalPath(_T(""), &path_out));
+}
+
+TEST(HexAndBack, a2b_and_b2a) {
+  string upper_and_lower = "0123456789abcdefABCDEF";
+  string upper_and_lower_raw = "\x01\x23\x45\x67\x89\xab\xcd\xef\xAB\xCD\xEF";
+  string upper_and_lower_RT = "0123456789abcdefabcdef";
+
+  string upper_and_lower_a2b = a2b_hex(upper_and_lower);
+  EXPECT_EQ(upper_and_lower_raw, upper_and_lower_a2b);
+
+  string upper_and_lower_raw_b2a = b2a_hex(upper_and_lower_raw.data(),
+                                                upper_and_lower_raw.size());
+  EXPECT_EQ(upper_and_lower_RT, upper_and_lower_raw_b2a);
+}
+
+TEST(StringTest, SafeHexStringToVector) {
+  std::vector<uint8> out;
+
+  EXPECT_FALSE(SafeHexStringToVector(_T(""), &out));
+  EXPECT_FALSE(SafeHexStringToVector(_T("a"), &out));
+  EXPECT_TRUE( SafeHexStringToVector(_T("ab"), &out));
+  EXPECT_FALSE(SafeHexStringToVector(_T("a!"), &out));
+  EXPECT_FALSE(SafeHexStringToVector(_T("abc"), &out));
+  EXPECT_FALSE(SafeHexStringToVector(_T("ab!"), &out));
+  EXPECT_TRUE( SafeHexStringToVector(_T("0123456789abcdef"), &out));
+
+  EXPECT_FALSE(SafeHexStringToVector("", &out));
+  EXPECT_FALSE(SafeHexStringToVector("a", &out));
+  EXPECT_TRUE( SafeHexStringToVector("ab", &out));
+  EXPECT_FALSE(SafeHexStringToVector("a!", &out));
+  EXPECT_FALSE(SafeHexStringToVector("abc", &out));
+  EXPECT_FALSE(SafeHexStringToVector("ab!", &out));
+  EXPECT_TRUE( SafeHexStringToVector("0123456789abcdef", &out));
+}
+
+TEST(StringTest, WideToUtf8Vector) {
+  std::vector<uint8> out;
+
+  CStringW empty = _T("");
+  WideToUtf8Vector(empty, &out);
+  EXPECT_EQ(0, out.size());
+
+  CStringW ansi_only = _T("abc");
+  WideToUtf8Vector(ansi_only, &out);
+  EXPECT_EQ(3, out.size());
+
+  // U+266B = Beamed Eighth Notes (should encode to 3 bytes)
+  // U+0416 = Cyrillic Capital Letter Zhe (should encode to 2 bytes)
+  // Those two characters, plus three ASCII chars, should produce 8 bytes.
+
+#pragma warning(push)
+  // warning C4428: universal-character-name encountered in source
+#pragma warning(disable:4428)
+  CStringW multibytes = _T("_\u266B_\u0416_");
+#pragma warning(pop)
+
+  WideToUtf8Vector(multibytes, &out);
+  EXPECT_EQ(8, out.size());
 }
 
 }  // namespace omaha

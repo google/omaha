@@ -119,6 +119,8 @@ void AppState::Cancel(App* app) {
   StringFormatter formatter(app->app_bundle()->display_language());
   VERIFY1(SUCCEEDED(formatter.LoadString(IDS_CANCELED, &message)));
   app->SetError(ErrorContext(hr), message);
+  app->set_state_cancelled(state());
+  app->SetCurrentTimeAs(App::TIME_CANCELLED);
   ChangeState(app, new AppStateError);
 }
 

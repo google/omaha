@@ -18,39 +18,90 @@
 Import('env')
 
 #
-# Build show_error_action.dll
+# Build msi_custom_action.dll
 #
-dll_env = env.Clone(
-    # Build a dll, not a lib.
-    COMPONENT_STATIC = False,
+def BuildShowErrorActionDll(omaha_version_info):
+  prefix = omaha_version_info.filename_prefix
+
+  dll_env = env.Clone(
+      # Build a dll, not a lib.
+      COMPONENT_STATIC = False,
+  )
+
+  if prefix == 'TEST_':
+    dll_env['OBJPREFIX'] = dll_env.subst('test/$OBJPREFIX')
+  elif prefix:
+    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+
+  dll_env.Append(
+      LIBS = [
+          ('libcmt.lib', 'libcmtd.lib')[dll_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[dll_env.Bit('debug')],
+          'msi.lib',
+          ],
+      RCFLAGS = [
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+              omaha_version_info.GetVersionString()),
+          '/DACTION_DLL_BASE_NAME_ANSI=\\"msi_custom_action.dll\\"',
+          ],
+  )
+
+  signed_target_name = 'msi_custom_action'
+  target_name = '%s%s_unsigned' % (prefix, signed_target_name)
+
+  version_res = dll_env.RES(
+      target='%s%s.res' % (prefix, signed_target_name),
+      source='msi_custom_action.rc',
+  )
+
+  # Force a rebuild when the version changes.
+  dll_env.Depends(version_res, '$MAIN_DIR/VERSION')
+
+  dll_inputs = [
+      'extract_tag_action.cc',
+      'msi_custom_action.cc',
+      'msi_custom_action.def',
+      'msi_tag_extractor.cc',
+      'show_error_action.cc',
+      version_res,
+      ]
+
+  unsigned_dll = dll_env.ComponentLibrary(
+      lib_name=target_name,
+      source=dll_inputs,
+  )
+
+  signed_dll = dll_env.SignedBinary(
+      target='%s%s.dll' % (prefix, signed_target_name),
+      source=unsigned_dll,
+  )
+
+  dll_env.Replicate('$STAGING_DIR', signed_dll)
+  dll_env.Replicate('$STAGING_DIR',
+                    [f for f in unsigned_dll if f.suffix == '.pdb'])
+
+
+for omaha_version_info in env['omaha_versions_info']:
+  BuildShowErrorActionDll(omaha_version_info)
+
+test_env = env.Clone()
+test_env.OmahaUnittest(
+    name='msi_custom_action_unittest',
+    source=[
+        'msi_tag_extractor.obj',
+        'msi_tag_extractor_test.cc',
+    ],
+    LIBS=[
+        '$LIB_DIR/common.lib',
+        '$LIB_DIR/omaha3_idl.lib',  # Required by common
+        '$LIB_DIR/security.lib',
+        'crypt32.lib',
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+    is_small_tests_using_resources=True,
 )
-
-dll_env.Append(
-    LIBS = [
-        ('libcmt.lib', 'libcmtd.lib')[dll_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[dll_env.Bit('debug')],
-        'msi.lib',
-        ],
-)
-
-signed_target_name = 'show_error_action'
-target_name = signed_target_name + '_unsigned'
-
-dll_inputs = [
-    'show_error_action.cc',
-    'show_error_action.def',
-    ]
-
-unsigned_dll = dll_env.ComponentLibrary(
-    lib_name=target_name,
-    source=dll_inputs,
-)
-
-signed_dll = dll_env.SignedBinary(
-    target=signed_target_name + '.dll',
-    source=unsigned_dll,
-)
-
-dll_env.Replicate('$STAGING_DIR', signed_dll)
-dll_env.Replicate('$STAGING_DIR',
-                  [f for f in unsigned_dll if f.suffix == '.pdb'])

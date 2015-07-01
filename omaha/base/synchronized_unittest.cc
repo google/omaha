@@ -30,5 +30,78 @@ TEST(LLockTest, GetOwner) {
   EXPECT_EQ(0, lock.GetOwner());
 }
 
+TEST(GateTest, WaitAny) {
+  const DWORD kTimeout = 100;
+  const size_t kFewGates = 10;
+  const size_t kNumGates = MAXIMUM_WAIT_OBJECTS + 1;
+
+  Gate gates[kNumGates];
+  const Gate* gateptrs[kNumGates] = {};
+  for (size_t i = 0; i < kNumGates; ++i) {
+    gates[i].Open();
+    gateptrs[i] = &gates[i];
+  }
+
+  int selectedGate = 0;
+
+  // Test too many or too few gates.
+  EXPECT_EQ(E_INVALIDARG,
+            Gate::WaitAny(gateptrs, 0, kTimeout, &selectedGate));
+  EXPECT_EQ(E_INVALIDARG,
+            Gate::WaitAny(gateptrs, kNumGates, kTimeout, &selectedGate));
+
+  // Test all gates open.
+  EXPECT_EQ(S_OK,
+            Gate::WaitAny(gateptrs, kFewGates, kTimeout, &selectedGate));
+  EXPECT_EQ(0, selectedGate);
+
+  // Test all gates closed.
+  for (size_t i = 0; i < kNumGates; ++i) {
+    gates[i].Close();
+  }
+  EXPECT_EQ(HRESULT_FROM_WIN32(WAIT_TIMEOUT),
+            Gate::WaitAny(gateptrs, kFewGates, kTimeout, &selectedGate));
+
+  // Randomly select a gate to open.
+  size_t randomGate = ::rand() % kFewGates;
+  gates[randomGate].Open();
+
+  EXPECT_EQ(S_OK,
+            Gate::WaitAny(gateptrs, kFewGates, kTimeout, &selectedGate));
+  EXPECT_EQ(randomGate, selectedGate);
+}
+
+TEST(GateTest, WaitAll) {
+  const DWORD kTimeout = 100;
+  const size_t kFewGates = 10;
+  const size_t kNumGates = MAXIMUM_WAIT_OBJECTS + 1;
+
+  Gate gates[kNumGates];
+  const Gate* gateptrs[kNumGates] = {};
+  for (size_t i = 0; i < kNumGates; ++i) {
+    gates[i].Open();
+    gateptrs[i] = &gates[i];
+  }
+
+  // Test too many or too few gates.
+  EXPECT_EQ(E_INVALIDARG, Gate::WaitAll(gateptrs, 0, kTimeout));
+  EXPECT_EQ(E_INVALIDARG, Gate::WaitAll(gateptrs, kNumGates, kTimeout));
+
+  // Test all gates open.
+  EXPECT_EQ(S_OK, Gate::WaitAll(gateptrs, kFewGates, kTimeout));
+
+  // Test all gates closed.
+  for (size_t i = 0; i < kNumGates; ++i) {
+    gates[i].Close();
+  }
+  EXPECT_EQ(HRESULT_FROM_WIN32(WAIT_TIMEOUT),
+            Gate::WaitAll(gateptrs, kFewGates, kTimeout));
+
+  // Open one gate.  Should still time out.
+  gates[0].Open();
+  EXPECT_EQ(HRESULT_FROM_WIN32(WAIT_TIMEOUT),
+            Gate::WaitAll(gateptrs, kFewGates, kTimeout));
+}
+
 }  // namespace omaha
 

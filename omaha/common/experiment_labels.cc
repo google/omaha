@@ -39,7 +39,7 @@ ExperimentLabels::ExperimentLabels() : labels_(), preserve_expired_(false) {}
 
 ExperimentLabels::~ExperimentLabels() {}
 
-int ExperimentLabels::NumLabels() const {
+size_t ExperimentLabels::NumLabels() const {
   return labels_.size();
 }
 
@@ -177,7 +177,25 @@ HRESULT ExperimentLabels::ReadFromRegistry(bool is_machine,
   if (FAILED(hr)) {
     return hr;
   }
-  return Deserialize(label_list) ? S_OK : E_FAIL;
+  if (!Deserialize(label_list)) {
+    return E_FAIL;
+  }
+
+  // If we're running as machine, check the ClientStateMedium key as well,
+  // and integrate it into ClientState.
+  if (is_machine) {
+    hr = app_registry_utils::GetExperimentLabelsMedium(app_id, &label_list);
+    if (FAILED(hr)) {
+      return hr;
+    }
+    if (!label_list.IsEmpty()) {
+      if (!DeserializeAndApplyDelta(label_list)) {
+        return E_FAIL;
+      }
+    }
+  }
+
+  return S_OK;
 }
 
 bool ExperimentLabels::IsStringValidLabelSet(const CString& label_list) {
@@ -195,7 +213,9 @@ bool ExperimentLabels::IsLabelContentValid(const CString& str) {
           (ch >= L'0' && ch <= L':') ||
           (ch >= L'A' && ch <= L'Z') ||
           (ch >= L'a' && ch <= L'z') ||
-          (ch == L'_') || (ch == L' '))) {
+          (ch == L'_') || (ch == L' ') ||
+          (ch == L'/') || (ch == L'\\') ||
+          (ch == L'.') )) {
       return false;
     }
   }
@@ -279,6 +299,20 @@ bool ExperimentLabels::DoDeserialize(LabelMap* map, const CString& label_list,
     }
   }
 
+  return true;
+}
+
+bool ExperimentLabels::MergeLabelSets(const CString& old_label_list,
+                                      const CString& new_label_list,
+                                      CString* merged_list) {
+  ExperimentLabels labels;
+  if (!labels.Deserialize(old_label_list)) {
+    return false;
+  }
+  if (!labels.DeserializeAndApplyDelta(new_label_list)) {
+    return false;
+  }
+  *merged_list = labels.Serialize();
   return true;
 }
 

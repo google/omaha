@@ -19,13 +19,26 @@
 // along with a .gup file if one is extracted.
 // If found, the contents of the signature tag are also passed to the
 // executable unmodified.
+//
+// Since the metainstaller is not linking with any of the Omaha libraries,
+// some amount of code is duplicated here.
 
+#include <windows.h>
+#include <intsafe.h>
+#include <shellapi.h>
+
+#pragma warning(push)
+// C4917: a GUID can only be associated with a class, interface or namespace.
+#pragma warning(disable : 4917)
+#include <shlobj.h>
+#pragma warning(pop)
+
+#include <shlwapi.h>
 #include <tchar.h>
+#include <strsafe.h>
+#include <atlpath.h>
 #include <atlsimpcoll.h>
 #include <atlstr.h>
-#include <shellapi.h>
-#include <shlwapi.h>
-#include <windows.h>
 
 #pragma warning(push)
 // C4310: cast truncates constant value
@@ -36,6 +49,10 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
 #include "omaha/base/extractor.h"
+#pragma warning(push)
+// C4244: conversion from 'type1' to 'type2', possible loss of data
+#pragma warning(disable : 4244)
+#pragma warning(pop)
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/system_info.h"
 #include "omaha/common/const_cmd_line.h"
@@ -43,8 +60,8 @@
 #include "omaha/mi_exe_stub/mi.grh"
 #include "omaha/mi_exe_stub/tar.h"
 extern "C" {
-#include "third_party/lzma/v4_65/files/C/Bcj2.h"
-#include "third_party/lzma/v4_65/files/C/LzmaDec.h"
+#include "third_party/lzma/files/C/Bcj2.h"
+#include "third_party/lzma/files/C/LzmaDec.h"
 }
 
 namespace omaha  {
@@ -56,8 +73,31 @@ namespace {
 
 HRESULT HandleError(HRESULT hr);
 
+void SafeCStringAppendCmdLine(CString* cmd_line, LPCTSTR cmd_line_format, ...) {
+  _ASSERTE(cmd_line);
+  _ASSERTE(cmd_line_format);
+
+  // The maximum command line length for the ::CreateProcess function is 32767
+  // characters. Various command line length limits: http://goo.gl/0u9nW.
+  const int kMaxCmdLineLength = 32767;
+
+  va_list arg_list;
+  va_start(arg_list, cmd_line_format);
+
+  CString append_cmd_line;
+  HRESULT hr(::StringCchVPrintf(CStrBuf(append_cmd_line, kMaxCmdLineLength),
+                                kMaxCmdLineLength - 1,
+                                cmd_line_format,
+                                arg_list));
+  _ASSERTE(SUCCEEDED(hr));
+
+  cmd_line->Append(append_cmd_line);
+  va_end(arg_list);
+}
+
 // The function assumes that the extractor has already been opened.
-// The buffer must be deleted by the caller.
+// The buffer must be deleted by the caller. Returns NULL if the file is not
+// tagged or the tag could not be read.
 char* ReadTag(TagExtractor* extractor) {
   const int kMaxTagLength = 0x10000;  // 64KB
 
@@ -142,6 +182,10 @@ class MetaInstaller {
       return -1;
     }
 
+    if (!CopyMetainstallerToTempLocation()) {
+      return -1;
+    }
+
     exit_code_ = ULONG_MAX;
     if (!exe_path_.IsEmpty()) {
       // Build the command line. There are three scenarios we consider:
@@ -167,18 +211,20 @@ class MetaInstaller {
           HandleError(hr);
           return hr;
         }
-        command_line.AppendFormat(_T(" /%s %s /%s"),
-                                  kCmdLineInstallSource,
-                                  kCmdLineInstallSource_TaggedMetainstaller,
-                                  kCmdLineInstall);
+        SafeCStringAppendCmdLine(&command_line, _T(" /%s %s /%s"),
+                                 kCmdLineInstallSource,
+                                 kCmdLineInstallSource_TaggedMetainstaller,
+                                 kCmdLineInstall);
       } else {
-        command_line.AppendFormat(_T(" %s"), cmd_line_);
+        SafeCStringAppendCmdLine(&command_line, _T(" %s"), cmd_line_);
 
         CheckAndHandleRecoveryCase(&command_line);
       }
 
-      if (tag.get()) {
-        command_line.AppendFormat(_T(" \"%s\""), CString(tag.get()));
+      const bool should_append_tag = !RemoveIgnoreTagSwitch(&command_line);
+      if (should_append_tag && tag.get()) {
+        SafeCStringAppendCmdLine(&command_line, _T(" \"%s\""),
+                                 CString(tag.get()));
       }
 
       RunAndWait(command_line, &exit_code_);
@@ -202,7 +248,7 @@ class MetaInstaller {
   // Determines whether this is a silent install.
   bool IsSilentInstall() {
     CString silent_argument;
-    silent_argument.Format(_T("/%s"), kCmdLineSilent);
+    SafeCStringAppendCmdLine(&silent_argument, _T("/%s"), kCmdLineSilent);
 
     return silent_argument == cmd_line_;
   }
@@ -215,36 +261,122 @@ class MetaInstaller {
     _ASSERTE(command_line);
 
     CString recover_argument;
-    recover_argument.Format(_T("/%s"), kCmdLineRecover);
+    SafeCStringAppendCmdLine(&recover_argument, _T("/%s"), kCmdLineRecover);
 
     if (cmd_line_.Left(recover_argument.GetLength()) == recover_argument) {
+      // TODO(omaha3): When we refactor main.lib and can link with it in MI
+      // (http://b/5904730), replace this with app_util::GetModulePath().  Do
+      // likewise for the other calls to GetModuleFileName() in this module.
       TCHAR current_path[MAX_PATH] = {};
-      if (::GetModuleFileName(NULL, current_path, arraysize(current_path))) {
-        command_line->AppendFormat(_T(" \"%s\""), current_path);
+      DWORD len = ::GetModuleFileName(NULL,
+                                      current_path,
+                                      arraysize(current_path));
+      if (len == 0 || len >= arraysize(current_path)) {
+        // TODO(omaha3): Can we do some better error handling if this fails?
+        _ASSERTE(false);
+      } else {
+        SafeCStringAppendCmdLine(command_line, _T(" \"%s\""), current_path);
       }
     }
   }
 
-  // Create a temp directory to hold the embedded setup files.
+  // Determines if the "/no_mi_tag" switch is at the end of the command line,
+  // and if so, removes it.  (We do not recognize this switch if it appears in
+  // the start/middle of args.)  Returns true if removed, false if not found.
+  // TODO(omaha): Remove this functionality once we refactor ApplyTag to allow
+  // removal/truncation of tags.
+  bool RemoveIgnoreTagSwitch(CString* command_line) {
+    _ASSERTE(command_line);
+
+    CString target;
+    target.Format(_T(" /%s"), kCmdLineNoMetainstallerTag);
+
+    if (command_line->Right(target.GetLength()).CompareNoCase(target) == 0) {
+      command_line->Truncate(command_line->GetLength() - target.GetLength());
+      return true;
+    }
+
+    return false;
+  }
+
   // This is a bit of a hack: we ask the system to create a temporary
   // filename for us, and instead we use that name for a subdirectory name.
-  int CreateUniqueTempDirectory() {
-    ::GetTempPath(MAX_PATH, CStrBuf(temp_root_dir_, MAX_PATH));
-    if (::CreateDirectory(temp_root_dir_, NULL) != 0 ||
-        ::GetLastError() == ERROR_ALREADY_EXISTS) {
-      if (!::GetTempFileName(temp_root_dir_,
-                             _T("GUM"),
-                             0,  // form a unique filename
-                             CStrBuf(temp_dir_, MAX_PATH))) {
-        return -1;
-      }
-      // GetTempFileName() actually creates the temp file, so delete it.
-      ::DeleteFile(temp_dir_);
-      ::CreateDirectory(temp_dir_, NULL);
-    } else {
-      return -1;
+  bool CreateTempSubdirectory(const CString& parent_dir) {
+    if (!::CreateDirectory(parent_dir, NULL) &&
+        ::GetLastError() != ERROR_ALREADY_EXISTS) {
+      return false;
     }
-    return 0;
+
+    // TODO(omaha3): When we refactor base into minibase, replace this with a
+    // call to GetTempFilenameAt() from utils.h. Do the same for the other call
+    // to GetTempFileName() in this module.
+    CString temp_dir;
+    DWORD result = ::GetTempFileName(parent_dir,
+                                     _T("GUM"),
+                                     0,  // form a unique filename
+                                     CStrBuf(temp_dir, MAX_PATH));
+    if (!result || (result == ERROR_BUFFER_OVERFLOW)) {
+      return false;
+    }
+
+    ::DeleteFile(temp_dir);
+    if (!::CreateDirectory(temp_dir, NULL)) {
+      return false;
+    }
+
+    temp_dir_ = temp_dir;
+    return true;
+  }
+
+  // Create a temp directory under %ProgramFiles%. To avoid possible issues with
+  // anti-malware heuristics, this function returns early and does not try to
+  // create a directory if the user is not an admin.
+  bool CreateProgramFilesTempDir() {
+    if (!::IsUserAnAdmin()) {
+      return false;
+    }
+
+    CString program_files_dir;
+    HRESULT hr = ::SHGetFolderPath(NULL,
+                                   CSIDL_PROGRAM_FILES,
+                                   NULL,
+                                   SHGFP_TYPE_CURRENT,
+                                   CStrBuf(program_files_dir, MAX_PATH));
+    if (FAILED(hr)) {
+      return false;
+    }
+
+    if (!CreateTempSubdirectory(program_files_dir)) {
+      return false;
+    }
+
+    temp_root_dir_ = program_files_dir;
+    return true;
+  }
+
+  // Create a temp directory under %TMP%.
+  bool CreateUserTempDir() {
+    CString user_tmp_dir;
+    // TODO(omaha3): Once we've refactored base into minibase, replace this
+    // with a call to app_util::GetTempDir().
+    DWORD result = ::GetTempPath(MAX_PATH, CStrBuf(user_tmp_dir, MAX_PATH));
+    if (result == 0 || result >= MAX_PATH) {
+      return false;
+    }
+
+    if (!CreateTempSubdirectory(user_tmp_dir)) {
+      return false;
+    }
+
+    temp_root_dir_ = user_tmp_dir;
+    return true;
+  }
+
+  // Creates a temp directory to hold the embedded setup files. First attempts
+  // creating the directory under %ProgramFiles%, and if that fails, creates
+  // under the user's %TMP% directory.
+  int CreateUniqueTempDirectory() {
+    return CreateProgramFilesTempDir() || CreateUserTempDir() ? 0 : -1;
   }
 
   HANDLE ExtractTarballToTempLocation() {
@@ -289,11 +421,33 @@ class MetaInstaller {
     return tarball_file;
   }
 
+  bool CopyMetainstallerToTempLocation() {
+    CString module_path;
+    DWORD result = ::GetModuleFileName(NULL,
+                                       CStrBuf(module_path, MAX_PATH),
+                                       MAX_PATH);
+    if (!result || result >= MAX_PATH) {
+      return false;
+    }
+
+    CPath metainstaller_target_path(temp_dir_);
+    metainstaller_target_path.Append(kOmahaMetainstallerFileName);
+
+    if (!::CopyFile(module_path, metainstaller_target_path, false)) {
+      return false;
+    }
+
+    files_to_delete_.Add(metainstaller_target_path);
+    return true;
+  }
+
   char* GetTag() const {
     // Get this module file name.
     TCHAR module_file_name[MAX_PATH] = {};
-    if (!::GetModuleFileName(instance_, module_file_name,
-                             arraysize(module_file_name))) {
+    DWORD len = ::GetModuleFileName(instance_,
+                                    module_file_name,
+                                    arraysize(module_file_name));
+    if (len == 0 || len >= arraysize(module_file_name)) {
       _ASSERTE(false);
       return NULL;
     }

@@ -176,6 +176,9 @@ class BundleInstaller
                               int* time_remaining_ms,
                               int* percentage,
                               time64* next_retry_time);
+  void GetAppInstallProgress(ICurrentState* icurrent_state,
+                             int* time_remaining_ms,
+                             int* percentage);
 
   void CancelBundle();
 
@@ -229,6 +232,7 @@ class BundleInstaller
   State state_;
   HRESULT result_;
   bool is_canceled_;
+  bool is_handling_message_;
 
   const bool is_update_all_apps_;
   const bool is_update_check_only_;  // Only used by legacy OnDemand.

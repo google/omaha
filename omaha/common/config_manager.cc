@@ -14,6 +14,8 @@
 // ========================================================================
 
 #include "omaha/common/config_manager.h"
+#include <intsafe.h>
+#include <stdlib.h>
 #include <lm.h>
 #include <shlobj.h>
 #include <shlwapi.h>
@@ -29,23 +31,49 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
-#include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/const_group_policy.h"
 #include "omaha/common/const_goopdate.h"
+#include "omaha/common/crash_utils.h"
 #include "omaha/common/oem_install_utils.h"
 
 namespace omaha {
 
 namespace {
 
-HRESULT GetDir(int csidl,
-               const CString& path_tail,
-               bool create_dir,
-               CString* dir) {
+int MapCSIDLFor64Bit(int csidl) {
+  // We assume, for now, that Omaha will always be deployed in a 32-bit form.
+  // If any 64-bit components (such as the crash handler) need to query paths,
+  // they need to be directed to the 32-bit equivalents.
+
+  switch (csidl) {
+    case CSIDL_PROGRAM_FILES:
+      return CSIDL_PROGRAM_FILESX86;
+    case CSIDL_PROGRAM_FILES_COMMON:
+      return CSIDL_PROGRAM_FILES_COMMONX86;
+    case CSIDL_SYSTEM:
+      return CSIDL_SYSTEMX86;
+    default:
+      return csidl;
+  }
+}
+
+// GetDir32 is named as such because it will always look for 32-bit versions
+// of directories; i.e. on a 64-bit OS, CSIDL_PROGRAM_FILES will return
+// Program Files (x86).  If we need to genuinely find 64-bit locations on
+// 64-bit code in the future, we need to add a GetDir64() which omits the call
+// to MapCSIDLFor64Bit().
+HRESULT GetDir32(int csidl,
+                 const CString& path_tail,
+                 bool create_dir,
+                 CString* dir) {
   ASSERT1(dir);
+
+#ifdef _WIN64
+  csidl = MapCSIDLFor64Bit(csidl);
+#endif
 
   CString path;
   HRESULT hr = GetFolderPath(csidl | CSIDL_FLAG_DONT_VERIFY, &path);
@@ -54,7 +82,8 @@ HRESULT GetDir(int csidl,
     return hr;
   }
   if (!::PathAppend(CStrBuf(path, MAX_PATH), path_tail)) {
-    CORE_LOG(LW, (_T("GetDir failed to append path][%s][%s]"), path, path_tail));
+    CORE_LOG(LW, (_T("GetDir failed to append path][%s][%s]"),
+        path, path_tail));
     return GOOPDATE_E_PATH_APPEND_FAILED;
   }
   dir->SetString(path);
@@ -75,6 +104,13 @@ bool GetEffectivePolicyForApp(const TCHAR* apps_default_value_name,
                               const TCHAR* app_prefix_name,
                               const GUID& app_guid,
                               DWORD* effective_policy) {
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GetEffectivePolicyForApp][Ignoring group policy for %s]")
+                 _T("[machine is not part of a domain]"),
+                 GuidToString(app_guid)));
+    return false;
+  }
+
   ASSERT1(apps_default_value_name);
   ASSERT1(app_prefix_name);
   ASSERT1(effective_policy);
@@ -121,6 +157,13 @@ bool GetLastCheckPeriodSecFromRegistry(DWORD* period_sec) {
     return true;
   }
 
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GetLastCheckPeriodSecFromRegistry]")
+                 _T("[Ignoring group policy]")
+                 _T("[machine is not part of a domain]")));
+    return false;
+  }
+
   DWORD group_policy_minutes = 0;
   if (SUCCEEDED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                                  kRegValueAutoUpdateCheckPeriodOverrideMinutes,
@@ -128,10 +171,10 @@ bool GetLastCheckPeriodSecFromRegistry(DWORD* period_sec) {
     CORE_LOG(L5, (_T("[Group Policy check period override %d]"),
                   group_policy_minutes));
 
-
     *period_sec = (group_policy_minutes > UINT_MAX / 60) ?
                   UINT_MAX :
                   group_policy_minutes * 60;
+    CORE_LOG(L5, (_T("[GetLastCheckPeriodSecFromRegistry][%d]"), *period_sec));
 
     return true;
   }
@@ -160,10 +203,10 @@ ConfigManager::ConfigManager() {
   CString current_module_directory(app_util::GetCurrentModuleDirectory());
 
   CString path;
-  HRESULT hr = GetDir(CSIDL_LOCAL_APPDATA,
-                      CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
-                      false,
-                      &path);
+  HRESULT hr = GetDir32(CSIDL_LOCAL_APPDATA,
+                        CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
+                        false,
+                        &path);
 
   is_running_from_official_user_dir_ =
       SUCCEEDED(hr) ? (String_StrNCmp(path,
@@ -172,10 +215,10 @@ ConfigManager::ConfigManager() {
                                       true) == 0) :
                       false;
 
-  hr = GetDir(CSIDL_PROGRAM_FILES,
-              CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
-              false,
-              &path);
+  hr = GetDir32(CSIDL_PROGRAM_FILES,
+                CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
+                false,
+                &path);
 
   is_running_from_official_machine_dir_ =
       SUCCEEDED(hr) ? (String_StrNCmp(path,
@@ -187,46 +230,46 @@ ConfigManager::ConfigManager() {
 
 CString ConfigManager::GetUserDownloadStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_LOCAL_APPDATA,
-                           CString(OMAHA_REL_DOWNLOAD_STORAGE_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+                             CString(OMAHA_REL_DOWNLOAD_STORAGE_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetUserInstallWorkingDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_LOCAL_APPDATA,
-                           CString(OMAHA_REL_INSTALL_WORKING_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+                             CString(OMAHA_REL_INSTALL_WORKING_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetUserOfflineStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_LOCAL_APPDATA,
-                           CString(OMAHA_REL_OFFLINE_STORAGE_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+                             CString(OMAHA_REL_OFFLINE_STORAGE_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetUserGoopdateInstallDirNoCreate() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_LOCAL_APPDATA,
-                           CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
-                           false,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+                             CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
+                             false,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetUserGoopdateInstallDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_LOCAL_APPDATA,
-                           CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+                             CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
@@ -236,46 +279,46 @@ bool ConfigManager::IsRunningFromUserGoopdateInstallDir() const {
 
 CString ConfigManager::GetUserCrashReportsDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_LOCAL_APPDATA,
-                           CString(OMAHA_REL_CRASH_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+                             CString(OMAHA_REL_CRASH_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetMachineCrashReportsDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
-                           CString(OMAHA_REL_CRASH_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                             CString(OMAHA_REL_CRASH_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetMachineSecureDownloadStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
-                           CString(OMAHA_REL_DOWNLOAD_STORAGE_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                             CString(OMAHA_REL_DOWNLOAD_STORAGE_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetMachineInstallWorkingDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
-                           CString(OMAHA_REL_INSTALL_WORKING_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                             CString(OMAHA_REL_INSTALL_WORKING_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetMachineSecureOfflineStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
-                           CString(OMAHA_REL_OFFLINE_STORAGE_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                             CString(OMAHA_REL_OFFLINE_STORAGE_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
@@ -284,7 +327,7 @@ CString ConfigManager::GetTempDownloadDir() const {
   ASSERT1(temp_download_dir);
   HRESULT hr = CreateDir(temp_download_dir, NULL);
   if (FAILED(hr)) {
-    CORE_LOG(LW, (_T("[GetDir failed to create dir][%s][0x%08x]"),
+    CORE_LOG(LW, (_T("[CreateDir failed][%s][0x%08x]"),
         temp_download_dir, hr));
   }
   return temp_download_dir;
@@ -293,6 +336,12 @@ CString ConfigManager::GetTempDownloadDir() const {
 int ConfigManager::GetPackageCacheSizeLimitMBytes() const {
   DWORD kDefaultCacheStorageLimit = 500;  // 500 MB
   DWORD kMaxCacheStorageLimit = 5000;     // 5 GB
+
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GetPackageCacheSizeLimitMBytes][Ignoring group policy]")
+                 _T("[machine is not part of a domain]")));
+    return kDefaultCacheStorageLimit;
+  }
 
   DWORD cache_size_limit = 0;
   if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
@@ -310,6 +359,13 @@ int ConfigManager::GetPackageCacheExpirationTimeDays() const {
   DWORD kDefaultCacheLifeTimeInDays = 180;  // 180 days.
   DWORD kMaxCacheLifeTimeInDays = 1800;     // Roughly 5 years.
 
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GetPackageCacheExpirationTimeDays]")
+                 _T("[Ignoring group policy]")
+                 _T("[machine is not part of a domain]")));
+    return kDefaultCacheLifeTimeInDays;
+  }
+
   DWORD cache_life_limit = 0;
   if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                               kRegValueCacheLifeLimitDays,
@@ -324,19 +380,19 @@ int ConfigManager::GetPackageCacheExpirationTimeDays() const {
 
 CString ConfigManager::GetMachineGoopdateInstallDirNoCreate() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
-                           CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
-                           false,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                             CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
+                             false,
+                             &path)));
   return path;
 }
 
 CString ConfigManager::GetMachineGoopdateInstallDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
-                           CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
-                           true,
-                           &path)));
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                             CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
+                             true,
+                             &path)));
   return path;
 }
 
@@ -426,6 +482,7 @@ int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
   *is_overridden = GetLastCheckPeriodSecFromRegistry(&registry_period_sec);
   if (*is_overridden) {
     if (0 == registry_period_sec) {
+      CORE_LOG(L5, (_T("[GetLastCheckPeriodSec][0 == registry_period_sec]")));
       return 0;
     }
     const int period_sec = registry_period_sec > INT_MAX ?
@@ -435,6 +492,7 @@ int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
     if (period_sec < kMinLastCheckPeriodSec) {
       return kMinLastCheckPeriodSec;
     }
+    CORE_LOG(L5, (_T("[GetLastCheckPeriodSec][period_sec][%d]"), period_sec));
     return period_sec;
   }
 
@@ -481,7 +539,38 @@ HRESULT ConfigManager::SetLastCheckedTime(bool is_machine, DWORD time) const {
   return RegKey::SetValue(reg_update_key, kRegValueLastChecked, time);
 }
 
-DWORD ConfigManager::GetInstallTime(bool is_machine) {
+DWORD ConfigManager::GetRetryAfterTime(bool is_machine) const {
+  const TCHAR* reg_update_key = is_machine ? MACHINE_REG_UPDATE:
+                                             USER_REG_UPDATE;
+  DWORD retry_after_time = 0;
+  if (SUCCEEDED(RegKey::GetValue(reg_update_key,
+                                 kRegValueRetryAfter,
+                                 &retry_after_time))) {
+    return retry_after_time;
+  }
+  return 0;
+}
+
+HRESULT ConfigManager::SetRetryAfterTime(bool is_machine, DWORD time) const {
+  const TCHAR* reg_update_key = is_machine ? MACHINE_REG_UPDATE:
+                                             USER_REG_UPDATE;
+  return RegKey::SetValue(reg_update_key, kRegValueRetryAfter, time);
+}
+
+bool ConfigManager::CanRetryNow(bool is_machine) const {
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  const uint32 retry_after = GetRetryAfterTime(is_machine);
+  return now >= retry_after;
+}
+
+HRESULT ConfigManager::SetLastStartedAU(bool is_machine) const {
+  const TCHAR* reg_update_key = is_machine ? MACHINE_REG_UPDATE:
+                                             USER_REG_UPDATE;
+  DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  return RegKey::SetValue(reg_update_key, kRegValueLastStartedAU, now);
+}
+
+DWORD ConfigManager::GetLastUpdateTime(bool is_machine) {
   const CString client_state_key_name =
       ConfigManager::Instance()->registry_client_state_goopdate(is_machine);
   DWORD update_time(0);
@@ -501,11 +590,11 @@ DWORD ConfigManager::GetInstallTime(bool is_machine) {
   return 0;
 }
 
-bool ConfigManager::Is24HoursSinceInstall(bool is_machine) {
+bool ConfigManager::Is24HoursSinceLastUpdate(bool is_machine) {
   const int kDaySec = 24 * 60 * 60;
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
-  const uint32 install_time = GetInstallTime(is_machine);
+  const uint32 install_time = GetLastUpdateTime(is_machine);
   if (now < install_time) {
     CORE_LOG(LW, (_T("[Incorrect clock time detected]")
                   _T("[now %u][install_time %u]"), now, install_time));
@@ -589,31 +678,47 @@ int ConfigManager::GetAutoUpdateTimerIntervalMs() const {
 }
 
 int ConfigManager::GetUpdateWorkerStartUpDelayMs() const {
-  int au_timer_interval_ms = GetAutoUpdateTimerIntervalMs();
+  const int au_timer_interval_ms = GetAutoUpdateTimerIntervalMs();
 
   // If the AuCheckPeriod is overriden then use that as the delay.
   if (RegKey::HasValue(MACHINE_REG_UPDATE_DEV, kRegValueAuCheckPeriodMs)) {
     return au_timer_interval_ms;
   }
 
-  int random_delay = 0;
-  if (!GenRandom(&random_delay, sizeof(random_delay))) {
+  uint32 random_value = 0;
+  if (rand_s(&random_value)) {
     return au_timer_interval_ms;
   }
 
-  // Scale the au_check_period number to be between
-  // kUpdateTimerStartupDelayMinMs and kUpdateTimerStartupDelayMaxMs.
-  int scale = kUpdateTimerStartupDelayMaxMs - kUpdateTimerStartupDelayMinMs;
-  ASSERT1(scale >= 0);
+  // Scale down the |random_value| and return a random jitter value in the
+  // following range:
+  //    [kUpdateTimerStartupDelayMinMs, kUpdateTimerStartupDelayMaxMs]
+  const int kRangeMs =
+      kUpdateTimerStartupDelayMaxMs - kUpdateTimerStartupDelayMinMs + 1;
+  ASSERT1(kRangeMs >= 0);
 
-  int random_addition = abs(random_delay) % scale;
-  ASSERT1(random_addition < scale);
+  return kUpdateTimerStartupDelayMinMs + random_value % kRangeMs;
+}
 
-  au_timer_interval_ms = kUpdateTimerStartupDelayMinMs + random_addition;
-  ASSERT1(au_timer_interval_ms >= kUpdateTimerStartupDelayMinMs &&
-          au_timer_interval_ms <= kUpdateTimerStartupDelayMaxMs);
+int ConfigManager::GetAutoUpdateJitterMs() const {
+  const int kMaxJitterMs = 60000;
+  DWORD auto_update_jitter_ms(0);
+  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                                 kRegValueAutoUpdateJitterMs,
+                                 &auto_update_jitter_ms))) {
+    return auto_update_jitter_ms >= kMaxJitterMs ? kMaxJitterMs - 1 :
+                                                   auto_update_jitter_ms;
+  }
 
-  return au_timer_interval_ms;
+  uint32 random_delay = 0;
+  if (rand_s(&random_delay)) {
+    random_delay = 0;
+  }
+
+  // There is slight bias toward lower values in the way the scaling of the
+  // random delay is done here but the simplicity of the scaling formula is
+  // a good trade off for the purpose of this function.
+  return (random_delay % kMaxJitterMs);
 }
 
 // Overrides CodeRedCheckPeriodMs. Implements a lower bound value. Returns
@@ -636,6 +741,36 @@ int ConfigManager::GetCodeRedTimerIntervalMs() const {
     return ret_val;
   }
   return kCodeRedCheckPeriodMs;
+}
+
+time64 ConfigManager::GetTimeSinceLastCodeRedCheckMs(bool is_machine) const {
+  const time64 now = GetCurrentMsTime();
+  const time64 last_code_red_check = GetLastCodeRedCheckTimeMs(is_machine);
+
+  if (now < last_code_red_check) {
+    return ULONG64_MAX;
+  }
+
+  const time64 time_difference = now - last_code_red_check;
+  return time_difference;
+}
+
+time64 ConfigManager::GetLastCodeRedCheckTimeMs(bool is_machine) const {
+  const TCHAR* reg_update_key(is_machine ? MACHINE_REG_UPDATE: USER_REG_UPDATE);
+  time64 last_code_red_check_time = 0;
+  if (SUCCEEDED(RegKey::GetValue(reg_update_key,
+                                 kRegValueLastCodeRedCheck,
+                                 &last_code_red_check_time))) {
+    return last_code_red_check_time;
+  }
+
+  return 0;
+}
+
+HRESULT ConfigManager::SetLastCodeRedCheckTimeMs(bool is_machine,
+                                                 time64 time) {
+  const TCHAR* reg_update_key(is_machine ? MACHINE_REG_UPDATE: USER_REG_UPDATE);
+  return RegKey::SetValue(reg_update_key, kRegValueLastCodeRedCheck, time);
 }
 
 // Returns true if logging is enabled for the event type.
@@ -763,6 +898,8 @@ bool ConfigManager::IsInternalUser() const {
       return true;
     }
   }
+
+  CORE_LOG(L4, (_T("[ConfigManager::IsInternalUser][false]")));
   return false;
 }
 
@@ -802,6 +939,9 @@ bool ConfigManager::CanUpdateApp(const GUID& app_guid,
   if ((kPolicyManualUpdatesOnly == effective_policy) && !is_manual) {
     return false;
   }
+  if ((kPolicyAutomaticUpdatesOnly == effective_policy) && is_manual) {
+    return false;
+  }
 
   return kUpdatePolicyDefault;
 }
@@ -812,6 +952,41 @@ bool ConfigManager::AlwaysAllowCrashUploads() const {
                    kRegValueAlwaysAllowCrashUploads,
                    &always_allow_crash_uploads);
   return always_allow_crash_uploads != 0;
+}
+
+int ConfigManager::MaxCrashUploadsPerDay() const {
+  DWORD num_uploads = 0;
+  if (FAILED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                              kRegValueMaxCrashUploadsPerDay,
+                              &num_uploads))) {
+    num_uploads = kDefaultCrashUploadsPerDay;
+  }
+
+  if (num_uploads > INT_MAX) {
+    num_uploads = INT_MAX;
+  }
+
+  return static_cast<int>(num_uploads);
+}
+
+CString ConfigManager::GetDownloadPreferenceGroupPolicy() const {
+  CString download_preference;
+
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy]")
+                 _T("[Ignoring group policy]")
+                 _T("[machine is not part of a domain]")));
+    return CString();
+  }
+
+  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                kRegValueDownloadPreference,
+                                &download_preference);
+  if (SUCCEEDED(hr) && download_preference == kDownloadPreferenceCacheable) {
+    return download_preference;
+  }
+
+  return CString();
 }
 
 }  // namespace omaha

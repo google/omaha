@@ -55,7 +55,12 @@ void CheckResponse(const xml::response::Response& xml_response,
   EXPECT_STREQ(_T("foo_installer.exe"), install_package.name);
   EXPECT_TRUE(install_package.is_required);
   EXPECT_EQ(12345678, install_package.size);
-  EXPECT_STREQ(_T("abcdef"), install_package.hash);
+  EXPECT_STREQ(_T("abcdef"), install_package.hash_sha1);
+  if (CString(expected_protocol_version) == _T("2.0")) {
+    EXPECT_TRUE(install_package.hash_sha256.IsEmpty());
+  } else {
+    EXPECT_STREQ(_T("sha256hash_foobar"), install_package.hash_sha256);
+  }
 
   EXPECT_EQ(2, install_manifest.install_actions.size());
 

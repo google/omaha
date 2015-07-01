@@ -202,6 +202,13 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
                                                  install_time));
     }
 
+    if (app.day_of_install() > 0) {
+      EXPECT_LE(kMinDaysSinceDatum, app.day_of_install());
+      EXPECT_GE(kMaxDaysSinceDatum, app.day_of_install());
+      ASSERT_SUCCEEDED(client_state_key.SetValue(
+          kRegValueDayOfInstall, static_cast<DWORD>(app.day_of_install())));
+    }
+
     if (app.is_eula_accepted_ == TRISTATE_FALSE) {
       ASSERT_SUCCEEDED(client_state_key.SetValue(_T("eulaaccepted"),
                                                  static_cast<DWORD>(0)));
@@ -229,6 +236,27 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
       ASSERT_SUCCEEDED(client_state_key.SetValue(
           kRegValueRollCallDayStartSec,
           static_cast<DWORD>(last_roll_call_time)));
+    }
+
+    int num_days_since = app.day_of_last_activity();
+
+    if (num_days_since > 0) {
+      EXPECT_GE(num_days_since, kMinDaysSinceDatum);
+      EXPECT_LE(num_days_since, kMaxDaysSinceDatum);
+
+      ASSERT_SUCCEEDED(client_state_key.SetValue(
+          kRegValueDayOfLastActivity,
+          static_cast<DWORD>(num_days_since)));
+    }
+
+    num_days_since = app.day_of_last_roll_call();
+    if (num_days_since > 0) {
+      EXPECT_GE(num_days_since, kMinDaysSinceDatum);
+      EXPECT_LE(num_days_since, kMaxDaysSinceDatum);
+
+      ASSERT_SUCCEEDED(client_state_key.SetValue(
+          kRegValueDayOfLastRollCall,
+          static_cast<DWORD>(num_days_since)));
     }
   }
 
@@ -458,17 +486,104 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     EXPECT_FALSE(client_state_key.HasValue(kRegValueEulaAccepted));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueUsageStats));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueInstallTimeSec));
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueDayOfInstall));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueLastUpdateTimeSec));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueTTToken));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueActivePingDayStartSec));
     EXPECT_FALSE(client_state_key.HasValue(kRegValueRollCallDayStartSec));
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueDayOfLastActivity));
+    EXPECT_FALSE(client_state_key.HasValue(kRegValueDayOfLastRollCall));
 
     EXPECT_TRUE(app_registry_utils::IsAppEulaAccepted(is_machine_,
                                                       kGuid1,
                                                       false));
   }
 
-  void PersistUpdateCheckSuccessfullySent_AllUpdated() {
+  void WriteStateValueTest() {
+    app_->iid_ =
+        StringToGuid(_T("{64333341-CA93-490d-9FB7-7FC5728721F4}"));
+    EXPECT_SUCCEEDED(
+        app_manager_->ResetCurrentStateKey(app_->app_guid_string()));
+
+    const CurrentState expected_state_value = STATE_ERROR;
+    app_manager_->WriteStateValue(*app_, expected_state_value);
+
+    const CString current_state_key_name(
+        app_manager_->GetCurrentStateKeyName(app_->app_guid_string()));
+
+    DWORD state_value = STATE_INIT;
+    EXPECT_SUCCEEDED(RegKey::GetValue(current_state_key_name,
+                                      kRegValueStateValue,
+                                      &state_value));
+    EXPECT_EQ(expected_state_value, state_value);
+  }
+
+  void WriteDownloadProgressTest() {
+    app_->iid_ =
+        StringToGuid(_T("{64333341-CA93-490d-9FB7-7FC5728721F4}"));
+    EXPECT_SUCCEEDED(
+        app_manager_->ResetCurrentStateKey(app_->app_guid_string()));
+
+    const uint64 expected_bytes_downloaded = 10;
+    const uint64 expected_bytes_total = 100;
+    const LONG expected_download_time_remaining_ms = 300;
+    LONG expected_download_progress_percentage =
+        static_cast<LONG>(100ULL *
+                          expected_bytes_downloaded / expected_bytes_total);
+
+    app_manager_->WriteDownloadProgress(*app_,
+                                        expected_bytes_downloaded,
+                                        expected_bytes_total,
+                                        expected_download_time_remaining_ms);
+
+    RegKey current_state_key;
+    ASSERT_SUCCEEDED(current_state_key.Open(
+        app_manager_->GetCurrentStateKeyName(app_->app_guid_string())));
+
+    DWORD download_progress_percentage = 0;
+    DWORD download_time_remaining_ms = 0;
+
+    EXPECT_SUCCEEDED(current_state_key.GetValue(
+        kRegValueDownloadTimeRemainingMs, &download_time_remaining_ms));
+    EXPECT_EQ(expected_download_time_remaining_ms, download_time_remaining_ms);
+
+    EXPECT_SUCCEEDED(current_state_key.GetValue(
+        kRegValueDownloadProgressPercent, &download_progress_percentage));
+    EXPECT_EQ(expected_download_progress_percentage,
+              download_progress_percentage);
+  }
+
+  void WriteInstallProgressTest() {
+    app_->iid_ =
+        StringToGuid(_T("{64333341-CA93-490d-9FB7-7FC5728721F4}"));
+    EXPECT_SUCCEEDED(
+        app_manager_->ResetCurrentStateKey(app_->app_guid_string()));
+
+    const LONG expected_install_time_remaining_ms = 600;
+    LONG expected_install_progress_percentage = 30;
+
+    app_manager_->WriteInstallProgress(*app_,
+                                       expected_install_progress_percentage,
+                                       expected_install_time_remaining_ms);
+
+    RegKey current_state_key;
+    ASSERT_SUCCEEDED(current_state_key.Open(
+        app_manager_->GetCurrentStateKeyName(app_->app_guid_string())));
+
+    DWORD install_progress_percentage = 0;
+    DWORD install_time_remaining_ms = 0;
+
+    EXPECT_SUCCEEDED(current_state_key.GetValue(
+        kRegValueInstallTimeRemainingMs, &install_time_remaining_ms));
+    EXPECT_EQ(expected_install_time_remaining_ms, install_time_remaining_ms);
+
+    EXPECT_SUCCEEDED(current_state_key.GetValue(
+        kRegValueInstallProgressPercent, &install_progress_percentage));
+    EXPECT_EQ(expected_install_progress_percentage,
+              install_progress_percentage);
+  }
+
+  void PersistUpdateCheckSuccessfullySent_AllUpdated(bool was_active) {
     const CString client_state_key_name = AppendRegKeyPath(
         ConfigManager::Instance()->registry_client_state(is_machine_),
         kGuid1);
@@ -477,7 +592,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     App* expected_app = CreateAppForRegistryPopulation(kGuid1);
     expected_app->current_version()->set_version(_T("1.0.0.0"));
     expected_app->iid_ = StringToGuid(kIid1);
-    expected_app->did_run_ = ACTIVE_RUN;
+    expected_app->did_run_ = was_active ? ACTIVE_RUN : ACTIVE_UNKNOWN;
     // Set non-zero values for activities so that the registry values can
     // be updated.
     expected_app->set_days_since_last_active_ping(4);
@@ -486,6 +601,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
 
     __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
 
+    const int elpased_days_since_datum = kMinDaysSinceDatum + 55;
     __mutexBlock(app_->model()->lock()) {
       EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
 
@@ -493,15 +609,25 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
       // and don't care about time_since_midnight_sec here, so just pass a 0 as
       // the first parameter.
       EXPECT_SUCCEEDED(
-          app_manager_->PersistUpdateCheckSuccessfullySent(*app_, 0));
+          app_manager_->PersistUpdateCheckSuccessfullySent(
+              *app_, elpased_days_since_datum, 0));
     }
 
     // Validate the results.
     RegKey client_state_key;
     EXPECT_SUCCEEDED(client_state_key.Open(client_state_key_name));
 
-    // Check installation id removed.
-    EXPECT_FALSE(client_state_key.HasValue(kRegValueInstallationId));
+    CString iid;
+    if (was_active) {
+      // Installation id should be cleared.
+      EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+                client_state_key.GetValue(kRegValueInstallationId, &iid));
+    } else {
+      // did_run is unknown so installation id should still exist.
+      EXPECT_SUCCEEDED(
+          client_state_key.GetValue(kRegValueInstallationId, &iid));
+      EXPECT_STREQ(kIid1, iid);
+    }
 
     // Check ping timestamps are updated.
     const uint32 now = Time64ToInt32(GetCurrent100NSTime());
@@ -509,8 +635,13 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     DWORD last_active_ping_day_start_sec = 0;
     EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueActivePingDayStartSec,
         &last_active_ping_day_start_sec));
-    EXPECT_GE(now, last_active_ping_day_start_sec);
-    EXPECT_LE(now, last_active_ping_day_start_sec + kMaxTimeSinceMidnightSec);
+    if (was_active) {
+      EXPECT_GE(now, last_active_ping_day_start_sec);
+      EXPECT_LE(now, last_active_ping_day_start_sec + kMaxTimeSinceMidnightSec);
+    } else {
+      EXPECT_LE(last_active_ping_day_start_sec,
+          now - expected_app->days_since_last_active_ping() * kSecondsPerDay);
+    }
 
     DWORD last_roll_call_day_start_sec = 0;
     EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
@@ -518,10 +649,29 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     EXPECT_GE(now, last_roll_call_day_start_sec);
     EXPECT_LE(now, last_roll_call_day_start_sec + kMaxTimeSinceMidnightSec);
 
+    DWORD day_of_last_activity = 0;
+    if (was_active) {
+      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastActivity,
+          &day_of_last_activity));
+      EXPECT_EQ(elpased_days_since_datum, day_of_last_activity);
+    } else {
+      EXPECT_FAILED(client_state_key.GetValue(kRegValueDayOfLastActivity,
+          &day_of_last_activity));
+    }
+
+    DWORD day_of_last_roll_call = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastRollCall,
+        &day_of_last_roll_call));
+    EXPECT_EQ(elpased_days_since_datum, day_of_last_roll_call);
+
     // Check did_run is cleared.
-    CString did_run;
-    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDidRun, &did_run));
-    EXPECT_STREQ(_T("0"), did_run);
+    if (was_active) {
+      CString did_run;
+      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDidRun, &did_run));
+      EXPECT_STREQ(_T("0"), did_run);
+    } else {
+      EXPECT_EQ(false, client_state_key.HasValue(kRegValueDidRun));
+    }
 
     // Check that members in app_ are not changed.
     EXPECT_TRUE(expected_app->iid() == app_->iid());
@@ -530,6 +680,10 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     EXPECT_EQ(expected_app->days_since_last_roll_call(),
               app_->days_since_last_roll_call());
     EXPECT_EQ(expected_app->did_run(), app_->did_run());
+    EXPECT_EQ(expected_app->day_of_last_activity(),
+              app_->day_of_last_activity());
+    EXPECT_EQ(expected_app->day_of_last_roll_call(),
+              app_->day_of_last_roll_call());
   }
 
   void PersistUpdateCheckSuccessfullySent_NotRun() {
@@ -545,6 +699,8 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     expected_app->did_run_ = ACTIVE_NOTRUN;
     expected_app->set_days_since_last_active_ping(kDaysSinceLastActivePing);
     expected_app->set_days_since_last_roll_call(0);
+    expected_app->set_day_of_last_activity(kMinDaysSinceDatum + 13);
+    expected_app->set_day_of_last_roll_call(kMinDaysSinceDatum + 15);
     CreateAppRegistryState(*expected_app, is_machine_, _T(""), true);
 
     // Choose a time that is close to current time but with some skew so that
@@ -554,7 +710,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
 
     RegKey client_state_key;
     EXPECT_SUCCEEDED(client_state_key.Open(client_state_key_name));
-    uint32 last_active_time =
+    const uint32 last_active_time =
         base_time - kDaysSinceLastActivePing * kSecondsPerDay;
     ASSERT_SUCCEEDED(client_state_key.SetValue(
         kRegValueActivePingDayStartSec,
@@ -566,14 +722,16 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
 
     __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
 
+    const int elpased_days_since_datum = kMinDaysSinceDatum + 55;
     __mutexBlock(app_->model()->lock()) {
       EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
 
       // We only want to make sure the timestamps in the registry are updated
-      // and don't care about time_since_midnight_sec here, so just pass a 0 as
-      // the first parameter.
+      // and don't care about time_since_midnight_sec here, so just pass a 0
+      // for elapsed_seconds_since_mid_night.
       EXPECT_SUCCEEDED(
-          app_manager_->PersistUpdateCheckSuccessfullySent(*app_, 0));
+          app_manager_->PersistUpdateCheckSuccessfullySent(
+              *app_, elpased_days_since_datum, 0));
     }
 
     // Validate the results.
@@ -596,6 +754,18 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
         &last_roll_call_day_start_sec));
     EXPECT_EQ(base_time, last_roll_call_day_start_sec);
 
+    // did_run is false so day_of_last_activity should not be updated.
+    DWORD day_of_last_activity = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastActivity,
+        &day_of_last_activity));
+    EXPECT_EQ(expected_app->day_of_last_activity(), day_of_last_activity);
+
+    // Day of last roll call will be updated.
+    DWORD day_of_last_roll_call = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastRollCall,
+        &day_of_last_roll_call));
+    EXPECT_EQ(elpased_days_since_datum, day_of_last_roll_call);
+
     // did_run is still not set.
     CString did_run;
     EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDidRun, &did_run));
@@ -607,10 +777,14 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
               app_->days_since_last_active_ping());
     EXPECT_EQ(expected_app->days_since_last_roll_call(),
               app_->days_since_last_roll_call());
+    EXPECT_EQ(expected_app->day_of_last_activity(),
+              app_->day_of_last_activity());
+    EXPECT_EQ(expected_app->day_of_last_roll_call(),
+              app_->day_of_last_roll_call());
     EXPECT_EQ(expected_app->did_run(), app_->did_run());
   }
 
-  void PersistUpdateCheckSuccessfullySent_NoPreviousPing() {
+  void PersistUpdateCheckSuccessfullySent_NoPreviousPing(bool was_active) {
     const CString client_state_key_name = AppendRegKeyPath(
         ConfigManager::Instance()->registry_client_state(is_machine_),
         kGuid1);
@@ -620,36 +794,55 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     App* expected_app = CreateAppForRegistryPopulation(kGuid1);
     expected_app->current_version()->set_version(_T("1.0.0.0"));
     expected_app->iid_ = StringToGuid(kIid1);
-    expected_app->did_run_ = ACTIVE_UNKNOWN;
+    expected_app->did_run_ = was_active ? ACTIVE_RUN : ACTIVE_UNKNOWN;
     expected_app->set_days_since_last_active_ping(-1);
     expected_app->set_days_since_last_roll_call(-1);
+    expected_app->set_day_of_last_activity(-1);
+    expected_app->set_day_of_last_roll_call(-1);
     CreateAppRegistryState(*expected_app, is_machine_, _T(""), true);
 
     __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
 
+    const int elpased_days_since_datum = kMinDaysSinceDatum + 55;
     __mutexBlock(app_->model()->lock()) {
       EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
 
       // We only want to make sure the timestamps in the registry are updated
-      // and don't care about time_since_midnight_sec here, so just pass a 0 as
-      // the first parameter.
+      // and don't care about time_since_midnight_sec here, so just pass a 0
+      // for elapsed_seconds_since_mid_night.
       EXPECT_SUCCEEDED(
-          app_manager_->PersistUpdateCheckSuccessfullySent(*app_, 0));
+          app_manager_->PersistUpdateCheckSuccessfullySent(
+              *app_, elpased_days_since_datum, 0));
     }
 
     // Validate the results.
     RegKey client_state_key;
     EXPECT_SUCCEEDED(client_state_key.Open(client_state_key_name));
 
-    // did_run is unknown so installation id should still exist.
     CString iid;
-    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueInstallationId, &iid));
-    EXPECT_STREQ(kIid1, iid);
+    if (was_active) {
+      // Installation id should be cleared.
+      EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+                client_state_key.GetValue(kRegValueInstallationId, &iid));
+    } else {
+      // did_run is unknown so installation id should still exist.
+      EXPECT_SUCCEEDED(
+          client_state_key.GetValue(kRegValueInstallationId, &iid));
+      EXPECT_STREQ(kIid1, iid);
+    }
 
     const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
-    // did_run is unknown so active ping timestamp should not be updated.
-    EXPECT_FALSE(client_state_key.HasValue(kRegValueActivePingDayStartSec));
+    if (was_active) {
+      DWORD last_active_day_start_sec = 0;
+      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
+          &last_active_day_start_sec));
+      EXPECT_GE(now, last_active_day_start_sec);
+      EXPECT_LE(now, last_active_day_start_sec + kMaxTimeSinceMidnightSec);
+    } else {
+      // did_run is unknown so active ping timestamp should not be updated.
+      EXPECT_FALSE(client_state_key.HasValue(kRegValueActivePingDayStartSec));
+    }
 
     DWORD last_roll_call_day_start_sec = 0;
     EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueRollCallDayStartSec,
@@ -657,9 +850,24 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     EXPECT_GE(now, last_roll_call_day_start_sec);
     EXPECT_LE(now, last_roll_call_day_start_sec + kMaxTimeSinceMidnightSec);
 
-    // did_run is unknown.
-    CString did_run;
-    EXPECT_FALSE(client_state_key.HasValue(kRegValueDidRun));
+    DWORD day_of_last_activity = 0;
+    if (was_active) {
+      EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastActivity,
+          &day_of_last_activity));
+      EXPECT_EQ(elpased_days_since_datum, day_of_last_activity);
+    } else {
+      // did_run is unknown so day_of_last_activity should not be updated.
+      EXPECT_FAILED(client_state_key.GetValue(kRegValueDayOfLastActivity,
+          &day_of_last_activity));
+    }
+
+    // Day of last roll call will be updated.
+    DWORD day_of_last_roll_call = 0;
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastRollCall,
+        &day_of_last_roll_call));
+    EXPECT_EQ(elpased_days_since_datum, day_of_last_roll_call);
+
+    EXPECT_EQ(was_active, client_state_key.HasValue(kRegValueDidRun));
 
     // Checks that members in app_ are not changed.
     EXPECT_TRUE(expected_app->iid() == app_->iid());
@@ -667,6 +875,10 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
               app_->days_since_last_active_ping());
     EXPECT_EQ(expected_app->days_since_last_roll_call(),
               app_->days_since_last_roll_call());
+    EXPECT_EQ(expected_app->day_of_last_activity(),
+              app_->day_of_last_activity());
+    EXPECT_EQ(expected_app->day_of_last_roll_call(),
+              app_->day_of_last_roll_call());
     EXPECT_EQ(expected_app->did_run(), app_->did_run());
   }
 
@@ -680,6 +892,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     expected_app->referral_id_ = _T("referrer");
     EXPECT_SUCCEEDED(expected_app->put_isEulaAccepted(VARIANT_FALSE));
     expected_app->install_time_diff_sec_ = 141516;
+    expected_app->day_of_install_ = 10001;
     CreateAppRegistryState(*expected_app, is_machine_, _T(""), true);
 
     EXPECT_TRUE(RegKey::HasValue(client_state_key_name, _T("referral")));
@@ -733,6 +946,10 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     EXPECT_GE(calculated_install_diff, expected_app->install_time_diff_sec_);
     EXPECT_GE(static_cast<uint32>(500),
               calculated_install_diff - expected_app->install_time_diff_sec_);
+
+    const DWORD day_of_install =
+        GetDwordValue(client_state_key_name, kRegValueDayOfInstall);
+    EXPECT_EQ(10001, day_of_install);
 
     EXPECT_EQ(0, GetDwordValue(client_state_key_name, kRegValueEulaAccepted));
     EXPECT_FALSE(expected_app->is_eula_accepted_);
@@ -809,6 +1026,11 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     EXPECT_GE(now, install_time);
     EXPECT_GE(static_cast<uint32>(200), now - install_time);
 
+    DWORD day_of_install(0);
+    EXPECT_SUCCEEDED(client_state_key.GetValue(kRegValueDayOfInstall,
+                                               &day_of_install));
+    EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
+
     DWORD usage_stats_enable = 0;
     EXPECT_SUCCEEDED(client_state_key.GetValue(_T("usagestats"),
                                                &usage_stats_enable));
@@ -865,11 +1087,140 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
   // Uses SetupGoogleUpdate to create the ClientStateMedium key with the
   // appropriate permissions. Used to test that the permissions are inherited.
   void CreateClientStateMediumKey() {
-    SetupGoogleUpdate setup_google_update(true);
+    SetupGoogleUpdate setup_google_update(true, false);
 
     // On Windows 7, AddAllowedAce() can fail if the registry is redirected. So
     // we ignore errors from this call.
     setup_google_update.CreateClientStateMedium();
+  }
+
+  struct AttributePair {
+    CString attribute_name;
+    CString attribute_value;
+  };
+
+  struct SumValuePair {
+    CString name;
+    DWORD value;
+  };
+
+  struct AttributeSubkeyPair {
+    CString attribute_name;
+    SumValuePair* sum_values;
+    size_t number_of_sum_values;
+  };
+
+  void CreateExpectedAppDefinedAttributes(bool is_machine,
+                                          AttributePair pairs[],
+                                          size_t number_of_pairs,
+                                          AttributeSubkeyPair subkey_pairs[],
+                                          size_t number_of_subkey_pairs,
+                                          App** expected_app) {
+    *expected_app = CreateAppForRegistryPopulation(kGuid1);
+    PopulateExpectedApp1(*expected_app);
+    CreateAppRegistryState(**expected_app, is_machine, _T("1.0.0.0"), true);
+    EXPECT_SUCCEEDED((*expected_app)->put_isEulaAccepted(VARIANT_TRUE));
+
+    std::vector<StringPair> attributes;
+
+    for (size_t i = 0; i < number_of_pairs; ++i) {
+      attributes.push_back(std::make_pair(pairs[i].attribute_name.MakeLower(),
+                                          pairs[i].attribute_value));
+    }
+
+    for (size_t i = 0; i < number_of_subkey_pairs; ++i) {
+      DWORD sum = 0;
+      for (size_t j = 0; j < subkey_pairs[i].number_of_sum_values; ++j) {
+        sum += subkey_pairs[i].sum_values[j].value;
+      }
+
+      CString sum_string;
+      sum_string.Format(_T("%d"), sum);
+      attributes.push_back(
+          std::make_pair(subkey_pairs[i].attribute_name.MakeLower(),
+                         sum_string));
+    }
+
+    (*expected_app)->app_defined_attributes_ = attributes;
+  }
+
+  void WriteAppDefinedAttributesToRegistry(bool is_machine,
+                                           AttributePair pairs[],
+                                           size_t number_of_pairs,
+                                           AttributeSubkeyPair subkey_pairs[],
+                                           size_t number_of_subkey_pairs) {
+    const CString client_state_medium_key_name = AppendRegKeyPath(
+        ConfigManager::Instance()->machine_registry_client_state_medium(),
+        kGuid1);
+    CString client_state_key_name = AppendRegKeyPath(
+        ConfigManager::Instance()->registry_client_state(is_machine),
+        kGuid1);
+
+    CString key_name(is_machine ? client_state_medium_key_name :
+                                  client_state_key_name);
+
+    for (size_t i = 0; i < number_of_pairs; ++i) {
+      EXPECT_SUCCEEDED(RegKey::SetValue(key_name,
+                                        pairs[i].attribute_name,
+                                        pairs[i].attribute_value));
+    }
+
+    for (size_t i = 0; i < number_of_subkey_pairs; ++i) {
+      const CString subkey_name =
+          AppendRegKeyPath(key_name, subkey_pairs[i].attribute_name);
+      EXPECT_SUCCEEDED(RegKey::SetValue(subkey_name,
+                                        kRegValueAppDefinedAggregate,
+                                        kRegValueAppDefinedAggregateSum));
+
+      for (size_t j = 0; j < subkey_pairs[i].number_of_sum_values; ++j) {
+        EXPECT_SUCCEEDED(
+            RegKey::SetValue(subkey_name,
+                             subkey_pairs[i].sum_values[j].name,
+                             subkey_pairs[i].sum_values[j].value));
+      }
+    }
+  }
+
+  void CreateExpectedCohortApp(bool is_machine,
+                               const CString& cohort,
+                               const CString& hint,
+                               const CString& name,
+                               App** expected_app) {
+    *expected_app = CreateAppForRegistryPopulation(kGuid1);
+    PopulateExpectedApp1(*expected_app);
+    CreateAppRegistryState(**expected_app, is_machine, _T("1.0.0.0"), true);
+    EXPECT_SUCCEEDED((*expected_app)->put_isEulaAccepted(VARIANT_TRUE));
+
+    (*expected_app)->cohort_.cohort = cohort;
+    (*expected_app)->cohort_.hint = hint;
+    (*expected_app)->cohort_.name = name;
+  }
+
+  void WriteCohortToRegistry(bool is_machine,
+                             const CString& cohort,
+                             const CString& hint,
+                             const CString& name) {
+    CString client_state_key_name = AppendRegKeyPath(
+        ConfigManager::Instance()->registry_client_state(is_machine),
+        kGuid1);
+    CString cohort_key_name(
+        AppendRegKeyPath(client_state_key_name, kRegSubkeyCohort));
+
+    RegKey cohort_key;
+    ASSERT_SUCCEEDED(cohort_key.Create(cohort_key_name));
+    EXPECT_SUCCEEDED(cohort_key.SetValue(NULL, cohort));
+    EXPECT_SUCCEEDED(cohort_key.SetValue(kRegValueCohortHint, hint));
+    EXPECT_SUCCEEDED(cohort_key.SetValue(kRegValueCohortName, name));
+  }
+
+  void DeleteCohortKey(bool is_machine) {
+    CString client_state_key_name = AppendRegKeyPath(
+        ConfigManager::Instance()->registry_client_state(is_machine),
+        kGuid1);
+    CString cohort_key_name(
+        AppendRegKeyPath(client_state_key_name, kRegSubkeyCohort));
+
+    RegKey::DeleteKey(cohort_key_name);
   }
 
   AppManager* app_manager_;
@@ -925,7 +1276,6 @@ class AppManagerWithBundleTest : public AppManagerTestBase {
     App* opposite_hive_data2);
 
  protected:
-
   // Wrappers for static functions; simplifies callers using this test fixture.
 
   void PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(
@@ -1808,6 +2158,185 @@ TEST_F(AppManagerReadAppPersistentDataUserTest,
   ValidateExpectedValues(*expected_app, *app_);
 }
 
+TEST_F(AppManagerReadAppPersistentDataUserTest, AppDefinedAttributesExist) {
+  AppManagerTestBase::AttributePair pairs[] = {
+    {_T("_SignedIn"), _T("3")},
+    {_T("_Total"), _T("7")},
+  };
+
+  AppManagerTestBase::SumValuePair profiles[] = {
+    {_T("{0143423998748372984}"), 4},
+    {_T("{8947328472934792342}"), 7},
+  };
+
+  AppManagerTestBase::AttributeSubkeyPair subkey_pairs[] = {
+    {_T("_NumProfiles1"), profiles, arraysize(profiles)},
+  };
+
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedAppDefinedAttributes(
+      is_machine_,
+      pairs,
+      arraysize(pairs),
+      subkey_pairs,
+      arraysize(subkey_pairs),
+      &expected_app);
+
+  AppManagerTestBase::WriteAppDefinedAttributesToRegistry(
+      is_machine_,
+      pairs,
+      arraysize(pairs),
+      subkey_pairs,
+      arraysize(subkey_pairs));
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
+TEST_F(AppManagerReadAppPersistentDataUserTest,
+       AppDefinedAttributesDoNotExist) {
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedAppDefinedAttributes(
+      is_machine_, NULL, 0, NULL, 0, &expected_app);
+
+  AppManagerTestBase::WriteAppDefinedAttributesToRegistry(
+      is_machine_, NULL, 0, NULL, 0);
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
+TEST_F(AppManagerReadAppPersistentDataMachineTest, AppDefinedAttributesExist) {
+  AppManagerTestBase::AttributePair pairs[] = {
+    {_T("_NotSignedIn"), _T("99")},
+    {_T("_TotalSignedIn"), _T("207")},
+    {_T("_RandomFoo"), _T("97")},
+    {_T("_RandomBar"), _T("Bar")},
+  };
+
+  AppManagerTestBase::SumValuePair profiles1[] = {
+    {_T("{0143423998748372984}"), 4},
+    {_T("{8947328472934792342}"), 7},
+  };
+
+  AppManagerTestBase::SumValuePair profiles2[] = {
+    {_T("{Blah}"), 3},
+  };
+
+  AppManagerTestBase::AttributeSubkeyPair subkey_pairs[] = {
+    {_T("_NumProfiles1"), profiles1, arraysize(profiles1)},
+    {_T("_NumProfiles2"), profiles2, arraysize(profiles2)},
+  };
+
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedAppDefinedAttributes(
+      is_machine_,
+      pairs,
+      arraysize(pairs),
+      subkey_pairs,
+      arraysize(subkey_pairs),
+      &expected_app);
+
+  AppManagerTestBase::WriteAppDefinedAttributesToRegistry(
+      is_machine_,
+      pairs,
+      arraysize(pairs),
+      subkey_pairs,
+      arraysize(subkey_pairs));
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
+TEST_F(AppManagerReadAppPersistentDataMachineTest,
+       AppDefinedAttributesDoNotExist) {
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedAppDefinedAttributes(
+      is_machine_, NULL, 0, NULL, 0, &expected_app);
+
+  AppManagerTestBase::WriteAppDefinedAttributesToRegistry(
+      is_machine_, NULL, 0, NULL, 0);
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
+TEST_F(AppManagerReadAppPersistentDataUserTest, CohortExists) {
+  const CString cohort(_T("Cohort1"));
+  const CString hint(_T("Hint1"));
+  const CString name(_T("Name1"));
+
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedCohortApp(is_machine_,
+                                              cohort,
+                                              hint,
+                                              name,
+                                              &expected_app);
+  AppManagerTestBase::WriteCohortToRegistry(is_machine_, cohort, hint, name);
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
+TEST_F(AppManagerReadAppPersistentDataUserTest, CohortDoesNotExist) {
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedCohortApp(is_machine_,
+                                              _T(""),
+                                              _T(""),
+                                              _T(""),
+                                              &expected_app);
+  AppManagerTestBase::DeleteCohortKey(is_machine_);
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
+TEST_F(AppManagerReadAppPersistentDataMachineTest, CohortExists) {
+  const CString cohort(_T("Cohort1"));
+  const CString hint(_T("Hint1"));
+  const CString name(_T("Name1"));
+
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedCohortApp(is_machine_,
+                                              cohort,
+                                              hint,
+                                              name,
+                                              &expected_app);
+  AppManagerTestBase::WriteCohortToRegistry(is_machine_, cohort, hint, name);
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
+TEST_F(AppManagerReadAppPersistentDataMachineTest, CohortDoesNotExist) {
+  App* expected_app;
+  AppManagerTestBase::CreateExpectedCohortApp(is_machine_,
+                                              _T(""),
+                                              _T(""),
+                                              _T(""),
+                                              &expected_app);
+  AppManagerTestBase::DeleteCohortKey(is_machine_);
+
+  __mutexScope(app_->model()->lock());
+  EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
+
+  ValidateExpectedValues(*expected_app, *app_);
+}
+
 TEST_F(AppManagerUserTest,
        ReadInstallerRegistrationValues_FailsWhenClientsKeyAbsent) {
   __mutexBlock(app_->model()->lock()) {
@@ -1912,12 +2441,36 @@ TEST_F(AppManagerMachineTest, PersistSuccessfulInstall) {
   PersistSuccessfulInstallTest();
 }
 
-TEST_F(AppManagerUserTest, PersistUpdateCheckSuccessfullySent_AllUpdated) {
-  PersistUpdateCheckSuccessfullySent_AllUpdated();
+TEST_F(AppManagerUserTest, WriteStateValue) {
+  WriteStateValueTest();
 }
 
-TEST_F(AppManagerMachineTest, PersistUpdateCheckSuccessfullySent_AllUpdated) {
-  PersistUpdateCheckSuccessfullySent_AllUpdated();
+TEST_F(AppManagerUserTest, WriteDownloadProgress) {
+  WriteDownloadProgressTest();
+}
+
+TEST_F(AppManagerUserTest, WriteInstallProgress) {
+  WriteInstallProgressTest();
+}
+
+TEST_F(AppManagerUserTest,
+    PersistUpdateCheckSuccessfullySent_AllUpdated_WasActive) {
+  PersistUpdateCheckSuccessfullySent_AllUpdated(true);
+}
+
+TEST_F(AppManagerUserTest,
+    PersistUpdateCheckSuccessfullySent_AllUpdated_NotActive) {
+  PersistUpdateCheckSuccessfullySent_AllUpdated(false);
+}
+
+TEST_F(AppManagerMachineTest,
+    PersistUpdateCheckSuccessfullySent_AllUpdated_WasActive) {
+  PersistUpdateCheckSuccessfullySent_AllUpdated(true);
+}
+
+TEST_F(AppManagerMachineTest,
+    PersistUpdateCheckSuccessfullySent_AllUpdated_NotActive) {
+  PersistUpdateCheckSuccessfullySent_AllUpdated(false);
 }
 
 TEST_F(AppManagerUserTest, PersistUpdateCheckSuccessfullySent_NotRun) {
@@ -1928,13 +2481,24 @@ TEST_F(AppManagerMachineTest, PersistUpdateCheckSuccessfullySent_NotRun) {
   PersistUpdateCheckSuccessfullySent_NotRun();
 }
 
-TEST_F(AppManagerUserTest, PersistUpdateCheckSuccessfullySent_NoPreviousPing) {
-  PersistUpdateCheckSuccessfullySent_NoPreviousPing();
+TEST_F(AppManagerUserTest,
+    PersistUpdateCheckSuccessfullySent_NoPreviousPing_WasActive) {
+  PersistUpdateCheckSuccessfullySent_NoPreviousPing(true);
+}
+
+TEST_F(AppManagerUserTest,
+    PersistUpdateCheckSuccessfullySent_NoPreviousPing_NotActive) {
+  PersistUpdateCheckSuccessfullySent_NoPreviousPing(false);
 }
 
 TEST_F(AppManagerMachineTest,
-       PersistUpdateCheckSuccessfullySent_NoPreviousPing) {
-  PersistUpdateCheckSuccessfullySent_NoPreviousPing();
+       PersistUpdateCheckSuccessfullySent_NoPreviousPing_WasActive) {
+  PersistUpdateCheckSuccessfullySent_NoPreviousPing(true);
+}
+
+TEST_F(AppManagerMachineTest,
+       PersistUpdateCheckSuccessfullySent_NoPreviousPing_NotActive) {
+  PersistUpdateCheckSuccessfullySent_NoPreviousPing(false);
 }
 
 TEST_F(AppManagerUserTest, SynchronizeClientStateTest) {
@@ -2313,7 +2877,7 @@ TEST_F(AppManagerWithBundleMachineTest, GetRegisteredApps) {
 
   AppIdVector registered_app_ids;
   EXPECT_SUCCEEDED(app_manager_->GetRegisteredApps(&registered_app_ids));
-  EXPECT_EQ(3, registered_app_ids.size());
+  EXPECT_EQ(3, static_cast<int>(registered_app_ids.size()));
 
   EXPECT_STREQ(CString(kGuid1).MakeUpper(), registered_app_ids[0]);
   EXPECT_STREQ(CString(kGuid2).MakeUpper(), registered_app_ids[1]);
@@ -2337,7 +2901,7 @@ TEST_F(AppManagerWithBundleUserTest, GetRegisteredApps) {
 
   AppIdVector registered_app_ids;
   EXPECT_SUCCEEDED(app_manager_->GetRegisteredApps(&registered_app_ids));
-  EXPECT_EQ(3, registered_app_ids.size());
+  EXPECT_EQ(3, static_cast<int>(registered_app_ids.size()));
 
   EXPECT_STREQ(CString(kGuid1).MakeUpper(), registered_app_ids[0]);
   EXPECT_STREQ(CString(kGuid2).MakeUpper(), registered_app_ids[1]);
@@ -2374,7 +2938,7 @@ TEST_F(AppManagerWithBundleUserTest, GetRegisteredApps_InvalidPvValueType) {
   AppIdVector registered_app_ids;
   EXPECT_SUCCEEDED(app_manager_->GetRegisteredApps(&registered_app_ids));
 
-  EXPECT_EQ(4, registered_app_ids.size());
+  EXPECT_EQ(4, static_cast<int>(registered_app_ids.size()));
 
   EXPECT_STREQ(kInvalidPvTypeAppId, registered_app_ids[0]);
   EXPECT_STREQ(CString(kGuid1).MakeUpper(), registered_app_ids[1]);
@@ -2392,7 +2956,7 @@ TEST_F(AppManagerWithBundleMachineTest, GetUninstalledApps) {
 
   AppIdVector registered_app_ids;
   EXPECT_SUCCEEDED(app_manager_->GetUninstalledApps(&registered_app_ids));
-  EXPECT_EQ(1, registered_app_ids.size());
+  EXPECT_EQ(1, static_cast<int>(registered_app_ids.size()));
 
   EXPECT_STREQ(CString(kGuid3).MakeUpper(), registered_app_ids[0]);
 }
@@ -2407,7 +2971,7 @@ TEST_F(AppManagerWithBundleUserTest, GetUninstalledApps) {
 
   AppIdVector registered_app_ids;
   EXPECT_SUCCEEDED(app_manager_->GetUninstalledApps(&registered_app_ids));
-  EXPECT_EQ(1, registered_app_ids.size());
+  EXPECT_EQ(1, static_cast<int>(registered_app_ids.size()));
 
   EXPECT_STREQ(CString(kGuid3).MakeUpper(), registered_app_ids[0]);
 }
@@ -2424,6 +2988,10 @@ TEST_F(AppManagerWithBundleMachineTest, GetOemInstalledAndEulaAcceptedApps) {
   RegKey client_state_key;
   ASSERT_SUCCEEDED(client_state_key.Create(client_state_key_name));
   ASSERT_SUCCEEDED(client_state_key.SetValue(kRegValueOemInstall, _T("1")));
+  DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  const DWORD one_day_back = now - kSecondsPerDay;
+  ASSERT_SUCCEEDED(client_state_key.SetValue(kRegValueInstallTimeSec,
+                                             one_day_back));
 
   // Create a non-OEM installed app.
   App* expected_app2 = CreateAppForRegistryPopulation(kGuid2);
@@ -2433,15 +3001,23 @@ TEST_F(AppManagerWithBundleMachineTest, GetOemInstalledAndEulaAcceptedApps) {
   AppIdVector oem_installed_app_ids;
   EXPECT_SUCCEEDED(
       app_manager_->GetOemInstalledAndEulaAcceptedApps(&oem_installed_app_ids));
-  EXPECT_EQ(1, oem_installed_app_ids.size());
+  EXPECT_EQ(1, static_cast<int>(oem_installed_app_ids.size()));
   EXPECT_STREQ(expected_app1->app_guid_string().MakeUpper(),
                oem_installed_app_ids[0]);
 
   app_manager_->ClearOemInstalled(oem_installed_app_ids);
   oem_installed_app_ids.clear();
+
   EXPECT_SUCCEEDED(
       app_manager_->GetOemInstalledAndEulaAcceptedApps(&oem_installed_app_ids));
-  EXPECT_EQ(0, oem_installed_app_ids.size());
+  EXPECT_EQ(0, static_cast<int>(oem_installed_app_ids.size()));
+
+  DWORD install_time(0);
+  ASSERT_SUCCEEDED(client_state_key.GetValue(kRegValueInstallTimeSec,
+                                             &install_time));
+  EXPECT_GE(install_time, one_day_back + kSecondsPerDay);
+  now = Time64ToInt32(GetCurrent100NSTime());
+  EXPECT_GE(static_cast<uint32>(kSecPerMin), now - install_time);
 }
 
 TEST_F(AppManagerWithBundleUserTest, GetOemInstalledAndEulaAcceptedApps) {
@@ -2456,6 +3032,10 @@ TEST_F(AppManagerWithBundleUserTest, GetOemInstalledAndEulaAcceptedApps) {
   RegKey client_state_key;
   ASSERT_SUCCEEDED(client_state_key.Create(client_state_key_name));
   ASSERT_SUCCEEDED(client_state_key.SetValue(kRegValueOemInstall, _T("1")));
+  DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  const DWORD one_day_back = now - kSecondsPerDay;
+  ASSERT_SUCCEEDED(client_state_key.SetValue(kRegValueInstallTimeSec,
+                                             one_day_back));
 
   // Create a non-OEM installed app.
   App* expected_app2 = CreateAppForRegistryPopulation(kGuid2);
@@ -2465,15 +3045,23 @@ TEST_F(AppManagerWithBundleUserTest, GetOemInstalledAndEulaAcceptedApps) {
   AppIdVector oem_installed_app_ids;
   EXPECT_SUCCEEDED(
       app_manager_->GetOemInstalledAndEulaAcceptedApps(&oem_installed_app_ids));
-  EXPECT_EQ(1, oem_installed_app_ids.size());
+  EXPECT_EQ(1, static_cast<int>(oem_installed_app_ids.size()));
   EXPECT_STREQ(expected_app1->app_guid_string().MakeUpper(),
                oem_installed_app_ids[0]);
 
   app_manager_->ClearOemInstalled(oem_installed_app_ids);
   oem_installed_app_ids.clear();
+
   EXPECT_SUCCEEDED(
       app_manager_->GetOemInstalledAndEulaAcceptedApps(&oem_installed_app_ids));
-  EXPECT_EQ(0, oem_installed_app_ids.size());
+  EXPECT_EQ(0, static_cast<int>(oem_installed_app_ids.size()));
+
+  DWORD install_time(0);
+  ASSERT_SUCCEEDED(client_state_key.GetValue(kRegValueInstallTimeSec,
+                                             &install_time));
+  EXPECT_GE(install_time, one_day_back + kSecondsPerDay);
+  now = Time64ToInt32(GetCurrent100NSTime());
+  EXPECT_GE(static_cast<uint32>(kSecPerMin), now - install_time);
 }
 
 // TODO(omaha): Perhaps CoCreate some real hooks and test further for the

@@ -26,7 +26,9 @@ namespace omaha {
 // The prefix to use for global names in the win32 API's.
 const TCHAR* const kGlobalPrefix = _T("Global\\Omaha");
 
-const TCHAR kCrashPipeNamePrefix[] =
+const TCHAR* const kObjectName64Suffix = _T("-x64");
+
+const TCHAR* const kCrashPipeNamePrefix =
     _T("\\\\.\\pipe\\") SHORT_COMPANY_NAME _T("CrashServices");
 
 // Ensures that only one instance of machine or user Omaha is trying to setup at
@@ -103,10 +105,6 @@ const TCHAR* const kInstallManagerSerializer =
 const TCHAR* const kMetricsSerializer =
     _T("{C68009EA-1163-4498-8E93-D5C4E317D8CE}");
 
-// Serializes access to the global network configuration, such as the CUP keys.
-const TCHAR* const kNetworkConfigLock =
-    _T("{0E900C7B-04B0-47f9-81B0-F8D94F2DF01B}");
-
 // Serializes access to the registry for application state.
 const TCHAR* const kRegistryAccessMutex =
     _T("{66CC0160-ABB3-4066-AE47-1CA6AD5065C8}");
@@ -114,6 +112,26 @@ const TCHAR* const kRegistryAccessMutex =
 // Serializes opt user id generation.
 const TCHAR* const kOptUserIdLock =
     _T("{D19BAF17-7C87-467E-8D63-6C4B1C836373}");
+
+// Prefix used for programs with external (in-process) updaters to signal to
+// Omaha that they are currently doing an update check, and that Omaha should
+// not attempt to update it at this time.  (Conversely, it's also used by Omaha
+// to signal that Omaha is about to perform an update check, and that the
+// in-process updater should back off.)   The app ID is appended to this string,
+// and the standard prefixes for Omaha events are prepended.  For example, if
+// machine Earth was performing an in-process update, it would create:
+//   Global\\OmahaUpdaterRunning{74AF07D8-FB8F-4D51-8AC7-927721D56EBB} // NOLINT
+// While user Chrome would create two objects:
+//   Global\\OmahaS-1-5-21-39260824-743453154-142223018-386460UpdaterRunning{4DC8B4CA-1BDA-483E-B5FA-D3C12E15B62D}  // NOLINT
+//   Global\\OmahaS-1-5-21-39260824-743453154-142223018-386460UpdaterRunning{8A69D345-D564-463C-AFF1-A69D9E530F96}  // NOLINT
+//
+// The Omaha client will check for these events and not add these apps to the
+// bundle when performing an update check.  These events are also checked in
+// the COM server by the worker (as part of AppStateInit::QueueUpdateCheck);
+// if they are held when the worker runs, we will immediately transition to
+// AppStateError with code GOOPDATE_E_APP_USING_IN_PROCESS_UPDATER.
+const TCHAR* const kExternalUpdaterActivityPrefix =
+    _T("UpdaterRunning");
 
 // The name of the shared memory objects containing the serialized COM
 // interface pointers exposed by the machine core.

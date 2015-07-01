@@ -26,10 +26,14 @@ TEST(XmlRequestPingTest, ConstructorDefaultValue) {
   const bool has_sent_a_today = ping.days_since_last_active_ping == 0;
   const bool need_a = was_active && !has_sent_a_today;
   const bool need_r = ping.days_since_last_roll_call != 0;
+  const bool need_ad = was_active && ping.day_of_last_activity != 0;
+  const bool need_rd = ping.day_of_last_roll_call != 0;
 
   EXPECT_FALSE(need_active);
   EXPECT_FALSE(need_a);
   EXPECT_FALSE(need_r);
+  EXPECT_FALSE(need_ad);
+  EXPECT_FALSE(need_rd);
 }
 
 }  // namespace omaha

@@ -78,7 +78,7 @@ inline ULONGLONG HighresTimer::GetTimerFrequency() {
 inline ULONGLONG HighresTimer::GetCurrentTicks() {
   LARGE_INTEGER ticks;
   ::QueryPerformanceCounter(&ticks);
-  return ticks.QuadPart;
+  return static_cast<ULONGLONG>(ticks.QuadPart);
 }
 
 inline ULONGLONG HighresTimer::GetElapsedTicks() const {

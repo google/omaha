@@ -13,10 +13,13 @@
 // limitations under the License.
 // ========================================================================
 
+#include <utility>
+
 #include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/common/config_manager.h"
+#include "omaha/common/update_response.h"
 #include "omaha/common/web_services_client.h"
 #include "omaha/goopdate/app_bundle_state_busy.h"
 #include "omaha/goopdate/app_manager.h"
@@ -36,6 +39,7 @@
 namespace omaha {
 
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::Return;
 
 namespace {
@@ -47,8 +51,8 @@ namespace {
 const TCHAR* const kGuid1 = _T("{8A001254-1003-465e-A970-0748961C5293}");
 const TCHAR* const kGuid2 = _T("{058ADDBE-BF10-4ba1-93C0-6F4A52C03C7E}");
 #else
-const TCHAR* const kGuid1 = _T("{ADDE8406-A0F3-4AC2-8878-ADC0BD37BD86}");
-const TCHAR* const kGuid2 = _T("{D0AB2EBC-931B-4013-9FEB-C9C4C2225C8C}");
+const TCHAR* const kGuid1 = _T("{104844D6-7DDA-460B-89F0-FBF8AFDD0A67}");
+const TCHAR* const kGuid2 = _T("{8A69D345-D564-463C-AFF1-A69D9E530F96}");
 #endif
 
 // The alphabetical order of these is important for
@@ -88,6 +92,31 @@ void SetAppStateReadyToInstall(App* app) {
   SetAppStateForUnitTest(app, new fsm::AppStateReadyToInstall);
 }
 
+typedef HRESULT WebServiceClientSendMethod(
+    const xml::UpdateRequest* update_request,
+    xml::UpdateResponse* update_response);
+
+// Create a customized action to modify the output parameters in the mock
+// web service client.
+class WebServiceClientSendAction
+    : public ::testing::ActionInterface<WebServiceClientSendMethod> {
+ public:
+  virtual HRESULT Perform(const ArgumentTuple& args) {
+    xml::UpdateResponse* response = std::tr1::get<1>(args);
+    xml::response::Response r;
+
+    // Omaha expects |elapsed_days| to be in range. So set it to a valid
+    // number.
+    r.day_start.elapsed_days = kMinDaysSinceDatum + 123;
+    SetResponseForUnitTest(response, r);
+    return S_OK;
+  }
+};
+
+::testing::Action<WebServiceClientSendMethod> WebServiceClientSend() {
+  return ::testing::MakeAction(new WebServiceClientSendAction);
+}
+
 class MockWebServicesClient : public WebServicesClientInterface {
  public:
   MOCK_METHOD2(Send,
@@ -106,6 +135,16 @@ class MockWebServicesClient : public WebServicesClientInterface {
       int());
   MOCK_CONST_METHOD0(http_trace,
       CString());
+  MOCK_CONST_METHOD0(http_used_ssl,
+      bool());
+  MOCK_CONST_METHOD0(http_ssl_result,
+      HRESULT());
+  MOCK_CONST_METHOD0(http_xdaystart_header_value,
+      int());
+  MOCK_CONST_METHOD0(http_xdaynum_header_value,
+      int());
+  MOCK_CONST_METHOD0(http_xretryafter_header_value,
+      int());
 };
 
 class MockDownloadManager : public DownloadManagerInterface {
@@ -207,6 +246,9 @@ class WorkerTest : public testing::Test {
 
     EXPECT_SUCCEEDED(ResourceManager::Create(
       is_machine_, app_util::GetCurrentModuleDirectory(), _T("en")));
+
+    EXPECT_SUCCEEDED(RegKey::CreateKey(
+        ConfigManager::Instance()->registry_client_state(is_machine_)));
   }
 
   virtual void TearDown() {
@@ -346,6 +388,12 @@ class WorkerMockedManagersTest : public WorkerWithTwoAppsTest {
 
 TEST_F(WorkerMockedManagersTest, CheckForUpdateAsync) {
   EXPECT_CALL(*mock_web_services_client_, Send(_, _))
+      .Times(1).WillOnce(WebServiceClientSend());
+  ON_CALL(*mock_web_services_client_, http_trace())
+      .WillByDefault(Return(_T("")));
+  EXPECT_CALL(*mock_web_services_client_, http_trace())
+      .Times(AnyNumber());
+  EXPECT_CALL(*mock_web_services_client_, http_xretryafter_header_value())
       .Times(1);
 
   __mutexBlock(worker_->model()->lock()) {
@@ -518,6 +566,12 @@ TEST_F(WorkerMockedManagersTest, DownloadAsync_Then_DownloadAndInstallAsync) {
 
 TEST_F(WorkerMockedManagersTest, UpdateAllAppsAsync) {
   EXPECT_CALL(*mock_web_services_client_, Send(_, _))
+      .Times(1).WillOnce(WebServiceClientSend());
+  ON_CALL(*mock_web_services_client_, http_trace())
+      .WillByDefault(Return(_T("")));
+  EXPECT_CALL(*mock_web_services_client_, http_trace())
+      .Times(AnyNumber());
+  EXPECT_CALL(*mock_web_services_client_, http_xretryafter_header_value())
       .Times(1);
 
   __mutexBlock(worker_->model()->lock()) {
@@ -561,7 +615,7 @@ TEST_F(WorkerWithTwoAppsTest, CheckForUpdateAsync_Large) {
     EXPECT_TRUE(app_bundle_->IsBusy());
   }
 
-  WaitForBundleToBeReady(*app_bundle_, 10);
+  WaitForBundleToBeReady(*app_bundle_, 100);
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app1_->state());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app2_->state());
 }
@@ -625,7 +679,11 @@ TEST_F(WorkerWithTwoAppsTest,
 #endif
 }
 
-TEST_F(WorkerWithTwoAppsTest, DownloadAndInstallAsyncWithoutDownload_Large) {
+// TODO(omaha): This test is disabled because when the network is slow on Zerg,
+// the state remains at STATE_CHECKING_FOR_UPDATE instead of progressing to
+// STATE_UPDATE_AVAILABLE.
+TEST_F(WorkerWithTwoAppsTest,
+       DISABLED_DownloadAndInstallAsyncWithoutDownload_Large) {
   // Update Check: Request then wait for it to complete in the thread pool.
 
   __mutexBlock(worker_->model()->lock()) {
@@ -680,6 +738,27 @@ TEST_F(WorkerWithTwoAppsTest, UpdateAllAppsAsync_Large) {
     // Stop the bundle to prevent it from actually trying to update app.
     EXPECT_SUCCEEDED(app_bundle_->stop());
   }
+
+  // Warning: This unit test is pretty fragile.  Stopping a bundle returns
+  // immediately, and the stop is handled async; so, despite calling stop(),
+  // the UpdateAllApps DPC will still be in flight.
+  //
+  // If we try to tear down the worker before the DPC starts running, the
+  // AppBundle will still have a reference on it (due to the DPC still being
+  // in flight), so it will stay alive when Model::CleanupExpiredAppBundles()
+  // is called. That, in turn, keeps the ATL module lock on the Worker alive,
+  // which results in an assert at Worker destruction time.
+  //
+  // TODO(omaha3): We really need to rethink how we unit-test the Worker.  At
+  // the very least, we could introduce a counter of "DPCs in flight" and wait
+  // until that hits zero to do our teardown.  Alternately, find a way to block
+  // until someone calls AppBundleState::CompleteAsyncCall().
+  ::Sleep(1000);
+
+  WaitForBundleToBeReady(*app_bundle_, 10);
+  EXPECT_FALSE(app_bundle_->IsBusy());
+  EXPECT_EQ(STATE_ERROR, app1_->state());
+  EXPECT_EQ(STATE_ERROR, app2_->state());
 }
 
 class RecordUpdateAvailableUsageStatsTest : public testing::Test {
@@ -723,7 +802,7 @@ class RecordUpdateAvailableUsageStatsTest : public testing::Test {
     AppManager& app_manager = *AppManager::Instance();
     AppIdVector registered_app_ids;
     VERIFY1(SUCCEEDED(app_manager.GetRegisteredApps(&registered_app_ids)));
-    return registered_app_ids.size();
+    return static_cast<int>(registered_app_ids.size());
   }
 
   virtual void TearDown() {

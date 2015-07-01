@@ -15,7 +15,7 @@
 
 
 #include "omaha/base/encrypt.h"
-
+#include <intsafe.h>
 #include <vector>
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -33,11 +33,17 @@ HRESULT EncryptData(const void* key, size_t key_len,
   // key may be null.
   ASSERT1(data);
   ASSERT1(data_out);
+
+  if (key_len > DWORD_MAX || data_len > DWORD_MAX) {
+    return E_INVALIDARG;
+  }
+
   DATA_BLOB blob_out = {0, NULL};
-  DATA_BLOB blob_in = { data_len, static_cast<BYTE*>(const_cast<void*>(data)) };
+  DATA_BLOB blob_in = { static_cast<DWORD>(data_len),
+                        static_cast<BYTE*>(const_cast<void*>(data)) };
   DATA_BLOB entropy = { 0, NULL };
   if (key != NULL && key_len != 0) {
-    entropy.cbData = key_len;
+    entropy.cbData = static_cast<DWORD>(key_len);
     entropy.pbData = static_cast<BYTE*>(const_cast<void*>(key));
   }
 
@@ -64,12 +70,17 @@ HRESULT DecryptData(const void* key, size_t key_len,
   ASSERT1(data);
   ASSERT1(data_out);
 
+  if (key_len > DWORD_MAX || data_len > DWORD_MAX) {
+    return E_INVALIDARG;
+  }
+
   DATA_BLOB blob_out = {0, NULL};
-  DATA_BLOB blob_in = { data_len, static_cast<BYTE*>(const_cast<void*>(data)) };
+  DATA_BLOB blob_in = { static_cast<DWORD>(data_len),
+                        static_cast<BYTE*>(const_cast<void*>(data)) };
   DATA_BLOB entropy = { 0, NULL };
 
   if (key != NULL && key_len != 0) {
-    entropy.cbData = key_len;
+    entropy.cbData = static_cast<DWORD>(key_len);
     entropy.pbData = static_cast<BYTE*>(const_cast<void*>(key));
   }
 

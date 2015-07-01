@@ -35,6 +35,7 @@ class UpdateResponse;
 
 struct Lockable;
 class NetworkRequest;
+class CupRequest;
 
 typedef std::vector<std::pair<CString, CString> > HeadersVector;
 
@@ -60,9 +61,37 @@ class WebServicesClientInterface {
 
   // Returns http request trace (for logging).
   virtual CString http_trace() const = 0;
+
+  // Returns true if HTTPS was used for this transaction.
+  virtual bool http_used_ssl() const = 0;
+
+  // Returns the result of the HTTPS transaction.  (This will be S_FALSE if
+  // HTTPS wasn't used.)
+  virtual HRESULT http_ssl_result() const = 0;
+
+  // Returns the last valid value of the X-Daystart header or -1 if the
+  // header was not found in either request.
+  // If present, this value allows resetting the values of ActivePingDayStartSec
+  // and RollCallDayStartSec even if the server response could not be parsed
+  // for any reason.
+  virtual int http_xdaystart_header_value() const = 0;
+
+  // Same as above but for the value of the X-Daynum header and
+  // DayOfLastActivity/DayOfLastRollCall/DayOfInstall respectively.
+  virtual int http_xdaynum_header_value() const = 0;
+
+  // Returns the last valid value of the optional X-Retry-After header or -1 if
+  // the header was not present in the request.
+  // The server uses the optional X-Retry-After header to indicate that the
+  // current request should not be attempted again. Any response received along
+  // with the X-Retry-After header should be interpreted as it would have been
+  // without the X-Retry-After header. The value of the header is the number of
+  // seconds to wait before trying to connect to the server again.
+  virtual int http_xretryafter_header_value() const = 0;
 };
 
-// Defines a class to send and receive protocol requests.
+// Defines a class to send and receive protocol requests, with a fall back
+// from HTTPS to HTTP.
 class WebServicesClient : public WebServicesClientInterface {
  public:
   explicit WebServicesClient(bool is_machine);
@@ -75,7 +104,7 @@ class WebServicesClient : public WebServicesClientInterface {
   virtual HRESULT Send(const xml::UpdateRequest* update_request,
                        xml::UpdateResponse* update_response);
 
-  virtual HRESULT SendString(const CString* request_buffer,
+  virtual HRESULT SendString(const CString* request_string,
                              xml::UpdateResponse* update_response);
 
   virtual void Cancel();
@@ -88,26 +117,92 @@ class WebServicesClient : public WebServicesClientInterface {
 
   virtual CString http_trace() const;
 
+  virtual bool http_used_ssl() const;
+
+  virtual HRESULT http_ssl_result() const;
+
+  virtual int http_xdaystart_header_value() const;
+
+  virtual int http_xdaynum_header_value() const;
+
+  virtual int http_xretryafter_header_value() const;
+
  private:
-  HRESULT SendStringPreserveProtocol(bool need_preserve_https,
-                                     const CString* request_buffer,
-                                     xml::UpdateResponse* update_response);
+  HRESULT CreateRequest();
 
-  const Lockable& lock() const;
+  // Sends a string and possibly retries the request  by falling back on http
+  // if the request has failed the first time. No fall backs happens if the
+  // initial url is http or if encryption is required.
+  // Returns S_OK if the request is successfully sent, otherwise it returns the
+  // error corresponding to the first request sent.
+  HRESULT SendStringWithFallback(bool use_encryption,
+                                 const CString* request_string,
+                                 xml::UpdateResponse* update_response);
 
-  CString url() const;
+  // Sends a string representing a protocol message and returns a parsed
+  // response. The |update_response| parameter is only modified if the
+  // parsing has succeeded.
+  HRESULT SendStringInternal(const CString& url,
+                             const CStringA& utf8_request_string,
+                             xml::UpdateResponse* update_response);
 
-  NetworkRequest* network_request();
+  // Captures the values of kHeaderXDaystart and kHeaderXDaynum if the fields
+  // are found in the response headers.
+  void CaptureCustomHeaderValues();
 
-  mutable Lockable* volatile lock_;   // Owned by this instance.
+  // Finds the |search_name| header in the response headers (case-insensitive).
+  static CString FindHttpHeaderValue(const CString& all_headers,
+                                     const CString& search_name);
+
+  int FindHttpHeaderValueInt(const CString& header_name) const;
+
+  Lockable* volatile lock_;   // Owned by this instance.
 
   const bool is_machine_;
+
+  // The url of the update server. This is usually an HTTPS url but using
+  // the url override in the UpdateDev, an HTTP url can be specified for
+  // testing purposes. Since the class allow falling back on an HTTP url in
+  // certain cases, the actual request can go to a different url than what
+  // this member contains.
   CString url_;
 
+  // True if an HTTPS request has been made.
+  bool used_ssl_;
+
+  // Contains the error code of the HTTPS request, if such a request was made,
+  // or S_FALSE otherwise.
+  HRESULT ssl_result_;
+
+  // If true, the request will use CUP. In general, this is the case for
+  // update checks. Pings don't use CUP.
+  bool use_cup_;
+
+  // Contains the request headers to send.
+  HeadersVector headers_;
+
+  // Even if the response can't be parsed for any reason, store the values
+  // for these headers anyway, if the values are present. Since it is possible
+  // for two requests to be made due to fall back, the last valid values win.
+  // The values are -1 when the headers are not found.
+  int http_xdaystart_header_value_;
+  int http_xdaynum_header_value_;
+
+  // This member stores the value of the optional X-Retry-After header. If the
+  // server sends a positive value in seconds for this header, the request will
+  // return from the WebServicesClient::Send() call immediately.
+  // The default value is -1 when the header is not found.
+  int http_xretryafter_header_value_;
+
+  // Set by the client of this class, may be used by the network request if
+  // proxy authentication is required later on.
+  ProxyAuthConfig proxy_auth_config_;
+
+  // Each web services request must use its own network request instance.
   scoped_ptr<NetworkRequest> network_request_;
 
   friend class WebServicesClientTest;
-  DISALLOW_EVIL_CONSTRUCTORS(WebServicesClient);
+  DISALLOW_COPY_AND_ASSIGN(WebServicesClient);
 };
 
 }  // namespace omaha

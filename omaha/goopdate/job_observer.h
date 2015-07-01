@@ -23,6 +23,7 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include "base/scoped_ptr.h"
+#include "omaha/base/utils.h"
 #include "omaha/client/install_apps.h"
 #include "goopdate/omaha3_idl.h"
 
@@ -43,17 +44,25 @@ class JobObserverCOMDecorator
 
   // OnDemandObserver implementation.
   virtual void OnCheckingForUpdate();
-  virtual void OnUpdateAvailable(const CString& app_name,
+  virtual void OnUpdateAvailable(const CString& app_id,
+                                 const CString& app_name,
                                  const CString& version_string);
-  virtual void OnWaitingToDownload(const CString& app_name);
-  virtual void OnDownloading(const CString& app_name,
+  virtual void OnWaitingToDownload(const CString& app_id,
+                                   const CString& app_name);
+  virtual void OnDownloading(const CString& app_id,
+                             const CString& app_name,
                              int time_remaining_ms,
                              int pos);
-  virtual void OnWaitingRetryDownload(const CString& app_name,
+  virtual void OnWaitingRetryDownload(const CString& app_id,
+                                      const CString& app_name,
                                       time64 next_retry_time);
-  virtual void OnWaitingToInstall(const CString& app_name,
+  virtual void OnWaitingToInstall(const CString& app_id,
+                                  const CString& app_name,
                                   bool* can_start_install);
-  virtual void OnInstalling(const CString& app_name);
+  virtual void OnInstalling(const CString& app_id,
+                            const CString& app_name,
+                            int time_remaining_ms,
+                            int pos);
   virtual void OnPause();
   virtual void OnComplete(const ObserverCompletionInfo& observer_info);
   virtual void SetEventSink(OnDemandEventsInterface* event_sink);
@@ -79,12 +88,11 @@ class JobObserverCOMDecorator
     // InterlockedExchangePointer is broken due to ATL defining a function with
     // the same name in the global namespace and hiding the Win32 API.
     // InterlockedExchange introduces a full memory barrier.
-    ::InterlockedExchange(
-        reinterpret_cast<volatile LONG*>(&on_demand_events_),
-        reinterpret_cast<LONG>(on_demand_events));
+    interlocked_exchange_pointer(&on_demand_events_, on_demand_events);
   }
 
   CComPtr<IJobObserver> job_observer_;
+  CComPtr<IJobObserver2> job_observer2_;
   OnDemandEventsInterface* volatile on_demand_events_;
   DWORD thread_id_;
   DWORD worker_job_thread_id_;

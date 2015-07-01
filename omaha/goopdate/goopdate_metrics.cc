@@ -22,27 +22,22 @@ DEFINE_METRIC_integer(windows_minor_version);
 DEFINE_METRIC_integer(windows_sp_major_version);
 DEFINE_METRIC_integer(windows_sp_minor_version);
 
+DEFINE_METRIC_integer(windows_user_profile_type);
+
 DEFINE_METRIC_count(crashes_total);
 DEFINE_METRIC_count(crashes_uploaded);
 DEFINE_METRIC_count(crashes_throttled);
 DEFINE_METRIC_count(crashes_rejected);
 DEFINE_METRIC_count(crashes_failed);
 
-DEFINE_METRIC_count(oop_crashes_requested);
 DEFINE_METRIC_count(oop_crashes_total);
 DEFINE_METRIC_count(oop_crashes_uploaded);
 DEFINE_METRIC_count(oop_crashes_throttled);
 DEFINE_METRIC_count(oop_crashes_rejected);
 DEFINE_METRIC_count(oop_crashes_failed);
-DEFINE_METRIC_count(oop_crashes_crash_filename_empty);
-DEFINE_METRIC_count(oop_crashes_createcustominfofile_failed);
-DEFINE_METRIC_count(oop_crashes_startsenderwithcommandline_failed);
 DEFINE_METRIC_count(oop_crash_start_sender);
 
 DEFINE_METRIC_count(goopdate_handle_report_crash);
-
-DEFINE_METRIC_count(crash_start_server_total);
-DEFINE_METRIC_count(crash_start_server_succeeded);
 
 DEFINE_METRIC_count(cr_process_total);
 DEFINE_METRIC_count(cr_callback_total);

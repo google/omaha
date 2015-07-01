@@ -169,6 +169,7 @@ TEST_F(BundleCreatorTest, Create) {
   const CString kSessionId = _T("{6cb069db-b073-4a40-9983-846a3819876a}");
   const bool is_machine = true;
   const bool is_interactive = false;
+  const bool send_pings = true;
 
   CComPtr<IAppBundle> app_bundle;
   ASSERT_SUCCEEDED(bundle_creator::Create(is_machine,
@@ -176,6 +177,7 @@ TEST_F(BundleCreatorTest, Create) {
                                           kInstallSource,
                                           kSessionId,
                                           is_interactive,
+                                          send_pings,
                                           &app_bundle));
   CComBSTR display_name;
   EXPECT_SUCCEEDED(app_bundle->get_displayName(&display_name));
@@ -221,7 +223,8 @@ TEST_F(BundleCreatorTest, CreateFromCommandLine) {
   const bool is_interactive = true;
   const bool is_eula_accepted = true;
   const bool is_offline = true;
-  const CString offline_directory = _T("C:\\GoogleUpdateUnitTest");
+  const bool send_pings = true;
+  const CString offline_dir_name = _T("{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}");
 
   const GUID kApp1Id = {
     0x433bd902, 0x6c0d, 0x4115,
@@ -269,11 +272,12 @@ TEST_F(BundleCreatorTest, CreateFromCommandLine) {
       is_machine,
       is_eula_accepted,
       is_offline,
-      offline_directory,
+      offline_dir_name,
       extra_args,
       kInstallSource,
       kSessionId,
       is_interactive,
+      send_pings,
       &app_bundle));
 
   CComBSTR display_name;
@@ -290,8 +294,7 @@ TEST_F(BundleCreatorTest, CreateFromCommandLine) {
 
   long priority = INSTALL_PRIORITY_LOW;  // NOLINT(runtime/int)
   EXPECT_SUCCEEDED(app_bundle->get_priority(&priority));
-  EXPECT_EQ(is_interactive ? INSTALL_PRIORITY_HIGH : INSTALL_PRIORITY_LOW,
-            priority);
+  EXPECT_EQ(INSTALL_PRIORITY_HIGH, priority);
 
   CComBSTR display_language;
   EXPECT_SUCCEEDED(app_bundle->get_displayLanguage(&display_language));

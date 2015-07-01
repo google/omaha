@@ -21,6 +21,8 @@ namespace omaha {
 DEFINE_METRIC_count(worker_download_total);
 DEFINE_METRIC_count(worker_download_succeeded);
 
+DEFINE_METRIC_count(worker_download_skipped_bits_machine);
+
 DEFINE_METRIC_count(worker_package_cache_put_total);
 DEFINE_METRIC_count(worker_package_cache_put_succeeded);
 
@@ -73,5 +75,8 @@ DEFINE_METRIC_integer(worker_app_max_update_responses_ms_since_first);
 
 DEFINE_METRIC_timing(ping_failed_ms);
 DEFINE_METRIC_timing(ping_succeeded_ms);
+
+DEFINE_METRIC_timing(updatecheck_failed_ms);
+DEFINE_METRIC_timing(updatecheck_succeeded_ms);
 
 }  // namespace omaha

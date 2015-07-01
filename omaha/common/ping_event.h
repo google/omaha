@@ -1,4 +1,4 @@
-// Copyright 2008-2009 Google Inc.
+// Copyright 2012 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,14 @@ class PingEvent {
 
   // The extra code represents a state of the app state machine.
   static const int kAppStateExtraCodeMask   = 0x10000000;
+
+  // List of sources that could generate EVENT_DEBUG pings.
+  enum DebugMessageSource {
+    DEBUG_SOURCE_UPDATE_CHECK = 0,
+    DEBUG_SOURCE_FILE_VERIFICATION = 1,
+    DEBUG_SOURCE_LONG_TAIL = 2,
+    DEBUG_SOURCE_CRICKET_PROBE = 3,
+  };
 
   // When updating this enum, also update the protocol file on the server.
   // These values get reported to the server, so do not change existing ones.
@@ -85,6 +93,9 @@ class PingEvent {
     // No longer used - EVENT_GOOPDATE_DLL_FAILURE = 101,
     // No longer used - EVENT_SETUP_COM_SERVER_FAILURE = 102,
     // No longer used - EVENT_SETUP_UPDATE_FAILURE = 103,
+
+    EVENT_DEBUG = 50,
+    EVENT_CHROME_RECOVERY_COMPONENT = 53
   };
 
   // When updating this enum, also update the identical one in
@@ -107,13 +118,19 @@ class PingEvent {
   PingEvent(Types type,
             Results result,
             int error_code,
-            int extra_code1)
-      : event_type_(type),
-        event_result_(result),
-        error_code_(error_code),
-        extra_code1_(extra_code1) {
-    ASSERT1(EVENT_UNKNOWN != event_type_);
-  }
+            int extra_code1);
+
+  PingEvent(Types type,
+            Results result,
+            int error_code,
+            int extra_code1,
+            int source_url_index,
+            int update_check_time_ms,
+            int download_time_ms,
+            uint64 num_bytes_downloaded,
+            uint64 app_size,
+            int install_time_ms);
+
   virtual ~PingEvent() {}
 
   virtual HRESULT ToXml(IXMLDOMNode* parent_node) const;
@@ -124,6 +141,15 @@ class PingEvent {
   const Results event_result_;
   const int error_code_;
   const int extra_code1_;
+
+  const int source_url_index_;
+  const int update_check_time_ms_;
+  const int download_time_ms_;
+  const uint64 num_bytes_downloaded_;
+  const uint64 app_size_;
+  const int install_time_ms_;
+
+  DISALLOW_COPY_AND_ASSIGN(PingEvent);
 };
 
 typedef shared_ptr<const PingEvent> PingEventPtr;

@@ -19,6 +19,7 @@
 #ifndef OMAHA_COMMON_SCOPED_PTR_COTASK_H__
 #define OMAHA_COMMON_SCOPED_PTR_COTASK_H__
 
+#include <cassert>
 #include "omaha/base/debug.h"
 
 // scoped_ptr_cotask is identical to scoped_ptr, except that CoTaskMemFree is

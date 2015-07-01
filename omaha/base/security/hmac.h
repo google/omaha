@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_HMAC_H__
-#define OMAHA_COMMON_SECURITY_HMAC_H__
+#ifndef OMAHA_BASE_SECURITY_HMAC_H_
+#define OMAHA_BASE_SECURITY_HMAC_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 #include "hash-internal.h"
 
 #ifdef __cplusplus
@@ -28,8 +28,9 @@ typedef struct HMAC_CTX {
   uint8_t opad[64];
 } HMAC_CTX;
 
-void HMAC_MD5_init(HMAC_CTX* ctx, const void* key, int len);
-void HMAC_SHA_init(HMAC_CTX* ctx, const void* key, int len);
+void HMAC_MD5_init(HMAC_CTX* ctx, const void* key, unsigned int len);
+void HMAC_SHA_init(HMAC_CTX* ctx, const void* key, unsigned int len);
+void HMAC_SHA256_init(HMAC_CTX* ctx, const void* key, unsigned int len);
 const uint8_t* HMAC_final(HMAC_CTX* ctx);
 
 #define HMAC_update(ctx, data, len) HASH_update(&(ctx)->hash, data, len)
@@ -39,4 +40,4 @@ const uint8_t* HMAC_final(HMAC_CTX* ctx);
 }
 #endif
 
-#endif  // OMAHA_COMMON_SECURITY_HMAC_H__
+#endif  // OMAHA_BASE_SECURITY_HMAC_H_

@@ -44,7 +44,6 @@
 
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
-#include "omaha/base/signaturevalidator.h"
 #include "omaha/common/const_goopdate.h"
 
 // TODO(omaha3): move to common.
@@ -76,117 +75,35 @@ bool FileExists(const TCHAR* file_name) {
   return 0 != ::GetFileAttributesEx(file_name, ::GetFileExInfoStandard, &attrs);
 }
 
-// Adapted from vistautil.cc.
-bool IsVistaOrLater() {
-  static bool known = false;
-  static bool is_vista = false;
-  if (!known) {
-    OSVERSIONINFOEX osvi = {0};
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-    osvi.dwMajorVersion = 6;
-    DWORDLONG conditional = 0;
-    VER_SET_CONDITION(conditional, VER_MAJORVERSION, VER_GREATER_EQUAL);
-    is_vista = !!::VerifyVersionInfo(&osvi, VER_MAJORVERSION, conditional);
-    known = true;
-  }
-  return is_vista;
-}
-
-// Checking the full path vs. just being somewhere in Program Files is important
-// because other programs may have lowered the ACLs of some subdirectories.
-bool IsRunningFromProgramFilesDirectory() {
-  // Get the HMODULE for the current process.
-  HMODULE module_handle = ::GetModuleHandle(NULL);
-  if (!module_handle) {
-    return false;
-  }
-
-  // Get the full path to the module based on the HMODULE.
+// Returns true if the current process is running under the passed-in csidl.
+bool IsRunningFromDir(int csidl) {
+  // TODO(omaha3): Once we've refactored main.lib (http://b/5904730) and can
+  // link with it, replace this with a call to app_util::GetModulePath().
   CString module_path;
-  DWORD result = ::GetModuleFileName(module_handle,
-                                     module_path.GetBufferSetLength(MAX_PATH),
+  DWORD result = ::GetModuleFileName(NULL,
+                                     CStrBuf(module_path, MAX_PATH),
                                      MAX_PATH);
-  module_handle = NULL;
-
-  if (result == 0) {
+  if (!result || result > MAX_PATH) {
     return false;
   }
 
-  // Get the directory of the current process without the filename.
   CPath path_temp(module_path);
   path_temp.RemoveFileSpec();
   module_path = static_cast<CString>(path_temp);
 
-  // Get the directory to %ProgramFiles%.
-  TCHAR folder_path_buffer[MAX_PATH] = {0};
-  HRESULT hr = ::SHGetFolderPath(NULL,
-                                 CSIDL_PROGRAM_FILES,
-                                 NULL,
-                                 SHGFP_TYPE_CURRENT,
-                                 folder_path_buffer);
-  if (FAILED(hr)) {
-    return false;
-  }
-
-  // Append the google/update install path onto %ProgramFiles%.
-  CString folder_path = folder_path_buffer;
-  if (!::PathAppend(CStrBuf(folder_path, MAX_PATH),
-                    OMAHA_REL_GOOPDATE_INSTALL_DIR)) {
+  CString folder_path;
+  if (FAILED(::SHGetFolderPath(NULL,
+                               csidl,
+                               NULL,
+                               SHGFP_TYPE_CURRENT,
+                               CStrBuf(folder_path, MAX_PATH)))) {
     return false;
   }
 
   folder_path.MakeLower();
   module_path.MakeLower();
 
-  // Check if module_path starts with folder_path.
   return (module_path.Find(folder_path) == 0);
-}
-
-// In the following case, we need to validate the signature of goopdate.dll
-// before loading it to maintain the chain of trust:
-//  * Not running from a secure location
-//  * Vista and later
-//  * Running elevated/with admin privileges
-//  * UAC is not disabled
-//
-// We explicitly do not perform the authenticode check when UAC is disabled
-// because the other conditions are all satisfied by the per-user instance of
-// Omaha installed for a member of the admin group. Without an explicit check,
-// an authenticode check would be performed every time the the per-user instance
-// runs in these configurations.
-// Skipping the authenticode check when UAC is disabled is also okay because the
-// user has opted to let all applications run with the same privilege, so there
-// is no need elevation of privileges.
-// TODO(omaha): Eliminate the supported cases where this shell runs elevated
-// from an unsecure location and replace the authenticode check with an error.
-HRESULT VerifySignatureIfNecessary(const TCHAR* file_path,
-                                   bool is_running_from_secure_location) {
-  if (is_running_from_secure_location ||
-      !IsVistaOrLater() ||
-      !::IsUserAnAdmin()) {
-    return S_OK;
-  }
-
-  // Verify the Authenticode signature but use only the local cache for
-  // revocation checks.
-  HRESULT hr = VerifySignature(file_path, false);
-#if TEST_CERTIFICATE
-  // The chain of trust will not validate on builds signed with the test
-  // certificate.
-  if (CERT_E_UNTRUSTEDROOT == hr) {
-    hr = S_OK;
-  }
-#endif
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  // Verify that there is a Google certificate and that it has not expired.
-  if (!VerifySigneeIsGoogle(file_path)) {
-    return GOOGLEUPDATE_E_VERIFY_SIGNEE_IS_GOOGLE_FAILED;
-  }
-
-  return S_OK;
 }
 
 HRESULT GetRegisteredVersion(bool is_machine, CString* version) {
@@ -265,31 +182,21 @@ HRESULT GetDllPath(HINSTANCE instance, bool is_machine, CString* dll_path) {
 //  * Looks for goopdate.dll in the current directory.
 //  * If it is not found, looks for goopdate.dll in a version subdirectory based
 //    on the version found in the registry.
-//  * Verifies the signature of the goopdate.dll file.
 //  * Loads the DLL and calls the entry point.
 int WINAPI _tWinMain(HINSTANCE instance,
                      HINSTANCE,
                      LPTSTR,
                      int cmd_show) {
-  bool is_running_from_program_files =
-      omaha::IsRunningFromProgramFilesDirectory();
-
   // We assume here that running from program files means we should check
   // the machine install version and otherwise we should check the user
   // version. This should be true in all end user cases except for initial
   // installs from the temp directory, in which case the DLL should be in the
   // same directory so this value does not get used.
   // For developer use cases, the DLL should also be in the same directory.
-  bool is_machine = is_running_from_program_files;
+  bool is_machine = omaha::IsRunningFromDir(CSIDL_PROGRAM_FILES);
 
   CString dll_path;
   HRESULT hr = omaha::GetDllPath(instance, is_machine, &dll_path);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  hr = omaha::VerifySignatureIfNecessary(dll_path,
-                                         is_running_from_program_files);
   if (FAILED(hr)) {
     return hr;
   }

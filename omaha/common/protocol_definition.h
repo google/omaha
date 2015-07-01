@@ -21,12 +21,15 @@
 #ifndef OMAHA_COMMON_PROTOCOL_DEFINITION_H_
 #define OMAHA_COMMON_PROTOCOL_DEFINITION_H_
 
+#include <cstring>
 #include <vector>
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/install_manifest.h"
 #include "omaha/common/ping_event.h"
 
 namespace omaha {
+
+typedef std::pair<CString, CString> StringPair;
 
 namespace xml {
 
@@ -35,23 +38,37 @@ namespace request {
 // Defines the structure of the Omaha protocol update request.
 // The structure of the request is:
 //
-// Request | --- OS
+// Request | --- Hw
+//         | --- OS
 //         | -<- App | --- UpdateCheck
-//                   | --- Data
+//                   | -<- Data
 //                   | --- Ping
 //                   | -<- PingEvent
+//
+// In the diagram above, --- and -<- mean 1:1 and 1:many respectively.
 //
 // The xml parser traverses this data structure in order to serialize it. The
 // names of the members of structures closely match the names of the elements
 // and attributes in the xml document.
-//
-// TODO(omaha): briefly document the members.
+
+struct Hw {
+  uint32 physmemory;  // Physical memory rounded down to the closest GB.
+
+  // Instruction set capabilities for the CPU.
+  bool has_sse;
+  bool has_sse2;
+  bool has_sse3;
+  bool has_ssse3;
+  bool has_sse41;
+  bool has_sse42;
+  bool has_avx;
+};
 
 struct OS {
-  CString platform;
-  CString version;
+  CString platform;       // "win".
+  CString version;        // major.minor.
   CString service_pack;
-  CString arch;
+  CString arch;           // "x86", "x64", or "unknown".
 };
 
 struct UpdateCheck {
@@ -66,60 +83,76 @@ struct UpdateCheck {
   CString tt_token;
 };
 
-// For now, only a single "install" data is supported.
+
 struct Data {
+  CString name;                 // It could be either "install" or "untrusted".
   CString install_data_index;
+  CString untrusted_data;
 };
 
 // didrun element. The element is named "ping" for legacy reasons.
 struct Ping {
   Ping() : active(ACTIVE_UNKNOWN),
            days_since_last_active_ping(0),
-           days_since_last_roll_call(0) {}
+           days_since_last_roll_call(0),
+           day_of_last_activity(0),
+           day_of_last_roll_call(0) {}
 
   ActiveStates active;
   int days_since_last_active_ping;
   int days_since_last_roll_call;
+  int day_of_last_activity;
+  int day_of_last_roll_call;
 };
 
 struct App {
-    App() : install_time_diff_sec(0) {}
+  App() : install_time_diff_sec(0), day_of_install(0) {}
 
-    CString app_id;
+  CString app_id;
 
-    CString version;
+  CString version;
 
-    CString next_version;
+  CString next_version;
 
-    CString ap;
+  std::vector<StringPair> app_defined_attributes;
 
-    CString lang;
+  CString ap;
 
-    CString iid;
+  CString lang;
 
-    CString brand_code;
+  CString iid;
 
-    CString client_id;
+  CString brand_code;
 
-    CString experiments;
+  CString client_id;
 
-    int install_time_diff_sec;
+  CString experiments;
 
-    // Optional update check.
-    UpdateCheck update_check;
+  int install_time_diff_sec;
 
-    // Optional data.
-    Data data;
+  int day_of_install;
 
-    // Optional 'did run' ping.
-    Ping ping;
+  CString cohort;       // Opaque string.
+  CString cohort_hint;  // Server may use to move the app to a new cohort.
+  CString cohort_name;  // Human-readable interpretation of the cohort.
 
-    // Progress/result pings.
-    PingEventVector ping_events;
-  };
+  // Optional update check.
+  UpdateCheck update_check;
+
+  // Optional data.
+  std::vector<Data> data;
+
+  // Optional 'did run' ping.
+  Ping ping;
+
+  // Progress/result pings.
+  PingEventVector ping_events;
+};
 
 struct Request {
-  Request() : is_machine(false), check_period_sec(-1) {}
+  Request() : is_machine(false), check_period_sec(-1) {
+    memset(&hw, 0, sizeof(hw));
+  }
 
   bool is_machine;
 
@@ -128,6 +161,8 @@ struct Request {
   CString protocol_version;
 
   CString omaha_version;
+
+  CString omaha_shell_version;
 
   CString install_source;
 
@@ -149,6 +184,13 @@ struct Request {
   // using the default value.
   int check_period_sec;
 
+  // Provides a hint for what download urls should be returned by server.
+  // This data member is controlled by a group policy settings.
+  // The only group policy value supported so far is "cacheable".
+  CString dlpref;
+
+  Hw hw;
+
   OS os;
 
   std::vector<App> apps;
@@ -158,13 +200,26 @@ struct Request {
 
 namespace response {
 
+// Status strings returned by the server.
+const TCHAR* const kStatusOkValue = _T("ok");
+const TCHAR* const kStatusNoUpdate = _T("noupdate");
+const TCHAR* const kStatusRestrictedExportCountry = _T("restricted");
+const TCHAR* const kStatusHwNotSupported = _T("error-hwnotsupported");
+const TCHAR* const kStatusOsNotSupported = _T("error-osnotsupported");
+const TCHAR* const kStatusUnKnownApplication = _T("error-UnKnownApplication");
+const TCHAR* const kStatusInternalError = _T("error-internal");
+const TCHAR* const kStatusHashError = _T("error-hash");
+const TCHAR* const kStatusUnsupportedProtocol = _T("error-unsupportedprotocol");
+const TCHAR* const kStatusNoData = _T("error-nodata");
+const TCHAR* const kStatusInvalidArgs = _T("error-invalidargs");
+
 // Defines an Omaha protocol update response. The structure of the response is:
 //
 // Response | --- DayStart
 //          | -<- App | --- UpdateCheck | --- Urls
 //                                      | --- InstallManifest | --- Packages
 //                                                            | --- Actions
-//                    | --- Data
+//                    | -<- Data
 //                    | --- Ping
 //                    | -<- Event
 //
@@ -179,17 +234,16 @@ struct UpdateCheck {
 
   CString tt_token;
 
-  CString error_url;         // URL describing error.
+  CString error_url;         // URL describing error. Ignored in Omaha 3.
 
   std::vector<CString> urls;
 
   InstallManifest install_manifest;
 };
 
-// For now, only a single "install" data is supported.
 struct Data {
   CString status;
-
+  CString name;
   CString install_data_index;
   CString install_data;
 };
@@ -210,6 +264,10 @@ struct App {
 
   CString experiments;
 
+  CString cohort;       // Opaque string.
+  CString cohort_hint;  // Server may use to move the app to a new cohort.
+  CString cohort_name;  // Human-readable interpretation of the cohort.
+
   UpdateCheck update_check;
 
   std::vector<Data> data;
@@ -220,9 +278,10 @@ struct App {
 };
 
 struct DayStart {
-  DayStart() : elapsed_seconds(0) {}
+  DayStart() : elapsed_seconds(0), elapsed_days(0) {}
 
-  int elapsed_seconds;
+  int elapsed_seconds;  // Number of seconds since mid-night.
+  int elapsed_days;     // Number of days elapsed since a chosen datum.
 };
 
 struct Response {
@@ -238,4 +297,3 @@ struct Response {
 }  // namespace omaha
 
 #endif  // OMAHA_COMMON_PROTOCOL_DEFINITION_H_
-

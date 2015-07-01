@@ -16,8 +16,6 @@
 #ifndef OMAHA_GOOGLE_UPDATE_PRECOMPILE_H__
 #define OMAHA_GOOGLE_UPDATE_PRECOMPILE_H__
 
-#pragma runtime_checks("", off)
-
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -31,5 +29,7 @@
 #pragma warning(disable : 4310)
 #include "base/basictypes.h"
 #pragma warning(pop)
+
+#pragma strict_gs_check(on)
 
 #endif  // OMAHA_GOOGLE_UPDATE_PRECOMPILE_H__

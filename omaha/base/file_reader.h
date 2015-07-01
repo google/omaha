@@ -31,7 +31,7 @@ class FileReader {
   ~FileReader();
 
   // Specifies the underlying file name and the size of internal read buffer.
-  HRESULT Init(const TCHAR* file_name, size_t buffer_size);
+  HRESULT Init(const TCHAR* file_name, uint32 buffer_size);
 
   // Reads one line of text from the file, taking advantage of the internal
   // file buffer to optimize I/O reads. It reads at most max_len - 1 characters
@@ -41,14 +41,14 @@ class FileReader {
 
  private:
   HRESULT GetNextChar(bool peek, CString* next_char);
-  size_t file_buffer_size() const { return file_buffer_size_; }
+  uint32 file_buffer_size() const { return file_buffer_size_; }
 
   File file_;
   bool file_is_open_;
-  size_t buffered_byte_count_;          // How many bytes are in the buffer.
-  size_t current_position_;             // An index into the buffer.
+  uint32 buffered_byte_count_;          // How many bytes are in the buffer.
+  uint32 current_position_;             // An index into the buffer.
   scoped_array<byte> file_buffer_;      // A buffer (cache) of the file.
-  size_t file_buffer_size_;             // How much of the file to slurp
+  uint32 file_buffer_size_;             // How much of the file to slurp
                                         // in on each read.
   bool is_unicode_;
 

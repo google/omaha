@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Security;
 using System.Security.Permissions;
+using System.Text;
 using System.Windows.Forms;
 using System.Web;
 
@@ -47,7 +48,22 @@ namespace ClickOnceBootstrap {
         }
         // Remove the '?' prefix.
         query_string = query_string.Substring(1);
+
+        // We decode and then re-encode using a strict encoder that encodes
+        // unsafe characters including #, /, and ?.
         query_string = HttpUtility.UrlDecode(query_string);
+        query_string = System.Uri.EscapeDataString(query_string);
+
+        // Now we unescape a selective white-list of characters.
+        System.Text.StringBuilder unescape_safe_chars =
+            new StringBuilder(query_string);
+        unescape_safe_chars.Replace("%3D", "=");
+        unescape_safe_chars.Replace("%26", "&");
+        unescape_safe_chars.Replace("%7B", "{");
+        unescape_safe_chars.Replace("%7D", "}");
+        unescape_safe_chars.Replace("%25", "%");
+        query_string = unescape_safe_chars.ToString();
+
         string setup_path = Path.Combine(Application.StartupPath,
                                           "GoogleUpdateSetup.exe");
 

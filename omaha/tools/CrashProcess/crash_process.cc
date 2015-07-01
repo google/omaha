@@ -64,8 +64,8 @@ int _tmain(int argc, TCHAR* argv[]) {
     if (process_handle) {
       TCHAR process_name[1024] = {0};
       if (::GetProcessImageFileName(process_handle, process_name, 1024) != 0) {
-        size_t len = wcslen(target_process_name);
-        size_t total_len = wcslen(process_name);
+        int len = static_cast<int>(wcslen(target_process_name));
+        int total_len = static_cast<int>(wcslen(process_name));
         int offset = total_len - len;
         if (offset >= 0 &&
             _wcsicmp(&(process_name[offset]), target_process_name) == 0) {

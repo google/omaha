@@ -34,14 +34,14 @@ class CommandLineValidator {
  public:
   class ScenarioParameter {
    public:
-    ScenarioParameter(const TCHAR* switch_name, int num_required_parameters)
+    ScenarioParameter(const TCHAR* switch_name, size_t num_required_parameters)
       : switch_name_(switch_name),
         num_required_parameters_(num_required_parameters) {
     }
     ~ScenarioParameter() {}
 
     CString switch_name_;
-    int num_required_parameters_;
+    size_t num_required_parameters_;
 
    private:
     DISALLOW_EVIL_CONSTRUCTORS(ScenarioParameter);
@@ -86,16 +86,16 @@ class CommandLineValidator {
   // Adds a switch and its parameter count to an existing scenario.
   HRESULT AddScenarioParameter(const CString& scenario_name,
                                const CString& switch_name,
-                               int num_required_parameters);
+                               size_t num_required_parameters);
   HRESULT AddOptionalScenarioParameter(const CString& scenario_name,
                                        const CString& switch_name,
-                                       int num_required_parameters);
+                                       size_t num_required_parameters);
 
  private:
   bool DoesScenarioMatch(const CommandLineParser& command_line_parser,
                          const ScenarioParameters& scenario_parameters) const;
 
-  int scenario_sequence_number_;
+  size_t scenario_sequence_number_;
   MapScenarios scenarios_;
   DISALLOW_EVIL_CONSTRUCTORS(CommandLineValidator);
 };

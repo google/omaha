@@ -15,8 +15,8 @@
 
 
 #include "omaha/common/event_logger.h"
-
 #include <sddl.h>
+#include <intsafe.h>
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -80,12 +80,13 @@ HRESULT EventLogger::AddEventSource(const TCHAR* src_name,
 
   // Set the name of the message file. RegKey class can't set REG_EXPAND_SZ
   // values so we must use the low level OS call.
-  int result = ::RegSetValueEx(reg_key.Key(),
-                               _T("EventMessageFile"),
-                               0,
-                               REG_EXPAND_SZ,
-                               reinterpret_cast<const byte*>(msg_dll_path),
-                               (_tcslen(msg_dll_path) + 1) * sizeof(TCHAR));
+  int result = ::RegSetValueEx(
+      reg_key.Key(),
+      _T("EventMessageFile"),
+      0,
+      REG_EXPAND_SZ,
+      reinterpret_cast<const byte*>(msg_dll_path),
+      static_cast<DWORD>((_tcslen(msg_dll_path) + 1) * sizeof(TCHAR)));
   if (result != ERROR_SUCCESS) return HRESULT_FROM_WIN32(result);
 
   // Set the supported event types.
@@ -124,6 +125,10 @@ HRESULT EventLogger::ReportEvent(const TCHAR* src_name,
           type == EVENTLOG_WARNING_TYPE ||
           type == EVENTLOG_INFORMATION_TYPE);
 
+  if (buf_size > DWORD_MAX) {
+    return E_INVALIDARG;
+  }
+
   //  Opens the log on the local computer.
   HANDLE hlog = ::RegisterEventSource(NULL, src_name);
   if (!hlog) {
@@ -142,15 +147,15 @@ HRESULT EventLogger::ReportEvent(const TCHAR* src_name,
   }
 
   HRESULT hr = E_FAIL;
-  if (::ReportEvent(hlog,       // Event log handle.
-                    type,       // Event type.
-                    category,   // Event category.
-                    id,         // Event identifier.
-                    psid,       // User security identifier.
-                    count,      // Number of substitution strings.
-                    buf_size,   // Size of binary data.
-                    strings,    // Pointer to strings.
-                    buffer)) {  // Binary data.
+  if (::ReportEvent(hlog,
+                    type,
+                    category,
+                    id,
+                    psid,
+                    count,
+                    static_cast<DWORD>(buf_size),
+                    strings,
+                    buffer)) {
     hr = S_OK;
   } else {
     hr = HRESULTFromLastError();

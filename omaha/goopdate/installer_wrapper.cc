@@ -13,10 +13,13 @@
 // limitations under the License.
 // ========================================================================
 
+#include <vector>
+#include "goopdate/omaha3_idl.h"
 #include "omaha/goopdate/installer_wrapper.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/const_utils.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/environment_block_modifier.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
@@ -28,6 +31,7 @@
 #include "omaha/base/synchronized.h"
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
+#include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/goopdate/app_manager.h"
@@ -61,7 +65,7 @@ CString BuildMsiCommandLine(const CString& arguments,
                           msi_file_path);
 
   // The msiexec version in XP SP2 (V 3.01) and higher supports the /log switch.
-  if (SystemInfo::OSWinXPSP2OrLater()) {
+  if (SystemInfo::IsRunningOnXPSP2OrLater()) {
     CString logfile(msi_file_path);
     logfile.Append(_T(".log"));
 
@@ -151,12 +155,14 @@ HRESULT InstallerWrapper::Initialize() {
 // Assumes the call is protected by some mechanism providing exclusive access
 // to the app's registry keys in Clients and ClientState.
 HRESULT InstallerWrapper::InstallApp(HANDLE user_token,
-                                   const GUID& app_guid,
-                                   const CString& installer_path,
-                                   const CString& arguments,
-                                   const CString& installer_data,
-                                   const CString& language,
-                                   InstallerResultInfo* result_info) {
+                                     const GUID& app_guid,
+                                     const CString& installer_path,
+                                     const CString& arguments,
+                                     const CString& installer_data,
+                                     const CString& language,
+                                     const CString& untrusted_data,
+                                     int install_priority,
+                                     InstallerResultInfo* result_info) {
   ASSERT1(result_info);
 
   HRESULT hr = DoInstallApp(user_token,
@@ -165,6 +171,8 @@ HRESULT InstallerWrapper::InstallApp(HANDLE user_token,
                             arguments,
                             installer_data,
                             language,
+                            untrusted_data,
+                            install_priority,
                             result_info);
 
   ASSERT1((SUCCEEDED(hr) && result_info->type == INSTALLER_RESULT_SUCCESS) ||
@@ -178,6 +186,7 @@ HRESULT InstallerWrapper::InstallApp(HANDLE user_token,
           (FAILED(hr) && result_info->type == INSTALLER_RESULT_UNKNOWN));
   ASSERT1(!result_info->text.IsEmpty() ==
               (GOOPDATEINSTALL_E_INSTALLER_FAILED == hr ||
+               GOOPDATEINSTALL_E_INSTALLER_TIMED_OUT == hr ||
                GOOPDATEINSTALL_E_MSI_INSTALL_ALREADY_RUNNING == hr) ||
           SUCCEEDED(hr));  // Successes may or may not have messages.
 
@@ -282,8 +291,9 @@ HRESULT InstallerWrapper::BuildCommandLineFromFilename(
       if (enclosed_installer_data_file_path.IsEmpty()) {
         *command_line = arguments;
       } else {
-        SafeCStringFormat(command_line, _T("%s /installerdata=%s"),
+        SafeCStringFormat(command_line, _T("%s %s%s"),
                           arguments,
+                          kCmdLineInstallerData,
                           enclosed_installer_data_file_path);
       }
       *installer_type = CUSTOM_INSTALLER;
@@ -325,6 +335,8 @@ HRESULT InstallerWrapper::ExecuteAndWaitForInstaller(
     const CString& command_line,
     InstallerType installer_type,
     const CString& language,
+    const CString& untrusted_data,
+    int install_priority,
     InstallerResultInfo* result_info) {
   CORE_LOG(L3, (_T("[InstallerWrapper::ExecuteAndWaitForInstaller]")));
   ASSERT1(result_info);
@@ -359,6 +371,8 @@ HRESULT InstallerWrapper::ExecuteAndWaitForInstaller(
                                       command_line,
                                       installer_type,
                                       language,
+                                      untrusted_data,
+                                      install_priority,
                                       result_info);
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("[DoExecuteAndWaitForInstaller failed][0x%08x]"), hr));
@@ -410,6 +424,8 @@ HRESULT InstallerWrapper::DoExecuteAndWaitForInstaller(
     const CString& command_line,
     InstallerType installer_type,
     const CString& language,
+    const CString& untrusted_data,
+    int install_priority,
     InstallerResultInfo* result_info) {
   OPT_LOG(L1, (_T("[Running installer][%s][%s][%s]"),
                executable_path, command_line, GuidToString(app_guid)));
@@ -417,13 +433,38 @@ HRESULT InstallerWrapper::DoExecuteAndWaitForInstaller(
 
   AppManager::Instance()->ClearInstallerResultApiValues(app_guid);
 
+  // Create modified environment block to pass untrusted data.
+  std::vector<TCHAR> env_block;
+  EnvironmentBlockModifier eb_mod;
+  if (!untrusted_data.IsEmpty()) {
+    eb_mod.SetVar(kEnvVariableUntrustedData, untrusted_data);
+  }
+  eb_mod.SetVar(kEnvVariableIsMachine, is_machine_ ? _T("1") : _T("0"));
+
+  bool eb_res = user_token ?
+                    eb_mod.CreateForUser(user_token, &env_block) :
+                    eb_mod.CreateForCurrentUser(&env_block);
+  if (!eb_res) {
+    HRESULT hr = HRESULTFromLastError();
+    ASSERT(false, (_T("[EnvironmentBlockModifier failed][0x%x]"), hr));
+    return hr;
+  }
+
+  ASSERT1(!env_block.empty());
+
   Process p(executable_path, NULL);
-  HRESULT hr = p.Start(command_line, user_token);
+  HRESULT hr = p.StartWithEnvironment(command_line,
+                                      user_token,
+                                      &env_block.front());
   if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[p.Start fail][hr][%s][%s]"),
+    OPT_LOG(LE, (_T("[p.Start fail][0x%08x][%s][%s]"),
         hr, executable_path, command_line));
     set_error_extra_code1(static_cast<int>(hr));
     return GOOPDATEINSTALL_E_INSTALLER_FAILED_START;
+  }
+
+  if (install_priority != INSTALL_PRIORITY_HIGH) {
+    VERIFY1(::SetPriorityClass(p.GetHandle(), BELOW_NORMAL_PRIORITY_CLASS));
   }
 
   // TODO(omaha): InstallerWrapper should not special case Omaha. It is better
@@ -438,43 +479,38 @@ HRESULT InstallerWrapper::DoExecuteAndWaitForInstaller(
     return S_OK;
   }
 
-  if (!p.WaitUntilDead(kInstallerCompleteIntervalMs)) {
-    OPT_LOG(LEVEL_WARNING, (_T("[Installer has timed out]")
-                            _T("[%s][%s]"), executable_path, command_line));
-    return GOOPDATEINSTALL_E_INSTALLER_TIMED_OUT;
-  }
-
-  hr = GetInstallerResult(app_guid,
-                          installer_type,
-                          p,
-                          language,
-                          result_info);
-  if (FAILED(hr)) {
-    CORE_LOG(LEVEL_ERROR, (_T("[GetInstallerResult failed][0x%08x]"), hr));
-    return hr;
-  }
+  p.WaitUntilDead(kInstallerCompleteIntervalMs);
+  hr = GetInstallerResult(app_guid, installer_type, p, language, result_info);
 
   if (result_info->type != INSTALLER_RESULT_SUCCESS) {
     OPT_LOG(LE, (_T("[Installer failed][%s][%s][%u]"),
                  executable_path, command_line, result_info->code));
   }
 
-  return S_OK;
+  return hr;
 }
 
 HRESULT InstallerWrapper::GetInstallerResult(const GUID& app_guid,
-                                           InstallerType installer_type,
-                                           const Process& p,
-                                           const CString& language,
-                                           InstallerResultInfo* result_info) {
+                                             InstallerType installer_type,
+                                             const Process& p,
+                                             const CString& language,
+                                             InstallerResultInfo* result_info) {
   CORE_LOG(L3, (_T("[InstallerWrapper::GetInstallerResult]")));
   ASSERT1(result_info);
 
+  HRESULT hr = S_OK;
   uint32 exit_code = 0;
-  HRESULT hr = GetInstallerExitCode(p, &exit_code);
-  if (FAILED(hr)) {
-    CORE_LOG(LEVEL_ERROR, (_T("[GetInstallerExitCode failed][0x%08x]"), hr));
-    return hr;
+  if (p.Running()) {
+    OPT_LOG(LEVEL_WARNING, (_T("[Installer has timed out]")));
+    hr = GOOPDATEINSTALL_E_INSTALLER_TIMED_OUT;
+    exit_code = static_cast<uint32>(hr);
+  } else {
+    hr = GetInstallerExitCode(p, &exit_code);
+    if (FAILED(hr)) {
+      CORE_LOG(LEVEL_ERROR, (_T("[GetInstallerExitCode failed][0x%08x]"), hr));
+      return hr;
+    }
+    hr = S_OK;
   }
 
   GetInstallerResultHelper(app_guid,
@@ -482,7 +518,7 @@ HRESULT InstallerWrapper::GetInstallerResult(const GUID& app_guid,
                            exit_code,
                            language,
                            result_info);
-  return S_OK;
+  return hr;
 }
 
 // The default InstallerResult behavior can be overridden in the registry.
@@ -492,7 +528,7 @@ HRESULT InstallerWrapper::GetInstallerResult(const GUID& app_guid,
 void InstallerWrapper::GetInstallerResultHelper(
     const GUID& app_guid,
     InstallerType installer_type,
-    uint32 exit_code,
+    uint32 result_code,
     const CString& language,
     InstallerResultInfo* result_info) {
   ASSERT1(result_info);
@@ -501,7 +537,7 @@ void InstallerWrapper::GetInstallerResultHelper(
       AppManager::INSTALLER_RESULT_DEFAULT;
   InstallerResultInfo result;
 
-  result.code = exit_code;
+  result.code = result_code;
 
   AppManager& app_manager = *AppManager::Instance();
   app_manager.ReadInstallerResultApiValues(
@@ -529,10 +565,12 @@ void InstallerWrapper::GetInstallerResultHelper(
       result.type = INSTALLER_RESULT_ERROR_SYSTEM;
       break;
     case AppManager::INSTALLER_RESULT_EXIT_CODE:
-      ASSERT(result.code == exit_code, (_T("InstallerError overridden")));
-      if (0 == exit_code) {
+      ASSERT(result.code == result_code, (_T("InstallerError overridden")));
+      if (0 == result_code) {
         result.type = INSTALLER_RESULT_SUCCESS;
         result.code = 0;
+      } else if (GOOPDATEINSTALL_E_INSTALLER_TIMED_OUT == result_code) {
+        result.type = INSTALLER_RESULT_UNKNOWN;
       } else {
         switch (installer_type) {
           case MSI_INSTALLER:
@@ -578,19 +616,22 @@ void InstallerWrapper::GetInstallerResultHelper(
 
     case INSTALLER_RESULT_ERROR_OTHER:
       if (result.text.IsEmpty()) {
-        result.text.FormatMessage(
-              IDS_INSTALLER_FAILED_NO_MESSAGE,
-              FormatErrorCode(result.code));
+        result.text.FormatMessage(IDS_INSTALLER_FAILED_NO_MESSAGE,
+                                  FormatErrorCode(result.code));
       }
       break;
 
     case INSTALLER_RESULT_UNKNOWN:
+      if (result.text.IsEmpty()) {
+        result.text = GetMessageForError(result.code, NULL, language);
+      }
+      break;
     default:
       ASSERT1(false);
   }
 
   // TODO(omaha3): Serialize InstallerResultInfo.
-  // OPT_LOG(L1, (_T("[%s]"), result_info->ToString()));
+  // OPT_LOG(L1, (_T("[%s]"), result.ToString()));
   *result_info = result;
 }
 
@@ -659,12 +700,14 @@ HRESULT InstallerWrapper::CheckApplicationRegistration(
 
 // Assumes installer_lock_ has been initialized.
 HRESULT InstallerWrapper::DoInstallApp(HANDLE user_token,
-                                     const GUID& app_guid,
-                                     const CString& installer_path,
-                                     const CString& arguments,
-                                     const CString& installer_data,
-                                     const CString& language,
-                                     InstallerResultInfo* result_info) {
+                                       const GUID& app_guid,
+                                       const CString& installer_path,
+                                       const CString& arguments,
+                                       const CString& installer_data,
+                                       const CString& language,
+                                       const CString& untrusted_data,
+                                       int install_priority,
+                                       InstallerResultInfo* result_info) {
   CORE_LOG(L1, (_T("[InstallerWrapper::DoInstallApp][%s][%s][%s]"),
                GuidToString(app_guid), installer_path, arguments));
   ASSERT1(result_info);
@@ -674,10 +717,9 @@ HRESULT InstallerWrapper::DoInstallApp(HANDLE user_token,
   InstallerType installer_type = UNKNOWN_INSTALLER;
 
   // TODO(omaha): Remove when http://b/1443404 is addressed.
-  const TCHAR* const kChromeGuid = _T("{8A69D345-D564-463C-AFF1-A69D9E530F96}");
   const TCHAR* const kChromePerMachineArg = _T("--system-level");
   CString modified_arguments = arguments;
-  if (kChromeGuid == GuidToString(app_guid) && is_machine_) {
+  if (kChromeAppId == GuidToString(app_guid) && is_machine_) {
     modified_arguments.AppendFormat(_T(" %s"), kChromePerMachineArg);
   }
 
@@ -703,6 +745,8 @@ HRESULT InstallerWrapper::DoInstallApp(HANDLE user_token,
                                     command_line,
                                     installer_type,
                                     language,
+                                    untrusted_data,
+                                    install_priority,
                                     result_info);
   }
 

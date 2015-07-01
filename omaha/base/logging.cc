@@ -236,7 +236,7 @@ void Logging::UpdateCatAndLevel(const wchar_t* cat_name, LogCategory cat) {
   if (cat_name == NULL) {
     return;
   }
-  if (cat >= LC_MAX_CAT) {
+  if (cat < 0 || cat >= LC_MAX_CAT) {
     return;
   }
   int log_level = kDefaultLogLevel;
@@ -610,7 +610,7 @@ DWORD Logging::IsCatLevelEnabled(LogCategory category, LogLevel level) {
     return 0;
   }
 
-  if (category >= LC_MAX_CAT) {
+  if (category < 0 || category >= LC_MAX_CAT) {
     return 0;
   }
 
@@ -761,7 +761,8 @@ void Logging::StoreInHistory(const OutputInfo* output_info) {
 // history_buffer_next_idx points to the next index to write at,
 // thus it should always be in (0 - kHistoryBufferEndIdx).
 void Logging::AppendToHistory(const wchar_t* msg) {
-  int msg_len = wcslen(msg);
+  // TODO(portability): this conversion is unsafe.
+  const int msg_len = static_cast<int>(wcslen(msg));
   if (msg_len == 0) {
     return;
   }
@@ -1201,7 +1202,7 @@ int FileLogWriter::FindFirstInMultiString(const wchar_t* multi_str,
   while (i < count) {
     p =  multi_str + i;
     if (lstrcmp(p, str) == 0) {
-      return i;
+      return static_cast<int>(i);   // TODO(portability): unsafe conversion.
     } else {
       size_t len = lstrlen(p);
       i += len + 1;

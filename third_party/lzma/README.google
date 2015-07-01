@@ -1,0 +1,11 @@
+URL: http://downloads.sourceforge.net/sevenzip/lzma920.tar.bz2
+Version: LZMA SDK 9.20
+License:  public domain
+License File: LICENSE
+
+Description:
+The LZMA SDK provides the documentation, samples, header files, libraries, and
+tools you need to develop applications that use LZMA compression.
+
+Local Modifications:
+None

@@ -32,13 +32,14 @@ const uint32 kDefaultCancelPromptThreshold = 1;
 namespace omaha {
 
 struct ProxyAuthConfig {
+  ProxyAuthConfig() : parent_hwnd(NULL) {}
   ProxyAuthConfig(HWND hwnd, const CString& caption)
       : parent_hwnd(hwnd), prompt_caption(caption) {}
 
   CString ToString() const {
     CString result;
-    result.Format(_T("[ProxyAuthConfig][0x%x][%s]"),
-                  parent_hwnd, prompt_caption);
+    result.Format(_T("[ProxyAuthConfig][%p][%s]"),
+                  parent_hwnd, prompt_caption.GetString());
     return result;
   }
 

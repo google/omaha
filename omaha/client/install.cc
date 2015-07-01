@@ -75,6 +75,7 @@ HRESULT DoElevation(bool is_interactive,
                     DWORD* exit_code) {
   ASSERT1(exit_code);
   ASSERT1(IsElevationRequired(true));
+  ASSERT1(is_interactive);
 
   if (!is_interactive) {
     return GOOPDATE_E_SILENT_INSTALL_NEEDS_ELEVATION;
@@ -99,6 +100,7 @@ HRESULT DoInstall(bool is_machine,
                   bool is_app_install,
                   bool is_eula_required,
                   bool is_oem_install,
+                  bool is_enterprise_install,
                   const CString& current_version,
                   const CommandLineArgs& args,
                   const CString& session_id,
@@ -133,6 +135,7 @@ HRESULT DoInstall(bool is_machine,
   HRESULT hr = install_self::InstallSelf(is_machine,
                                          is_eula_required,
                                          is_oem_install,
+                                         is_enterprise_install,
                                          current_version,
                                          args.install_source,
                                          args.extra,
@@ -161,7 +164,7 @@ HRESULT DoInstall(bool is_machine,
   }
 
   return S_OK;
-};
+}
 
 HRESULT InstallApplications(bool is_machine,
                             bool is_eula_required,
@@ -175,10 +178,11 @@ HRESULT InstallApplications(bool is_machine,
 
   *has_launched_handoff = false;
 
-  CString offline_dir;
-  const bool is_offline_install = CopyOfflineFiles(is_machine,
-                                                   args.extra.apps,
-                                                   &offline_dir);
+  CString offline_dir_name;
+  bool is_offline_install = IsOfflineInstall(args.extra.apps) &&
+                            CopyOfflineFiles(is_machine,
+                                             args.extra.apps,
+                                             &offline_dir_name);
   if (!is_offline_install && oem_install_utils::IsOemInstalling(is_machine)) {
     return GOOPDATE_E_OEM_WITH_ONLINE_INSTALLER;
   }
@@ -189,7 +193,7 @@ HRESULT InstallApplications(bool is_machine,
   // Start the handoff to install the app.
   scoped_process handoff_process;
   HRESULT hr = LaunchHandoffProcess(is_machine,
-                                    offline_dir,
+                                    offline_dir_name,
                                     args,
                                     session_id,
                                     address(handoff_process));
@@ -241,11 +245,10 @@ HRESULT ElevateAndWait(const CString& cmd_line, DWORD* exit_code) {
   CString cmd_line_elevated(GetCmdLineTail(cmd_line));
   cmd_line_elevated.AppendFormat(_T(" /%s"), kCmdLineInstallElevated);
 
-  HRESULT hr = goopdate_utils::StartElevatedSelfWithArgsAndWait(
-      cmd_line_elevated, exit_code);
+  HRESULT hr = goopdate_utils::StartElevatedMetainstaller(cmd_line_elevated,
+                                                          exit_code);
   if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[Starting elevated GoogleUpdate.exe failed][%s][0x%08x]"),
-                 cmd_line, hr));
+    OPT_LOG(LE, (_T("[Elevated metainstaller failed][%s][%#x]"), cmd_line, hr));
 
     // TODO(omaha3): Report hr somehow. Was reported in extra code in Omaha 2.
     if (vista_util::IsUserNonElevatedAdmin()) {
@@ -258,11 +261,50 @@ HRESULT ElevateAndWait(const CString& cmd_line, DWORD* exit_code) {
   return S_OK;
 }
 
+bool IsOfflineInstall(const std::vector<CommandLineAppArgs>& apps) {
+  CORE_LOG(L3, (_T("[IsOfflineInstall]")));
+
+  if (apps.empty()) {
+    CORE_LOG(L3, (_T("[IsOfflineInstall][No Apps]")));
+    return false;
+  }
+
+  CString manifest_path = ConcatenatePath(app_util::GetCurrentModuleDirectory(),
+                                          kOfflineManifestFileName);
+  if (!File::Exists(manifest_path)) {
+    CORE_LOG(L3, (_T("[IsOfflineInstall][Manifest does not exist]")));
+    return false;
+  }
+
+  for (size_t i = 0; i < apps.size(); ++i) {
+    const GUID& app_id = apps[i].app_guid;
+    const CString app_id_string(GuidToString(app_id));
+
+    if (!IsOfflineInstallForApp(app_id_string)) {
+      CORE_LOG(L3, (_T("[IsOfflineInstall][No app files][%s]"), app_id_string));
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool IsOfflineInstallForApp(const CString& app_id) {
+  CString current_directory(app_util::GetCurrentModuleDirectory());
+  CString pattern;
+
+  // Check if there are installer files named with the pattern "*.<app_id>".
+  pattern.Format(_T("*.%s"), app_id);
+  std::vector<CString> files;
+  HRESULT hr = FindFiles(current_directory, pattern, &files);
+  return SUCCEEDED(hr) && !files.empty();
+}
+
 bool CopyOfflineFiles(bool is_machine,
                       const std::vector<CommandLineAppArgs>& apps,
-                      CString* offline_dir) {
-  ASSERT1(offline_dir);
-  offline_dir->Empty();
+                      CString* offline_dir_name) {
+  ASSERT1(offline_dir_name);
+  offline_dir_name->Empty();
 
   if (apps.empty()) {
     return false;
@@ -274,11 +316,11 @@ bool CopyOfflineFiles(bool is_machine,
       is_machine ?
       ConfigManager::Instance()->GetMachineSecureOfflineStorageDir() :
       ConfigManager::Instance()->GetUserOfflineStorageDir());
-  CString unique_offline_dir =
-      ConcatenatePath(parent_offline_dir, GuidToString(guid));
-  VERIFY1(SUCCEEDED(CreateDir(unique_offline_dir, NULL)));
+  CString offline_dir_guid(GuidToString(guid));
+  CString offline_path(ConcatenatePath(parent_offline_dir, offline_dir_guid));
+  VERIFY1(SUCCEEDED(CreateDir(offline_path, NULL)));
 
-  HRESULT hr = CopyOfflineManifest(unique_offline_dir);
+  HRESULT hr = CopyOfflineManifest(offline_path);
   if (FAILED(hr)) {
     CORE_LOG(L3, (_T("[CopyOfflineManifest failed][0x%08x]"), hr));
     return false;
@@ -286,16 +328,15 @@ bool CopyOfflineFiles(bool is_machine,
 
   for (size_t i = 0; i < apps.size(); ++i) {
     const GUID& app_id = apps[i].app_guid;
-    HRESULT hr = CopyOfflineFilesForApp(GuidToString(app_id),
-                                        unique_offline_dir);
+    HRESULT hr = CopyOfflineFilesForApp(GuidToString(app_id), offline_path);
     if (FAILED(hr)) {
       ASSERT(false, (_T("[CopyOfflineFilesForApp failed][0x%08x]"), hr));
       return false;
     }
   }
 
-  CORE_LOG(L3, (_T("[CopyOfflineFiles done][%s]"), unique_offline_dir));
-  *offline_dir = unique_offline_dir;
+  CORE_LOG(L3, (_T("[CopyOfflineFiles done][%s]"), offline_path));
+  *offline_dir_name = offline_dir_guid;
   return true;
 }
 
@@ -386,7 +427,7 @@ HRESULT CopyOfflineFilesForApp(const CString& app_id,
 // /appargs when making any changes.
 // TODO(omaha): Extract the command line building and unit test it.
 HRESULT LaunchHandoffProcess(bool is_machine,
-                             const CString& offline_dir,
+                             const CString& offline_dir_name,
                              const CommandLineArgs& install_args,
                              const CString& session_id,
                              HANDLE* process) {   // process can be NULL.
@@ -407,13 +448,18 @@ HRESULT LaunchHandoffProcess(bool is_machine,
 
   builder.set_is_silent_set(install_args.is_silent_set);
   builder.set_is_eula_required_set(install_args.is_eula_required_set);
+  builder.set_is_enterprise_set(install_args.is_enterprise_set);
   builder.set_extra_args(install_args.extra_args_str);
   builder.set_app_args(install_args.app_args_str);
   builder.set_install_source(install_args.install_source);
   builder.set_session_id(session_id);
 
-  if (!offline_dir.IsEmpty()) {
-    builder.SetOfflineDir(offline_dir);
+  if (!offline_dir_name.IsEmpty()) {
+    HRESULT hr = builder.SetOfflineDirName(offline_dir_name);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
     const CString& install_source(install_args.install_source);
     if (install_source == kCmdLineInstallSource_InstallDefault ||
         install_source == kCmdLineInstallSource_TaggedMetainstaller) {
@@ -500,8 +546,7 @@ CString GetErrorText(HRESULT error, const CString& bundle_name) {
         CString company_name;
         VERIFY1(company_name.LoadString(IDS_FRIENDLY_COMPANY_NAME));
         error_text.FormatMessage(IDS_APPLICATION_INSTALLING_GOOGLE_UPDATE,
-                                 company_name,
-                                 bundle_name);
+                                 company_name);
       }
       break;
     case GOOPDATE_E_INSTANCES_RUNNING:
@@ -520,11 +565,7 @@ CString GetErrorText(HRESULT error, const CString& bundle_name) {
       error_text.FormatMessage(IDS_HANDOFF_FAILED, bundle_name);
       break;
     default:
-      {
-        CString product_name;
-        VERIFY1(product_name.LoadString(IDS_PRODUCT_DISPLAY_NAME));
-        error_text.FormatMessage(IDS_SETUP_FAILED, product_name, error);
-      }
+      error_text.FormatMessage(IDS_SETUP_FAILED, error);
       break;
   }
 
@@ -539,6 +580,7 @@ void HandleInstallError(HRESULT error,
                         bool is_interactive,
                         bool is_eula_required,
                         bool is_oem_install,
+                        bool is_enterprise_install,
                         const CString& current_version,
                         const CString& install_source,
                         const CommandLineExtraArgs& extra_args,
@@ -580,7 +622,7 @@ void HandleInstallError(HRESULT error,
   //
   // Setup can fail before setting either eula or oem states in the
   // registry. Therefore, ConfigManager::CanUseNetwork can't be called yet.
-  if (is_eula_required || is_oem_install) {
+  if (is_eula_required || is_oem_install || is_enterprise_install) {
     return;
   }
   Ping ping(is_machine, session_id, install_source);
@@ -626,6 +668,7 @@ HRESULT Install(bool is_interactive,
                 bool is_app_install,
                 bool is_eula_required,
                 bool is_oem_install,
+                bool is_enterprise_install,
                 bool is_install_elevated_instance,
                 const CString& install_cmd_line,
                 const CommandLineArgs& args,
@@ -704,6 +747,7 @@ HRESULT Install(bool is_interactive,
                        is_app_install,
                        is_eula_required,
                        is_oem_install,
+                       is_enterprise_install,
                        is_install_elevated_instance,
                        no_admin_cmd_line,
                        no_admin_args,
@@ -718,6 +762,7 @@ HRESULT Install(bool is_interactive,
                                    is_interactive,
                                    is_eula_required,
                                    is_oem_install,
+                                   is_enterprise_install,
                                    current_version,
                                    args.install_source,
                                    args.extra,
@@ -747,6 +792,7 @@ HRESULT Install(bool is_interactive,
                                    is_app_install,
                                    is_eula_required,
                                    is_oem_install,
+                                   is_enterprise_install,
                                    current_version,
                                    args,
                                    session_id,
@@ -768,6 +814,7 @@ HRESULT Install(bool is_interactive,
                                  is_interactive,
                                  is_eula_required,
                                  is_oem_install,
+                                 is_enterprise_install,
                                  current_version,
                                  args.install_source,
                                  args.extra,
@@ -811,7 +858,8 @@ HRESULT OemInstall(bool is_interactive,
   hr = Install(is_interactive,
                is_app_install,
                is_eula_required,
-               true,
+               true,   // is_oem_install
+               false,  // is_enterprise_install
                is_install_elevated_instance,
                install_cmd_line,
                args,

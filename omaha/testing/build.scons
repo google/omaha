@@ -19,7 +19,6 @@ import os
 
 Import('env')
 
-
 def _AddCommonOptions(local_env):
   local_env['CPPDEFINES'] += [
       '_ATL_FREE_THREADED',
@@ -46,10 +45,17 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
     # Installer files used by the Install Manager unit tests.
     'unittest_support/test_foo_v1.0.101.0.msi',
 
+    # Files used by code signing and file verification tests. The string of
+    # bytes in the chrome file names represent the serial of the certificate.
+    # Chrome certificate: (11/13/2011 to 11/13/2014) revoked on 1/28/2014
+    'unittest_support/chrome_certificate_09E28B26DB593EC4E73286B66499C370.dll',
+    # Chrome certificate: sha1 (01/28/2014 to 01/29/2016)
+    'unittest_support/chrome_certificate_2912C70C9A2B8A3EF6F6074662D68B8D.dll',
     'unittest_support/GoogleUpdate_corrupted.exe',
     'unittest_support/GoogleUpdate_now_expired_cert.exe',
     'unittest_support/GoogleUpdate_old_signature.exe',
     'unittest_support/GoogleUpdateHelper.msi',
+    'unittest_support/old_google_certificate.dll',
     'unittest_support/SaveArguments.exe',
     'unittest_support/SaveArguments_different_ou.exe',
     'unittest_support/SaveArguments_multiple_cn.exe',
@@ -131,8 +137,8 @@ else:
 omaha_version_info = env['omaha_versions_info'][0]
 version_string = omaha_version_info.GetVersionString()
 
-run_as_invoker = env.RES('run_as_invoker.res',
-                         '$MAIN_DIR/base/run_as_invoker.rc')
+run_as_invoker = env.RES('run_as_invoker.res', '$MAIN_DIR/base/run_as_invoker.rc')
+env.Depends(run_as_invoker, '$MAIN_DIR/base/run_as_invoker.manifest')
 
 #
 # Builds omaha_unittest
@@ -143,7 +149,7 @@ _AddCommonOptions(omaha_unittest_env)
 omaha_unittest_env.FilterOut(LINKFLAGS = ['/NODEFAULTLIB'])
 
 omaha_unittest_libs = [
-    ('atls.lib', 'atlsd.lib')[omaha_unittest_env.Bit('debug')],
+    omaha_unittest_env['atls_libs'][omaha_unittest_env.Bit('debug')],
 
     '$LIB_DIR/base.lib',
     '$LIB_DIR/breakpad.lib',
@@ -170,6 +176,7 @@ omaha_unittest_libs = [
     'crypt32.lib',
     'dbghelp.lib',
     'delayimp.lib',       # For delay loading
+    'imagehlp.lib',
     'iphlpapi.lib',
     'msi.lib',
     'mstask.lib',
@@ -184,6 +191,7 @@ omaha_unittest_libs = [
     'taskschd.lib',
     'urlmon.lib',
     'userenv.lib',
+    'uxtheme.lib',
     'version.lib',
     'wbemuuid.lib',
     'wininet.lib',
@@ -196,15 +204,16 @@ omaha_unittest_libs += omaha_unittest_env.GetAllInOneUnittestLibs()
 omaha_unittest_env.Append(
     CPPPATH = [
         '$OBJ_ROOT',                        # Needed for the generated files
-        '$MAIN_DIR/third_party/breakpad/src',
-        '$MAIN_DIR/third_party/c99/include',  # C99 inttypes.h for security
-        '$MAIN_DIR/third_party/gmock/include',
-        '$MAIN_DIR/third_party/gtest/include',
+        '$THIRD_PARTY/gmock/include',
+        '$THIRD_PARTY/gtest/include',
         ],
     CCFLAGS = [
-        '/wd4389',        # signed/unsigned mismatch
-        '/wd4510',        # default constructor could not be generated
-        '/wd4610',        # object 'class' can never be instantiated
+        '/wd4388',  # signed/unsigned mismatch
+        '/wd4389',  # signed/unsigned mismatch
+        '/wd4826',  # Conversion from 'type_1' to 'type_2' is sign-extended.
+
+        # Disable static analysis warnings.
+        '/wd6326',  # Potential comparison of a constant with another constant.
         ],
     CPPDEFINES = [
         'OMAHA_BUILD_VERSION=0x%.4x%.4x%.4x%.4x' % (
@@ -273,7 +282,6 @@ unittest_base_env.ComponentStaticLibrary(
 omaha_unittest_inputs = [
     # Base unit tests
     '../base/app_util_unittest.cc',
-    '../base/apply_tag.cc',
     '../base/atlassert_unittest.cc',
     '../base/atl_regexp_unittest.cc',
     '../base/browser_utils_unittest.cc',
@@ -284,6 +292,8 @@ omaha_unittest_inputs = [
     '../base/disk_unittest.cc',
     '../base/dynamic_link_kernel32_unittest.cc',
     '../base/encrypt_test.cc',
+    '../base/environment_block_modifier_unittest.cc',
+    '../base/environment_utils_unittest.cc',
     '../base/error_unittest.cc',
     '../base/etw_log_writer_unittest.cc',
     '../base/event_trace_consumer_unittest.cc',
@@ -299,7 +309,6 @@ omaha_unittest_inputs = [
     '../base/lock_ptr_unittest.cc',
     '../base/logging_unittest.cc',
     '../base/md5_unittest.cc',
-    '../base/module_utils_unittest.cc',
     '../base/omaha_version_unittest.cc',
     '../base/path_unittest.cc',
     '../base/pe_utils_unittest.cc',
@@ -335,24 +344,37 @@ omaha_unittest_inputs = [
     '../base/wmi_query_unittest.cc',
     '../base/xml_utils_unittest.cc',
 
+    # Base security unit tests.
+    '../base/security/hmac_unittest.cc',
+    '../base/security/sha256_unittest.cc',
+    '../base/security/p256_ecdsa_unittest.cc',
+    '../base/security/p256_unittest.cc',
+    '../base/security/p256_prng_unittest.cc',
+
     # Client unit tests
     '../client/bundle_creator_test.cc',
     '../client/bundle_installer_unittest.cc',
     '../client/install_apps_unittest.cc',
     '../client/install_self_unittest.cc',
     '../client/install_unittest.cc',
+    '../client/ua_unittest.cc',
 
     # Common unit tests
     '../common/app_registry_utils_unittest.cc',
     '../common/command_line_unittest.cc',
     '../common/command_line_builder_unittest.cc',
     '../common/config_manager_unittest.cc',
+    '../common/crash_utils_unittest.cc',
     '../common/event_logger_unittest.cc',
     '../common/experiment_labels_unittest.cc',
+    '../common/exception_handler_unittest.cc',
     '../common/extra_args_parser_unittest.cc',
+    '../common/google_signaturevalidator_unittest.cc',
     '../common/goopdate_utils_unittest.cc',
     '../common/lang_unittest.cc',
     '../common/oem_install_utils_test.cc',
+    '../common/ping_event_unittest.cc',
+    '../common/ping_event_download_metrics_unittest.cc',
     '../common/ping_test.cc',
     '../common/protocol_definition_test.cc',
     '../common/scheduled_task_utils_unittest.cc',
@@ -373,6 +395,10 @@ omaha_unittest_inputs = [
     # Goopdate unit tests
     '../goopdate/application_usage_data_unittest.cc',
     '../goopdate/app_unittest.cc',
+    '../goopdate/app_command_configuration_unittest.cc',
+    '../goopdate/app_command_formatter_unittest.cc',
+    '../goopdate/app_command_model_unittest.cc',
+    '../goopdate/app_command_test_base.cc',
     '../goopdate/app_command_unittest.cc',
     '../goopdate/app_bundle_unittest.cc',
     '../goopdate/app_manager_unittest.cc',
@@ -380,7 +406,6 @@ omaha_unittest_inputs = [
     '../goopdate/crash_unittest.cc',
     '../goopdate/cred_dialog_unittest.cc',
     '../goopdate/download_manager_unittest.cc',
-    '../goopdate/download_complete_ping_event_test.cc',
     '../goopdate/goopdate_unittest.cc',
     '../goopdate/install_manager_unittest.cc',
     '../goopdate/installer_wrapper_unittest.cc',
@@ -389,6 +414,7 @@ omaha_unittest_inputs = [
     '../goopdate/offline_utils_unittest.cc',
     '../goopdate/string_formatter_unittest.cc',
     '../goopdate/package_cache_unittest.cc',
+    '../goopdate/ping_event_cancel_test.cc',
     '../goopdate/resource_manager_unittest.cc',
     '../goopdate/update_request_utils_unittest.cc',
     '../goopdate/update_response_utils_unittest.cc',
@@ -398,8 +424,8 @@ omaha_unittest_inputs = [
     # Net unit tests.
     '../net/bits_request_unittest.cc',
     '../net/bits_utils_unittest.cc',
-    '../net/cup_request_unittest.cc',
-    '../net/cup_utils_unittest.cc',
+    '../net/cup_ecdsa_request_unittest.cc',
+    '../net/cup_ecdsa_utils_unittest.cc',
     '../net/detector_unittest.cc',
     '../net/http_client_unittest.cc',
     '../net/net_utils_unittest.cc',
@@ -437,6 +463,13 @@ omaha_unittest_inputs = [
     # Testing unit tests.
     'unit_test_unittest.cc',
     'unittest_debug_helper_unittest.cc',
+
+    # Third party unit tests.
+    '../third_party/chrome/files/src/base/cpu_unittest.cc',
+    '../third_party/chrome/files/src/crypto/rsa_private_key_unittest.cc',
+    '../third_party/chrome/files/src/crypto/signature_creator_unittest.cc',
+    '../third_party/chrome/files/src/crypto/signature_verifier_unittest.cc',
+
 ]
 omaha_unittest_inputs += omaha_unittest_env.GetAllInOneUnittestSources()
 
@@ -486,20 +519,20 @@ if 'HAMMER_RUNS_TESTS' in os.environ.keys():
                                                  omaha_unittest_inputs,
                                                  COMPONENT_TEST_SIZE='large')
 
-  # The tests depend on the unittest_support directory.
-  omaha_unittest_env.Depends(test, unittest_support)
-
   # resource_manager_unittest.cc uses the Russian resources.
   omaha_unittest_env.Depends(test, '$TESTS_DIR/goopdateres_ru.dll')
-
 else:
   test = omaha_unittest_env.ComponentProgram(target_name, omaha_unittest_inputs)
 
-  # The tests depend on the unittest_support directory.
-  omaha_unittest_env.Depends(test, unittest_support)
-
   # resource_manager_unittest.cc uses the Russian resources.
   omaha_unittest_env.Depends(test, '$STAGING_DIR/goopdateres_ru.dll')
+
+# The tests depend on the unittest_support directory.
+omaha_unittest_env.Depends(test, unittest_support)
+
+# extractor_unittest.cc uses GoogleUpdateSetup_repair.exe as a zero-length tag
+# cert-tagged exe.
+omaha_unittest_env.Depends(test, '$STAGING_DIR/GoogleUpdateSetup_repair.exe')
 
 if env.Bit('all'):
   save_args_env = env.Clone()
@@ -508,7 +541,7 @@ if env.Bit('all'):
           '$OBJ_ROOT',    # Needed for the generated files
           ],
       LIBS = [
-          ('atls.lib', 'atlsd.lib')[save_args_env.Bit('debug')],
+          save_args_env['atls_libs'][save_args_env.Bit('debug')],
           ('libcmt.lib', 'libcmtd.lib')[save_args_env.Bit('debug')],
           ('libcpmt.lib', 'libcpmtd.lib')[save_args_env.Bit('debug')],
           '$LIB_DIR/base.lib',

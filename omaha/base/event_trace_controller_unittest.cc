@@ -16,8 +16,8 @@
 // Unit tests for event trace controller.
 #include "omaha/base/event_trace_controller.h"
 #include <atlsync.h>
-#include "omaha/base/app_util.h"
 #include "omaha/base/event_trace_provider.h"
+#include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 #include <initguid.h>  // NOLINT - must be last.
 
@@ -165,12 +165,11 @@ TEST_F(EtwTraceControllerTest, StartRealTimeSession) {
 }
 
 TEST_F(EtwTraceControllerTest, StartFileSession) {
-  CString temp;
-  EXPECT_TRUE(::GetTempFileName(app_util::GetTempDir(), _T("tmp"), 0,
-                                CStrBuf(temp, MAX_PATH)));
+  CString temp_file = GetTempFilename(_T("tmp"));
+  ASSERT_FALSE(temp_file.IsEmpty());
 
   EtwTraceController controller;
-  HRESULT hr = controller.StartFileSession(kTestSessionName, temp);
+  HRESULT hr = controller.StartFileSession(kTestSessionName, temp_file);
   if (hr == E_ACCESSDENIED) {
     SUCCEED() << "You must be an administrator to run this test on Vista";
     return;
@@ -183,10 +182,10 @@ TEST_F(EtwTraceControllerTest, StartFileSession) {
   EXPECT_EQ(NULL, controller.session());
   EXPECT_STREQ(L"", controller.session_name());
 
-  EXPECT_TRUE(::DeleteFile(temp));
+  EXPECT_TRUE(::DeleteFile(temp_file));
 }
 
-TEST_F(EtwTraceControllerTest, EnableDisable) {
+TEST_F(EtwTraceControllerTest, DISABLED_EnableDisable) {
   TestingProvider provider(kTestProvider);
 
   EXPECT_EQ(ERROR_SUCCESS, provider.Register());
@@ -223,6 +222,10 @@ TEST_F(EtwTraceControllerTest, EnableDisable) {
   // Register the provider again, the settings above
   // should take immediate effect.
   EXPECT_EQ(ERROR_SUCCESS, provider.Register());
+
+  // Register() triggers the callback since EnableProvider() is called before
+  // that.
+  provider.WaitForCallback();
 
   EXPECT_EQ(TRACE_LEVEL_VERBOSE, provider.enable_level());
   EXPECT_EQ(kTestProviderFlags, provider.enable_flags());

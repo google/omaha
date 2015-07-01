@@ -379,10 +379,11 @@ class SetupTest : public testing::Test {
                      ::GetProcessId(started_processes[i])));
       EXPECT_TRUE(::TerminateProcess(started_processes[i], 1));
     }
-    EXPECT_EQ(WAIT_OBJECT_0, ::WaitForMultipleObjects(started_processes.size(),
-                                                      &started_processes[0],
-                                                      true,  // wait for all
-                                                      kProcessesCleanupWait));
+    EXPECT_EQ(WAIT_OBJECT_0, ::WaitForMultipleObjects(
+                                  static_cast<DWORD>(started_processes.size()),
+                                  &started_processes[0],
+                                  true,  // wait for all
+                                  kProcessesCleanupWait));
   }
 
   void StopGoogleUpdateAndWaitSucceedsTest() {

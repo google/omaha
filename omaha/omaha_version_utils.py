@@ -15,7 +15,7 @@
 # limitations under the License.
 # ========================================================================
 
-"""Constants and utilities related to Omaha versions."""
+"""Constants and utilities related to Omaha and tools versions"""
 
 _ONECLICK_PLUGIN_NAME = 'npGoogleOneClick'
 _UPDATE_PLUGIN_NAME = 'npGoogleUpdate'
@@ -90,6 +90,12 @@ _ADDITIONAL_SHELL_LANGUAGES = [
     'zh-HK',
     ]
 
+VC71  = 1310  # VC2003/VC71 (not supported by the current build).
+VC80  = 1400  # VC2005/VC80
+VC90  = 1500  # VC2008/VC90 (not supported by the current build).
+VC100 = 1600  # VC2010/VC10
+VC110 = 1700  # VC2012/VC11 (not supported by the current build).
+VC120 = 1800  # VC2013/VC12
 
 def _IsSupportedOmaha2Version(omaha_version):
   """Returns true if omaha_version is an Omaha 2 version and is supported."""
@@ -125,12 +131,16 @@ def _GetMetainstallerPayloadFilenames(prefix,
       'GoogleUpdateHelper.msi',
       'GoogleUpdateBroker.exe',
       'GoogleUpdateOnDemand.exe',
+      'GoogleUpdateComRegisterShell64.exe',
+      'GoogleUpdateWebPlugin.exe',
       '%spsmachine.dll' % (prefix),
+      '%spsmachine_64.dll' % (prefix),
       '%spsuser.dll' % (prefix),
+      '%spsuser_64.dll' % (prefix),
       ]
 
-  if (omaha_version[0] == 1 and
-      omaha_version[1] == 3 and
+  if (omaha_version[0] >= 1 and
+      omaha_version[1] >= 3 and
       omaha_version[2] >= 13):
     # The BHO is not built yet.
     payload_files.remove(bho_dll_name)
@@ -138,11 +148,21 @@ def _GetMetainstallerPayloadFilenames(prefix,
     payload_files.remove(plugin_dll_name)
     payload_files.remove('GoogleUpdateBroker.exe')
     payload_files.remove('GoogleUpdateOnDemand.exe')
+    payload_files.remove('GoogleUpdateComRegisterShell64.exe')
     payload_files.remove('psmachine.dll')
+    payload_files.remove('psmachine_64.dll')
     payload_files.remove('psuser.dll')
+    payload_files.remove('psuser_64.dll')
   else:
     raise Exception('Unsupported version: ' +
                     ConvertVersionToString(omaha_version))
+
+  if (omaha_version[0] >= 1 and
+      omaha_version[1] >= 3 and
+      (omaha_version[2] >= 22 or
+       (omaha_version[2] == 21 and omaha_version[3] >= 85))):
+    # 64-bit crash handler is added on 1.3.21.85 and later
+    payload_files.append('%s64.exe' % _CRASH_HANDLER_NAME)
 
   for language in languages:
     payload_files += ['%sgoopdateres_%s.dll' % (prefix, language)]
@@ -347,3 +367,4 @@ class SignedFileInfo(object):
 
     self.unsigned_filename_base = '%s_unsigned' % base_name
     self.unsigned_filename = '%s.%s' % (self.unsigned_filename_base, extension)
+

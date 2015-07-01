@@ -81,6 +81,7 @@ HRESULT CoCreateAsyncStatus::CreateOmahaMachineServerAsync(
                             origin_url,
                             create_elevated));
   HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
+                                                      COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[QueueUserWorkItem failed][0x%x]"), hr));
@@ -111,13 +112,6 @@ void CoCreateAsyncStatus::CreateOmahaMachineServer(const CString origin_url,
                     &CoCreateAsyncStatus::SetCreateInstanceResults,
                     ByRef(hr),
                     ByRef(ptr));
-
-  scoped_co_init init_com_apt(COINIT_MULTITHREADED);
-  hr = init_com_apt.hresult();
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[init_com_apt failed][0x%x]"), hr));
-    return;
-  }
 
   CComPtr<IGoogleUpdate3WebSecurity> security;
   REFCLSID clsid(__uuidof(GoogleUpdate3WebMachineClass));

@@ -28,6 +28,7 @@
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/synchronized.h"
+#include "omaha/base/time.h"
 
 namespace omaha {
 
@@ -178,9 +179,17 @@ class ConfigManager {
   // Returns the number of seconds since the last successful update check.
   int GetTimeSinceLastCheckedSec(bool is_machine) const;
 
+  // Functions that deal with the X-Retry-After header from the server.
+  DWORD GetRetryAfterTime(bool is_machine) const;
+  HRESULT SetRetryAfterTime(bool is_machine, DWORD time) const;
+  bool CanRetryNow(bool is_machine) const;
+
   // Gets and sets the last time a successful server update check was made.
   DWORD GetLastCheckedTime(bool is_machine) const;
   HRESULT SetLastCheckedTime(bool is_machine, DWORD time) const;
+
+  // Sets the last time we successfully launched a /ua process.
+  HRESULT SetLastStartedAU(bool is_machine) const;
 
   // Checks registry to see if user has enabled us to collect anonymous
   // usage stats.
@@ -196,9 +205,16 @@ class ConfigManager {
   // Returns the wait time in ms to start the first worker.
   int GetUpdateWorkerStartUpDelayMs() const;
 
-  // Returns the Code Red timer interval. This is the frequency of the
-  // code red timer run by the core.
+  // Returns the wait time in ms before making an update check The range of
+  // the returned value is [0, 60000) ms, even if the value is overriden
+  // by UpdateDev settings.
+  int GetAutoUpdateJitterMs() const;
+
+  // Code Red check interval functions.
   int GetCodeRedTimerIntervalMs() const;
+  time64 GetTimeSinceLastCodeRedCheckMs(bool is_machine) const;
+  time64 GetLastCodeRedCheckTimeMs(bool is_machine) const;
+  HRESULT SetLastCodeRedCheckTimeMs(bool is_machine, time64 time);
 
   // Returns true if event logging to the Windows Event Log is enabled.
   bool CanLogEvents(WORD event_type) const;
@@ -226,15 +242,23 @@ class ConfigManager {
   // build flavor or other configuration parameters.
   bool AlwaysAllowCrashUploads() const;
 
+  // Returns the number of crashes to upload per day.
+  int MaxCrashUploadsPerDay() const;
+
+  // Returns the value of the "DownloadPreference" group policy or an
+  // empty string if the group policy does not exist, the policy is unknown, or
+  // an error happened.
+  CString GetDownloadPreferenceGroupPolicy() const;
+
   // Returns the network configuration override as a string.
   static HRESULT GetNetConfig(CString* configuration_override);
 
   // Gets the time when Goopdate was last updated or installed.
-  static DWORD GetInstallTime(bool is_machine);
+  static DWORD GetLastUpdateTime(bool is_machine);
 
   // Returns true if it has been more than 24 hours since Goopdate was updated
   // or installed.
-  static bool Is24HoursSinceInstall(bool is_machine);
+  static bool Is24HoursSinceLastUpdate(bool is_machine);
 
   static ConfigManager* Instance();
   static void DeleteInstance();

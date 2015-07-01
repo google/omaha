@@ -15,6 +15,7 @@
 
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/const_utils.h"
+#include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/utils.h"
@@ -117,6 +118,13 @@ TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_Unsupported) {
   EXPECT_EQ(BROWSER_UNKNOWN, type);
 }
 
+TEST(BrowserUtilsTest, GetIEPath) {
+  CString path;
+  EXPECT_SUCCEEDED(GetIEPath(&path));
+  UnenclosePath(&path);
+  EXPECT_TRUE(File::Exists(path));
+}
+
 TEST(BrowserUtilsTest, BrowserTypeToProcessName_Unknown) {
   CString exe_name;
   EXPECT_EQ(E_FAIL, BrowserTypeToProcessName(BROWSER_UNKNOWN, &exe_name));
@@ -185,8 +193,13 @@ TEST(BrowserUtilsTest, GetBrowserImagePath_DefaultBrowser) {
 
     CString long_name;
     ASSERT_SUCCEEDED(ShortPathToLongPath(path, &long_name));
+
     CString exp_long_name;
     ASSERT_SUCCEEDED(ShortPathToLongPath(exp_browser_path, &exp_long_name));
+
+    long_name.Replace(_T("Program Files (x86)"), _T("Program Files"));
+    exp_long_name.Replace(_T("Program Files (x86)"), _T("Program Files"));
+
     ASSERT_STREQ(exp_long_name.MakeLower(), long_name.MakeLower());
   } else if (default_type == BROWSER_FIREFOX) {
     CString path;
@@ -247,7 +260,7 @@ TEST(BrowserUtilsTest, GetBrowserImagePath_AllSupportedBrowsers) {
         0 == path.CompareNoCase(
                                 _T("C:\\PROGRA~1\\MOZILL~1\\FIREFOX.EXE")) ||
         0 == path.CompareNoCase(program_files_path +
-                                _T("\\Minefield\\FIREFOX.EXE"))) // Trunk build.
+                                _T("\\Minefield\\FIREFOX.EXE")))  // Trunk build
         << _T("Actual path: ") << path.GetString();
   } else {
     EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), hr);
@@ -267,19 +280,24 @@ TEST(BrowserUtilsTest, GetBrowserImagePath_AllSupportedBrowsers) {
   }
 }
 
-TEST(BrowserUtilsTest, GetLegacyDefaultBrowserInfo) {
-  CString name;
-  CString browser_path;
-  EXPECT_SUCCEEDED(GetLegacyDefaultBrowserInfo(&name, &browser_path));
-  EXPECT_FALSE(browser_path.IsEmpty());
-  EXPECT_FALSE(name.IsEmpty());
-}
-
 TEST(BrowserUtilsTest, GetIeFontSize) {
   uint32 font_size = 0;
   const uint32 kMaxFontSize = 4;
   EXPECT_TRUE(SUCCEEDED(GetIeFontSize(&font_size)) || IsTestRunByLocalSystem());
   EXPECT_LE(font_size, kMaxFontSize);
+}
+
+// The legacy default browser registration may not be there, but test it if it
+// is. There are other unit tests that override the registry and test the
+// GetLegacyDefaultBrowserInfo thoroughly.
+TEST(BrowserUtilsTest, GetLegacyDefaultBrowserInfo) {
+  CString name;
+  CString browser_path;
+  HRESULT hr = GetLegacyDefaultBrowserInfo(&name, &browser_path);
+  if (SUCCEEDED(hr)) {
+    EXPECT_FALSE(browser_path.IsEmpty());
+    EXPECT_FALSE(name.IsEmpty());
+  }
 }
 
 TEST_F(GetLegacyDefaultBrowserInfoTest, ValidQuotedIE) {

@@ -49,6 +49,7 @@ struct CommandLineAppArgs {
   CString encoded_installer_data;
   CString install_data_index;
   CString experiment_labels;
+  CString untrusted_data;
 };
 
 // Values may be sent in pings or stats. Do not remove or reuse existing values.
@@ -117,6 +118,7 @@ struct CommandLineArgs {
         is_silent_set(false),
         is_eula_required_set(false),
         is_offline_set(false),
+        is_enterprise_set(false),
         is_oem_set(false) {}
 
   CommandLineMode mode;
@@ -127,6 +129,7 @@ struct CommandLineArgs {
   bool is_silent_set;
   bool is_eula_required_set;
   bool is_offline_set;
+  bool is_enterprise_set;
   bool is_oem_set;
   CString extra_args_str;
   CString app_args_str;
@@ -138,7 +141,7 @@ struct CommandLineArgs {
   CString webplugin_args;
   CString code_red_metainstaller_path;
   CString ping_string;
-  CString offline_dir;
+  CString offline_dir_name;
   CString session_id;
   CommandLineExtraArgs extra;
 };

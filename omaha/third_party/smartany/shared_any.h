@@ -33,7 +33,7 @@ namespace detail
         node   *m_list_blocks;
         node   *m_last_alloc;
         node   *m_last_free;
-        
+
         ref_count_allocator();
         ~ref_count_allocator();
     public:
@@ -88,12 +88,12 @@ namespace detail
         {
             return m_t != static_cast<T>( invalid_value_type() );
         }
-        
+
         void inc_ref()
         {
             m_t->AddRef();
         }
-        
+
         void dec_ref()
         {
             if( 0 == m_t->Release() )
@@ -101,15 +101,15 @@ namespace detail
                 m_t = static_cast<T>( invalid_value_type() );
             }
         }
-        
+
         T m_t;
     };
-    
+
     template<typename T,class close_policy,class invalid_value_type>
     struct nonintrusive
     {
         typedef T type;
-        
+
         explicit nonintrusive( T t )
             : m_t( t ),
               m_ref( 0 )
@@ -124,17 +124,17 @@ namespace detail
                 }
             }
         }
-        
+
         bool valid() const
         {
             return m_t != static_cast<T>( invalid_value_type() );
         }
-        
+
         void inc_ref()
         {
             ::InterlockedIncrement( m_ref );
         }
-        
+
         void dec_ref()
         {
             if( 0L == ::InterlockedDecrement( m_ref ) )
@@ -145,7 +145,7 @@ namespace detail
                 m_t = static_cast<T>( invalid_value_type() );
             }
         }
-        
+
         typename holder<T>::type    m_t;
         long volatile              *m_ref;
     };
@@ -174,7 +174,7 @@ namespace detail
         };
 
         template<typename U>
-        static yes    check(T, U);    
+        static yes    check(T, U);
         static no     check(IUnknown*, int);
         static maybe  get();
     public:
@@ -274,7 +274,7 @@ public:
     {
         #ifdef SMART_ANY_PTS
         // You better not be applying operator-> to a handle!
-        static detail::static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
+        static detail::smartany_static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
         #endif
         assert( m_held.valid() );
         return safe_types::to_pointer( m_held.m_t );
@@ -284,8 +284,8 @@ public:
     // if this shared_any is managing an array, we can use operator[] to index it
     typename detail::deref<T>::type operator[]( int i ) const
     {
-        static detail::static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
-        static detail::static_assert<!detail::is_delete<close_policy>::value> const accessed_like_an_array_but_not_deleted_like_an_array;
+        static detail::smartany_static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
+        static detail::smartany_static_assert<!detail::is_delete<close_policy>::value> const accessed_like_an_array_but_not_deleted_like_an_array;
         assert( m_held.valid() );
         return m_held.m_t[ i ];
     }
@@ -295,7 +295,7 @@ public:
     // foo & f = *pfoo;
     reference_type operator*() const
     {
-        static detail::static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
+        static detail::smartany_static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
         assert( m_held.valid() );
         return safe_types::to_reference( m_held.m_t );
     }
@@ -374,7 +374,7 @@ inline void reset( shared_any<T,close_policy,invalid_value,unique> & t, U newT )
 
 // swap the contents of two shared_any objects
 template<typename T,class close_policy,class invalid_value,int unique>
-inline void swap( shared_any<T,close_policy,invalid_value,unique> & left, 
+inline void swap( shared_any<T,close_policy,invalid_value,unique> & left,
                   shared_any<T,close_policy,invalid_value,unique> & right )
 {
     detail::shared_any_helper<T,close_policy,invalid_value,unique>::swap( left, right );
@@ -384,7 +384,7 @@ inline void swap( shared_any<T,close_policy,invalid_value,unique> & left,
 // can be used in hashes and maps
 template<typename T,class close_policy,class invalid_value,int unique>
 inline bool operator==(
-    shared_any<T,close_policy,invalid_value,unique> const & left, 
+    shared_any<T,close_policy,invalid_value,unique> const & left,
     shared_any<T,close_policy,invalid_value,unique> const & right )
 {
     return get( left ) == get( right );
@@ -392,7 +392,7 @@ inline bool operator==(
 
 template<typename T,class close_policy,class invalid_value,int unique>
 inline bool operator!=(
-    shared_any<T,close_policy,invalid_value,unique> const & left, 
+    shared_any<T,close_policy,invalid_value,unique> const & left,
     shared_any<T,close_policy,invalid_value,unique> const & right )
 {
     return get( left ) != get( right );
@@ -400,7 +400,7 @@ inline bool operator!=(
 
 template<typename T,class close_policy,class invalid_value,int unique>
 inline bool operator<(
-    shared_any<T,close_policy,invalid_value,unique> const & left, 
+    shared_any<T,close_policy,invalid_value,unique> const & left,
     shared_any<T,close_policy,invalid_value,unique> const & right )
 {
     return std::less<T>( get( left ), get( right ) );

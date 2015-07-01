@@ -14,7 +14,9 @@
 // ========================================================================
 
 // Defines the base class of classes in the model. Provides access to the root
-// of the model.
+// of the model. The ModelObject locks and unlocks the ATL module in the
+// constructor and destructor respectively. The ATL Module needs to be around
+// until all the model objects are destroyed.
 
 #ifndef OMAHA_GOOPDATE_MODEL_OBJECT_H_
 #define OMAHA_GOOPDATE_MODEL_OBJECT_H_
@@ -32,7 +34,6 @@ bool IsModelLockedByCaller(const Model* model);
 
 class ModelObject {
  public:
-
   Model* model() {
     return omaha::interlocked_exchange_pointer(&model_, model_);
   }
@@ -42,20 +43,20 @@ class ModelObject {
   }
 
  protected:
-
   explicit ModelObject(Model* model) : model_(NULL) {
     ASSERT1(model);
     ASSERT1(IsModelLockedByCaller(model));
 
+    _pAtlModule->Lock();
     omaha::interlocked_exchange_pointer(&model_, model);
   }
 
   ~ModelObject() {
     omaha::interlocked_exchange_pointer(&model_, static_cast<Model*>(NULL));
+    _pAtlModule->Unlock();
   }
 
  private:
-
   // C++ root of the object model. Not owned by this instance.
   mutable Model* volatile model_;
 

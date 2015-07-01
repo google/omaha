@@ -35,6 +35,7 @@ HRESULT Create(bool is_machine,
                const CString& install_source,
                const CString& session_id,
                bool is_interactive,
+               bool send_pings,
                IAppBundle** app_bundle);
 
 // Creates app bundle interface that contains the apps specified in extra_args.
@@ -43,11 +44,12 @@ HRESULT Create(bool is_machine,
 HRESULT CreateFromCommandLine(bool is_machine,
                               bool is_eula_accepted,
                               bool is_offline,
-                              const CString& offline_directory,
+                              const CString& offline_dir_name,
                               const CommandLineExtraArgs& extra_args,
                               const CString& install_source,
                               const CString& session_id,
                               bool is_interactive,
+                              bool send_pings,
                               IAppBundle** app_bundle);
 
 // Creates app bundle interface that contains the given app (app_id).

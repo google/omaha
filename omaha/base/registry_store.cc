@@ -43,7 +43,7 @@ bool RegistryStore::Read(const TCHAR* name, std::vector<byte>* data) const {
   ASSERT1(data);
 
   byte* sdata = NULL;
-  DWORD sdata_size = 0;
+  size_t sdata_size = 0;
   HRESULT hr = RegKey::GetValue(key_path_, name, &sdata, &sdata_size);
   if (FAILED(hr) || !sdata || !sdata_size)
     return false;

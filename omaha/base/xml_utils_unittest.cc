@@ -16,8 +16,8 @@
 #include <windows.h>
 #include <atlstr.h>
 #include <vector>
+#include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
-#include "omaha/base/module_utils.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/scoped_any.h"
@@ -60,15 +60,14 @@ TEST(XmlUtilsTest, LoadSave) {
   scoped_co_init co_init;
 
   // Get some directory and file names to start with.
-  TCHAR directory[MAX_PATH] = {0};
-  ASSERT_TRUE(GetModuleDirectory(NULL, directory));
+  CString directory = app_util::GetModuleDirectory(NULL);
+  ASSERT_FALSE(directory.IsEmpty());
   CString test_file;
   test_file.Format(_T("%s\\unittest_support\\%s"), directory, kTestXMLFile);
 
-  TCHAR temp_path[MAX_PATH] = {0};
-  ASSERT_TRUE(::GetTempPath(MAX_PATH, temp_path));
-  CString temp_file;
-  temp_file.AppendFormat(_T("%s%s"), temp_path, kTempXMLFile);
+  CString temp_file = app_util::GetTempDir();
+  ASSERT_FALSE(temp_file.IsEmpty());
+  temp_file.Append(kTempXMLFile);
 
   // Test loading and storing to a file.
   CComPtr<IXMLDOMDocument> xmldoc;
@@ -87,9 +86,9 @@ TEST(XmlUtilsTest, LoadSave) {
   ASSERT_SUCCEEDED(SaveXMLToRawData(xmldoc2, &xml_utf8));
 
   CStringA input_utf8(reinterpret_cast<char*>(&buffer_utf8.front()),
-                      buffer_utf8.size());
+                      static_cast<int>(buffer_utf8.size()));
   CStringA output_utf8(reinterpret_cast<char*>(&xml_utf8.front()),
-                       xml_utf8.size());
+                       static_cast<int>(xml_utf8.size()));
   ASSERT_STREQ(input_utf8, output_utf8);
 
   // Test loading and storing Unicode to memory.
@@ -98,14 +97,14 @@ TEST(XmlUtilsTest, LoadSave) {
   int len(::MultiByteToWideChar(CP_UTF8,
                                 0, /*flags*/
                                 reinterpret_cast<const char*>(&buffer_utf8[0]),
-                                buffer_utf8.size(),
+                                static_cast<int>(buffer_utf8.size()),
                                 NULL,
                                 0));
   std::vector<wchar_t> buffer_unicode(len+1);
   int len2(::MultiByteToWideChar(CP_UTF8,
                                  0, /*flags*/
                                  reinterpret_cast<const char*>(&buffer_utf8[0]),
-                                 buffer_utf8.size(),
+                                 static_cast<int>(buffer_utf8.size()),
                                  &buffer_unicode[0],
                                  len));
   ASSERT_EQ(len, len2);

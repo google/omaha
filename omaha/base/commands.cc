@@ -301,8 +301,10 @@ HRESULT CommandParsingSimple::SplitExeAndArgsGuess(const TCHAR* cmd_line,
     const TCHAR* index_dot_exe = stristrW(command_line.GetString(), _T(".EXE"));
 
     if (index_dot_exe != NULL) {
-      int dot_exe_end = (index_dot_exe - command_line.GetString())
-                         + arraysize(_T(".EXE")) - 1;
+      // TODO(portability): conversion is unsafe.
+      int dot_exe_end = static_cast<int>(
+          (index_dot_exe - command_line.GetString()) +
+          arraysize(_T(".EXE")) - 1);
       if (File::Exists(CString(command_line, dot_exe_end))) {
         // Enclose the EXE in double quotes
         command_line.Insert(dot_exe_end, _T('"'));
@@ -324,7 +326,7 @@ HRESULT CommandParsingSimple::SplitExeAndArgsGuess(const TCHAR* cmd_line,
 // Static Helper function that returns the number of arguments
 // in the passed in cmd_line
 HRESULT CommandParsingSimple::GetNumberOfArgs(const TCHAR* cmd_line,
-                                              uint32* number_of_args) {
+                                              size_t* number_of_args) {
   ASSERT1(cmd_line);
   ASSERT1(number_of_args);
 

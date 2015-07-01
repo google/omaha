@@ -18,8 +18,10 @@
 #include "omaha/goopdate/google_update.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/process.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/core/google_update_core.h"
 #include "omaha/goopdate/broker_class_factory.h"
@@ -99,10 +101,6 @@ GoogleUpdate::GoogleUpdate(bool is_machine, ComServerMode mode)
 }
 
 GoogleUpdate::~GoogleUpdate() {
-  // GoogleUpdate is typically created on the stack. We reset the _pAtlModule
-  // here, to allow for cases such as /RegServer, where multiple instances of
-  // GoogleUpdate are created and destroyed serially.
-  _pAtlModule = NULL;
 }
 
 HRESULT GoogleUpdate::Main() {
@@ -187,12 +185,7 @@ HRESULT GoogleUpdate::RegisterOrUnregisterExe(void* data,
       is_register);
 }
 
-HRESULT RegisterOrUnregisterProxies(void* data, bool is_register) {
-  ASSERT1(data);
-  bool is_machine = *reinterpret_cast<bool*>(data);
-  CORE_LOG(L3, (_T("[RegisterOrUnregisterProxies][%d][%d]"),
-                is_machine, is_register));
-
+HRESULT RegisterOrUnregisterProxies32(bool is_machine, bool is_register) {
   CPath ps_dll(app_util::GetCurrentModuleDirectory());
   if (!ps_dll.Append(is_machine ? kPSFileNameMachine : kPSFileNameUser)) {
     return HRESULTFromLastError();
@@ -201,10 +194,59 @@ HRESULT RegisterOrUnregisterProxies(void* data, bool is_register) {
   ASSERT1(!is_register || ps_dll.FileExists());
   HRESULT hr = is_register ? RegisterDll(ps_dll) : UnregisterDll(ps_dll);
   CORE_LOG(L3, (_T("[  PS][%s][0x%x]"), ps_dll, hr));
-  if (FAILED(hr) && is_register) {
-    return hr;
+  return hr;
+}
+
+
+// Register/unregister 64-bit proxy for 64-bit OS. We cannot directly load the
+// 64-bit DLL since Omaha is running in 32-bit mode. Fork a process and let
+// GoogleUpdateComRegisterShell64.exe do heavy lifting.
+HRESULT RegisterOrUnregisterProxies64(bool is_machine, bool is_register) {
+  BOOL is64bit = FALSE;
+  if (0 == Kernel32::IsWow64Process(GetCurrentProcess(), &is64bit) ||
+      !is64bit) {
+    return S_OK;
   }
 
+  const CString module_dir(app_util::GetCurrentModuleDirectory());
+
+  CPath com_register_shell64(module_dir);
+  if (!com_register_shell64.Append(kOmahaCOMRegisterShell64)) {
+    return HRESULTFromLastError();
+  }
+  if (!com_register_shell64.FileExists()) {
+    CORE_LOG(LE, (_T("[Cannot find %s]"), kOmahaCOMRegisterShell64));
+    return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+  }
+
+  // Run command: com_register_shell64.exe [/user] [/unregister]
+  //   /user: register the proxy for user case, otherwise for machine case.
+  //   /unregister: do unregister, otherwise register.
+  CString cmd_line_args;
+  cmd_line_args.Format(_T("%s %s"),
+                       is_machine ? _T("") : _T("/user"),
+                       is_register ? _T("") : _T("/unregister"));
+
+  Process register_process(com_register_shell64, NULL);
+  HRESULT hr = register_process.Start(cmd_line_args, NULL);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[Failed to start COM register process][0x%x]"), hr));
+    return hr;
+  }
+  const DWORD kWaitForRegistrationTimeoutMs = 30 * 1000;   // 30 seconds
+  return register_process.WaitUntilDead(kWaitForRegistrationTimeoutMs);
+}
+
+HRESULT RegisterOrUnregisterProxies(void* data, bool is_register) {
+  ASSERT1(data);
+  bool is_machine = *reinterpret_cast<bool*>(data);
+  CORE_LOG(L3, (_T("[RegisterOrUnregisterProxies][%d][%d]"),
+                is_machine, is_register));
+
+  VERIFY1(SUCCEEDED(RegisterOrUnregisterProxies64(is_machine, is_register)) ||
+                    !is_register);
+  VERIFY1(SUCCEEDED(RegisterOrUnregisterProxies32(is_machine, is_register)) ||
+                    !is_register);
   return S_OK;
 }
 

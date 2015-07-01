@@ -15,42 +15,52 @@
 
 Import('env')
 
-local_env = env.Clone()
+def BuildCommonLib(env):
+  local_env = env.Clone()
 
-local_env['CPPPATH'] += [
-    '$OBJ_ROOT',  # Needed for generated files.
-    ]
+  local_env['CPPPATH'] += [
+      '$OBJ_ROOT',  # Needed for generated files.
+      ]
 
-inputs = [
-    'app_registry_utils.cc',
-    'command_line.cc',
-    'command_line_builder.cc',
-    'config_manager.cc',
-    'event_logger.cc',
-    'experiment_labels.cc',
-    'extra_args_parser.cc',
-    'goopdate_command_line_validator.cc',
-    'goopdate_utils.cc',
-    'lang.cc',
-    'oem_install_utils.cc',
-    'ping.cc',
-    'ping_event.cc',
-    'scheduled_task_utils.cc',
-    'stats_uploader.cc',
-    'update3_utils.cc',
-    'update_request.cc',
-    'update_response.cc',
-    'webplugin_utils.cc',
-    'web_services_client.cc',
-    'xml_const.cc',
-    'xml_parser.cc',
-    '$LIB_DIR/logging.lib',       # Required by statsreport below
-    '$LIB_DIR/omaha3_idl.lib',    # Required by common
-    '$LIB_DIR/statsreport.lib',   # Required by common
-    ]
+  inputs = [
+      'app_registry_utils.cc',
+      'command_line.cc',
+      'command_line_builder.cc',
+      'config_manager.cc',
+      'crash_utils.cc',
+      'event_logger.cc',
+      'experiment_labels.cc',
+      'exception_handler.cc',
+      'extra_args_parser.cc',
+      'google_signaturevalidator.cc',
+      'goopdate_command_line_validator.cc',
+      'goopdate_utils.cc',
+      'lang.cc',
+      'oem_install_utils.cc',
+      'ping.cc',
+      'ping_event.cc',
+      'ping_event_download_metrics.cc',
+      'scheduled_task_utils.cc',
+      'stats_uploader.cc',
+      'update3_utils.cc',
+      'update_request.cc',
+      'update_response.cc',
+      'webplugin_utils.cc',
+      'web_services_client.cc',
+      'xml_const.cc',
+      'xml_parser.cc',
+      local_env.GetMultiarchLibName('logging'),       # Required by statsreport below
+      local_env.GetMultiarchLibName('omaha3_idl'),    # Required by common
+      local_env.GetMultiarchLibName('statsreport'),   # Required by common
+      ]
 
-# Build these into a library.
-local_env.ComponentStaticLibrary('common', inputs)
+  lib_name = 'common%s' % ('', '_64')[local_env.Bit('x64')]
+
+  # Build these into a library.
+  local_env.ComponentStaticLibrary(lib_name, inputs)
+
+BuildCommonLib(env)
+BuildCommonLib(env.CloneAndMake64Bit())
 
 customization_test_env = env.Clone()
 customization_test_env.OmahaUnittest(
@@ -60,6 +70,8 @@ customization_test_env.OmahaUnittest(
     ],
     LIBS=[
         '$LIB_DIR/common',
+        '$LIB_DIR/security',
+        'crypt32.lib',
     ],
     all_in_one=False,
     COMPONENT_TEST_SIZE='small',

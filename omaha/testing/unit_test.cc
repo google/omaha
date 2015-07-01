@@ -16,6 +16,7 @@
 #include "testing/unit_test.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
+#include "omaha/base/error.h"
 #include "omaha/base/path.h"
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
@@ -240,13 +241,20 @@ void TerminateAllProcessesByName(const TCHAR* process_name) {
                                          FALSE,
                                          process_pids[i]));
     EXPECT_TRUE(process);
-    EXPECT_TRUE(::TerminateProcess(get(process), static_cast<uint32>(-3)));
+    BOOL terminate_process_result(::TerminateProcess(get(process),
+                                                     static_cast<uint32>(-3)));
+    HRESULT hr(S_OK);
+    if (!terminate_process_result) {
+      hr = HRESULTFromLastError();
+      std::wcout << _T("\t::TerminateProcess failed " << hr) << std::endl;
+    }
   }
 }
 
 void TerminateAllGoogleUpdateProcesses() {
   TerminateAllProcessesByName(kOmahaShellFileName);
   TerminateAllProcessesByName(kCrashHandlerFileName);
+  TerminateAllProcessesByName(kCrashHandler64FileName);
 }
 
 // The exit code of psexec is the pid it started when -d is used.

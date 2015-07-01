@@ -17,7 +17,6 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/goopdate/app_state_ready_to_install.h"
-#include "omaha/goopdate/download_complete_ping_event.h"
 #include "omaha/goopdate/model.h"
 
 namespace omaha {
@@ -41,13 +40,7 @@ const PingEvent* AppStateDownloadComplete::CreatePingEvent(
   const HRESULT error_code = app->error_code();
   ASSERT1(SUCCEEDED(error_code));
 
-  return new DownloadCompletePingEvent(event_type,
-                                       GetCompletionResult(*app),
-                                       error_code,
-                                       0,
-                                       app->GetDownloadTimeMs(),
-                                       app->num_bytes_downloaded(),
-                                       app->GetPackagesTotalSize());
+  return new PingEvent(event_type, GetCompletionResult(*app), error_code, 0);
 }
 
 // TODO(omaha3): When extraction and differential updates are supported, this

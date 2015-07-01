@@ -16,8 +16,11 @@
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/scoped_ptr_address.h"
+#include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
@@ -182,6 +185,34 @@ HRESULT SetUsageStatsEnable(bool is_machine,
   return S_OK;
 }
 
+HRESULT SetInitialDayOfValues(const CString& client_state_key_path,
+                              int num_days_since_datum) {
+  CORE_LOG(L3, (_T("[SetInitialDayOfValues]")));
+  RegKey state_key;
+  HRESULT hr = state_key.Open(client_state_key_path);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  const DWORD kInitialValue = static_cast<DWORD>(-1);
+  DWORD initial_day_of_install(static_cast<DWORD>(num_days_since_datum));
+  if (num_days_since_datum == 0) {
+    initial_day_of_install = kInitialValue;
+  }
+  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueDayOfInstall,
+                                       initial_day_of_install)));
+
+  if (!state_key.HasValue(kRegValueDayOfLastActivity)) {
+    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueDayOfLastActivity,
+                                         kInitialValue)));
+  }
+  if (!state_key.HasValue(kRegValueDayOfLastRollCall)) {
+    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueDayOfLastRollCall,
+                                         kInitialValue)));
+  }
+  return S_OK;
+}
+
 // Google Update does not have a referral_id. Everything else is the same as for
 // apps.
 HRESULT SetGoogleUpdateBranding(const CString& client_state_key_path,
@@ -190,7 +221,8 @@ HRESULT SetGoogleUpdateBranding(const CString& client_state_key_path,
   HRESULT hr(SetAppBranding(client_state_key_path,
                             brand_code,
                             client_id,
-                            CString()));
+                            CString(),
+                            -1));
 
   if (FAILED(hr)) {
     return hr;
@@ -224,7 +256,8 @@ HRESULT SetGoogleUpdateBranding(const CString& client_state_key_path,
 HRESULT SetAppBranding(const CString& client_state_key_path,
                        const CString& brand_code,
                        const CString& client_id,
-                       const CString& referral_id) {
+                       const CString& referral_id,
+                       int num_days_since_datum) {
   CORE_LOG(L3, (_T("[app_registry_utils::SetAppBranding][%s][%s][%s][%s]"),
                 client_state_key_path, brand_code, client_id, referral_id));
 
@@ -274,7 +307,8 @@ HRESULT SetAppBranding(const CString& client_state_key_path,
 
   const DWORD now = Time64ToInt32(GetCurrent100NSTime());
   VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now)));
-
+  VERIFY1(SUCCEEDED(SetInitialDayOfValues(client_state_key_path,
+                                          num_days_since_datum)));
   return S_OK;
 }
 
@@ -359,6 +393,20 @@ void GetAppVersion(bool is_machine, const CString& app_id, CString* pv) {
   }
 }
 
+void GetAppName(bool is_machine, const CString& app_id, CString* name) {
+  ASSERT1(name);
+  RegKey::GetValue(GetAppClientsKey(is_machine, app_id),
+                   kRegValueAppName,
+                   name);
+}
+
+void GetAppLang(bool is_machine, const CString& app_id, CString* lang) {
+  ASSERT1(lang);
+  RegKey::GetValue(GetAppClientStateKey(is_machine, app_id),
+                   kRegValueLanguage,
+                   lang);
+}
+
 // Reads the following values from the registry:
 //  ClientState key
 //    pv
@@ -368,6 +416,7 @@ void GetAppVersion(bool is_machine, const CString& app_id, CString* pv) {
 //    client
 //    iid
 //    experiment
+// Reads InstallTime and computes InstallTimeDiffSec.
 void GetClientStateData(bool is_machine,
                         const CString& app_id,
                         CString* pv,
@@ -376,7 +425,9 @@ void GetClientStateData(bool is_machine,
                         CString* brand_code,
                         CString* client_id,
                         CString* iid,
-                        CString* experiment_labels) {
+                        CString* experiment_labels,
+                        int* install_time_diff_sec,
+                        int* day_of_install) {
   RegKey key;
 
   CString key_name = GetAppClientStateKey(is_machine, app_id);
@@ -406,6 +457,61 @@ void GetClientStateData(bool is_machine,
   if (experiment_labels) {
     key.GetValue(kRegValueExperimentLabels, experiment_labels);
   }
+  if (install_time_diff_sec) {
+    *install_time_diff_sec = GetInstallTimeDiffSec(is_machine, app_id);
+  }
+
+  if (day_of_install) {
+    DWORD install_day(0);
+    GetDayOfInstall(is_machine, app_id, &install_day);
+    *day_of_install = static_cast<int>(install_day);
+  }
+}
+
+int GetInstallTimeDiffSec(bool is_machine, const CString& app_id) {
+  RegKey key;
+
+  CString key_name = GetAppClientStateKey(is_machine, app_id);
+  HRESULT hr = key.Open(key_name, KEY_READ);
+  if (FAILED(hr)) {
+    return 0;
+  }
+
+  DWORD install_time(0);
+  int install_time_diff_sec(0);
+  if (SUCCEEDED(key.GetValue(kRegValueInstallTimeSec, &install_time))) {
+    const int now = Time64ToInt32(GetCurrent100NSTime());
+    if (0 != install_time &&
+        static_cast<DWORD>(now) >= install_time &&
+        INT_MAX >= static_cast<DWORD>(now) - install_time) {
+      install_time_diff_sec = now - install_time;
+    }
+  }
+
+  return install_time_diff_sec;
+}
+
+HRESULT GetDayOfInstall(
+    bool is_machine, const CString& app_id, DWORD* day_of_install) {
+  RegKey key;
+
+  CString key_name = GetAppClientStateKey(is_machine, app_id);
+  HRESULT hr = key.Open(key_name, KEY_READ);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = key.GetValue(kRegValueDayOfInstall, day_of_install);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (*day_of_install != -1) {
+    // Truncate day of install to the first day of that week.
+    const int kDaysInWeek = 7;
+    *day_of_install = *day_of_install / kDaysInWeek * kDaysInWeek;
+  }
+  return S_OK;
 }
 
 HRESULT GetUninstalledApps(bool is_machine,
@@ -473,6 +579,20 @@ HRESULT GetExperimentLabels(bool is_machine, const CString& app_id,
   return RegKey::GetValue(state_key, kRegValueExperimentLabels, labels_out);
 }
 
+HRESULT GetExperimentLabelsMedium(const CString& app_id, CString* labels_out) {
+  ASSERT1(!app_id.IsEmpty());
+  ASSERT1(labels_out);
+
+  const bool kIsMachine = true;
+
+  const CString med_state_key = GetAppClientStateMediumKey(kIsMachine, app_id);
+  if (!RegKey::HasValue(med_state_key, kRegValueExperimentLabels)) {
+    return S_OK;
+  }
+
+  return RegKey::GetValue(med_state_key, kRegValueExperimentLabels, labels_out);
+}
+
 HRESULT SetExperimentLabels(bool is_machine, const CString& app_id,
                             const CString& new_labels) {
   ASSERT1(!app_id.IsEmpty());
@@ -481,6 +601,60 @@ HRESULT SetExperimentLabels(bool is_machine, const CString& app_id,
   return RegKey::SetValue(GetAppClientStateKey(is_machine, app_id),
                           kRegValueExperimentLabels,
                           new_labels);
+}
+
+HRESULT GetLastOSVersion(bool is_machine, OSVERSIONINFOEX* os_version_out) {
+  ASSERT1(os_version_out);
+
+  scoped_array<byte> value;
+  size_t size = 0;
+  HRESULT hr = RegKey::GetValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueLastOSVersion,
+      address(value),
+      &size);
+  if (FAILED(hr) || !value.get()) {
+    return value.get() ? hr : E_FAIL;
+  }
+
+  // Double-check that this looks like a OSVERSIONINFOEX.
+  if (size != sizeof(OSVERSIONINFOEX)) {
+    CORE_LOG(L3, (_T("[GetLastOSVersion][struct is wrong size]")));
+    return E_UNEXPECTED;
+  }
+
+  OSVERSIONINFOEX* version = reinterpret_cast<OSVERSIONINFOEX*>(value.get());
+  if (size != version->dwOSVersionInfoSize) {
+    CORE_LOG(L3, (_T("[GetLastOSVersion][struct's size field is corrupt]")));
+    return E_UNEXPECTED;
+  }
+
+  ::CopyMemory(os_version_out, value.get(), size);
+  return S_OK;
+}
+
+HRESULT SetLastOSVersion(bool is_machine, const OSVERSIONINFOEX* os_version) {
+  OSVERSIONINFOEX current_os = {};
+  if (!os_version) {
+    HRESULT hr = SystemInfo::GetOSVersion(&current_os);
+    if (FAILED(hr)) {
+      CORE_LOG(L3, (_T("[SetLastOSVersion][GetOSVersion failed][%#08x]"), hr));
+      return hr;
+    }
+    os_version = &current_os;
+  }
+
+  HRESULT hr = RegKey::SetValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueLastOSVersion,
+      reinterpret_cast<const byte*>(os_version),
+      sizeof(OSVERSIONINFOEX));
+  if (FAILED(hr)) {
+    CORE_LOG(L3, (_T("[SetLastOSVersion][SetValue failed][%#08x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
 }
 
 }  // namespace app_registry_utils

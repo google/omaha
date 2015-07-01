@@ -44,7 +44,6 @@ DEFINE_METRIC_count(setup_subsequent_install_should_install_true);
 
 DEFINE_METRIC_count(setup_files_total);
 DEFINE_METRIC_count(setup_files_verification_succeeded);
-DEFINE_METRIC_count(setup_files_verification_failed_pre);
 DEFINE_METRIC_count(setup_files_verification_failed_post);
 
 DEFINE_METRIC_timing(setup_files_ms);

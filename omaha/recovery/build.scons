@@ -27,6 +27,14 @@ recovery_inputs = [
     '../base/signaturevalidator.cc',
     ]
 
+# TODO(omaha3): Remove the dependency on common.lib since this library is
+# designed to be consumed by apps that don't link with common.lib.
+rec_env.Append(
+    LIBS = [
+        '$LIB_DIR/common.lib',
+        ],
+)
+
 # Need to add custom suffix to avoid target conflict with
 # common/signaturevalidator.obj
 rec_env['OBJSUFFIX'] = '_rec' + rec_env['OBJSUFFIX']
@@ -37,7 +45,6 @@ rec_env.ComponentLibrary('google_update_recovery', recovery_inputs)
 # official build. The lib is already published to this directory.
 rec_env.Replicate('$STAGING_DIR',
                   '$MAIN_DIR/recovery/client/google_update_recovery.h')
-
 
 #
 # Build the test
@@ -51,8 +58,8 @@ else:
   test_env = env.Clone(COMPONENT_TEST_RUNNABLE=False)
 
 # This is a console application.
-test_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
-test_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+test_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS,5.01'])
+test_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE,5.01']
 
 test_env.Append(
     LIBS = [
@@ -61,7 +68,7 @@ test_env.Append(
         '$LIB_DIR/common.lib',
         '$LIB_DIR/google_update_recovery.lib',
         '$LIB_DIR/security.lib',
-        ('atls.lib', 'atlsd.lib')[test_env.Bit('debug')],
+        test_env['atls_libs'][test_env.Bit('debug')],
         ('libcmt.lib', 'libcmtd.lib')[test_env.Bit('debug')],
         ('libcpmt.lib', 'libcpmtd.lib')[test_env.Bit('debug')],
         'crypt32.lib',

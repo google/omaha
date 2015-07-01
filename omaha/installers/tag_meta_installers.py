@@ -195,7 +195,8 @@ def TagOneFile(file, app, applytag_exe_name):
   arguments = [applytag_exe_name,
                file,
                output_path,
-               tag_string
+               tag_string,
+               'append'
               ]
   print 'Building %s with tag %s' % (output_path, tag_string)
   os.spawnv(os.P_WAIT, applytag_exe_name, arguments)

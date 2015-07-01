@@ -29,6 +29,8 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/scoped_any.h"
+#include "omaha/base/synchronized.h"
+#include "omaha/common/ping.h"
 #include "omaha/goopdate/com_wrapper_creator.h"
 #include "omaha/goopdate/model_object.h"
 #include "omaha/net/proxy_auth.h"
@@ -51,6 +53,25 @@ class AppBundleState;
 class AppBundleStateInit;
 
 }  // namespace fsm
+
+namespace internal {
+
+struct SendPingEventsParameters {
+ public:
+  SendPingEventsParameters(Ping* p, HANDLE token, Gate* gate)
+      : ping(p),
+        impersonation_token(token),
+        send_ping_events_gate(gate) {
+    ASSERT1(ping);
+    ASSERT1(gate);
+  }
+
+  Ping* ping;
+  HANDLE impersonation_token;
+  Gate* send_ping_events_gate;
+};
+
+}  // namespace internal
 
 // AppBundle instances are reference-counted using shared pointers. Lifetime
 // of an AppBundle instance is controlled by both external and internal
@@ -78,6 +99,8 @@ class AppBundle
   STDMETHOD(put_offlineDirectory)(BSTR offline_dir);
   STDMETHOD(get_sessionId)(BSTR* session_id);
   STDMETHOD(put_sessionId)(BSTR session_id);
+  STDMETHOD(get_sendPings)(VARIANT_BOOL* send_pings);
+  STDMETHOD(put_sendPings)(VARIANT_BOOL send_pings);
   STDMETHOD(get_priority)(long* priority);  // NOLINT
   STDMETHOD(put_priority)(long priority);  // NOLINT
   STDMETHOD(get_Count)(long* count);  // NOLINT
@@ -162,7 +185,8 @@ class AppBundle
   // TODO(omaha): missing unit test.
   // Sends the ping if the applications in the bundle have accumulated
   // any ping events.
-  HRESULT SendPingEvents();
+  HRESULT SendPingEventsAsync();
+  static void SendPingEvents(internal::SendPingEventsParameters params);
 
   // These methods capture the current COM caller tokens.
   HRESULT CaptureCallerImpersonationToken();
@@ -180,6 +204,9 @@ class AppBundle
 
   // True if the bundle is an update bundle.
   bool is_auto_update_;
+
+  // If false, omit sending event pings when the bundle is destroyed.
+  bool send_pings_;
 
   int priority_;
 
@@ -263,6 +290,8 @@ class ATL_NO_VTABLE AppBundleWrapper
   STDMETHOD(put_offlineDirectory)(BSTR offline_dir);
   STDMETHOD(get_sessionId)(BSTR* session_id);
   STDMETHOD(put_sessionId)(BSTR session_id);
+  STDMETHOD(get_sendPings)(VARIANT_BOOL* send_pings);
+  STDMETHOD(put_sendPings)(VARIANT_BOOL send_pings);
   STDMETHOD(get_priority)(long* priority);  // NOLINT
   STDMETHOD(put_priority)(long priority);  // NOLINT
   STDMETHOD(get_Count)(long* count);  // NOLINT

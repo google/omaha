@@ -15,6 +15,8 @@
 
 
 #include <shlwapi.h>
+#include <atlpath.h>
+#include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/goopdate/main.h"
@@ -22,13 +24,12 @@
 
 namespace omaha {
 
-  TEST(MainTest, EntryPoint) {
-  TCHAR path[MAX_PATH] = {0};
-  ASSERT_TRUE(::GetModuleFileName(NULL, path, MAX_PATH));
-  ::PathRemoveFileSpec(path);
-  ASSERT_TRUE(::PathAppend(path, kOmahaDllName));
+TEST(MainTest, EntryPoint) {
+  CPath module_path(app_util::GetCurrentModuleDirectory());
+  EXPECT_TRUE(module_path.Append(kOmahaDllName));
+  EXPECT_TRUE(module_path.FileExists());
 
-  HMODULE module(::LoadLibraryEx(path, NULL, 0));
+  HMODULE module(::LoadLibraryEx(module_path, NULL, 0));
   ASSERT_TRUE(module);
 
   DllEntry dll_entry = reinterpret_cast<DllEntry>(
@@ -39,3 +40,4 @@ namespace omaha {
 }
 
 }  // namespace omaha
+

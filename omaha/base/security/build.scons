@@ -23,14 +23,9 @@ Import('env')
 security_env = env.Clone()
 
 security_env.Append(
-    CPPPATH = [
-        '$MAIN_DIR/third_party/c99/include',
-        ],
     CCFLAGS = [
         '/wd4242',  # conversion from 'type1' to 'type2', possible loss of data
         '/wd4244',  # conversion from 'type1' to 'type2', possible loss of data
-        '/wd4510',  # default constructor could not be generated
-        '/wd4610',  # object 'class' can never be instantiated
         ],
 )
 
@@ -41,12 +36,18 @@ security_inputs = [
     'challenger.cc',
     'hmac.c',
     'md5.c',
+    'p256.c',
+    'p256_ec.c',
+    'p256_ecdsa.c',
+    'p256_prng.c',
     'rc4.c',
     'rsa.cc',
     'sha.c',
+    'sha256.c',
     ]
 
 # Precompiled headers cannot be used with C files.
-security_env.ComponentStaticLibrary('security',
-                                    security_inputs,
-                                    use_pch_default=False)
+security_env.ComponentStaticLibraryMultiarch('security',
+                                             security_inputs,
+                                             use_pch_default=False)
+

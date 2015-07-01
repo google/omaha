@@ -55,16 +55,6 @@ import sys
 
 import omaha_version_utils
 
-# To switch the build, simply change the value of the msc_ver variable below.
-# VC2003/VC71 is 1310 but not supported by the current build.
-# VC2005/VC80 is 1400.
-# VC2008/VC90 is 1500.
-_msc_ver = 1400
-
-_sdk_path = os.environ['OMAHA_VISTASDK_DIR']
-
-_signtool_path = os.path.join(_sdk_path, 'bin/signtool.exe')
-
 # Build the "Google Update", the Google-specific version of Omaha.
 # TODO(omaha): Set based on an environment variable and/or Hammer arg.
 is_google_update_build = False
@@ -107,6 +97,20 @@ _BUILD_SERVER_CERTIFICATE_HASH = 'cafd39335d6e76f0e26d81296e7cbbfbdf16a720'
 # End vendor-specific constants.
 #
 
+# Reads the value of OMAHA_MSC_VER to determine which compiler/toolchain to use.
+# The set of expected values are in omaha_version_utils; currently, only
+# "1400" (VC80), "1600" (VC100), and "1800" (VC120) are supported.
+# Defaults to VC120 if the environment variable is not specified.
+_msc_ver = int(os.getenv('OMAHA_MSC_VER', "1800"))
+
+_sdk_dir = os.environ['OMAHA_VISTASDK_DIR']
+
+_atl_server_dir = os.getenv('OMAHA_ATL_SERVER_DIR',
+                            '$THIRD_PARTY/atl_server/files')
+_wtl_dir = os.getenv('OMAHA_WTL_DIR', '$THIRD_PARTY/wtl/files')
+
+_signtool_path = ('python $MAIN_DIR/tools/retry.py 10 5 %s/%s' %
+                  (os.getenv('SIGNTOOL_SDK_DIR'), 'signtool.exe'))
 
 # Windows is the only environment we bulid for, so create a specialized base
 # environment for Windows.
@@ -114,26 +118,40 @@ win_env = Environment(
     # For internal builds only, it is a good idea to have set before the
     # 'component_setup' tool is used even though we add the SDK directories to
     # the appropriate environment variables manually below.
-    PLATFORM_SDK_DIR = _sdk_path,
+    PLATFORM_SDK_DIR = _sdk_dir,
     tools=[
         'component_setup',
         'target_platform_windows',
-        # Need to use 'masm' to override the 'as' tool currently used
-        # by default in 'target_platform_windows'
-        'masm',
-        'atlmfc_vc80',
+        { omaha_version_utils.VC120:'windows_vc12_0',
+          omaha_version_utils.VC100:'windows_vc10_0',
+          omaha_version_utils.VC80:'target_platform_windows' }[_msc_ver],
+        'masm',         # Use 'masm' to override the 'as' tool currently
+                        # used by default in 'target_platform_windows'
+        { omaha_version_utils.VC120:'atlmfc_vc12_0',
+          omaha_version_utils.VC100:'atlmfc_vc10_0',
+          omaha_version_utils.VC80:'atlmfc_vc80' }[_msc_ver],
         'code_signing',
         'component_targets_msvs',
         'omaha_builders',
     ],
     msc_ver = _msc_ver,
     build_server_certificate_hash = _BUILD_SERVER_CERTIFICATE_HASH,
+
     # Visual Studio 2008 does not ship the sign tool. Use the sign tool from
     # the Platform SDK. This must come after the 'code_signing' tool is used.
     # Remove this if http://code.google.com/p/swtoolkit/issues/detail?id=16 is
     # fixed.
-    SIGNTOOL = '"' + _signtool_path + '"',
+    SIGNTOOL = _signtool_path,
 )
+
+win_env['ENV']['GOROOT'] = os.getenv('GOROOT',
+                                     win_env.subst('$MAIN_DIR') +
+                                     '\\..\\third_party\\go\\files')
+
+# Append paths for supporting tools such as uuidgen.exe and mage.exe.
+win_env.AppendENVPath('PATH', (_sdk_dir + '\\bin\\' +
+    ('', 'x86')[_msc_ver >= omaha_version_utils.VC120]))
+win_env.AppendENVPath('PATH', os.getenv('OMAHA_NETFX_TOOLS_DIR'))
 
 # Remove this value because it conflicts with a #define
 # in shlwapi.h in the Vista SDK
@@ -231,6 +249,9 @@ DeclareBit('min', 'Building minimal set of projects')
 DeclareBit('all', 'Building all Projects')
 DeclareBit('msvs', 'Building Visual Studio solution files')
 DeclareBit('no-tests', 'Do not build the unit tests')
+DeclareBit('x64', 'Build 64 bit code')
+DeclareBit('analysis', 'Turns on static analysis')
+DeclareBit('suppress_light_validation', 'Suppress WiX Linker ICE validation')
 
 # Build official installers if --official_installers is on the command line.
 win_env.SetBitFromOption('official_installers', False)
@@ -278,6 +299,15 @@ if not win_env.Bit('build_server'):
   if GetOption('authenticode_password') is default_cert_password:
     win_env.SetBits('test_certificate')
 
+# Build the 64 bit version of the code.
+win_env.SetBitFromOption('x64', False)
+
+# Turns on static analysis.
+win_env.SetBitFromOption('analysis', False)
+
+# Supresses WiX Linker ICE validation. Useful when building with a
+# non-interactive account or a non-Admin account: http://goo.gl/UyDzeP.
+win_env.SetBitFromOption('suppress_light_validation', False)
 
 # The precompiled headers are to be used as an optional build speed up
 # build facility. Individual compilation units in the project must build with
@@ -332,25 +362,35 @@ if is_google_update_build:
 # Make sure python.exe can be located.
 win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])
 
-win_env.Append(
+# VS2013 does not ship a debug version of the ATL static library. Therefore,
+# only one version of the library is required.
+win_env['atls_libs'] = (
+    ('atls', 'atlsd'),
+    ('atls', 'atls'),
+)[_msc_ver >= omaha_version_utils.VC120]
+
+win_env.AppendUnique(
     # Add windows specific compiler flags.
     CCFLAGS = [
+        ('', '/analyze:WX-')[win_env.Bit('analysis')],
         '/nologo',
         '/c',
         '/Zc:forScope',
         '/D_HAS_EXCEPTIONS=0',
         '/DCOMPILER_MSVC',
-        '/J',
         '/DSTL_MSVC',
         '/GR-',
         '/D_CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1',
+        '/D_CRT_RAND_S',
         '/WX',      # warnings as errors
+        '/d2Zi+',   # better debugging support for optimized code
 
         #
         # Disable the following level 4 warnings below.
         #
+        '/wd4061',  # enumerate is not explicitly handled by a case label
         '/wd4127',  # conditional expression is constant
         '/wd4189',  # local variable is initialized but not referenced
         '/wd4505',  # unreferenced local function has been removed
@@ -359,15 +399,19 @@ win_env.Append(
         # Disable the pedantic warnings below.
         #
         '/wd4191',  # unsafe conversion from 'type of expression' to
-                    #     'type required'
+                    # 'type required'
         '/wd4217',  # member template functions cannot be used for
-                    #     copy-assignment...
+                    # copy-assignment...
         '/wd4365',  # conversion from 'type_1' to 'type_2',
-                    #     signed/unsigned mismatch
+                    # signed/unsigned mismatch
+        '/wd4371',  # layout of class may have changed from a previous version
+                    # of the compiler due to better packing of member
+        '/wd4510',  # default constructor could not be generated
         '/wd4512',  # assignment operator could not be generated
         '/wd4514',  # unreferenced inline function has been removed
         '/wd4555',  # expression has no effect
-        '/wd4619',  # #pragma warning : there is no warning number 'number'
+        '/wd4610',  # struct can never be instantiated
+        '/wd4619',  # there is no warning number 'number'
         '/wd4623',  # default constructor could not be generated...
         '/wd4625',  # copy constructor could not be generated...
         '/wd4626',  # assignment operator could not be generated...
@@ -375,19 +419,36 @@ win_env.Append(
         '/wd4710',  # function not inlined
         '/wd4711',  # function 'function' selected for inline expansion
         '/wd4738',  # storing 32-bit float result in memory...
+        '/wd4755',  # Conversion rules for arithmetic operations in the
+                    # comparison at mean that one branch cannot be executed
+                    # in an inlined function.
         '/wd4820',  # bytes padding added after construct 'member_name'
-        ],
+        '/wd4987',  # nonstandard extension used: 'throw (...)
+        '/wd4995',  # name was marked as #pragma deprecated
+        '/wd4996',  # 'function': was declared deprecated
+
+        #
+        # Disable static analysis warnings.
+        #
+        '/wd28159', # Consider using 'GetTickCount64' instead of 'GetTickCount'.
+        '/wd28204', # Inconsistent SAL annotations.
+        '/wd28251', # Inconsistent SAL annotations.
+    ],
 
     # Where to look for include files.
     CPPPATH = [
+        _atl_server_dir + '/include',
+        _wtl_dir +'/include',
+        '$GOOGLECLIENT',
         '$MAIN_DIR',
-        '$MAIN_DIR/..',
-        '$MAIN_DIR/third_party/chrome',
-        '$MAIN_DIR/third_party/gtest/include',
-        ],
+        '$MAIN_DIR/third_party/chrome/files/src',
+        '$THIRD_PARTY/breakpad/src',
+    ],
 
     # Defines for windows environment.
     CPPDEFINES = [
+        'PSAPI_VERSION=1',
+        'WINVER=0X0500',
         'WIN32', '_WINDOWS',
         'UNICODE', '_UNICODE',
         'WIN32_LEAN_AND_MEAN',
@@ -404,7 +465,9 @@ win_env.Append(
         '_ATL_NO_TRACK_HEAP',
         '_ATL_NO_UUIDOF',
         '_ATL_STATIC_REGISTRY',
+        '_ATL_XP_TARGETING',
         '_CRT_RAND_S',      # rand_s support available in Windows XP only.
+        '_SECURE_ATL=1',
         '_WTL_NO_CSTRING',  # WTL uses ATL CString instead.
 
         # '_ATL_NO_CONNECTION_POINTS',
@@ -413,11 +476,11 @@ win_env.Append(
 
         # Set these C_DEFINES when APPVER=5.0
         # (see win32.mak in Platform SDK)
-        # Target Windows XP and IE 6.0 and above.
-        'WINVER=0x0501',
-        '_WIN32_WINNT=0x0501',
-        '_WIN32_IE=0x0600',
-        '_RICHEDIT_VER=0x0010',
+        # Target Windows XP SP3. The minimum platform supported is still
+        # Windows XP. Therefore, the code needs to gracefully handle the
+        # cases where some of the functionality enabled by the platform SDK
+        # headers is not available.
+        'DNTDDI_VERSION=NTDDI_WINXPSP3',
 
         # don't define min and max in windef.h
         'NOMINMAX',
@@ -450,7 +513,11 @@ win_env.Append(
             omaha_version_info.update_plugin_filename),
         'BHO_NAME=_T(\\"%s\\")' % omaha_version_utils.GetBHO_NAME(),
         'BHO_FILENAME=_T(\\"%s\\")' % omaha_version_info.bho_filename,
-        'CRASH_HANDLER_NAME=_T(\\"%s\\")' % omaha_version_utils.GetCRASH_HANDLER_NAME(),
+        'CRASH_HANDLER_NAME=_T(\\"%s\\")' %
+            omaha_version_utils.GetCRASH_HANDLER_NAME(),
+
+        # for Chromium code.
+        'ARCH_CPU_X86_FAMILY',
         ],
 
     # Link in some windows libraries.
@@ -472,8 +539,7 @@ win_env.Append(
     # Common linker flags.
     LINKFLAGS = [
         '/nologo',
-        '/SUBSYSTEM:WINDOWS',
-        '/MACHINE:X86',
+        '/SUBSYSTEM:WINDOWS,5.01',
         '/RELEASE',
         '/MAP',
         '/NODEFAULTLIB',
@@ -485,8 +551,7 @@ win_env.Append(
     # Shared library specific linker flags.
     SHLINKFLAGS = [
         '/nologo',
-        '/SUBSYSTEM:WINDOWS',
-        '/MACHINE:x86',
+        '/SUBSYSTEM:WINDOWS,5.01',
         ],
 
     # Resource compiler flags.
@@ -498,6 +563,25 @@ win_env.Append(
             _OMAHA_COPYRIGHT_STRING_ENGLISH),
         ],
 )
+
+# VC2010 has a different way to record the location of the pdb file. The
+# value of %PDB% is expanded to the name of the actual .pdb file without
+# including any specific path information.
+if _msc_ver >= omaha_version_utils.VC100:
+  win_env.FilterOut(LINKFLAGS = ['/PDBPATH:none'])
+  win_env.FilterOut(LINKFLAGS_OPTIMIZED = ['/PDBPATH:none'])
+  win_env.AppendUnique(
+     LINKFLAGS = [
+        '/PDBALTPATH:%_PDB%'
+     ],
+  )
+
+if _msc_ver >= omaha_version_utils.VC120 and not win_env.Bit('build_server'):
+  win_env.AppendUnique(
+      # Forces writes to the program database (PDB) file to allow otherwise,
+      # for some reason, optimized builds fail when run with -j option.
+      CCFLAGS = ['/FS', ]
+  )
 
 # Allow verification of these settings in the build log.
 if win_env.Bit('build_server'):
@@ -514,13 +598,11 @@ for mid_dir in ['', 'vc']:
   for env_var, sub_dir in [('PATH', 'bin'),
                            ('INCLUDE', 'include'),
                            ('LIB', 'lib')]:
-    var_path = os.path.join(_sdk_path, mid_dir, sub_dir)
+    var_path = os.path.join(_sdk_dir, mid_dir, sub_dir)
     if os.path.exists(var_path):
       win_env.PrependENVPath(env_var, var_path)
 
 if not win_env.Bit('official_installers'):
-  win_env.Append(CPPPATH = os.environ['OMAHA_WTL_DIR'])
-
   # Make sure csc.exe can be located.
   win_env.AppendENVPath('PATH', os.environ['OMAHA_NET_DIR'])
 
@@ -541,6 +623,8 @@ win_env.AppendENVPath('PATH', os.environ['OMAHA_WIX_DIR'])
 
 win_env.Tool('wix')
 
+if win_env.Bit('suppress_light_validation'):
+  win_env['WIXLIGHTFLAGS'].append('-sval')
 
 _base_dirs = [
     '.',
@@ -549,6 +633,7 @@ _base_dirs = [
     'client',
     'common',
     'core',
+    'crashhandler',
     'google_update',
     'goopdate',
     'net',
@@ -615,7 +700,6 @@ win_env['BUILD_SCONSCRIPTS'] = _dirs_to_build
 win_env['all_in_one_unittest_sources'] = []
 win_env['all_in_one_unittest_libs'] = set()
 
-
 # Create the leaf debug Windows environment.
 windows_debug_env = win_env.Clone(
     # Give this build a name and a description.
@@ -626,7 +710,7 @@ windows_debug_env = win_env.Clone(
 # Use common debug settings.
 windows_debug_env.Tool('target_debug')
 
-windows_debug_env.Append(
+windows_debug_env.AppendUnique(
     CCFLAGS = [
         '/RTC1',
         '/Od',
@@ -638,6 +722,13 @@ windows_debug_env.Append(
         ],
 )
 
+# Create the pure 64-bit debug Windows environment from the general one.
+windows64_debug_env = windows_debug_env.Clone(
+    # Give this build a name and a description.
+    BUILD_TYPE = 'dbg-win64',
+    BUILD_TYPE_DESCRIPTION = 'Windows 64 bit debug build',
+)
+windows64_debug_env.ConfigureEnvFor64Bit()
 
 # Create the leaf optimized Windows environment.
 windows_optimized_env = win_env.Clone(
@@ -649,9 +740,10 @@ windows_optimized_env = win_env.Clone(
 # Use common optimized settings.
 windows_optimized_env.Tool('target_optimized')
 
-windows_optimized_env.Append(
+windows_optimized_env.AppendUnique(
     CCFLAGS = [
         '/O1',        # Optimize for small size.
+        '/Oy-',       # Disable frame pointer omission.
         '/GS',
         '/FD',
         '/GL',        # Global optimization goes with link flag '/LTCG'
@@ -668,11 +760,17 @@ windows_optimized_env.Append(
         '/incremental:no',
         '/opt:ref',
         '/opt:icf=32',
-        '/opt:nowin98',
         '/LTCG',      # Link-time code generation goes with cl flag '/GL'
         ],
 )
 
+# Create the all-64-bit optimized Windows environment from the general one.
+windows64_optimized_env = windows_optimized_env.Clone(
+    # Give this build a name and a description.
+    BUILD_TYPE = 'opt-win64',
+    BUILD_TYPE_DESCRIPTION = 'Windows 64 bit optimized build',
+)
+windows64_optimized_env.ConfigureEnvFor64Bit()
 
 # Create an environment for coverage test builds, based on the dbg build.
 windows_coverage_env = windows_debug_env.Clone(
@@ -784,18 +882,27 @@ windows_coverage_env['INSTALL'] = _PostCoverageSigningInstall
 
 # Make debug the default build after any copies of it have been made.
 windows_debug_env.Append(BUILD_GROUPS = ['default'])
+windows64_debug_env.Append(BUILD_GROUPS = ['default'])
 
 # ----------------------------------------------------------
 
 # Build the variants listed above.
 # This step will call each of the SConscripts (build.scons) listed,
 # once for each variant currently being built.
-BuildEnvironments(
-    [ windows_debug_env,
+if GetOption('x64'):
+  print 'Using 64 bit environments.'
+  _environments = [
+      windows64_debug_env,
+      windows64_optimized_env,
+      ]
+else:
+  _environments = [
+      windows_debug_env,
       windows_optimized_env,
       windows_coverage_env,
-    ]
-)
+      ]
+
+BuildEnvironments(_environments)
 
 if 'HAMMER_RUNS_TESTS' in os.environ.keys():
   # Hammer sets the default target to 'scons-out'. This causes run_* aliases

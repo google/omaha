@@ -22,6 +22,7 @@
 #include "omaha/base/path.h"
 #include "omaha/base/string.h"
 #include "omaha/common/command_line.h"
+#include "omaha/common/command_line_builder.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/extra_args_parser.h"
 
@@ -94,8 +95,9 @@ HRESULT GoopdateCommandLineValidator::Setup() {
 
   // gu.exe /install <extraargs> [/appargs <appargs> [/installsource source
   //        [/silent [/eularequired [/oem [/installelevated [/sessionid <sid>
+  //        [/enterprise
   cmd_line.Format(_T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s ")
-                  _T("[/%s sid"),
+                  _T("[/%s sid [/%s"),
                   kCmdLineInstall,
                   kCmdLineAppArgs,
                   kCmdLineInstallSource,
@@ -103,7 +105,8 @@ HRESULT GoopdateCommandLineValidator::Setup() {
                   kCmdLineEulaRequired,
                   kCmdLineOem,
                   kCmdLineInstallElevated,
-                  kCmdLineSessionId);
+                  kCmdLineSessionId,
+                  kCmdLineEnterprise);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnInstall);
 
   // gu.exe /update [/sessionid <sid>
@@ -112,9 +115,9 @@ HRESULT GoopdateCommandLineValidator::Setup() {
 
   // gu.exe /handoff <extraargs> [/appargs <appargs> [/installsource source
   //        [/silent [/eularequired [/offlineinstall [/offlinedir <dir>
-  //        [/sessionid <sid>
+  //        [/sessionid <sid> [/enterprise
   cmd_line.Format(_T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s dir ")
-                  _T("[/%s sid"),
+                  _T("[/%s sid [/%s"),
                   kCmdLineAppHandoffInstall,
                   kCmdLineAppArgs,
                   kCmdLineInstallSource,
@@ -122,7 +125,8 @@ HRESULT GoopdateCommandLineValidator::Setup() {
                   kCmdLineEulaRequired,
                   kCmdLineLegacyOfflineInstall,
                   kCmdLineOfflineDir,
-                  kCmdLineSessionId);
+                  kCmdLineSessionId,
+                  kCmdLineEnterprise);
   CreateScenario(cmd_line,
                  &GoopdateCommandLineValidator::OnInstallHandoffWorker);
 
@@ -329,6 +333,7 @@ HRESULT GoopdateCommandLineValidator::OnInstall() {
                                   0,
                                   &args_->session_id);
   args_->is_silent_set = parser_->HasSwitch(kCmdLineSilent);
+  args_->is_enterprise_set = parser_->HasSwitch(kCmdLineEnterprise);
   args_->is_eula_required_set = parser_->HasSwitch(kCmdLineEulaRequired);
   args_->is_oem_set = parser_->HasSwitch(kCmdLineOem);
   args_->is_install_elevated = parser_->HasSwitch(kCmdLineInstallElevated);
@@ -352,15 +357,21 @@ HRESULT GoopdateCommandLineValidator::OnInstallHandoffWorker() {
                                   0,
                                   &args_->session_id);
   args_->is_silent_set = parser_->HasSwitch(kCmdLineSilent);
+  args_->is_enterprise_set = parser_->HasSwitch(kCmdLineEnterprise);
   args_->is_eula_required_set = parser_->HasSwitch(kCmdLineEulaRequired);
   args_->is_offline_set = parser_->HasSwitch(kCmdLineLegacyOfflineInstall) ||
                           parser_->HasSwitch(kCmdLineOfflineDir);
 
-  if (SUCCEEDED(parser_->GetSwitchArgumentValue(kCmdLineOfflineDir,
-                                                0,
-                                                &args_->offline_dir))) {
-    RemoveMismatchedEndQuoteInDirectoryPath(&args_->offline_dir);
-    ::PathRemoveBackslash(CStrBuf(args_->offline_dir, MAX_PATH));
+  CString offline_dir;
+  parser_->GetSwitchArgumentValue(kCmdLineOfflineDir, 0, &offline_dir);
+  if (!offline_dir.IsEmpty()) {
+    CommandLineBuilder builder(COMMANDLINE_MODE_HANDOFF_INSTALL);
+    HRESULT hr = builder.SetOfflineDirName(offline_dir);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    args_->offline_dir_name = builder.offline_dir_name();
   }
 
   return GetExtraAndAppArgs(kCmdLineAppHandoffInstall);

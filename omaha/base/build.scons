@@ -21,6 +21,7 @@ env.BuildSConscript('security')
 local_env = env.Clone()
 
 inputs = [
+    'apply_tag.cc',
     'accounts.cc',
     'app_util.cc',
     'atl_regexp.cc',
@@ -34,16 +35,14 @@ inputs = [
     'crc.cc',
     'debug.cc',
     'disk.cc',
-    'dynamic_link_dbghelp.cc',
     'dynamic_link_kernel32.cc',
     'encrypt.cc',
+    'environment_block_modifier.cc',
+    'environment_utils.cc',
     'error.cc',
     'event_trace_controller.cc',
     'event_trace_provider.cc',
     'etw_log_writer.cc',
-    'exception_barrier.cc',
-    'exception_barrier_lowlevel.asm',
-    'exception_utils.cc',
     'extractor.cc',
     'file.cc',
     'file_reader.cc',
@@ -54,7 +53,6 @@ inputs = [
     'localization.cc',
     'logging.cc',
     'md5.cc',
-    'module_utils.cc',
     'omaha_version.cc',
     'path.cc',
     'pe_utils.cc',
@@ -82,7 +80,6 @@ inputs = [
     'synchronized.cc',
     'system.cc',
     'system_info.cc',
-    '../third_party/smartany/shared_any.cc',
     'thread.cc',
     'thread_pool.cc',
     'time.cc',
@@ -96,10 +93,17 @@ inputs = [
     'window_utils.cc',
     'wmi_query.cc',
     'xml_utils.cc',
+
+    '../third_party/chrome/files/src/base/cpu.cc',
+    '../third_party/chrome/files/src/crypto/rsa_private_key.cc',
+    '../third_party/chrome/files/src/crypto/rsa_private_key_win.cc',
+    '../third_party/chrome/files/src/crypto/signature_creator_win.cc',
+    '../third_party/chrome/files/src/crypto/signature_verifier_win.cc',
+    '../third_party/smartany/shared_any.cc',
     ]
 
 # Required by the exception barrier code.
 local_env.Append(ASFLAGS = ['/safeseh'])
 
 # Build these into a library.
-local_env.ComponentStaticLibrary('base', inputs)
+local_env.ComponentStaticLibraryMultiarch('base', inputs)

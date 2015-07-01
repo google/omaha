@@ -58,6 +58,7 @@ void AppStateWaitingToCheckForUpdate::PreUpdateCheck(
   // Handle the normal flow and return. Abnormal cases are below.
   if (app->is_eula_accepted()) {
     update_request_utils::BuildRequest(app, true, update_request);
+    app->SetCurrentTimeAs(App::TIME_UPDATE_CHECK_START);
     ChangeState(app, new AppStateCheckingForUpdate);
     return;
   }

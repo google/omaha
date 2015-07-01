@@ -79,7 +79,7 @@ exe_env.Append(
         '$LIB_DIR/statsreport.lib',
         '$LIB_DIR/goopdump.lib',
         '$LIB_DIR/worker.lib',
-        ('atls.lib', 'atlsd.lib')[exe_env.Bit('debug')],
+        exe_env['atls_libs'][exe_env.Bit('debug')],
         ('libcmt.lib', 'libcmtd.lib')[exe_env.Bit('debug')],
         ('libcpmt.lib', 'libcpmtd.lib')[exe_env.Bit('debug')],
         'advapi32.lib',

@@ -18,8 +18,8 @@
 #include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
-#include "omaha/base/exception_barrier.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/utils.h"
 
 namespace omaha {
 
@@ -29,42 +29,38 @@ namespace {
 // inside a thread pool thread.
 class Context {
  public:
-  Context(ThreadPool* pool, UserWorkItem* work_item)
+  Context(ThreadPool* pool, UserWorkItem* work_item, DWORD coinit_flags)
       : pool_(pool),
-        work_item_(work_item) {
+        work_item_(work_item),
+        coinit_flags_(coinit_flags) {
     ASSERT1(pool);
     ASSERT1(work_item);
   }
 
   ThreadPool*   pool() const { return pool_; }
   UserWorkItem* work_item() const { return work_item_; }
+  DWORD coinit_flags() const { return coinit_flags_; }
 
  private:
   ThreadPool*   pool_;
   UserWorkItem* work_item_;
+  const DWORD   coinit_flags_;
 
   DISALLOW_EVIL_CONSTRUCTORS(Context);
 };
-
-// Returns true if delta time since 'baseline' is greater or equal than
-// 'milisecs'. Note: GetTickCount wraps around every ~48 days.
-bool TimeHasElapsed(DWORD baseline, DWORD milisecs) {
-  DWORD current = ::GetTickCount();
-  DWORD wrap_bias = 0;
-  if (current < baseline) {
-    wrap_bias = static_cast<DWORD>(0xFFFFFFFF);
-  }
-  return (current - baseline + wrap_bias) >= milisecs ? true : false;
-}
 
 }   // namespace
 
 
 DWORD WINAPI ThreadPool::ThreadProc(void* param) {
-  ExceptionBarrier eb;
   UTIL_LOG(L4, (_T("[ThreadPool::ThreadProc]")));
   ASSERT1(param);
+
   Context* context = static_cast<Context*>(param);
+
+  scoped_co_init init_com_apt(context->coinit_flags());
+  ASSERT1(SUCCEEDED(init_com_apt.hresult()));
+
   context->pool()->ProcessWorkItem(context->work_item());
   delete context;
   return 0;
@@ -89,6 +85,13 @@ ThreadPool::~ThreadPool() {
       ::Sleep(1);
       if (TimeHasElapsed(baseline_tick_count, shutdown_delay_)) {
         UTIL_LOG(LE, (_T("[ThreadPool::~ThreadPool][timeout elapsed]")));
+
+        // Exiting a thread pool that has active work items can result in a
+        // race condition and undefined behavior during shutdown.
+        ::RaiseException(EXCEPTION_ACCESS_VIOLATION,
+                         EXCEPTION_NONCONTINUABLE,
+                         0,
+                         NULL);
         break;
       }
     }
@@ -108,11 +111,13 @@ void ThreadPool::ProcessWorkItem(UserWorkItem* work_item) {
   ::InterlockedDecrement(&work_item_count_);
 }
 
-HRESULT ThreadPool::QueueUserWorkItem(UserWorkItem* work_item, uint32 flags) {
+HRESULT ThreadPool::QueueUserWorkItem(UserWorkItem* work_item,
+                                      DWORD coinit_flags,
+                                      uint32 flags) {
   UTIL_LOG(L4, (_T("[ThreadPool::QueueUserWorkItem]")));
   ASSERT1(work_item);
 
-  scoped_ptr<Context> context(new Context(this, work_item));
+  scoped_ptr<Context> context(new Context(this, work_item, coinit_flags));
   work_item->set_shutdown_event(get(shutdown_event_));
   ::InterlockedIncrement(&work_item_count_);
   if (!::QueueUserWorkItem(&ThreadPool::ThreadProc, context.get(), flags)) {

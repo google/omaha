@@ -36,6 +36,12 @@ DEFINE_METRIC_count(core_cr_succeeded);
 DEFINE_METRIC_integer(core_cr_expected_timer_interval_ms);
 DEFINE_METRIC_integer(core_cr_actual_timer_interval_ms);
 
+DEFINE_METRIC_count(core_osupgrade_started);
+DEFINE_METRIC_count(core_osupgrade_failed_to_enumerate);
+DEFINE_METRIC_count(core_osupgrade_failed_to_load_command);
+DEFINE_METRIC_count(core_osupgrade_failed_to_create_process);
+DEFINE_METRIC_count(core_osupgrade_completed);
+
 DEFINE_METRIC_count(core_start_crash_handler_total);
 DEFINE_METRIC_count(core_start_crash_handler_succeeded);
 

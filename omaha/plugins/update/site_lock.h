@@ -16,8 +16,10 @@
 #ifndef OMAHA_PLUGINS_UPDATE_SITE_LOCK_H_
 #define OMAHA_PLUGINS_UPDATE_SITE_LOCK_H_
 
+#include <windows.h>
 #include <tchar.h>
 #include <vector>
+
 #include "base/basictypes.h"
 #include "omaha/base/atl_regexp.h"
 

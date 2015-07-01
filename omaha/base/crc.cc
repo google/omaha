@@ -847,7 +847,7 @@ void CRC32::ExtendByZeroes(uint64 *lo, uint64 *hi, size_t length) const {
 
   // Process the low order SMALL_BITS of the length by simply
   // using Extend() on an array of bytes that are zero.
-  int small_part = (length & ((1 << SMALL_BITS)-1));
+  size_t small_part = (length & ((1 << SMALL_BITS)-1));
   if (small_part != 0) {
     this->Extend(lo, hi, zeroes, small_part);
   }
@@ -861,10 +861,10 @@ void CRC32::ExtendByZeroes(uint64 *lo, uint64 *hi, size_t length) const {
     // we lookup the appropriate polynomial in the zeroes_ array
     // and do a polynomial long multiplication (mod the CRC polynomial)
     // to extend the CRC by the appropriate number of bits.
-    for (int i = 0; length != 0; i += 3, length >>= 2) {
-      int c = length & 3;       // pick next two bits
-      if (c != 0) {             // if they are not zero,
-                                // multiply by entry in table
+    for (size_t i = 0; length != 0; i += 3, length >>= 2) {
+      size_t c = length & 3;       // pick next two bits
+      if (c != 0) {                // if they are not zero,
+                                   // multiply by entry in table
         uint32 m = this->zeroes_[c+i-1];
         uint32 result = 0;
         for (uint32 one = onebit; one != 0; one >>= 1) {

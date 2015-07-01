@@ -61,7 +61,7 @@ public:
   static int Strncmp(const RECHARTYPE *szLeft,
                      const RECHARTYPE *szRight, size_t nCount) throw()
   {
-    return String_StrNCmp(szLeft, szRight, nCount,false);
+    return String_StrNCmp(szLeft, szRight, nCount, false);
   }
 
   static int Strnicmp(const RECHARTYPE *szLeft,

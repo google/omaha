@@ -48,7 +48,7 @@ TEST(CommandLineParserTest, ParseFromArgv_NullArgv) {
 
 TEST(CommandLineParserTest, CallFunctionsBeforeParse) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   CString arg_value;
   EXPECT_FALSE(parser.HasSwitch(_T("foo")));
   EXPECT_EQ(0, parser.GetSwitchCount());
@@ -75,7 +75,7 @@ TEST(CommandLineParserTest, ValidateSwitchMixedCase) {
 
 TEST(CommandLineParserTest, ParseFromString_OneSwitchNoArgs) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   EXPECT_SUCCEEDED(parser.ParseFromString(_T("myprog.exe /foo")));
   EXPECT_EQ(1, parser.GetSwitchCount());
   EXPECT_TRUE(parser.HasSwitch(_T("foo")));
@@ -85,7 +85,7 @@ TEST(CommandLineParserTest, ParseFromString_OneSwitchNoArgs) {
 
 TEST(CommandLineParserTest, ParseFromString_OneSwitchOneArg) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   CString arg_value;
   EXPECT_SUCCEEDED(parser.ParseFromString(_T("myprog.exe /foo bar")));
   EXPECT_EQ(1, parser.GetSwitchCount());
@@ -98,7 +98,7 @@ TEST(CommandLineParserTest, ParseFromString_OneSwitchOneArg) {
 
 TEST(CommandLineParserTest, ParseFromString_OneSwitchTwoArgs) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   CString arg_value;
   EXPECT_SUCCEEDED(parser.ParseFromString(_T("myprog.exe /foo bar baz")));
   EXPECT_EQ(1, parser.GetSwitchCount());
@@ -113,7 +113,7 @@ TEST(CommandLineParserTest, ParseFromString_OneSwitchTwoArgs) {
 
 TEST(CommandLineParserTest, ParseFromString_TwoSwitchesNoArgs) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   CString arg_value;
   EXPECT_SUCCEEDED(parser.ParseFromString(_T("myprog.exe /foo /bar")));
   EXPECT_EQ(2, parser.GetSwitchCount());
@@ -127,7 +127,7 @@ TEST(CommandLineParserTest, ParseFromString_TwoSwitchesNoArgs) {
 
 TEST(CommandLineParserTest, ParseFromString_TwoSwitchesOneArgNoArg) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   CString arg_value;
   EXPECT_SUCCEEDED(parser.ParseFromString(_T("myprog.exe /foo blech /bar")));
   EXPECT_EQ(2, parser.GetSwitchCount());
@@ -143,7 +143,7 @@ TEST(CommandLineParserTest, ParseFromString_TwoSwitchesOneArgNoArg) {
 
 TEST(CommandLineParserTest, ParseFromString_ArgInQuotesWithLeadingSlash) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   CString arg_value;
   EXPECT_SUCCEEDED(parser.ParseFromString(_T("f.exe /pi \"arg\" \"/sw x\"")));
   EXPECT_EQ(1, parser.GetSwitchCount());
@@ -160,7 +160,7 @@ TEST(CommandLineParserTest, ParseFromString_ArgInQuotesWithLeadingSlash) {
 // no test for it.
 TEST(CommandLineParserTest, ParseFromString_SpaceInPathWithQuotes) {
   CommandLineParser parser;
-  int arg_count = 0;
+  size_t arg_count = 0;
   CString arg_value;
   EXPECT_SUCCEEDED(
       parser.ParseFromString(_T("\"C:\\Space In Path\\myprog.exe\" /foo bar")));

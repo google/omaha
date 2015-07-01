@@ -15,7 +15,9 @@
 
 
 #include "omaha/ui/ui.h"
+#include <uxtheme.h>
 #include "base/basictypes.h"
+#include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -24,21 +26,24 @@
 #include "omaha/base/window_utils.h"
 #include "omaha/client/client_utils.h"
 #include "omaha/google_update/resource.h"   // For the IDI_APP
+#include "omaha/goopdate/non_localized_resource.h"
 #include "omaha/ui/ui_displayed_event.h"
 #include "omaha/ui/ui_metrics.h"
 
 namespace omaha {
 
 const OmahaWnd::ControlAttributes OmahaWnd::kVisibleTextAttributes =
-    { true,  true,  false, false };
+    { false, true,  true,  false, false };
 const OmahaWnd::ControlAttributes OmahaWnd::kDefaultActiveButtonAttributes =
-    { true,  true,  true,  true  };
+    { false, true,  true,  true,  true  };
+const OmahaWnd::ControlAttributes OmahaWnd::kDisabledButtonAttributes =
+    { false, false, false, true,  false };
 const OmahaWnd::ControlAttributes OmahaWnd::kNonDefaultActiveButtonAttributes =
-    { true,  true,  true,  false };
+    { false, true,  true,  true,  false };
 const OmahaWnd::ControlAttributes OmahaWnd::kVisibleImageAttributes =
-    { true,  false, false, false };
+    { false, true,  false, false, false };
 const OmahaWnd::ControlAttributes OmahaWnd::kDisabledNonButtonAttributes =
-    { false, false, false, false };
+    { false, false, false, false, false };
 
 OmahaWnd::OmahaWnd(int dialog_id, CMessageLoop* message_loop, HWND parent)
     : IDD(dialog_id),
@@ -81,6 +86,40 @@ void OmahaWnd::InitializeDialog() {    // NOLINT
   VERIFY1(SUCCEEDED(WindowUtils::SetWindowIcon(m_hWnd,
                                                IDI_APP,
                                                address(hicon_))));
+
+  // Disable the Maximize System Menu item.
+  HMENU menu = ::GetSystemMenu(*this, false);
+  ASSERT1(menu);
+  VERIFY1(::EnableMenuItem(menu, SC_MAXIMIZE, MF_BYCOMMAND | MF_GRAYED) != -1);
+
+  progress_bar_.SubclassWindow(GetDlgItem(IDC_PROGRESS));
+
+  // 9-pixel-high "Segoe UI".
+  VERIFY1(default_font_.CreatePointFont(90, _T("Segoe UI")));
+  SendMessageToDescendants(
+      WM_SETFONT,
+      reinterpret_cast<WPARAM>(static_cast<HFONT>(default_font_)),
+      0);
+
+  // 15-pixel-high "Segoe UI".
+  VERIFY1(font_.CreatePointFont(150, _T("Segoe UI")));
+  GetDlgItem(IDC_INSTALLER_STATE_TEXT).SetFont(font_);
+  GetDlgItem(IDC_INFO_TEXT).SetFont(font_);
+  GetDlgItem(IDC_COMPLETE_TEXT).SetFont(font_);
+
+  // 11-pixel-high "Segoe UI".
+  VERIFY1(error_font_.CreatePointFont(110, _T("Segoe UI")));
+  GetDlgItem(IDC_ERROR_TEXT).SetFont(error_font_);
+
+  VERIFY1(Animate_OpenEx(GetDlgItem(IDC_MARQUEE),
+                         app_util::GetCurrentModuleHandle(),
+                         MAKEINTRESOURCE(IDR_MARQUEE)));
+  VERIFY1(Animate_Play(GetDlgItem(IDC_MARQUEE), 0, -1, -1));
+
+  CreateOwnerDrawTitleBar(m_hWnd, GetDlgItem(IDC_TITLE_BAR_SPACER), kBkColor);
+  SetCustomDlgColors(kTextColor, kBkColor);
+
+  (EnableFlatButtons(m_hWnd));
 }
 
 LRESULT OmahaWnd::OnClose(UINT,
@@ -97,6 +136,8 @@ LRESULT OmahaWnd::OnClose(UINT,
 }
 
 HRESULT OmahaWnd::CloseWindow() {
+  VERIFY1(Animate_Stop(GetDlgItem(IDC_MARQUEE)));
+
   HRESULT hr = DestroyWindow() ? S_OK : HRESULTFromLastError();
   if (events_sink_) {
     events_sink_->DoClose();
@@ -179,6 +220,10 @@ bool OmahaWnd::OnComplete() {
 
 void OmahaWnd::SetControlAttributes(int control_id,
                                     const ControlAttributes& attributes) {
+  if (attributes.is_ignore_entry_) {
+    return;
+  }
+
   HWND hwnd = GetDlgItem(control_id);
   ASSERT1(hwnd);
   ::ShowWindow(hwnd, attributes.is_visible_ ? SW_SHOW : SW_HIDE);
@@ -206,7 +251,28 @@ HRESULT OmahaWnd::EnableSystemCloseButton(bool enable) {
   uint32 flags = MF_BYCOMMAND;
   flags |= enable ? MF_ENABLED : MF_GRAYED;
   VERIFY1(::EnableMenuItem(menu, SC_CLOSE, flags) != -1);
+  RecalcLayout();
   return S_OK;
+}
+
+EnableFlatButtons::EnableFlatButtons(HWND hwnd_parent) {
+  ::EnumChildWindows(hwnd_parent,
+                     reinterpret_cast<WNDENUMPROC>(EnableFlatButtonsProc),
+                     NULL);
+}
+
+BOOL CALLBACK EnableFlatButtons::EnableFlatButtonsProc(HWND hwnd, LPARAM) {
+  if (!hwnd) {
+    return FALSE;
+  }
+
+  CWindow wnd(hwnd);
+  DWORD style = wnd.GetStyle();
+  if (style & BS_FLAT) {
+    ::SetWindowTheme(wnd, _T(""), _T(""));
+  }
+
+  return TRUE;
 }
 
 // For the InitCommonControlsEx call to succeed on XP, a manifest is needed to

@@ -14,17 +14,30 @@
 // ========================================================================
 
 #include <string.h>
-#include "omaha/base/string.h"
+#include "omaha/base/app_util.h"
+#include "omaha/base/file.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/omaha_version.h"
+#include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/command_line.h"
+#include "omaha/common/goopdate_utils.h"
 #include "omaha/common/ping.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
 
 class PingTest : public testing::Test {
+ protected:
+  void SetUpRegistry() {
+    RegKey::DeleteKey(kRegistryHiveOverrideRoot);
+    OverrideRegistryHives(kRegistryHiveOverrideRoot);
+  }
+
+  virtual void CleanUpRegistry() {
+    RestoreRegistryHives();
+    RegKey::DeleteKey(kRegistryHiveOverrideRoot);
+  }
 };
 
 TEST_F(PingTest, BuildOmahaPing) {
@@ -47,23 +60,52 @@ TEST_F(PingTest, BuildOmahaPing) {
   command_line_extra_args.client_id  = _T("a client id");
   command_line_extra_args.language   = _T("en");
 
-  // Machine ping.
-  Ping install_ping(true, _T("session"), _T("oneclick"));
-  install_ping.LoadAppDataFromExtraArgs(command_line_extra_args);
-  install_ping.BuildOmahaPing(_T("1.0.0.0"),
-                              _T("2.0.0.0"),
-                              ping_event1,
-                              ping_event2);
+  File::Remove(goopdate_utils::BuildGoogleUpdateExePath(false));
 
+  // User ping, missing shell.
+  Ping install_ping_no_shell(false, _T("session"), _T("oneclick"));
+  install_ping_no_shell.LoadAppDataFromExtraArgs(command_line_extra_args);
+  install_ping_no_shell.BuildOmahaPing(_T("1.0.0.0"),
+                                       _T("2.0.0.0"),
+                                       ping_event1,
+                                       ping_event2);
+
+  CString expected_shell_version_substring;
+  expected_shell_version_substring.Format(_T(" shell_version=\"%s\" "),
+                                          GetShellVersionString());
   CString expected_ping_request_substring;
   expected_ping_request_substring.Format(_T("<app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.0.0.0\" nextversion=\"2.0.0.0\" lang=\"en\" brand=\"GGLS\" client=\"a client id\" iid=\"{DE06587E-E5AB-4364-A46B-F3AC733007B3}\"><event eventtype=\"2\" eventresult=\"1\" errorcode=\"10\" extracode1=\"20\"/><event eventtype=\"2\" eventresult=\"1\" errorcode=\"30\" extracode1=\"40\"/></app>"));  // NOLINT
 
   CString actual_ping_request;
-  install_ping.BuildRequestString(&actual_ping_request);
+  install_ping_no_shell.BuildRequestString(&actual_ping_request);
 
   // The ping_request_string contains some data that depends on the machine
-  // environment, such as operating system version. Look for a partial match in
-  // the string corresponding to the <app> element.
+  // environment, such as operating system version. Look for partial matches in
+  // the string corresponding to the shell_version and the <app> elements.
+  EXPECT_NE(-1, actual_ping_request.Find(expected_shell_version_substring));
+  EXPECT_NE(-1, actual_ping_request.Find(expected_ping_request_substring));
+
+  CPath shell_path_1_2_183_21(app_util::GetCurrentModuleDirectory());
+  shell_path_1_2_183_21.Append(_T("unittest_support\\omaha_1.3.x\\"));
+  shell_path_1_2_183_21.Append(kOmahaShellFileName);
+  EXPECT_SUCCEEDED(File::Copy(shell_path_1_2_183_21,
+                              goopdate_utils::BuildGoogleUpdateExePath(false),
+                              true));
+
+  // User ping, 1.2.183.21 shell.
+  Ping install_ping_1_2_183_21(false, _T("session"), _T("oneclick"));
+  install_ping_1_2_183_21.LoadAppDataFromExtraArgs(command_line_extra_args);
+  install_ping_1_2_183_21.BuildOmahaPing(_T("1.0.0.0"),
+                                         _T("2.0.0.0"),
+                                         ping_event1,
+                                         ping_event2);
+
+  expected_shell_version_substring.Format(_T(" shell_version=\"1.2.183.21\" "));
+
+  actual_ping_request.Empty();
+  install_ping_1_2_183_21.BuildRequestString(&actual_ping_request);
+
+  EXPECT_NE(-1, actual_ping_request.Find(expected_shell_version_substring));
   EXPECT_NE(-1, actual_ping_request.Find(expected_ping_request_substring));
 }
 
@@ -72,7 +114,7 @@ TEST_F(PingTest, BuildAppsPing) {
       _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
       _T("\\ClientState\\") GOOPDATE_APP_ID;
 
-  const CString expected_pv           = _T("1.3.23.0");
+  const CString expected_pv           = _T("1.3.99.0");
   const CString expected_lang         = _T("en");
   const CString expected_brand_code   = _T("GGLS");
   const CString expected_client_id    = _T("someclientid");
@@ -100,6 +142,18 @@ TEST_F(PingTest, BuildAppsPing) {
                                             kRegValueExperimentLabels,
                                             expected_experiment_label));
 
+  const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  const DWORD two_days_back = now - (2 * kSecondsPerDay);
+  ASSERT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    two_days_back));
+
+  // The actual installdate in ping will be floor(9090/7)*7 = 9086.
+  const DWORD day_of_install = 9090;
+  ASSERT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    day_of_install));
+
   PingEventPtr ping_event(
       new PingEvent(PingEvent::EVENT_INSTALL_COMPLETE,
                     PingEvent::EVENT_RESULT_SUCCESS,
@@ -113,16 +167,17 @@ TEST_F(PingTest, BuildAppsPing) {
   apps_ping.BuildAppsPing(ping_event);
 
   CString expected_ping_request_substring;
-  expected_ping_request_substring.Format(_T("<app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.3.23.0\" nextversion=\"\" lang=\"en\" brand=\"GGLS\" client=\"someclientid\" experiments=\"some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT\" iid=\"{7C0B6E56-B24B-436b-A960-A6EA201E886F}\"><event eventtype=\"2\" eventresult=\"1\" errorcode=\"34\" extracode1=\"6\"/></app>"));  // NOLINT
+  expected_ping_request_substring.Format(_T("<app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.3.99.0\" nextversion=\"\" lang=\"en\" brand=\"GGLS\" client=\"someclientid\" experiments=\"some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT\" installage=\"2\" installdate=\"9086\" iid=\"{7C0B6E56-B24B-436b-A960-A6EA201E886F}\"><event eventtype=\"2\" eventresult=\"1\" errorcode=\"34\" extracode1=\"6\"/></app>"));  // NOLINT
 
   CString actual_ping_request;
   apps_ping.BuildRequestString(&actual_ping_request);
 
-  EXPECT_NE(-1, actual_ping_request.Find(expected_ping_request_substring));
+  EXPECT_NE(-1, actual_ping_request.Find(expected_ping_request_substring)) <<
+      actual_ping_request.GetString();
 }
 
-TEST_F(PingTest, SendString) {
-  CString request_string = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.23.0\" ismachine=\"1\" sessionid=\"unittest\" installsource=\"oneclick\" testsource=\"dev\" requestid=\"{EC821C33-E4EE-4E75-BC85-7E9DFC3652F5}\" periodoverridesec=\"7407360\"><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\"/><app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.0.0.0\" nextversion=\"2.0.0.0\" lang=\"en\" brand=\"GGLS\" client=\"a client id\" iid=\"{DE06587E-E5AB-4364-A46B-F3AC733007B3}\"><event eventtype=\"10\" eventresult=\"1\" errorcode=\"0\" extracode1=\"0\"/></app></request>");   // NOLINT
+TEST_F(PingTest, DISABLED_SendString) {
+  CString request_string = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.99.0\" ismachine=\"1\" sessionid=\"unittest\" installsource=\"oneclick\" testsource=\"dev\" requestid=\"{EC821C33-E4EE-4E75-BC85-7E9DFC3652F5}\" periodoverridesec=\"7407360\"><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\"/><app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.0.0.0\" nextversion=\"2.0.0.0\" lang=\"en\" brand=\"GGLS\" client=\"a client id\" iid=\"{DE06587E-E5AB-4364-A46B-F3AC733007B3}\"><event eventtype=\"10\" eventresult=\"1\" errorcode=\"0\" extracode1=\"0\"/></app></request>");   // NOLINT
   EXPECT_HRESULT_SUCCEEDED(Ping::SendString(false,
                                             HeadersVector(),
                                             request_string));
@@ -131,8 +186,8 @@ TEST_F(PingTest, SendString) {
   EXPECT_EQ(0x80042190, Ping::SendString(false, HeadersVector(), _T("")));
 }
 
-TEST_F(PingTest, HandlePing) {
-  CString request_string = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.23.0\" ismachine=\"1\" sessionid=\"unittest\" installsource=\"oneclick\" testsource=\"dev\" requestid=\"{EC821C33-E4EE-4E75-BC85-7E9DFC3652F5}\" periodoverridesec=\"7407360\"><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\"/><app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.0.0.0\" nextversion=\"2.0.0.0\" lang=\"en\" brand=\"GGLS\" client=\"a client id\" iid=\"{DE06587E-E5AB-4364-A46B-F3AC733007B3}\"><event eventtype=\"10\" eventresult=\"1\" errorcode=\"0\" extracode1=\"0\"/></app></request>");   // NOLINT
+TEST_F(PingTest, DISABLED_HandlePing) {
+  CString request_string = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.99.0\" ismachine=\"1\" sessionid=\"unittest\" installsource=\"oneclick\" testsource=\"dev\" requestid=\"{EC821C33-E4EE-4E75-BC85-7E9DFC3652F5}\" periodoverridesec=\"7407360\"><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\"/><app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.0.0.0\" nextversion=\"2.0.0.0\" lang=\"en\" brand=\"GGLS\" client=\"a client id\" iid=\"{DE06587E-E5AB-4364-A46B-F3AC733007B3}\"><event eventtype=\"10\" eventresult=\"1\" errorcode=\"0\" extracode1=\"0\"/></app></request>");   // NOLINT
 
   CStringA request_string_utf8(WideToUtf8(request_string));
   CStringA ping_string_utf8;

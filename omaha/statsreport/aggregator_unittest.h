@@ -16,8 +16,8 @@
 #ifndef OMAHA_STATSREPORT_AGGREGATOR_UNITTEST_H__
 #define OMAHA_STATSREPORT_AGGREGATOR_UNITTEST_H__
 
-#include "metrics.h"
-#include "omaha/third_party/gtest/include/gtest/gtest.h"
+#include "omaha/statsreport/metrics.h"
+#include "third_party/gtest/include/gtest/gtest.h"
 
 /// Test fixture shared among aggregator unit tests
 class MetricsAggregatorTest: public testing::Test {

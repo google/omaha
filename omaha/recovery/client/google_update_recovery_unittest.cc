@@ -38,7 +38,7 @@
 #include "omaha/net/network_request.h"
 #include "omaha/net/simple_request.h"
 #include "omaha/recovery/client/google_update_recovery.h"
-#include "omaha/third_party/gtest/include/gtest/gtest.h"
+#include "third_party/gtest/include/gtest/gtest.h"
 
 // TODO(omaha): Replicate some of these tests in signaturevalidator_unittest.cc.
 
@@ -93,7 +93,7 @@ const TCHAR* const kInvalidFileUrl = _T("http://www.google.com/robots.txt");
 const TCHAR kRegistryHiveOverrideRoot[] =
     _T("HKCU\\Software\\Google\\Update\\UnitTest\\");
 
-const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&osversion=");  // NOLINT
+const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("https://clients2.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
 const int kExpectedUrlForDummyAppAndNoOmahaValuesLength =
     arraysize(kExpectedUrlForDummyAppAndNoOmahaValues) - 1;
 
@@ -309,7 +309,9 @@ class GoogleUpdateRecoveryTest : public testing::Test {
     network_config->Clear();
     network_config->Add(new UpdateDevProxyDetector);
     network_config->Add(new FirefoxProxyDetector);
-    network_config->Add(new IEProxyDetector);
+    network_config->Add(new IEWPADProxyDetector);
+    network_config->Add(new IEPACProxyDetector);
+    network_config->Add(new IENamedProxyDetector);
 
     network_request.AddHttpRequest(new SimpleRequest);
 
@@ -340,7 +342,8 @@ CString GoogleUpdateRecoveryTest::saved_file_path_;
 void* GoogleUpdateRecoveryTest::saved_context_;
 
 class GoogleUpdateRecoveryRegistryProtectedTest
-    : public GoogleUpdateRecoveryTest {
+    : public GoogleUpdateRecoveryTest,
+      public ::testing::WithParamInterface<bool> {
  protected:
   GoogleUpdateRecoveryRegistryProtectedTest()
       : hive_override_key_name_(kRegistryHiveOverrideRoot) {
@@ -352,12 +355,42 @@ class GoogleUpdateRecoveryRegistryProtectedTest
     GoogleUpdateRecoveryTest::SetUp();
     RegKey::DeleteKey(hive_override_key_name_, true);
     OverrideRegistryHives(hive_override_key_name_);
+
+    EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                              kRegValueIsEnrolledToDomain,
+                                              IsDomain() ? 1UL : 0UL));
   }
 
   virtual void TearDown() {
+    EXPECT_HRESULT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                                 kRegValueIsEnrolledToDomain));
+
     RestoreRegistryHives();
     EXPECT_HRESULT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
     GoogleUpdateRecoveryTest::TearDown();
+  }
+
+  bool IsDomain() {
+    return GetParam();
+  }
+
+  void EnableUsageStats(bool enable) {
+    if (enable) {
+      RegKey::SetValue(MACHINE_REG_UPDATE_DEV, kRegValueForceUsageStats, 1UL);
+    } else {
+      RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueForceUsageStats);
+    }
+  }
+
+  CString GetEscapedUserId(bool is_machine) {
+    CString uid = goopdate_utils::GetUserIdLazyInit(is_machine);
+    if (uid.IsEmpty()) {
+      return uid;
+    }
+
+    CString escaped_uid;
+    EXPECT_HRESULT_SUCCEEDED(StringEscape(uid, true, &escaped_uid));
+    return escaped_uid;
   }
 };
 
@@ -461,13 +494,18 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_User) {
       << _T("The temp directory was deleted or not created.");
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+INSTANTIATE_TEST_CASE_P(IsDomain,
+                        GoogleUpdateRecoveryRegistryProtectedTest,
+                        ::testing::Bool());
+
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AllValues_MachineApp) {
-  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=5.6.78.1&osversion=");  // NOLINT
+  const TCHAR kExpectedUrlFormat[] = _T("https://clients2.google.com/service/check2?appid=%%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=5.6.78.1&userid=%s&osversion=");  // NOLINT
 
   const CString prev_tmp = GetTmp();
   EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
 
+  EnableUsageStats(true);
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullMachineOmahaClientKeyPath,
                                             _T("pv"),
                                             _T("5.6.78.1")));
@@ -479,20 +517,23 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
                                                DownloadFileNoFile,
                                                NULL));
 
-  EXPECT_STREQ(kExpectedUrl, saved_url_.Left(arraysize(kExpectedUrl) - 1));
+  CString expected_url;
+  expected_url.Format(kExpectedUrlFormat, GetEscapedUserId(true));
+  EXPECT_STREQ(expected_url, saved_url_.Left(expected_url.GetLength()));
   CheckSavedUrlOSFragment();
   VerifyExpectedSavedFilePath(kTempDirectory);
 
   EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), prev_tmp));
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AllValues_UserApp) {
-  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=0&version=5.6.78.1&osversion=");  // NOLINT
+  const TCHAR kExpectedUrlFormat[] = _T("https://clients2.google.com/service/check2?appid=%%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%%7D&appversion=3.4.5.6&applang=en-us&machine=0&version=5.6.78.1&userid=%s&osversion=");  // NOLINT
 
   const CString prev_tmp = GetTmp();
   EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
 
+  EnableUsageStats(true);
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullUserOmahaClientKeyPath,
                                             _T("pv"),
                                             _T("5.6.78.1")));
@@ -504,14 +545,16 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
                                                DownloadFileNoFile,
                                                NULL));
 
-  EXPECT_STREQ(kExpectedUrl, saved_url_.Left(arraysize(kExpectedUrl) - 1));
+  CString expected_url;
+  expected_url.Format(kExpectedUrlFormat, GetEscapedUserId(false));
+  EXPECT_STREQ(expected_url, saved_url_.Left(expected_url.GetLength()));
   CheckSavedUrlOSFragment();
   VerifyExpectedSavedFilePath(kTempDirectory);
 
   EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), prev_tmp));
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_NoOmahaRegKeys) {
   EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
                                                kDummyAppVersion,
@@ -524,9 +567,9 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_EmptyAppInfo) {
-  const TCHAR kExpectedUrl[] = _T("http://cr-tools.clients.google.com/service/check2?appid=&appversion=&applang=&machine=1&version=0.0.0.0&osversion=");  // NOLINT
+  const TCHAR kExpectedUrl[] = _T("https://clients2.google.com/service/check2?appid=&appversion=&applang=&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
 
   EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(_T(""),
                                                _T(""),
@@ -538,7 +581,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_NullArgs) {
   EXPECT_EQ(E_INVALIDARG, FixGoogleUpdate(NULL,
                                           _T(""),
@@ -568,24 +611,26 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
 
 // Setting kRegValueAutoUpdateCheckPeriodOverrideMinutes to zero disables
 // Code Red checks just as it does regular update checks.
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDword) {
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
                        kRegValueAutoUpdateCheckPeriodOverrideMinutes,
                        static_cast<DWORD>(0)));
 
-  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY),
+  EXPECT_EQ(IsDomain() ?
+            HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY) :
+            kDummyNoFileError,
             FixGoogleUpdate(kDummyAppGuid,
                             kDummyAppVersion,
                             kDummyAppLang,
                             true,
                             DownloadFileNoFile,
                             NULL));
-  EXPECT_TRUE(saved_url_.IsEmpty());
+  EXPECT_EQ(IsDomain(), saved_url_.IsEmpty());
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDwordInHkcu) {
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::SetValue(USER_KEY GOOPDATE_POLICIES_RELATIVE,
@@ -603,7 +648,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsNonZeroDword) {
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
@@ -621,7 +666,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDword64) {
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
@@ -639,7 +684,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsNonZeroDword64) {
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
@@ -657,7 +702,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroAsString) {
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
@@ -675,7 +720,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroAsBinary) {
   const byte zero = 0;
   EXPECT_HRESULT_SUCCEEDED(
@@ -695,7 +740,7 @@ TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-TEST_F(GoogleUpdateRecoveryRegistryProtectedTest,
+TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_GroupPolicyKeyExistsButNoAutoUpdateCheckPeriodMinutes) {
   EXPECT_HRESULT_SUCCEEDED(RegKey::CreateKey(kRegKeyGoopdateGroupPolicy));
 
@@ -803,9 +848,8 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotSigned) {
   EXPECT_EQ(TRUST_E_NOSIGNATURE, VerifyFileSignature(executable_full_path));
 }
 
-// The certificate is still valid, but the executable was signed more than N
-// days ago.
-TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedOldWithValidCert) {
+// The file is signed with an old cerificate not present in the pin list.
+TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotTrusted) {
   const TCHAR kRelativePath[] =
       _T("unittest_support\\GoogleUpdate_old_signature.exe");
 
@@ -813,23 +857,8 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedOldWithValidCert) {
   EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
                            kRelativePath));
   EXPECT_TRUE(File::Exists(executable_full_path));
-  EXPECT_EQ(TRUST_E_TIME_STAMP, VerifyFileSignature(executable_full_path));
-}
-
-// The certificate was valid when it was used to sign the executable, but it has
-// since expired.
-// TRUST_E_TIME_STAMP is returned because the file was signed more than the
-// allowable number of dates ago for the repair file. Otherwise, the signature
-// is fine.
-TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedWithNowExpiredCert) {
-  const TCHAR kRelativePath[] =
-      _T("unittest_support\\GoogleUpdate_now_expired_cert.exe");
-
-  CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kRelativePath));
-  EXPECT_TRUE(File::Exists(executable_full_path));
-  EXPECT_EQ(TRUST_E_TIME_STAMP, VerifyFileSignature(executable_full_path));
+  EXPECT_EQ(GOOPDATE_E_SIGNATURE_NOT_TRUSTED_PIN,
+            VerifyFileSignature(executable_full_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_UntrustedChain) {
@@ -858,16 +887,17 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_HashFails) {
 TEST_F(GoogleUpdateRecoveryTest,
        VerifyFileSignature_NonGoogleSignature) {
   CString file_path = SystemInfo::IsRunningOnVistaOrLater() ?
-      _T("%SYSTEM%\\rcagent.exe") : _T("%SYSTEM%\\wuauclt.exe");
+      _T("%SYSTEM%\\ntdll.dll") : _T("%SYSTEM%\\wuauclt.exe");
+  EXPECT_HRESULT_SUCCEEDED(ExpandStringWithSpecialFolders(&file_path));
   if (!File::Exists(file_path) && SystemInfo::IsRunningOnVistaOrLater()) {
-    std::wcout << _T("\tTest did not run because '") << file_path
+    std::wcout << _T("\tTest did not run because '") << file_path.GetString()
                << _T("' was not found.") << std::endl;
     return;
   }
-  EXPECT_HRESULT_SUCCEEDED(ExpandStringWithSpecialFolders(&file_path));
   EXPECT_TRUE(File::Exists(file_path));
   EXPECT_TRUE(SignatureIsValid(file_path, false));
-  EXPECT_EQ(CERT_E_CN_NO_MATCH, VerifyFileSignature(file_path));
+  EXPECT_EQ(GOOPDATE_E_SIGNATURE_NOT_TRUSTED_SUBJECT,
+            VerifyFileSignature(file_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_BadFilenames) {

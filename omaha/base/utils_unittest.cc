@@ -23,7 +23,6 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/base/file.h"
-#include "omaha/base/module_utils.h"
 #include "omaha/base/path.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/string.h"
@@ -95,14 +94,38 @@ TEST(UtilsTest, GetFolderPath_Errors) {
   EXPECT_EQ(E_INVALIDARG, GetFolderPath(CSIDL_PROGRAM_FILES, NULL));
 }
 
+TEST(UtilsTest, GetFolderPath_ProgramFiles_RegistryRedirection) {
+  if (!IsEnvironmentVariableSet(
+    _T("TEST_GETFOLDERPATH_PROGRAMFILES_REGISTRYREDIRECTION"))) {
+    std::wcout << _T("\tThis test needs to be run separately. Set ")
+                  _T("'TEST_GETFOLDERPATH_PROGRAMFILES_REGISTRYREDIRECTION' in")
+                  _T(" the environment, then run it separately.") << std::endl;
+    return;
+  }
+
+  RegKey::DeleteKey(kRegistryHiveOverrideRoot, true);
+  OverrideRegistryHives(kRegistryHiveOverrideRoot);
+
+  CString path;
+  EXPECT_EQ(S_FALSE, GetFolderPath(CSIDL_PROGRAM_FILES, &path));
+  BOOL isWow64 = FALSE;
+  EXPECT_SUCCEEDED(Kernel32::IsWow64Process(GetCurrentProcess(), &isWow64));
+  CString expected_path = isWow64 ?
+      _T("C:\\Program Files (x86)") : _T("C:\\Program Files");
+  EXPECT_STREQ(expected_path, path);
+
+  RestoreRegistryHives();
+  EXPECT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
+}
+
 TEST(UtilsTest, CallEntryPoint0) {
   HRESULT hr(E_FAIL);
   ASSERT_FAILED(CallEntryPoint0(L"random-nonsense.dll", "foobar", &hr));
 }
 
 TEST(UtilsTest, ReadEntireFile) {
-  TCHAR directory[MAX_PATH] = {0};
-  ASSERT_TRUE(GetModuleDirectory(NULL, directory));
+  CString directory = app_util::GetModuleDirectory(NULL);
+  ASSERT_FALSE(directory.IsEmpty());
   CString file_name;
   file_name.Format(_T("%s\\unittest_support\\declaration.txt"), directory);
 
@@ -549,6 +572,11 @@ TEST(UtilsTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
   EXPECT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
 }
 
+TEST(UtilsTest, GetCurrentUserDefaultSecurityAttributes) {
+  CSecurityAttributes sa;
+  EXPECT_TRUE(GetCurrentUserDefaultSecurityAttributes(&sa));
+}
+
 TEST(UtilsTest, AddAllowedAce) {
   CString test_file_path = ConcatenatePath(
       app_util::GetCurrentModuleDirectory(), _T("TestAddAllowedAce.exe"));
@@ -668,7 +696,7 @@ TEST(UtilsTest, interlocked_exchange_pointer) {
   const int i = 10;
   const int j = 20;
 
-  const int* volatile pi = &i;
+  const int* pi = &i;
   const int* pj = &j;
 
   const int* old_pi = pi;
@@ -692,7 +720,7 @@ TEST(UtilsTest, interlocked_exchange_pointer) {
 
   // Exchanging a pointer with NULL.
   interlocked_exchange_pointer(const_cast<int**>(&pi), static_cast<int*>(NULL));
-  EXPECT_EQ(NULL, pi);
+  EXPECT_EQ(static_cast<int*>(NULL), pi);
 }
 
 TEST(UtilsTest, GetGuid)  {
@@ -743,6 +771,84 @@ TEST(UtilsTest, CeilingDivide) {
   EXPECT_EQ(1, CeilingDivide(1, 2));
   EXPECT_EQ(2, CeilingDivide(6, 3));
   EXPECT_EQ(4, CeilingDivide(7, 2));
+}
+
+TEST(UtilsTest, GetTempFilename) {
+  CString name1 = GetTempFilename(kTemporaryFilenamePrefix);
+  EXPECT_FALSE(name1.IsEmpty());
+  EXPECT_NE(-1, name1.Find(kTemporaryFilenamePrefix));
+  EXPECT_TRUE(File::Exists(name1));
+
+  CString name2 = GetTempFilename(kTemporaryFilenamePrefix);
+  EXPECT_NE(name1, name2);
+
+  EXPECT_TRUE(::DeleteFile(name1));
+  EXPECT_TRUE(::DeleteFile(name2));
+}
+
+TEST(UtilsTest, WaitForAllObjects) {
+  const DWORD kTimeoutMs = 100;
+  const size_t kNumHandles = MAXIMUM_WAIT_OBJECTS * 2 + 1;
+
+  // Create a large number of manual reset events to test with, all signaled.
+  HANDLE handles[kNumHandles] = {};
+  for (size_t i = 0; i < arraysize(handles); ++i) {
+    handles[i] = ::CreateEvent(NULL, TRUE, TRUE, NULL);
+    ASSERT_TRUE(handles[i]);
+  }
+
+  // Succeed if they're all signaled, regardless of timeout.
+  EXPECT_EQ(WAIT_OBJECT_0, WaitForAllObjects(arraysize(handles),
+                                             handles,
+                                             kTimeoutMs));
+
+  EXPECT_EQ(WAIT_OBJECT_0, WaitForAllObjects(arraysize(handles),
+                                             handles,
+                                             0));
+
+  EXPECT_EQ(WAIT_OBJECT_0, WaitForAllObjects(arraysize(handles),
+                                             handles,
+                                             INFINITE));
+
+  // Set a single object in the first group to unsignaled; we should time out.
+  ::ResetEvent(handles[0]);
+  EXPECT_EQ(WAIT_TIMEOUT, WaitForAllObjects(arraysize(handles),
+                                            handles,
+                                            kTimeoutMs));
+  ::SetEvent(handles[0]);
+
+  // Set a single object in a later group to unsignaled; we should time out.
+  ::ResetEvent(handles[arraysize(handles) - 1]);
+  EXPECT_EQ(WAIT_TIMEOUT, WaitForAllObjects(arraysize(handles),
+                                            handles,
+                                            kTimeoutMs));
+  ::SetEvent(handles[arraysize(handles) - 1]);
+
+  for (size_t i = 0; i < arraysize(handles); ++i) {
+    ::CloseHandle(handles[i]);
+  }
+}
+
+TEST(UtilsTest, IsEnrolledToDomain_TRUE) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueIsEnrolledToDomain,
+                                    1UL));
+
+  EXPECT_TRUE(IsEnrolledToDomain());
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueIsEnrolledToDomain));
+}
+
+TEST(UtilsTest, IsEnrolledToDomain_FALSE) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueIsEnrolledToDomain,
+                                    0UL));
+
+  EXPECT_FALSE(IsEnrolledToDomain());
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueIsEnrolledToDomain));
 }
 
 }  // namespace omaha

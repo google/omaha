@@ -16,6 +16,7 @@
 #include "omaha/base/command_line_parser.h"
 #include "omaha/base/command_line_parser_internal.h"
 #include <shellapi.h>
+#include "omaha/base/app_util.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -63,7 +64,7 @@ HRESULT CommandLineParserArgs::AddSwitchArgument(const CString& switch_name,
   return S_OK;
 }
 
-int CommandLineParserArgs::GetSwitchCount() const {
+size_t CommandLineParserArgs::GetSwitchCount() const {
   return switch_arguments_.size();
 }
 
@@ -76,7 +77,7 @@ bool CommandLineParserArgs::HasSwitch(const CString& switch_name) const {
 // The value at a particular index may change if switch_names are added
 // since we're using a map underneath.  But this keeps us from having to write
 // an interator and expose it externally.
-HRESULT CommandLineParserArgs::GetSwitchNameAtIndex(int index,
+HRESULT CommandLineParserArgs::GetSwitchNameAtIndex(size_t index,
                                                     CString* name) const {
   ASSERT1(name);
 
@@ -85,7 +86,7 @@ HRESULT CommandLineParserArgs::GetSwitchNameAtIndex(int index,
   }
 
   SwitchAndArgumentsMapIter iter = switch_arguments_.begin();
-  for (int i = 0; i < index; ++i) {
+  for (size_t i = 0; i < index; ++i) {
     ++iter;
   }
 
@@ -96,7 +97,7 @@ HRESULT CommandLineParserArgs::GetSwitchNameAtIndex(int index,
 
 HRESULT CommandLineParserArgs::GetSwitchArgumentCount(
     const CString& switch_name,
-    int* count) const {
+    size_t* count) const {
   ASSERT1(count);
 
   CString switch_name_lower = switch_name;
@@ -113,14 +114,14 @@ HRESULT CommandLineParserArgs::GetSwitchArgumentCount(
 
 HRESULT CommandLineParserArgs::GetSwitchArgumentValue(
     const CString& switch_name,
-    int argument_index,
+    size_t argument_index,
     CString* argument_value) const {
   ASSERT1(argument_value);
 
   CString switch_name_lower = switch_name;
   switch_name_lower.MakeLower();
 
-  int count = 0;
+  size_t count = 0;
   HRESULT hr = GetSwitchArgumentCount(switch_name_lower, &count);
   if (FAILED(hr)) {
     return hr;
@@ -160,11 +161,11 @@ HRESULT CommandLineParser::ParseFromString(const wchar_t* command_line) {
     // path up into separate argv elements. To avoid issues while maintaining
     // the expected behavior, manually get the command line in the empty case.
     // See http://msdn.microsoft.com/en-us/library/bb776391.aspx.
-    VERIFY1(::GetModuleFileName(NULL,
-                                CStrBuf(command_line_str, MAX_PATH),
-                                MAX_PATH));
+    command_line_str = app_util::GetModulePath(NULL);
     EnclosePath(&command_line_str);
   }
+
+  ASSERT1(!command_line_str.IsEmpty());
 
   int argc = 0;
   wchar_t** argv = ::CommandLineToArgvW(command_line_str, &argc);
@@ -316,7 +317,7 @@ HRESULT CommandLineParser::AddSwitchArgument(const CString& switch_name,
   return required_args_->AddSwitchArgument(switch_name, argument_value);
 }
 
-int CommandLineParser::GetSwitchCount() const {
+size_t CommandLineParser::GetSwitchCount() const {
   return required_args_->GetSwitchCount();
 }
 
@@ -327,23 +328,23 @@ bool CommandLineParser::HasSwitch(const CString& switch_name) const {
 // The value at a particular index may change if switch_names are added
 // since we're using a map underneath.  But this keeps us from having to write
 // an interator and expose it externally.
-HRESULT CommandLineParser::GetSwitchNameAtIndex(int index,
+HRESULT CommandLineParser::GetSwitchNameAtIndex(size_t index,
                                                 CString* switch_name) const {
   return required_args_->GetSwitchNameAtIndex(index, switch_name);
 }
 
 HRESULT CommandLineParser::GetSwitchArgumentCount(const CString& switch_name,
-                                                  int* count) const {
+                                                  size_t* count) const {
   return required_args_->GetSwitchArgumentCount(switch_name, count);
 }
 
 HRESULT CommandLineParser::GetSwitchArgumentValue(
     const CString& switch_name,
-    int argument_index,
+    size_t argument_index,
     CString* argument_value) const {
   return required_args_->GetSwitchArgumentValue(switch_name,
-                                               argument_index,
-                                               argument_value);
+                                                argument_index,
+                                                argument_value);
 }
 
 HRESULT CommandLineParser::AddOptionalSwitch(const CString& switch_name) {
@@ -357,7 +358,7 @@ HRESULT CommandLineParser::AddOptionalSwitchArgument(const CString& switch_name,
   return optional_args_->AddSwitchArgument(switch_name, value);
 }
 
-int CommandLineParser::GetOptionalSwitchCount() const {
+size_t CommandLineParser::GetOptionalSwitchCount() const {
   return optional_args_->GetSwitchCount();
 }
 
@@ -368,22 +369,22 @@ bool CommandLineParser::HasOptionalSwitch(const CString& switch_name) const {
 // The value at a particular index may change if switch_names are added
 // since we're using a map underneath.  But this keeps us from having to write
 // an interator and expose it externally.
-HRESULT CommandLineParser::GetOptionalSwitchNameAtIndex(int index,
+HRESULT CommandLineParser::GetOptionalSwitchNameAtIndex(size_t index,
                                                         CString* name) const {
   return optional_args_->GetSwitchNameAtIndex(index, name);
 }
 
 HRESULT CommandLineParser::GetOptionalSwitchArgumentCount(const CString& name,
-                                                          int* count) const {
+                                                          size_t* count) const {
   return optional_args_->GetSwitchArgumentCount(name, count);
 }
 
 HRESULT CommandLineParser::GetOptionalSwitchArgumentValue(const CString& name,
-                                                          int argument_index,
+                                                          size_t argument_index,
                                                           CString* val) const {
   return optional_args_->GetSwitchArgumentValue(name,
-                                               argument_index,
-                                               val);
+                                                argument_index,
+                                                val);
 }
 
 }  // namespace omaha

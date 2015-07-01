@@ -30,6 +30,30 @@ const TCHAR* const kRegKeyGoopdateGroupPolicy =
 const TCHAR* const kRegValueAutoUpdateCheckPeriodOverrideMinutes =
     _T("AutoUpdateCheckPeriodMinutes");
 
+// This policy specifies what kind of download URLs could be returned to the
+// client in the update response and in which order of priority. The client
+// provides this information in the update request as a hint for the server.
+// The server may decide to ignore the hint. As a general idea, some urls are
+// cacheable, some urls have higher bandwidth, and some urls are slighlty more
+// secure since they are https.
+const TCHAR* const kRegValueDownloadPreference = _T("DownloadPreference");
+
+// Specifies that urls that can be cached by proxies are preferred.
+const TCHAR* const kDownloadPreferenceCacheable = _T("cacheable");
+
+// Proxy Server Category.  (The registry keys used, and the values of ProxyMode,
+// directly mirror that of Chrome.  However, we omit ProxyBypassList, as the
+// domains that Omaha uses are largely fixed.)
+const TCHAR* const kRegValueProxyMode   = _T("ProxyMode");
+const TCHAR* const kRegValueProxyServer = _T("ProxyServer");
+const TCHAR* const kRegValueProxyPacUrl = _T("ProxyPacUrl");
+
+const TCHAR* const kProxyModeDirect       = _T("direct");
+const TCHAR* const kProxyModeAutoDetect   = _T("auto_detect");
+const TCHAR* const kProxyModePacScript    = _T("pac_script");
+const TCHAR* const kProxyModeFixedServers = _T("fixed_servers");
+const TCHAR* const kProxyModeSystem       = _T("system");
+
 // Applications Categroy.
 // The prefix strings have the app's GUID appended to them.
 const TCHAR* const kRegValueInstallAppsDefault  = _T("InstallDefault");
@@ -40,9 +64,10 @@ const TCHAR* const kRegValueUpdateAppPrefix     = _T("Update");
 const bool kInstallPolicyDefault    = true;
 const bool kUpdatePolicyDefault     = true;
 
-const int kPolicyDisabled           = 0;
-const int kPolicyEnabled            = 1;
-const int kPolicyManualUpdatesOnly  = 2;
+const int kPolicyDisabled              = 0;
+const int kPolicyEnabled               = 1;
+const int kPolicyManualUpdatesOnly     = 2;
+const int kPolicyAutomaticUpdatesOnly  = 3;
 
 }  // namespace omaha
 

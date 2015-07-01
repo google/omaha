@@ -27,9 +27,26 @@ TEST_F(SiteLockTest, InApprovedDomain_GoogleDotCom) {
   EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://www.google.com/"));
   EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://www.google.com/pack/"));
   EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://www.google.co.uk"));
+  EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://www.google.co.uk/pack/"));
+  EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://pack.google.com/"));
+  EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://pack.google.com/pack/"));
+  EXPECT_FALSE(site_lock_.InApprovedDomain(L"http://fake.google.com/"));
+  EXPECT_FALSE(site_lock_.InApprovedDomain(L"http://fake.google.com/pack/"));
+  EXPECT_FALSE(site_lock_.InApprovedDomain(L"http://google.com/"));
+  EXPECT_FALSE(site_lock_.InApprovedDomain(L"http://google.com/pack/"));
 }
+
+TEST_F(SiteLockTest, InApprovedDomain_ChromeDotCom) {
+  EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://www.chrome.com/"));
+  EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://www.chrome.com/dl/"));
+  EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://chrome.com"));
+  EXPECT_TRUE(site_lock_.InApprovedDomain(L"http://chrome.com/dl/"));
+  EXPECT_FALSE(site_lock_.InApprovedDomain(L"http://fake.chrome.com/"));
+}
+
 TEST_F(SiteLockTest, InApprovedDomain_EvilHackerDotCom) {
   EXPECT_FALSE(site_lock_.InApprovedDomain(L"http://www.evilhacker.com/"));
+  EXPECT_FALSE(site_lock_.InApprovedDomain(L"http://www.evilhacker.com/dl/"));
 }
 
 }  // namespace omaha

@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_B64_H__
-#define OMAHA_COMMON_SECURITY_B64_H__
+#ifndef OMAHA_BASE_SECURITY_B64_H_
+#define OMAHA_BASE_SECURITY_B64_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,4 +35,4 @@ int B64_decode(const char* input,
 }
 #endif
 
-#endif  // OMAHA_COMMON_SECURITY_B64_H__
+#endif  // OMAHA_BASE_SECURITY_B64_H_

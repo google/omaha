@@ -95,6 +95,18 @@ bool SetupFiles::ShouldOverinstallSameVersion() {
     }
   }
 
+  for (size_t i = 0 ; i < metainstaller_files_.size(); ++i) {
+    CString full_path = ConcatenatePath(install_dir, metainstaller_files_[i]);
+    if (full_path.IsEmpty()) {
+      ASSERT1(false);
+      return true;
+    }
+    if (!File::Exists(full_path)) {
+      SETUP_LOG(L2, (_T("[MI file missing - overinstall][%s]]"), full_path));
+      return true;
+    }
+  }
+
   for (size_t i = 0 ; i < optional_files_.size(); ++i) {
     CString full_path = ConcatenatePath(install_dir, optional_files_[i]);
     if (full_path.IsEmpty()) {
@@ -138,7 +150,7 @@ HRESULT SetupFiles::Install() {
                                 install_dir,
                                 should_over_install);
   if (FAILED(hr)) {
-    OPT_LOG(LEVEL_ERROR, (_T("[Failed to copy the files][0x%08x]"), hr));
+    OPT_LOG(LEVEL_ERROR, (_T("[Failed to copy core files][0x%08x]"), hr));
     if (E_ACCESSDENIED == hr) {
       return GOOPDATE_E_ACCESSDENIED_COPYING_CORE_FILES;
     }
@@ -154,10 +166,26 @@ HRESULT SetupFiles::Install() {
     return hr;
   }
 
-  // Copy the optional files.
-  VERIFY1(SUCCEEDED(CopyInstallFiles(optional_files_,
-                                     install_dir,
-                                     should_over_install)));
+  // Copy the metainstaller.  Since the metainstaller is tagged, its file size
+  // may vary; so, we always overwrite, even if it's the same version.
+  // TODO(omaha): Once we refactor our tag management functions to be capable
+  // of stripping the tag from a MI, change this so that we always copy over
+  // an untagged metainstaller instead.  Untagged metainstallers should always
+  // be the same size.
+  hr = CopyInstallFiles(metainstaller_files_, install_dir, true);
+  if (FAILED(hr)) {
+    OPT_LOG(LEVEL_ERROR, (_T("[Failed to copy metainstaller][0x%08x]"), hr));
+    if (E_ACCESSDENIED == hr) {
+      return GOOPDATE_E_ACCESSDENIED_COPYING_MI;
+    }
+    return hr;
+  }
+
+  // Attempt to copy the optional files.
+  hr = CopyInstallFiles(optional_files_, install_dir, should_over_install);
+  if (FAILED(hr)) {
+    OPT_LOG(LEVEL_ERROR, (_T("[Failed to copy optional files][0x%08x]"), hr));
+  }
 
   metric_setup_files_ms.AddSample(metrics_timer.GetElapsedMs());
   ++metric_setup_files_verification_succeeded;
@@ -300,13 +328,10 @@ HRESULT SetupFiles::ShouldCopyShell(const CString& shell_install_path,
 
 HRESULT SetupFiles::SaveShellForRollback(const CString& shell_install_path) {
   // Copy existing file to a temporary file in case we need to roll back.
-  CString temp_file;
-  if (!::GetTempFileName(app_util::GetTempDir(),
-                         _T("gsh"),
-                         0,
-                         CStrBuf(temp_file, MAX_PATH))) {
+  CString temp_file = GetTempFilename(_T("gsh"));
+  if (temp_file.IsEmpty()) {
     const DWORD error = ::GetLastError();
-    SETUP_LOG(LEVEL_WARNING, (_T("[::GetTempFileName failed][%d]"), error));
+    SETUP_LOG(LEVEL_WARNING, (_T("[::GetTempFilename failed][%d]"), error));
     return HRESULT_FROM_WIN32(error);
   }
 
@@ -320,15 +345,19 @@ HRESULT SetupFiles::SaveShellForRollback(const CString& shell_install_path) {
 }
 
 // The list of files below needs to be kept in sync with payload_files in
-// omaha_version_utils.py.
+// omaha_version_utils.py. The one exception is kOmahaMetainstallerFileName,
+// which is not part of the payload.
 HRESULT SetupFiles::BuildFileLists() {
   ASSERT1(core_program_files_.empty());
+  ASSERT1(metainstaller_files_.empty());
   ASSERT1(optional_files_.empty());
 
   core_program_files_.clear();
   core_program_files_.push_back(kOmahaShellFileName);
   core_program_files_.push_back(kOmahaDllName);
   core_program_files_.push_back(kCrashHandlerFileName);
+  core_program_files_.push_back(kCrashHandler64FileName);
+  core_program_files_.push_back(kOmahaCOMRegisterShell64);
 
   // TODO(omaha3): Try to not depend on ResourceManager. Maybe just find the
   // files using wildcards.
@@ -337,7 +366,12 @@ HRESULT SetupFiles::BuildFileLists() {
   core_program_files_.push_back(kHelperInstallerName);
 
   core_program_files_.push_back(kPSFileNameUser);
+  core_program_files_.push_back(kPSFileNameUser64);
   core_program_files_.push_back(kPSFileNameMachine);
+  core_program_files_.push_back(kPSFileNameMachine64);
+
+  metainstaller_files_.clear();
+  metainstaller_files_.push_back(kOmahaMetainstallerFileName);
 
   // If files are removed from this list, unit tests such as
   // ShouldInstall_SameVersionOptionalFileMissing may need to be updated.
@@ -345,6 +379,8 @@ HRESULT SetupFiles::BuildFileLists() {
   optional_files_.push_back(UPDATE_PLUGIN_FILENAME);
   optional_files_.push_back(kOmahaBrokerFileName);
   optional_files_.push_back(kOmahaOnDemandFileName);
+  optional_files_.push_back(kOmahaWebPluginFileName);
+
   // Machine-specific files are always installed, to support cross installs from
   // user to machine and machine to user.
   // TODO(omaha3): Enable once it is being built.
@@ -457,18 +493,16 @@ HRESULT SetupFiles::CopyAndValidateFiles(
         _T("[destination file exists=%d]"), source_file, destination_file,
         overwrite, File::Exists(destination_file)));
 
-    extra_code1_ = i + 1;  // 1-based; reserves 0 for success or not set.
+    // 1-based; reserves 0 for success or not set.
+    extra_code1_ = static_cast<int>(i + 1);
 
-    if (overwrite || !File::Exists(destination_file)) {
-      HRESULT hr = VerifyFileSignature(source_file);
-      if (FAILED(hr)) {
-        OPT_LOG(LE, (_T("[precopy signature validation failed][from=%s][0x%x]"),
-                     source_file, hr));
-        ++metric_setup_files_verification_failed_pre;
-        return hr;
-      }
-
-      hr = File::Copy(source_file, destination_file, true);
+    // TODO(omaha): Reevaluate the value -- or at least, the naming -- of the
+    // overwrite flag.  As it stands, it's largely a debugging tool to force
+    // calls to File::Copy when it's not technically needed.
+    if (overwrite ||
+        !File::Exists(destination_file) ||
+        !File::AreFilesIdentical(source_file, destination_file)) {
+      HRESULT hr = File::Copy(source_file, destination_file, true);
       if (FAILED(hr)) {
         OPT_LOG(LE, (_T("[copy failed][from=%s][to=%s][0x%08x]"),
                      source_file, destination_file, hr));
@@ -477,8 +511,7 @@ HRESULT SetupFiles::CopyAndValidateFiles(
     }
 
     HRESULT hr = File::AreFilesIdentical(source_file, destination_file) ?
-                    VerifyFileSignature(destination_file) :
-                    GOOPDATE_E_POST_COPY_VERIFICATION_FAILED;
+                     S_OK : GOOPDATE_E_POST_COPY_VERIFICATION_FAILED;
 
     if (FAILED(hr)) {
       OPT_LOG(LE, (_T("[postcopy verification failed][from=%s][to=%s][0x%x]"),
@@ -493,46 +526,8 @@ HRESULT SetupFiles::CopyAndValidateFiles(
   return S_OK;
 }
 
-// The only secure location we copy to is Program Files, which only happens for
-// machine installs.
-HRESULT SetupFiles::VerifyFileSignature(const CString& filepath) {
-  if (!is_machine_) {
-    return S_OK;
-  }
-
-  HighresTimer verification_timer;
-
-  // Verify the Authenticode signature but use use only the local cache for
-  // revocation checks.
-  HRESULT hr = VerifySignature(filepath, false);
-#if TEST_CERTIFICATE
-  // The chain of trust will not validate on builds signed with the test
-  // certificate.
-  if (CERT_E_UNTRUSTEDROOT == hr) {
-    hr = S_OK;
-  }
-#endif
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  // Verify that there is a Google certificate and that it has not expired.
-  if (!VerifySigneeIsGoogle(filepath)) {
-    return GOOPDATE_E_VERIFY_SIGNEE_IS_GOOGLE_FAILED;
-  }
-
-  CORE_LOG(L3, (_T("[SetupFiles::VerifyFileSignature succeeded][%d ms]"),
-                verification_timer.GetElapsedMs()));
-  return S_OK;
-}
-
 bool SetupFiles::IsOlderShellVersionCompatible(ULONGLONG version) {
-  for (int i = 0; i < arraysize(kCompatibleOlderShellVersions); ++i) {
-    if (version == kCompatibleOlderShellVersions[i]) {
-      return true;
-    }
-  }
-  return false;
+  return version >= kCompatibleMinimumOlderShellVersion;
 }
 
 }  // namespace omaha

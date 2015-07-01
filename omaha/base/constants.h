@@ -106,7 +106,6 @@ const TCHAR* const kAppName = _T(OMAHA_APP_NAME_ANSI);
     _T("_") COMPANY_NAME_IDENTIFIER _T("_") PRODUCT_NAME_IDENTIFIER _T("_")
 
 const TCHAR* const kOmahaShellFileName         = MAIN_EXE_BASE_NAME _T(".exe");
-const TCHAR* const kCrashHandlerFileName       = CRASH_HANDLER_NAME _T(".exe");
 const TCHAR* const kOmahaDllName               = MAIN_DLL_BASE_NAME _T(".dll");
 const TCHAR* const kOmahaResourceDllNameFormat =
     MAIN_DLL_BASE_NAME _T("res_%s.dll");
@@ -114,8 +113,18 @@ const TCHAR* const kOmahaBrokerFileName        =
     MAIN_EXE_BASE_NAME _T("Broker.exe");
 const TCHAR* const kOmahaOnDemandFileName      =
     MAIN_EXE_BASE_NAME _T("OnDemand.exe");
+const TCHAR* const kOmahaWebPluginFileName      =
+    MAIN_EXE_BASE_NAME _T("WebPlugin.exe");
+const TCHAR* const kCrashHandlerFileName   = CRASH_HANDLER_NAME _T(".exe");
+const TCHAR* const kCrashHandler64FileName = CRASH_HANDLER_NAME _T("64.exe");
+const TCHAR* const kOmahaMetainstallerFileName =
+    MAIN_EXE_BASE_NAME _T("Setup.exe");
+const TCHAR* const kOmahaCOMRegisterShell64    =
+    MAIN_EXE_BASE_NAME _T("ComRegisterShell64.exe");
 const TCHAR* const kPSFileNameMachine  = _T("psmachine.dll");
+const TCHAR* const kPSFileNameMachine64= _T("psmachine_64.dll");
 const TCHAR* const kPSFileNameUser     = _T("psuser.dll");
+const TCHAR* const kPSFileNameUser64   = _T("psuser_64.dll");
 
 // TODO(omaha): Replace the following literal in clickonce\build.scons.
 // '%s/GoogleUpdateSetup.exe'
@@ -133,13 +142,13 @@ const TCHAR* const kHelperPatchGuid =
 // The value that is used in the run key.
 const TCHAR* const kRunValueName = kAppName;
 
-// The company and organization names as expected in Authenticode certificates.
-const TCHAR* const kCertificateSubjectName = _T("Google Inc");
-
 // TODO(omaha): Try to use the above constants in the IDL file help strings.
 // TODO(omaha): Consider moving uuid's from the IDL files to here too.
 // TODO(omaha): Use these values for the registry maps definitions, and progid
 // uses, such as ondemand.h.
+
+// The prefix for temporary filenames that Omaha creates.
+const TCHAR* const kTemporaryFilenamePrefix = _T("gup");
 
 //
 // Omaha's app ID
@@ -149,6 +158,10 @@ const TCHAR* const kCertificateSubjectName = _T("Google Inc");
 const TCHAR* const kGoogleUpdateAppId = GOOPDATE_APP_ID;
 const GUID kGoopdateGuid = {0x430FD4D0, 0xB729, 0x4F61,
                             {0xAA, 0x34, 0x91, 0x52, 0x64, 0x81, 0x79, 0x9D}};
+
+// Chrome's App ID
+#define CHROME_APP_ID _T("{8A69D345-D564-463C-AFF1-A69D9E530F96}")
+const TCHAR* const kChromeAppId = CHROME_APP_ID;
 
 //
 // Directory names
@@ -189,6 +202,9 @@ const GUID kGoopdateGuid = {0x430FD4D0, 0xB729, 0x4F61,
 #define GOOPDATE_POLICIES_RELATIVE COMPANY_POLICIES_MAIN_KEY \
     PRODUCT_NAME _T("\\")
 
+#define USER_LOCAL USER_KEY _T("Software\\Classes\\Local Settings\\")
+#define USER_LOCAL_REG_UPDATE USER_LOCAL GOOPDATE_MAIN_KEY
+
 #define USER_REG_GOOGLE USER_KEY COMPANY_MAIN_KEY
 #define USER_REG_UPDATE USER_KEY GOOPDATE_MAIN_KEY
 #define USER_REG_CLIENTS USER_KEY GOOPDATE_REG_RELATIVE_CLIENTS
@@ -206,26 +222,27 @@ const GUID kGoopdateGuid = {0x430FD4D0, 0xB729, 0x4F61,
 #define MACHINE_REG_CLIENT_STATE_MEDIUM \
     MACHINE_KEY GOOPDATE_REG_RELATIVE_CLIENT_STATE_MEDIUM
 
+#define REG_UPDATE_DEV COMPANY_MAIN_KEY PRODUCT_NAME _T("Dev\\")
+
 // Expands to HKEY_LOCAL_MACHINE\SOFTWARE\Google\UpdateDev
-#define MACHINE_REG_UPDATE_DEV \
-    MACHINE_KEY COMPANY_MAIN_KEY PRODUCT_NAME _T("Dev\\")
+#define MACHINE_REG_UPDATE_DEV MACHINE_KEY REG_UPDATE_DEV
 
 // Regular expressions for the servers allowed to use the Omaha plugins.
 const TCHAR* const kSiteLockPatternStrings[] = {
-  _T("^(gears)|(mail)|(tools)|(www)|(desktop)|(pack)\\.google\\.com$"),
+  _T("^(gears)|(mail)|(tools)|(www)|(desktop)|(pack)|(chrome)|(drive)\\.google\\.com$"),  // NOLINT
   _T("^www\\.google\\.(ad)|(bg)|(ca)|(cn)|(cz)|(de)|(es)|(fi)|(fr)|(gr)|(hr)|(hu)|(it)|(ki)|(kr)|(lt)|(lv)|(nl)|(no)|(pl)|(pt)|(ro)|(ru)|(sk)|(sg)|(sl)|(sr)|(vn)$"),  // NOLINT
   _T("^www\\.google\\.co\\.(hu)|(id)|(il)|(it)|(jp)|(kr)|(th)|(uk)$"),
   _T("^www\\.google\\.com\\.(ar)|(au)|(br)|(cn)|(et)|(gr)|(hr)|(ki)|(lv)|(om)|(pl)|(pt)|(ru)|(sg)|(sv)|(tr)|(vn)$"),  // NOLINT
+  _T("^(www\\.)?chrome\\.com$"),
 };
 
 //
-// Compatible shell versions
-// The following shell versions are compatible with the current version of
-// goopdate.dll and do not need be replaced: 1.2.131.7 and 1.2.183.9.
+// Minimum compatible shell version.
+// Shell versions equal to or newer than the following version are compatible
+// with the current version of goopdate.dll and do not need be replaced:
+// 1.3.21.103.
 //
-const ULONGLONG kCompatibleOlderShellVersions[] = { 0x0001000200830007,
-                                                    0x0001000200B70009,
-                                                  };
+const ULONGLONG kCompatibleMinimumOlderShellVersion = 0x0001000300150067;
 
 //
 // End vendor-specific constants.
@@ -235,6 +252,12 @@ const ULONGLONG kCompatibleOlderShellVersions[] = { 0x0001000200830007,
 // Registry values under MACHINE_REG_UPDATE_DEV allow customization of the
 // default behavior. The overrides apply for both user and machine
 // instances of omaha.
+//
+// The default ACLs for MACHINE_REG_UPDATE_DEV only allow privileged users
+// to make changes to the registry keys and values.
+// Modifying these settings could affect the overall security of Omaha. This is
+// not a security hole since the user has to be an admin first but it is
+// something to be used cautiously.
 //
 // The values below can only be overriden in debug builds.
 const TCHAR* const kRegValueNameOverInstall    = _T("OverInstall");
@@ -252,6 +275,7 @@ const TCHAR* const kRegValueNameUsageStatsReportUrl = _T("UsageStatsReportUrl");
 const TCHAR* const kRegValueTestSource              = _T("TestSource");
 const TCHAR* const kRegValueAuCheckPeriodMs         = _T("AuCheckPeriodMs");
 const TCHAR* const kRegValueCrCheckPeriodMs         = _T("CrCheckPeriodMs");
+const TCHAR* const kRegValueAutoUpdateJitterMs      = _T("AutoUpdateJitterMs");
 const TCHAR* const kRegValueProxyHost               = _T("ProxyHost");
 const TCHAR* const kRegValueProxyPort               = _T("ProxyPort");
 const TCHAR* const kRegValueMID                     = _T("mid");
@@ -272,11 +296,7 @@ enum LogEventLevel {
 // How often Omaha checks the server for updates.
 const TCHAR* const kRegValueLastCheckPeriodSec = _T("LastCheckPeriodSec");
 
-// Uses the production or the test cup keys. Once the client has negotiated
-// CUP credentials {sk, c} and it has saved them under the corresponding
-// Google\Update\network key then the client does not need any of the CUP keys.
-// To force the client to use test or production keys, {sk, c} credentials must
-// be cleared too.
+// Uses the production or the test cup keys.
 const TCHAR* const kRegValueCupKeys            = _T("TestKeys");
 
 // Allow a custom host pattern to be specified. For example,
@@ -286,17 +306,34 @@ const TCHAR* const kRegValueCupKeys            = _T("TestKeys");
 // http://msdn.microsoft.com/en-us/library/k3zs4axe.aspx.
 const TCHAR* const kRegValueOneClickHostPattern = _T("OneClickHostPattern");
 
+// Disables executable verification for application commands.
+const TCHAR* const kRegValueSkipCommandVerification =
+    _T("NoAppCommandVerification");
+
 // Disables the Code Red check.
 const TCHAR* const kRegValueNoCodeRedCheck     = _T("NoCrCheck");
 
 // Enables sending usage stats always if the value is present.
 const TCHAR* const kRegValueForceUsageStats    = _T("UsageStats");
 
+// Override to allow/disallow the machine to appear as part of a domain:
+// * not present; domain membership is determined via ::NetGetJoinInformation.
+// * present and set to TRUE; the machine acts as it were part of a domain.
+// * present and set to FALSE; the machine acts as it were not part of a domain.
+const TCHAR* const kRegValueIsEnrolledToDomain = _T("IsEnrolledToDomain");
+
 // Enables crash uploads if the value is 1. Crashes can be uploaded only if
 // certain conditions are met. This value allows overriding of the default
 // crash uploading behavior.
 const TCHAR* const kRegValueAlwaysAllowCrashUploads =
     _T("AlwaysAllowCrashUploads");
+
+// Overrides the default maximum number of crash uploads we make per day.
+const TCHAR* const kRegValueMaxCrashUploadsPerDay =
+    _T("MaxCrashUploadsPerDay");
+
+const TCHAR* const kRegValueDisableUpdateAppsHourlyJitter =
+    _T("DisableUpdateAppsHourlyJitter");
 
 // Enables monitoring the 'LastChecked' value for testing purposes. When
 // the 'LastChecked' is deleted, the core starts a worker process to do an
@@ -311,6 +348,10 @@ const TCHAR* const kRegValueTestSourceAuto     = _T("auto");
 // The corresponding value must have the following format:
 // wpad=[false|true];script=script_url;proxy=host:port
 const TCHAR* const kRegValueNetConfig          = _T("NetConfig");
+
+// Setting this value makes the client create the IGoogleUpdate3 COM server
+// in-proc.
+const TCHAR* const kRegValueUseInProcCOMServer = _T("UseInProcCOMServer");
 
 // The maximum length of application and bundle names.
 const int kMaxNameLength = 512;
@@ -357,24 +398,6 @@ const TCHAR* const kDefaultGoogleUpdateBrandCode = _T("GGLS");
 // The platform named used for Windows.
 const TCHAR* const kPlatformWin = _T("win");
 
-// TODO(omaha3): Move goopdate-specific values in this file to const_goopdate.h.
-// Maybe there should be a const_server_api.h file so the server API is
-// documented in one location.
-
-// The following are response strings returned by the server.
-// They must exactly match the strings returned by the server.
-const TCHAR* const kResponseStatusOkValue = _T("ok");
-const TCHAR* const kResponseStatusNoUpdate = _T("noupdate");
-const TCHAR* const kResponseStatusRestrictedExportCountry = _T("restricted");
-const TCHAR* const kResponseStatusOsNotSupported = _T("error-osnotsupported");
-const TCHAR* const kResponseStatusUnKnownApplication =
-    _T("error-UnKnownApplication");
-const TCHAR* const kResponseStatusInternalError = _T("error-internal");
-const TCHAR* const kResponseStatusHashError = _T("error-hash");
-const TCHAR* const kResponseStatusUnsupportedProtocol =
-    _T("error-unsupportedprotocol");
-const TCHAR* const kResponseDataStatusNoData = _T("error-nodata");
-
 const TCHAR* const kLocalSystemSid = _T("S-1-5-18");
 
 // Time-related constants for defining durations.
@@ -389,14 +412,13 @@ const int kSecondsPerDay      = 24 * kSecondsPerHour;
 // This introduces some time shift for computers connected all the time, for
 // example, the update checks occur at: 12, 17, 22, 3, 8, 13, 18, etc...
 //
-// Since time computation for LastChecked is done in seconds, sometimes it
-// can miss an update check, depending on arithmetic truncations.
-// Adjust down the LastCheckPeriod so that the update worker does not miss it.
-//
-// Almost 5 hours for production users and almost hourly for internal users.
-const int kLastCheckPeriodSec              = 5 * 59 * kMinPerHour;
-const int kLastCheckPeriodInternalUserSec  = 1 * 59 * kMinPerHour;
-
+// Almost 5 hours for production users and almost hourly for internal users. A
+// constant jitter is introduced here so that when the scheduler fires at the
+// hourly mark, the timer interval between updates will have a high likelihood
+// of being satisfied.
+const int kLastCheckJitterSec = 5 * kSecPerMin;
+const int kLastCheckPeriodSec = 5 * kSecondsPerHour - kLastCheckJitterSec;
+const int kLastCheckPeriodInternalUserSec = kLastCheckPeriodSec / 5;
 
 const int kMinLastCheckPeriodSec = 60;  // 60 seconds minimum.
 
@@ -439,6 +461,16 @@ const int kSetupUpdateShutdownWaitMs  = 3 * 60 * 1000;  // 3 minutes.
 // when needed.
 const int kWaitForMSIExecuteMs                = 5 * 60000;  // 5 minutes.
 
+// The Scheduled Tasks are initially set to start 5 minutes from the
+// installation time.
+#define kScheduledTaskDelayStartNs (5 * kMinsTo100ns);
+
+// The Scheduled Tasks are set to run once daily.
+const int kScheduledTaskIntervalDays = 1;
+
+// The Scheduled Task will be run daily at 24 hour intervals.
+const DWORD kScheduledTaskDurationMinutes = 24 * 60;
+
 // Name of the language key-value pair inside the version resource.
 const TCHAR* const kLanguageVersionName = _T("LanguageId");
 
@@ -446,31 +478,102 @@ const TCHAR* const kLanguageVersionName = _T("LanguageId");
 const TCHAR* const kCustomClientInfoGroup = _T("ClientCustomData");
 
 // ***                                            ***
-// *** Custom HTTP request headers sent by Omaha. ***
+// *** UI constants.                              ***
 // ***                                            ***
-const TCHAR* const kHeaderUserAgent           = _T("User-Agent");
+const COLORREF kTextColor = RGB(0x29, 0x29, 0x29);
+const COLORREF kBkColor = RGB(0XFB, 0XFB, 0XFB);
+
+const COLORREF kCaptionForegroundColor = RGB(0x82, 0x82, 0x82);
+const COLORREF kCaptionBkHover = RGB(0xE9, 0xE9, 0xE9);
+const COLORREF kCaptionFrameColor = RGB(0xC1, 0xC1, 0xC1);
+
+const COLORREF kProgressOuterFrameLight = RGB(0x3c, 0x86, 0xf0);
+const COLORREF kProgressOuterFrameDark = RGB(0x23, 0x6d, 0xd6);
+const COLORREF kProgressInnerFrameLight = RGB(0x6e, 0xc2, 0xfe);
+const COLORREF kProgressInnerFrameDark = RGB(0x44, 0x90, 0xfc);
+const COLORREF kProgressBarLightColor = RGB(0x4d, 0xa4, 0xfd);
+const COLORREF kProgressBarDarkColor = RGB(0x40, 0x86, 0xfd);
+const COLORREF kProgressEmptyFillColor = RGB(230, 230, 230);
+const COLORREF kProgressEmptyFrameColor = RGB(0xdd, 0xdd, 0xdd);
+const COLORREF kProgressShadowLightColor = RGB(0xed, 0xed, 0xed);
+const COLORREF kProgressShadowDarkColor = RGB(0xd5, 0xd5, 0xd5);
+const COLORREF kProgressLeftHighlightColor = RGB(0xed, 0xed, 0xed);
+
+// ***                                                       ***
+// *** Custom HTTP request headers sent by the Omaha Client. ***
+// ***                                                       ***
+const TCHAR kHeaderUserAgent[]           = _T("User-Agent");
 
 // The HRESULT and HTTP status code updated by the prior
 // NetworkRequestImpl::DoSendHttpRequest() call.
-const TCHAR* const kHeaderXLastHR             = _T("X-Last-HR");
-const TCHAR* const kHeaderXLastHTTPStatusCode = _T("X-Last-HTTP-Status-Code");
+const TCHAR kHeaderXLastHR[]             = _T("X-Last-HR");
+const TCHAR kHeaderXLastHTTPStatusCode[] = _T("X-Last-HTTP-Status-Code");
 
 // The "mid" value if it exists in HKLM\SOFTWARE\Google\UpdateDev.
-const TCHAR* const kHeaderXMID                = _T("X-MID");
+const TCHAR kHeaderXMID[]                = _T("X-MID");
 
 // The 407 retry count in the case of authenticated proxies.
-const TCHAR* const kHeaderXProxyRetryCount    = _T("X-Proxy-Retry-Count");
+const TCHAR kHeaderXProxyRetryCount[]    = _T("X-Proxy-Retry-Count");
 
 // Indicates that we had to prompt the user for proxy credentials.
-const TCHAR* const kHeaderXProxyManualAuth    = _T("X-Proxy-Manual-Auth");
+const TCHAR kHeaderXProxyManualAuth[]    = _T("X-Proxy-Manual-Auth");
 
 // The age in seconds between the current time and when a ping was first
 // persisted.
-const TCHAR* const kHeaderXRequestAge         = _T("X-RequestAge");
+const TCHAR kHeaderXRequestAge[]         = _T("X-RequestAge");
 
 // The current retry count defined by the outermost
 // NetworkRequestImpl::DoSendWithRetries() call.
-const TCHAR* const kHeaderXRetryCount         = _T("X-Retry-Count");
+const TCHAR kHeaderXRetryCount[]         = _T("X-Retry-Count");
+
+// Count of DoSendHttpRequest() calls.
+const TCHAR kHeaderXHTTPAttempts[]       = _T("X-HTTP-Attempts");
+
+// If the user id has been reset because the MAC changed, X-Old-UID contains the
+// previous UID.
+const TCHAR kHeaderXOldUserId[]          = _T("X-Old-UID");
+
+// The client sends a X-GoogleUpdate-Interactivity header to indicate whether
+// the current request is foreground or background.
+// A value of "fg" ("foreground") indicates foreground install or on-demand
+// updates. "bg" ("background") indicates silent update traffic.
+const TCHAR kHeaderXInteractive[]        = _T("X-GoogleUpdate-Interactivity");
+
+// ***                                                                      ***
+// *** Custom HTTP request headers that may be in an Omaha server response. ***
+// ***                                                                      ***
+
+// The time in seconds since the start of the day on the server's clock.  (If
+// the XML request is successfully validated and contains a <daystart> element,
+// consider it more authoritative than this value.)
+const TCHAR kHeaderXDaystart[]           = _T("X-Daystart");
+
+// Number of days since datum on the server's clock. (If the XML is
+// successfully validated and contains an |elapsed_days| attribute in
+// <daystart> element, consider it more authoritative than this value.)
+const TCHAR kHeaderXDaynum[]             = _T("X-Daynum");
+
+// Alternate ETag custom header. In case the real ETag header is removed before
+// it reaches the client, this custom header may prove more resilient to content
+// filtering.
+const TCHAR kHeaderXETag[]               = _T("X-Cup-Server-Proof");
+
+// Weak ETags header values are prefixed with "W/".
+const TCHAR kWeakETagPrefix[]            = _T("W/");
+
+// The server uses the optional X-Retry-After header to indicate that the
+// current request should not be attempted again. Any response received along
+// with the X-Retry-After header should be interpreted as it would have been
+// without the X-Retry-After header.
+//
+// In addition to the presence of the header, the value of the header is
+// used as a signal for when to do future update checks, but only when the
+// response is over https. Values over http are not trusted and are ignored.
+//
+// The value of the header is the number of seconds to wait before trying to do
+// a subsequent update check. The uppper bound for the number of seconds to wait
+// before trying to do a subsequent update check is capped at 24 hours.
+const TCHAR kHeaderXRetryAfter[]         = _T("X-Retry-After");
 
 }  // namespace omaha
 

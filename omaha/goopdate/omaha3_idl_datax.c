@@ -41,8 +41,13 @@
 #define DLLDUMMYPURECALL
 #endif
 
-#include "goopdate/omaha3_idl_data.c"
-#include "goopdate/omaha3_idl_p.c"
+#ifndef _M_AMD64
+  #include "goopdate/omaha3_idl_data.c"
+  #include "goopdate/omaha3_idl_p.c"
+#else
+  #include "goopdate/omaha3_idl_64_data.c"
+  #include "goopdate/omaha3_idl_64_p.c"
+#endif
 
 #undef PROXY_CLSID_IS
 

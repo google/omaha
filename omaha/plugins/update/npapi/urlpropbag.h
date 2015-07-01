@@ -18,6 +18,9 @@
 
 #include <atlbase.h>
 #include <atlcom.h>
+#include <atlstr.h>
+
+#include "base/basictypes.h"
 
 namespace omaha {
 

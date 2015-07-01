@@ -93,8 +93,12 @@ HRESULT StartProcessWithTokenOfProcess(uint32 pid,
                                        const CString& command_line);
 
 // Runs the command on behalf of the current user. Creates a fresh environment
-// block based on the user's token.
-HRESULT RunAsCurrentUser(const CString& command_line);
+// block based on the user's token. If |process| and/or |child_stdout| are not
+// null, they will receive handles to the launched process and its output
+// stream, respectively. The caller is responsible for closing received handles.
+HRESULT RunAsCurrentUser(const CString& command_line,
+                         HANDLE* child_stdout,
+                         HANDLE* process);
 
 }  // namespace vista
 

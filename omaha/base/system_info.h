@@ -21,6 +21,7 @@
 #define OMAHA_BASE_SYSTEM_INFO_H_
 
 #include <windows.h>
+#include <versionhelpers.h>
 #include <tchar.h>
 
 namespace omaha {
@@ -31,50 +32,17 @@ class SystemInfo {
   // Find out if the OS is at least Windows 2000
   // Service pack 4. If OS version is less than that
   // will return false, all other cases true.
-  static bool OSWin2KSP4OrLater() {
-    // Use GetVersionEx to get OS and Service Pack information.
-    OSVERSIONINFOEX osviex;
-    ::ZeroMemory(&osviex, sizeof(osviex));
-    osviex.dwOSVersionInfoSize = sizeof(osviex);
-    BOOL success = ::GetVersionEx(reinterpret_cast<OSVERSIONINFO*>(&osviex));
-    // If this failed we're on Win9X or a pre NT4SP6 OS.
-    if (!success) {
-      return false;
-    }
-
-    if (osviex.dwMajorVersion < 5) {
-      return false;
-    }
-    if (osviex.dwMajorVersion > 5) {
-      return true;    // way beyond Windows XP.
-    }
-    if (osviex.dwMinorVersion >= 1) {
-      return true;    // Windows XP or better.
-    }
-    if (osviex.wServicePackMajor >= 4) {
-      return true;    // Windows 2000 SP4.
-    }
-
-    return false;     // Windows 2000, < SP4.
+  static bool SystemInfo::OSWin2KSP4OrLater() {
+    return ::IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WIN2K),
+                                       LOBYTE(_WIN32_WINNT_WIN2K),
+                                       4);
   }
 
   // Returns true if the OS is at least XP SP2.
-  static bool OSWinXPSP2OrLater();
+  static bool IsRunningOnXPSP2OrLater();
 
-  // CategorizeOS returns a categorization of what operating system is running,
-  // and the service pack level.
-  // NOTE: Please keep this in the order of increasing OS versions
-  enum OSVersionType {
-    OS_WINDOWS_UNKNOWN = 1,
-    OS_WINDOWS_9X_OR_NT,
-    OS_WINDOWS_2000,
-    OS_WINDOWS_XP,
-    OS_WINDOWS_SERVER_2003,
-    OS_WINDOWS_VISTA,
-    OS_WINDOWS_7
-  };
-  static HRESULT CategorizeOS(OSVersionType* os_version, DWORD* service_pack);
-  static const wchar_t* OSVersionTypeAsString(OSVersionType t);
+  // Returns true if the OS is at least XP SP3.
+  static bool IsRunningOnXPSP3OrLater();
 
   // Returns true if the current operating system is Windows 2000.
   static bool IsRunningOnW2K();
@@ -90,13 +58,15 @@ class SystemInfo {
 
   static bool IsRunningOnVistaRTM();
 
-  // Returns the version and the name of the operating system.
+  static bool IsRunningOnW81OrLater();
+
+  static CString GetKernel32OSVersion();
+
+  // Returns the version of the operating system.
   static bool GetSystemVersion(int* major_version,
                                int* minor_version,
                                int* service_pack_major,
-                               int* service_pack_minor,
-                               TCHAR* name_buf,
-                               size_t name_buf_len);
+                               int* service_pack_minor);
 
   // Returns the processor architecture. We use wProcessorArchitecture in
   // SYSTEM_INFO returned by ::GetNativeSystemInfo() to detect the processor
@@ -107,6 +77,18 @@ class SystemInfo {
 
   // Returns whether this is a 64-bit Windows system.
   static bool Is64BitWindows();
+
+  // Retrieves a full OSVERSIONINFOEX struct describing the current OS.
+  static HRESULT GetOSVersion(OSVERSIONINFOEX* os_out);
+
+  // Compares the current OS to the supplied version.  The value of |oper|
+  // should be one of the predicate values from VerSetConditionMask() -- for
+  // example, VER_GREATER or VER_GREATER_EQUAL.
+  //
+  // The current OS will always be on the left hand side of the comparison;
+  // for example, if |oper| was VER_GREATER and |os| is set to Windows Vista,
+  // a machine running Windows 7 or later yields true.
+  static bool CompareOSVersions(OSVERSIONINFOEX* os, BYTE oper);
 };
 
 }  // namespace omaha

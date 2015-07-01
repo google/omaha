@@ -130,7 +130,7 @@ HRESULT EtwTraceConsumerBase<ImplClass>::OpenFileSession(
 template <class ImplClass> inline
 HRESULT EtwTraceConsumerBase<ImplClass>::Consume() {
   ULONG err = ::ProcessTrace(&trace_handles_[0],
-                             trace_handles_.size(),
+                             static_cast<ULONG>(trace_handles_.size()),
                              NULL,
                              NULL);
   return HRESULT_FROM_WIN32(err);

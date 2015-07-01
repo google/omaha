@@ -222,7 +222,7 @@ def BuildOfflineInstaller(
     is_official=False,
     installers_sources_path='$MAIN_DIR/installers',
     enterprise_installers_sources_path='$MAIN_DIR/enterprise/installer',
-    lzma_path='$MAIN_DIR/third_party/lzma/v4_65/files/lzma.exe',
+    lzma_path='$THIRD_PARTY/lzma/files/lzma.exe',
     resmerge_path='$MAIN_DIR/tools/resmerge'):
   """Builds the standalone installers specified by offline_installer.
 
@@ -277,7 +277,6 @@ def BuildOfflineInstaller(
   if not offline_installer.binaries:
     raise Exception('No binaries specified.')
 
-  manifest_target = ''
   manifest_source = []
   version_list = []
   for binary in offline_installer.binaries:
@@ -299,10 +298,6 @@ def BuildOfflineInstaller(
     version_list.append(version)
     additional_payload_contents.append(installer_path_modified)
 
-    # TODO(omaha): Use full guid and version to generate unique string, use
-    #   hash of the unique string as target directory name.
-    manifest_target += guid[0:4] + version
-
     # Log info about the app.
     log_text += '\n\n*** App: ' + guid + ' ***\n'
     log_text += '\nVersion:' + version + '\n'
@@ -310,9 +305,8 @@ def BuildOfflineInstaller(
 
   # Place the generated manifests in a subdirectory. This allows a single
   # build to generate installers for multiple versions of the same app.
-  manifest_target += '/OfflineManifest.gup'
   manifest_file_path = env.Command(
-      target=manifest_target,
+      target=target_name + '_manifest/OfflineManifest.gup',
       source=manifest_source,
       action=[_GenerateUpdateResponseFile],
       INSTALLER_VERSIONS=version_list
@@ -406,7 +400,7 @@ def BuildOfflineInstaller(
                     silent_uninstall_args,
                     msi_installer_data,
                     standalone_installer_path,
-                    omaha_files_path + '/show_error_action.dll',
+                    omaha_files_path + '/msi_custom_action.dll',
                     prefix + msi_base_name,
                     enterprise_installers_sources_path,
                     output_dir=output_dir

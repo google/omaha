@@ -36,6 +36,8 @@ void JobObserverCOMDecorator::Initialize(IJobObserver* job_observer) {
 
   job_observer_ = job_observer;
   job_observer->SetEventSink(this);
+
+  job_observer_.QueryInterface(&job_observer2_);
 }
 
 void JobObserverCOMDecorator::Uninitialize() {
@@ -48,8 +50,10 @@ void JobObserverCOMDecorator::OnCheckingForUpdate() {
   job_observer_->OnCheckingForUpdate();
 }
 
-void JobObserverCOMDecorator::OnUpdateAvailable(const CString& app_name,
+void JobObserverCOMDecorator::OnUpdateAvailable(const CString& app_id,
+                                                const CString& app_name,
                                                 const CString& version_string) {
+  UNREFERENCED_PARAMETER(app_id);
   UNREFERENCED_PARAMETER(app_name);
   ASSERT1(job_observer_);
   ASSERT1(worker_job_thread_id_ == ::GetCurrentThreadId());
@@ -57,7 +61,9 @@ void JobObserverCOMDecorator::OnUpdateAvailable(const CString& app_name,
   job_observer_->OnUpdateAvailable(version_string);
 }
 
-void JobObserverCOMDecorator::OnWaitingToDownload(const CString& app_name) {
+void JobObserverCOMDecorator::OnWaitingToDownload(const CString& app_id,
+                                                  const CString& app_name) {
+  UNREFERENCED_PARAMETER(app_id);
   UNREFERENCED_PARAMETER(app_name);
   ASSERT1(job_observer_);
   ASSERT1(worker_job_thread_id_ == ::GetCurrentThreadId());
@@ -65,9 +71,11 @@ void JobObserverCOMDecorator::OnWaitingToDownload(const CString& app_name) {
   job_observer_->OnWaitingToDownload();
 }
 
-void JobObserverCOMDecorator::OnDownloading(const CString& app_name,
+void JobObserverCOMDecorator::OnDownloading(const CString& app_id,
+                                            const CString& app_name,
                                             int time_remaining_ms,
                                             int pos) {
+  UNREFERENCED_PARAMETER(app_id);
   UNREFERENCED_PARAMETER(app_name);
   ASSERT1(job_observer_);
   ASSERT1(worker_job_thread_id_ == ::GetCurrentThreadId());
@@ -75,14 +83,18 @@ void JobObserverCOMDecorator::OnDownloading(const CString& app_name,
   job_observer_->OnDownloading(time_remaining_ms, pos);
 }
 
-void JobObserverCOMDecorator::OnWaitingRetryDownload(const CString& app_name,
+void JobObserverCOMDecorator::OnWaitingRetryDownload(const CString& app_id,
+                                                     const CString& app_name,
                                                      time64 next_retry_time) {
+  UNREFERENCED_PARAMETER(app_id);
   UNREFERENCED_PARAMETER(app_name);
   UNREFERENCED_PARAMETER(next_retry_time);
 }
 
-void JobObserverCOMDecorator::OnWaitingToInstall(const CString& app_name,
+void JobObserverCOMDecorator::OnWaitingToInstall(const CString& app_id,
+                                                 const CString& app_name,
                                                  bool* can_start_install) {
+  UNREFERENCED_PARAMETER(app_id);
   UNREFERENCED_PARAMETER(app_name);
   ASSERT1(job_observer_);
   ASSERT1(worker_job_thread_id_ == ::GetCurrentThreadId());
@@ -91,12 +103,22 @@ void JobObserverCOMDecorator::OnWaitingToInstall(const CString& app_name,
   *can_start_install = true;
 }
 
-void JobObserverCOMDecorator::OnInstalling(const CString& app_name) {
+void JobObserverCOMDecorator::OnInstalling(const CString& app_id,
+                                           const CString& app_name,
+                                           int time_remaining_ms,
+                                           int pos) {
+  UNREFERENCED_PARAMETER(app_id);
   UNREFERENCED_PARAMETER(app_name);
+  UNREFERENCED_PARAMETER(time_remaining_ms);
+  UNREFERENCED_PARAMETER(pos);
   ASSERT1(job_observer_);
   ASSERT1(worker_job_thread_id_ == ::GetCurrentThreadId());
 
-  job_observer_->OnInstalling();
+  if (job_observer2_) {
+    job_observer2_->OnInstalling2(time_remaining_ms, pos);
+  } else {
+    job_observer_->OnInstalling();
+  }
 }
 
 void JobObserverCOMDecorator::OnPause() {
@@ -113,9 +135,9 @@ void JobObserverCOMDecorator::OnComplete(const ObserverCompletionInfo& info) {
     LegacyCompletionCodes completion_code =
         static_cast<LegacyCompletionCodes>(info.completion_code);
 
-    // We do not want to send Omaha strings to the application, so pass an empty
-    // string instead.
-    job_observer_->OnComplete(completion_code, L"");
+    // The completion_text will be in the "lang" specified in ClientState or
+    // Clients, or the current locale if "lang" is missing.
+    job_observer_->OnComplete(completion_code, info.completion_text);
     job_observer_ = NULL;
   }
 

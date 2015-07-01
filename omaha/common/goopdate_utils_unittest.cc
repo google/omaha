@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include <windows.h>
+#include <wbemidl.h>
 #include <atlpath.h>
 #include <atlsecurity.h>
 #include <atlstr.h>
@@ -29,7 +30,10 @@
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/scoped_ptr_cotask.h"
+#include "omaha/base/signatures.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 #include "omaha/base/user_info.h"
@@ -41,6 +45,7 @@
 #include "omaha/common/const_group_policy.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/oem_install_utils.h"
+#include "omaha/common/update3_utils.h"
 #include "omaha/testing/resource.h"
 #include "omaha/testing/unit_test.h"
 
@@ -54,6 +59,9 @@ const TCHAR* hklm_key_name = _T("HKLM\\Software\\Classes\\CLSID\\") DUMMY_CLSID;
 const TCHAR* hkcu_key_name = _T("HKCU\\Software\\Classes\\CLSID\\") DUMMY_CLSID;
 
 const TCHAR* kAppId = _T("{3DAE8C13-C394-481E-8163-4E7A7699084F}");
+
+const TCHAR* kMACHash1 = _T("Hash1");
+const TCHAR* kMACHash2 = _T("Hash2");
 
 }  // namespace
 
@@ -874,6 +882,19 @@ TEST(GoopdateUtilsTest, RedirectHKCRTest) {
   Cleanup();
 }
 
+TEST(GoopdateUtilsTest, GetKernel32OSInfo) {
+  CString os_version;
+  CString sp_qfe;
+  EXPECT_SUCCEEDED(GetKernel32OSInfo(&os_version, &sp_qfe));
+  EXPECT_TRUE(!os_version.IsEmpty());
+
+  CString os_version_getosinfo;
+  CString sp_getosinfo;
+  EXPECT_SUCCEEDED(GetOSInfo(&os_version_getosinfo, &sp_getosinfo));
+
+  EXPECT_STREQ(os_version_getosinfo, os_version);
+}
+
 TEST(GoopdateUtilsTest, GetOSInfo) {
   CString os_version;
   CString service_pack;
@@ -905,8 +926,42 @@ class GoopdateUtilsRegistryProtectedBooleanTest
  protected:
   GoopdateUtilsRegistryProtectedBooleanTest()
       : hive_override_key_name_(kRegistryHiveOverrideRoot) {
+    GetNetworkAdapterServiceNames();
   }
 
+  void GetNetworkAdapterServiceNames() {
+    // Just find any adapter in the system.
+    RegKey reg_key;
+    ASSERT_SUCCEEDED(reg_key.Open(kRegKeyNetworkCards, KEY_READ));
+
+    uint32 subkey_cout = reg_key.GetSubkeyCount();
+    ASSERT_NE(0, subkey_cout);
+    for (uint32 i = 0; i < subkey_cout; ++i) {
+      CString key_name;
+      ASSERT_SUCCEEDED(reg_key.GetSubkeyNameAt(i, &key_name));
+
+      RegKey sub_key;
+      ASSERT_SUCCEEDED(sub_key.Open(reg_key.Key(), key_name, KEY_READ));
+
+      CString service_name;
+      ASSERT_SUCCEEDED(sub_key.GetValue(kRegValueAdapterServiceName,
+                                        &service_name));
+      network_adapter_service_names_.push_back(service_name);
+    }
+  }
+
+  void DuplicateNetworkCardRegValue() {
+    ASSERT_FALSE(network_adapter_service_names_.empty());
+    for (size_t i = 0; i < network_adapter_service_names_.size(); ++i) {
+      CString network_card_reg_key;
+      network_card_reg_key.Format(_T("%s\\%d"), kRegKeyNetworkCards, i + 1);
+      ASSERT_SUCCEEDED(RegKey::SetValue(network_card_reg_key,
+                                        kRegValueAdapterServiceName,
+                                        network_adapter_service_names_[i]));
+    }
+  }
+
+  std::vector<CString> network_adapter_service_names_;
   CString hive_override_key_name_;
 
   virtual void SetUp() {
@@ -986,6 +1041,53 @@ class VersionProtectedTest : public RegistryProtectedTest {
   const ULONGLONG module_version_;
   static const ULONGLONG kFakeVersion = 0x0005000600070008;
 };
+
+void ExpectMacMatchViaWMI(const CString& mac_address) {
+  scoped_co_init init_com_apt(COINIT_APARTMENTTHREADED);
+
+  CComPtr<IWbemLocator> locator;
+  ASSERT_SUCCEEDED(locator.CoCreateInstance(CLSID_WbemAdministrativeLocator));
+
+  CComPtr<IWbemServices> service;
+  ASSERT_SUCCEEDED(locator->ConnectServer(_T("root\\cimv2"),
+                                           NULL,
+                                           NULL,
+                                           NULL,
+                                           WBEM_FLAG_CONNECT_USE_MAX_WAIT,
+                                           NULL,
+                                           NULL,
+                                           &service));
+
+  ASSERT_SUCCEEDED(update3_utils::SetProxyBlanketAllowImpersonate(service));
+
+  CComPtr<IEnumWbemClassObject> enum_network_adapter;
+  CString query_mac_address;
+  query_mac_address.Format(
+      _T("Select MACAddress from Win32_NetworkAdapter where MACAddress=\'%s\'"),
+      mac_address);
+
+  ASSERT_SUCCEEDED(service->ExecQuery(
+      CComBSTR(_T("WQL")),
+      CComBSTR(query_mac_address),
+      WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+      NULL,
+      &enum_network_adapter));
+
+  ASSERT_TRUE(enum_network_adapter != NULL);
+  CComPtr<IWbemClassObject> object;
+  ULONG ret_val = 0;
+
+  ASSERT_SUCCEEDED(enum_network_adapter->Next(WBEM_INFINITE,
+                                             1,
+                                             &object,
+                                             &ret_val));
+  ASSERT_NE(0, ret_val);
+
+  CComVariant vtProperty;
+  ASSERT_SUCCEEDED(object->Get(_T("MACAddress"), 0, &vtProperty, 0, 0));
+  EXPECT_EQ(VT_BSTR, vtProperty.vt);
+  EXPECT_STREQ(vtProperty.bstrVal, mac_address);
+}
 
 // pv should be ignored.
 TEST_F(GoopdateUtilsRegistryProtectedWithMachineFolderPathsTest,
@@ -1073,8 +1175,11 @@ TEST_F(GoopdateUtilsRegistryProtectedWithMachineFolderPathsTest,
 // The version is no longer used by StartGoogleUpdateWithArgs, so the return
 // value depends on whether <user_folder>\Google\Update\GoogleUpdate.exe exists.
 // The arguments must be valid to avoid displaying invalid command line error.
+//
+// TODO(omaha): This test is disabled because StartGoogleUpdateWithArgs fails on
+// Windows 8.1 with REGDB_E_CLASSNOTREG. Needs further investigation as to why.
 TEST_F(GoopdateUtilsRegistryProtectedWithUserFolderPathsTest,
-       StartGoogleUpdateWithArgs_UserVersionVersionDoesNotExist) {
+       DISABLED_StartGoogleUpdateWithArgs_UserVersionVersionDoesNotExist) {
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
                                     _T("pv"),
                                     _T("1.2.3.4")));
@@ -1096,6 +1201,44 @@ TEST(GoopdateUtilsTest, BuildInstallDirectory_User) {
   expected_path.Append(_T("4.5.6.7"));
   EXPECT_STREQ(expected_path,
                BuildInstallDirectory(false, _T("4.5.6.7")));
+}
+
+TEST(GoopdateUtilsTest, GetInstalledShellVersion_Machine_NoShell) {
+  File::Remove(BuildGoogleUpdateExePath(true));
+  ULONGLONG shell_version = VersionFromString(GetInstalledShellVersion(true));
+  EXPECT_EQ(shell_version, 0ULL);
+}
+
+TEST(GoopdateUtilsTest, GetInstalledShellVersion_Machine_ShellExists) {
+  CPath shell_path_1_2_183_21(app_util::GetCurrentModuleDirectory());
+  shell_path_1_2_183_21.Append(_T("unittest_support\\omaha_1.3.x\\"));
+  shell_path_1_2_183_21.Append(kOmahaShellFileName);
+  CPath goopdate_exe(goopdate_utils::BuildGoogleUpdateExePath(true));
+  EXPECT_SUCCEEDED(File::Copy(shell_path_1_2_183_21,
+                              goopdate_exe,
+                              true));
+
+  EXPECT_STREQ(_T("1.2.183.21"), GetInstalledShellVersion(true));
+  EXPECT_SUCCEEDED(File::Remove(goopdate_exe));
+}
+
+TEST(GoopdateUtilsTest, GetInstalledShellVersion_User_NoShell) {
+  File::Remove(BuildGoogleUpdateExePath(false));
+  ULONGLONG shell_version = VersionFromString(GetInstalledShellVersion(false));
+  EXPECT_EQ(shell_version, 0ULL);
+}
+
+TEST(GoopdateUtilsTest, GetInstalledShellVersion_User_ShellExists) {
+  CPath shell_path_1_2_183_21(app_util::GetCurrentModuleDirectory());
+  shell_path_1_2_183_21.Append(_T("unittest_support\\omaha_1.3.x\\"));
+  shell_path_1_2_183_21.Append(kOmahaShellFileName);
+  CPath goopdate_exe(goopdate_utils::BuildGoogleUpdateExePath(false));
+  EXPECT_SUCCEEDED(File::Copy(shell_path_1_2_183_21,
+                              goopdate_exe,
+                              true));
+
+  EXPECT_STREQ(_T("1.2.183.21"), GetInstalledShellVersion(false));
+  EXPECT_SUCCEEDED(File::Remove(goopdate_exe));
 }
 
 TEST(GoopdateUtilsTest, ConvertBrowserTypeToString) {
@@ -1227,13 +1370,9 @@ TEST(GoopdateUtilsTest, OpenUniqueEventFromEnvironment_EventDoesNotExist) {
 
 
 CString GetTempFile() {
-  TCHAR temp_path[MAX_PATH] = {0};
-  TCHAR temp_file[MAX_PATH] = {0};
-
-  EXPECT_LT(::GetTempPath(arraysize(temp_path), temp_path),
-            arraysize(temp_path));
-  EXPECT_NE(0, ::GetTempFileName(temp_path, _T("ut_"), 0, temp_file));
-  return CString(temp_file);
+  CString temp_file = GetTempFilename(_T("ut_"));
+  EXPECT_FALSE(temp_file.IsEmpty());
+  return temp_file;
 }
 
 typedef std::map<CString, CString> StringMap;
@@ -1411,7 +1550,7 @@ TEST(GoopdateUtilsTest, WriteInstallerDataToTempFile) {
       std::vector<byte> data_line(kBufferLen);
       EXPECT_SUCCEEDED(file.Open(file_path, false, false));
       uint32 bytes_read(0);
-      EXPECT_SUCCEEDED(file.Read(data_line.size(),
+      EXPECT_SUCCEEDED(file.Read(static_cast<uint32>(data_line.size()),
                                  &data_line.front(),
                                  &bytes_read));
       data_line.resize(bytes_read);
@@ -1423,74 +1562,6 @@ TEST(GoopdateUtilsTest, WriteInstallerDataToTempFile) {
       EXPECT_TRUE(installer_data.IsEmpty());
     }
   }
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest, UpdateLastChecked) {
-  EXPECT_SUCCEEDED(UpdateLastChecked(false));
-  EXPECT_FALSE(ShouldCheckForUpdates(false));
-
-  ConfigManager::Instance()->SetLastCheckedTime(false, 0);
-  EXPECT_TRUE(ShouldCheckForUpdates(false));
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       ShouldCheckForUpdates_NoLastCheckedPresent) {
-  EXPECT_TRUE(ShouldCheckForUpdates(false));
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       ShouldCheckForUpdates_LastCheckedPresent) {
-  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
-
-  ConfigManager::Instance()->SetLastCheckedTime(false, now - 10);
-  EXPECT_FALSE(ShouldCheckForUpdates(false));
-
-  ConfigManager::Instance()->SetLastCheckedTime(false,
-                                                now - kLastCheckPeriodSec - 1);
-  EXPECT_TRUE(ShouldCheckForUpdates(false));
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       ShouldCheckForUpdates_LastCheckedInFuture) {
-  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
-
-  // The absolute difference is within the check period.
-  ConfigManager::Instance()->SetLastCheckedTime(false, now + 600);
-  EXPECT_FALSE(ShouldCheckForUpdates(false));
-
-  // The absolute difference is greater than the check period.
-  ConfigManager::Instance()->SetLastCheckedTime(false,
-                                                now + kLastCheckPeriodSec + 1);
-  EXPECT_TRUE(ShouldCheckForUpdates(false));
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       ShouldCheckForUpdates_PeriodZero) {
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                       static_cast<DWORD>(0)));
-
-  EXPECT_FALSE(ShouldCheckForUpdates(false));
-}
-
-TEST_F(GoopdateUtilsRegistryProtectedTest,
-       ShouldCheckForUpdates_PeriodOverride) {
-  const DWORD kOverrideMinutes = 10;
-  const DWORD kOverrideSeconds = kOverrideMinutes * 60;
-  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
-
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                       kOverrideMinutes));
-
-  ConfigManager::Instance()->SetLastCheckedTime(false, now - 10);
-  EXPECT_FALSE(ShouldCheckForUpdates(false));
-
-  ConfigManager::Instance()->SetLastCheckedTime(false,
-                                                now - kOverrideSeconds - 1);
-  EXPECT_TRUE(ShouldCheckForUpdates(false));
 }
 
 TEST_P(GoopdateUtilsRegistryProtectedBooleanTest, CreateUserId) {
@@ -1621,9 +1692,345 @@ TEST_P(GoopdateUtilsRegistryProtectedBooleanTest,
   }
 }
 
+TEST_P(GoopdateUtilsRegistryProtectedBooleanTest, GetUserIdHistory_NoOldUid) {
+  const bool is_machine = GetParam();
+
+  ASSERT_SUCCEEDED(RegKey::CreateKey(
+    ConfigManager::Instance()->registry_update(is_machine)));
+
+  CString expected_uid_history = _T("cnt=0");
+  CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+  EXPECT_STREQ(expected_uid_history, uid_history);
+}
+
+TEST_P(GoopdateUtilsRegistryProtectedBooleanTest,
+       GetUserIdHistory_NoExistingUid) {
+  const bool is_machine = GetParam();
+  // Set registry environment for this test.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueForceUsageStats,
+                                    _T("1")));  // opt-in user.
+  DuplicateNetworkCardRegValue();
+
+  // Now update the user id.
+  goopdate_utils::GetUserIdLazyInit(is_machine);
+
+  // New UID is created, age should be -1.
+  CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+  EXPECT_STREQ(_T("age=-1; cnt=1"), uid_history);
+
+  // Tweak UID creation time so that new UID become "old"
+  DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  ASSERT_SUCCEEDED(RegKey::SetValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueUserIdCreateTime,
+      now - kSecPerMin - 10));
+  uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+  EXPECT_STREQ(_T("age=0; cnt=1"), uid_history);
+
+  // Tweak UID creation time again to 2 days back.
+  ASSERT_SUCCEEDED(RegKey::SetValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueUserIdCreateTime,
+      now - kSecondsPerDay * 2 - 10));
+  uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+  EXPECT_STREQ(_T("age=2; cnt=1"), uid_history);
+}
+
+TEST_P(GoopdateUtilsRegistryProtectedBooleanTest,
+       GetUserIdHistory_PreviouslyRotated) {
+  const bool is_machine = GetParam();
+  // Set registry environment for this test.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueForceUsageStats,
+                                    _T("1")));  // opt-in user.
+  DuplicateNetworkCardRegValue();
+
+  // Rotate UID but delete history info reg keys to simulate previous UID
+  // rotations.
+  goopdate_utils::GetUserIdLazyInit(is_machine);
+  ASSERT_SUCCEEDED(RegKey::DeleteValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueUserIdCreateTime));
+  ASSERT_SUCCEEDED(RegKey::DeleteValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueUserIdNumRotations));
+
+  CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+  EXPECT_STREQ(_T("cnt=0"), uid_history);
+}
+
+TEST_P(GoopdateUtilsRegistryProtectedBooleanTest,
+       GetUserIdHistory_WithLegacyUid) {
+  const bool is_machine = GetParam();
+  // Set registry environment for this test.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueForceUsageStats,
+                                    _T("1")));  // opt-in user.
+  DuplicateNetworkCardRegValue();
+
+  // Create a user id with legacy way.
+  CString legacy_user_id = _T("__legacy_user_id__");
+  ASSERT_SUCCEEDED(RegKey::SetValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueUserId,
+      legacy_user_id));
+
+  // Now rotate user id.
+  goopdate_utils::GetUserIdLazyInit(is_machine);
+
+  CString expected_uid_history;
+  expected_uid_history.Format(_T("%s%s; age=-1; cnt=1"),
+                              legacy_user_id,
+                              kRegValueDataLegacyUserId);
+  CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+  EXPECT_STREQ(expected_uid_history, uid_history);
+}
+
+TEST_P(GoopdateUtilsRegistryProtectedBooleanTest,
+       GetUserIdHistory_MultipleRotationsWithLegacyUid) {
+  const bool is_machine = GetParam();
+  // Set registry environment for this test.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueForceUsageStats,
+                                    _T("1")));  // opt-in user.
+  DuplicateNetworkCardRegValue();
+
+  // Create a user id with legacy way.
+  CString legacy_user_id = _T("__legacy_user_id__");
+  ASSERT_SUCCEEDED(RegKey::SetValue(
+      ConfigManager::Instance()->registry_update(is_machine),
+      kRegValueUserId,
+      legacy_user_id));
+
+  // Now rotate user id.
+  goopdate_utils::GetUserIdLazyInit(is_machine);
+
+  CString uid_subkey;
+  uid_subkey.Format(_T("%s\\%s"),
+                    ConfigManager::Instance()->registry_update(is_machine),
+                    kRegSubkeyUserId);
+  for (int num_rotations = 1; num_rotations < 5; ++num_rotations) {
+    CString expected_uid_history;
+    expected_uid_history.Format(_T("%s%s; age=-1; cnt=%d"),
+                                legacy_user_id,
+                                kRegValueDataLegacyUserId,
+                                num_rotations);
+    CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+    EXPECT_STREQ(expected_uid_history, uid_history);
+
+    // Delete UID subkey to simulate network card change.
+    ASSERT_SUCCEEDED(RegKey::DeleteKey(uid_subkey));
+
+    goopdate_utils::GetUserIdLazyInit(is_machine);
+  }
+}
+
+TEST_P(GoopdateUtilsRegistryProtectedBooleanTest,
+       GetUserIdHistory_MultipleRotations) {
+  const bool is_machine = GetParam();
+  // Set registry environment for this test.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueForceUsageStats,
+                                    _T("1")));  // opt-in user.
+  DuplicateNetworkCardRegValue();
+
+  // Now rotate user id.
+  const CString first_uid = goopdate_utils::GetUserIdLazyInit(is_machine);
+
+  // Check result of first rotation.
+  CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+  EXPECT_STREQ(_T("age=-1; cnt=1"), uid_history);
+
+  // Check subsequent rotations.
+  CString uid_subkey;
+  uid_subkey.Format(_T("%s\\%s"),
+                    ConfigManager::Instance()->registry_update(is_machine),
+                    kRegSubkeyUserId);
+  for (int num_rotations = 1; num_rotations < 5; ++num_rotations) {
+    // Delete and recreate UID subkey to simulate network card change.
+    ASSERT_SUCCEEDED(RegKey::DeleteKey(uid_subkey));
+    ASSERT_SUCCEEDED(RegKey::SetValue(uid_subkey, NULL, _T("")));
+    goopdate_utils::GetUserIdLazyInit(is_machine);
+
+    CString expected_uid_history;
+    expected_uid_history.Format(_T("%s; age=-1; cnt=%d"),
+                                first_uid,
+                                num_rotations + 1);
+    CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
+    EXPECT_STREQ(expected_uid_history, uid_history);
+  }
+}
+
 INSTANTIATE_TEST_CASE_P(MachineOrUser,
                         GoopdateUtilsRegistryProtectedBooleanTest,
                         ::testing::Bool());
+
+TEST(GoopdateUtilsTest, GetMacHashesViaNDIS) {
+  std::vector<CString> mac_hashes;
+  EXPECT_HRESULT_SUCCEEDED(GetMacHashesViaNDIS(&mac_hashes));
+
+  for (size_t i = 0; i < mac_hashes.size(); ++i) {
+    CStringA mac_hash(WideToUtf8(mac_hashes[i]));
+    std::vector<byte> mac;
+    EXPECT_SUCCEEDED(Base64::Decode(mac_hash, &mac));
+
+    CString mac_string;
+    for (size_t i = 0; i < mac.size(); ++i) {
+      mac_string.AppendFormat(_T("%s%02X"), i == 0 ? _T("") : _T(":"), mac[i]);
+    }
+
+    ExpectMacMatchViaWMI(mac_string);
+  }
+}
+
+TEST(GoopdateUtilsTest, ResetMacHashesInRegistry) {
+  std::vector<CString> mac_hashes;
+  mac_hashes.push_back(kMACHash1);
+  mac_hashes.push_back(kMACHash2);
+  EXPECT_HRESULT_SUCCEEDED(ResetMacHashesInRegistry(false, mac_hashes));
+
+  CString reg_path = ConfigManager::Instance()->registry_update(false);
+  reg_path = AppendRegKeyPath(reg_path, kRegSubkeyUserId);
+
+  EXPECT_TRUE(RegKey::HasKey(reg_path));
+  RegKey reg_key_uid;
+  EXPECT_HRESULT_SUCCEEDED(reg_key_uid.Open(reg_path, KEY_QUERY_VALUE));
+
+  EXPECT_TRUE(reg_key_uid.HasValue(kMACHash1));
+  EXPECT_TRUE(reg_key_uid.HasValue(kMACHash2));
+}
+
+TEST(GoopdateUtilsTest, ResetUserId_NonLegacy) {
+  RegKey update_key;
+  EXPECT_HRESULT_SUCCEEDED(update_key.Open(
+      ConfigManager::Instance()->registry_update(false)));
+
+  // TODO(ganesh): remove this hack.
+  EXPECT_HRESULT_SUCCEEDED(update_key.SetValue(kRegValueUserId,
+      _T("{5DBBF499-B414-43FE-B1DF-C148119BE9B0}")));
+
+  CString original_uid;
+  EXPECT_HRESULT_SUCCEEDED(update_key.GetValue(kRegValueUserId, &original_uid));
+
+  CString original_old_uid;
+  update_key.GetValue(kRegValueOldUserId, &original_old_uid);
+
+  EXPECT_HRESULT_SUCCEEDED(ResetUserId(false, false));
+
+  CString uid;
+  CString old_uid;
+  EXPECT_HRESULT_SUCCEEDED(update_key.GetValue(kRegValueUserId, &uid));
+  EXPECT_HRESULT_SUCCEEDED(update_key.GetValue(kRegValueOldUserId, &old_uid));
+
+  EXPECT_STRNE(original_uid, uid);
+  if (original_old_uid.IsEmpty()) {
+    EXPECT_STREQ(original_uid, old_uid);
+  } else {
+    EXPECT_STREQ(original_old_uid, old_uid);
+  }
+}
+
+TEST(GoopdateUtilsTest, ResetUserId_Legacy) {
+  RegKey update_key;
+  EXPECT_HRESULT_SUCCEEDED(update_key.Open(
+      ConfigManager::Instance()->registry_update(false)));
+
+  CString original_uid;
+  EXPECT_HRESULT_SUCCEEDED(update_key.GetValue(kRegValueUserId, &original_uid));
+
+  CString original_old_uid;
+  update_key.GetValue(kRegValueOldUserId, &original_old_uid);
+
+  EXPECT_HRESULT_SUCCEEDED(ResetUserId(false, true));
+
+  CString uid;
+  CString old_uid;
+  EXPECT_HRESULT_SUCCEEDED(update_key.GetValue(kRegValueUserId, &uid));
+  EXPECT_HRESULT_SUCCEEDED(update_key.GetValue(kRegValueOldUserId, &old_uid));
+  EXPECT_STRNE(original_uid, uid);
+  if (original_old_uid.IsEmpty()) {
+    EXPECT_STREQ(original_uid + kRegValueDataLegacyUserId, old_uid);
+  } else {
+    EXPECT_STREQ(original_old_uid, old_uid);
+  }
+}
+
+TEST(GoopdateUtilsTest, ResetUserId_MACHashes) {
+  EXPECT_HRESULT_SUCCEEDED(ResetUserId(false, false));
+
+  CString reg_path = ConfigManager::Instance()->registry_update(false);
+  reg_path = AppendRegKeyPath(reg_path, kRegSubkeyUserId);
+
+  EXPECT_TRUE(RegKey::HasKey(reg_path));
+  RegKey reg_key_uid;
+  EXPECT_HRESULT_SUCCEEDED(reg_key_uid.Open(reg_path, KEY_QUERY_VALUE));
+
+  std::vector<CString> mac_hashes;
+  EXPECT_HRESULT_SUCCEEDED(GetMacHashesViaNDIS(&mac_hashes));
+  EXPECT_EQ(mac_hashes.size(), reg_key_uid.GetValueCount());
+
+  for (size_t i = 0; i < mac_hashes.size(); ++i) {
+    EXPECT_TRUE(reg_key_uid.HasValue(mac_hashes[i]));
+  }
+}
+
+TEST(GoopdateUtilsTest, ResetUserIdIfMacMismatch) {
+  std::vector<CString> mac_hashes;
+  mac_hashes.push_back(kMACHash1);
+  mac_hashes.push_back(kMACHash2);
+  EXPECT_HRESULT_SUCCEEDED(ResetMacHashesInRegistry(false, mac_hashes));
+
+  EXPECT_HRESULT_SUCCEEDED(ResetUserIdIfMacMismatch(false));
+
+  CString reg_path = ConfigManager::Instance()->registry_update(false);
+  reg_path = AppendRegKeyPath(reg_path, kRegSubkeyUserId);
+
+  EXPECT_TRUE(RegKey::HasKey(reg_path));
+  RegKey reg_key_uid;
+  EXPECT_HRESULT_SUCCEEDED(reg_key_uid.Open(reg_path, KEY_QUERY_VALUE));
+
+  EXPECT_FALSE(reg_key_uid.HasValue(kMACHash1));
+  EXPECT_FALSE(reg_key_uid.HasValue(kMACHash2));
+
+  mac_hashes.clear();
+  EXPECT_HRESULT_SUCCEEDED(GetMacHashesViaNDIS(&mac_hashes));
+  EXPECT_EQ(mac_hashes.size(), reg_key_uid.GetValueCount());
+
+  for (size_t i = 0; i < mac_hashes.size(); ++i) {
+    EXPECT_TRUE(reg_key_uid.HasValue(mac_hashes[i]));
+  }
+}
+
+TEST(GoopdateUtilsTest, CreateExternalUpdaterActiveEvent_User) {
+  const CString kAppId("unittest_app_id");
+  const bool kIsMachine = false;
+
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(goopdate_utils::CreateExternalUpdaterActiveEvent(
+      kAppId, kIsMachine, &event));
+
+  scoped_event event2;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+      goopdate_utils::CreateExternalUpdaterActiveEvent(
+          kAppId, kIsMachine, &event2));
+  EXPECT_EQ(NULL, get(event2));
+}
+
+TEST(GoopdateUtilsTest, CreateExternalUpdaterActiveEvent_Machine) {
+  const CString kAppId("unittest_app_id");
+  const bool kIsMachine = true;
+
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(goopdate_utils::CreateExternalUpdaterActiveEvent(
+      kAppId, kIsMachine, &event));
+
+  scoped_event event2;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+      goopdate_utils::CreateExternalUpdaterActiveEvent(
+          kAppId, kIsMachine, &event2));
+  EXPECT_EQ(NULL, get(event2));
+}
 
 }  // namespace goopdate_utils
 

@@ -46,7 +46,7 @@ class ExperimentLabels {
   ~ExperimentLabels();
 
   // Returns the number of labels in the store.
-  int NumLabels() const;
+  size_t NumLabels() const;
 
   // Returns true if a label with this key exists in the store.
   bool ContainsKey(const CString& key) const;
@@ -119,6 +119,12 @@ class ExperimentLabels {
 
   // Returns true if the supplied string is a valid experiment label set.
   static bool IsStringValidLabelSet(const CString& label_list);
+
+  // Takes the existing label list, applies a delta to it, and returns the new
+  // label list.  Returns true on success, false on failure.
+  static bool MergeLabelSets(const CString& old_label_list,
+                             const CString& new_label_list,
+                             CString* merged_list);
 
  private:
   typedef std::map<CString, std::pair<CString, time64> > LabelMap;

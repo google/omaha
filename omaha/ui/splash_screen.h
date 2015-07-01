@@ -18,9 +18,11 @@
 
 #include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
+#include "omaha/base/smart_handle.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/thread.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
+#include "omaha/ui/owner_draw_title_bar.h"
 
 namespace omaha {
 
@@ -31,6 +33,8 @@ namespace omaha {
 // the splash screen once the lengthy operation is done.
 class SplashScreen
     : public CAxDialogImpl<SplashScreen>,
+      public OwnerDrawTitleBar,
+      public CustomDlgColors,
       public Runnable {
  public:
   explicit SplashScreen(const CString& bundle_name);
@@ -55,6 +59,8 @@ class SplashScreen
     MESSAGE_HANDLER(WM_TIMER, OnTimer)
     MESSAGE_HANDLER(WM_CLOSE, OnClose)
     MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+    CHAIN_MSG_MAP(OwnerDrawTitleBar)
+    CHAIN_MSG_MAP(CustomDlgColors)
   END_MSG_MAP()
 
  private:
@@ -105,10 +111,14 @@ class SplashScreen
   int alpha_index_;   // Array index of current alpha blending value.
 
   CString text_;  // Message text shows on the window.
+  CFont default_font_;
+  CFont font_;
   CString caption_;  // Dialog title.
 
   // Handle to large icon to show when ALT-TAB
   scoped_hicon hicon_;
+  AutoLibrary omaha_dll_;
+  CustomProgressBarCtrl progress_bar_;
 
   DISALLOW_COPY_AND_ASSIGN(SplashScreen);
 };

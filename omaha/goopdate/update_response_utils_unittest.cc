@@ -17,6 +17,7 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
+#include "omaha/goopdate/app_unittest_base.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/goopdate/update_response_utils.h"
 #include "omaha/testing/unit_test.h"
@@ -41,7 +42,11 @@ const TCHAR* const kAppIdWithLowerCaseAllUpperCase =
 
 const TCHAR* const kGOOPDATE_E_NO_SERVER_RESPONSEString =
     _T("Installation failed due to a server side error. Please try again ")
-    _T("later. We apologize for the inconvenience.");
+    _T("later.");
+
+const TCHAR* const GOOPDATE_E_HW_NOT_SUPPORTEDString =
+    _T("Installation failed because your computer does not meet minimum ")
+    _T("hardware requirements for Google Chrome.");
 
 const UpdateResponseResult kUpdateAvailableResult =
     std::make_pair(S_OK, _T(""));
@@ -49,6 +54,10 @@ const UpdateResponseResult kUpdateAvailableResult =
 const UpdateResponseResult kAppNotFoundResult = std::make_pair(
       GOOPDATE_E_NO_SERVER_RESPONSE,
       kGOOPDATE_E_NO_SERVER_RESPONSEString);
+
+const UpdateResponseResult kHwNotSupported = std::make_pair(
+      GOOPDATE_E_HW_NOT_SUPPORTED,
+      GOOPDATE_E_HW_NOT_SUPPORTEDString);
 
 }  // namespace
 
@@ -70,13 +79,21 @@ class UpdateResponseUtilsGetResultTest : public testing::Test {
   scoped_ptr<xml::UpdateResponse> update_response_;
 };
 
+class UpdateResponseUtilsTest : public AppTestBase,
+                                public ::testing::WithParamInterface<bool> {
+ protected:
+  UpdateResponseUtilsTest() : AppTestBase(IsMachine(), true) {}
 
-// TODO(omaha): write tests.
+  const bool IsMachine() {
+    return GetParam();
+  }
+};
+
 
 TEST(UpdateResponseUtilsGetAppTest, AppNotFound) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
   app.appid = kAppId1;
   response.apps.push_back(app);
 
@@ -87,7 +104,7 @@ TEST(UpdateResponseUtilsGetAppTest, AppNotFound) {
 TEST(UpdateResponseUtilsGetAppTest, MultipleApps) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
   app.appid = kAppId1;
   response.apps.push_back(app);
   app.appid = kAppId2;
@@ -103,7 +120,7 @@ TEST(UpdateResponseUtilsGetAppTest, MultipleApps) {
 TEST(UpdateResponseUtilsGetAppTest, ResponseAppIdHasLowerCase) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
   app.appid = kAppIdWithLowerCase;
   response.apps.push_back(app);
 
@@ -115,7 +132,7 @@ TEST(UpdateResponseUtilsGetAppTest, ResponseAppIdHasLowerCase) {
 TEST(UpdateResponseUtilsGetAppTest, ResponseAppIdAllUpperCase) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
   app.appid = kAppIdWithLowerCaseAllUpperCase;
   response.apps.push_back(app);
 
@@ -126,40 +143,40 @@ TEST(UpdateResponseUtilsGetAppTest, ResponseAppIdAllUpperCase) {
 
 TEST_F(UpdateResponseUtilsGetResultTest, EmptyResponse) {
   EXPECT_TRUE(kAppNotFoundResult ==
-              GetResult(update_response_.get(), kAppId1, _T("en")));
+              GetResult(update_response_.get(), kAppId1, _T(""), _T("en")));
 }
 
 TEST_F(UpdateResponseUtilsGetResultTest, AppFound) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
-  app.update_check.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
+  app.update_check.status = xml::response::kStatusOkValue;
   app.appid = kAppId1;
   response.apps.push_back(app);
   SetResponseForUnitTest(update_response_.get(), response);
 
   EXPECT_TRUE(kUpdateAvailableResult ==
-              GetResult(update_response_.get(), kAppId1, _T("en")));
+              GetResult(update_response_.get(), kAppId1, _T(""), _T("en")));
 }
 
 TEST_F(UpdateResponseUtilsGetResultTest, AppNotFound) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
-  app.update_check.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
+  app.update_check.status = xml::response::kStatusOkValue;
   app.appid = kAppId1;
   response.apps.push_back(app);
   SetResponseForUnitTest(update_response_.get(), response);
 
   EXPECT_TRUE(kAppNotFoundResult ==
-              GetResult(update_response_.get(), kAppId2, _T("en")));
+              GetResult(update_response_.get(), kAppId2, _T(""), _T("en")));
 }
 
 TEST_F(UpdateResponseUtilsGetResultTest, MultipleApps) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
-  app.update_check.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
+  app.update_check.status = xml::response::kStatusOkValue;
   app.appid = kAppId1;
   response.apps.push_back(app);
   app.appid = kAppId2;
@@ -167,41 +184,149 @@ TEST_F(UpdateResponseUtilsGetResultTest, MultipleApps) {
   SetResponseForUnitTest(update_response_.get(), response);
 
   EXPECT_TRUE(kUpdateAvailableResult ==
-              GetResult(update_response_.get(), kAppId1, _T("en")));
+              GetResult(update_response_.get(), kAppId1, _T(""), _T("en")));
   EXPECT_TRUE(kUpdateAvailableResult ==
-              GetResult(update_response_.get(), kAppId2, _T("en")));
+              GetResult(update_response_.get(), kAppId2, _T(""), _T("en")));
   EXPECT_TRUE(kAppNotFoundResult ==
-              GetResult(update_response_.get(), kAppId3, _T("en")));
+              GetResult(update_response_.get(), kAppId3, _T(""), _T("en")));
 }
 
 TEST_F(UpdateResponseUtilsGetResultTest, ResponseAppIdHasLowerCase) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
   app.appid = kAppIdWithLowerCase;
   response.apps.push_back(app);
   SetResponseForUnitTest(update_response_.get(), response);
 
   EXPECT_TRUE(kUpdateAvailableResult ==
-              GetResult(update_response_.get(), kAppIdWithLowerCase, _T("en")));
+              GetResult(update_response_.get(),
+              kAppIdWithLowerCase,
+              _T(""),
+              _T("en")));
   EXPECT_TRUE(kUpdateAvailableResult ==
-              GetResult(update_response_.get(), kAppIdWithLowerCaseAllUpperCase,
+              GetResult(update_response_.get(),
+                        kAppIdWithLowerCaseAllUpperCase,
+                        _T(""),
                         _T("en")));
 }
 
 TEST_F(UpdateResponseUtilsGetResultTest, ResponseAppIdAllUpperCase) {
   xml::response::Response response;
   xml::response::App app;
-  app.status = kResponseStatusOkValue;
+  app.status = xml::response::kStatusOkValue;
   app.appid = kAppIdWithLowerCaseAllUpperCase;
   response.apps.push_back(app);
   SetResponseForUnitTest(update_response_.get(), response);
 
   EXPECT_TRUE(kUpdateAvailableResult ==
-              GetResult(update_response_.get(), kAppIdWithLowerCaseAllUpperCase,
+              GetResult(update_response_.get(),
+                        kAppIdWithLowerCaseAllUpperCase,
+                        _T(""),
                         _T("en")));
   EXPECT_TRUE(kUpdateAvailableResult ==
-              GetResult(update_response_.get(), kAppIdWithLowerCase, _T("en")));
+              GetResult(update_response_.get(),
+                        kAppIdWithLowerCase,
+                        _T(""),
+                        _T("en")));
+}
+
+TEST(UpdateResponseUtils, ValidateUntrustedData) {
+  std::vector<xml::response::Data> data;
+
+  const xml::response::Data untrusted_data_ok = { _T("ok"), _T("untrusted") };
+  data.push_back(untrusted_data_ok);
+  EXPECT_EQ(S_OK, ValidateUntrustedData(data));
+  data.clear();
+
+  const xml::response::Data untrusted_data_invalid_args = {
+      _T("error-invalidargs"),  _T("untrusted") };
+  data.push_back(untrusted_data_invalid_args);
+  EXPECT_EQ(GOOPDATEINSTALL_E_INVALID_UNTRUSTED_DATA,
+            ValidateUntrustedData(data));
+  data.clear();
+
+  const xml::response::Data untrusted_data_other = {
+      _T("other server status"), _T("untrusted") };
+  data.push_back(untrusted_data_other);
+  EXPECT_EQ(GOOPDATEINSTALL_E_INVALID_UNTRUSTED_DATA,
+            ValidateUntrustedData(data));
+  data.clear();
+
+  const xml::response::Data untrusted_data_empty_status = {
+      _T(""), _T("untrusted") };
+  data.push_back(untrusted_data_empty_status);
+  EXPECT_EQ(GOOPDATEINSTALL_E_INVALID_UNTRUSTED_DATA,
+            ValidateUntrustedData(data));
+  data.clear();
+
+  const xml::response::Data untrusted_data_empty = { _T(""), _T("") };
+  data.push_back(untrusted_data_empty);
+  EXPECT_EQ(GOOPDATEINSTALL_E_INVALID_UNTRUSTED_DATA,
+           ValidateUntrustedData(data));
+  data.clear();
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest, HwNotSupported) {
+  xml::response::Response response;
+  xml::response::App app;
+  app.status = xml::response::kStatusHwNotSupported;
+  app.appid = kAppId1;
+  response.apps.push_back(app);
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(kHwNotSupported == GetResult(update_response_.get(),
+                                           kAppId1,
+                                           _T("Google Chrome"),
+                                           _T("en")));
+}
+
+INSTANTIATE_TEST_CASE_P(IsMachine, UpdateResponseUtilsTest, ::testing::Bool());
+
+TEST_P(UpdateResponseUtilsTest, BuildApp_Cohorts) {
+  struct AppCohort {
+    CString appid;
+    Cohort cohort;
+  };
+
+  AppCohort appcohorts[] = {
+    {kAppId1, {_T("Cohort1"), _T("Hint1"), _T("Name1")}},
+    {kAppId2, {_T("Cohort2"), _T(""), _T("Name2")}},
+    {kAppId3, {_T("Cohort3"), _T("Hint3"), _T("")}},
+  };
+
+  CStringA update_response_string =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+      "<response protocol=\"3.0\">";
+
+  for (int i = 0; i < arraysize(appcohorts); ++i) {
+    App* a = NULL;
+    ASSERT_SUCCEEDED(app_bundle_->createApp(CComBSTR(appcohorts[i].appid), &a));
+
+    update_response_string.AppendFormat(
+      "<app appid=\"%S\" status=\"ok\" "
+          "cohort=\"%S\" cohorthint=\"%S\" cohortname=\"%S\">",
+      appcohorts[i].appid,
+      appcohorts[i].cohort.cohort,
+      appcohorts[i].cohort.hint,
+      appcohorts[i].cohort.name);
+
+    update_response_string.Append(
+        "<updatecheck status=\"ok\"/>"
+      "</app>");
+  }
+
+  update_response_string.Append("</response>");
+
+  EXPECT_SUCCEEDED(LoadBundleFromXml(app_bundle_.get(),
+                                     update_response_string));
+
+  for (int i = 0; i < arraysize(appcohorts); ++i) {
+    Cohort cohort = app_bundle_->GetApp(i)->cohort();
+    EXPECT_STREQ(appcohorts[i].cohort.cohort, cohort.cohort);
+    EXPECT_STREQ(appcohorts[i].cohort.hint, cohort.hint);
+    EXPECT_STREQ(appcohorts[i].cohort.name, cohort.name);
+  }
 }
 
 // TODO(omaha3): Add tests for GetResult from Omaha2's job_creator_unittest.cc.

@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_HASH_INTERNAL_H__
-#define OMAHA_COMMON_SECURITY_HASH_INTERNAL_H__
+#ifndef OMAHA_BASE_SECURITY_HASH_INTERNAL_H_
+#define OMAHA_BASE_SECURITY_HASH_INTERNAL_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,10 +26,10 @@ struct HASH_CTX;  // forward decl
 
 typedef struct HASH_VTAB {
   void (* const init)(struct HASH_CTX*);
-  void (* const update)(struct HASH_CTX*, const void*, int);
+  void (* const update)(struct HASH_CTX*, const void*, unsigned int);
   const uint8_t* (* const final)(struct HASH_CTX*);
-  const uint8_t* (* const hash)(const void*, int, uint8_t*);
-  int size;
+  const uint8_t* (* const hash)(const void*, unsigned int, uint8_t*);
+  unsigned int size;
 } HASH_VTAB;
 
 typedef struct HASH_CTX {
@@ -49,4 +49,4 @@ typedef struct HASH_CTX {
 }
 #endif  // __cplusplus
 
-#endif  // OMAHA_COMMON_SECURITY_HASH_INTERNAL_H__
+#endif  // OMAHA_BASE_SECURITY_HASH_INTERNAL_H_

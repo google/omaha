@@ -81,9 +81,16 @@ Process::Process(uint32 process_id)
 Process::~Process() {
 }
 
-// Start with command params
+// Adaptor for Process::StartWithEnvironment().
 HRESULT Process::Start(const TCHAR* command_line_parameters,
                        HANDLE runas_token) {
+  return StartWithEnvironment(command_line_parameters, runas_token, NULL);
+}
+
+// Start with command params and environment block.
+HRESULT Process::StartWithEnvironment(const TCHAR* command_line_parameters,
+                                      HANDLE runas_token,
+                                      LPVOID env_block) {
   if (command_line_parameters && *command_line_parameters) {
     command_line_parameters_ = command_line_parameters;
   }
@@ -91,11 +98,17 @@ HRESULT Process::Start(const TCHAR* command_line_parameters,
   number_of_restarts_ = static_cast<uint32>(-1);
   time_of_start_      = GetTickCount();
 
-  return Restart(runas_token);
+  return RestartWithEnvironment(runas_token, env_block);
 }
 
-// Restart with the old command params
+// Adaptor for Process::RestartWithEnvironment().
 HRESULT Process::Restart(HANDLE runas_token) {
+  return RestartWithEnvironment(runas_token, NULL);
+}
+
+// Restart with the old command params and environment block.
+HRESULT Process::RestartWithEnvironment(HANDLE runas_token,
+                                        LPVOID env_block) {
   // Can't start the same process twice in the same containing object.
   if (Running()) {
     return E_FAIL;
@@ -103,14 +116,18 @@ HRESULT Process::Restart(HANDLE runas_token) {
 
   PROCESS_INFORMATION process_info = {0};
   HRESULT hr = runas_token ?
-                   System::StartProcessAsUser(runas_token,
-                                              command_line_,
-                                              command_line_parameters_,
-                                              _T("WinSta0\\Default"),
-                                              &process_info) :
-                   System::StartProcessWithArgsAndInfo(command_line_,
-                                                       command_line_parameters_,
-                                                       &process_info);
+                   System::StartProcessAsUserWithEnvironment(
+                      runas_token,
+                      command_line_,
+                      command_line_parameters_,
+                      _T("WinSta0\\Default"),
+                      env_block,
+                      &process_info) :
+                   System::StartProcessWithArgsAndInfoWithEnvironment(
+                      command_line_,
+                      command_line_parameters_,
+                      env_block,
+                      &process_info);
 
   if (SUCCEEDED(hr)) {
     VERIFY1(::CloseHandle(process_info.hThread));
@@ -173,14 +190,9 @@ bool Process::WaitUntilDead(uint32 timeout_msec) {
 
   uint32 ret = 0;
   if (shutdown_event_) {
-    HANDLE wait_handles[2] = {0};
-    wait_handles[0] = get(process_);
-    wait_handles[1] = shutdown_event_;
-    ret = ::WaitForMultipleObjectsEx(2,
-                                     wait_handles,
-                                     false,
-                                     timeout_msec,
-                                     true);
+    const HANDLE wait_handles[2] = { get(process_), shutdown_event_ };
+    ret = ::WaitForMultipleObjectsEx(arraysize(wait_handles), wait_handles,
+                                     false, timeout_msec, true);
   } else {
     ret = ::WaitForSingleObjectEx(get(process_), timeout_msec, true);
   }
@@ -310,8 +322,9 @@ HRESULT Process::WaitUntilDeadOrInterrupt(uint32 msec) {
     return E_FAIL;
   }
 
-  HANDLE events[1] = { get(process_) };
-  uint32 dw = ::MsgWaitForMultipleObjects(1, events, FALSE, msec, QS_ALLEVENTS);
+  const HANDLE events[1] = { get(process_) };
+  uint32 dw = ::MsgWaitForMultipleObjects(arraysize(events), events,
+                                          FALSE, msec, QS_ALLEVENTS);
   switch (dw) {
     case WAIT_OBJECT_0:
       return CI_S_PROCESSWAIT_DEAD;
@@ -1218,7 +1231,7 @@ ULONG Process::GetProcessIdFromHandle(HANDLE hProcess) {
     return 0;
   }
 
-  return info.UniqueProcessId;
+  return static_cast<ULONG>(info.UniqueProcessId);
 }
 
 // Get the command line of a process
@@ -1260,7 +1273,7 @@ HRESULT Process::GetCommandLine(uint32 process_id, CString* cmd_line) {
   // TODO(omaha): use offsetof(PEB, ProcessParameters) to replace 0x10
   // http://msdn.microsoft.com/en-us/library/aa813706.aspx
   SIZE_T bytes_read = 0;
-  uint32 dw = 0;
+  DWORD_PTR dw = 0;
   if (!::ReadProcessMemory(get(process_handle),
                            peb + 0x10,
                            &dw,

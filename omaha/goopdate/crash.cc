@@ -36,10 +36,8 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
-#include "omaha/base/exception_barrier.h"
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/module_utils.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
@@ -51,52 +49,33 @@
 #include "omaha/base/vistautil.h"
 #include "omaha/common/command_line_builder.h"
 #include "omaha/common/config_manager.h"
+#include "omaha/common/crash_utils.h"
 #include "omaha/common/event_logger.h"
 #include "omaha/common/goopdate_utils.h"
+#include "omaha/common/lang.h"
 #include "omaha/common/stats_uploader.h"
 #include "omaha/goopdate/goopdate_metrics.h"
-#include "third_party/breakpad/src/client/windows/common/ipc_protocol.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
-#include "third_party/breakpad/src/client/windows/crash_generation/crash_generation_server.h"
 #include "third_party/breakpad/src/client/windows/sender/crash_report_sender.h"
 
-using google_breakpad::ClientInfo;
-using google_breakpad::CrashGenerationServer;
 using google_breakpad::CrashReportSender;
-using google_breakpad::CustomClientInfo;
-using google_breakpad::ExceptionHandler;
 using google_breakpad::ReportResult;
 
 namespace omaha {
 
-const ACCESS_MASK kPipeAccessMask = FILE_READ_ATTRIBUTES  |
-                                    FILE_READ_DATA        |
-                                    FILE_WRITE_ATTRIBUTES |
-                                    FILE_WRITE_DATA       |
-                                    SYNCHRONIZE;
-
-CString Crash::module_filename_;
-CString Crash::crash_dir_;
-CString Crash::checkpoint_file_;
-CString Crash::version_postfix_  = kCrashVersionPostfixString;
-CString Crash::crash_report_url_ = kUrlCrashReport;
-int Crash::max_reports_per_day_  = kCrashReportMaxReportsPerDay;
-ExceptionHandler* Crash::exception_handler_ = NULL;
-CrashGenerationServer* Crash::crash_server_ = NULL;
-
-bool Crash::is_machine_ = false;
-const TCHAR* const Crash::kDefaultProductName =
+const TCHAR* const CrashReporter::kDefaultProductName =
     SHORT_COMPANY_NAME _T(" Error Reporting");
 
-HRESULT Crash::Initialize(bool is_machine) {
+CrashReporter::CrashReporter()
+  : is_machine_(false),
+    crash_report_url_(kUrlCrashReport),
+    max_reports_per_day_(INT_MAX) {
+}
+
+HRESULT CrashReporter::Initialize(bool is_machine) {
   is_machine_ = is_machine;
 
-  HRESULT hr = GetModuleFileName(NULL, &module_filename_);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  hr = InitializeCrashDir();
+  HRESULT hr = crash_utils::InitializeCrashDir(is_machine, &crash_dir_);
   if (FAILED(hr)) {
     return hr;
   }
@@ -113,293 +92,127 @@ HRESULT Crash::Initialize(bool is_machine) {
   return S_OK;
 }
 
-HRESULT Crash::InstallCrashHandler(bool is_machine) {
-  CORE_LOG(L3, (_T("[Crash::InstallCrashHandler][is_machine %d]"), is_machine));
 
-  HRESULT hr = Initialize(is_machine);
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[failed to initialize Crash][0x%08x]"), hr));
-    return hr;
-  }
+HRESULT CrashReporter::Report(const CString& crash_filename,
+                              const CString& custom_info_filename) {
+  ASSERT1(!crash_dir_.IsEmpty());
 
-  // Only installs the exception handler if the process is not a crash report
-  // process. If the crash reporter crashes as well, this results in an
-  // infinite loop.
-  bool is_crash_report_process = false;
-  if (FAILED(IsCrashReportProcess(&is_crash_report_process)) ||
-      is_crash_report_process) {
-    return S_OK;
-  }
+  ConfigManager* cm = ConfigManager::Instance();
+  const bool can_upload_omaha_crashes =
+      cm->CanCollectStats(is_machine_) && cm->CanUseNetwork(is_machine_);
+  bool can_upload = false;
 
-  // Allocate this instance dynamically so that it is going to be
-  // around until the process terminates. Technically, this instance "leaks",
-  // but this is actually the correct behavior.
-  if (exception_handler_) {
-    delete exception_handler_;
-  }
+  ParameterMap parameters;
 
-  MINIDUMP_TYPE dump_type = ConfigManager::Instance()->IsInternalUser() ?
-                                MiniDumpWithFullMemory : MiniDumpNormal;
-  exception_handler_ = new ExceptionHandler(crash_dir_.GetString(),
-                                            NULL,
-                                            &Crash::MinidumpCallback,
-                                            NULL,
-                                            ExceptionHandler::HANDLER_ALL,
-                                            dump_type,
-                                            NULL,
-                                            NULL);
-
-  // Breakpad does not get the exceptions that are not propagated to the
-  // UnhandledExceptionFilter. This is the case where we crashed on a stack
-  // which we do not own, such as an RPC stack. To get these exceptions we
-  // initialize a static ExceptionBarrier object.
-  ExceptionBarrier::set_handler(&Crash::EBHandler);
-
-  CORE_LOG(L2, (_T("[exception handler has been installed]")));
-  return S_OK;
-}
-
-void Crash::UninstallCrashHandler() {
-  ExceptionBarrier::set_handler(NULL);
-  delete exception_handler_;
-  exception_handler_ = NULL;
-
-  CORE_LOG(L2, (_T("[exception handler has been uninstalled]")));
-}
-
-HRESULT Crash::CrashHandler(bool is_machine,
-                            const google_breakpad::ClientInfo& client_info,
-                            const CString& crash_filename) {
-  // GoogleCrashHandler.exe is only aggregating metrics at process exit. Since
-  // GoogleCrashHandler.exe is long-running however, we hardly ever exit. As a
-  // consequence, the metrics below will be reported very infrequently. This
-  // call below will do additional aggregation of metrics, so that we can report
-  // the metrics below in a timely manner.
-  ON_SCOPE_EXIT(AggregateMetrics, is_machine);
-
-  // Count the number of crashes requested by applications.
-  ++metric_oop_crashes_requested;
-
-  DWORD pid = client_info.pid();
-  OPT_LOG(L1, (_T("[client requested dump][pid %d]"), pid));
-
-  ASSERT1(!crash_filename.IsEmpty());
-  if (crash_filename.IsEmpty()) {
-    OPT_LOG(L1, (_T("[no crash file]")));
-    ++metric_oop_crashes_crash_filename_empty;
-    return E_UNEXPECTED;
-  }
-
-  CString custom_info_filename;
-  HRESULT hr = CreateCustomInfoFile(crash_filename,
-                                    client_info.GetCustomInfo(),
-                                    &custom_info_filename);
-  if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[CreateCustomInfoFile failed][0x%08x]"), hr));
-    ++metric_oop_crashes_createcustominfofile_failed;
-    return hr;
-  }
-
-  // Start a sender process to handle the crash.
-  CommandLineBuilder builder(COMMANDLINE_MODE_REPORTCRASH);
-  builder.set_crash_filename(crash_filename);
-  builder.set_custom_info_filename(custom_info_filename);
-  builder.set_is_machine_set(is_machine);
-  CString cmd_line = builder.GetCommandLine(module_filename_);
-
-  hr = StartSenderWithCommandLine(&cmd_line);
-  if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[StartSenderWithCommandLine failed][0x%08x]"), hr));
-    ++metric_oop_crashes_startsenderwithcommandline_failed;
-    return hr;
-  }
-
-  OPT_LOG(L1, (_T("[client dump handled][pid %d]"), pid));
-  return S_OK;
-}
-
-// The implementation must be as simple as possible and use only the
-// resources it needs to start a reporter process and then exit.
-bool Crash::MinidumpCallback(const wchar_t* dump_path,
-                             const wchar_t* minidump_id,
-                             void*,
-                             EXCEPTION_POINTERS*,
-                             MDRawAssertionInfo*,
-                             bool succeeded) {
-  if (succeeded && *dump_path && *minidump_id) {
-    // We need a way to see if the crash happens while we are installing
-    // something. This is a tough spot to be doing anything at all since
-    // we've been handling a crash.
-    // TODO(omaha): redesign a better mechanism.
-    bool is_interactive = Crash::IsInteractive();
-
-    // TODO(omaha): format a command line without extra memory allocations.
-    CString crash_filename;
-    SafeCStringFormat(&crash_filename, _T("%s\\%s.dmp"),
-                      dump_path, minidump_id);
-    EnclosePath(&crash_filename);
-    StartReportCrash(is_interactive, crash_filename);
-
-    // For in-proc crash generation, ExceptionHandler either creates a Normal
-    // MiniDump, or a Full MiniDump, based on the dump_type. However, in the
-    // case of OOP crash generation both the Normal and Full dumps are created
-    // by the crash handling server, with the default full dump filename having
-    // a suffix of "-full.dmp". If Omaha switches to using OOP crash generation,
-    // this file is uploaded as well.
-    if (ConfigManager::Instance()->IsInternalUser()) {
-      SafeCStringFormat(&crash_filename, _T("%s\\%s-full.dmp"),
-                        dump_path, minidump_id);
-      EnclosePath(&crash_filename);
-      if (File::Exists(crash_filename)) {
-        StartReportCrash(is_interactive, crash_filename);
-      }
+  const bool is_out_of_process = !custom_info_filename.IsEmpty();
+  if (is_out_of_process) {
+    ++metric_oop_crashes_total;
+    HRESULT hr = ReadCustomInfoFile(custom_info_filename, &parameters);
+    if (FAILED(hr)) {
+      OPT_LOG(L2, (_T("[ReadParamsFromCustomInfoFile failed][%#08x]"), hr));
     }
+
+    // OOP crashes for other products are always uploaded.
+    const CString product_name = ReadMapProductName(parameters);
+    can_upload = (product_name != kCrashOmahaProductName) ?
+                  true : can_upload_omaha_crashes;
+  } else {
+    // Some of the Omaha crashes are handled in-process, for instance, when
+    // the crash handlers are not available or the OOP registration failed for
+    // any reason.
+    ++metric_crashes_total;
+    BuildParametersFromGoopdate(&parameters);
+    can_upload = can_upload_omaha_crashes;
   }
 
-  // There are two ways to stop execution of the current process: ExitProcess
-  // and TerminateProcess. Calling ExitProcess results in calling the
-  // destructors of the static objects before the process exits.
-  // TerminateProcess unconditionally stops the process so no user mode code
-  // executes beyond this point.
-  ::TerminateProcess(::GetCurrentProcess(),
-                     static_cast<UINT>(GOOPDATE_E_CRASH));
-  return true;
+  if (cm->AlwaysAllowCrashUploads()) {
+    can_upload = true;
+  }
+
+  // All received crashes are logged in the Windows event log for applications,
+  // unless the logging is disabled by the administrator.
+  const CString product_name = GetProductNameForEventLogging(parameters);
+
+  CString event_text;
+  SafeCStringFormat(&event_text,
+      _T("%s has encountered a fatal error.\r\n")
+      _T("ver=%s;lang=%s;guid=%s;is_machine=%d;oop=%d;upload=%d;minidump=%s"),
+      product_name,
+      ReadMapValue(parameters, _T("ver")),
+      ReadMapValue(parameters, _T("lang")),
+      ReadMapValue(parameters, _T("guid")),
+      is_machine_,
+      is_out_of_process,
+      can_upload,
+      crash_filename);
+  VERIFY1(SUCCEEDED(WriteToWindowsEventLog(EVENTLOG_ERROR_TYPE,
+                                           kCrashReportEventId,
+                                           product_name,
+                                           event_text)));
+  // Upload the crash.
+  CString report_id;
+  HRESULT hr = DoSendCrashReport(can_upload,
+                                 is_out_of_process,
+                                 crash_filename,
+                                 parameters,
+                                 &report_id);
+
+  // Delete the minidump, and the custom info file if it exists.  Then, clean
+  // any stale crashes.
+  ::DeleteFile(crash_filename);
+  if (is_out_of_process) {
+    ::DeleteFile(custom_info_filename);
+  }
+  CleanStaleCrashes();
+
+  return hr;
 }
 
-void Crash::StartReportCrash(bool is_interactive,
-                             const CString& crash_filename) {
-  // CommandLineBuilder escapes the program name before returning the
-  // command line to the caller.
-  CommandLineBuilder builder(COMMANDLINE_MODE_REPORTCRASH);
-  builder.set_is_interactive_set(is_interactive);
-  builder.set_crash_filename(crash_filename);
-  builder.set_is_machine_set(is_machine_);
-  CString cmd_line = builder.GetCommandLine(module_filename_);
+HRESULT CrashReporter::ReadCustomInfoFile(const CString& custom_info_filename,
+                                          ParameterMap* parameters) {
+  ASSERT1(!custom_info_filename.IsEmpty());
+  ASSERT1(parameters);
+  parameters->clear();
 
-  // Set an environment variable which the crash reporter process will
-  // inherit. We don't want to install a crash handler for the reporter
-  // process to avoid an infinite loop in the case the reporting process
-  // crashes also. When the reporting process begins execution, the presence
-  // of this environment variable is tested, and the crash handler will not be
-  // installed.
-  if (::SetEnvironmentVariable(kNoCrashHandlerEnvVariableName, (_T("1")))) {
-    STARTUPINFO si = {sizeof(si)};
-    PROCESS_INFORMATION pi = {0};
-    if (::CreateProcess(NULL,
-                        cmd_line.GetBuffer(),
-                        NULL,
-                        NULL,
-                        false,
-                        0,
-                        NULL,
-                        NULL,
-                        &si,
-                        &pi)) {
-      ::CloseHandle(pi.hProcess);
-      ::CloseHandle(pi.hThread);
-    }
-  }
-}
-
-HRESULT Crash::StartSenderWithCommandLine(CString* cmd_line) {
-  TCHAR* env_vars = ::GetEnvironmentStrings();
-  if (env_vars == NULL) {
-    return HRESULTFromLastError();
-  }
-
-  // Add an environment variable to the crash reporter process to indicate it
-  // not to install a crash handler. This avoids an infinite loop in the case
-  // the reporting process crashes also. When the reporting process begins
-  // execution, the presence of this environment variable is tested, and the
-  // crash handler will not be installed.
-  CString new_var;
-  new_var.Append(kNoCrashHandlerEnvVariableName);
-  new_var.Append(_T("=1"));
-
-  // Compute the length of environment variables string. The format of the
-  // string is Name1=Value1\0Name2=Value2\0Name3=Value3\0\0.
-  const TCHAR* current = env_vars;
-  size_t env_vars_char_count = 0;
-  while (*current) {
-    size_t sub_length = _tcslen(current) + 1;
-    env_vars_char_count += sub_length;
-    current += sub_length;
-  }
-  // Add one to length to count the trailing NULL character marking the end of
-  // all environment variables.
-  ++env_vars_char_count;
-
-  // Copy the new environment variable and the existing variables in a new
-  // buffer.
-  size_t new_var_char_count = new_var.GetLength() + 1;
-  scoped_array<TCHAR> new_env_vars(
-      new TCHAR[env_vars_char_count + new_var_char_count]);
-  size_t new_var_byte_count = new_var_char_count * sizeof(TCHAR);
-  memcpy(new_env_vars.get(),
-         static_cast<const TCHAR*>(new_var),
-         new_var_byte_count);
-  size_t env_vars_byte_count = env_vars_char_count * sizeof(TCHAR);
-  memcpy(new_env_vars.get() + new_var_char_count,
-         env_vars,
-         env_vars_byte_count);
-  ::FreeEnvironmentStrings(env_vars);
-
-  STARTUPINFO si = {sizeof(si)};
-  PROCESS_INFORMATION pi = {0};
-  if (!::CreateProcess(NULL,
-                       cmd_line->GetBuffer(),
-                       NULL,
-                       NULL,
-                       false,
-                       CREATE_UNICODE_ENVIRONMENT,
-                       new_env_vars.get(),
-                       NULL,
-                       &si,
-                       &pi)) {
-    return HRESULTFromLastError();
-  }
-
-  ::CloseHandle(pi.hProcess);
-  ::CloseHandle(pi.hThread);
-  return S_OK;
-}
-
-HRESULT Crash::CreateCustomInfoFile(const CString& dump_file,
-                                    const CustomClientInfo& custom_client_info,
-                                    CString* custom_info_filepath) {
-  // Since goopdate_utils::WriteNameValuePairsToFile is implemented in terms
-  // of WritePrivateProfile API, relative paths are relative to the Windows
-  // directory instead of the current directory of the process.
-  ASSERT(!::PathIsRelative(dump_file), (_T("Path must be absolute")));
-
-  // Determine the path for custom info file.
-  CString filepath = GetPathRemoveExtension(dump_file);
-  SafeCStringAppendFormat(&filepath, _T(".txt"));
-
-  // Create a map of name/value pairs from custom client info.
-  std::map<CString, CString> custom_info_map;
-  for (size_t i = 0; i < custom_client_info.count; ++i) {
-    custom_info_map[custom_client_info.entries[i].name] =
-                    custom_client_info.entries[i].value;
-  }
-
-  HRESULT hr = goopdate_utils::WriteNameValuePairsToFile(filepath,
-                                                         kCustomClientInfoGroup,
-                                                         custom_info_map);
+  std::map<CString, CString> parameters_temp;
+  HRESULT hr = goopdate_utils::ReadNameValuePairsFromFile(
+      custom_info_filename,
+      kCustomClientInfoGroup,
+      &parameters_temp);
   if (FAILED(hr)) {
     return hr;
   }
 
-  *custom_info_filepath = filepath;
+  std::map<CString, CString>::const_iterator iter;
+  for (iter = parameters_temp.begin(); iter != parameters_temp.end(); ++iter) {
+    (*parameters)[iter->first.GetString()] = iter->second.GetString();
+  }
+
   return S_OK;
+}
+
+void CrashReporter::BuildParametersFromGoopdate(ParameterMap* parameters) {
+  ASSERT1(parameters);
+  parameters->clear();
+
+  // In the case of a dump that was created by the in-process Breakpad handler,
+  // we don't get a custom info file.  We'd really like to fix this; in the
+  // meantime, it's a reasonable guess that the version of Omaha that crashed
+  // is the same version that's running now to report the crash.  So, fill out
+  // the parameter map using the data from the currently running Omaha.
+
+  (*parameters)[_T("prod")]   = kCrashOmahaProductName;
+  (*parameters)[_T("ver")]    = crash_utils::GetCrashVersionString();
+  (*parameters)[_T("guid")] = goopdate_utils::GetUserIdLazyInit(is_machine_);
+  (*parameters)[_T("lang")]   = lang::GetDefaultLanguage(is_machine_);
 }
 
 // Backs up the crash and uploads it if allowed to.
-HRESULT Crash::DoSendCrashReport(bool can_upload,
-                                 bool is_out_of_process,
-                                 const CString& crash_filename,
-                                 const ParameterMap& parameters,
-                                 CString* report_id) {
+HRESULT CrashReporter::DoSendCrashReport(bool can_upload,
+                                         bool is_out_of_process,
+                                         const CString& crash_filename,
+                                         const ParameterMap& parameters,
+                                         CString* report_id) {
   ASSERT1(!crash_filename.IsEmpty());
   ASSERT1(report_id);
   report_id->Empty();
@@ -408,7 +221,7 @@ HRESULT Crash::DoSendCrashReport(bool can_upload,
     return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
   }
 
-  CString product_name = GetProductName(parameters);
+  CString product_name = ReadMapProductName(parameters);
   VERIFY1(SUCCEEDED(SaveLastCrash(crash_filename, product_name)));
 
   HRESULT hr = S_OK;
@@ -421,10 +234,10 @@ HRESULT Crash::DoSendCrashReport(bool can_upload,
   return hr;
 }
 
-HRESULT Crash::UploadCrash(bool is_out_of_process,
-                           const CString& crash_filename,
-                           const ParameterMap& parameters,
-                           CString* report_id) {
+HRESULT CrashReporter::UploadCrash(bool is_out_of_process,
+                                   const CString& crash_filename,
+                                   const ParameterMap& parameters,
+                                   CString* report_id) {
   ASSERT1(report_id);
   report_id->Empty();
 
@@ -481,11 +294,8 @@ HRESULT Crash::UploadCrash(bool is_out_of_process,
 
   CORE_LOG(L2, (_T("[crash report code = %s]"), *report_id));
 
-  // The event source for the out-of-process crashes is the product name.
-  // Therefore, in the event of an out-of-process crash, the log entry
-  // appears to be generated by the product that crashed.
-  CString product_name = is_out_of_process ? GetProductName(parameters) :
-                                             kAppName;
+  CString product_name = GetProductNameForEventLogging(parameters);
+
   CString event_text;
   uint16 event_type(0);
   if (!report_id->IsEmpty()) {
@@ -496,18 +306,21 @@ HRESULT Crash::UploadCrash(bool is_out_of_process,
     event_type = EVENTLOG_WARNING_TYPE;
     SafeCStringFormat(&event_text, _T("Crash not uploaded. Error=0x%x."), hr);
   }
-  VERIFY1(SUCCEEDED(Crash::Log(event_type,
-                               kCrashUploadEventId,
-                               product_name,
-                               event_text)));
+  VERIFY1(SUCCEEDED(WriteToWindowsEventLog(event_type,
+                                           kCrashUploadEventId,
+                                           product_name,
+                                           event_text)));
 
   UpdateCrashUploadMetrics(is_out_of_process, hr);
 
   return hr;
 }
 
-HRESULT Crash::SaveLastCrash(const CString& crash_filename,
-                             const CString& product_name) {
+HRESULT CrashReporter::SaveLastCrash(const CString& crash_filename,
+                                     const CString& product_name) {
+  CORE_LOG(L3, (_T("[Crash::SaveLastCrash][%s][%s]"),
+                crash_filename, product_name));
+
   if (product_name.IsEmpty()) {
     return E_INVALIDARG;
   }
@@ -518,15 +331,19 @@ HRESULT Crash::SaveLastCrash(const CString& crash_filename,
     return GOOPDATE_E_PATH_APPEND_FAILED;
   }
 
-  CORE_LOG(L2, (_T("[Crash::SaveLastCrash]")
-                 _T("[to %s][from %s]"), save_filename, crash_filename));
+  CORE_LOG(L2, (_T("[Crash::SaveLastCrash][to %s][from %s]"),
+                save_filename, crash_filename));
 
-  return ::CopyFile(crash_filename,
-                    save_filename,
-                    false) ? S_OK : HRESULTFromLastError();
+  if (0 == ::CopyFile(crash_filename, save_filename, false)) {
+    HRESULT hr = HRESULTFromLastError();
+    CORE_LOG(LE, (_T("[CopyFile failed][%#08x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
 }
 
-HRESULT Crash::CleanStaleCrashes() {
+HRESULT CrashReporter::CleanStaleCrashes() {
   CORE_LOG(L3, (_T("[Crash::CleanStaleCrashes]")));
 
   // ??- sequence is a c++ trigraph corresponding to a ~. Escape it.
@@ -534,6 +351,7 @@ HRESULT Crash::CleanStaleCrashes() {
   std::vector<CString> crash_files;
   HRESULT hr = File::GetWildcards(crash_dir_, kWildCards, &crash_files);
   if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[GetWildcards failed][%#08x]"), hr));
     return hr;
   }
 
@@ -548,6 +366,7 @@ HRESULT Crash::CleanStaleCrashes() {
       double time_diff =
           static_cast<double>(now - FileTimeToTime64(creation_time));
       if (abs(time_diff) >= kDaysTo100ns) {
+        CORE_LOG(L3, (_T("[deleting stale crash file][%s]"), crash_files[i]));
         VERIFY1(::DeleteFile(crash_files[i]));
       }
     }
@@ -556,289 +375,11 @@ HRESULT Crash::CleanStaleCrashes() {
   return S_OK;
 }
 
-HRESULT Crash::Report(bool can_upload_in_process,
-                      const CString& crash_filename,
-                      const CString& custom_info_filename,
-                      const CString& lang) {
-  const bool is_out_of_process = !custom_info_filename.IsEmpty();
-  HRESULT hr = S_OK;
-  if (is_out_of_process) {
-    hr = ReportProductCrash(true, crash_filename, custom_info_filename, lang);
-    ::DeleteFile(custom_info_filename);
-  } else {
-    hr = ReportGoogleUpdateCrash(can_upload_in_process,
-                                 crash_filename,
-                                 custom_info_filename,
-                                 lang);
-  }
-  ::DeleteFile(crash_filename);
-  CleanStaleCrashes();
-  return hr;
-}
-
-HRESULT Crash::ReportGoogleUpdateCrash(bool can_upload,
-                                       const CString& crash_filename,
-                                       const CString& custom_info_filename,
-                                       const CString& lang) {
-  OPT_LOG(L1, (_T("[Crash::ReportGoogleUpdateCrash]")));
-
-  UNREFERENCED_PARAMETER(custom_info_filename);
-
-  ++metric_crashes_total;
-
-  // Build the map of additional parameters to report along with the crash.
-  CString ver(GetVersionString() + version_postfix_);
-  CString uid = goopdate_utils::GetUserIdLazyInit(is_machine_);
-
-  ParameterMap parameters;
-  parameters[_T("prod")]    = _T("Update2");
-  parameters[_T("ver")]     = ver;
-  parameters[_T("userid")]  = uid;
-  parameters[_T("lang")]    = lang;
-
-  CString event_text;
-  SafeCStringFormat(&event_text,
-      _T("%s has encountered a fatal error.\r\n")
-      _T("ver=%s;lang=%s;id=%s;is_machine=%d;upload=%d;minidump=%s"),
-      kAppName,
-      ver, lang, uid, is_machine_, can_upload ? 1 : 0, crash_filename);
-  VERIFY1(SUCCEEDED(Crash::Log(EVENTLOG_ERROR_TYPE,
-                               kCrashReportEventId,
-                               kAppName,
-                               event_text)));
-
-  CString report_id;
-  return DoSendCrashReport(can_upload,
-                           false,             // Omaha crash.
-                           crash_filename,
-                           parameters,
-                           &report_id);
-}
-
-HRESULT Crash::ReportProductCrash(bool can_upload,
-                                  const CString& crash_filename,
-                                  const CString& custom_info_filename,
-                                  const CString& lang) {
-  OPT_LOG(L1, (_T("[Crash::ReportProductCrash]")));
-
-  UNREFERENCED_PARAMETER(lang);
-
-  // All product crashes must be uploaded.
-  ASSERT1(can_upload);
-
-  // Count the number of crashes the sender was requested to handle.
-  ++metric_oop_crashes_total;
-
-  std::map<CString, CString> parameters_temp;
-  HRESULT hr = goopdate_utils::ReadNameValuePairsFromFile(
-      custom_info_filename,
-      kCustomClientInfoGroup,
-      &parameters_temp);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  ParameterMap parameters;
-  std::map<CString, CString>::const_iterator iter;
-  for (iter = parameters_temp.begin(); iter != parameters_temp.end(); ++iter) {
-    parameters[iter->first.GetString()] = iter->second.GetString();
-  }
-
-  const CString product_name = GetProductName(parameters);
-  const std::wstring ver     = parameters[_T("ver")];
-
-  CString event_text;
-  SafeCStringFormat(&event_text,
-      _T("%s has encountered a fatal error.\r\n")
-      _T("ver=%s;is_machine=%d;minidump=%s"),
-      product_name, ver.c_str(), is_machine_, crash_filename);
-  VERIFY1(SUCCEEDED(Crash::Log(EVENTLOG_ERROR_TYPE,
-                               kCrashReportEventId,
-                               product_name,
-                               event_text)));
-
-  CString report_id;
-  return hr = DoSendCrashReport(can_upload,
-                                true,                  // Out of process crash.
-                                crash_filename,
-                                parameters,
-                                &report_id);
-}
-
-void __stdcall Crash::EBHandler(EXCEPTION_POINTERS* ptrs) {
-  if (exception_handler_) {
-    exception_handler_->WriteMinidumpForException(ptrs);
-  }
-}
-
-HRESULT Crash::GetExceptionInfo(const CString& crash_filename,
-                                MINIDUMP_EXCEPTION* ex_info) {
-  ASSERT1(ex_info);
-  ASSERT1(!crash_filename.IsEmpty());
-
-  // Dynamically link with the dbghelp to avoid runtime resource bloat.
-  scoped_library dbghelp(::LoadLibrary(_T("dbghelp.dll")));
-  if (!dbghelp) {
-    return HRESULTFromLastError();
-  }
-
-  typedef BOOL (WINAPI *MiniDumpReadDumpStreamFun)(void* base_of_dump,
-                                                   ULONG stream_number,
-                                                   MINIDUMP_DIRECTORY* dir,
-                                                   void** stream_pointer,
-                                                   ULONG* stream_size);
-
-  MiniDumpReadDumpStreamFun minidump_read_dump_stream =
-      reinterpret_cast<MiniDumpReadDumpStreamFun>(::GetProcAddress(get(dbghelp),
-                                                  "MiniDumpReadDumpStream"));
-  ASSERT1(minidump_read_dump_stream);
-  if (!minidump_read_dump_stream) {
-    return HRESULTFromLastError();
-  }
-
-  // The minidump file must be mapped in memory before reading the streams.
-  scoped_hfile file(::CreateFile(crash_filename,
-                                 GENERIC_READ,
-                                 FILE_SHARE_READ,
-                                 NULL,
-                                 OPEN_EXISTING,
-                                 FILE_ATTRIBUTE_READONLY,
-                                 NULL));
-  ASSERT1(file);
-  if (!file) {
-    return HRESULTFromLastError();
-  }
-  scoped_file_mapping file_mapping(::CreateFileMapping(get(file),
-                                                       NULL,
-                                                       PAGE_READONLY,
-                                                       0,
-                                                       0,
-                                                       NULL));
-  if (!file_mapping) {
-    return HRESULTFromLastError();
-  }
-  scoped_file_view base_of_dump(::MapViewOfFile(get(file_mapping),
-                                                FILE_MAP_READ,
-                                                0,
-                                                0,
-                                                0));
-  if (!base_of_dump) {
-    return HRESULTFromLastError();
-  }
-
-  // Read the exception stream and pick up the exception record.
-  MINIDUMP_DIRECTORY minidump_directory = {0};
-  void* stream_pointer = NULL;
-  ULONG stream_size = 0;
-  bool result = !!(*minidump_read_dump_stream)(get(base_of_dump),
-                                               ExceptionStream,
-                                               &minidump_directory,
-                                               &stream_pointer,
-                                               &stream_size);
-  if (!result) {
-    return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
-  }
-  MINIDUMP_EXCEPTION_STREAM* exception_stream =
-      static_cast<MINIDUMP_EXCEPTION_STREAM*>(stream_pointer);
-  ASSERT1(stream_pointer);
-  ASSERT1(stream_size);
-
-  *ex_info = exception_stream->ExceptionRecord;
-  return S_OK;
-}
-
-bool Crash::IsInteractive() {
-  bool result = false;
-  ::EnumWindows(&Crash::EnumWindowsCallback, reinterpret_cast<LPARAM>(&result));
-  return result;
-}
-
-// Finds if the given window is in the current process.
-BOOL CALLBACK Crash::EnumWindowsCallback(HWND hwnd, LPARAM param) {
-  DWORD pid = 0;
-  ::GetWindowThreadProcessId(hwnd, &pid);
-  if (::IsWindowVisible(hwnd) && pid == ::GetCurrentProcessId() && param) {
-    *reinterpret_cast<bool*>(param) = true;
-    return false;
-  }
-  return true;
-}
-
-HRESULT Crash::InitializeCrashDir() {
-  crash_dir_.Empty();
-  ConfigManager* cm = ConfigManager::Instance();
-  CString dir = is_machine_ ? cm->GetMachineCrashReportsDir() :
-                              cm->GetUserCrashReportsDir();
-
-  if (is_machine_ && !dir.IsEmpty()) {
-    HRESULT hr = InitializeDirSecurity(&dir);
-    if (FAILED(hr)) {
-      CORE_LOG(LW, (_T("[failed to initialize crash dir security][0x%x]"), hr));
-      ::RemoveDirectory(dir);
-    }
-  }
-
-  // Use the temporary directory of the process if the crash directory can't be
-  // initialized for any reason. Users can't read files in other users'
-  // temporary directories so the temp dir is good option to still have
-  // crash handling.
-  if (dir.IsEmpty()) {
-    dir = app_util::GetTempDir();
-  }
-
-  if (dir.IsEmpty()) {
-    return GOOPDATE_E_CRASH_NO_DIR;
-  }
-
-  crash_dir_ = dir;
-  return S_OK;
-}
-
-HRESULT Crash::InitializeDirSecurity(CString* dir) {
-  ASSERT1(dir);
-
-  // Users can only read permissions on the crash dir.
-  CDacl dacl;
-  const uint8 kAceFlags = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
-  if (!dacl.AddAllowedAce(Sids::System(), GENERIC_ALL, kAceFlags) ||
-      !dacl.AddAllowedAce(Sids::Admins(), GENERIC_ALL, kAceFlags) ||
-      !dacl.AddAllowedAce(Sids::Users(), READ_CONTROL, kAceFlags)) {
-    return GOOPDATE_E_CRASH_SECURITY_FAILED;
-  }
-
-  SECURITY_INFORMATION si = DACL_SECURITY_INFORMATION |
-                            PROTECTED_DACL_SECURITY_INFORMATION;
-  DWORD error = ::SetNamedSecurityInfo(dir->GetBuffer(),
-                                       SE_FILE_OBJECT,
-                                       si,
-                                       NULL,
-                                       NULL,
-                                       const_cast<ACL*>(dacl.GetPACL()),
-                                       NULL);
-  if (error != ERROR_SUCCESS) {
-    return HRESULT_FROM_WIN32(error);
-  }
-  return S_OK;
-}
-
-// Checks for the presence of an environment variable. We are not interested
-// in the value of the variable but only in its presence.
-HRESULT Crash::IsCrashReportProcess(bool* is_crash_report_process) {
-  ASSERT1(is_crash_report_process);
-  if (::GetEnvironmentVariable(kNoCrashHandlerEnvVariableName, NULL, 0)) {
-    *is_crash_report_process = true;
-    return S_OK;
-  } else {
-    DWORD error(::GetLastError());
-    *is_crash_report_process = false;
-    return error == ERROR_ENVVAR_NOT_FOUND ? S_OK : HRESULT_FROM_WIN32(error);
-  }
-}
-
-HRESULT Crash::Log(uint16 type,
-                   uint32 id,
-                   const TCHAR* source,
-                   const TCHAR* description) {
+// static
+HRESULT CrashReporter::WriteToWindowsEventLog(uint16 type,
+                                              uint32 id,
+                                              const TCHAR* source,
+                                              const TCHAR* description) {
   ASSERT1(source);
   ASSERT1(description);
   return EventLogger::ReportEvent(source,
@@ -851,16 +392,38 @@ HRESULT Crash::Log(uint16 type,
                                   NULL);        // Raw data.
 }
 
-CString Crash::GetProductName(const ParameterMap& parameters) {
-  // The crash is logged using the value of 'prod' if available or
-  // a default constant string otherwise.
-  CString product_name;
-  ParameterMap::const_iterator it = parameters.find(_T("prod"));
-  const bool is_found = it != parameters.end() && !it->second.empty();
-  return is_found ? it->second.c_str() : kDefaultProductName;
+// static
+CString CrashReporter::ReadMapValue(const ParameterMap& parameters,
+                                    const CString& key) {
+  ParameterMap::const_iterator it = parameters.find(key.GetString());
+  if (it != parameters.end()) {
+    return it->second.c_str();
+  }
+  return _T("");
 }
 
-void Crash::UpdateCrashUploadMetrics(bool is_out_of_process, HRESULT hr) {
+// static
+CString CrashReporter::ReadMapProductName(const ParameterMap& parameters) {
+  CString prod = ReadMapValue(parameters, _T("prod"));
+  if (!prod.IsEmpty()) {
+    return prod;
+  }
+  return kDefaultProductName;
+}
+
+// static
+CString CrashReporter::GetProductNameForEventLogging(
+    const ParameterMap& parameters) {
+  CString product_name = ReadMapProductName(parameters);
+  if (product_name == kCrashOmahaProductName) {
+    product_name.SetString(kAppName);
+  }
+  return product_name;
+}
+
+// static
+void CrashReporter::UpdateCrashUploadMetrics(bool is_out_of_process,
+                                             HRESULT hr) {
   switch (hr) {
     case S_OK:
       if (is_out_of_process) {
@@ -898,215 +461,6 @@ void Crash::UpdateCrashUploadMetrics(bool is_out_of_process, HRESULT hr) {
       ASSERT1(false);
       break;
   }
-}
-
-int Crash::CrashNow() {
-#ifdef DEBUG
-  CORE_LOG(LEVEL_ERROR, (_T("[Crash::CrashNow]")));
-  int foo = 10;
-  int bar = foo - 10;
-  int baz = foo / bar;
-  return baz;
-#else
-  return 0;
-#endif
-}
-
-HRESULT Crash::CreateLowIntegrityDesc(CSecurityDesc* sd) {
-  ASSERT1(sd);
-  ASSERT1(!sd->GetPSECURITY_DESCRIPTOR());
-
-  if (!vista_util::IsVistaOrLater()) {
-    return S_FALSE;
-  }
-
-  return sd->FromString(LOW_INTEGRITY_SDDL_SACL) ? S_OK :
-                                                   HRESULTFromLastError();
-}
-
-bool Crash::AddPipeSecurityDaclToDesc(bool is_machine, CSecurityDesc* sd) {
-  ASSERT1(sd);
-
-  CAccessToken current_token;
-  if (!current_token.GetEffectiveToken(TOKEN_QUERY)) {
-    OPT_LOG(LE, (_T("[Failed to get current thread token]")));
-    return false;
-  }
-
-  CDacl dacl;
-  if (!current_token.GetDefaultDacl(&dacl)) {
-    OPT_LOG(LE, (_T("[Failed to get default DACL]")));
-    return false;
-  }
-
-  if (!is_machine) {
-    sd->SetDacl(dacl);
-    return true;
-  }
-
-  if (!dacl.AddAllowedAce(ATL::Sids::Users(), kPipeAccessMask)) {
-    OPT_LOG(LE, (_T("[Failed to setup pipe security]")));
-    return false;
-  }
-
-  if (!dacl.AddDeniedAce(ATL::Sids::Network(), FILE_ALL_ACCESS)) {
-    OPT_LOG(LE, (_T("[Failed to setup pipe security]")));
-    return false;
-  }
-
-  sd->SetDacl(dacl);
-  return true;
-}
-
-bool Crash::BuildPipeSecurityAttributes(bool is_machine,
-                                        CSecurityAttributes* sa) {
-  ASSERT1(sa);
-
-  CSecurityDesc sd;
-  HRESULT hr = CreateLowIntegrityDesc(&sd);
-  if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[Failed to CreateLowIntegrityDesc][0x%x]"), hr));
-    return false;
-  }
-
-  if (!AddPipeSecurityDaclToDesc(is_machine, &sd)) {
-    return false;
-  }
-
-  sa->Set(sd);
-
-#ifdef _DEBUG
-  // Print SDDL for debugging.
-  CString sddl;
-  sd.ToString(&sddl, OWNER_SECURITY_INFORMATION |
-                     GROUP_SECURITY_INFORMATION |
-                     DACL_SECURITY_INFORMATION  |
-                     SACL_SECURITY_INFORMATION  |
-                     LABEL_SECURITY_INFORMATION);
-  CORE_LOG(L1, (_T("[Pipe security SDDL][%s]"), sddl));
-#endif
-
-  return true;
-}
-
-bool Crash::BuildCrashDirSecurityAttributes(CSecurityAttributes* sa) {
-  ASSERT1(sa);
-
-  CDacl dacl;
-  CAccessToken current_token;
-
-  if (!current_token.GetEffectiveToken(TOKEN_QUERY)) {
-    OPT_LOG(LE, (_T("[Failed to get current thread token]")));
-    return false;
-  }
-
-  if (!current_token.GetDefaultDacl(&dacl)) {
-    OPT_LOG(LE, (_T("[Failed to get default DACL]")));
-    return false;
-  }
-
-  CSecurityDesc sd;
-  sd.SetDacl(dacl);
-  // Prevent the security settings on the parent folder of CrashReports folder
-  // from being inherited by children of CrashReports folder.
-  sd.SetControl(SE_DACL_PROTECTED, SE_DACL_PROTECTED);
-  sa->Set(sd);
-
-#ifdef _DEBUG
-  // Print SDDL for debugging.
-  CString sddl;
-  sd.ToString(&sddl);
-  CORE_LOG(L1, (_T("[Folder security SDDL][%s]"), sddl));
-#endif
-
-  return true;
-}
-
-HRESULT Crash::StartServer() {
-  CORE_LOG(L1, (_T("[Crash::StartServer]")));
-  ++metric_crash_start_server_total;
-
-  std::wstring dump_path(crash_dir_);
-
-  // Append the current user's sid to the pipe name so that machine and
-  // user instances of the crash server open different pipes.
-  CString user_sid;
-  HRESULT hr = user_info::GetProcessUser(NULL, NULL, &user_sid);
-  if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[user_info::GetProcessUser failed][0x%08x]"), hr));
-    return hr;
-  }
-  CString pipe_name(kCrashPipeNamePrefix);
-  SafeCStringAppendFormat(&pipe_name, _T("\\%s"), user_sid);
-
-  CSecurityAttributes pipe_sec_attrs;
-
-  // * If running as machine, use custom security attributes on the pipe to
-  // allow all users on the local machine to connect to it. Add the low
-  // integrity SACL to account for browser plugins.
-  // * If running as user, the default security descriptor for the
-  // pipe grants full control to the system account, administrators,
-  // and the creator owner. Add the low integrity SACL to account for browser
-  // plugins.
-  if (!BuildPipeSecurityAttributes(is_machine_, &pipe_sec_attrs)) {
-    return GOOPDATE_E_CRASH_SECURITY_FAILED;
-  }
-
-  scoped_ptr<CrashGenerationServer> crash_server(
-      new CrashGenerationServer(std::wstring(pipe_name),
-                                &pipe_sec_attrs,
-                                ClientConnectedCallback, NULL,
-                                ClientCrashedCallback, NULL,
-                                ClientExitedCallback, NULL,
-                                true, &dump_path));
-
-  if (!crash_server->Start()) {
-    CORE_LOG(LE, (_T("[CrashServer::Start failed]")));
-    return GOOPDATE_E_CRASH_START_SERVER_FAILED;
-  }
-
-  crash_server_ = crash_server.release();
-
-  ++metric_crash_start_server_succeeded;
-  return S_OK;
-}
-
-void Crash::StopServer() {
-  CORE_LOG(L1, (_T("[Crash::StopServer]")));
-  delete crash_server_;
-  crash_server_ = NULL;
-}
-
-
-void _cdecl Crash::ClientConnectedCallback(void* context,
-                                           const ClientInfo* client_info) {
-  ASSERT1(!context);
-  ASSERT1(client_info);
-  UNREFERENCED_PARAMETER(context);
-  OPT_LOG(L1, (_T("[Client connected][%d]"), client_info->pid()));
-}
-
-void _cdecl Crash::ClientCrashedCallback(void* context,
-                                         const ClientInfo* client_info,
-                                         const std::wstring* dump_path) {
-  ASSERT1(!context);
-  ASSERT1(client_info);
-  UNREFERENCED_PARAMETER(context);
-  OPT_LOG(L1, (_T("[Client crashed][%d]"), client_info->pid()));
-
-  CString crash_filename(dump_path ? dump_path->c_str() : NULL);
-  HRESULT hr = Crash::CrashHandler(is_machine_, *client_info, crash_filename);
-  if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[CrashHandler failed][0x%08x]"), hr));
-  }
-}
-
-void _cdecl Crash::ClientExitedCallback(void* context,
-                                        const ClientInfo* client_info) {
-  ASSERT1(!context);
-  ASSERT1(client_info);
-  UNREFERENCED_PARAMETER(context);
-  OPT_LOG(L1, (_T("[Client exited][%d]"), client_info->pid()));
 }
 
 }  // namespace omaha

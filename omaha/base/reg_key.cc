@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
-// Registry configuration wrapers class implementation
 
-#include <raserror.h>
 #include "omaha/base/reg_key.h"
+#include <raserror.h>
+#include <intsafe.h>
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
@@ -25,6 +24,19 @@
 #include "omaha/base/synchronized.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
+
+// The bulk of Omaha is designed to run as 32-bit only.  However, the crash
+// handler is compiled in a 64-bit form, and it needs to access the 32-bit
+// registry view.  For now, we use the ADDWOW64() macro to map all registry
+// accesses performed through the RegKey class to the 32-bit view; if we ever
+// ship a native 64-bit Omaha, we will have to start planning which registry
+// views should be used at a higher levels (i.e. ConfigManager).
+
+#ifdef _WIN64
+#define ADDWOW64(x) ((x) | KEY_WOW64_32KEY)
+#else
+#define ADDWOW64(x) (x)
+#endif
 
 namespace omaha {
 
@@ -55,7 +67,7 @@ HRESULT RegKey::Create(HKEY hKeyParent,
                               0,
                               lpszClass,
                               options,
-                              sam_desired,
+                              ADDWOW64(sam_desired),
                               lpSecAttr,
                               &hKey,
                               &dw);
@@ -137,7 +149,8 @@ HRESULT RegKey::Open(HKEY hKeyParent,
   ASSERT1(key_name);
   ASSERT1(hKeyParent != NULL);
   HKEY hKey = NULL;
-  LONG res = ::RegOpenKeyEx(hKeyParent, key_name, 0, sam_desired, &hKey);
+  LONG res = ::RegOpenKeyEx(hKeyParent, key_name, 0,
+                            ADDWOW64(sam_desired), &hKey);
   HRESULT hr = HRESULT_FROM_WIN32(res);
 
   // we have to close the currently opened key
@@ -244,7 +257,7 @@ HRESULT RegKey::SetValueStaticHelper(const TCHAR * full_key_name,
                                      const TCHAR * value_name,
                                      DWORD type,
                                      LPVOID value,
-                                     DWORD byte_count) {
+                                     size_t byte_count) {
   // value_name may be NULL
   ASSERT1(full_key_name);
 
@@ -341,7 +354,7 @@ HRESULT RegKey::GetValueStaticHelper(const TCHAR * full_key_name,
                                      const TCHAR * value_name,
                                      DWORD type,
                                      LPVOID value,
-                                     DWORD * byte_count) {
+                                     size_t * byte_count) {
   ASSERT1(full_key_name);
 
   HRESULT hr = HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
@@ -426,37 +439,36 @@ HRESULT RegKey::GetValueStaticHelper(const TCHAR * full_key_name,
 HRESULT RegKey::GetValueHelper(const TCHAR * value_name,
                                DWORD * type,
                                byte * * value,
-                               DWORD * byte_count) const {
+                               size_t * byte_count) const {
   ASSERT1(byte_count);
   ASSERT1(value);
   ASSERT1(type);
   ASSERT1(h_key_);
 
-  // init return buffer
   *value = NULL;
 
-  // get the size of the return data buffer
-  LONG res = ::SHQueryValueEx(h_key_, value_name, NULL, type, NULL, byte_count);
+  DWORD num_bytes = 0;
+  LONG res = ::SHQueryValueEx(h_key_, value_name, NULL, type, NULL, &num_bytes);
   HRESULT hr = HRESULT_FROM_WIN32(res);
 
   if (hr == S_OK) {
-    // if the value length is 0, nothing to do
-    if (*byte_count != 0) {
-      // allocate the buffer
-      *value = new byte[*byte_count];
+    if (num_bytes != 0) {
+      *value = new byte[num_bytes];
       ASSERT1(*value);
 
-      // make the call again to get the data
       res = ::SHQueryValueEx(h_key_,
                              value_name,
                              NULL,
                              type,
                              *value,
-                             byte_count);
+                             &num_bytes);
       hr = HRESULT_FROM_WIN32(res);
       ASSERT1(S_OK == hr);
     }
   }
+
+  *byte_count = num_bytes;
+
   return hr;
 }
 
@@ -600,13 +612,13 @@ HRESULT RegKey::GetValue(const TCHAR* value_name, OUT CString* value) const {
 
 // convert REG_MULTI_SZ bytes to string array
 HRESULT RegKey::MultiSZBytesToStringArray(const byte * buffer,
-                                          DWORD byte_count,
+                                          size_t byte_count,
                                           std::vector<CString> * value) {
   ASSERT1(buffer);
   ASSERT1(value);
 
   const TCHAR* data = reinterpret_cast<const TCHAR*>(buffer);
-  DWORD data_len = byte_count / sizeof(TCHAR);
+  size_t data_len = byte_count / sizeof(TCHAR);
   value->clear();
   if (data_len > 1) {
     // must be terminated by two null characters
@@ -630,7 +642,7 @@ HRESULT RegKey::GetValue(const TCHAR * value_name,
   ASSERT1(value);
   // value_name may be NULL
 
-  DWORD byte_count = 0;
+  size_t byte_count = 0;
   DWORD type = 0;
   byte* buffer = 0;
 
@@ -648,7 +660,7 @@ HRESULT RegKey::GetValue(const TCHAR * value_name,
 // Binary data Get
 HRESULT RegKey::GetValue(const TCHAR * value_name,
                          byte * * value,
-                         DWORD * byte_count) const {
+                         size_t * byte_count) const {
   ASSERT1(byte_count);
   ASSERT1(value);
   // value_name may be NULL
@@ -662,7 +674,7 @@ HRESULT RegKey::GetValue(const TCHAR * value_name,
 // Raw data get
 HRESULT RegKey::GetValue(const TCHAR * value_name,
                          byte * * value,
-                         DWORD * byte_count,
+                         size_t * byte_count,
                          DWORD *type) const {
   ASSERT1(type);
   ASSERT1(byte_count);
@@ -724,7 +736,7 @@ HRESULT RegKey::SetStringValue(const TCHAR * value_name,
 // value_name may be NULL.
 HRESULT RegKey::SetValue(const TCHAR * value_name,
                          const byte * value,
-                         DWORD byte_count) const {
+                         size_t byte_count) const {
   ASSERT1(h_key_);
 
   // special case - if 'value' is NULL make sure byte_count is zero
@@ -732,12 +744,16 @@ HRESULT RegKey::SetValue(const TCHAR * value_name,
     byte_count = 0;
   }
 
+  if (byte_count > DWORD_MAX) {
+    return E_INVALIDARG;
+  }
+
   LONG res = RegSetValueEx(h_key_,
                            value_name,
                            NULL,
                            REG_BINARY,
                            value,
-                           byte_count);
+                           static_cast<DWORD>(byte_count));
   return HRESULT_FROM_WIN32(res);
 }
 
@@ -745,11 +761,21 @@ HRESULT RegKey::SetValue(const TCHAR * value_name,
 // value_name may be NULL.
 HRESULT RegKey::SetValue(const TCHAR * value_name,
                          const byte * value,
-                         DWORD byte_count,
+                         size_t byte_count,
                          DWORD type) const {
   ASSERT1(value);
   ASSERT1(h_key_);
-  LONG res = RegSetValueEx(h_key_, value_name, NULL, type, value, byte_count);
+
+  if (byte_count > DWORD_MAX) {
+    return E_INVALIDARG;
+  }
+
+  LONG res = RegSetValueEx(h_key_,
+                           value_name,
+                           NULL,
+                           type,
+                           value,
+                           static_cast<DWORD>(byte_count));
   return HRESULT_FROM_WIN32(res);
 }
 
@@ -760,7 +786,7 @@ HRESULT RegKey::RenameValue(const TCHAR* old_value_name,
   ASSERT1(old_value_name);
 
   scoped_ptr<byte> value;
-  DWORD byte_count = 0;
+  size_t byte_count = 0;
   DWORD type = 0;
 
   HRESULT hr = GetValue(old_value_name, address(value), &byte_count, &type);
@@ -816,7 +842,7 @@ HRESULT RegKey::CopyValue(const TCHAR * full_from_key_name,
   }
 
   scoped_ptr<byte> val;
-  DWORD byte_count = 0;
+  size_t byte_count = 0;
   DWORD type = 0;
   hr = from_reg_key.GetValue(from_value_name, address(val), &byte_count, &type);
   if (FAILED(hr)) {

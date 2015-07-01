@@ -86,6 +86,10 @@ const TCHAR* const kRegValueIEAutoConfigURL = _T("AutoConfigURL");
       kRegKeyWindowsNTCurrentVersion _T("\\") _T("Image File Execution Options")
 #define kRegKeyDisableSEHOPValue _T("DisableExceptionChainValidation")
 
+// NDIS IOCTL registry entries.
+const TCHAR* const kRegKeyNetworkCards =
+    _T("HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\NetworkCards");
+const TCHAR* const kRegValueAdapterServiceName = _T("ServiceName");
 
 }  // namespace omaha
 

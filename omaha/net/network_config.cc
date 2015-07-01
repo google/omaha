@@ -40,8 +40,9 @@
 #include "omaha/base/user_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
-#include "omaha/net/cup_request.h"
+#include "omaha/common/const_goopdate.h"
 #include "omaha/net/http_client.h"
+#include "omaha/net/winhttp.h"
 
 using omaha::encrypt::EncryptData;
 using omaha::encrypt::DecryptData;
@@ -50,18 +51,13 @@ namespace omaha {
 
 // Computes the hash value of a ProxyConfig object. Names in the stdext
 // namespace are not currently part of the ISO C++ standard.
-uint32 hash_value(const ProxyConfig& config) {
-  uint32 hash = stdext::hash_value(config.auto_detect)                 ^
+size_t hash_value(const ProxyConfig& config) {
+  size_t hash = stdext::hash_value(config.auto_detect)                 ^
                 stdext::hash_value(config.auto_config_url.GetString()) ^
                 stdext::hash_value(config.proxy.GetString())           ^
                 stdext::hash_value(config.proxy_bypass.GetString());
   return hash;
 }
-
-const TCHAR* const NetworkConfigManager::kNetworkSubkey      = _T("network");
-const TCHAR* const NetworkConfigManager::kNetworkCupSubkey   = _T("secure");
-const TCHAR* const NetworkConfigManager::kCupClientSecretKey = _T("sk");
-const TCHAR* const NetworkConfigManager::kCupClientCookie    = _T("c");
 
 const TCHAR* const NetworkConfig::kUserAgent = _T("Google Update/%s");
 
@@ -83,28 +79,11 @@ NetworkConfig::~NetworkConfig() {
   Clear();
 }
 
-// Initialize creates or opens a global lock to synchronize access to
-// registry where CUP credentials are stored. Each user including non-elevated
-// admins stores network configuration data, such as the CUP password in
-// its HKCU. The admin users, including the LOCAL_SYSTEM, store data in HKLM.
-// Therefore, the naming of the global lock is different: users have their
-// lock postfixed with their sid, so the serialization only occurs within the
-// same user's programs. Admin users use the same named lock since they store
-// data in a shared HKLM. The data of the admin users is disambiguated by
-// postfixing their registry sub key with sids.
-// In conclusion, users have sid-postfixed locks and their data goes in
-// their respective HKCU. Admin users have the same lock and their data goes
-// under HKLM in sid-postfixed stores.
-//
-// The named lock is created in the global namespace to account for users
-// logging in from different TS sessions.
-//
-// The CUP credentials must be protected with ACLs so non-elevated admins can't
-// read elevated-admins' keys and attack the protocol.
-//
-// Also, an Internet session is created.
 HRESULT NetworkConfig::Initialize() {
-  ASSERT1(!is_initialized_);
+  if (is_initialized_) {
+    NET_LOG(L3, (_T("[NetworkConfig::Initialize][already initialized]")));
+    return S_OK;
+  }
 
   http_client_.reset(CreateHttpClient());
   ASSERT1(http_client_.get());
@@ -135,13 +114,16 @@ HRESULT NetworkConfig::Initialize() {
   }
 
   Add(new UpdateDevProxyDetector);
+  Add(new GroupPolicyProxyDetector);
   BrowserType browser_type(BROWSER_UNKNOWN);
   GetDefaultBrowserType(&browser_type);
   if (browser_type == BROWSER_FIREFOX) {
     Add(new FirefoxProxyDetector);
   }
   // There is no Chrome detector because it uses the same proxy settings as IE.
-  Add(new IEProxyDetector);
+  Add(new IEWPADProxyDetector);
+  Add(new IEPACProxyDetector);
+  Add(new IENamedProxyDetector);
   Add(new DefaultProxyDetector);
 
   // Use a global network configuration override if available.
@@ -287,22 +269,6 @@ void NetworkConfig::SetConfigurationOverride(
   }
 }
 
-HRESULT NetworkConfig::GetCupCredentials(
-    CupCredentials* cup_credentials) const {
-  return NetworkConfigManager::Instance().GetCupCredentials(cup_credentials);
-}
-
-HRESULT NetworkConfig::SetCupCredentials(
-    const CupCredentials* cup_credentials) const {
-  NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
-  if (cup_credentials == NULL) {
-    network_manager.ClearCupCredentials();
-    return S_OK;
-  }
-
-  return network_manager.SetCupCredentials(*cup_credentials);
-}
-
 // Serializes configurations for debugging purposes.
 CString NetworkConfig::ToString(const ProxyConfig& config) {
   CString result;
@@ -389,25 +355,57 @@ HRESULT NetworkConfig::SetProxyAuthScheme(const CString& proxy_settings,
   return proxy_auth_.SetProxyAuthScheme(proxy, auth_scheme);
 }
 
-// TODO(omaha): the code does WPAD auto detect in all cases. It is possible for
-// a configuration to specify no auto detection but provide the proxy script
-// url. The current code does not account for this yet.
 HRESULT NetworkConfig::GetProxyForUrl(const CString& url,
+                                      bool use_wpad,
                                       const CString& auto_config_url,
                                       HttpClient::ProxyInfo* proxy_info) {
   ASSERT1(proxy_info);
 
   NET_LOG(L3, (_T("[NetworkConfig::GetProxyForUrl][%s]"), url));
 
+  HRESULT hr = E_FAIL;
+
+  if (use_wpad) {
+    hr = GetWPADProxyForUrl(url, proxy_info);
+  }
+
+  if (FAILED(hr) && !auto_config_url.IsEmpty()) {
+    hr = GetPACProxyForUrl(url, auto_config_url, proxy_info);
+  }
+
+  return hr;
+}
+
+HRESULT NetworkConfig::GetWPADProxyForUrl(const CString& url,
+                                          HttpClient::ProxyInfo* proxy_info) {
+  ASSERT1(proxy_info);
+
   HttpClient::AutoProxyOptions auto_proxy_options = {0};
+  auto_proxy_options.auto_logon_if_challenged = true;
   auto_proxy_options.flags = WINHTTP_AUTOPROXY_AUTO_DETECT;
+  auto_proxy_options.auto_config_url = NULL;
   auto_proxy_options.auto_detect_flags = WINHTTP_AUTO_DETECT_TYPE_DHCP |
                                          WINHTTP_AUTO_DETECT_TYPE_DNS_A;
-  if (!auto_config_url.IsEmpty()) {
-    auto_proxy_options.auto_config_url = auto_config_url;
-    auto_proxy_options.flags |= WINHTTP_AUTOPROXY_CONFIG_URL;
+
+  return http_client_->GetProxyForUrl(session_.session_handle,
+                                      url,
+                                      &auto_proxy_options,
+                                      proxy_info);
+}
+
+HRESULT NetworkConfig::GetPACProxyForUrl(const CString& url,
+                                         const CString& auto_config_url,
+                                         HttpClient::ProxyInfo* proxy_info) {
+  ASSERT1(proxy_info);
+
+  if (auto_config_url.IsEmpty()) {
+    return E_INVALIDARG;
   }
+
+  HttpClient::AutoProxyOptions auto_proxy_options = {0};
   auto_proxy_options.auto_logon_if_challenged = true;
+  auto_proxy_options.flags = WINHTTP_AUTOPROXY_CONFIG_URL;
+  auto_proxy_options.auto_config_url = auto_config_url;
 
   HRESULT hr = http_client_->GetProxyForUrl(session_.session_handle,
                                             url,
@@ -416,9 +414,8 @@ HRESULT NetworkConfig::GetProxyForUrl(const CString& url,
 
   if (FAILED(hr) && ::UrlIsFileUrl(auto_config_url)) {
     // Some HttpClient implementations, namely WinHTTP, only support PAC files
-    // with http or https schemes.  Attempt an alternate resolution scheme using
-    // jsproxy.dll if the initial attempt fails.
-    ASSERT1(user_info::IsThreadImpersonating());
+    // with http or https schemes.  If the scheme is file and the initial
+    // attempt fails, make an attempt at resolving using jsproxy.dll.
 
     CString local_file;
     hr = ConvertFileUriToLocalPath(auto_config_url, &local_file);
@@ -469,10 +466,11 @@ void NetworkConfig::RemoveDuplicates(std::vector<ProxyConfig>* config) {
   std::vector<ProxyConfig> input(*config);
   config->clear();
 
-  typedef stdext::hash_set<uint32> Keys;
+  typedef stdext::hash_set<size_t> Keys;
   Keys keys;
   for (size_t i = 0; i != input.size(); ++i) {
-    std::pair<Keys::iterator, bool> result(keys.insert(hash_value(input[i])));
+    const size_t hash = hash_value(input[i]);
+    std::pair<Keys::iterator, bool> result(keys.insert(hash));
     if (result.second) {
       config->push_back(input[i]);
     }
@@ -701,41 +699,39 @@ void NetworkConfig::ConvertPacResponseToProxyInfo(
   }
 }
 
-const NetworkConfigManager* const NetworkConfigManager::kInvalidInstance  =
-    reinterpret_cast<const NetworkConfigManager* const>(-1);
 NetworkConfigManager* NetworkConfigManager::instance_ = NULL;
 LLock NetworkConfigManager::instance_lock_;
 bool NetworkConfigManager::is_machine_ = false;
 
 NetworkConfigManager::NetworkConfigManager() {
+  const bool has_winhttp =
+      HttpClient::GetFactory().Register(HttpClient::WINHTTP,
+                                        internal::WinHttpClientCreator);
+  ASSERT1(has_winhttp);
 }
 
 NetworkConfigManager::~NetworkConfigManager() {
-  SaveCupCredentialsToRegistry();
+  const bool has_winhttp =
+      HttpClient::GetFactory().Unregister(HttpClient::WINHTTP);
+  ASSERT1(has_winhttp);
 }
 
 HRESULT NetworkConfigManager::CreateInstance() {
   __mutexScope(instance_lock_);
-  ASSERT1(instance_ != kInvalidInstance);
   if (!instance_) {
     NET_LOG(L1, (_T("[NetworkConfigManager::CreateInstance][is_machine: %d]"),
          is_machine_));
     instance_ = new NetworkConfigManager();
-    VERIFY1(SUCCEEDED(instance_->InitializeLock()));
-    VERIFY1(SUCCEEDED(instance_->InitializeRegistryKey()));
-    instance_->LoadCupCredentialsFromRegistry();
   }
 
   return S_OK;
 }
 
 void NetworkConfigManager::DeleteInstance() {
-  ASSERT1(instance_ != kInvalidInstance);
+  NetworkConfigManager* instance = omaha::interlocked_exchange_pointer(
+      &instance_, static_cast<NetworkConfigManager*>(NULL));
 
-  NetworkConfigManager* instance =
-      omaha::interlocked_exchange_pointer(&instance_, kInvalidInstance);
-
-  if (kInvalidInstance != instance && NULL != instance) {
+  if (NULL != instance) {
     instance->DeleteInstanceInternal();
     delete instance;
   }
@@ -819,172 +815,8 @@ HRESULT NetworkConfigManager::CreateNetworkConfigInstance(
   return S_OK;
 }
 
-HRESULT NetworkConfigManager::InitializeLock() {
-  NamedObjectAttributes lock_attr;
-  GetNamedObjectAttributes(kNetworkConfigLock, is_machine_, &lock_attr);
-  return global_lock_.InitializeWithSecAttr(lock_attr.name, &lock_attr.sa) ?
-         S_OK : E_FAIL;
-}
-
-HRESULT NetworkConfigManager::InitializeRegistryKey() {
-  // The registry path under which to store persistent network configuration.
-  // The "network" subkey is created with default security. Below "network",
-  // the "secure" key is created so that only system and administrators have
-  // access to it.
-  CString reg_path = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  reg_path = AppendRegKeyPath(reg_path, kNetworkSubkey);
-  RegKey reg_key_network;
-  DWORD disposition = 0;
-  HRESULT hr = reg_key_network.Create(reg_path,
-                                      NULL,                 // Class.
-                                      0,                    // Options.
-                                      KEY_CREATE_SUB_KEY,   // SAM desired.
-                                      NULL,                 // Security attrs.
-                                      &disposition);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  // When initializing for machine, grant access to administrators and system.
-  scoped_ptr<CSecurityAttributes> sa;
-  if (is_machine_) {
-    sa.reset(new CSecurityAttributes);
-    GetAdminDaclSecurityAttributes(sa.get(), GENERIC_ALL);
-  }
-
-  disposition = 0;
-  RegKey reg_key_network_secure;
-  hr = reg_key_network_secure.Create(reg_key_network.Key(),  // Parent.
-                                     kNetworkCupSubkey,      // Subkey name.
-                                     NULL,                   // Class.
-                                     0,                      // Options.
-                                     KEY_READ,               // SAM desired.
-                                     sa.get(),               // Security attrs.
-                                     &disposition);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  return S_OK;
-}
-
-HRESULT NetworkConfigManager::SetCupCredentials(
-    const CupCredentials& cup_credentials) {
-  __mutexScope(lock_);
-
-  const std::vector<uint8>& sk_in(cup_credentials.sk);
-
-  if (sk_in.empty()) {
-    return E_INVALIDARG;
-  }
-
-  std::vector<uint8> sk_out;
-  HRESULT hr = EncryptData(NULL, 0, &sk_in.front(), sk_in.size(), &sk_out);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  cup_credentials_.reset(new CupCredentials);
-
-  cup_credentials_->sk.swap(sk_out);
-  cup_credentials_->c.SetString(cup_credentials.c);
-
-  return S_OK;
-}
-
-HRESULT NetworkConfigManager::GetCupCredentials(
-    CupCredentials* cup_credentials) {
-  ASSERT1(cup_credentials);
-  __mutexScope(lock_);
-  if (cup_credentials_ == NULL || cup_credentials_->sk.empty()) {
-    return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
-  }
-
-  std::vector<uint8> decrypted_sk;
-  HRESULT hr = DecryptData(NULL,
-                           0,
-                           &cup_credentials_->sk.front(),
-                           cup_credentials_->sk.size(),
-                           &decrypted_sk);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  cup_credentials->sk.swap(decrypted_sk);
-  cup_credentials->c.SetString(cup_credentials_->c);
-
-  return S_OK;
-}
-
-// This function should be called in singleton creation stage,
-// thus no lock is needed.
-HRESULT NetworkConfigManager::LoadCupCredentialsFromRegistry() {
-  __mutexScope(global_lock_);
-
-  CString reg_path = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  reg_path = AppendRegKeyPath(reg_path, kNetworkSubkey);
-  CString key_name = AppendRegKeyPath(reg_path, kNetworkCupSubkey);
-  RegKey reg_key;
-  HRESULT hr = reg_key.Open(key_name, KEY_READ);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  scoped_array<byte> buf;
-  DWORD buf_length = 0;
-  hr = reg_key.GetValue(kCupClientSecretKey, address(buf), &buf_length);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  CString cookie;
-  hr = reg_key.GetValue(kCupClientCookie, &cookie);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  if (buf_length == 0) {
-    return E_FAIL;
-  }
-  cup_credentials_.reset(new CupCredentials);
-  cup_credentials_->sk.resize(buf_length);
-  memcpy(&cup_credentials_->sk.front(), buf.get(), buf_length);
-  cup_credentials_->c = CT2A(cookie);
-
-  return S_OK;
-}
-
-// This function is called in the destructor only thus no lock is needed.
-HRESULT NetworkConfigManager::SaveCupCredentialsToRegistry() {
-  __mutexScope(global_lock_);
-
-  CString reg_path = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  reg_path = AppendRegKeyPath(reg_path, kNetworkSubkey);
-  CString key_name = AppendRegKeyPath(reg_path, kNetworkCupSubkey);
-  RegKey reg_key;
-  HRESULT hr = reg_key.Open(key_name, KEY_WRITE);
-  if (FAILED(hr)) {
-    NET_LOG(L2, (_T("[Registry key open failed][%s][0x%08x]"), key_name, hr));
-    return hr;
-  }
-
-  if (cup_credentials_ == NULL || cup_credentials_->sk.empty()) {
-    HRESULT hr1 = reg_key.DeleteValue(kCupClientSecretKey);
-    HRESULT hr2 = reg_key.DeleteValue(kCupClientCookie);
-    return (SUCCEEDED(hr1) && SUCCEEDED(hr2)) ? S_OK : HRESULTFromLastError();
-  }
-
-  hr = reg_key.SetValue(kCupClientSecretKey,
-           static_cast<const byte*>(&cup_credentials_->sk.front()),
-           cup_credentials_->sk.size());
-  if (FAILED(hr)) {
-    return hr;
-  }
-  hr = reg_key.SetValue(kCupClientCookie, CA2T(cup_credentials_->c));
-  if (FAILED(hr)) {
-    return hr;
-  }
-  return S_OK;
-}
-
-void NetworkConfigManager::ClearCupCredentials() {
-  __mutexScope(lock_);
-  cup_credentials_.reset(NULL);
+CString NetworkConfigManager::GetUserIdHistory() {
+  return goopdate_utils::GetUserIdHistory(is_machine_);
 }
 
 }  // namespace omaha

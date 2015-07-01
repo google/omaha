@@ -40,6 +40,8 @@ namespace omaha {
 namespace {
 
 const uint32 kInitialInstallTimeDiff = static_cast<uint32>(-1 * kSecondsPerDay);
+const uint32 kInitialDayOfInstall = static_cast<uint32>(-1);
+const uint32 kUnknownDayOfInstall = 0;
 
 // Returns the number of days haven been passed since the given time.
 // The parameter time is in the same format as C time() returns.
@@ -426,7 +428,7 @@ HRESULT AppManager::OpenClientStateKey(const GUID& app_guid,
 // This function is called for self-updates, so it must explicitly avoid this.
 // Assumes the registry access lock is held.
 HRESULT AppManager::CreateClientStateKey(const GUID& app_guid,
-                                         RegKey* client_state_key) {
+                                         RegKey* client_state_key) const {
   ASSERT1(client_state_key);
   // TODO(omaha3): Add GetOwner() to GLock & add this to Open() functions too.
   // ASSERT1(::GetCurrentThreadId() == registry_access_lock_.GetOwner());
@@ -456,6 +458,154 @@ HRESULT AppManager::CreateClientStateKey(const GUID& app_guid,
   return S_OK;
 }
 
+HRESULT AppManager::ReadAppDefinedAttributes(
+    const CString& app_id, std::vector<StringPair>* attributes) const {
+  ASSERT1(!app_id.IsEmpty());
+  ASSERT1(attributes);
+  ASSERT1(attributes->empty());
+
+  CString base_key_name(
+    is_machine_ ?
+    ConfigManager::Instance()->machine_registry_client_state_medium() :
+    ConfigManager::Instance()->registry_client_state(is_machine_));
+
+  RegKey app_id_key;
+  CString app_id_key_name = AppendRegKeyPath(base_key_name, app_id);
+  HRESULT hr = app_id_key.Open(app_id_key_name, KEY_READ);
+  if (FAILED(hr)) {
+    if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) {
+      hr = S_FALSE;
+    }
+    return hr;
+  }
+
+  hr = ReadAppDefinedAttributeValues(&app_id_key, attributes);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  return ReadAppDefinedAttributeSubkeys(&app_id_key, attributes);
+}
+
+HRESULT AppManager::ReadAppDefinedAttributeValues(
+    RegKey* app_id_key, std::vector<StringPair>* attributes) const {
+  ASSERT1(app_id_key);
+  ASSERT1(attributes);
+
+  const int num_attributes = app_id_key->GetValueCount();
+
+  for (int i = 0; i < num_attributes; ++i) {
+    CString attribute_name;
+    DWORD type(REG_SZ);
+
+    HRESULT hr = app_id_key->GetValueNameAt(i, &attribute_name, &type);
+    attribute_name.MakeLower();
+    if (FAILED(hr)) {
+      OPT_LOG(LE, (_T("[ReadAppDefinedAttributeValues][Failed read Attribute]")
+                   _T("[%s][%#x]"), attribute_name, hr));
+      continue;
+    }
+
+    if (!String_StartsWith(attribute_name, kRegValueAppDefinedPrefix, false)) {
+      continue;
+    }
+
+    if (type != REG_SZ) {
+      OPT_LOG(LE, (_T("[ReadAppDefinedAttributeValues][Type needs to be")
+                   _T(" REG_SZ[%s][%#x]"), attribute_name, type));
+      continue;
+    }
+
+    CString attribute_value;
+    hr = app_id_key->GetValue(attribute_name, &attribute_value);
+    if (FAILED(hr)) {
+      continue;
+    }
+
+    attributes->push_back(std::make_pair(attribute_name, attribute_value));
+  }
+
+  return S_OK;
+}
+
+HRESULT AppManager::ReadAppDefinedAttributeSubkeys(
+    RegKey* app_id_key, std::vector<StringPair>* attributes) const {
+  ASSERT1(app_id_key);
+  ASSERT1(attributes);
+
+  const int num_subkeys = app_id_key->GetSubkeyCount();
+
+  for (int i = 0; i < num_subkeys; ++i) {
+    CString attribute_subkey_name;
+    HRESULT hr = app_id_key->GetSubkeyNameAt(i, &attribute_subkey_name);
+    attribute_subkey_name.MakeLower();
+    if (FAILED(hr)) {
+      continue;
+    }
+
+    if (!String_StartsWith(attribute_subkey_name,
+                           kRegValueAppDefinedPrefix,
+                           false)) {
+      continue;
+    }
+
+
+    RegKey attribute_subkey;
+    hr = attribute_subkey.Open(app_id_key->Key(),
+                               attribute_subkey_name,
+                               KEY_READ);
+    if (FAILED(hr)) {
+      continue;
+    }
+
+    CString value;
+    hr = attribute_subkey.GetValue(kRegValueAppDefinedAggregate, &value);
+    if (FAILED(hr)) {
+      continue;
+    }
+
+    if (value.CompareNoCase(kRegValueAppDefinedAggregateSum)) {
+      OPT_LOG(LE, (_T("[ReadAppDefinedAttributeSubkeys]['%s' aggregate")
+                   _T(" not supported]"), value));
+      continue;
+    }
+
+    const int num_values = attribute_subkey.GetValueCount();
+    DWORD attribute_sum = 0;
+
+    for (int i = 0; i < num_values; ++i) {
+      CString value_name;
+      DWORD type(REG_DWORD);
+      hr = attribute_subkey.GetValueNameAt(i, &value_name, &type);
+      if (FAILED(hr)) {
+        continue;
+      }
+
+      if (type != REG_DWORD) {
+        OPT_LOG(LE, (_T("[ReadAppDefinedAttributeSubkeys][Type needs to be")
+                     _T(" DWORD[%s]"), value_name));
+        continue;
+      }
+
+      DWORD value = 0;
+      hr = attribute_subkey.GetValue(value_name, &value);
+      if (FAILED(hr)) {
+        continue;
+      }
+
+      attribute_sum += value;
+    }
+
+
+    CString attribute_value;
+    attribute_value.Format(_T("%d"), attribute_sum);
+    attributes->push_back(std::make_pair(attribute_subkey_name,
+                                         attribute_value));
+  }
+
+  return S_OK;
+}
+
 // Reads the following values from the registry:
 //  Clients key
 //    pv
@@ -465,6 +615,9 @@ HRESULT AppManager::CreateClientStateKey(const GUID& app_guid,
 //    lang (if not present in Clients)
 //    ap
 //    tttoken
+//    cohort
+//    cohorthint
+//    cohortname
 //    iid
 //    brand
 //    client
@@ -536,11 +689,13 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
   }
 
   // If ClientState registry key doesn't exist, the function could return.
-  // Before opening the key, set days_since_last* to -1, which is the
-  // default value if reg key doesn't exist. If later we find that the values
-  // are readable, new values will overwrite current ones.
+  // Before opening the key, set days_since_last* and set_day_of* to -1, which
+  // is the default value if reg key doesn't exist. If later we find that the
+  // values are readable, new values will overwrite current ones.
   app->set_days_since_last_active_ping(-1);
   app->set_days_since_last_roll_call(-1);
+  app->set_day_of_last_activity(-1);
+  app->set_day_of_last_roll_call(-1);
 
   // The following do not rely on client_state_key, so check them before
   // possibly returning if OpenClientStateKey fails.
@@ -576,8 +731,13 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
     client_state_key.GetValue(kRegValueLanguage, &app->language_);
   }
 
+  VERIFY1(SUCCEEDED(ReadAppDefinedAttributes(GuidToString(app_guid),
+                                             &app->app_defined_attributes_)));
+
   client_state_key.GetValue(kRegValueAdditionalParams, &app->ap_);
   client_state_key.GetValue(kRegValueTTToken, &app->tt_token_);
+
+  VERIFY1(SUCCEEDED(ReadCohort(app_guid, &app->cohort_)));
 
   CString iid;
   client_state_key.GetValue(kRegValueInstallationId, &iid);
@@ -616,12 +776,42 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
           !RegKey::HasValue(GetClientStateKeyName(app_guid),
                             kRegValueProductVersion));
 
+  // For apps installed before day_of_install is implemented, skip sending
+  // day_of_last* one more time (hence resets the values to 0). Once client
+  // gets |daynum| from server's response, it can send day_of_last* in
+  // subsequent pings.
+  if (app->days_since_last_active_ping() != -1) {
+    app->set_day_of_last_activity(0);
+  }
+  if (app->days_since_last_roll_call() != -1) {
+    app->set_day_of_last_roll_call(0);
+  }
+
+  DWORD day_of_last_activity(0);
+  if (SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastActivity,
+                                          &day_of_last_activity))) {
+    app->set_day_of_last_activity(day_of_last_activity);
+  }
+
+  DWORD day_of_last_roll_call(0);
+  if (SUCCEEDED(client_state_key.GetValue(kRegValueDayOfLastRollCall,
+                                          &day_of_last_roll_call))) {
+    app->set_day_of_last_roll_call(day_of_last_roll_call);
+  }
+
+  app->day_of_install_ = GetDayOfInstall(app_guid);
+
   return S_OK;
 }
 
 void AppManager::ReadAppInstallTimeDiff(App* app) {
   ASSERT1(app);
   app->install_time_diff_sec_ = GetInstallTimeDiffSec(app->app_guid());
+}
+
+void AppManager::ReadDayOfInstall(App* app) {
+  ASSERT1(app);
+  app->day_of_install_ = GetDayOfInstall(app->app_guid());
 }
 
 // Calls ReadAppPersistentData() to populate app and adds the following values
@@ -716,10 +906,12 @@ HRESULT AppManager::WritePreInstallData(const App& app) {
   }
 
   CString state_key_path = GetClientStateKeyName(app.app_guid());
-  VERIFY1(SUCCEEDED(app_registry_utils::SetAppBranding(state_key_path,
-                                                       app.brand_code(),
-                                                       app.client_id(),
-                                                       app.referral_id())));
+  VERIFY1(SUCCEEDED(app_registry_utils::SetAppBranding(
+      state_key_path,
+      app.brand_code(),
+      app.client_id(),
+      app.referral_id(),
+      app.day_of_last_response())));
 
   if (app.GetExperimentLabels().IsEmpty()) {
     VERIFY1(SUCCEEDED(client_state_key.DeleteValue(kRegValueExperimentLabels)));
@@ -936,6 +1128,8 @@ void AppManager::PersistSuccessfulUpdateCheckResponse(
 
   VERIFY1(SUCCEEDED(SetTTToken(app)));
 
+  VERIFY1(SUCCEEDED(WriteCohort(app)));
+
   const CString client_state_key = GetClientStateKeyName(app.app_guid());
 
   if (is_update_available) {
@@ -1015,6 +1209,74 @@ void AppManager::PersistSuccessfulInstall(const App& app) {
                                                false);  // TODO(omaha3): offline
 }
 
+CString AppManager::GetCurrentStateKeyName(const CString& app_guid) const {
+  const CString base_key_name(ConfigManager::Instance()->registry_client_state(
+      is_machine_));
+  const CString app_id_key_name = AppendRegKeyPath(base_key_name, app_guid);
+  return AppendRegKeyPath(app_id_key_name, kRegSubkeyCurrentState);
+}
+
+HRESULT AppManager::ResetCurrentStateKey(const CString& app_guid) {
+  return RegKey::DeleteKey(GetCurrentStateKeyName(app_guid));
+}
+
+HRESULT AppManager::WriteStateValue(const App& app, CurrentState state_value) {
+  CORE_LOG(L2, (_T("[AppManager::WriteStateValue][%s]"),
+                app.app_guid_string()));
+
+  return RegKey::SetValue(GetCurrentStateKeyName(app.app_guid_string()),
+                          kRegValueStateValue,
+                          static_cast<DWORD>(state_value));
+}
+
+HRESULT AppManager::WriteDownloadProgress(const App& app,
+                                          uint64 bytes_downloaded,
+                                          uint64 bytes_total,
+                                          LONG download_time_remaining_ms) {
+  CORE_LOG(L2, (_T("[AppManager::WriteDownloadProgress][%s]"),
+                app.app_guid_string()));
+
+  if (bytes_total <= 0) {
+    return E_INVALIDARG;
+  }
+
+  int download_progress_percentage =
+      static_cast<int>(100ULL * bytes_downloaded / bytes_total);
+
+  const CString current_state_key_name(
+      GetCurrentStateKeyName(app.app_guid_string()));
+  HRESULT hr = RegKey::SetValue(current_state_key_name,
+                                kRegValueDownloadTimeRemainingMs,
+                                static_cast<DWORD>(download_time_remaining_ms));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  return RegKey::SetValue(current_state_key_name,
+                          kRegValueDownloadProgressPercent,
+                          static_cast<DWORD>(download_progress_percentage));
+}
+
+HRESULT AppManager::WriteInstallProgress(const App& app,
+                                         LONG install_progress_percentage,
+                                         LONG install_time_remaining_ms) {
+  CORE_LOG(L2, (_T("[AppManager::WriteInstallProgress][%s]"),
+                app.app_guid_string()));
+
+  const CString current_state_key_name(
+      GetCurrentStateKeyName(app.app_guid_string()));
+  HRESULT hr = RegKey::SetValue(current_state_key_name,
+                                kRegValueInstallTimeRemainingMs,
+                                static_cast<DWORD>(install_time_remaining_ms));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  return RegKey::SetValue(current_state_key_name,
+                          kRegValueInstallProgressPercent,
+                          static_cast<DWORD>(install_progress_percentage));
+}
+
 HRESULT AppManager::SynchronizeClientState(const GUID& app_guid) {
   __mutexScope(registry_access_lock_);
 
@@ -1059,7 +1321,7 @@ HRESULT AppManager::SynchronizeClientState(const GUID& app_guid) {
 // that is used for the value from the tag exposes this value to the COM setter.
 // It would be nice to avoid that, possibly by only allowing that setter to work
 // in certain states.
-HRESULT AppManager::SetTTToken(const App& app) {
+HRESULT AppManager::SetTTToken(const App& app) const {
   CORE_LOG(L3, (_T("[AppManager::SetTTToken][token=%s]"), app.tt_token()));
 
   __mutexScope(registry_access_lock_);
@@ -1075,6 +1337,70 @@ HRESULT AppManager::SetTTToken(const App& app) {
   } else {
     return client_state_key.SetValue(kRegValueTTToken, app.tt_token());
   }
+}
+
+CString AppManager::GetCohortKeyName(const GUID& app_guid) const {
+  const CString app_id_key_name(GetClientStateKeyName(app_guid));
+  return AppendRegKeyPath(app_id_key_name, kRegSubkeyCohort);
+}
+
+HRESULT AppManager::DeleteCohortKey(const GUID& app_guid) const {
+  return RegKey::DeleteKey(GetCohortKeyName(app_guid));
+}
+
+HRESULT AppManager::ReadCohort(const GUID& app_guid, Cohort * cohort) const {
+  CORE_LOG(L3, (_T("[AppManager::ReadCohort][%s]"), GuidToString(app_guid)));
+
+  ASSERT1(cohort);
+
+  RegKey cohort_key;
+  HRESULT hr = cohort_key.Open(GetCohortKeyName(app_guid), KEY_READ);
+  if (FAILED(hr)) {
+    return S_FALSE;
+  }
+
+  hr = cohort_key.GetValue(NULL, &cohort->cohort);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // Optional values.
+  cohort_key.GetValue(kRegValueCohortHint, &cohort->hint);
+  cohort_key.GetValue(kRegValueCohortName, &cohort->name);
+
+  CORE_LOG(L3, (_T("[AppManager::ReadCohort][%s][%s][%s]"),
+                cohort->cohort,
+                cohort->hint,
+                cohort->name));
+  return S_OK;
+}
+
+HRESULT AppManager::WriteCohort(const App& app) const {
+  CORE_LOG(L3, (_T("[AppManager::WriteCohort][%s]"), app.cohort().cohort));
+
+  __mutexScope(registry_access_lock_);
+
+  if (app.cohort().cohort.IsEmpty()) {
+    return DeleteCohortKey(app.app_guid());
+  }
+
+  RegKey cohort_key;
+  HRESULT hr = cohort_key.Create(GetCohortKeyName(app.app_guid()));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = cohort_key.SetValue(NULL, app.cohort().cohort);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  VERIFY1(SUCCEEDED(cohort_key.SetValue(kRegValueCohortHint,
+                                        app.cohort().hint)));
+  VERIFY1(SUCCEEDED(cohort_key.SetValue(kRegValueCohortName,
+                                        app.cohort().name)));
+
+  return S_OK;
 }
 
 void AppManager::ClearOemInstalled(const AppIdVector& app_ids) {
@@ -1097,10 +1423,17 @@ void AppManager::ClearOemInstalled(const AppIdVector& app_ids) {
     }
 
     VERIFY1(SUCCEEDED(state_key.DeleteValue(kRegValueOemInstall)));
+
+    // The current time is close to when OEM activation has happened. Treat the
+    // current time as the real install time by resetting InstallTime.
+    const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now)));
+    VERIFY1(SUCCEEDED(app_registry_utils::SetInitialDayOfValues(
+        GetClientStateKeyName(app_guid), -1)));
   }
 }
 
-void AppManager::UpdateUpdateAvailableStats(const GUID& app_guid) {
+void AppManager::UpdateUpdateAvailableStats(const GUID& app_guid) const {
   __mutexScope(registry_access_lock_);
 
   RegKey state_key;
@@ -1180,27 +1513,25 @@ uint32 AppManager::GetInstallTimeDiffSec(const GUID& app_guid) const {
     return kInitialInstallTimeDiff;
   }
 
-  RegKey client_state_key;
-  HRESULT hr = OpenClientStateKey(app_guid, KEY_READ, &client_state_key);
-  if (FAILED(hr)) {
-    return 0;
+  return app_registry_utils::GetInstallTimeDiffSec(is_machine_,
+                                                   GuidToString(app_guid));
+}
+
+uint32 AppManager::GetDayOfInstall(const GUID& app_guid) const {
+  if (!IsAppRegistered(app_guid) && !IsAppUninstalled(app_guid)) {
+    return kInitialDayOfInstall;
   }
 
-  DWORD install_time(0);
-  DWORD install_time_diff_sec(0);
-  if (SUCCEEDED(client_state_key.GetValue(kRegValueInstallTimeSec,
-                                          &install_time))) {
-    const uint32 now = Time64ToInt32(GetCurrent100NSTime());
-    if (0 != install_time && now >= install_time) {
-      install_time_diff_sec = now - install_time;
-      // TODO(omaha3): Restore this assert. In Omaha 2, this function gets
-      // called as part of installation verification and Job::UpdateJob(), so
-      // the value can be 0. This will not be the case in Omaha 3.
-      // ASSERT1(install_time_diff_sec != 0);
-    }
+  DWORD day_of_install(0);
+  if (SUCCEEDED(app_registry_utils::GetDayOfInstall(
+      is_machine_, GuidToString(app_guid), &day_of_install)) &&
+      day_of_install != static_cast<DWORD>(-1)) {
+    return day_of_install;
   }
 
-  return install_time_diff_sec;
+  // No DayOfInstall is present. This app is probably installed before
+  // DayOfInstall was implemented. Do not send DayOfInstall in this case.
+  return kUnknownDayOfInstall;
 }
 
 // Clear the Installation ID if at least one of the conditions is true:
@@ -1210,7 +1541,7 @@ uint32 AppManager::GetInstallTimeDiffSec(const GUID& app_guid) const {
 //    is to ensure that Installation ID is cleared even if DidRun is never set.
 // 3) The app is Omaha. Always delete Installation ID if it is present
 //    because DidRun does not apply.
-HRESULT AppManager::ClearInstallationId(const App& app) {
+HRESULT AppManager::ClearInstallationId(const App& app) const {
   ASSERT1(app.model()->IsLockedByCaller());
   __mutexScope(registry_access_lock_);
 
@@ -1235,10 +1566,14 @@ HRESULT AppManager::ClearInstallationId(const App& app) {
   return S_OK;
 }
 
-void AppManager::SetLastPingDayStartTime(const App& app,
-                                         int elapsed_seconds_since_day_start) {
+void AppManager::SetLastPingTimeMetrics(
+    const App& app,
+    int elapsed_days_since_datum,
+    int elapsed_seconds_since_day_start) const {
   ASSERT1(elapsed_seconds_since_day_start >= 0);
   ASSERT1(elapsed_seconds_since_day_start < kMaxTimeSinceMidnightSec);
+  ASSERT1(elapsed_days_since_datum >= kMinDaysSinceDatum);
+  ASSERT1(elapsed_days_since_datum <= kMaxDaysSinceDatum);
   ASSERT1(app.model()->IsLockedByCaller());
 
   __mutexScope(registry_access_lock_);
@@ -1250,19 +1585,61 @@ void AppManager::SetLastPingDayStartTime(const App& app,
     return;
   }
 
-  bool did_send_active_ping = (app.did_run() == ACTIVE_RUN &&
-                               app.days_since_last_active_ping() != 0);
+  // Update old-style counting metrics.
+  const bool did_send_active_ping = (app.did_run() == ACTIVE_RUN &&
+                                     app.days_since_last_active_ping() != 0);
   if (did_send_active_ping) {
     VERIFY1(SUCCEEDED(client_state_key.SetValue(
         kRegValueActivePingDayStartSec,
         static_cast<DWORD>(now - elapsed_seconds_since_day_start))));
   }
 
-  bool did_send_roll_call = (app.days_since_last_roll_call() != 0);
+  const bool did_send_roll_call = (app.days_since_last_roll_call() != 0);
   if (did_send_roll_call) {
     VERIFY1(SUCCEEDED(client_state_key.SetValue(
         kRegValueRollCallDayStartSec,
         static_cast<DWORD>(now - elapsed_seconds_since_day_start))));
+  }
+
+  // Update new-style counting metrics.
+  const bool did_send_day_of_last_activity = (app.did_run() == ACTIVE_RUN &&
+                                              app.day_of_last_activity() != 0);
+  if (did_send_active_ping || did_send_day_of_last_activity) {
+    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+        kRegValueDayOfLastActivity,
+        static_cast<DWORD>(elapsed_days_since_datum))));
+  }
+
+  const bool did_send_day_of_roll_call = (app.day_of_last_roll_call() != 0);
+  if (did_send_roll_call || did_send_day_of_roll_call) {
+    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+        kRegValueDayOfLastRollCall,
+        static_cast<DWORD>(elapsed_days_since_datum))));
+  }
+}
+
+void AppManager::UpdateDayOfInstallIfNecessary(
+    const App& app, int elapsed_days_since_datum) const {
+  ASSERT1(elapsed_days_since_datum >= kMinDaysSinceDatum);
+  ASSERT1(elapsed_days_since_datum <= kMaxDaysSinceDatum);
+  ASSERT1(app.model()->IsLockedByCaller());
+
+  __mutexScope(registry_access_lock_);
+
+  RegKey client_state_key;
+  if (FAILED(CreateClientStateKey(app.app_guid(), &client_state_key))) {
+    return;
+  }
+
+  DWORD existing_day_of_install(0);
+  if (SUCCEEDED(client_state_key.GetValue(kRegValueDayOfInstall,
+                                           &existing_day_of_install))) {
+    // Update DayOfInstall only if its value is -1.
+    if (existing_day_of_install == static_cast<DWORD>(-1)) {
+      VERIFY1(SUCCEEDED(client_state_key.SetValue(
+          kRegValueDayOfInstall,
+          static_cast<DWORD>(elapsed_days_since_datum))));
+    }
   }
 }
 
@@ -1272,6 +1649,7 @@ void AppManager::SetLastPingDayStartTime(const App& app,
 // Clears did run.
 HRESULT AppManager::PersistUpdateCheckSuccessfullySent(
     const App& app,
+    int elapsed_days_since_datum,
     int elapsed_seconds_since_day_start) {
   ASSERT1(app.model()->IsLockedByCaller());
 
@@ -1279,7 +1657,9 @@ HRESULT AppManager::PersistUpdateCheckSuccessfullySent(
                                  vista_util::IsVistaOrLater());
   VERIFY1(SUCCEEDED(app_usage.ResetDidRun(app.app_guid_string())));
 
-  SetLastPingDayStartTime(app, elapsed_seconds_since_day_start);
+  SetLastPingTimeMetrics(
+      app, elapsed_days_since_datum, elapsed_seconds_since_day_start);
+  UpdateDayOfInstallIfNecessary(app, elapsed_days_since_datum);
 
   // Handle the installation id.
   VERIFY1(SUCCEEDED(ClearInstallationId(app)));

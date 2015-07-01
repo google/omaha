@@ -27,7 +27,7 @@ logging_inputs = [
     'logging.cc',
     ]
 
-logging_env.ComponentStaticLibrary(
+logging_env.ComponentStaticLibraryMultiarch(
     lib_name='logging',
     source=logging_inputs,
 )

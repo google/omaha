@@ -14,8 +14,12 @@
 // ========================================================================
 
 #include "omaha/net/net_utils.h"
+
 #include <iphlpapi.h>
+#include <intsafe.h>
+
 #include "base/scoped_ptr.h"
+#include "omaha/base/const_addresses.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/utils.h"
@@ -56,12 +60,15 @@ bool IsMachineConnectedToNetwork() {
 
 CString BufferToPrintableString(const void* buffer, size_t length) {
   CString result;
-  result.Preallocate(length);
-  if (buffer) {
-    for (size_t i = 0; i != length; ++i) {
-      char ch = (static_cast<const char*>(buffer))[i];
-      result.AppendChar((isprint(ch) || ch =='\r' || ch == '\n') ? ch : '.');
-    }
+  if (!buffer || length > INT_MAX) {
+    return result;
+  }
+  result.Preallocate(static_cast<int>(length));
+  for (size_t i = 0; i != length; ++i) {
+    const char ch = (static_cast<const char*>(buffer))[i];
+    // Workaround for _chvalidator bug in VC2010.
+    const bool is_printable = !!isprint(static_cast<unsigned char>(ch));
+    result.AppendChar((is_printable || ch =='\r' || ch == '\n') ? ch : '.');
   }
   return result;
 }
@@ -72,6 +79,32 @@ CString VectorToPrintableString(const std::vector<uint8>& response) {
     str = BufferToPrintableString(&response.front(), response.size());
   }
   return str;
+}
+
+bool IsHttpUrl(const CString& url) {
+  return String_StartsWith(url, kHttpProto, true);
+}
+
+bool IsHttpsUrl(const CString& url) {
+  return String_StartsWith(url, kHttpsProto, true);
+}
+
+CString MakeHttpUrl(const CString& url) {
+  if (IsHttpUrl(url)) {
+    return url;
+  }
+  CString http_url(RemoveInternetProtocolHeader(url));
+  http_url.Insert(0, kHttpProto);
+  return http_url;
+}
+
+CString MakeHttpsUrl(const CString& url) {
+  if (IsHttpsUrl(url)) {
+    return url;
+  }
+  CString https_url(RemoveInternetProtocolHeader(url));
+  https_url.Insert(0, kHttpsProto);
+  return https_url;
 }
 
 }  // namespace omaha

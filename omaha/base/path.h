@@ -53,6 +53,11 @@ CString GetPathRemoveExtension(const CString& path);
 // Returns true iff path is an absolute path (starts with a drive name)
 bool IsAbsolutePath(const TCHAR* path);
 
+// Returns true iff path is in folder or in its subfolder.
+// This function does not verify the path or the folder actually exist nor does
+// it do path normalization.
+bool IsPathInFolder(const TCHAR* path, const TCHAR* folder);
+
 // Makes sure the path is enclosed with double quotation marks.
 void EnclosePath(CString* path);
 

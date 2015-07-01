@@ -34,6 +34,7 @@
 namespace omaha {
 
 class NetworkRequestCallback;
+struct DownloadMetrics;
 
 class HttpRequestInterface {
  public:
@@ -81,8 +82,6 @@ class HttpRequestInterface {
 
   virtual void set_additional_headers(const CString& additional_headers) = 0;
 
-  virtual void set_preserve_protocol(bool preserve_protocol) = 0;
-
   // Gets the user agent for this http request. The default user agent has
   // the following format: Google Update/a.b.c.d;req1;req2 where a.b.c.d is
   // the version of the client code and req1, req2,... are appended by
@@ -94,9 +93,15 @@ class HttpRequestInterface {
   virtual void set_user_agent(const CString& user_agent) = 0;
 
   virtual void set_proxy_auth_config(const ProxyAuthConfig& config) = 0;
+
+  // Returns true if download metrics are available for this HTTP request and
+  // copies the metrics in the |download_metrics| function parameter.
+  // Download metrics are available after the Send() call has returned and
+  // they are meaningful for download requests only. Download requests are the
+  // requests where the response goes to a file.
+  virtual bool download_metrics(DownloadMetrics* download_metrics) const = 0;
 };
 
 }   // namespace omaha
 
 #endif  // OMAHA_NET_HTTP_REQUEST_H__
-

@@ -81,6 +81,10 @@ CString GetWindowsDir();
 // Gets the System directory.
 CString GetSystemDir();
 
+// Gets the WOW64-redirected System directory.  This returns an empty string
+// when running on a 32-bit machine.
+CString GetSystemWow64Dir();
+
 // Gets the TEMP directory for the current user. The directory path ends
 // with a '\'.
 CString GetTempDir();

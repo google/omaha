@@ -20,17 +20,10 @@
 
 namespace omaha {
 
-// Tests null WinHttp handles are allowed for WinHttp calls. WinHttp may or
-// may have not been initialized up to this point. This affects the return
-// value of some of the calls below.
+// Tests null WinHttp handles are allowed for some WinHttp calls.
 TEST(WinHttpAdapter, NullHandles) {
   WinHttpAdapter winhttp_adapter;
   EXPECT_HRESULT_SUCCEEDED(winhttp_adapter.Initialize());
-
-  // Null session handle.
-  HRESULT hr = winhttp_adapter.Connect(NULL, _T("127.0.0.1"), 80);
-  EXPECT_TRUE(hr == HRESULT_FROM_WIN32(ERROR_WINHTTP_NOT_INITIALIZED) ||
-              hr == HRESULT_FROM_WIN32(ERROR_INVALID_HANDLE));
 
   // Opens a session, connects, closes the connection handle, and then
   // tries to open a request for the null connection.
@@ -42,7 +35,7 @@ TEST(WinHttpAdapter, NullHandles) {
                                              WINHTTP_ACCESS_TYPE_NO_PROXY,
                                              WINHTTP_NO_PROXY_NAME,
                                              WINHTTP_NO_PROXY_BYPASS,
-                                             0,  // Synchronous mode.
+                                             WINHTTP_FLAG_ASYNC,
                                              &session_handle));
   EXPECT_NE(static_cast<HINTERNET>(NULL), session_handle);
   EXPECT_HRESULT_SUCCEEDED(winhttp_adapter.Connect(session_handle,
@@ -60,6 +53,41 @@ TEST(WinHttpAdapter, NullHandles) {
   // Null request handle.
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_INVALID_HANDLE),
             winhttp_adapter.QueryDataAvailable(NULL));
+
+  EXPECT_HRESULT_SUCCEEDED(http_client->Close(session_handle));
+}
+
+// Tests opening a request then closing it before any activity happens
+// on the network. This tests that the callback is correctly set and the
+// closing handle callback is handled.
+TEST(WinHttpAdapter, OpenRequestClose) {
+  WinHttpAdapter winhttp_adapter;
+  EXPECT_HRESULT_SUCCEEDED(winhttp_adapter.Initialize());
+
+  // Opens a session, connects, opens the request, then closes the handles.
+  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+  EXPECT_HRESULT_SUCCEEDED(http_client->Initialize());
+
+  HINTERNET session_handle = NULL;
+  EXPECT_HRESULT_SUCCEEDED(http_client->Open(NULL,
+                                             WINHTTP_ACCESS_TYPE_NO_PROXY,
+                                             WINHTTP_NO_PROXY_NAME,
+                                             WINHTTP_NO_PROXY_BYPASS,
+                                             WINHTTP_FLAG_ASYNC,
+                                             &session_handle));
+  EXPECT_NE(static_cast<HINTERNET>(NULL), session_handle);
+  EXPECT_HRESULT_SUCCEEDED(winhttp_adapter.Connect(session_handle,
+                                                   _T("127.0.0.1"),
+                                                   80));
+  EXPECT_HRESULT_SUCCEEDED(
+      winhttp_adapter.OpenRequest(NULL,  // verb
+                                  NULL,  // uri,
+                                  NULL,  // version
+                                  NULL,  // referrer
+                                  NULL,  // accept_types
+                                  0));   // flags
+
+  EXPECT_HRESULT_SUCCEEDED(http_client->Close(session_handle));
 }
 
 }  // namespace omaha

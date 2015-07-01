@@ -16,10 +16,10 @@
 #ifndef OMAHA_TESTING_RESOURCE_H_
 #define OMAHA_TESTING_RESOURCE_H_
 
+#include "omaha/goopdate/resources/goopdateres/goopdate.grh"
+
 #define IDS_ESCAPE_TEST                             8120
 #define IDS_ESCAPE_TEST1                            8121
-#define IDS_BUNDLE_INSTALLED_SUCCESSFULLY           8130
-#define IDS_INSTALLER_FAILED_WITH_MESSAGE           8131
 
 #define IDR_OMAHA3_TLB                              1
 

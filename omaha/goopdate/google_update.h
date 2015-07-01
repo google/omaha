@@ -24,6 +24,7 @@
 #include "base/scoped_ptr.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
 
 namespace omaha {
 
@@ -61,12 +62,14 @@ class GoogleUpdate : public CAtlExeModuleT<GoogleUpdate> {
   // further information.
   virtual LONG Lock() throw() {
     ::CoAddRefServerProcess();
-    return CComGlobalsThreadModel::Increment(&m_nLockCnt);
+    LONG lock_count = CComGlobalsThreadModel::Increment(&m_nLockCnt);
+    CORE_LOG(L6, (_T("[GoogleUpdate::Lock][%d]"), lock_count));
+    return lock_count;
   }
 
   // This is cloned from CAtlExeModuleT.Unlock(). The big difference is the call
   // to ::CoReleaseServerProcess(), to ensure that the class factories are
-  // suspended once the lock count drops to zero. This fixes a a race condition
+  // suspended once the lock count drops to zero. This fixes a race condition
   // where an activation request could come in in the middle of shutting down.
   // This shutdown mechanism works with free threaded servers.
   //
@@ -77,13 +80,14 @@ class GoogleUpdate : public CAtlExeModuleT<GoogleUpdate> {
     ASSERT1(!m_bDelayShutdown);
 
     ::CoReleaseServerProcess();
-    LONG lRet = CComGlobalsThreadModel::Decrement(&m_nLockCnt);
+    LONG lock_count = CComGlobalsThreadModel::Decrement(&m_nLockCnt);
+    CORE_LOG(L6, (_T("[GoogleUpdate::Unlock][%d]"), lock_count));
 
-    if (lRet == 0) {
+    if (lock_count == 0) {
       ::PostThreadMessage(m_dwMainThreadID, WM_QUIT, 0, 0);
     }
 
-    return lRet;
+    return lock_count;
   }
 
  private:

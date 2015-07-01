@@ -60,11 +60,14 @@ HRESULT EtwTraceController::StartFileSession(const wchar_t* session_name,
 HRESULT EtwTraceController::StartRealtimeSession(const wchar_t* session_name,
     size_t buffer_size) {
   ASSERT1(NULL == session_ && session_name_.empty());
+  if (buffer_size > ULONG_MAX) {
+    return E_INVALIDARG;
+  }
   EtwTraceProperties prop;
   EVENT_TRACE_PROPERTIES& p = *prop.get();
   p.LogFileMode = EVENT_TRACE_REAL_TIME_MODE | EVENT_TRACE_USE_PAGED_MEMORY;
   p.FlushTimer = 1;  // flush every second.
-  p.BufferSize = buffer_size;  // buffer_size in kilobytes.
+  p.BufferSize = static_cast<ULONG>(buffer_size);  // buffer_size in kilobytes.
   p.LogFileNameOffset = 0;
   return Start(session_name, &prop);
 }

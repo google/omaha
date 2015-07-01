@@ -40,6 +40,7 @@ void AppStateUpdateAvailable::QueueDownload(App* app) {
     return;
   }
 
+  app->SetCurrentTimeAs(App::TIME_UPDATE_AVAILABLE);
   ChangeState(app, new AppStateWaitingToDownload);
 }
 
@@ -55,7 +56,7 @@ void AppStateUpdateAvailable::HandleGroupPolicyError(App* app, HRESULT code) {
   ASSERT1(app);
   ASSERT1(code == GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY ||
           code == GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY);
-  CORE_LOG(L1, (_T("[Update available for disabled app][%s]"),
+  OPT_LOG(LW, (_T("[Update available for disabled app][%s]"),
                 app->app_guid_string()));
   app->LogTextAppendFormat(_T("Status=%s-disabled"),
                            app->is_update() ? _T("update") : _T("install"));

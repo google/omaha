@@ -55,8 +55,11 @@ uint16 ConvertTime64ToTime16(time64 time);
 void ComputeStartTime();
 #endif
 
+// Returns the current system time as a 64-bit value representing the
+// number of 100-nanosecond intervals since January 1, 1601 (UTC).
 uint64 GetCurrent100NSTime();
 
+// Returns the same value as GetCurrent100NSTime but in miliseconds.
 uint64 GetCurrentMsTime();
 
 // Note - these return 0 if we can't convert the time

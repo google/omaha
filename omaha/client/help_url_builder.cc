@@ -17,6 +17,7 @@
 #include <atlstr.h>
 #include <vector>
 #include "omaha/base/debug.h"
+#include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/string.h"
@@ -112,18 +113,43 @@ HRESULT HelpUrlBuilder::BuildHttpGetString(
   std::vector<QueryElement> elements;
   elements.push_back(QueryElement(_T("hl"), language_));
 
-  CString error_code_str;
-  CString extra_code_str;
-  CString element_name;
+  // The new Google help doc server does not support multiple error topics. It
+  // requests the result URL is like this:
+  //   http://support.google.com/installer/?product=<APPID>&error=<ERROR_CODE>
+  // This is not ideal if multiple errors occur for bundle installation but
+  // in most cases it is good enough.
   for (std::vector<AppResult>::size_type i = 0; i < app_results.size(); ++i) {
-    error_code_str.Format(_T("0x%x"), app_results[i].error_code);
-    extra_code_str.Format(_T("%d"), app_results[i].extra_code);
-    element_name.Format(_T("app.%d"), i);
-    elements.push_back(QueryElement(element_name, app_results[i].guid));
-    element_name.Format(_T("ec.%d"), i);
-    elements.push_back(QueryElement(element_name, error_code_str));
-    element_name.Format(_T("ex.%d"), i);
-    elements.push_back(QueryElement(element_name, extra_code_str));
+    if (SUCCEEDED(app_results[i].error_code)) {
+      continue;
+    }
+
+    // This is the first failed app, create help URL for its error.
+    elements.push_back(QueryElement(_T("product"), app_results[i].guid));
+
+    CString error_code_str;
+    if (app_results[i].error_code == GOOPDATEINSTALL_E_INSTALLER_FAILED &&
+        app_results[i].extra_code != 0) {
+      // Special case for installer error: app or MSI installer can optionally
+      // provide detail error information via extra code when installer error
+      // happens. So use extra code to get more relevant help when it exists.
+      error_code_str.Format(_T("%d"), app_results[i].extra_code);
+      elements.push_back(QueryElement(_T("error"), error_code_str));
+
+      // Add a flag to indicate that the error code is actually the extra code.
+      elements.push_back(QueryElement(_T("from_extra_code"), _T("1")));
+    } else {
+      error_code_str.Format(_T("0x%x"), app_results[i].error_code);
+      elements.push_back(QueryElement(_T("error"), error_code_str));
+
+      // Add extra code to the parameter list. This is currently not used by the
+      // Google help doc server but just for future possible usage.
+      CString extra_code_str;
+      extra_code_str.Format(_T("%d"), app_results[i].extra_code);
+      elements.push_back(QueryElement(_T("extra_code"), extra_code_str));
+    }
+
+    // Ignore all subsequent errors.
+    break;
   }
 
   elements.push_back(QueryElement(_T("guver"), goopdate_version));

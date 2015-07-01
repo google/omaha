@@ -36,7 +36,8 @@ struct InstallPackage {
   CString version;
   bool is_required;
   int size;
-  CString hash;
+  CString hash_sha1;  // base64 encoded.
+  CString hash_sha256;  // hex-digit encoded.
 };
 
 struct InstallAction {

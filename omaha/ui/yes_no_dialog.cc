@@ -15,11 +15,13 @@
 
 #include "omaha/ui/yes_no_dialog.h"
 #include "base/basictypes.h"
+#include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/window_utils.h"
 #include "omaha/google_update/resource.h"
+#include "omaha/ui/ui.h"
 
 namespace omaha {
 
@@ -63,6 +65,18 @@ HRESULT YesNoDialog::Initialize(const CString& yes_no_title,
   if (FAILED(hr)) {
     CORE_LOG(LW, (_T("[Failed to SetWindowIcon][0x%x]"), hr));
   }
+
+  // 9-pixel-high "Segoe UI".
+  VERIFY1(default_font_.CreatePointFont(90, _T("Segoe UI")));
+  SendMessageToDescendants(
+      WM_SETFONT,
+      reinterpret_cast<WPARAM>(static_cast<HFONT>(default_font_)),
+      0);
+
+  CreateOwnerDrawTitleBar(m_hWnd, GetDlgItem(IDC_TITLE_BAR_SPACER), kBkColor);
+  SetCustomDlgColors(kTextColor, kBkColor);
+
+  (EnableFlatButtons(m_hWnd));
 
   return S_OK;
 }

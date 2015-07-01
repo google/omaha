@@ -18,6 +18,7 @@
 #include "base/scoped_ptr.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/goopdate/app_command.h"
+#include "omaha/goopdate/app_command_configuration.h"
 
 namespace omaha {
 
@@ -45,25 +46,25 @@ STDMETHODIMP OneClickProcessLauncher::LaunchAppCommand(
   CString session_id;
   GetGuid(&session_id);
 
-  scoped_ptr<AppCommand> app_command;
-  HRESULT hr = AppCommand::Load(app_guid,
-                                is_machine(),
-                                cmd_id,
-                                session_id,
-                                address(app_command));
+  scoped_ptr<AppCommandConfiguration> configuration;
+  HRESULT hr = AppCommandConfiguration::Load(app_guid,
+                                             is_machine(),
+                                             cmd_id,
+                                             address(configuration));
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[failed to load command configuration][0x%x]"), hr));
     return hr;
   }
 
-  if (!app_command->is_web_accessible()) {
+  if (!configuration->is_web_accessible()) {
     return E_ACCESSDENIED;
   }
 
   if (!is_machine()) {
     // Execute directly at medium integrity for user-level mode
     scoped_process process;
-    return app_command->Execute(address(process));
+    scoped_ptr<AppCommand> app_command(configuration->Instantiate(session_id));
+    return app_command->Execute(NULL, std::vector<CString>(), address(process));
   }
 
   // Elevate to high integrity for machine-level mode

@@ -33,7 +33,7 @@ def TagOneBundle(env, bundle, untagged_binary_path, output_dir):
   tag_output = env.Command(
       target='%s/%s' % (output_dir, relative_filepath),
       source=untagged_binary_path,
-      action='%s $SOURCES $TARGET %s' % (
+      action='%s $SOURCES $TARGET %s append' % (
           env.File(tag_exe).abspath, tag_str)
   )
 

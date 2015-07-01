@@ -13,6 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/base/reg_key.h"
+#include "omaha/base/utils.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/const_goopdate.h"
 #include "omaha/common/experiment_labels.h"
 #include "omaha/testing/resource.h"
 #include "omaha/testing/unit_test.h"
@@ -27,8 +31,8 @@ namespace {
 
 #define LABELONE_KEY      _T("test_key_1")
 #define LABELONE_VALUE    _T("test_value_1")
-#define LABELONE_EXP_STR  _T("Fri, 14 Aug 2015 16:13:03 GMT")
-#define LABELONE_EXP_INT  130840423830000000uI64
+#define LABELONE_EXP_STR  _T("Sun, 09 Mar 2025 16:13:03 GMT")
+#define LABELONE_EXP_INT  133860103830000000uI64
 #define LABELONE_COMBINED LABELONE_KEY \
                           LABEL_DELIMITER_KV \
                           LABELONE_VALUE \
@@ -37,8 +41,8 @@ namespace {
 
 #define LABELTWO_KEY      _T("test_key_2")
 #define LABELTWO_VALUE    _T("test_value_2")
-#define LABELTWO_EXP_STR  _T("Thu, 27 Nov 2014 23:59:59 GMT")
-#define LABELTWO_EXP_INT  130616063990000000uI64
+#define LABELTWO_EXP_STR  _T("Mon, 09 Dec 2024 23:59:59 GMT")
+#define LABELTWO_EXP_INT  133782623990000000uI64
 #define LABELTWO_COMBINED LABELTWO_KEY \
                           LABEL_DELIMITER_KV \
                           LABELTWO_VALUE \
@@ -83,6 +87,33 @@ const TCHAR* const kLabelAllCombined = LABELONE_COMBINED
                                        LABELTWO_COMBINED
                                        LABEL_DELIMITER_LA
                                        LABELOLD_COMBINED;
+
+// Test strings to verify ClientState/ClientStateMedium registry merging.
+
+const TCHAR* const kClientStateTestLabels =
+    _T("cs_unique=cs|")     LABELTWO_EXP_STR LABEL_DELIMITER_LA
+    _T("common=cs|")        LABELTWO_EXP_STR LABEL_DELIMITER_LA
+    _T("cs_new_delete=ok|") LABELTWO_EXP_STR LABEL_DELIMITER_LA
+    _T("cs_old_keep=dead|") LABELOLD_EXP_STR;
+
+const TCHAR* const kClientStateMediumTestLabels =
+    _T("csm_unique=csm|")   LABELONE_EXP_STR LABEL_DELIMITER_LA
+    _T("common=csm|")       LABELONE_EXP_STR LABEL_DELIMITER_LA
+    _T("cs_new_delete=no|") LABELOLD_EXP_STR LABEL_DELIMITER_LA
+    _T("cs_old_keep=ok|")   LABELONE_EXP_STR;
+
+// Note that labels will get reordered alphabetically by key after a merge.
+
+const TCHAR* const kExpectedMergedResult =
+    _T("common=csm|")       LABELONE_EXP_STR LABEL_DELIMITER_LA
+    _T("cs_old_keep=ok|")   LABELONE_EXP_STR LABEL_DELIMITER_LA
+    _T("cs_unique=cs|")     LABELTWO_EXP_STR LABEL_DELIMITER_LA
+    _T("csm_unique=csm|")   LABELONE_EXP_STR;
+
+// Ficticious app id for testing.
+
+const TCHAR* const kExperimentLabelTestAppId =
+    _T("{49845007-DFBF-4763-AD5B-7E83FBE45290}");
 
 }  // end namespace
 
@@ -723,6 +754,130 @@ TEST(ExperimentLabelsTest, Expire) {
   EXPECT_FALSE(el.ContainsKey(kLabelOneKey));
   EXPECT_TRUE(el.ContainsKey(kLabelTwoKey));
   EXPECT_FALSE(el.ContainsKey(kLabelOldKey));
+}
+
+class ExperimentLabelsRegistryProtectedTest : public testing::Test {
+ protected:
+  ExperimentLabelsRegistryProtectedTest()
+      : hive_override_key_name_(kRegistryHiveOverrideRoot) {
+  }
+
+  CString hive_override_key_name_;
+
+  virtual void SetUp() {
+    RegKey::DeleteKey(hive_override_key_name_, true);
+    OverrideRegistryHives(hive_override_key_name_);
+  }
+
+  virtual void TearDown() {
+    RestoreRegistryHives();
+    ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
+  }
+
+  static CString GetAppClientStateKey() {
+    return AppendRegKeyPath(
+        ConfigManager::Instance()->registry_client_state(true),
+        kExperimentLabelTestAppId);
+  }
+
+  static CString GetAppClientStateMediumKey() {
+    return AppendRegKeyPath(
+        ConfigManager::Instance()->machine_registry_client_state_medium(),
+        kExperimentLabelTestAppId);
+  }
+
+  void SetClientState(const CString& str) {
+    ASSERT_TRUE(ExperimentLabels::IsStringValidLabelSet(str));
+    ASSERT_SUCCEEDED(RegKey::SetValue(GetAppClientStateKey(),
+                                      kRegValueExperimentLabels,
+                                      str));
+  }
+
+  void SetClientStateMedium(const CString& str) {
+    ASSERT_TRUE(ExperimentLabels::IsStringValidLabelSet(str));
+    ASSERT_SUCCEEDED(RegKey::SetValue(GetAppClientStateMediumKey(),
+                                      kRegValueExperimentLabels,
+                                      str));
+  }
+
+  void ReadClientState(CString* str_out) {
+    CString labels;
+    ASSERT_SUCCEEDED(RegKey::GetValue(GetAppClientStateKey(),
+                                      kRegValueExperimentLabels,
+                                      str_out));
+
+    ASSERT_TRUE(ExperimentLabels::IsStringValidLabelSet(*str_out));
+  }
+
+  void ClearClientState() {
+    RegKey::DeleteValue(GetAppClientStateKey(), kRegValueExperimentLabels);
+    RegKey::DeleteValue(GetAppClientStateMediumKey(),
+                        kRegValueExperimentLabels);
+  }
+};
+
+TEST_F(ExperimentLabelsRegistryProtectedTest, ClientStateOnly) {
+  ClearClientState();
+  SetClientState(kClientStateTestLabels);
+
+  ExperimentLabels el;
+  el.ReadFromRegistry(true, kExperimentLabelTestAppId);
+
+  EXPECT_EQ(3, el.NumLabels());
+  EXPECT_TRUE(el.ContainsKey(_T("cs_unique")));
+  EXPECT_FALSE(el.ContainsKey(_T("csm_unique")));
+  EXPECT_TRUE(el.ContainsKey(_T("common")));
+  EXPECT_TRUE(el.ContainsKey(_T("cs_new_delete")));
+  EXPECT_FALSE(el.ContainsKey(_T("cs_old_keep")));
+
+  CString common_value;
+  ASSERT_TRUE(el.FindLabelByKey(_T("common"), &common_value, NULL));
+  EXPECT_STREQ(_T("cs"), common_value);
+}
+
+TEST_F(ExperimentLabelsRegistryProtectedTest, ClientStateMediumOnly) {
+  ClearClientState();
+  SetClientStateMedium(kClientStateMediumTestLabels);
+
+  ExperimentLabels el;
+  el.ReadFromRegistry(true, kExperimentLabelTestAppId);
+
+  EXPECT_EQ(3, el.NumLabels());
+  EXPECT_FALSE(el.ContainsKey(_T("cs_unique")));
+  EXPECT_TRUE(el.ContainsKey(_T("csm_unique")));
+  EXPECT_TRUE(el.ContainsKey(_T("common")));
+  EXPECT_FALSE(el.ContainsKey(_T("cs_new_delete")));
+  EXPECT_TRUE(el.ContainsKey(_T("cs_old_keep")));
+
+  CString common_value;
+  ASSERT_TRUE(el.FindLabelByKey(_T("common"), &common_value, NULL));
+  EXPECT_STREQ(_T("csm"), common_value);
+}
+
+TEST_F(ExperimentLabelsRegistryProtectedTest, Merge) {
+  ClearClientState();
+  SetClientState(kClientStateTestLabels);
+  SetClientStateMedium(kClientStateMediumTestLabels);
+
+  ExperimentLabels el;
+  el.ReadFromRegistry(true, kExperimentLabelTestAppId);
+
+  EXPECT_EQ(4, el.NumLabels());
+  EXPECT_TRUE(el.ContainsKey(_T("cs_unique")));
+  EXPECT_TRUE(el.ContainsKey(_T("csm_unique")));
+  EXPECT_TRUE(el.ContainsKey(_T("common")));
+  EXPECT_FALSE(el.ContainsKey(_T("cs_new_delete")));
+  EXPECT_TRUE(el.ContainsKey(_T("cs_old_keep")));
+
+  CString common_value;
+  ASSERT_TRUE(el.FindLabelByKey(_T("common"), &common_value, NULL));
+  EXPECT_STREQ(_T("csm"), common_value);
+
+  ClearClientState();
+  el.WriteToRegistry(true, kExperimentLabelTestAppId);
+  CString merged_str;
+  ReadClientState(&merged_str);
+  EXPECT_STREQ(kExpectedMergedResult, merged_str);
 }
 
 }  // namespace omaha

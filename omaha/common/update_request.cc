@@ -14,9 +14,14 @@
 // ========================================================================
 
 #include "omaha/common/update_request.h"
+
+#include <cmath>
+
+#include "base/cpu.h"
 #include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/omaha_version.h"
+#include "omaha/base/system.h"
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
@@ -38,6 +43,8 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
                                      const CString& session_id,
                                      const CString& install_source,
                                      const CString& origin_url) {
+  const ConfigManager* cm = ConfigManager::Instance();
+
   scoped_ptr<UpdateRequest> update_request(new UpdateRequest);
 
   request::Request& request = update_request->request_;
@@ -48,9 +55,10 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
   request.uid = goopdate_utils::GetUserIdLazyInit(is_machine);
 
   request.omaha_version = GetVersionString();
+  request.omaha_shell_version = GetShellVersionString();
   request.install_source = install_source;
   request.origin_url = origin_url;
-  request.test_source = ConfigManager::Instance()->GetTestSource();
+  request.test_source = cm->GetTestSource();
 
   GUID req_id = GUID_NULL;
   VERIFY1(SUCCEEDED(::CoCreateGuid(&req_id)));
@@ -58,18 +66,49 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
 
   request.session_id = session_id;
 
+  bool is_period_overridden = false;
+  const int check_period_sec = cm->GetLastCheckPeriodSec(&is_period_overridden);
+  if (is_period_overridden) {
+    request.check_period_sec = check_period_sec;
+  }
+
+  request.dlpref = cm->GetDownloadPreferenceGroupPolicy();
+
+  // Hardware platform attributes.
+  //
+  // The amount of memory available to the operating system can be less than
+  // the amount of memory physically installed in the computer. The difference
+  // is relatively small and this value is a good approximation of what the
+  // computer BIOS has reported.
+  uint64 physmemory(0);
+  if (SUCCEEDED(System::GetGlobalMemoryStatistics(NULL,
+                                                  NULL,
+                                                  &physmemory,
+                                                  NULL,
+                                                  NULL,
+                                                  NULL,
+                                                  NULL))) {
+    // Converts the amount of physical memory to the nearest GB.
+    const size_t kOneGigaByte = 1024 * 1024 * 1024;
+    request.hw.physmemory = static_cast<uint32>(std::floor(
+        0.5 + static_cast<double>(physmemory) / kOneGigaByte));
+  }
+
+  const CPU cpu;
+  request.hw.has_sse   = cpu.has_sse();
+  request.hw.has_sse2  = cpu.has_sse2();
+  request.hw.has_sse3  = cpu.has_sse3();
+  request.hw.has_ssse3 = cpu.has_ssse3();
+  request.hw.has_sse41 = cpu.has_sse41();
+  request.hw.has_sse42 = cpu.has_sse42();
+  request.hw.has_avx   = cpu.has_avx();
+
+  // Software platform attributes.
   request.os.platform = kPlatformWin;
   VERIFY1(SUCCEEDED(goopdate_utils::GetOSInfo(&request.os.version,
                                               &request.os.service_pack)));
   request.os.arch = xml::ConvertProcessorArchitectureToString(
       SystemInfo::GetProcessorArchitecture());
-
-  bool is_period_overridden = false;
-  const int check_period_sec =
-      ConfigManager::Instance()->GetLastCheckPeriodSec(&is_period_overridden);
-  if (is_period_overridden) {
-    request.check_period_sec = check_period_sec;
-  }
 
   return update_request.release();
 }

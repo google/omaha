@@ -19,6 +19,8 @@
 #include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/browser_utils.h"
+#include "omaha/base/reg_key.h"
+#include "omaha/common/const_group_policy.h"
 #include "omaha/net/detector.h"
 #include "omaha/net/network_config.h"
 #include "omaha/testing/unit_test.h"
@@ -320,6 +322,155 @@ TEST_F(FirefoxProxyDetectorTest, Detect) {
   }
   ProxyConfig config;
   EXPECT_SUCCEEDED(detector_->Detect(&config));
+}
+
+class GroupPolicyProxyDetectorTest : public testing::TestWithParam<bool>  {
+ protected:
+  GroupPolicyProxyDetectorTest()
+      : hive_override_key_name_(kRegistryHiveOverrideRoot) {
+  }
+
+  virtual void SetUp() {
+    RegKey::DeleteKey(hive_override_key_name_, true);
+    OverrideRegistryHives(hive_override_key_name_);
+
+    EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                      kRegValueIsEnrolledToDomain,
+                                      IsDomain() ? 1UL : 0UL));
+
+    detector_.reset(new GroupPolicyProxyDetector);
+  }
+
+  virtual void TearDown() {
+    EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                         kRegValueIsEnrolledToDomain));
+
+    RestoreRegistryHives();
+    EXPECT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
+  }
+
+  bool IsDomain() {
+    return GetParam();
+  }
+
+  CString hive_override_key_name_;
+  scoped_ptr<GroupPolicyProxyDetector> detector_;
+
+ private:
+  DISALLOW_EVIL_CONSTRUCTORS(GroupPolicyProxyDetectorTest);
+};
+
+const TCHAR kGpoSourceString[] = _T("GroupPolicy");
+
+INSTANTIATE_TEST_CASE_P(IsDomain,
+                        GroupPolicyProxyDetectorTest,
+                        ::testing::Bool());
+
+TEST_P(GroupPolicyProxyDetectorTest, NoPolicy) {
+  ProxyConfig config;
+  EXPECT_FAILED(detector_->Detect(&config));
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, InvalidPolicyString) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    _T("this_is_never_a_real_policy")));
+
+  ProxyConfig config;
+  EXPECT_FAILED(detector_->Detect(&config));
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, PolicyDirect) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    kProxyModeDirect));
+
+  ProxyConfig config;
+  EXPECT_EQ(IsDomain() ? S_OK : E_FAIL, detector_->Detect(&config));
+  EXPECT_STREQ(IsDomain() ? kGpoSourceString : _T(""), config.source);
+  EXPECT_FALSE(config.auto_detect);
+  EXPECT_TRUE(config.auto_config_url.IsEmpty());
+  EXPECT_TRUE(config.proxy.IsEmpty());
+  EXPECT_TRUE(config.proxy_bypass.IsEmpty());
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, PolicyAutoDetect) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    kProxyModeAutoDetect));
+
+  ProxyConfig config;
+  EXPECT_EQ(IsDomain() ? S_OK : E_FAIL, detector_->Detect(&config));
+  EXPECT_STREQ(IsDomain() ? kGpoSourceString : _T(""), config.source);
+  EXPECT_EQ(IsDomain(), config.auto_detect);
+  EXPECT_TRUE(config.auto_config_url.IsEmpty());
+  EXPECT_TRUE(config.proxy.IsEmpty());
+  EXPECT_TRUE(config.proxy_bypass.IsEmpty());
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, PolicyPacUrlNoData) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    kProxyModePacScript));
+
+  ProxyConfig config;
+  EXPECT_FAILED(detector_->Detect(&config));
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, PolicyPacUrlHasData) {
+  const TCHAR* const kUnitTestPacUrl = _T("http://unittest/testurl.pac");
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    kProxyModePacScript));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyPacUrl,
+                                    kUnitTestPacUrl));
+
+  ProxyConfig config;
+  EXPECT_EQ(IsDomain() ? S_OK : E_FAIL, detector_->Detect(&config));
+  EXPECT_STREQ(IsDomain() ? kGpoSourceString : _T(""), config.source);
+  EXPECT_FALSE(config.auto_detect);
+  EXPECT_STREQ(IsDomain() ? kUnitTestPacUrl : _T(""), config.auto_config_url);
+  EXPECT_TRUE(config.proxy.IsEmpty());
+  EXPECT_TRUE(config.proxy_bypass.IsEmpty());
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, PolicyFixedNoData) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    kProxyModeFixedServers));
+
+  ProxyConfig config;
+  EXPECT_FAILED(detector_->Detect(&config));
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, PolicyFixedHasData) {
+  const TCHAR* const kUnitTestFixedServer = _T("unitTEST_Pixedserver:8080");
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    kProxyModeFixedServers));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyServer,
+                                    kUnitTestFixedServer));
+
+  ProxyConfig config;
+  EXPECT_EQ(IsDomain() ? S_OK : E_FAIL, detector_->Detect(&config));
+  EXPECT_STREQ(IsDomain() ? kGpoSourceString : _T(""), config.source);
+  EXPECT_FALSE(config.auto_detect);
+  EXPECT_TRUE(config.auto_config_url.IsEmpty());
+  EXPECT_STREQ(IsDomain() ? kUnitTestFixedServer : _T(""), config.proxy);
+  EXPECT_TRUE(config.proxy_bypass.IsEmpty());
+}
+
+TEST_P(GroupPolicyProxyDetectorTest, PolicySystem) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                    kRegValueProxyMode,
+                                    kProxyModeSystem));
+
+  ProxyConfig config;
+  EXPECT_FAILED(detector_->Detect(&config));
 }
 
 }  // namespace omaha

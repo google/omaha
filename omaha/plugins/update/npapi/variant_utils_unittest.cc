@@ -137,6 +137,10 @@ TEST_F(VariantUtilsTest, NPVariantToVariant_Double) {
 }
 
 TEST_F(VariantUtilsTest, NPVariantToVariant_String) {
+  #pragma warning(push)
+  // conversion from 'size_t' to 'uint32_t', possible loss of data.
+  #pragma warning(disable : 4267)
+
   // TODO(omaha): _strdup depends on an implementation detail of the stubs.
   STRINGZ_TO_NPVARIANT(_strdup(""), np_variant_);
   TestNPV2V();
@@ -157,6 +161,8 @@ TEST_F(VariantUtilsTest, NPVariantToVariant_String) {
   STRINGZ_TO_NPVARIANT(_strdup("one: \xe4\xb8\x80"), np_variant_);
   TestNPV2V();
   EXPECT_STREQ(L"one: \x4e00", V_BSTR(&variant_));
+
+  #pragma warning(pop)
 }
 /*
 TEST_F(VariantUtilsTest, NPVariantToVariant_Unsupported) {

@@ -319,7 +319,7 @@ HRESULT Setup::HandleLockFailed(int lock_version) {
                    kOmahaShellFileName, current_cmd_line));
     return GOOPDATE_E_FAILED_TO_GET_LOCK;
   }
-  int args_start = exe_index + _tcslen(kOmahaShellFileName);
+  int args_start = exe_index + static_cast<int>(_tcslen(kOmahaShellFileName));
   // Support enclosed paths; increment past closing double quote.
   if (_T('"') == current_cmd_line.GetAt(args_start)) {
     ++args_start;
@@ -584,7 +584,7 @@ HRESULT Setup::SetupGoogleUpdate() {
 
   HighresTimer phase2_metrics_timer;
 
-  omaha::SetupGoogleUpdate setup_google_update(is_machine_);
+  omaha::SetupGoogleUpdate setup_google_update(is_machine_, is_self_update_);
 
   HRESULT hr = setup_google_update.FinishInstall();
   if (FAILED(hr)) {
@@ -681,7 +681,7 @@ HRESULT Setup::DoProtectedUninstall(bool send_uninstall_ping) {
   // during the uninstall.
   WriteGoogleUpdateUninstallEvent(is_machine_);
 
-  omaha::SetupGoogleUpdate setup_google_update(is_machine_);
+  omaha::SetupGoogleUpdate setup_google_update(is_machine_, is_self_update_);
   setup_google_update.Uninstall();
 
   SetupFiles setup_files(is_machine_);
@@ -726,7 +726,6 @@ void Setup::CheckInstallStateConsistency(bool is_machine) {
   } else {
     ASSERT1(update_key.HasSubkey(_T("Clients")));
     ASSERT1(update_key.HasSubkey(_T("ClientState")));
-    ASSERT1(update_key.HasSubkey(_T("network")));
     ASSERT1(update_key.HasValue(kRegValueInstalledVersion));
     ASSERT1(update_key.HasValue(kRegValueInstalledPath));
 
@@ -848,10 +847,7 @@ HRESULT Setup::WaitForOtherInstancesToExit(const Pids& pids) {
     HighresTimer metrics_timer;
     const int wait_ms = is_self_update_ ? kSetupUpdateShutdownWaitMs :
                                           kSetupInstallShutdownWaitMs;
-    DWORD res = ::WaitForMultipleObjects(handles.size(),
-                                         &handles.front(),
-                                         true,  // wait for all
-                                         wait_ms);
+    DWORD res = WaitForAllObjects(handles.size(), &handles.front(), wait_ms);
     metric_setup_process_wait_ms.AddSample(metrics_timer.GetElapsedMs());
 
     SETUP_LOG(L2, (_T("[::WaitForMultipleObjects returned]")));
@@ -904,8 +900,9 @@ HRESULT Setup::WaitForOtherInstancesToExit(const Pids& pids) {
     }
 
     const int kTerminateWaitMs = 500;
-    DWORD res = ::WaitForMultipleObjects(handles.size(), &handles.front(),
-                                         true, kTerminateWaitMs);
+    DWORD res = WaitForAllObjects(handles.size(),
+                                  &handles.front(),
+                                  kTerminateWaitMs);
     if (res != WAIT_OBJECT_0) {
       const DWORD error = ::GetLastError();
       SETUP_LOG(LW, (_T("[Wait failed][%u][%u]"), res, error));
@@ -968,6 +965,7 @@ HRESULT Setup::GetPidsToWaitForUsingCommandLine(Pids* pids) const {
   switch_to_exclude.Format(_T("/%s"), kCmdLineInstall);
   command_lines.push_back(switch_to_exclude);
   switch_to_exclude.Format(_T("/%s"), kCmdLineRegisterProduct);
+  command_lines.push_back(switch_to_exclude);
 
   CString user_sid;
   DWORD flags = EXCLUDE_CURRENT_PROCESS |
@@ -996,6 +994,35 @@ HRESULT Setup::GetPidsToWaitForUsingCommandLine(Pids* pids) const {
     return hr;
   }
 
+  // Also finds all crash handler processes.
+  std::vector<uint32> crash_handler_process_ids;
+  const TCHAR* kCrashHandlerFileNames[] = {
+    kCrashHandlerFileName,
+    kCrashHandler64FileName,
+  };
+  for (size_t i = 0; i < arraysize(kCrashHandlerFileNames); ++i) {
+    std::vector<uint32> matching_pids;
+    HRESULT hr = Process::FindProcesses(0,
+                                        kCrashHandlerFileNames[i],
+                                        true,
+                                        user_sid,
+                                        std::vector<CString>(),
+                                        &matching_pids);
+    if (SUCCEEDED(hr)) {
+      crash_handler_process_ids.insert(crash_handler_process_ids.end(),
+                                       matching_pids.begin(),
+                                       matching_pids.end());
+    }
+  }
+
+  std::vector<uint32> candidate_process_ids;
+  candidate_process_ids.insert(candidate_process_ids.end(),
+                               google_update_process_ids.begin(),
+                               google_update_process_ids.end());
+  candidate_process_ids.insert(candidate_process_ids.end(),
+                               crash_handler_process_ids.begin(),
+                               crash_handler_process_ids.end());
+
   const ConfigManager* cm = ConfigManager::Instance();
   CString official_path(is_machine_ ?
                         cm->GetMachineGoopdateInstallDirNoCreate() :
@@ -1004,9 +1031,9 @@ HRESULT Setup::GetPidsToWaitForUsingCommandLine(Pids* pids) const {
 
   // Only include processes running under the official path.
   Pids pids_to_wait_for;
-  for (size_t i = 0; i < google_update_process_ids.size(); ++i) {
+  for (size_t i = 0; i < candidate_process_ids.size(); ++i) {
     CString cmd_line;
-    const uint32 process_id = google_update_process_ids[i];
+    const uint32 process_id = candidate_process_ids[i];
     if (SUCCEEDED(Process::GetCommandLine(process_id, &cmd_line))) {
       cmd_line.MakeLower();
 
@@ -1167,13 +1194,17 @@ HRESULT Setup::TerminateCoreProcesses() const {
   if (terminated_processes.empty()) {
     return S_OK;
   }
+
   // Do not return until the handles have been closed.
 
+  ASSERT1(terminated_processes.size() <= MAXIMUM_WAIT_OBJECTS);
+
   const int kCoreTerminateWaitMs = 500;
-  DWORD res = ::WaitForMultipleObjects(terminated_processes.size(),
-                                       &terminated_processes.front(),
-                                       true,  // wait for all
-                                       kCoreTerminateWaitMs);
+  DWORD res = ::WaitForMultipleObjects(
+      static_cast<DWORD>(terminated_processes.size()),
+      &terminated_processes.front(),
+      true,  // wait for all
+      kCoreTerminateWaitMs);
   SETUP_LOG(L2, (_T("[::WaitForMultipleObjects returned]")));
   ASSERT1(WAIT_OBJECT_0 == res || WAIT_TIMEOUT == res);
   if (WAIT_FAILED == res) {
@@ -1270,7 +1301,7 @@ bool Setup::CanUninstallGoogleUpdate() const {
     // suspended in mid-install, they still have a grace period until
     // the next /ua to get something installed.)
     CORE_LOG(L3, (_T("[DelayUninstall is set. Not uninstalling.]")));
-    if (ConfigManager::Instance()->Is24HoursSinceInstall(is_machine_)) {
+    if (ConfigManager::Instance()->Is24HoursSinceLastUpdate(is_machine_)) {
       CORE_LOG(L4, (_T("[24 hours elapsed; clearing DelayUninstall.]")));
       SetDelayUninstall(false);
     }

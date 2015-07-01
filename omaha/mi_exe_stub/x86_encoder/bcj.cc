@@ -23,7 +23,7 @@
 #include "third_party/smartany/scoped_any.h"
 
 extern "C" {
-#include "third_party/lzma/v4_65/files/C/Bra.h"
+#include "third_party/lzma/files/C/Bra.h"
 }
 
 int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
@@ -57,12 +57,9 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   x86_Convert_Init(conversion_state);
   // processed might be less than bytes read. This is apparently OK, although
   // I don't understand why!
-  uint32 processed = x86_Convert(buffer.get(),
-                                 bytes_read,
-                                 0,
-                                 &conversion_state,
-                                 1 /* encoding */);
-
+  const int encoding = 1;
+  uint32 processed = static_cast<uint32>(
+      x86_Convert(buffer.get(), bytes_read, 0, &conversion_state, encoding));
   reset(file, ::CreateFile(argv[2], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0,
                            NULL));
   if (!valid(file)) {

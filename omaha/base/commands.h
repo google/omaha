@@ -79,7 +79,7 @@ class CommandParsingSimple {
 
   // Static Helper function that returns the number of arguments
   // in the passed in cmd_line
-  static HRESULT GetNumberOfArgs(const TCHAR* cmd_line, uint32* number_of_args);
+  static HRESULT GetNumberOfArgs(const TCHAR* cmd_line, size_t* number_of_args);
 
   // Converted to a string
   HRESULT ToString(CString* cmd_line);

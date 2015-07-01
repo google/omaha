@@ -52,9 +52,9 @@ TEST_F(StringFormatterTest, LoadStringTest) {
 
   StringFormatter formatter_de(_T("de"));
   EXPECT_HRESULT_SUCCEEDED(
-      formatter_de.LoadString(IDS_DOWNLOADING, &loaded_string));
+      formatter_de.LoadString(IDS_DEFAULT_APP_DISPLAY_NAME, &loaded_string));
   // The loaded string should keep the raw format ('%1!s!') untouched.
-  EXPECT_STREQ(_T("%1!s! wird heruntergeladen..."), loaded_string);
+  EXPECT_STREQ(_T("%1!s!-Anwendung"), loaded_string);
 
   // Test that loading non-existing language resource returns error.
   {
@@ -85,20 +85,17 @@ TEST_F(StringFormatterTest, FormatMessageTest) {
   EXPECT_STREQ(_T("Fermer"), format_result);
 
   // Test FormatMessage with additional argument(s).
-  EXPECT_HRESULT_SUCCEEDED(formatter_en.FormatMessage(&format_result,
-                                                      IDS_DOWNLOADING,
-                                                      _T("English")));
-  EXPECT_STREQ(_T("Downloading English..."), format_result);
+  EXPECT_HRESULT_SUCCEEDED(formatter_en.FormatMessage(
+      &format_result, IDS_DEFAULT_APP_DISPLAY_NAME, _T("English")));
+  EXPECT_STREQ(_T("English Application"), format_result);
 
-  EXPECT_HRESULT_SUCCEEDED(formatter_de.FormatMessage(&format_result,
-                                                      IDS_DOWNLOADING,
-                                                      _T("German")));
-  EXPECT_STREQ(_T("German wird heruntergeladen..."), format_result);
+  EXPECT_HRESULT_SUCCEEDED(formatter_de.FormatMessage(
+      &format_result, IDS_DEFAULT_APP_DISPLAY_NAME, _T("German")));
+  EXPECT_STREQ(_T("German-Anwendung"), format_result);
 
-  EXPECT_HRESULT_SUCCEEDED(formatter_fr.FormatMessage(&format_result,
-                                                      IDS_DOWNLOADING,
-                                                      _T("French")));
-  EXPECT_STREQ(_T("Téléchargement de French..."), format_result);   // NOLINT
+  EXPECT_HRESULT_SUCCEEDED(formatter_fr.FormatMessage(
+      &format_result, IDS_DEFAULT_APP_DISPLAY_NAME, _T("French")));
+  EXPECT_STREQ(_T("Application French"), format_result);   // NOLINT
 }
 
 }  // namespace omaha

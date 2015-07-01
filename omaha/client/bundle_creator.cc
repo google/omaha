@@ -15,17 +15,23 @@
 
 #include "omaha/client/bundle_creator.h"
 #include <atlsafe.h>
+#include <algorithm>
+#include <vector>
+#include "omaha/base/cgi.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/client/client_utils.h"
+#include "omaha/common/app_registry_utils.h"
 #include "omaha/common/command_line.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
+#include "omaha/common/experiment_labels.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/lang.h"
 #include "omaha/common/update3_utils.h"
@@ -37,11 +43,86 @@ namespace bundle_creator {
 
 namespace internal {
 
+HRESULT MergeAndSetExperimentLabels(const CString& new_labels, IApp* app) {
+  if (new_labels.IsEmpty()) {
+    return S_FALSE;
+  }
+
+  // Is this incoming label set valid?
+  if (!ExperimentLabels::IsStringValidLabelSet(new_labels)) {
+    OPT_LOG(LE, (_T("[New experiment labels are unparsable][%s]"), new_labels));
+    return E_INVALIDARG;
+  }
+
+  // Do we have any existing experiment labels for this app id in the Registry?
+  CComBSTR old_labels;
+  HRESULT hr = app->get_labels(&old_labels);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[get_labels() failed][0x%x]"), hr));
+    return hr;
+  }
+
+  // Attempt to merge them.  If it fails, overwrite with the new ones, since we
+  // know from the above check that they're valid.
+  CString merged_labels;
+  if (!ExperimentLabels::MergeLabelSets(CString(old_labels),
+                                        new_labels,
+                                        &merged_labels)) {
+    CORE_LOG(LE, (_T("[MergeLabelSets() failed; using new labels only]")));
+    merged_labels = new_labels;
+  }
+
+  // Write the merged (or new, if the merge failed) labels into the Registry.
+  hr = app->put_labels(CComBSTR(merged_labels));
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[put_labels() failed][%s][0x%x]"), merged_labels, hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+bool IsNotPrintable(TCHAR c) {
+  return c < 32 || c >= 127;
+}
+
+HRESULT UnescapeAndStoreUntrustedData(const CString& untrusted_data_escaped,
+                                      IApp2* app) {
+  int escaped_len = untrusted_data_escaped.GetLength();
+  ASSERT1(escaped_len > 0);
+
+  // Example: Converts from
+  //   key1%3dvalue1%26key2%3dhas%2520space
+  // to
+  //   key=value1&key2=has%20space
+  // Decoded untrusted data string consists of key-value pairs in URL encoding.
+  std::vector<TCHAR> buf(escaped_len + 2, _T('\0'));  // Added sentinel '\0'.
+  CGI::UnescapeString(static_cast<const TCHAR*>(untrusted_data_escaped),
+                      escaped_len,
+                      &buf.front(),
+                      escaped_len + 1);  // Includes terminating '\0'.
+  // Note: A string containing "%00" would terminate early. We let this go.
+  size_t size = _tcslen(&buf.front());
+  if (size > kUntrustedDataMaxLength) {
+    CORE_LOG(LE, (_T("[Untrusted data too long]")));
+    return GOOPDATE_E_INVALID_INSTALLER_DATA_IN_APPARGS;
+  }
+
+  if (std::find_if(buf.begin(), buf.begin() + size, IsNotPrintable)
+        != buf.begin() + size) {  // Excluding terminating '\0'.
+    CORE_LOG(LE, (_T("[Untrusted data have invalid characters]")));
+    return GOOPDATE_E_INVALID_INSTALLER_DATA_IN_APPARGS;
+  }
+
+  return app->put_untrustedData(CComBSTR(CString(&buf.front())));
+}
+
 // display_language and install_source can be empty.
 HRESULT SetBundleProperties(const CString& display_language,
                             const CString& display_name,
                             const CString& install_source,
                             const CString& session_id,
+                            bool send_pings,
                             IAppBundle* app_bundle) {
   ASSERT1(!display_name.IsEmpty());
   ASSERT1(app_bundle);
@@ -58,6 +139,11 @@ HRESULT SetBundleProperties(const CString& display_language,
   }
 
   hr = app_bundle->put_sessionId(CComBSTR(session_id));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = app_bundle->put_sendPings(send_pings ? VARIANT_TRUE : VARIANT_FALSE);
   if (FAILED(hr)) {
     return hr;
   }
@@ -184,7 +270,20 @@ HRESULT PopulateAppSpecificData(const CommandLineAppArgs& app_args,
   }
 
   if (!app_args.experiment_labels.IsEmpty()) {
-    hr = app->put_labels(CComBSTR(app_args.experiment_labels));
+    hr = MergeAndSetExperimentLabels(app_args.experiment_labels, app);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (!app_args.untrusted_data.IsEmpty()) {
+    CComQIPtr<IApp2> app_2(app);
+    if (!app_2) {
+      CORE_LOG(LE, (_T("[IApp could not be cast to IApp2]")));
+      return E_NOINTERFACE;
+    }
+
+    hr = UnescapeAndStoreUntrustedData(app_args.untrusted_data, app_2);
     if (FAILED(hr)) {
       return hr;
     }
@@ -253,6 +352,7 @@ HRESULT Create(bool is_machine,
                const CString& install_source,
                const CString& session_id,
                bool is_interactive,
+               bool send_pings,
                IAppBundle** app_bundle) {
   CORE_LOG(L2, (_T("[bundle_creator::Create]")));
   ASSERT1(app_bundle);
@@ -275,6 +375,7 @@ HRESULT Create(bool is_machine,
                                      client_utils::GetUpdateAllAppsBundleName(),
                                      install_source,
                                      session_id,
+                                     send_pings,
                                      app_bundle_ptr);
   if (FAILED(hr)) {
     return hr;
@@ -304,14 +405,16 @@ HRESULT Create(bool is_machine,
 HRESULT CreateFromCommandLine(bool is_machine,
                               bool is_eula_accepted,
                               bool is_offline,
-                              const CString& offline_directory,
+                              const CString& offline_dir_name,
                               const CommandLineExtraArgs& extra_args,
                               const CString& install_source,
                               const CString& session_id,
                               bool is_interactive,
+                              bool send_pings,
                               IAppBundle** app_bundle) {
   CORE_LOG(L2, (_T("[bundle_creator::CreateFromCommandLine]")));
   ASSERT1(app_bundle);
+  UNREFERENCED_PARAMETER(is_interactive);
 
   CComPtr<IGoogleUpdate3> server;
   HRESULT hr = update3_utils::CreateGoogleUpdate3Class(is_machine, &server);
@@ -331,19 +434,18 @@ HRESULT CreateFromCommandLine(bool is_machine,
                                      extra_args.bundle_name,
                                      install_source,
                                      session_id,
+                                     send_pings,
                                      app_bundle_ptr);
   if (FAILED(hr)) {
     return hr;
   }
 
   if (is_offline) {
-    CString offline_dir(offline_directory);
-    if (offline_dir.IsEmpty()) {
-      // For Omaha2 compatibility.
-      offline_dir = is_machine ?
-          ConfigManager::Instance()->GetMachineSecureOfflineStorageDir() :
-          ConfigManager::Instance()->GetUserOfflineStorageDir();
-    }
+    CString parent_offline_dir(
+        is_machine ?
+        ConfigManager::Instance()->GetMachineSecureOfflineStorageDir() :
+        ConfigManager::Instance()->GetUserOfflineStorageDir());
+    CString offline_dir(ConcatenatePath(parent_offline_dir, offline_dir_name));
 
     hr = app_bundle_ptr->put_offlineDirectory(CComBSTR(offline_dir));
     if (FAILED(hr)) {
@@ -356,9 +458,11 @@ HRESULT CreateFromCommandLine(bool is_machine,
     return hr;
   }
 
-  hr = app_bundle_ptr->put_priority(is_interactive ?
-                                        INSTALL_PRIORITY_HIGH :
-                                        INSTALL_PRIORITY_LOW);
+  // CreateFromCommandLine is the primary install use-case and always runs at
+  // high priority. Even if the install is silent. Most install use-cases
+  // require the install to complete quickly. For instance, Avast launching the
+  // Omaha metainstaller with /silent while showing their own UI.
+  hr = app_bundle_ptr->put_priority(INSTALL_PRIORITY_HIGH);
   if (FAILED(hr)) {
     return hr;
   }
@@ -443,11 +547,19 @@ HRESULT CreateForOnDemand(bool is_machine,
     }
   }
 
-  hr = internal::SetBundleProperties(CString(),
-                                     _T("On Demand Bundle"),
-                                     install_source,
-                                     session_id,
-                                     app_bundle_ptr);
+  CString lang;
+  CString name;
+  app_registry_utils::GetAppLang(is_machine, app_id, &lang);
+  app_registry_utils::GetAppName(is_machine, app_id, &name);
+  const bool send_pings = true;
+
+  hr = internal::SetBundleProperties(
+      lang,
+      name.IsEmpty() ? _T("On Demand Bundle") : name,
+      install_source,
+      session_id,
+      send_pings,
+      app_bundle_ptr);
   if (FAILED(hr)) {
     return hr;
   }

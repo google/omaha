@@ -13,10 +13,6 @@
 // limitations under the License.
 // ========================================================================
 
-// Since the net code is linked in as a lib, force the registration code to
-// be a dependency, otherwise the linker is optimizing in out.
-#pragma comment(linker, "/INCLUDE:_kRegisterWinHttp")
-
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
@@ -145,11 +141,12 @@ void HttpClientTest::GetUrl(const TCHAR* url, bool use_proxy) {
     std::vector<uint8> buf(size + 1);
     ASSERT_SUCCEEDED(http_client_->ReadData(request_handle,
                                             &buf.front(),
-                                            buf.size(),
+                                            static_cast<DWORD>(buf.size()),
                                             &size));
     buf.resize(size);
     if (size) {
-      response += CString(reinterpret_cast<char*>(&buf.front()), buf.size());
+      response += CString(
+          reinterpret_cast<char*>(&buf.front()), static_cast<int>(buf.size()));
     }
   } while (size > 0);
 
@@ -239,6 +236,58 @@ TEST_F(HttpClientTest, CrackUrl) {
                                           &query));
   ASSERT_STREQ(path, _T(""));
   ASSERT_STREQ(query, _T(""));
+}
+
+TEST_F(HttpClientTest, QuerySetOption) {
+  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+  EXPECT_HRESULT_SUCCEEDED(http_client->Initialize());
+
+  HINTERNET session_handle = NULL;
+  EXPECT_HRESULT_SUCCEEDED(http_client->Open(NULL,
+                                             WINHTTP_ACCESS_TYPE_NO_PROXY,
+                                             WINHTTP_NO_PROXY_NAME,
+                                             WINHTTP_NO_PROXY_BYPASS,
+                                             WINHTTP_FLAG_ASYNC,
+                                             &session_handle));
+  EXPECT_NE(static_cast<HINTERNET>(NULL), session_handle);
+
+  EXPECT_HRESULT_SUCCEEDED(
+      http_client->SetOptionString(session_handle,
+                                   WINHTTP_OPTION_USER_AGENT,
+                                   _T("some useragent")));
+  CString actual_username;
+  EXPECT_HRESULT_SUCCEEDED(
+      http_client->QueryOptionString(session_handle,
+                                     WINHTTP_OPTION_USER_AGENT,
+                                     &actual_username));
+  EXPECT_STREQ(_T("some useragent"), actual_username);
+
+  EXPECT_HRESULT_SUCCEEDED(
+      http_client->SetOptionInt(session_handle,
+                                WINHTTP_OPTION_CONNECT_RETRIES,
+                                11));
+  int actual_connect_retries(0);
+  EXPECT_HRESULT_SUCCEEDED(
+      http_client->QueryOptionInt(session_handle,
+                                  WINHTTP_OPTION_CONNECT_RETRIES,
+                                  &actual_connect_retries));
+  EXPECT_EQ(11, actual_connect_retries);
+
+  // Use address of a variable as the context value.
+  DWORD i(0);
+  DWORD_PTR expected_context_value = reinterpret_cast<DWORD_PTR>(&i);
+  EXPECT_HRESULT_SUCCEEDED(
+      http_client->SetOptionPtr(session_handle,
+                                WINHTTP_OPTION_CONTEXT_VALUE,
+                                expected_context_value));
+  DWORD_PTR actual_context_value(0);
+  EXPECT_HRESULT_SUCCEEDED(
+      http_client->QueryOptionPtr(session_handle,
+                                  WINHTTP_OPTION_CONTEXT_VALUE,
+                                  &actual_context_value));
+  EXPECT_EQ(expected_context_value, actual_context_value);
+
+  EXPECT_HRESULT_SUCCEEDED(http_client->Close(session_handle));
 }
 
 }  // namespace omaha

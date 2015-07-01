@@ -38,6 +38,7 @@
 namespace omaha {
 
 class BitsJobCallback;
+struct DownloadMetrics;
 
 class BitsRequest : public HttpRequestInterface {
  public:
@@ -77,7 +78,10 @@ class BitsRequest : public HttpRequestInterface {
     session_handle_ = session_handle;
   }
 
-  virtual void set_url(const CString& url) { url_ = url; }
+  virtual void set_url(const CString& url) {
+    original_url_ = url;
+    url_ = url;
+  }
 
   virtual void set_request_buffer(const void* buffer, size_t buffer_length) {
     request_buffer_ = buffer;
@@ -103,12 +107,6 @@ class BitsRequest : public HttpRequestInterface {
     additional_headers_ = additional_headers;
   }
 
-  // This request always uses the specified protocol so it is fine to ignore
-  // this attribute.
-  virtual void set_preserve_protocol(bool preserve_protocol) {
-    UNREFERENCED_PARAMETER(preserve_protocol);
-  }
-
   virtual CString user_agent() const { return user_agent_; }
 
   virtual void set_user_agent(const CString& user_agent) {
@@ -118,6 +116,8 @@ class BitsRequest : public HttpRequestInterface {
   virtual void set_proxy_auth_config(const ProxyAuthConfig& proxy_auth_config) {
     proxy_auth_config_ = proxy_auth_config;
   }
+
+  virtual bool download_metrics(DownloadMetrics* download_metrics) const;
 
   // Sets the minimum length of time that BITS waits after encountering a
   // transient error condition before trying to transfer the file.
@@ -148,6 +148,10 @@ class BitsRequest : public HttpRequestInterface {
   // Sets additional_headers_ on the Job if IBackgroundCopyJobHttpOptions is
   // supported.
   HRESULT SetJobCustomHeaders();
+
+  // Sets reporting redirects on the job, if IBackgroundCopyJobHttpOptions
+  // is supported.
+  HRESULT SetJobRedirectReporting();
 
   // Uses the SimpleRequest HttpClient to detect the proxy for the current
   // request.
@@ -193,6 +197,13 @@ class BitsRequest : public HttpRequestInterface {
   // callback needs to reference this object.
   void RemoveBitsCallback();
 
+  // Closes BITS job and removes BITS callbacks. It's better to do this right
+  // after job is completed to reduce the chance of accessing BITS interfaces
+  // after qmgrprxy.dll is unexpectedly unloaded.
+  void CloseJob();
+
+  DownloadMetrics MakeDownloadMetrics(HRESULT hr) const;
+
   // Creates or opens an existing job.
   // 'is_created' is true if the job has been created or false if the job
   // has been opened.
@@ -205,17 +216,20 @@ class BitsRequest : public HttpRequestInterface {
 
   // Holds the transient state corresponding to a BITS request.
   struct TransientRequestState {
-    TransientRequestState() : http_status_code(0) {
-      SetZero(bits_job_id);
-    }
+    TransientRequestState();
+    ~TransientRequestState();
 
     int http_status_code;
     CComPtr<IBackgroundCopyJob> bits_job;
     GUID bits_job_id;
+    scoped_ptr<DownloadMetrics> download_metrics;
+    uint64 request_begin_ms;
+    uint64 request_end_ms;
   };
 
   LLock lock_;
-  CString url_;
+  CString original_url_;  // Contains the url that was initially requested.
+  CString url_;           // Contains the url that is actually downloaded.
   CString filename_;
   const void* request_buffer_;          // Contains the request body for POST.
   size_t      request_buffer_length_;   // Length of the request body.
@@ -258,5 +272,3 @@ class BitsRequest : public HttpRequestInterface {
 }   // namespace omaha
 
 #endif  // OMAHA_NET_BITS_REQUEST_H__
-
-

@@ -36,6 +36,7 @@
 namespace omaha {
 
 class WinHttpAdapter;
+struct DownloadMetrics;
 
 class SimpleRequest : public HttpRequestInterface {
  public:
@@ -96,12 +97,6 @@ class SimpleRequest : public HttpRequestInterface {
     additional_headers_ = additional_headers;
   }
 
-  // This request always uses the specified protocol so it is fine to ignore
-  // this attribute.
-  virtual void set_preserve_protocol(bool preserve_protocol) {
-    UNREFERENCED_PARAMETER(preserve_protocol);
-  }
-
   virtual CString user_agent() const { return user_agent_; }
 
   virtual void set_user_agent(const CString& user_agent) {
@@ -112,7 +107,10 @@ class SimpleRequest : public HttpRequestInterface {
     proxy_auth_config_ = proxy_auth_config;
   }
 
+  virtual bool download_metrics(DownloadMetrics* download_metrics) const;
+
  private:
+  HRESULT DoSend();
   HRESULT OpenDestinationFile(HANDLE* file_handle);
   HRESULT PrepareRequest(HANDLE* file_handle);
   HRESULT Connect();
@@ -124,8 +122,8 @@ class SimpleRequest : public HttpRequestInterface {
 
   void LogResponseHeaders();
 
-  // Sets proxy information for the request.
-  void SetProxyInformation();
+  // Attempts to set proxy information for the request.
+  HRESULT SetProxyInformation();
 
   struct TransientRequestState;
   void CloseHandles();
@@ -140,16 +138,13 @@ class SimpleRequest : public HttpRequestInterface {
   // Returns immediately otherwise.
   void WaitForResumeEvent();
 
+  DownloadMetrics MakeDownloadMetrics(HRESULT hr) const;
+
   // Holds the transient state corresponding to a single http request. We
   // prefer to isolate the state of a request to avoid dirty state.
   struct TransientRequestState {
-    TransientRequestState()
-        : port(0),
-          http_status_code(0),
-          proxy_authentication_scheme(0),
-          is_https(false),
-          content_length(0),
-          current_bytes(0) {}
+    TransientRequestState();
+    ~TransientRequestState();
 
     CString scheme;
     CString server;
@@ -164,6 +159,9 @@ class SimpleRequest : public HttpRequestInterface {
     CString proxy_bypass;
     int content_length;
     int current_bytes;
+    uint64 request_begin_ms;
+    uint64 request_end_ms;
+    scoped_ptr<DownloadMetrics> download_metrics;
   };
 
   LLock lock_;
@@ -193,4 +191,3 @@ class SimpleRequest : public HttpRequestInterface {
 }   // namespace omaha
 
 #endif  // OMAHA_NET_SIMPLE_REQUEST_H_
-

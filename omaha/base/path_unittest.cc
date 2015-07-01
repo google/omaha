@@ -16,6 +16,7 @@
 // Path-utility unit tests.
 
 #include <vector>
+#include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/utils.h"
@@ -27,6 +28,23 @@ TEST(PathTest, IsAbsolutePath) {
   ASSERT_TRUE(IsAbsolutePath(L"C:\\Foo.bar"));
   ASSERT_TRUE(IsAbsolutePath(L"\\\\user-laptop1\\path"));
   ASSERT_FALSE(IsAbsolutePath(L"windows\\system32"));
+}
+
+TEST(PathTest, IsPathInFolder) {
+  ASSERT_TRUE(IsPathInFolder(_T("C:\\Program Files\\GUMP\\Chrome.exe"),
+                             _T("C:\\Program Files")));
+  ASSERT_TRUE(IsPathInFolder(_T("C:\\Program Files\\Temp"),
+                             _T("C:\\PROGRAM FILES\\")));
+  ASSERT_TRUE(IsPathInFolder(_T("C:\\Program Files\\Temp"),
+                             _T("C:\\Program Files\\")));
+  ASSERT_TRUE(IsPathInFolder(_T("C:\\Program Files\\subdir\\sub2\\a.txt"),
+                             _T("C:\\PROGRAM FILES")));
+  ASSERT_FALSE(IsPathInFolder(_T("C:\\Program Filesa.txt"),
+                             _T("C:\\Program Files")));
+  ASSERT_FALSE(IsPathInFolder(_T("C:\\temp\\..\\Program Files\\sub"),
+                              _T("C:\\Program Files")));
+  ASSERT_FALSE(IsPathInFolder(_T("C:\\MyFolder"), _T("C:\\MyFolder\\..")));
+  ASSERT_FALSE(IsPathInFolder(_T("C:\\"), _T("C:\\Program Files")));
 }
 
 // EnclosePath is overzealous and quotes a path even though no spaces exists.
@@ -202,10 +220,10 @@ TEST(PathTest, FindFilesTest) {
   GUID guid = GUID_NULL;
   ASSERT_SUCCEEDED(::CoCreateGuid(&guid));
 
-  TCHAR path[MAX_PATH] = {0};
-  ASSERT_NE(::GetTempPath(MAX_PATH, path), 0);
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
-  CString dir = ConcatenatePath(path, GuidToString(guid));
+  CString dir = ConcatenatePath(temp_path, GuidToString(guid));
   EXPECT_FALSE(dir.IsEmpty());
   EXPECT_FALSE(File::Exists(dir));
 
@@ -321,10 +339,10 @@ void CreateTestDirectoryStructure(Directory* root_dir) {
   GUID guid = GUID_NULL;
   ASSERT_HRESULT_SUCCEEDED(::CoCreateGuid(&guid));
 
-  TCHAR path[MAX_PATH] = {0};
-  ASSERT_NE(0, ::GetTempPath(MAX_PATH, path));
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
-  CString dir = ConcatenatePath(path, GuidToString(guid));
+  CString dir = ConcatenatePath(temp_path, GuidToString(guid));
   EXPECT_FALSE(dir.IsEmpty());
   EXPECT_FALSE(File::Exists(dir));
 
@@ -372,10 +390,10 @@ TEST(PathTest, FindFileRecursiveTest_Empty) {
   GUID guid = GUID_NULL;
   ASSERT_HRESULT_SUCCEEDED(::CoCreateGuid(&guid));
 
-  TCHAR path[MAX_PATH] = {0};
-  ASSERT_NE(0, ::GetTempPath(MAX_PATH, path));
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
-  CString dir = ConcatenatePath(path, GuidToString(guid));
+  CString dir = ConcatenatePath(temp_path, GuidToString(guid));
   EXPECT_FALSE(dir.IsEmpty());
   EXPECT_FALSE(File::Exists(dir));
 
@@ -397,10 +415,10 @@ TEST(PathTest, FindFileRecursiveTest_DirNotCreated) {
   GUID guid = GUID_NULL;
   ASSERT_HRESULT_SUCCEEDED(::CoCreateGuid(&guid));
 
-  TCHAR path[MAX_PATH] = {0};
-  ASSERT_NE(0, ::GetTempPath(MAX_PATH, path));
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
-  CString dir = ConcatenatePath(path, GuidToString(guid));
+  CString dir = ConcatenatePath(temp_path, GuidToString(guid));
   EXPECT_FALSE(dir.IsEmpty());
   EXPECT_FALSE(File::Exists(dir));
 

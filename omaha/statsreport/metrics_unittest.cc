@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
-// metrics report unit testing
-#include "omaha/third_party/gtest/include/gtest/gtest.h"
-#include "metrics.h"
+
 #include <algorithm>
 #include <new>
+
+#include "omaha/statsreport/metrics.h"
+#include "third_party/gtest/include/gtest/gtest.h"
 
 DECLARE_METRIC_count(count);
 DEFINE_METRIC_count(count);

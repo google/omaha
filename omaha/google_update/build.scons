@@ -52,27 +52,17 @@ exe_env.Append(
         'advapi32.lib',
         'crypt32.lib',
         'kernel32.lib',
-        'ole32.lib',
         'shell32.lib',
         'shlwapi.lib',
         'user32.lib',
         'wintrust.lib',
-        ('atls.lib', 'atlsd.lib')[exe_env.Bit('debug')],
+        exe_env['atls_libs'][exe_env.Bit('debug')],
         ('libcmt.lib', 'libcmtd.lib')[exe_env.Bit('debug')],
         ('libcpmt.lib', 'libcpmtd.lib')[exe_env.Bit('debug')],
         ],
     LINKFLAGS = [
         '/NODEFAULTLIB',
         '/MERGE:.rdata=.text'
-        '/DELAYLOAD:advapi32.dll',
-        '/DELAYLOAD:crypt32.dll',
-        '/DELAYLOAD:shell32.dll',
-        '/DELAYLOAD:shlwapi.dll',
-        '/DELAYLOAD:user32.dll',
-        '/DELAYLOAD:wintrust.dll',
-
-        # Forces the dependency on ole32.lib.
-        '/INCLUDE:_CoCreateGuid@4',
         ],
     RCFLAGS = [
         '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
@@ -85,10 +75,12 @@ exe_env.Append(
 )
 
 
+exe_res = exe_env.RES('resource.rc')
+exe_env.Depends(exe_res, 'GoogleUpdate.manifest')
+
 exe_inputs = [
     'winmain.cc',
-     '../base/signaturevalidator.cc',
-     exe_env.RES('resource.rc'),
+     exe_res,
      ]
 
 # Compile .rc files, then add the resulting .res files to the exe inputs.
@@ -99,20 +91,6 @@ for language in shell_languages:
 # rebuild all languages.
 Depends(exe_env['OBJ_ROOT'] + '/google_update/generated_resources_en.res',
     exe_env['MAIN_DIR'] + '/VERSION')
-
-# Need to add custom suffix to avoid target conflict with
-# common/signaturevalidator.obj
-exe_env['OBJSUFFIX'] = '_gu' + exe_env['OBJSUFFIX']
-
-
-# We disable runtime stack check to avoid increasing the code size.
-# There is a compiler pragma to programmatically disable the stack checks
-# but for some reason it did not work.
-exe_env.FilterOut(CPPFLAGS = ['/GS'])
-
-# Disable stack checks for VC80. Stack checks are on by default.
-if exe_env['msc_ver'] >= 1400:
-  exe_env['CCFLAGS'] += ['/GS-']
 
 unsigned_exe_output = exe_env.ComponentProgram(
     prog_name='GoogleUpdate_unsigned',
@@ -126,19 +104,7 @@ sign_output = env.SignedBinary(
 
 env.Replicate('$STAGING_DIR', sign_output)
 
-# Official builds should always use the checked in constant shell unless they
-# are being built with the test certificate, in which case the saved constant
-# shell would fail to validate the certificates in the build.
-if env.Bit('build_server') and not env.Bit('test_certificate'):
-  # Copy the constant shell from its checked in location.
-  source_shell = ('$MAIN_DIR/google_update/bin/%s/GoogleUpdate.exe' %
-      ('opt', 'dbg')[env.Bit('debug')])
-else:
-  # Use the version we just built.
-  source_shell = sign_output[0]
+# All builds use the current constant shell.
+source_shell = sign_output[0]
 
 env.Replicate('$STAGING_DIR', source_shell, REPLICATE_REPLACE=[('_signed', '')])
-env.Replicate(target='$STAGING_DIR',
-              source=sign_output[0],
-              REPLICATE_REPLACE=[('GoogleUpdate_signed', env['omaha_versions_info'][0].crash_handler_filename)]
-)

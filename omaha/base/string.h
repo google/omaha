@@ -124,6 +124,7 @@ CStringA WideToAnsiDirect(const CString & in);
 
 // Transform a unicode string into UTF8, used primarily by the webserver
 CStringA WideToUtf8(const CString& w);
+void WideToUtf8Vector(const CString& wstr, std::vector<uint8>* vec_out);
 
 // Converts the UTF-8 encoded buffer to an in-memory Unicode (wide character)
 // string.
@@ -232,6 +233,9 @@ void WebSafeBase64Escape(const char *src, int szsrc,
 //    I recommend that slen<len_dest, but we honour len_dest anyway.
 //    RETURNS the length of dest.
 //    The WebSafe variation use '-' instead of '+' and '_' instead of '/'.
+//
+//    The functions return the number of characters that are decoded in the
+//    destination buffer or -1 in case of a decoding error.
 // ----------------------------------------------------------------------
 int Base64Unescape(const char *src, int slen, char *dest, int len_dest);
 int WebSafeBase64Unescape(const char *src, int slen, char *dest, int szdest);
@@ -296,10 +300,10 @@ bool String_IsUpper(TCHAR c);
 
 // String comparison based on length
 // Replacement for the CRT strncmp(i)
-int String_StrNCmp(const TCHAR * str1, const TCHAR * str2, uint32 len, bool ignore_case);
+int String_StrNCmp(const TCHAR * str1, const TCHAR * str2, size_t len, bool ignore_case);
 
 // Replacement for strncpy() - except ALWAYS ends string with null
-TCHAR* String_StrNCpy(TCHAR* destination, const TCHAR* source, uint32 len);
+TCHAR* String_StrNCpy(TCHAR* destination, const TCHAR* source, size_t len);
 
 // check if str starts with start_str
 bool String_StartsWith(const TCHAR *str, const TCHAR *start_str, bool ignore_case);
@@ -444,10 +448,9 @@ const TCHAR *ExtractNextDouble (const TCHAR *s, double *f);
 TCHAR *String_PathFindExtension(const TCHAR *path);
 
 inline TCHAR Char_ToLower(TCHAR c) {
-// C4302: truncation from 'type 1' to 'type 2'
-#pragma  warning(disable : 4302)
-  return reinterpret_cast<TCHAR>(::CharLower(reinterpret_cast<TCHAR*>(c)));
-#pragma warning(default : 4302)
+  const TCHAR* result = ::CharLower(reinterpret_cast<TCHAR*>(c));
+  ASSERT1(HIWORD(result) == 0);
+  return LOWORD(result);
 }
 
 // @returns the lowercase character (type is int to be consistent with the CRT)
@@ -482,7 +485,7 @@ bool CLSIDToCString(const GUID& guid, CString* str);
 HRESULT String_StringToBool(const TCHAR* str, bool* value);
 
 // Convert boolean to its string representation.
-HRESULT String_BoolToString(bool value, CString* string);
+const TCHAR* const String_BoolToString(bool value);
 
 // Similar to ATL::CStringT::Replace() except that it ignores case.
 CString String_ReplaceIgnoreCase(const CString& string,
@@ -536,6 +539,53 @@ HRESULT WideStringToUtf8UrlEncodedString(const CString& str, CString* out);
 // Converts a string that is in the utf8 representation and is urlencoded
 // into a unicode string.
 HRESULT Utf8UrlEncodedStringToWideString(const CString& str, CString* out);
+
+// ----------------------------------------------------------------------
+// a2b_hex()
+//  Description: Ascii-to-Binary hex conversion.  This converts
+//         2*'num' hexadecimal characters to 'num' binary data.
+//        Return value: 'num' bytes of binary data (via the 'to' argument)
+// ----------------------------------------------------------------------
+void a2b_hex(const char* from, unsigned char* to, size_t num);
+void a2b_hex(const char* from, char* to, size_t num);
+void a2b_hex(const char* from, std::string* to, size_t num);
+std::string a2b_hex(const std::string& a);
+
+// ----------------------------------------------------------------------
+// a2b_bin()
+//  Description: Ascii-to-Binary binary conversion.  This converts
+//        a.size() binary characters (ascii '0' or '1') to
+//        ceil(a.size()/8) bytes of binary data.  The first character is
+//        considered the most significant if byte_order_msb is set.  a is
+//        considered to be padded with trailing 0s if its size is not a
+//        multiple of 8.
+//        Return value: ceil(a.size()/8) bytes of binary data
+// ----------------------------------------------------------------------
+std::string a2b_bin(const std::string& a, bool byte_order_msb);
+
+// ----------------------------------------------------------------------
+// b2a_hex()
+//  Description: Binary-to-Ascii hex conversion.  This converts
+//   'num' bytes of binary to a 2*'num'-character hexadecimal representation
+//    Return value: 2*'num' characters of ascii text (via the 'to' argument)
+// ----------------------------------------------------------------------
+void b2a_hex(const unsigned char* from, char* to, size_t num);
+void b2a_hex(const unsigned char* from, std::string* to, size_t num);
+
+// ----------------------------------------------------------------------
+// b2a_hex()
+//  Description: Binary-to-Ascii hex conversion.  This converts
+//   'num' bytes of binary to a 2*'num'-character hexadecimal representation
+//    Return value: 2*'num' characters of ascii string
+// ----------------------------------------------------------------------
+std::string b2a_hex(const char* from, size_t num);
+
+// Convenience function that calls a2b_hex on a CString and outputs the result
+// as a vector of bytes.  Returns true if the conversion was successful; false
+// if not.  (Failure usually implies that there was a non-hex digit in the
+// string, or that conversion from wide to narrow failed.)
+bool SafeHexStringToVector(const CStringA& str, std::vector<uint8>* vec_out);
+bool SafeHexStringToVector(const CStringW& str, std::vector<uint8>* vec_out);
 
 }  // namespace omaha
 

@@ -20,8 +20,8 @@
 
 #include <shlobj.h>
 #include "base/scoped_ptr.h"
-#include "omaha/base/apply_tag.h"
 #include "omaha/base/app_util.h"
+#include "omaha/base/apply_tag.h"
 #include "omaha/base/extractor.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/utils.h"
@@ -30,7 +30,7 @@
 namespace omaha {
 
 const TCHAR kFilePath[] = _T(".");
-const TCHAR kFileName[] = _T("GoogleUpdate.exe");
+const TCHAR kFileName[] = _T("GoogleUpdateSetup_repair.exe");
 const char kTagString[] = "1234567890abcdefg";
 const char kAppendTagString[] = "..AppendedStr";
 
@@ -45,16 +45,15 @@ TEST(ExtractorTest, EmbedExtract) {
                          kFilePath, kFileName);
   ASSERT_TRUE(extractor.OpenFile(signed_exe_file));
 
-  // No tag string in the original exe file.
+  // Zero-length tag string in the original exe file.
   int tag_buffer_size = 0;
-  ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
-  ASSERT_EQ(tag_buffer_size, 0);
+  ASSERT_TRUE(extractor.ExtractTag(NULL, &tag_buffer_size));
+  ASSERT_EQ(tag_buffer_size, 1);
   extractor.CloseFile();
 
   // Create a temp dir.
-  TCHAR temp_path[MAX_PATH] = {0};
-  *temp_path = 0;
-  ASSERT_NE(::GetTempPath(MAX_PATH, temp_path), 0);
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
   // Embed the tag string.
   CString tagged_file;
@@ -62,7 +61,7 @@ TEST(ExtractorTest, EmbedExtract) {
   omaha::ApplyTag tag;
   ASSERT_HRESULT_SUCCEEDED(tag.Init(signed_exe_file,
                                     kTagString,
-                                    strlen(kTagString),
+                                    static_cast<int>(strlen(kTagString)),
                                     tagged_file,
                                     false));
   ASSERT_SUCCEEDED(tag.EmbedTagString());
@@ -92,17 +91,16 @@ TEST(ExtractorTest, EmbedAppendExtract) {
                          kFilePath, kFileName);
   ASSERT_TRUE(extractor.OpenFile(signed_exe_file));
 
-  // No tag string in the original exe file.
+  // Zero-length tag string in the original exe file.
   int tag_buffer_size = 0;
-  ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
-  ASSERT_GT(extractor.cert_length(), 0);
-  ASSERT_EQ(tag_buffer_size, 0);
+  ASSERT_TRUE(extractor.ExtractTag(NULL, &tag_buffer_size));
+  ASSERT_GT(extractor.cert_dir_length(), 0);
+  ASSERT_EQ(tag_buffer_size, 1);
   extractor.CloseFile();
 
   // Create a temp dir.
-  TCHAR temp_path[MAX_PATH] = {0};
-  *temp_path = 0;
-  ASSERT_NE(::GetTempPath(MAX_PATH, temp_path), 0);
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
   // Embed the tag string.
   CString tagged_file;
@@ -110,7 +108,7 @@ TEST(ExtractorTest, EmbedAppendExtract) {
   omaha::ApplyTag tag;
   ASSERT_HRESULT_SUCCEEDED(tag.Init(signed_exe_file,
                                     kTagString,
-                                    strlen(kTagString),
+                                    static_cast<int>(strlen(kTagString)),
                                     tagged_file,
                                     false));
   ASSERT_SUCCEEDED(tag.EmbedTagString());
@@ -123,7 +121,7 @@ TEST(ExtractorTest, EmbedAppendExtract) {
 
   ASSERT_HRESULT_SUCCEEDED(tag1.Init(tagged_file,
                                      kAppendTagString,
-                                     strlen(kAppendTagString),
+                                     static_cast<int>(strlen(kAppendTagString)),
                                      tagged_appended_file,
                                      true));
   ASSERT_SUCCEEDED(tag1.EmbedTagString());
@@ -135,7 +133,7 @@ TEST(ExtractorTest, EmbedAppendExtract) {
   omaha::ApplyTag tag2;
   ASSERT_HRESULT_SUCCEEDED(tag2.Init(tagged_appended_file,
                                      kAppendTagString,
-                                     strlen(kAppendTagString),
+                                     static_cast<int>(strlen(kAppendTagString)),
                                      tagged_appended_file2,
                                      true));
   ASSERT_SUCCEEDED(tag2.EmbedTagString());
@@ -172,17 +170,16 @@ TEST(ExtractorTest, AlreadyTaggedError) {
                          kFilePath, kFileName);
   ASSERT_TRUE(extractor.OpenFile(signed_exe_file));
 
-  // No tag string in the original exe file.
+  // Zero-length tag string in the original exe file.
   int tag_buffer_size = 0;
-  ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
-  ASSERT_GT(extractor.cert_length(), 0);
-  ASSERT_EQ(tag_buffer_size, 0);
+  ASSERT_TRUE(extractor.ExtractTag(NULL, &tag_buffer_size));
+  ASSERT_GT(extractor.cert_dir_length(), 0);
+  ASSERT_EQ(tag_buffer_size, 1);
   extractor.CloseFile();
 
   // Create a temp dir.
-  TCHAR temp_path[MAX_PATH] = {0};
-  *temp_path = 0;
-  ASSERT_NE(::GetTempPath(MAX_PATH, temp_path), 0);
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
   // Embed the tag string.
   CString tagged_file;
@@ -190,7 +187,7 @@ TEST(ExtractorTest, AlreadyTaggedError) {
   omaha::ApplyTag tag1;
   ASSERT_HRESULT_SUCCEEDED(tag1.Init(signed_exe_file,
                                      kTagString,
-                                     strlen(kTagString),
+                                     static_cast<int>(strlen(kTagString)),
                                      tagged_file,
                                      false));
   ASSERT_SUCCEEDED(tag1.EmbedTagString());
@@ -201,7 +198,7 @@ TEST(ExtractorTest, AlreadyTaggedError) {
   omaha::ApplyTag tag2;
   ASSERT_HRESULT_SUCCEEDED(tag2.Init(tagged_file,
                                      kAppendTagString,
-                                     strlen(kAppendTagString),
+                                     static_cast<int>(strlen(kAppendTagString)),
                                      tagged_appended_file,
                                      false));
   ASSERT_EQ(tag2.EmbedTagString(), APPLYTAG_E_ALREADY_TAGGED);
@@ -221,7 +218,7 @@ TEST(ApplyTagTest, InvalidCharsTest) {
   omaha::ApplyTag tag1;
   ASSERT_HRESULT_SUCCEEDED(tag1.Init(signed_exe_file,
                                      input_str,
-                                     strlen(input_str),
+                                     static_cast<int>(strlen(input_str)),
                                      tagged_file,
                                      false));
 
@@ -229,7 +226,7 @@ TEST(ApplyTagTest, InvalidCharsTest) {
   omaha::ApplyTag tag2;
   ASSERT_HRESULT_FAILED(tag2.Init(signed_exe_file,
                                   input_str2,
-                                  strlen(input_str2),
+                                  static_cast<int>(strlen(input_str2)),
                                   tagged_file,
                                   false));
 
@@ -237,7 +234,7 @@ TEST(ApplyTagTest, InvalidCharsTest) {
   omaha::ApplyTag tag3;
   ASSERT_HRESULT_FAILED(tag3.Init(signed_exe_file,
                                   input_str3,
-                                  strlen(input_str3),
+                                  static_cast<int>(strlen(input_str3)),
                                   tagged_file,
                                   false));
 }

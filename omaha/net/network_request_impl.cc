@@ -14,7 +14,9 @@
 // ========================================================================
 
 #include "omaha/net/network_request_impl.h"
+#include <intsafe.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <atlsecurity.h>
 #include <algorithm>
 #include <cctype>
@@ -30,13 +32,14 @@
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
+#include "omaha/base/user_info.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/net_utils.h"
 #include "omaha/net/network_config.h"
 
 namespace omaha {
 
-namespace detail {
+namespace internal {
 
 // Returns the user sid corresponding to the token. This function is only used
 // for logging purposes.
@@ -50,8 +53,11 @@ CString GetTokenUser(HANDLE token) {
 }
 
 // Logs bytes from the beginning of the file. Non-printable bytes are
-// replaced with '.'.
+// replaced with '.'. Treats bytes as unsigned chars.
 void LogFileBytes(const CString& filename, size_t num_bytes) {
+  if (num_bytes > DWORD_MAX) {
+    return;
+  }
   scoped_hfile file(::CreateFile(filename,
                                  GENERIC_READ,
                                  FILE_SHARE_READ,
@@ -59,10 +65,14 @@ void LogFileBytes(const CString& filename, size_t num_bytes) {
                                  OPEN_EXISTING,
                                  FILE_ATTRIBUTE_NORMAL,
                                  NULL));
-  std::vector<char> bytes(num_bytes);
+  std::vector<unsigned char> bytes(num_bytes);
   DWORD bytes_read(0);
   if (file) {
-    ::ReadFile(get(file), &bytes.front(), bytes.size(), &bytes_read, NULL);
+    ::ReadFile(get(file),
+               &bytes.front(),
+               static_cast<DWORD>(bytes.size()),
+               &bytes_read,
+               NULL);
   }
   bytes.resize(bytes_read);
   replace_if(bytes.begin(), bytes.end(), std::not1(std::ptr_fun(isprint)), '.');
@@ -74,21 +84,24 @@ NetworkRequestImpl::NetworkRequestImpl(
     const NetworkConfig::Session& network_session)
       : cur_http_request_(NULL),
         cur_proxy_config_(NULL),
+        retry_after_seconds_(-1),
         cur_retry_count_(0),
+        cur_retry_delay_ms_(kDefaultTimeBetweenRetriesMs),
+        http_attempts_(0),
         last_hr_(S_OK),
         last_http_status_code_(0),
         http_status_code_(0),
         proxy_auth_config_(NULL, CString()),
         num_retries_(0),
         low_priority_(false),
-        time_between_retries_ms_(kDefaultTimeBetweenRetriesMs),
+        initial_retry_delay_ms_(kDefaultTimeBetweenRetriesMs),
+        retry_delay_jitter_ms_(kDefaultRetryTimeJitterMs),
         callback_(NULL),
         request_buffer_(NULL),
         request_buffer_length_(0),
         response_(NULL),
         network_session_(network_session),
-        is_canceled_(false),
-        preserve_protocol_(false) {
+        is_canceled_(false) {
   // NetworkConfig::Initialize must be called before using NetworkRequest.
   // If Winhttp cannot be loaded, this handle will be NULL.
   if (!network_session.session_handle) {
@@ -104,6 +117,11 @@ NetworkRequestImpl::NetworkRequestImpl(
   const CString mid(NetworkConfig::GetMID());
   if (!mid.IsEmpty()) {
     AddHeader(kHeaderXMID, mid);
+  }
+
+  const CString old_uid(NetworkConfigManager::Instance().GetUserIdHistory());
+  if (!old_uid.IsEmpty()) {
+    AddHeader(kHeaderXOldUserId, old_uid);
   }
 }
 
@@ -121,9 +139,12 @@ void NetworkRequestImpl::Reset() {
   http_status_code_      = 0;
   cur_http_request_      = NULL;
   cur_proxy_config_      = NULL;
+  retry_after_seconds_   = -1;
   cur_retry_count_       = 0;
+  http_attempts_         = 0;
   last_hr_               = S_OK;
   last_http_status_code_ = 0;
+  download_metrics_.clear();
 }
 
 HRESULT NetworkRequestImpl::Close() {
@@ -224,61 +245,84 @@ HRESULT NetworkRequestImpl::DoSendWithRetries() {
   CString response_headers;
   std::vector<uint8> response;
 
+#if DEBUG
+  // Looking up account and domain information can block when the user info
+  // is not avaialble locally and a domain controller must be queried.
+  CString account_name;
+  CString domain_name;
+  user_info::GetUserAccountAndDomainNames(&account_name, &domain_name);
+  SafeCStringAppendFormat(&trace_, _T("user=%s\\%s\r\n"),
+        domain_name, account_name);
+#endif  // DEBUG
+
   SafeCStringAppendFormat(&trace_, _T("Url=%s\r\n"), url_);
 
   HRESULT hr = S_OK;
-  int wait_interval_ms = time_between_retries_ms_;
-  for (cur_retry_count_ = 0;
-       cur_retry_count_ < 1 + num_retries_;
-       ++cur_retry_count_) {
+
+  cur_retry_delay_ms_ = initial_retry_delay_ms_;
+  cur_retry_count_ = 0;
+  http_attempts_ = 0;
+
+  while (CanRetryRequest()) {
+    // Check early to see if we've been canceled.
     if (IsHandleSignaled(get(event_cancel_))) {
       ASSERT1(is_canceled_);
-
-      // There is no state to be set when the request is canceled.
       return GOOPDATE_E_CANCELLED;
     }
 
-    // Wait before retrying if there are retries to be done.
-    if (cur_retry_count_ > 0) {
-      if (callback_) {
-        const time64 next_retry_time = GetCurrent100NSTime() +
-                                       wait_interval_ms * kMillisecsTo100ns;
-        callback_->OnRequestRetryScheduled(next_retry_time);
-      }
-
-      NET_LOG(L3, (_T("[wait %d ms]"), wait_interval_ms));
-      VERIFY1(::WaitForSingleObject(get(event_cancel_),
-                                    wait_interval_ms) != WAIT_FAILED);
-
-      if (callback_) {
-        callback_->OnRequestBegin();
-      }
-
-      // Compute the next wait interval and check for multiplication overflow.
-      if (wait_interval_ms > INT_MAX / kTimeBetweenRetriesMultiplier) {
-        ASSERT1(false);
-        hr = HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW);
-        break;
-      }
-      wait_interval_ms *= kTimeBetweenRetriesMultiplier;
+    // If we're about to make a retry, delay for an appropriate amount of time.
+    // (We do the delay before the network attempt, so that we can exit the
+    // loop quickly if we fail on our final retry.)
+    hr = DoWaitBetweenRetries();
+    if (FAILED(hr)) {
+      return hr;
     }
 
+    // Do proxy detection, and attempt to do an HTTP request with every
+    // configuration we've found.
     DetectProxyConfiguration(&proxy_configurations_);
     ASSERT1(!proxy_configurations_.empty());
     OPT_LOG(L2, (_T("[detected configurations][\r\n%s]"),
                  NetworkConfig::ToString(proxy_configurations_)));
 
     hr = DoSend(&http_status_code, &response_headers, &response);
+
+    // Exit from the loop if we got a successful request, or a HTTP 4xx error
+    // (4xx implies that something has changed on the server and that this URL
+    // will never succeed), or if the server sends the optional X-Retry-After
+    // header with a positive value.
     HttpClient::StatusCodeClass status_code_class =
         HttpClient::GetStatusCodeClass(http_status_code);
     if (SUCCEEDED(hr) ||
         hr == GOOPDATE_E_CANCELLED ||
-        status_code_class == HttpClient::STATUS_CODE_CLIENT_ERROR) {
+        status_code_class == HttpClient::STATUS_CODE_CLIENT_ERROR ||
+        retry_after_seconds_ > 0) {
       break;
     }
+
+    // Compute how long we need to delay, based on the result of the attempt.
+    ComputeNextRetryDelay(status_code_class);
+    ++cur_retry_count_;
   }
 
-  // Update the object state with the local values.
+  if (cur_retry_count_ == num_retries_ + 1) {
+    NET_LOG(LW, (_T("[hit max retry count][0x%08x]"), hr));
+  } else {
+    NET_LOG(LW, (_T("[request finished][0x%08x]"), hr));
+  }
+
+  // If retries were stopped due to an external event (i.e. cancellation, or
+  // excessive HTTP 500 errors) then return that error code immediately; don't
+  // bother updating our state with a copy of the responses we received.
+  if (is_canceled_) {
+    return GOOPDATE_E_CANCELLED;
+  }
+  if (cur_retry_delay_ms_ > kMaxTimeBetweenRetriesMs) {
+    return OMAHA_NET_E_EXCEEDED_MAX_RETRY_DELAY;
+  }
+
+  // For all other results where we actually made at least one network request,
+  // update the object state with the result of the last successful request.
   http_status_code_ = http_status_code;
   response_headers_ = response_headers;
   if (response_) {
@@ -292,7 +336,7 @@ HRESULT NetworkRequestImpl::DoSendWithRetries() {
 
 HRESULT NetworkRequestImpl::DoSend(int* http_status_code,
                                    CString* response_headers,
-                                   std::vector<uint8>* response) const {
+                                   std::vector<uint8>* response) {
   ASSERT1(http_status_code);
   ASSERT1(response_headers);
   ASSERT1(response);
@@ -327,7 +371,8 @@ HRESULT NetworkRequestImpl::DoSend(int* http_status_code,
     if (SUCCEEDED(hr) ||
         hr == GOOPDATE_E_CANCELLED ||
         hr == CI_E_BITS_DISABLED ||
-        *http_status_code == HTTP_STATUS_NOT_FOUND) {
+        *http_status_code == HTTP_STATUS_NOT_FOUND ||
+        retry_after_seconds_ > 0) {
       break;
     }
   }
@@ -364,7 +409,7 @@ HRESULT NetworkRequestImpl::DoSend(int* http_status_code,
 HRESULT NetworkRequestImpl::DoSendWithConfig(
     int* http_status_code,
     CString* response_headers,
-    std::vector<uint8>* response) const {
+    std::vector<uint8>* response) {
   ASSERT1(response_headers);
   ASSERT1(response);
   ASSERT1(http_status_code);
@@ -393,6 +438,7 @@ HRESULT NetworkRequestImpl::DoSendWithConfig(
     NET_LOG(L3, (_T("[%s]"), msg));
     SafeCStringAppendFormat(&trace_, _T("%s.\r\n"), msg);
 
+    ++http_attempts_;
     hr = DoSendHttpRequest(http_status_code, response_headers, response);
 
     SafeCStringFormat(&msg,
@@ -411,12 +457,14 @@ HRESULT NetworkRequestImpl::DoSendWithConfig(
     }
 
     // The chain traversal stops when the request is successful or
-    // it is canceled, or the status code is 404.
+    // it is canceled, or the status code is 404, or if the server sends the
+    // optional X-Retry-After header with a positive value.
     // In the case of 404 response, all HttpRequests are likely to return
     // the same 404 response.
     if (SUCCEEDED(hr) ||
         hr == GOOPDATE_E_CANCELLED ||
-        *http_status_code == HTTP_STATUS_NOT_FOUND) {
+        *http_status_code == HTTP_STATUS_NOT_FOUND ||
+        retry_after_seconds_ > 0) {
       break;
     }
   }
@@ -451,7 +499,7 @@ HRESULT NetworkRequestImpl::DoSendWithConfig(
 HRESULT NetworkRequestImpl::DoSendHttpRequest(
     int* http_status_code,
     CString* response_headers,
-    std::vector<uint8>* response) const {
+    std::vector<uint8>* response) {
   ASSERT1(response_headers);
   ASSERT1(response);
   ASSERT1(http_status_code);
@@ -468,7 +516,6 @@ HRESULT NetworkRequestImpl::DoSendHttpRequest(
   cur_http_request_->set_callback(callback_);
   cur_http_request_->set_additional_headers(BuildPerRequestHeaders());
   cur_http_request_->set_proxy_configuration(*cur_proxy_config_);
-  cur_http_request_->set_preserve_protocol(preserve_protocol_);
   cur_http_request_->set_proxy_auth_config(proxy_auth_config_);
 
   if (IsHandleSignaled(get(event_cancel_))) {
@@ -487,6 +534,13 @@ HRESULT NetworkRequestImpl::DoSendHttpRequest(
   last_hr_ = cur_http_request_->Send();
   NET_LOG(L3, (_T("[HttpRequestInterface::Send returned 0x%08x]"), last_hr_));
 
+  DownloadMetrics download_metrics;
+  if (cur_http_request_->download_metrics(&download_metrics)) {
+    NET_LOG(L3, (_T("[download metrics for %s][%s]"), url_,
+        DownloadMetricsToString(download_metrics)));
+    download_metrics_.push_back(download_metrics);
+  }
+
   if (last_hr_ == GOOPDATE_E_CANCELLED) {
     return last_hr_;
   }
@@ -496,6 +550,14 @@ HRESULT NetworkRequestImpl::DoSendHttpRequest(
   *http_status_code = cur_http_request_->GetHttpStatusCode();
   *response_headers = cur_http_request_->GetResponseHeaders();
   cur_http_request_->GetResponse().swap(*response);
+
+  CString retry_after_header;
+  HRESULT hr = QueryHeadersString(WINHTTP_QUERY_CUSTOM,
+                                  kHeaderXRetryAfter,
+                                  &retry_after_header);
+  if (SUCCEEDED(hr) && !retry_after_header.IsEmpty()) {
+    retry_after_seconds_ = String_StringToInt(retry_after_header);
+  }
 
   // Check if the computer is connected to the network.
   if (FAILED(last_hr_)) {
@@ -543,6 +605,15 @@ CString NetworkRequestImpl::BuildPerRequestHeaders() const {
   SafeCStringAppendFormat(&headers, _T("%s: %d\r\n"),
                                     kHeaderXRetryCount, cur_retry_count_);
 
+  SafeCStringAppendFormat(&headers, _T("%s: %d\r\n"),
+                                    kHeaderXHTTPAttempts,
+                                    http_attempts_);
+
+  SafeCStringAppendFormat(&headers, _T("%s: %s\r\n"),
+                                    kHeaderXInteractive,
+                                    low_priority_ ? _T("bg") : _T("fg"));
+
+  NET_LOG(L4, (_T("[BuildPerRequestHeaders][%s]"), headers));
   return headers;
 }
 
@@ -613,50 +684,85 @@ void NetworkRequestImpl::DetectProxyConfiguration(
   ASSERT1(!proxy_configurations->empty());
 }
 
-HRESULT PostRequest(NetworkRequest* network_request,
-                    bool fallback_to_https,
-                    const CString& url,
-                    const CString& request_string,
-                    std::vector<uint8>* response) {
-  ASSERT1(network_request);
-  ASSERT1(response);
+bool NetworkRequestImpl::CanRetryRequest() {
+  return (cur_retry_count_ <= num_retries_ &&
+          cur_retry_delay_ms_ <= kMaxTimeBetweenRetriesMs);
+}
 
-  const CStringA utf8_request_string(WideToUtf8(request_string));
-  HRESULT hr = network_request->PostUtf8String(url,
-                                               utf8_request_string,
-                                               response);
-  bool is_canceled(hr == GOOPDATE_E_CANCELLED);
-  if (FAILED(hr) && !is_canceled && fallback_to_https) {
-    // Replace http with https and resend the request.
-    if (String_StartsWith(url, kHttpProto, true)) {
-      CString https_url = url.Mid(_tcslen(kHttpProto));
-      https_url.Insert(0, kHttpsProto);
+HRESULT NetworkRequestImpl::DoWaitBetweenRetries() {
+  // Don't bother waiting if it's our first attempt at a request.
+  if (cur_retry_count_ == 0) {
+    return S_FALSE;
+  }
 
-      NET_LOG(L3, (_T("[network request fallback to %s]"), https_url));
-      response->clear();
-      if (SUCCEEDED(network_request->PostUtf8String(https_url,
-                                                    utf8_request_string,
-                                                    response))) {
-        hr = S_OK;
-      }
+  // Notify the callback, if present, that we'll be waiting.  (The callback API
+  // expects to receieve an absolute time in the future that we're planning to
+  // run at, rather than a delay; so, add the current time to the delay.)
+  if (callback_) {
+    const time64 next_retry_time_abs =
+        GetCurrent100NSTime() + cur_retry_delay_ms_ * kMillisecsTo100ns;
+    callback_->OnRequestRetryScheduled(next_retry_time_abs);
+  }
+
+  // Do the actual wait.  Regardless of the result, notify the callback that we
+  // are done waiting, then handle the result of the wait.
+  NET_LOG(L3, (_T("[wait %d ms]"), cur_retry_delay_ms_));
+  DWORD wait_res = ::WaitForSingleObject(get(event_cancel_),
+                                         cur_retry_delay_ms_);
+  if (callback_) {
+    callback_->OnRequestBegin();
+  }
+
+  switch (wait_res) {
+    case WAIT_TIMEOUT:
+      return S_OK;
+
+    case WAIT_OBJECT_0:
+      return GOOPDATE_E_CANCELLED;
+
+    case WAIT_FAILED:
+      return HRESULTFromLastError();
+
+    default:  // Includes WAIT_ABANDONED, plus other unexpected return values.
+      return E_UNEXPECTED;
+  }
+}
+
+void NetworkRequestImpl::ComputeNextRetryDelay(
+    HttpClient::StatusCodeClass previous_result) {
+  // If the result of the previous attempt was an HTTP 5xx error, we need to
+  // aggressively back off.
+  if (previous_result == HttpClient::STATUS_CODE_SERVER_ERROR) {
+    if (cur_retry_delay_ms_ < kServerErrMinTimeBetweenRetriesMs) {
+      cur_retry_delay_ms_ = kServerErrMinTimeBetweenRetriesMs;
     }
   }
-  return hr;
+
+  // Compute the next wait interval, checking for multiplication overflow.
+  // If we'd overflow, clamp to the maximum amount.
+  if (cur_retry_delay_ms_ > INT_MAX / kTimeBetweenRetriesMultiplier) {
+    ASSERT1(false);
+    cur_retry_delay_ms_ = kMaxTimeBetweenRetriesMs;
+    return;
+  }
+
+  cur_retry_delay_ms_ *= kTimeBetweenRetriesMultiplier;
+
+  if (retry_delay_jitter_ms_ > 0 &&
+      cur_retry_delay_ms_ >= retry_delay_jitter_ms_) {
+    // Generate a random int containing 2x the jitter amount, add it, then
+    // subtract the jitter amount to produce +/- jitter.
+    unsigned int jitter_amount;
+    if (0 != ::rand_s(&jitter_amount)) {
+      jitter_amount = retry_delay_jitter_ms_;
+    }
+    cur_retry_delay_ms_ += jitter_amount % (2 * retry_delay_jitter_ms_);
+    cur_retry_delay_ms_ -= retry_delay_jitter_ms_;
+    ASSERT1(cur_retry_delay_ms_ > 0);
+  }
 }
 
-// TODO(omaha): Eliminate this function if no longer a need for it.  It's only
-// used in NetDiags, and its value has been eliminated since we switched to all
-// network functions returning uint8 buffers.
-HRESULT GetRequest(NetworkRequest* network_request,
-                   const CString& url,
-                   std::vector<uint8>* response) {
-  ASSERT1(network_request);
-  ASSERT1(response);
-
-  return network_request->Get(url, response);
-}
-
-}   // namespace detail
+}   // namespace internal
 
 }   // namespace omaha
 

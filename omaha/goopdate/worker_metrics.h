@@ -27,6 +27,9 @@ DECLARE_METRIC_count(worker_download_total);
 // How many times the download manager successfully downloaded a file.
 DECLARE_METRIC_count(worker_download_succeeded);
 
+// How many times the download manager skipped BITS due to machine install.
+DECLARE_METRIC_count(worker_download_skipped_bits_machine);
+
 // How many times the package cache attempted to put the temporary file
 // to the cache directory.
 DECLARE_METRIC_count(worker_package_cache_put_total);
@@ -135,6 +138,11 @@ DECLARE_METRIC_integer(worker_app_max_update_responses_ms_since_first);
 DECLARE_METRIC_timing(ping_failed_ms);
 // Time (ms) spent in SendPing() when the ping succeeds.
 DECLARE_METRIC_timing(ping_succeeded_ms);
+
+// Time (ms) spent in DoUpdateCheck() when an update check fails.
+DECLARE_METRIC_timing(updatecheck_failed_ms);
+// Time (ms) spent in DoUpdateCheck() when an update check succeeds.
+DECLARE_METRIC_timing(updatecheck_succeeded_ms);
 
 }  // namespace omaha
 

@@ -16,7 +16,6 @@
 #include "omaha/base/thread.h"
 
 #include "omaha/base/debug.h"
-#include "omaha/base/exception_barrier.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/time.h"
 
@@ -38,8 +37,6 @@ Thread::~Thread() {
 
 // This is the thread proc function as required by win32.
 DWORD __stdcall Thread::Prepare(void* this_pointer) {
-  ExceptionBarrier eb;
-
   ASSERT1(this_pointer);
   Thread   * this_thread =  reinterpret_cast<Thread*>(this_pointer);
   Runnable * this_runner =  this_thread->runner_;

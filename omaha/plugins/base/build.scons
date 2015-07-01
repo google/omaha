@@ -17,8 +17,7 @@ Import('env')
 
 # Build plugin base.
 plugin_base_env = env.Clone()
-# TODO(omaha3): make this configurable for 64-bit support
-plugin_base_env['CCFLAGS'] += ['/D_X86_',]
+plugin_base_env['CCFLAGS']
 plugin_base_env.ComponentLibrary(
     lib_name='plugin_base',
     source=[

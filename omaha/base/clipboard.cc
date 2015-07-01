@@ -45,7 +45,9 @@ void SetClipboard(const TCHAR *string_to_set) {
     ASSERT(copy_handle, (L""));
 
     byte* copy_data = reinterpret_cast<byte*>(::GlobalLock(copy_handle));
-    memcpy(copy_data, string_to_set, len * sizeof(TCHAR));
+    if (copy_data) {
+      memcpy(copy_data, string_to_set, len * sizeof(TCHAR));
+    }
     ::GlobalUnlock(copy_handle);
 
 #ifdef _UNICODE

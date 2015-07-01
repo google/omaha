@@ -24,6 +24,7 @@
 #include "omaha/common/command_line_builder.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/goopdate_utils.h"
+#include "omaha/common/update3_utils.h"
 #include "omaha/common/webplugin_utils.h"
 #include "omaha/goopdate/app_manager.h"
 #include "goopdate/omaha3_idl.h"
@@ -62,7 +63,8 @@ STDMETHODIMP Update3WebControl::createOmahaMachineServerAsync(
   }
 
   CComPtr<ICoCreateAsync> cocreate_async;
-  hr = cocreate_async.CoCreateInstance(__uuidof(CoCreateAsyncClass));
+  hr = update3_utils::CoCreateWithProxyBlanket(
+      __uuidof(CoCreateAsyncClass), &cocreate_async);
   if (FAILED(hr)) {
     CORE_LOG(LE, (L"[CoCreate CoCreateAsyncClass failed][0x%08x]", hr));
     return hr;
@@ -101,9 +103,10 @@ STDMETHODIMP Update3WebControl::createOmahaUserServer(IDispatch** server) {
   }
 
   CComPtr<IGoogleUpdate3WebSecurity> security;
-  hr = security.CoCreateInstance(__uuidof(GoogleUpdate3WebUserClass));
+  hr = update3_utils::CoCreateWithProxyBlanket(
+      __uuidof(GoogleUpdate3WebUserClass), &security);
   if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[CoCreate failed][0x%08x]"), hr));
+    CORE_LOG(LE, (_T("[security.CoCreateWithProxyBlanket failed][0x%x]"), hr));
     return hr;
   }
 
@@ -139,13 +142,9 @@ STDMETHODIMP Update3WebControl::getInstalledVersion(BSTR guid_string,
                 guid_string, is_machine));
 
   CString version;
-  HRESULT hr = GetVersionUsingCOMServer(guid_string, is_machine == VARIANT_TRUE,
-                                        &version);
-  if (FAILED(hr)) {
-    hr = GetVersionUsingRegistry(guid_string, is_machine == VARIANT_TRUE,
-                                 &version);
-  }
-
+  HRESULT hr = GetVersionUsingRegistry(guid_string,
+                                       is_machine == VARIANT_TRUE,
+                                       &version);
   if (SUCCEEDED(hr)) {
     *version_string = version.AllocSysString();
   }
@@ -153,6 +152,10 @@ STDMETHODIMP Update3WebControl::getInstalledVersion(BSTR guid_string,
   return S_OK;
 }
 
+#if 0
+// TODO(omaha3): Not using this method for now. CoCreation of
+// GoogleUpdate3WebMachineClass can block, and should be using the async
+// creation pattern aka createOmahaMachineServerAsync.
 HRESULT Update3WebControl::GetVersionUsingCOMServer(const TCHAR* guid_string,
                                                     bool is_machine,
                                                     CString* version_string) {
@@ -162,11 +165,13 @@ HRESULT Update3WebControl::GetVersionUsingCOMServer(const TCHAR* guid_string,
   ASSERT1(version_string);
 
   CComPtr<IGoogleUpdate3Web> update3web;
-  HRESULT hr = update3web.CoCreateInstance(
+  HRESULT hr = update3_utils::CoCreateWithProxyBlanket(
       is_machine ? __uuidof(GoogleUpdate3WebMachineClass) :
-                   __uuidof(GoogleUpdate3WebUserClass));
+                   __uuidof(GoogleUpdate3WebUserClass),
+      &update3web);
   if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[update3web.CoCreateInstance failed][0x%x]"), hr));
+    CORE_LOG(LE,
+             (_T("[update3web.CoCreateWithProxyBlanket failed][0x%x]"), hr));
     return hr;
   }
 
@@ -236,6 +241,7 @@ HRESULT Update3WebControl::GetVersionUsingCOMServer(const TCHAR* guid_string,
                 guid_string, is_machine, *version_string));
   return S_OK;
 }
+#endif
 
 HRESULT Update3WebControl::GetVersionUsingRegistry(const TCHAR* guid_string,
                                                    bool is_machine,
@@ -296,12 +302,12 @@ HRESULT Update3WebControl::crossInstall(BSTR extra_args) {
 
   CString url_domain_encoded;
   CString cmd_line_encoded;
-  hr = StringEscape(url_domain, false, &url_domain_encoded);
+  hr = StringEscape(url_domain, true, &url_domain_encoded);
   if (FAILED(hr)) {
     return hr;
   }
 
-  hr = StringEscape(inner_cmd_line_args, false, &cmd_line_encoded);
+  hr = StringEscape(inner_cmd_line_args, true, &cmd_line_encoded);
   if (FAILED(hr)) {
     return hr;
   }
@@ -342,12 +348,11 @@ HRESULT Update3WebControl::launchAppCommand(BSTR guid_string,
   CORE_LOG(L2, (_T("[Update3WebControl::launchAppCommand]")));
 
   CComPtr<IOneClickProcessLauncher> process_launcher;
-  HRESULT hr = E_UNEXPECTED;
-
-  hr = process_launcher.CoCreateInstance(
+  HRESULT hr = update3_utils::CoCreateWithProxyBlanket(
       is_machine ?
-          CLSID_OneClickMachineProcessLauncherClass :
-          CLSID_OneClickUserProcessLauncherClass);
+          __uuidof(OneClickMachineProcessLauncherClass) :
+          __uuidof(OneClickUserProcessLauncherClass),
+      &process_launcher);
 
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[Update3WebControl::launchAppCommand]")

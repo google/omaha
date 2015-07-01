@@ -144,7 +144,7 @@ class SerializableObject {
   struct SerializableMemberInfo {
     byte* ptr;                      // Pointers to the serializable member
     SerializableMemberType type;    // Type of the serializable member
-    int size;                       // Size of the serializable member
+    size_t size;                    // Size of the serializable member
     uint32 version;                 // Version when the member is added
 
     SerializableMemberInfo()
@@ -162,12 +162,12 @@ class SerializableObject {
   bool Serialize(std::vector<byte>* data) const;
 
   // Deserialize the data for the latest version
-  bool Deserialize(byte* data, int size) {
+  bool Deserialize(byte* data, size_t size) {
     return Deserialize(data, size, kLatestSerializableVersion);
   }
 
   // Deserialize the data for a particular version
-  bool Deserialize(byte* data, int size, uint32 version);
+  bool Deserialize(byte* data, size_t size, uint32 version);
 
  protected:
   // Clear the serializable member list
@@ -217,14 +217,14 @@ class SerializableObject {
   }
 
   // Add nested serializable member to the serializable member list
-  void AddSerializableMember(SerializableObject* ptr, int size) {
+  void AddSerializableMember(SerializableObject* ptr, size_t size) {
     AddSerializableMember(0, ptr, size);
   }
 
   // Add nested serializable member to the serializable member list
   void AddSerializableMember(uint32 version,
                              SerializableObject* ptr,
-                             int size) {
+                             size_t size) {
     SerializableMemberInfo member;
     member.ptr = reinterpret_cast<byte*>(ptr);
     member.type = SERIALIZABLE_NESTED_OBJECT;
@@ -298,7 +298,7 @@ class SerializableObject {
 
   // If there is a vector of SerializableObject to be serialized, the derived
   // class need to provide the implementation
-  virtual bool DeserializeVectorNestedObject(byte**, int, byte*, uint32) {
+  virtual bool DeserializeVectorNestedObject(byte**, size_t, byte*, uint32) {
     ASSERT(false, (_T("provide the implementation in the derived class.")));
     return false;
   }
@@ -306,7 +306,7 @@ class SerializableObject {
   // Helper method to deserialize a vector of SerializableObject
   template<typename T>
   bool DeserializeVectorNestedObjectHelper(byte** data,
-                                           int size,
+                                           size_t size,
                                            std::vector<T>* list,
                                            uint32 version) {
     ASSERT(data, (_T("")));
@@ -318,12 +318,12 @@ class SerializableObject {
     byte* tail = *data + size;
 
     // Size of SerializableObject is unknown
-    int count = 0;
+    size_t count = 0;
     bool res = DeserializeSizeAndCount(&count, 0, data, size);
     if (!res)
       return false;
 
-    for (int i = 0; i < count; ++i) {
+    for (size_t i = 0; i < count; ++i) {
       T obj;
       bool res = obj.DeserializeHelper(data, tail - *data, version);
       if (!res)
@@ -336,29 +336,29 @@ class SerializableObject {
  private:
   // Serialize the size and count values
   void SerializeSizeAndCount(std::vector<byte>* data,
-                             int size,
-                             int count) const;
+                             size_t size,
+                             size_t count) const;
 
   // Serialize a list of value-typed elements
   void SerializeValueList(std::vector<byte>* ser_data,
                           const byte* raw_data,
-                          int size,
-                          int count) const;
+                          size_t size,
+                          size_t count) const;
 
   // Deserialize helper
-  bool DeserializeHelper(byte** data, int size, uint32 version);
+  bool DeserializeHelper(byte** data, size_t size, uint32 version);
 
   // Deserialize the size and count values
-  bool DeserializeSizeAndCount(int* count,
-                               int size,
+  bool DeserializeSizeAndCount(size_t* count,
+                               size_t size,
                                byte** ser_data,
-                               int ser_size) const;
+                               size_t ser_size) const;
 
   // Deserialize a list of value-typed elements
   bool DeserializeValueList(std::vector<byte>* raw_data,
-                            int size,
+                            size_t size,
                             byte** ser_data,
-                            int ser_size);
+                            size_t ser_size);
 
   // List of serializable members
   std::vector<SerializableMemberInfo> members_;

@@ -66,6 +66,7 @@
 #define WINHTTP_ACCESS_TYPE_AUTO_DETECT 2
 
 #include "base/basictypes.h"
+#include "omaha/base/debug.h"
 #include "omaha/base/object_factory.h"
 
 namespace omaha {
@@ -271,10 +272,10 @@ class HttpClient {
                             DWORD buffer_length) = 0;
 
   typedef void (__stdcall *StatusCallback)(HINTERNET handle,
-                                           uint32 context,
+                                           DWORD_PTR context,
                                            uint32 status,
                                            void* status_information,
-                                           size_t status_info_length);
+                                           DWORD status_info_length);
   virtual StatusCallback SetStatusCallback(HINTERNET handle,
                                            StatusCallback callback,
                                            uint32 flags) = 0;
@@ -323,14 +324,32 @@ class HttpClient {
 
   HRESULT QueryOptionString(HINTERNET handle, uint32 option, CString* value);
   HRESULT QueryOptionInt(HINTERNET handle, uint32 option, int* value);
+  HRESULT QueryOptionPtr(HINTERNET handle, uint32 option, DWORD_PTR* value);
 
   HRESULT SetOptionString(HINTERNET handle, uint32 option, const TCHAR* value);
   HRESULT SetOptionInt(HINTERNET handle, uint32 option, int value);
+  HRESULT SetOptionPtr(HINTERNET handle, uint32 option, DWORD_PTR value);
 
  protected:
   HttpClient() {}
 
  private:
+  template <typename T>
+  HRESULT QueryOptionT(HINTERNET handle, uint32 option, T* value) {
+    ASSERT1(value);
+    DWORD num_bytes = sizeof(*value);
+    HRESULT hr = QueryOption(handle, option, value, &num_bytes);
+    if (FAILED(hr) || num_bytes != sizeof(*value)) {
+      return hr;
+    }
+    return S_OK;
+  }
+
+  template <typename T>
+  HRESULT SetOptionT(HINTERNET handle, uint32 option, T value) {
+    return SetOption(handle, option, &value, sizeof(value));
+  }
+
   static Factory* factory_;
   DISALLOW_EVIL_CONSTRUCTORS(HttpClient);
 };

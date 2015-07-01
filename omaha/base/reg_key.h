@@ -134,12 +134,12 @@ class RegKey {
   // set binary data
   HRESULT SetValue(const TCHAR * value_name,
                    const byte * value,
-                   DWORD byte_count) const;
+                   size_t byte_count) const;
 
   // set raw data, including type
   HRESULT SetValue(const TCHAR * value_name,
                    const byte * value,
-                   DWORD byte_count,
+                   size_t byte_count,
                    DWORD type) const;
 
   // GETTERS
@@ -169,12 +169,12 @@ class RegKey {
   // get binary data - the caller must free the return buffer
   HRESULT GetValue(const TCHAR * value_name,
                    byte * * value,
-                   DWORD * byte_count) const;
+                   size_t * byte_count) const;
 
   // get raw data, including type - the caller must free the return buffer
   HRESULT GetValue(const TCHAR * value_name,
                    byte * * value,
-                   DWORD * byte_count,
+                   size_t * byte_count,
                    DWORD *type) const;
 
   // RENAMERS
@@ -228,13 +228,13 @@ class RegKey {
   static HRESULT SetValue(const TCHAR * full_key_name,
                           const TCHAR * value_name,
                           const byte * value,
-                          DWORD byte_count);
+                          size_t byte_count);
 
   // STATIC array of strings set
   static HRESULT SetValueMultiSZ(const TCHAR * full_key_name,
                                  const TCHAR * value_name,
                                  const byte * value,
-                                 DWORD byte_count);
+                                 size_t byte_count);
 
   // STATIC expandable string set
   static HRESULT SetValueExpandSZ(const TCHAR * full_key_name,
@@ -285,7 +285,7 @@ class RegKey {
   static HRESULT GetValue(const TCHAR * full_key_name,
                           const TCHAR * value_name,
                           byte * * value,
-                          DWORD * byte_count);
+                          size_t * byte_count);
 
   // Try reg keys successively if there is a failure in getting a value.
   //
@@ -391,25 +391,25 @@ class RegKey {
   HRESULT GetValueHelper(const TCHAR * value_name,
                          DWORD * type,
                          byte * * value,
-                         DWORD * byte_count) const;
+                         size_t * byte_count) const;
 
   // common SET Helper for the static case
   static HRESULT SetValueStaticHelper(const TCHAR * full_key_name,
                                       const TCHAR * value_name,
                                       DWORD type,
                                       LPVOID value,
-                                      DWORD byte_count = 0);
+                                      size_t byte_count = 0);
 
   // common GET Helper for the static case
   static HRESULT GetValueStaticHelper(const TCHAR * full_key_name,
                                       const TCHAR * value_name,
                                       DWORD type,
                                       LPVOID value,
-                                      DWORD * byte_count = NULL);
+                                      size_t * byte_count = NULL);
 
   // convert REG_MULTI_SZ bytes to string array
   static HRESULT MultiSZBytesToStringArray(const byte * buffer,
-                                           DWORD byte_count,
+                                           size_t byte_count,
                                            std::vector<CString> * value);
 
   // set a string or expandable string value
@@ -561,7 +561,7 @@ inline HRESULT RegKey::SetValue(const TCHAR* full_key_name,
 inline HRESULT RegKey::SetValue(const TCHAR* full_key_name,
                                 const TCHAR* value_name,
                                 const byte* value,
-                                DWORD byte_count) {
+                                size_t byte_count) {
   ASSERT1(full_key_name);
 
   return SetValueStaticHelper(full_key_name, value_name, REG_BINARY,
@@ -571,7 +571,7 @@ inline HRESULT RegKey::SetValue(const TCHAR* full_key_name,
 inline HRESULT RegKey::SetValueMultiSZ(const TCHAR* full_key_name,
                                        const TCHAR* value_name,
                                        const byte* value,
-                                       DWORD byte_count) {
+                                       size_t byte_count) {
   ASSERT1(full_key_name);
 
   return SetValueStaticHelper(full_key_name, value_name, REG_MULTI_SZ,
@@ -616,7 +616,7 @@ inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
   ASSERT1(value_name);
   ASSERT1(full_key_name);
 
-  DWORD byte_count = 0;
+  size_t byte_count = 0;
   byte* buffer = NULL;
   HRESULT hr = GetValueStaticHelper(full_key_name,
                                     value_name,
@@ -646,7 +646,7 @@ inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
   ASSERT1(value_name);
   ASSERT1(full_key_name);
 
-  DWORD byte_count = 0;
+  size_t byte_count = 0;
   byte* buffer = NULL;
   HRESULT hr = GetValueStaticHelper(full_key_name,
                                     value_name,
@@ -703,7 +703,7 @@ inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
 inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
                                 const TCHAR* value_name,
                                 byte** value,
-                                DWORD* byte_count) {
+                                size_t* byte_count) {
   ASSERT1(full_key_name);
   ASSERT1(value);
   ASSERT1(byte_count);

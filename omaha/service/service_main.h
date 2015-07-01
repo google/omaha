@@ -325,7 +325,6 @@ class ServiceModule
   virtual LONG Lock() throw() {
     ::CoAddRefServerProcess();
     LONG retval = CComGlobalsThreadModel::Increment(&m_nLockCnt);
-    SERVICE_LOG(L3, (_T("[ServiceModule::Lock][%d]"), retval));
     return retval;
   }
 
@@ -333,7 +332,7 @@ class ServiceModule
   //
   // * the call to ::CoReleaseServerProcess(), to ensure that the class
   // factories are suspended once the lock count drops to zero. This fixes a
-  // a race condition where an activation request could come in in the middle
+  // race condition where an activation request could come in in the middle
   // of shutting down. This shutdown mechanism works with free threaded servers.
   //
   // There are race issues with the ATL  delayed shutdown mechanism, hence the
@@ -348,7 +347,6 @@ class ServiceModule
 
     ::CoReleaseServerProcess();
     LONG retval = CComGlobalsThreadModel::Decrement(&m_nLockCnt);
-    SERVICE_LOG(L3, (_T("[ServiceModule::Unlock][%d]"), retval));
 
     if (retval == 0) {
       OnStop();
@@ -448,7 +446,12 @@ class ServiceModule
     // Register and resume the COM class objects. We call the CAtlExeModuleT
     // member instead of CAtlServiceModuleT, because the latter also tries to
     // initialize security, which we have already done above.
-    return CAtlExeModuleT<ServiceModule>::PreMessageLoop(SW_HIDE);
+    hr = CAtlExeModuleT<ServiceModule>::PreMessageLoop(SW_HIDE);
+    if (SUCCEEDED(hr)) {
+      SetServiceStatus(SERVICE_RUNNING);
+    }
+
+    return hr;
   }
 
   // When Start executes, it blocks on StartServiceCtrlDispatcher.

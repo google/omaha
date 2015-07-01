@@ -42,22 +42,6 @@ namespace omaha {
 
 class RegKey;
 
-// The cup credentials are persisted across sessions. The sk is encrypted
-// while on the disk so only a user with the same login credentials as
-// the encryptor can decrypt it. The credentials are protected
-// using the system default security, so users can't modify each other's
-// credentials. In case of elevated administrators, the credentials are
-// protected from the non-elevated administrators, so the latter can't
-// read the keys and attack the elevated administrator.
-//
-// Cup credentials can be negotiated using either production keys or
-// test keys. There is a registry value override to specify that test keys
-// be used. For the change to be effective, the old credentials must be cleared.
-struct CupCredentials {
-  std::vector<uint8> sk;             // shared key (sk)
-  CStringA c;                        // client cookie (c)
-};
-
 // There are three ways by which an application could connect to the Internet:
 // 1. Direct connection.
 //    The config for the direction connection must not specify WPAD information
@@ -150,13 +134,6 @@ class NetworkConfig {
   // Returns the detected configurations.
   std::vector<ProxyConfig> GetConfigurations() const;
 
-  // Gets the persisted CUP credentials.
-  HRESULT GetCupCredentials(CupCredentials* cup_credentials) const;
-
-  // Saves the CUP credentials in persistent storage. If the parameter is null,
-  // it clears the credentials.
-  HRESULT SetCupCredentials(const CupCredentials* cup_credentials) const;
-
   // Prompts for credentials, or gets cached credentials if they exist.
   bool GetProxyCredentials(bool allow_ui,
                            bool force_ui,
@@ -174,10 +151,12 @@ class NetworkConfig {
                              bool is_https,
                              uint32 auth_scheme);
 
-  // Runs the WPAD protocol to compute the proxy information to be used
-  // for the given url. The ProxyInfo pointer members must be freed using
-  // GlobalFree.
+  // Runs a PAC script to compute the proxy information to be used
+  // for the given url. The PAC script can be explicitly set, or discovered
+  // via WPAD. (If both are specified, we try the URL first, then WPAD.)
+  // The ProxyInfo pointer members must be freed using GlobalFree.
   HRESULT GetProxyForUrl(const CString& url,
+                         bool use_wpad,
                          const CString& auto_config_url,
                          HttpClient::ProxyInfo* proxy_info);
 
@@ -233,6 +212,9 @@ class NetworkConfig {
                                      const CString& path_to_pac_file,
                                      HttpClient::ProxyInfo* proxy_info);
 
+  static const TCHAR* const kWPADIdentifier;
+  static const TCHAR* const kDirectConnectionIdentifier;
+
  private:
   explicit NetworkConfig(bool is_machine);
   ~NetworkConfig();
@@ -241,6 +223,15 @@ class NetworkConfig {
 
   // Configures the proxy auth credentials options. Called by Initialize().
   void ConfigureProxyAuth();
+
+  // Attempts to use WinHTTP to discover a PAC script via WPAD and execute it.
+  HRESULT GetWPADProxyForUrl(const CString& url,
+                             HttpClient::ProxyInfo* proxy_info);
+
+  // Attempts to use WinHTTP to load an explicit PAC script and execute it.
+  HRESULT GetPACProxyForUrl(const CString& url,
+                            const CString& pac_url,
+                            HttpClient::ProxyInfo* proxy_info);
 
   // Creates the proxy configuration registry key for the calling user
   // identified by the token.
@@ -255,9 +246,6 @@ class NetworkConfig {
 
   static const TCHAR* const kRegKeyProxy;
   static const TCHAR* const kRegValueSource;
-
-  static const TCHAR* const kWPADIdentifier;
-  static const TCHAR* const kDirectConnectionIdentifier;
 
   bool is_machine_;     // True if the instance is initialized for machine.
 
@@ -297,13 +285,7 @@ class NetworkConfigManager {
 
   HRESULT GetUserNetworkConfig(NetworkConfig** network_config);
 
-  // Gets the persisted CUP credentials.
-  HRESULT GetCupCredentials(CupCredentials* cup_credentials);
-
-  // Saves the CUP credentials in persistent storage.
-  HRESULT SetCupCredentials(const CupCredentials& cup_credentials);
-
-  void ClearCupCredentials();
+  CString GetUserIdHistory();
 
  private:
   explicit NetworkConfigManager();
@@ -313,32 +295,12 @@ class NetworkConfigManager {
 
   void DeleteInstanceInternal();
 
-  HRESULT InitializeLock();
-  HRESULT InitializeRegistryKey();
-
   HRESULT CreateNetworkConfigInstance(NetworkConfig** network_config_ptr,
                                       bool is_machine);
-  HRESULT LoadCupCredentialsFromRegistry();
-  HRESULT SaveCupCredentialsToRegistry();
 
   std::map<CString, NetworkConfig*> user_network_config_map_;
-  scoped_ptr<CupCredentials> cup_credentials_;
 
   LLock lock_;
-
-  // Synchronizes access to CUP registry.
-  GLock global_lock_;
-
-  // Registry sub key where network configuration is persisted.
-  static const TCHAR* const kNetworkSubkey;
-
-  // Registry sub key where CUP configuration is persisted.
-  static const TCHAR* const kNetworkCupSubkey;
-
-  // The secret key must be encrypted by the caller. This class does not do any
-  // encryption.
-  static const TCHAR* const kCupClientSecretKey;      // CUP sk.
-  static const TCHAR* const kCupClientCookie;         // CUP c.
 
   static const NetworkConfigManager* const kInvalidInstance;
   static NetworkConfigManager* instance_;

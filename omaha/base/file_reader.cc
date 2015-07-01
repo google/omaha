@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/base/file_reader.h"
+#include <intsafe.h>
 #include "omaha/base/debug.h"
 
 namespace omaha {
@@ -32,13 +33,16 @@ FileReader::~FileReader() {
   }
 }
 
-HRESULT FileReader::Init(const TCHAR* file_name, size_t buffer_size) {
+HRESULT FileReader::Init(const TCHAR* file_name, uint32 buffer_size) {
   ASSERT1(file_name);
   ASSERT1(buffer_size);
+
   file_buffer_size_ = buffer_size;
   file_buffer_.reset(new byte[file_buffer_size()]);
-  HRESULT hr = file_.OpenShareMode(file_name, false, false, FILE_SHARE_WRITE |
-                                                            FILE_SHARE_READ);
+  HRESULT hr = file_.OpenShareMode(file_name,
+                                   false,
+                                   false,
+                                   FILE_SHARE_WRITE | FILE_SHARE_READ);
   file_is_open_ = SUCCEEDED(hr);
   is_unicode_ = false;
 
@@ -61,7 +65,7 @@ HRESULT FileReader::Init(const TCHAR* file_name, size_t buffer_size) {
   }
 
   if (bytes_read == sizeof(buf)) {
-    char unicode_buf[unicode_header_length] = {0xff, 0xfe};
+    uint8 unicode_buf[unicode_header_length] = {0xff, 0xfe};
     is_unicode_ = (memcmp(buf, unicode_buf, sizeof(buf)) == 0);
   }
 

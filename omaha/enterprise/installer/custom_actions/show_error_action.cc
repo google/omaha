@@ -29,6 +29,8 @@
 #include <limits>
 #include <string>
 
+#include "omaha/enterprise/installer/custom_actions/msi_custom_action.h"
+
 #define SOFTWARE_GOOGLE_UPDATE L"Software\\Google\\Update"
 #define SOFTWARE_GOOGLE_UPDATE_CLIENTSTATE \
     SOFTWARE_GOOGLE_UPDATE L"\\ClientState"
@@ -43,32 +45,6 @@ const wchar_t kRegKeyGoogleUpdate[] = SOFTWARE_GOOGLE_UPDATE;
 const wchar_t kRegValueLastInstallerResult[] = L"LastInstallerResult";
 const wchar_t kRegValueLastInstallerResultUIString[] =
     L"LastInstallerResultUIString";
-
-// Gets the value of the property named |property_name|, putting it in
-// |property_value|. The anticipated length of the value can be provided in
-// |expected_length| to reduce overhead. Returns true if a (possibly empty)
-// value is read, or false on error.
-bool GetProperty(MSIHANDLE install,
-                 const wchar_t* property_name,
-                 int expected_length,
-                 std::wstring* property_value) {
-  DWORD value_len = static_cast<DWORD>(std::max(0, expected_length));
-  UINT result = ERROR_SUCCESS;
-  do {
-    // Make space to hold the string terminator.
-    property_value->resize(++value_len);
-    result = MsiGetProperty(install, property_name, &(*property_value)[0],
-                            &value_len);
-  } while (result == ERROR_MORE_DATA &&
-           value_len <= std::numeric_limits<DWORD>::max() - 1);
-
-  if (result == ERROR_SUCCESS)
-    property_value->resize(value_len);
-  else
-    property_value->clear();
-
-  return result == ERROR_SUCCESS;
-}
 
 // The type of a function that returns true if |c| is a valid char in a GUID.
 typedef bool (*IsGuidCharFn)(wchar_t c);
@@ -143,8 +119,9 @@ bool IsGuid(const std::wstring& guid) {
 // Gets the app guid for the product being installed. Returns false if a value
 // that doesn't look like a GUID is read.
 bool GetProductGuid(MSIHANDLE install, std::wstring* guid) {
-  return GetProperty(install, kPropertyCustomActionData, kGuidStringLength,
-                     guid) &&
+  return custom_action::GetProperty(install,
+                                    kPropertyCustomActionData,
+                                    guid) &&
          IsGuid(*guid);
 }
 

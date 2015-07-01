@@ -27,6 +27,9 @@ class SystemMonitorTest
     : public testing::Test,
       public SystemMonitorObserver {
  protected:
+  SystemMonitorTest() : is_machine_(false) {
+  }
+
   virtual void SetUp() {
     RegKey::DeleteKey(kRegistryHiveOverrideRoot);
     OverrideRegistryHives(kRegistryHiveOverrideRoot);
@@ -41,6 +44,8 @@ class SystemMonitorTest
 
   // SystemMonitorObserver interface.
   virtual void LastCheckedDeleted() {
+    const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
+    EXPECT_FALSE(RegKey::HasValue(key_name, kRegValueLastChecked));
     gate_->Open();
   }
 
@@ -51,16 +56,19 @@ class SystemMonitorTest
   void MonitorLastCheckedTest(bool is_machine);
   void MonitorClientsTest(bool is_machine);
 
+  bool is_machine_;
   scoped_ptr<Gate> gate_;
 };
 
 void SystemMonitorTest::MonitorLastCheckedTest(bool is_machine) {
-  const TCHAR* key_name = is_machine ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
+  is_machine_ = is_machine;
+
+  const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
   DWORD last_checked_value(1);
   ASSERT_HRESULT_SUCCEEDED(RegKey::SetValue(key_name,
                                             kRegValueLastChecked,
                                             last_checked_value));
-  SystemMonitor system_monitor(is_machine);
+  SystemMonitor system_monitor(is_machine_);
   system_monitor.set_observer(this);
   ASSERT_HRESULT_SUCCEEDED(system_monitor.Initialize(true));
 
@@ -68,26 +76,25 @@ void SystemMonitorTest::MonitorLastCheckedTest(bool is_machine) {
   EXPECT_HRESULT_SUCCEEDED(RegKey::DeleteValue(key_name,
                                                kRegValueLastChecked));
   EXPECT_TRUE(gate_->Wait(1000));
-  EXPECT_FALSE(RegKey::HasValue(key_name, kRegValueLastChecked));
+  EXPECT_TRUE(gate_->Close());
 
-  // Trigger the callback second time.
+  // Trigger the callback a second time by setting and then deleting the value.
+  // The registry monitor can miss notifications if the values are deleted and
+  // then created in short succession.
   last_checked_value = 2;
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(key_name,
                                             kRegValueLastChecked,
                                             last_checked_value));
-
-  // It takes a while for the registry monitor to detect the changes. There are
-  // two changes here: setting and deleting the values.
-  ::Sleep(50);
-  EXPECT_TRUE(gate_->Close());
+  ::Sleep(100);
   EXPECT_HRESULT_SUCCEEDED(RegKey::DeleteValue(key_name,
                                                kRegValueLastChecked));
   EXPECT_TRUE(gate_->Wait(1000));
-  EXPECT_FALSE(RegKey::HasValue(key_name, kRegValueLastChecked));
 }
 
 void SystemMonitorTest::MonitorClientsTest(bool is_machine) {
-  const TCHAR* key_name = is_machine ? MACHINE_REG_CLIENTS : USER_REG_CLIENTS;
+  is_machine_ = is_machine;
+
+  const TCHAR* key_name = is_machine_ ? MACHINE_REG_CLIENTS : USER_REG_CLIENTS;
   const TCHAR guid[] = _T("{4AAF2315-B7C8-4633-A1BA-884EFAB755F7}");
 
   CString app_guid = ConcatenatePath(key_name, guid);
@@ -96,7 +103,7 @@ void SystemMonitorTest::MonitorClientsTest(bool is_machine) {
   EXPECT_HRESULT_SUCCEEDED(RegKey::CreateKeys(keys_to_create,
                                               arraysize(keys_to_create)));
 
-  SystemMonitor system_monitor(is_machine);
+  SystemMonitor system_monitor(is_machine_);
   system_monitor.set_observer(this);
   EXPECT_HRESULT_SUCCEEDED(system_monitor.Initialize(true));
 
@@ -107,10 +114,18 @@ void SystemMonitorTest::MonitorClientsTest(bool is_machine) {
 TEST_F(SystemMonitorTest, SystemMonitor) {
   SystemMonitor system_monitor(false);
   ASSERT_HRESULT_SUCCEEDED(system_monitor.Initialize(false));
-  EXPECT_EQ(0, system_monitor.SendMessage(WM_POWERBROADCAST, 0, 0));
-  EXPECT_EQ(TRUE, system_monitor.SendMessage(WM_QUERYENDSESSION, 0, 0));
-  EXPECT_EQ(0, system_monitor.SendMessage(WM_ENDSESSION, 0, 0));
-  EXPECT_EQ(0, system_monitor.SendMessage(WM_WTSSESSION_CHANGE, 0, 0));
+
+  LRESULT result = system_monitor.SendMessage(WM_POWERBROADCAST, 0, 0);
+  EXPECT_EQ(0, static_cast<int>(result));
+
+  result = system_monitor.SendMessage(WM_QUERYENDSESSION, 0, 0);
+  EXPECT_EQ(TRUE, static_cast<BOOL>(result));
+
+  result = system_monitor.SendMessage(WM_ENDSESSION, 0, 0);
+  EXPECT_EQ(0, static_cast<int>(result));
+
+  result = system_monitor.SendMessage(WM_WTSSESSION_CHANGE, 0, 0);
+  EXPECT_EQ(0, static_cast<int>(result));
 }
 
 // Tests the callback gets called when the "LastChecked" is deleted and

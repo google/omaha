@@ -17,11 +17,13 @@
 
 """Omaha builders tool for SCons."""
 
+from copy import deepcopy
 import os.path
 import SCons.Action
 import SCons.Builder
 import SCons.Tool
 
+import omaha_version_utils
 
 def EnablePrecompile(env, target_name):
   """Enable use of precompiled headers for target_name.
@@ -81,7 +83,10 @@ def SignDotNetManifest(env, target, unsigned_manifest):
   Returns:
     Output node list from env.Command().
   """
-  sign_manifest_cmd = ('@mage -Sign $SOURCE -ToFile $TARGET -TimestampUri '
+  mage_sign_path = ('python $MAIN_DIR/tools/retry.py 10 5 %s/%s' %
+                    (os.getenv('OMAHA_NETFX_TOOLS_DIR'), 'mage.exe -Sign'))
+  sign_manifest_cmd = (mage_sign_path +
+                       ' $SOURCE -ToFile $TARGET -TimestampUri ' +
                        'http://timestamp.verisign.com/scripts/timstamp.dll ')
 
   if env.Bit('build_server'):
@@ -103,6 +108,56 @@ def SignDotNetManifest(env, target, unsigned_manifest):
 
   return signed_manifest
 
+
+def OmahaCertificateTagExe(env, target, source):
+  """Adds a superfluous certificate with a magic signature to an EXE. The file
+  must be signed with Authenticode in order for Certificate Tagging to succeed.
+
+  Args:
+    env: The environment.
+    target: Name of the certificate-tagged file.
+    source: Name of the file to be certificate-tagged.
+
+  Returns:
+    Output node list from env.Command().
+  """
+
+  certificate_tag = (env['ENV']['GOROOT'] + '/bin/go.exe run ' +
+                     '$MAIN_DIR/../common/certificate_tag/certificate_tag.go')
+  magic_bytes = 'Gact2.0Omaha'
+  padded_length = len(magic_bytes) + 2 + 8192
+  certificate_tag_cmd = env.Command(
+      target=target,
+      source=source,
+      action=certificate_tag +
+             ' -set-superfluous-cert-tag=' + magic_bytes +
+             ' -padded-length=' + str(padded_length) + ' -out $TARGET $SOURCE',
+  )
+
+  return certificate_tag_cmd
+
+def OmahaTagExe(env, target, source, tag):
+  """Tags an EXE using ApplyTag.
+
+  Args:
+    env: The environment.
+    target: Name of the tagged file.
+    source: Name of the file to be tagged.
+    tag: Tag to be applied.
+
+  Returns:
+    Output node list from env.Command().
+  """
+
+  tag_exe = '$MAIN_DIR/internal/tools/ApplyTag.exe'
+  tag_cmd = env.Command(
+      target=target,
+      source=source,
+      action=tag_exe + ' $SOURCES $TARGET ' +
+      '%s append' % tag,
+  )
+
+  return tag_cmd
 
 #
 # Custom Library and Program builders.
@@ -290,7 +345,7 @@ def OmahaUnittest(env,  # pylint: disable-msg=C6409
     output = [os.path.join(test_program_dir, 'omaha_unittest.exe'),
               os.path.join(test_program_dir, 'omaha_unittest.pdb')]
   else:
-    test_env.FilterOut(LINKFLAGS=['/NODEFAULTLIB', '/SUBSYSTEM:WINDOWS'])
+    test_env.FilterOut(LINKFLAGS=['/NODEFAULTLIB', '/SUBSYSTEM:WINDOWS,5.01'])
     if LIBS:
       test_env.Append(
           LIBS=test_env.Flatten(LIBS),
@@ -301,14 +356,26 @@ def OmahaUnittest(env,  # pylint: disable-msg=C6409
     # them in as part of the LIBS argument.
     test_env.Append(
         CPPPATH=[
-            '$MAIN_DIR/third_party/gmock/include',
-            '$MAIN_DIR/third_party/gtest/include',
+            '$THIRD_PARTY/gmock/include',
+            '$THIRD_PARTY/gtest/include',
         ],
+        CCFLAGS=[
+            '/wd4389',  # signed/unsigned mismatch
+            '/wd4826',  # Conversion from 'type_1' to 'type_2' is sign-extended.
+
+            # Disable static analysis warnings.
+            '/wd6326',  # Potential comparison of a constant with
+                        # another constant.
+        ],
+
         LIBS=[
             '$LIB_DIR/base',
             '$LIB_DIR/gmock',
             '$LIB_DIR/gtest',
-            ('atls', 'atlsd')[test_env.Bit('debug')],
+            test_env['atls_libs'][test_env.Bit('debug')],
+            ('libcmt.lib', 'libcmtd.lib')[test_env.Bit('debug')],
+            ('libcpmt.lib', 'libcpmtd.lib')[test_env.Bit('debug')],
+            'comctl32',
 
             # Required by base/process.h, which is used by unit_test.cc.
             'psapi',
@@ -316,12 +383,16 @@ def OmahaUnittest(env,  # pylint: disable-msg=C6409
             # Required by omaha_version.h, which is used by omaha_unittest.cc.
             'version',
 
-            # Rquired if base/utils.h, which is used by several modules used by
-            # omaha_unittest.cc, is used.
+            # Required by base/utils.h, which is used by omaha_unittest.cc.
             'netapi32',
             'rasapi32',
             'shlwapi',
+            'userenv',
             'wtsapi32',
+        ],
+
+        LINKFLAGS=[
+            '/SUBSYSTEM:CONSOLE,5.01',
         ],
     )
 
@@ -424,11 +495,123 @@ def CopyFileToDirectory(env, target, source):
                      action='@copy /y $SOURCE $TARGET')
 
 
+def ConfigureEnvFor64Bit(env):
+  """Modifies the flags and compiler\library paths of an environment to
+     configure it to produce 64-bit binaries.
+
+  Args:
+    env: The environment.
+  """
+  env.AppendUnique(ARFLAGS=['/MACHINE:x64'],
+                   LIBFLAGS=['/MACHINE:x64'],
+                   LINKFLAGS=['/MACHINE:x64'])
+
+  _lib_paths = {
+      omaha_version_utils.VC80: [ '$VC80_DIR/vc/lib/amd64',
+                                  '$ATLMFC_VC80_DIR/lib/amd64',
+                                  '$PLATFORM_SDK_VISTA_6_0_DIR/lib/x64' ],
+      omaha_version_utils.VC100: [ '$VC10_0_DIR/vc/lib/amd64',
+                                   '$ATLMFC_VC10_0_DIR/lib/amd64',
+                                   '$PLATFORM_SDK_VC10_0_DIR/lib/x64' ],
+      omaha_version_utils.VC120: [ '$VC12_0_DIR/vc/lib/amd64',
+                                   '$ATLMFC_VC12_0_DIR/lib/amd64',
+                                   '$WINDOWS_SDK_8_1_DIR/lib/winv6.3/um/x64' ],
+      }[env['msc_ver']]
+
+  env.Prepend(LIBPATH=_lib_paths)
+
+  # Override the build tools to be the x86-64 version.
+  env.PrependENVPath('PATH', env.Dir(
+      { omaha_version_utils.VC80  : '$VC80_DIR/vc/bin/x86_amd64',
+        omaha_version_utils.VC100 : '$VC10_0_DIR/vc/bin/x86_amd64',
+        omaha_version_utils.VC120 : '$VC12_0_DIR/vc/bin/x86_amd64'}
+      [env['msc_ver']]))
+
+  env.FilterOut(ARFLAGS=['/MACHINE:X86'],
+                LIBFLAGS=['/MACHINE:X86'],
+                LINKFLAGS=['/MACHINE:X86'])
+
+  # x86-64 does not support SAFESEH option at link time.
+  env.FilterOut(LINKFLAGS=['/SAFESEH'])
+
+  # Modify output filenames such that .obj becomes .obj64.  (We can't modify
+  # LIBPREFIX in the same way, unfortunately, because the 64-bit compilers
+  # supply the base libraries as .lib.)
+  env['OBJSUFFIX'] = '.obj64'
+
+  # Set the bit to denote that this environment generates 64-bit targets.
+  # (This is used by several .scons files to adjust target names.)
+  env.SetBits('x64')
+
+  # If this is a coverage build, skip instrumentation for 64-bit binaries,
+  # as VSInstr doesn't currently support those.
+  if env.IsCoverageBuild():
+    env['INSTALL'] = env['PRECOVERAGE_INSTALL']
+
+
+def CloneAndMake64Bit(env):
+  """Clones the supplied environment and calls ConfigureEnvFor64Bit()
+     on the clone.
+
+  Args:
+    env: The environment to clone.
+
+  Returns:
+    The cloned and modified environment.
+  """
+  env64 = env.Clone()
+  ConfigureEnvFor64Bit(env64)
+  return env64
+
+
+def GetMultiarchLibName(env, lib_name):
+  """Decorates the lib name based on whether or not the environment is intended
+  to produce 64-bit binaries.
+
+  Args:
+    env: The environment to build in.
+    lib_name: The library name.
+
+  Returns:
+    The appropriate library name.
+  """
+  filename = (lib_name, '%s_64' % lib_name)[env.Bit('x64')]
+  return '$LIB_DIR/' + filename + '.lib'
+
+
+def ComponentStaticLibraryMultiarch(env, lib_name, *args, **kwargs):
+  """Calls ComponentStaticLibrary() twice - once with the supplied environment,
+  and once with a 64-bit leaf of that environment.
+
+  Args:
+    env: The environment.
+    lib_name: The name of the library to be built.
+    args: Positional arguments.
+    kwargs: Keyword arguments.
+
+  Returns:
+    The output node lists from env.ComponentLibrary().
+  """
+
+  # ComponentStaticLibrary() will actually modify the input arg lists, so
+  # make a deep copy of both.
+  args64 = deepcopy(args)
+  kwargs64 = deepcopy(kwargs)
+
+  nodes32 = ComponentStaticLibrary(env.Clone(), lib_name, *args, **kwargs)
+  nodes64 = ComponentStaticLibrary(CloneAndMake64Bit(env),
+                                   '%s_64' % lib_name,
+                                   *args64, **kwargs64)
+  return nodes32 + nodes64
+
+
 # NOTE: SCons requires the use of this name, which fails gpylint.
 def generate(env):  # pylint: disable-msg=C6409
   """SCons entry point for this tool."""
   env.AddMethod(EnablePrecompile)
   env.AddMethod(SignDotNetManifest)
+  env.AddMethod(OmahaCertificateTagExe)
+  env.AddMethod(OmahaTagExe)
   env.AddMethod(ComponentStaticLibrary)
   env.AddMethod(ComponentDll)
   env.AddMethod(ComponentSignedProgram)
@@ -438,6 +621,10 @@ def generate(env):  # pylint: disable-msg=C6409
   env.AddMethod(GetAllInOneUnittestLibs)
   env.AddMethod(IsCoverageBuild)
   env.AddMethod(CopyFileToDirectory)
+  env.AddMethod(ConfigureEnvFor64Bit)
+  env.AddMethod(CloneAndMake64Bit)
+  env.AddMethod(GetMultiarchLibName)
+  env.AddMethod(ComponentStaticLibraryMultiarch)
 
   env['MIDLNOPROXYCOM'] = ('$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} '
                            '/h ${TARGETS[1]} /iid ${TARGETS[2]} '

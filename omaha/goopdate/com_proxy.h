@@ -40,9 +40,13 @@ namespace omaha {
 // and does not follow the steps above.
 //
 const IID kIIDsToRegister[] = {
+  // Omaha3 IIDs:
   __uuidof(IGoogleUpdate3),
   __uuidof(IAppBundle),
   __uuidof(IApp),
+  __uuidof(IApp2),
+  __uuidof(IAppCommand),
+  __uuidof(IAppCommand2),
   __uuidof(IAppVersion),
   __uuidof(IPackage),
   __uuidof(ICurrentState),
@@ -53,10 +57,13 @@ const IID kIIDsToRegister[] = {
   __uuidof(IGoogleUpdate3WebSecurity),
   __uuidof(IAppBundleWeb),
   __uuidof(IAppWeb),
+  __uuidof(IAppCommandWeb),
   __uuidof(IAppVersionWeb),
   __uuidof(ICoCreateAsync),
   __uuidof(ICoCreateAsyncStatus),
   __uuidof(ICredentialDialog),
+
+  __uuidof(IProcessLauncher2),
 
   // Omaha2 IIDs:
   __uuidof(IBrowserHttpRequest2),

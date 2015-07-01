@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/base/reg_key.h"
+#include "omaha/base/system_info.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/testing/unit_test.h"
@@ -54,6 +55,15 @@ const TCHAR* const kOmahaMachineClientStatePath =
 const TCHAR* const kOmahaUserClientStatePath =
     _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\") GOOPDATE_APP_ID;
+
+int GetFirstDayOfWeek(int day) {
+  if (day < 0) {
+    return day;
+  }
+
+  const int kDaysInWeek = 7;
+  return day / kDaysInWeek * kDaysInWeek;
+}
 
 }  // namespace
 
@@ -1588,6 +1598,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 // This test verifies that InstallTime remains unchanged for Omaha if it already
@@ -1605,6 +1621,11 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                                     kRegValueInstallTimeSec,
                                     kInstallTime));
 
+  const DWORD kDayOfInstall = 3344;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    kDayOfInstall));
+
   EXPECT_SUCCEEDED(SetGoogleUpdateBranding(kAppMachineClientStatePath,
                                            _T(""),
                                            _T("")));
@@ -1620,13 +1641,16 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_STREQ(_T("existing_partner"), value);
   EXPECT_EQ(kInstallTime,
             GetDwordValue(kAppMachineClientStatePath, kRegValueInstallTimeSec));
+  EXPECT_EQ(kDayOfInstall,
+            GetDwordValue(kAppMachineClientStatePath, kRegValueDayOfInstall));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_KeyDoesNotExist) {
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T("some_partner"),
-                                  _T("referrer")));
+                                  _T("referrer"),
+                                  -1));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_AllEmpty) {
@@ -1635,7 +1659,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_AllEmpty) {
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -1657,6 +1682,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_AllEmpty) {
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_BrandCodeOnly) {
@@ -1665,7 +1696,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_BrandCodeOnly) {
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -1687,13 +1719,20 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_BrandCodeOnly) {
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_BrandCodeTooLong) {
   EXPECT_EQ(E_INVALIDARG, SetAppBranding(kAppMachineClientStatePath,
                                          _T("CHMGon.href)}"),
                                          _T(""),
-                                         _T("")));
+                                         _T(""),
+                                         -1));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_ClientIdOnly) {
@@ -1702,7 +1741,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_ClientIdOnly) {
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T("some_partner"),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -1724,15 +1764,23 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_ClientIdOnly) {
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_AllValid) {
-  ASSERT_SUCCEEDED(RegKey::CreateKey(kAppMachineClientStatePath));
+  const int kExpectedDayOfInstall = 2555;
 
+  ASSERT_SUCCEEDED(RegKey::CreateKey(kAppMachineClientStatePath));
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T("some_partner"),
-                                  _T("referrer")));
+                                  _T("referrer"),
+                                  kExpectedDayOfInstall));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -1754,6 +1802,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, SetAppBranding_AllValid) {
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(kExpectedDayOfInstall, day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1765,7 +1819,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -1785,6 +1840,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueInstallTimeSec,
                              &dword_value));
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1796,7 +1857,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -1816,6 +1878,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueInstallTimeSec,
                              &dword_value));
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1827,7 +1895,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -1847,6 +1916,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueInstallTimeSec,
                              &dword_value));
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1858,7 +1933,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T("some_partner"),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -1878,6 +1954,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueInstallTimeSec,
                              &dword_value));
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1889,7 +1971,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T("some_partner"),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -1909,6 +1992,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueInstallTimeSec,
                              &dword_value));
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1920,7 +2009,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -1942,6 +2032,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1953,7 +2049,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCE"),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -1975,6 +2072,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -1986,7 +2089,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T("some_partner"),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -2008,6 +2112,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -2019,7 +2129,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T("some_partner"),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -2041,6 +2152,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -2058,11 +2175,16 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
                                     kRegValueInstallTimeSec,
                                     kInstallTime));
+  const DWORD kDayOfInstall = 3344;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    kDayOfInstall));
 
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -2079,6 +2201,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_STREQ(__T("existingreferrerid"), value);
   EXPECT_EQ(kInstallTime,
             GetDwordValue(kAppMachineClientStatePath, kRegValueInstallTimeSec));
+  EXPECT_EQ(kDayOfInstall,
+            GetDwordValue(kAppMachineClientStatePath, kRegValueDayOfInstall));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -2096,11 +2220,16 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
                                     kRegValueInstallTimeSec,
                                     kInstallTime));
+  const DWORD kDayOfInstall = 3344;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    kDayOfInstall));
 
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -2117,6 +2246,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_STREQ(__T("existingreferrerid"), value);
   EXPECT_EQ(kInstallTime,
             GetDwordValue(kAppMachineClientStatePath, kRegValueInstallTimeSec));
+  EXPECT_EQ(kDayOfInstall,
+            GetDwordValue(kAppMachineClientStatePath, kRegValueDayOfInstall));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -2134,7 +2265,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T(""),
                                   _T("some_partner"),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -2154,6 +2286,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueInstallTimeSec,
                              &dword_value));
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -2171,7 +2309,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCD"),
                                   _T("some_partner"),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
 
   CString value;
   EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
@@ -2191,6 +2330,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
             RegKey::GetValue(kAppMachineClientStatePath,
                              kRegValueInstallTimeSec,
                              &dword_value));
+
+  DWORD day_of_install(0);
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
+            RegKey::GetValue(kAppMachineClientStatePath,
+                             kRegValueDayOfInstall,
+                             &day_of_install));
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -2199,11 +2344,16 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   ASSERT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
                                     kRegValueInstallTimeSec,
                                     kExistingInstallTime));
+  const DWORD kDayOfInstall = 3344;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    kDayOfInstall));
 
   EXPECT_SUCCEEDED(SetAppBranding(kAppMachineClientStatePath,
                                   _T("ABCE"),
                                   _T(""),
-                                  _T("")));
+                                  _T(""),
+                                  -1));
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
   CString value;
@@ -2226,6 +2376,12 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_NE(kExistingInstallTime, install_time);
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install(0);
+  EXPECT_SUCCEEDED(RegKey::GetValue(kAppMachineClientStatePath,
+                                    kRegValueDayOfInstall,
+                                    &day_of_install));
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, GetAppVersion_User) {
@@ -2252,6 +2408,58 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, GetAppVersion_Machine) {
   EXPECT_STREQ(expected_pv, actual_pv);
 }
 
+TEST_F(AppRegistryUtilsRegistryProtectedTest, GetAppName_User) {
+  const CString expected_name = _T("User App");
+
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientsPath,
+                                            kRegValueAppName,
+                                            expected_name));
+
+  CString actual_name;
+  GetAppName(false, kGoogleUpdateAppId, &actual_name);
+  EXPECT_STREQ(expected_name, actual_name);
+}
+
+TEST_F(AppRegistryUtilsRegistryProtectedTest, GetAppName_Machine) {
+  const CString expected_name = _T("Machine App");
+
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientsPath,
+                                            kRegValueAppName,
+                                            expected_name));
+
+  CString actual_name;
+  GetAppName(true, kGoogleUpdateAppId, &actual_name);
+  EXPECT_STREQ(expected_name, actual_name);
+}
+
+TEST_F(AppRegistryUtilsRegistryProtectedTest, GetAppLang_User) {
+  const CString expected_lang = _T("ar");
+
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+                                            kRegValueLanguage,
+                                            expected_lang));
+
+  CString actual_lang;
+  GetAppLang(false, kGoogleUpdateAppId, &actual_lang);
+  EXPECT_STREQ(expected_lang, actual_lang);
+}
+
+TEST_F(AppRegistryUtilsRegistryProtectedTest, GetAppLang_Machine) {
+  const CString expected_lang = _T("es");
+
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
+                                            kRegValueLanguage,
+                                            expected_lang));
+
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientsPath,
+                                            kRegValueLanguage,
+                                            _T("ar")));
+
+  CString actual_lang;
+  GetAppLang(true, kGoogleUpdateAppId, &actual_lang);
+  EXPECT_STREQ(expected_lang, actual_lang);
+}
+
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
        GetClientStateData_User) {
   const CString expected_pv           = _T("1.0");
@@ -2263,6 +2471,7 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
       _T("{7C0B6E56-B24B-436b-A960-A6EA201E886F}");
   const CString expected_experiment_label =
       _T("some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT");
+  const int day_of_install   = 2677;
 
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
                                             kRegValueProductVersion,
@@ -2285,9 +2494,21 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
                                             kRegValueExperimentLabels,
                                             expected_experiment_label));
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kOmahaUserClientStatePath,
+                       kRegValueDayOfInstall,
+                       static_cast<DWORD>(day_of_install)));
 
+
+  const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  const DWORD one_day_back = now - kSecondsPerDay;
+  ASSERT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    one_day_back));
   CString actual_pv, actual_ap, actual_lang, actual_brand_code,
       actual_client_id, actual_experiment_label, actual_iid;
+  int actual_day_of_install(0);
+  int actual_install_time_diff_sec(0);
 
   GetClientStateData(false,
                      kGoogleUpdateAppId,
@@ -2297,7 +2518,9 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                      &actual_brand_code,
                      &actual_client_id,
                      &actual_iid,
-                     &actual_experiment_label);
+                     &actual_experiment_label,
+                     &actual_install_time_diff_sec,
+                     &actual_day_of_install);
 
   EXPECT_STREQ(expected_pv, actual_pv);
   EXPECT_STREQ(expected_ap, actual_ap);
@@ -2306,6 +2529,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_STREQ(expected_client_id, actual_client_id);
   EXPECT_STREQ(expected_iid, actual_iid);
   EXPECT_STREQ(expected_experiment_label, actual_experiment_label);
+  EXPECT_EQ(GetFirstDayOfWeek(day_of_install), actual_day_of_install);
+  EXPECT_GE(actual_install_time_diff_sec, kSecondsPerDay);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest,
@@ -2319,6 +2544,7 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
       _T("{7C0B6E56-B24B-436b-A960-A6EA201E886F}");
   const CString expected_experiment_label =
       _T("some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT");
+  const int day_of_install   = 3377;
 
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
                                             kRegValueProductVersion,
@@ -2341,9 +2567,21 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
                                             kRegValueExperimentLabels,
                                             expected_experiment_label));
+  EXPECT_HRESULT_SUCCEEDED(
+      RegKey::SetValue(kOmahaMachineClientStatePath,
+                       kRegValueDayOfInstall,
+                       static_cast<DWORD>(day_of_install)));
+
+  const DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  const DWORD one_day_back = now - kSecondsPerDay;
+  ASSERT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
+                                    kRegValueInstallTimeSec,
+                                    one_day_back));
 
   CString actual_pv, actual_ap, actual_lang, actual_brand_code,
       actual_client_id, actual_experiment_label, actual_iid;
+  int actual_day_of_install(0);
+  int actual_install_time_diff_sec(0);
 
   GetClientStateData(true,
                      kGoogleUpdateAppId,
@@ -2353,7 +2591,9 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                      &actual_brand_code,
                      &actual_client_id,
                      &actual_iid,
-                     &actual_experiment_label);
+                     &actual_experiment_label,
+                     &actual_install_time_diff_sec,
+                     &actual_day_of_install);
 
   EXPECT_STREQ(expected_pv, actual_pv);
   EXPECT_STREQ(expected_ap, actual_ap);
@@ -2362,6 +2602,8 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_STREQ(expected_client_id, actual_client_id);
   EXPECT_STREQ(expected_iid, actual_iid);
   EXPECT_STREQ(expected_experiment_label, actual_experiment_label);
+  EXPECT_EQ(GetFirstDayOfWeek(day_of_install), actual_day_of_install);
+  EXPECT_GE(actual_install_time_diff_sec, kSecondsPerDay);
 }
 
 TEST_F(AppRegistryUtilsRegistryProtectedTest, RemoveClientState_Machine) {
@@ -2444,6 +2686,73 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, GetUninstalledApps_User) {
   uninstalled_apps.clear();
   GetUninstalledApps(false, &uninstalled_apps);
   EXPECT_EQ(0, uninstalled_apps.size());
+}
+
+TEST_F(AppRegistryUtilsRegistryProtectedTest, LastOSVersion_User) {
+  const bool is_machine = false;
+
+  OSVERSIONINFOEX this_os = {};
+  OSVERSIONINFOEX reg_version = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&this_os));
+  ASSERT_EQ(sizeof(this_os), this_os.dwOSVersionInfoSize);
+
+  // Double-check that GetLastOSVersion() returns nothing if there's no
+  // registry key.
+  ::ZeroMemory(&reg_version, sizeof(reg_version));
+  EXPECT_HRESULT_FAILED(GetLastOSVersion(is_machine, &reg_version));
+  EXPECT_EQ(0, reg_version.dwOSVersionInfoSize);
+
+  // Call SetLastOSVersion(NULL) to write the current OS version.
+  EXPECT_HRESULT_SUCCEEDED(SetLastOSVersion(is_machine, NULL));
+
+  ::ZeroMemory(&reg_version, sizeof(reg_version));
+  ASSERT_HRESULT_SUCCEEDED(GetLastOSVersion(is_machine, &reg_version));
+  ASSERT_EQ(sizeof(reg_version), reg_version.dwOSVersionInfoSize);
+  EXPECT_EQ(0, ::memcmp(&this_os, &reg_version, sizeof(this_os)));
+
+  // Then, test calling SetLastOSVersion() with an arbitrary OS version.
+  --this_os.dwMajorVersion;
+  --this_os.wServicePackMinor;
+  EXPECT_HRESULT_SUCCEEDED(SetLastOSVersion(is_machine, &this_os));
+
+  ::ZeroMemory(&reg_version, sizeof(reg_version));
+  ASSERT_HRESULT_SUCCEEDED(GetLastOSVersion(is_machine, &reg_version));
+  ASSERT_EQ(sizeof(reg_version), reg_version.dwOSVersionInfoSize);
+  EXPECT_EQ(0, ::memcmp(&this_os, &reg_version, sizeof(this_os)));
+}
+
+
+TEST_F(AppRegistryUtilsRegistryProtectedTest, LastOSVersion_Machine) {
+  const bool is_machine = true;
+
+  OSVERSIONINFOEX this_os = {};
+  OSVERSIONINFOEX reg_version = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&this_os));
+  ASSERT_EQ(sizeof(this_os), this_os.dwOSVersionInfoSize);
+
+  // Double-check that GetLastOSVersion() returns nothing if there's no
+  // registry key.
+  ::ZeroMemory(&reg_version, sizeof(reg_version));
+  EXPECT_HRESULT_FAILED(GetLastOSVersion(is_machine, &reg_version));
+  EXPECT_EQ(0, reg_version.dwOSVersionInfoSize);
+
+  // Call SetLastOSVersion(NULL) to write the current OS version.
+  EXPECT_HRESULT_SUCCEEDED(SetLastOSVersion(is_machine, NULL));
+
+  ::ZeroMemory(&reg_version, sizeof(reg_version));
+  ASSERT_HRESULT_SUCCEEDED(GetLastOSVersion(is_machine, &reg_version));
+  ASSERT_EQ(sizeof(reg_version), reg_version.dwOSVersionInfoSize);
+  EXPECT_EQ(0, ::memcmp(&this_os, &reg_version, sizeof(this_os)));
+
+  // Then, test calling SetLastOSVersion() with an arbitrary OS version.
+  --this_os.dwMajorVersion;
+  --this_os.wServicePackMinor;
+  EXPECT_HRESULT_SUCCEEDED(SetLastOSVersion(is_machine, &this_os));
+
+  ::ZeroMemory(&reg_version, sizeof(reg_version));
+  ASSERT_HRESULT_SUCCEEDED(GetLastOSVersion(is_machine, &reg_version));
+  ASSERT_EQ(sizeof(reg_version), reg_version.dwOSVersionInfoSize);
+  EXPECT_EQ(0, ::memcmp(&this_os, &reg_version, sizeof(this_os)));
 }
 
 }  // namespace app_registry_utils

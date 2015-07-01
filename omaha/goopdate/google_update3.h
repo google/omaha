@@ -25,7 +25,6 @@
 #include "omaha/base/atlregmapex.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
-#include "omaha/base/exception_barrier.h"
 #include "omaha/base/preprocessor_fun.h"
 #include "omaha/base/user_rights.h"
 #include "omaha/base/utils.h"
@@ -37,34 +36,6 @@
 #include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
-
-// The ATL Singleton Class Factory does not work very well if errors happen in
-// CreateInstance(), the server continues running. This is because the module
-// count is not incremented or decremented. This class fixes the issue so that
-// on error, the server shuts down as expected.
-template <class T>
-class SingletonClassFactory : public CComClassFactorySingleton<T> {
- public:
-  SingletonClassFactory() {}
-  virtual ~SingletonClassFactory() {}
-
-  STDMETHOD(CreateInstance)(LPUNKNOWN unk, REFIID iid, void** obj) {
-    HRESULT hr = CComClassFactorySingleton<T>::CreateInstance(unk, iid, obj);
-    if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[SingletonClassFactory::CreateInstance failed][0x%x]")
-                    _T("[pulsing module count]"), hr));
-      LockServer(TRUE);
-      LockServer(FALSE);
-
-      return hr;
-    }
-
-    return hr;
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(SingletonClassFactory);
-};
 
 template <bool machine, const TCHAR* const progid, const GUID& clsid,
           UINT registry_resid, const TCHAR* const hkroot>
@@ -94,12 +65,11 @@ class ATL_NO_VTABLE Update3COMClass
       public StdMarshalInfo {
  public:
   typedef Update3COMClass<T> Update3COMClassT;
-  typedef SingletonClassFactory<Update3COMClassT> SingletonClassFactoryT;
 
   Update3COMClass() : StdMarshalInfo(T::is_machine()), model_(NULL) {}
   virtual ~Update3COMClass() {}
 
-  DECLARE_CLASSFACTORY_EX(SingletonClassFactoryT)
+  DECLARE_CLASSFACTORY()
   DECLARE_NOT_AGGREGATABLE(Update3COMClassT)
   DECLARE_PROTECT_FINAL_CONSTRUCT()
 
@@ -122,17 +92,20 @@ class ATL_NO_VTABLE Update3COMClass
 
   STDMETHODIMP get_Count(long* count) {  // NOLINT
     ASSERT1(count);
-    ExceptionBarrier barrier;
-
     __mutexScope(model()->lock());
-    *count = model()->GetNumberOfAppBundles();
+
+    const size_t num_app_bundles = model()->GetNumberOfAppBundles();
+    if (num_app_bundles > LONG_MAX) {
+      return E_FAIL;
+    }
+
+    *count = static_cast<long>(num_app_bundles);  // NOLINT
 
     return S_OK;
   }
 
   STDMETHODIMP get_Item(long index, IDispatch** app_bundle_wrapper) {  // NOLINT
     ASSERT1(app_bundle_wrapper);
-    ExceptionBarrier barrier;
 
     if (::IsUserAnAdmin() && !UserRights::VerifyCallerIsAdmin()) {
       CORE_LOG(LE, (_T("[User is not an admin]")));
@@ -154,8 +127,6 @@ class ATL_NO_VTABLE Update3COMClass
   // Creates an AppBundle object and its corresponding COM wrapper.
   STDMETHODIMP createAppBundle(IDispatch** app_bundle_wrapper) {
     ASSERT1(app_bundle_wrapper);
-    ExceptionBarrier barrier;
-
     __mutexScope(model()->lock());
 
     shared_ptr<AppBundle> app_bundle(model()->CreateAppBundle(T::is_machine()));
@@ -173,6 +144,14 @@ class ATL_NO_VTABLE Update3COMClass
       return hr;
     }
 
+    hr = Worker::Instance().EnsureSingleInstance();
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[EnsureSingleInstance failed][0x%x]"), hr));
+      return hr;
+    }
+
+    Worker::Instance().Lock();
+
     omaha::interlocked_exchange_pointer(&model_, Worker::Instance().model());
     ASSERT1(model());
 
@@ -181,13 +160,13 @@ class ATL_NO_VTABLE Update3COMClass
 
   void FinalRelease() {
     CORE_LOG(L2, (_T("[Update3COMClass::FinalRelease]")));
+    Worker::Instance().Unlock();
   }
 
  private:
   static HRESULT InitializeWorker() {
     static LLock lock;
     static bool is_initialized = false;
-
     __mutexScope(lock);
 
     if (is_initialized) {
@@ -195,7 +174,6 @@ class ATL_NO_VTABLE Update3COMClass
     }
 
     CORE_LOG(L2, (_T("[InitializeWorker][%d]"), T::is_machine()));
-
     HRESULT hr = Worker::Instance().Initialize(T::is_machine());
     if (FAILED(hr)) {
       return hr;

@@ -25,12 +25,15 @@ namespace omaha {
 
 class SetupGoogleUpdate {
  public:
-  explicit SetupGoogleUpdate(bool is_machine);
+  SetupGoogleUpdate(bool is_machine, bool is_self_update);
   ~SetupGoogleUpdate();
 
   HRESULT FinishInstall();
 
   HRESULT InstallBrowserPlugins();
+
+  // Installs the helper (MSI).
+  HRESULT InstallMsiHelper();
 
   // Uninstalls Google Update registrations created by FinishInstall().
   void Uninstall();
@@ -77,9 +80,6 @@ class SetupGoogleUpdate {
   // Register COM classes and interfaces.
   HRESULT RegisterOrUnregisterCOMLocalServer(bool register);
 
-  // Installs the helper (MSI).
-  HRESULT InstallMsiHelper();
-
   // Uninstalls the helper (MSI).
   HRESULT UninstallMsiHelper();
 
@@ -100,6 +100,7 @@ class SetupGoogleUpdate {
   HRESULT UninstallPreviousVersions();
 
   const bool is_machine_;
+  const bool is_self_update_;
   CString this_version_;
   int extra_code1_;
 

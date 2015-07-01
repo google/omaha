@@ -18,6 +18,7 @@
 #include <windows.h>
 #include <wintrust.h>
 #include <crtdbg.h>
+#include <algorithm>
 #pragma warning(push)
 // C4100: unreferenced formal parameter
 // C4310: cast truncates constant value
@@ -28,14 +29,15 @@
 
 namespace omaha {
 
-#define AFFILIATE_ID_MAGIC "Gact"
+#define AFFILIATE_ID_MAGIC        "Gact2.0Omaha"
+#define AFFILIATE_ID_MAGIC_LENGTH (arraysize(AFFILIATE_ID_MAGIC) - 1)
 
 TagExtractor::TagExtractor()
     : file_handle_(INVALID_HANDLE_VALUE),
       file_mapping_(NULL),
       file_base_(NULL),
       file_length_(0),
-      cert_length_(0),
+      cert_dir_length_(0),
       cert_dir_base_(NULL) {
 }
 
@@ -111,14 +113,21 @@ bool TagExtractor::InternalReadCertificate(const char* file_buffer) {
     return false;
   }
 
-  const void* certificate_directory_pointer =
-    GetCertificateDirectoryPointer(file_buffer);
-  if (NULL == certificate_directory_pointer) {
+  const IMAGE_DATA_DIRECTORY* idd = GetCertificateDirectory(file_buffer);
+  if (NULL == idd) {
     return false;
   }
+
+  const void* certificate_directory_pointer = file_buffer + idd->VirtualAddress;
   const void* asn1_signature_pointer =
     GetASN1SignaturePointer(certificate_directory_pointer);
   if (NULL == asn1_signature_pointer) {
+    return false;
+  }
+  // Check that the file is long enough to contain |asn1_signature_pointer| plus
+  // some more for GetASN1SignatureLength to read the length.
+  if (static_cast<const char*>(asn1_signature_pointer) + 4 >=
+      file_buffer + file_length_) {
     return false;
   }
   DWORD asn1_signature_length =
@@ -127,7 +136,7 @@ bool TagExtractor::InternalReadCertificate(const char* file_buffer) {
     return false;
   }
 
-  cert_length_ = asn1_signature_length;
+  cert_dir_length_ = idd->Size;
   cert_dir_base_ = certificate_directory_pointer;
 
   return true;
@@ -136,6 +145,9 @@ bool TagExtractor::InternalReadCertificate(const char* file_buffer) {
 bool TagExtractor::InternalExtractTag(const char* file_buffer,
                                       char* tag_buffer,
                                       int* tag_buffer_len) {
+  if (tag_buffer_len == NULL) {
+    return false;
+  }
   if (!file_buffer) {
     return false;
   }
@@ -144,26 +156,27 @@ bool TagExtractor::InternalExtractTag(const char* file_buffer,
     return false;
   }
 
-  const char* read_base = static_cast<const char*>(cert_dir_base_) +
-                          cert_length_;
-  if (read_base >= file_buffer + file_length_) {
-    // The file is not tagged.
+  const char* read_base = static_cast<const char*>(cert_dir_base_);
+  if (read_base + cert_dir_length_ > file_buffer + file_length_) {
     return false;
   }
 
   return ReadTag(read_base, tag_buffer, tag_buffer_len);
 }
 
-bool TagExtractor::ReadTag(const char* tag_pointer,
+bool TagExtractor::ReadTag(const char* read_base,
                            char* tag_buffer,
                            int* tag_buffer_len) const {
-  int mc = memcmp(tag_pointer,
-                  AFFILIATE_ID_MAGIC,
-                  arraysize(AFFILIATE_ID_MAGIC) - 1);
-  if (0 != mc) {
+  const char* read_base_end = read_base + cert_dir_length_;
+  const char* kMagicBytes = AFFILIATE_ID_MAGIC;
+  const char* mc = std::search(read_base,
+                               read_base_end,
+                               kMagicBytes,
+                               kMagicBytes + AFFILIATE_ID_MAGIC_LENGTH);
+  if (mc >= read_base_end) {
     return false;
   }
-  tag_pointer += arraysize(AFFILIATE_ID_MAGIC) - 1;
+  const char* tag_pointer = mc + AFFILIATE_ID_MAGIC_LENGTH;
 
   uint16 id_len = 0;
   const unsigned char* id_len_serialized =
@@ -186,11 +199,14 @@ bool TagExtractor::ReadTag(const char* tag_pointer,
   return true;
 }
 
-const void* TagExtractor::GetCertificateDirectoryPointer(
+const IMAGE_DATA_DIRECTORY* TagExtractor::GetCertificateDirectory(
     const void* base) const {
   const char* image_base = reinterpret_cast<const char*>(base);
 
   // Is this a PEF?
+  if (file_length_ < sizeof(IMAGE_DOS_HEADER)) {
+    return NULL;
+  }
   const IMAGE_DOS_HEADER* dos_header =
     reinterpret_cast<const IMAGE_DOS_HEADER *>(image_base);
   if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
@@ -198,6 +214,9 @@ const void* TagExtractor::GetCertificateDirectoryPointer(
   }
 
   // Get PE header.
+  if (file_length_ < dos_header->e_lfanew + sizeof(IMAGE_NT_HEADERS)) {
+    return NULL;
+  }
   const IMAGE_NT_HEADERS* nt_headers = reinterpret_cast<const IMAGE_NT_HEADERS*>
       (image_base + dos_header->e_lfanew);
 
@@ -207,14 +226,29 @@ const void* TagExtractor::GetCertificateDirectoryPointer(
     return NULL;
   }
 
+  // Check that we're operating no an image of the same bitness.
+  // OptionalHeader.DataDirectory location in structure depends on the image's
+  // bitness. See IMAGE_OPTIONAL_HEADER:
+  // http://msdn.microsoft.com/en-us/library/windows/desktop/ms680339.aspx
+  if (nt_headers->FileHeader.Machine == IMAGE_FILE_MACHINE_I386) {
+#if !defined(ARCH_CPU_X86)
+    return NULL;
+#endif
+  } else if (nt_headers->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64) {
+#if !defined(ARCH_CPU_X86_64)
+    return NULL;
+#endif
+  }
   const IMAGE_DATA_DIRECTORY* idd =
     reinterpret_cast<const IMAGE_DATA_DIRECTORY *>
     (&nt_headers->
     OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY]);
-  if (idd->VirtualAddress != NULL) {
-    return image_base + idd->VirtualAddress;
+
+  if (idd->VirtualAddress == NULL ||
+      file_length_ < idd->VirtualAddress + sizeof(WIN_CERTIFICATE)) {
+    return NULL;
   }
-  return NULL;
+  return idd;
 }
 
 const void* TagExtractor::GetASN1SignaturePointer(const void* base) const {

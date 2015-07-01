@@ -19,10 +19,10 @@
 #include <atlsync.h>
 #include <list>
 #include "base/basictypes.h"
-#include "omaha/base/app_util.h"
 #include "omaha/base/event_trace_controller.h"
 #include "omaha/base/event_trace_provider.h"
 // TODO(omaha): Remove when http://b/2767208 is fixed.
+#include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/testing/unit_test.h"
 
@@ -282,9 +282,8 @@ class EtwTraceConsumerDataTest: public testing::Test {
     StopTestTraceSession();
 
     // Construct a temp file name.
-    CString temp_dir = omaha::app_util::GetTempDir();
-    EXPECT_TRUE(::GetTempFileName(temp_dir, _T("tmp"), 0,
-                                  CStrBuf(temp_file_, MAX_PATH)));
+    temp_file_ = GetTempFilename(_T("tmp"));
+    ASSERT_FALSE(temp_file_.IsEmpty());
   }
 
   virtual void TearDown() {

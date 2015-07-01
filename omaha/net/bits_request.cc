@@ -37,7 +37,9 @@
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_impersonation.h"
+#include "omaha/base/time.h"
 #include "omaha/base/utils.h"
+#include "omaha/common/ping_event_download_metrics.h"
 #include "omaha/net/bits_job_callback.h"
 #include "omaha/net/bits_utils.h"
 #include "omaha/net/http_client.h"
@@ -65,6 +67,16 @@ int GetJobPriority(IBackgroundCopyJob* job) {
 }
 
 }   // namespace
+
+BitsRequest::TransientRequestState::TransientRequestState()
+    : http_status_code(0),
+      request_begin_ms(0),
+      request_end_ms(0) {
+  SetZero(bits_job_id);
+}
+
+BitsRequest::TransientRequestState::~TransientRequestState() {
+}
 
 BitsRequest::BitsRequest()
     : request_buffer_(NULL),
@@ -157,16 +169,28 @@ void BitsRequest::OnBitsJobStateChanged() {
 
 HRESULT BitsRequest::Close() {
   NET_LOG(L3, (_T("[BitsRequest::Close]")));
+  CloseJob();
   __mutexBlock(lock_) {
-    RemoveBitsCallback();
-
-    if (request_state_.get()) {
-      VERIFY1(SUCCEEDED(CancelBitsJob(request_state_->bits_job)));
-    }
     request_state_.reset();
   }
   return S_OK;
 }
+
+void BitsRequest::CloseJob() {
+  NET_LOG(L3, (_T("[BitsRequest::CloseJob]")));
+  __mutexBlock(lock_) {
+    RemoveBitsCallback();
+
+    if (request_state_.get()) {
+      HRESULT hr_cancel_bits_job(CancelBitsJob(request_state_->bits_job));
+      if (FAILED(hr_cancel_bits_job)) {
+        NET_LOG(LW, (_T("[CancelBitsJob failed][0x%08x]"), hr_cancel_bits_job));
+      }
+      request_state_->bits_job = NULL;
+    }
+  }
+}
+
 
 HRESULT BitsRequest::Cancel() {
   NET_LOG(L3, (_T("[BitsRequest::Cancel]")));
@@ -231,16 +255,20 @@ HRESULT BitsRequest::Send() {
   if (is_created) {
     hr = SetInvariantJobProperties();
     if (FAILED(hr)) {
-      HRESULT hr_cancel_bits_job(CancelBitsJob(request_state_->bits_job));
-      if (FAILED(hr_cancel_bits_job)) {
-        NET_LOG(LW, (_T("[CancelBitsJob failed][0x%08x]"), hr_cancel_bits_job));
-      }
-      request_state_->bits_job = NULL;
+      CloseJob();
       return hr;
     }
   }
 
-  return DoSend();
+  request_state_->request_begin_ms = GetCurrentMsTime();
+  hr = DoSend();
+  request_state_->request_end_ms = GetCurrentMsTime();
+
+  request_state_->download_metrics.reset(
+      new DownloadMetrics(MakeDownloadMetrics(hr)));
+
+  CloseJob();
+  return hr;
 }
 
 HRESULT BitsRequest::QueryHeadersString(uint32, const TCHAR*, CString*) const {
@@ -337,6 +365,7 @@ HRESULT BitsRequest::SetJobProperties() {
   }
 
   SetJobCustomHeaders();
+  SetJobRedirectReporting();
   return S_OK;
 }
 
@@ -366,6 +395,35 @@ HRESULT BitsRequest::SetJobCustomHeaders() {
   return S_OK;
 }
 
+HRESULT BitsRequest::SetJobRedirectReporting() {
+  NET_LOG(L3, (_T("[BitsRequest::SetJobRedirectReporting]")));
+
+  ASSERT1(request_state_.get());
+  ASSERT1(request_state_->bits_job);
+
+  CComPtr<IBackgroundCopyJobHttpOptions> http_options;
+  HRESULT hr = request_state_->bits_job->QueryInterface(&http_options);
+  if (FAILED(hr)) {
+    NET_LOG(LE, (_T("[QI IBackgroundCopyJobHttpOptions failed][%#08x]"), hr));
+    return hr;
+  }
+
+  ULONG flags = 0;
+  hr = http_options->GetSecurityFlags(&flags);
+  if (FAILED(hr)) {
+    NET_LOG(LE, (_T("[GetSecurityFlags failed][%#08x]"), hr));
+    return hr;
+  }
+  flags |= BG_HTTP_REDIRECT_POLICY_ALLOW_REPORT;
+  hr = http_options->SetSecurityFlags(flags);
+  if (FAILED(hr)) {
+    NET_LOG(LE, (_T("[SetSecurityFlags failed][%lu][%#08x]"), flags, hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
 HRESULT BitsRequest::DetectManualProxy() {
   if (NetworkConfig::GetAccessType(proxy_config_) !=
       WINHTTP_ACCESS_TYPE_AUTO_DETECT) {
@@ -381,6 +439,7 @@ HRESULT BitsRequest::DetectManualProxy() {
 
   HttpClient::ProxyInfo proxy_info = {0};
   hr = network_config->GetProxyForUrl(url_,
+                                      proxy_config_.auto_detect,
                                       proxy_config_.auto_config_url,
                                       &proxy_info);
   if (SUCCEEDED(hr) &&
@@ -394,8 +453,14 @@ HRESULT BitsRequest::DetectManualProxy() {
   ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy));
   ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy_bypass));
 
-  NET_LOG(L3, (_T("[GetProxyForUrl returned][0x%08x]"), hr));
-  return hr;
+  if (SUCCEEDED(hr)) {
+    return hr;
+  }
+
+  // Fall back to direct access if proxy detection failed.
+  NET_LOG(L3, (_T("[GetProxyForUrl failed][0x%08x], use direct."), hr));
+  return NetworkConfig::ConfigFromIdentifier(
+      NetworkConfig::kDirectConnectionIdentifier, &proxy_config_);
 }
 
 HRESULT BitsRequest::SetJobProxyUsage() {
@@ -405,7 +470,10 @@ HRESULT BitsRequest::SetJobProxyUsage() {
   const TCHAR* proxy = NULL;
   const TCHAR* proxy_bypass = NULL;
 
-  DetectManualProxy();
+  HRESULT hr = DetectManualProxy();
+  if (FAILED(hr)) {
+    return hr;
+  }
 
   int access_type = NetworkConfig::GetAccessType(proxy_config_);
   if (access_type == WINHTTP_ACCESS_TYPE_AUTO_DETECT) {
@@ -415,9 +483,9 @@ HRESULT BitsRequest::SetJobProxyUsage() {
     proxy = proxy_config_.proxy;
     proxy_bypass = proxy_config_.proxy_bypass;
   }
-  HRESULT hr = request_state_->bits_job->SetProxySettings(proxy_usage,
-                                                          proxy,
-                                                          proxy_bypass);
+  hr = request_state_->bits_job->SetProxySettings(proxy_usage,
+                                                  proxy,
+                                                  proxy_bypass);
   if (FAILED(hr)) {
     return hr;
   }
@@ -566,6 +634,15 @@ HRESULT BitsRequest::DoSend() {
         return GOOPDATE_E_CANCELLED;
     };
 
+    // Check to see if we've been redirected to a different URL.
+    CString current_url;
+    hr = GetFirstFileInJob(request_state_->bits_job, &current_url);
+    if (SUCCEEDED(hr) && current_url != url_) {
+      OPT_LOG(LW, (_T("[BITS download was redirected][%s]"), current_url));
+      url_ = current_url;
+    }
+
+    // Wait for a polling delay or a state change.
     DWORD wait_result = ::WaitForSingleObject(
         get(bits_job_status_changed_event_), kPollingIntervalMs);
     if (wait_result == WAIT_FAILED) {
@@ -762,5 +839,42 @@ uint32 BitsRequest::BitsToWinhttpProxyAuthScheme(int bits_scheme) {
   return UNKNOWN_AUTH_SCHEME;
 }
 
-}   // namespace omaha
+DownloadMetrics BitsRequest::MakeDownloadMetrics(HRESULT hr) const {
+  ASSERT1(request_state_.get());
 
+  // The error reported by the metrics is:
+  //  * 0 when the status code is 200
+  //  * an HRESULT derived from the status code, if a status code is available
+  //  * an HRESULT for any other error that could have happened.
+  const int status_code = request_state_->http_status_code;
+  const int error = status_code == HTTP_STATUS_OK ?
+      0 : (SUCCEEDED(hr) ? HRESULTFromHttpStatusCode(status_code) : hr);
+
+  DownloadMetrics download_metrics;
+  download_metrics.url = original_url_;
+  download_metrics.downloader = DownloadMetrics::kBits;
+  download_metrics.error = error;
+  BG_JOB_PROGRESS progress = {0};
+  if (SUCCEEDED(request_state_->bits_job->GetProgress(&progress))) {
+    download_metrics.downloaded_bytes = progress.BytesTransferred <= kint64max ?
+       static_cast<int64>(progress.BytesTransferred) : -1;
+
+    download_metrics.total_bytes = progress.BytesTotal <= kint64max ?
+        static_cast<int64>(progress.BytesTotal) : -1;
+  }
+  download_metrics.download_time_ms =
+      request_state_->request_end_ms - request_state_->request_begin_ms;
+  return download_metrics;
+}
+
+bool BitsRequest::download_metrics(DownloadMetrics* dm) const {
+  ASSERT1(dm);
+  if (request_state_.get() && request_state_->download_metrics.get()) {
+    *dm = *(request_state_->download_metrics);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+}   // namespace omaha

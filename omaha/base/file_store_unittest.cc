@@ -19,6 +19,7 @@
 
 #include <shlobj.h>
 #include "base/basictypes.h"
+#include "omaha/base/app_util.h"
 #include "omaha/base/file_store.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/utils.h"
@@ -33,9 +34,8 @@ char kFileContent[] = "1234567890abcdefg";
 
 TEST(FileStoreTest, FileStore) {
   // Create a temp dir
-  TCHAR temp_path[MAX_PATH];
-  *temp_path = 0;
-  ASSERT_LT(0u, ::GetTempPath(MAX_PATH, temp_path));
+  CString temp_path = app_util::GetTempDir();
+  ASSERT_FALSE(temp_path.IsEmpty());
 
   CString temp_dir;
   temp_dir.Format(_T("%s%s%x"), temp_path, kFilePathPrefix, ::GetTickCount());
@@ -47,7 +47,7 @@ TEST(FileStoreTest, FileStore) {
   ASSERT_TRUE(file_store.Open(temp_dir));
 
   // Make sure the folder is empty
-  uint32 value_count;
+  size_t value_count(0);
   ASSERT_TRUE(file_store.GetValueCount(&value_count));
   ASSERT_EQ(value_count, 0);
   CString value_name;

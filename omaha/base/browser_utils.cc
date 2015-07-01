@@ -77,7 +77,7 @@ HRESULT CloseIeUsingShell(const CString& sid) {
 
     // Okay, this window implements IWebBrowser2, so it's potentially an
     // IE session.  Identify the owning process.
-    long hwnd = 0;  // NOLINT
+    LONG_PTR hwnd = 0;
     hr = browser->get_HWND(&hwnd);
     if (FAILED(hr)) {
       UTIL_LOG(L3, (_T("[CloseIeUsingShell][get_HWND failed][0x%08x]"), hr));
@@ -468,6 +468,46 @@ HRESULT GetFirefoxDefaultProfile(CString* name, CString* path) {
   return S_OK;
 }
 
+HRESULT GetIEPath(CString* path) {
+  ASSERT1(path);
+
+  CString ie_command_line;
+  HRESULT hr = RegKey::GetValue(kRegKeyIeClass,
+                                kRegValueIeClass,
+                                &ie_command_line);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (ie_command_line.IsEmpty()) {
+    return E_UNEXPECTED;
+  }
+
+  CString ie_path;
+  CString args;
+  hr = CommandParsingSimple::SplitExeAndArgsGuess(ie_command_line,
+                                                  &ie_path,
+                                                  &args);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  UnenclosePath(&ie_path);
+
+  if (!String_EndsWith(ie_path, kIeExeName, true)) {
+    // On Win8 64-bit the Wow6432 node has:
+    //   "C:\Program Files (x86)\Internet Explorer\ielowutil.exe" -CLSID:
+    //   {0002DF01-0000-0000-C000-000000000046
+    // ielowutil.exe will not launch the browser. So we need to use iexplore.exe
+    // from the same directory containing ielowutil.exe.
+    ie_path = ConcatenatePath(GetDirectoryFromPath(ie_path), kIeExeName);
+  }
+
+  EnclosePath(&ie_path);
+  *path = ie_path;
+  return S_OK;
+}
+
 HRESULT BrowserTypeToProcessName(BrowserType type, CString* exe_name) {
   ASSERT1(exe_name);
   ASSERT1(type < BROWSER_MAX);
@@ -504,7 +544,7 @@ HRESULT GetBrowserImagePath(BrowserType type, CString* path) {
   HRESULT hr = E_FAIL;
   switch (type) {
     case BROWSER_IE: {
-      hr = RegKey::GetValue(kRegKeyIeClass, kRegValueIeClass, path);
+      hr = GetIEPath(path);
       break;
     }
     case BROWSER_FIREFOX: {
@@ -671,7 +711,7 @@ HRESULT RunBrowser(BrowserType type, const CString& url) {
   // re-launch the process. So, using CreateProcess instead.
   // http://b/1223658: For Vista, especially in the impersonated case, need to
   // create a fresh environment block. Otherwise, the environment is tainted.
-  hr = vista::RunAsCurrentUser(path + _T(' ') + url);
+  hr = vista::RunAsCurrentUser(path + _T(' ') + url, NULL, NULL);
 
   if (FAILED(hr)) {
     UTIL_LOG(LW, (_T("[RunAsCurrentUser failed][0x%x]"), hr));
@@ -702,7 +742,7 @@ HRESULT GetIeFontSize(uint32* font_size) {
   }
 
   scoped_array<byte> buf;   // The font size is a binary registry value.
-  DWORD buf_size(0);
+  size_t buf_size(0);
   if (FAILED(RegKey::GetValue(ie_scripts_key, ie_font_size,
                               address(buf), &buf_size))) {
     *font_size = kDefaultFontSize;

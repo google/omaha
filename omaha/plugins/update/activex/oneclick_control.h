@@ -33,8 +33,9 @@
 #include "omaha/base/ATLRegMapEx.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/constants.h"
-#include "omaha/base/logging.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
+#include "omaha/base/omaha_version.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/plugins/update/config.h"
 #include "omaha/plugins/update/resource.h"
@@ -75,10 +76,8 @@ class ATL_NO_VTABLE OneClickControl
     REGMAP_ENTRY(_T("CLSID"),             GetObjectCLSID())
     REGMAP_ENTRY(_T("PROGID"),            kOneclickControlProgId)
     REGMAP_ENTRY(_T("HKROOT"),            goopdate_utils::GetHKRoot())
-    REGMAP_ENTRY(_T("SHELLNAME"),         kOmahaShellFileName)
-    // Not fatal if "SHELLPATH" is empty because the side-effect would be that
-    // on Vista, the user will get prompted on invoking one-click.
-    REGMAP_ENTRY(_T("SHELLPATH"),         GetGoopdateShellPathForRegMap())
+    REGMAP_ENTRY(_T("SHELLNAME"),         kOmahaWebPluginFileName)
+    REGMAP_ENTRY(_T("SHELLPATH"),         GetShellPathForRegMap())
 
     // The following entries are actually for the NPAPI plugin
     REGMAP_ENTRY(_T("PLUGINDESCRIPTION"), kAppName)
@@ -125,11 +124,18 @@ class ATL_NO_VTABLE OneClickControl
                               BSTR cmd_id);
 
  private:
+  static bool is_machine() {
+    return goopdate_utils::IsRunningFromOfficialGoopdateDir(true);
+  }
+
+  static CString GetShellPathForRegMap() {
+    return goopdate_utils::BuildInstallDirectory(is_machine(),
+                                                 GetVersionString());
+  }
+
   HRESULT DoGetInstalledVersion(const TCHAR* guid_string,
                                 bool is_machine,
                                 CString* version_string);
-
-  HRESULT DoInstall(const TCHAR* cmd_line_args);
 
   static bool VariantIsValidCallback(const VARIANT* callback);
   static HRESULT InvokeJavascriptCallback(VARIANT* callback,

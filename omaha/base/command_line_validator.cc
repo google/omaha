@@ -49,7 +49,7 @@ HRESULT CommandLineValidator::CreateScenario(const CString& scenario_name) {
 HRESULT CommandLineValidator::AddScenarioParameter(
     const CString& scenario_name,
     const CString& switch_name,
-    int num_required_parameters) {
+    size_t num_required_parameters) {
   MapScenariosIter iter = scenarios_.find(scenario_name);
   if (iter == scenarios_.end()) {
     return E_INVALIDARG;
@@ -64,7 +64,7 @@ HRESULT CommandLineValidator::AddScenarioParameter(
 HRESULT CommandLineValidator::AddOptionalScenarioParameter(
     const CString& scenario_name,
     const CString& switch_name,
-    int num_required_parameters) {
+    size_t num_required_parameters) {
   MapScenariosIter iter = scenarios_.find(scenario_name);
   if (iter == scenarios_.end()) {
     return E_INVALIDARG;
@@ -91,20 +91,20 @@ HRESULT CommandLineValidator::CreateScenarioFromCmdLine(
   CString scenario_name_str;
   do {
     ++scenario_sequence_number_;
-    scenario_name_str.Format(_T("scenario_%d"), scenario_sequence_number_);
+    scenario_name_str.Format(_T("scenario_%Iu"), scenario_sequence_number_);
   } while (scenarios_.find(scenario_name_str) != scenarios_.end());
 
   CreateScenario(scenario_name_str);
 
-  int switch_count = parser.GetSwitchCount();
-  for (int idx_switch = 0; idx_switch < switch_count; ++idx_switch) {
+  size_t switch_count = parser.GetSwitchCount();
+  for (size_t idx_switch = 0; idx_switch < switch_count; ++idx_switch) {
     CString switch_name;
     hr = parser.GetSwitchNameAtIndex(idx_switch, &switch_name);
     if (FAILED(hr)) {
       return hr;
     }
 
-    int arg_count = 0;
+    size_t arg_count = 0;
     hr = parser.GetSwitchArgumentCount(switch_name, &arg_count);
     if (FAILED(hr)) {
       return hr;
@@ -117,14 +117,14 @@ HRESULT CommandLineValidator::CreateScenarioFromCmdLine(
   }
 
   switch_count = parser.GetOptionalSwitchCount();
-  for (int idx_switch = 0; idx_switch < switch_count; ++idx_switch) {
+  for (size_t idx_switch = 0; idx_switch < switch_count; ++idx_switch) {
     CString switch_name;
     hr = parser.GetOptionalSwitchNameAtIndex(idx_switch, &switch_name);
     if (FAILED(hr)) {
       return hr;
     }
 
-    int arg_count = 0;
+    size_t arg_count = 0;
     hr = parser.GetOptionalSwitchArgumentCount(switch_name, &arg_count);
     if (FAILED(hr)) {
       return hr;
@@ -153,10 +153,10 @@ HRESULT CommandLineValidator::Validate(
        scenarios_iter != scenarios_.end();
        ++scenarios_iter) {
     // Make sure we have a match for the number of switches in this scenario.
-    int parser_switch_count = command_line_parser.GetSwitchCount();
-    int scenario_required_switch_count =
+    size_t parser_switch_count = command_line_parser.GetSwitchCount();
+    size_t scenario_required_switch_count =
         (*scenarios_iter).second.required.size();
-    int scenario_optional_switch_count =
+    size_t scenario_optional_switch_count =
         (*scenarios_iter).second.optional.size();
 
     if (parser_switch_count < scenario_required_switch_count ||
@@ -189,21 +189,21 @@ bool CommandLineValidator::DoesScenarioMatch(
       return false;
     }
 
-    int arg_count = 0;
+    size_t arg_count = 0;
     HRESULT hr = command_line_parser.GetSwitchArgumentCount(current_switch_name,
                                                             &arg_count);
     if (FAILED(hr)) {
       return false;
     }
 
-    int switch_arg_count = (*parameter_iter)->num_required_parameters_;
+    size_t switch_arg_count = (*parameter_iter)->num_required_parameters_;
     if (arg_count != switch_arg_count) {
       return false;
     }
   }
 
-  int parser_optional_switch_count = command_line_parser.GetSwitchCount() -
-                                     scenario_parameters.required.size();
+  size_t parser_optional_switch_count = command_line_parser.GetSwitchCount() -
+                                        scenario_parameters.required.size();
   for (parameter_iter = scenario_parameters.optional.begin();
        parser_optional_switch_count != 0 &&
            parameter_iter != scenario_parameters.optional.end();
@@ -215,14 +215,14 @@ bool CommandLineValidator::DoesScenarioMatch(
       continue;
     }
 
-    int arg_count = 0;
+    size_t arg_count = 0;
     HRESULT hr = command_line_parser.GetSwitchArgumentCount(current_switch_name,
                                                             &arg_count);
     if (FAILED(hr)) {
       return false;
     }
 
-    int switch_arg_count = (*parameter_iter)->num_required_parameters_;
+    size_t switch_arg_count = (*parameter_iter)->num_required_parameters_;
     if (arg_count != switch_arg_count) {
       return false;
     }

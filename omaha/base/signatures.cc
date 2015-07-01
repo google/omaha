@@ -20,6 +20,7 @@
 
 #include "omaha/base/signatures.h"
 #include <wincrypt.h>
+#include <intsafe.h>
 #include <memory.h>
 #pragma warning(disable : 4245)
 // C4245 : conversion from 'type1' to 'type2', signed/unsigned mismatch
@@ -32,62 +33,163 @@
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_any.h"
+#include "omaha/base/security/sha256.h"
+#include "omaha/base/security/sha.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 
 namespace omaha {
 
-const ALG_ID kHashAlgorithm = CALG_SHA1;
+const ALG_ID kHashAlgorithm    = CALG_SHA1;
+const ALG_ID kHash256Algorithm = CALG_SHA_256;
 const DWORD kEncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
-const DWORD kProviderType = PROV_RSA_FULL;
 const DWORD kCertificateNameType = CERT_NAME_SIMPLE_DISPLAY_TYPE;
 const DWORD kKeyPairType = AT_SIGNATURE;
 
 // Maximum file size allowed for performing authentication.
-const int kMaxFileSizeForAuthentication = 512 * 1024 * 1024;  // 512MB
+const size_t kMaxFileSizeForAuthentication = 512 * 1024 * 1024;  // 512MB
 
 // Buffer size used to read files from disk.
-const int kFileReadBufferSize = 128 * 1024;
+const size_t kFileReadBufferSize = 128 * 1024;
 
 namespace CryptDetails {
 
-  // Useful scoped pointers for working with CryptoAPI objects
-
-  void crypt_release_context(HCRYPTPROV provider) {
-    UTIL_LOG(L3, (L"Releasing HCRYPTPROV 0x%08lx", provider));
-    BOOL b = ::CryptReleaseContext(provider, 0 /*flags*/);
-    ASSERT(b, (L""));
-  }
-
-  void crypt_close_store(HCERTSTORE store) {
-    UTIL_LOG(L3, (L"Releasing HCERTSTORE 0x%08lx", store));
-    BOOL b = ::CertCloseStore(store, 0 /*flags*/);
-    ASSERT(b, (L""));
-    ASSERT(::GetLastError() != CRYPT_E_PENDING_CLOSE, (L""));
-  }
-
-  void crypt_free_certificate(PCCERT_CONTEXT certificate) {
-    UTIL_LOG(L3, (L"Releasing PCCERT_CONTEXT 0x%08lx", certificate));
-    BOOL b = ::CertFreeCertificateContext(certificate);
-    ASSERT(b, (L""));
-  }
-
-  void crypt_destroy_key(HCRYPTKEY key) {
-    UTIL_LOG(L3, (L"Releasing HCRYPTKEY 0x%08lx", key));
-    BOOL b = ::CryptDestroyKey(key);
-    ASSERT(b, (L""));
-  }
-
-  void crypt_destroy_hash(HCRYPTHASH hash) {
-    UTIL_LOG(L3, (L"Releasing HCRYPTHASH 0x%08lx", hash));
-    BOOL b = ::CryptDestroyHash(hash);
-    ASSERT(b, (L""));
-  }
-
-  typedef close_fun<void (*)(HCRYPTHASH),
-                    crypt_destroy_hash> smart_destroy_hash;
-  typedef scoped_any<HCRYPTHASH, smart_destroy_hash, null_t> scoped_crypt_hash;
+void crypt_release_context(HCRYPTPROV provider) {
+  UTIL_LOG(L3, (L"Releasing HCRYPTPROV 0x%08lx", provider));
+  BOOL b = ::CryptReleaseContext(provider, 0 /*flags*/);
+  ASSERT(b, (L""));
 }
+
+void crypt_close_store(HCERTSTORE store) {
+  UTIL_LOG(L3, (L"Releasing HCERTSTORE 0x%08lx", store));
+  BOOL b = ::CertCloseStore(store, 0 /*flags*/);
+  ASSERT(b, (L""));
+  ASSERT(::GetLastError() != CRYPT_E_PENDING_CLOSE, (L""));
+}
+
+void crypt_free_certificate(PCCERT_CONTEXT certificate) {
+  UTIL_LOG(L3, (L"Releasing PCCERT_CONTEXT 0x%08lx", certificate));
+  BOOL b = ::CertFreeCertificateContext(certificate);
+  ASSERT(b, (L""));
+}
+
+void crypt_destroy_key(HCRYPTKEY key) {
+  UTIL_LOG(L3, (L"Releasing HCRYPTKEY 0x%08lx", key));
+  BOOL b = ::CryptDestroyKey(key);
+  ASSERT(b, (L""));
+}
+
+void crypt_destroy_hash(HCRYPTHASH hash) {
+  UTIL_LOG(L3, (L"Releasing HCRYPTHASH 0x%08lx", hash));
+  BOOL b = ::CryptDestroyHash(hash);
+  ASSERT(b, (L""));
+}
+
+typedef close_fun<void (*)(HCRYPTHASH),
+                  crypt_destroy_hash> smart_destroy_hash;
+typedef scoped_any<HCRYPTHASH, smart_destroy_hash, null_t> scoped_crypt_hash;
+
+// Providers implementing SHA256 can be instantiated using different names.
+// On Vista and up, both the default provider and the enhanced RSA/AES
+// provider support SHA256. On Windows XP, the named provider has a different
+// name, therefore, the code falls back to a specific named provider in case
+// of errors.
+HRESULT CryptAcquireContextWithFallback(DWORD provider_type,
+                                        HCRYPTPROV* provider) {
+  const TCHAR* kHashCryptoProvider[] = {
+      NULL,                   // The default provider.
+      MS_ENH_RSA_AES_PROV,    // The named provider for Vista and up.
+      MS_ENH_RSA_AES_PROV_XP  // The named provider for XP SP3 and up.
+  };
+
+  // Try different providers until one of them succeeds.
+  HRESULT hr = S_OK;
+  CryptDetails::scoped_crypt_context scoped_csp_handle;
+  for (size_t i = 0; i != arraysize(kHashCryptoProvider); ++i) {
+    if (::CryptAcquireContext(address(scoped_csp_handle),
+                              NULL,
+                              kHashCryptoProvider[i],
+                              provider_type,
+                              CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
+      UTIL_LOG(L6, (_T("[CryptAcquireContext succeeded]")));
+      *provider = release(scoped_csp_handle);
+      return S_OK;
+    } else {
+      hr = HRESULTFromLastError();
+      UTIL_LOG(LE, (_T("[CryptAcquireContext failed][0x%08lX]"), hr));
+    }
+  }
+  return hr;
+}
+
+class HashInterface {
+ public:
+  virtual ~HashInterface() {}
+
+  virtual void update(const void* data, unsigned int len) = 0;
+  virtual const uint8_t* final() = 0;
+  virtual size_t hash_size() const = 0;
+};
+
+class SHA256Hash : public HashInterface {
+ public:
+  SHA256Hash() {
+    SHA256_init(&ctx2_);
+  }
+  virtual ~SHA256Hash() {};
+
+  virtual void update(const void* data, unsigned int len) {
+    SHA256_update(&ctx2_, data, len);
+  }
+
+  virtual const uint8_t* final() {
+    return SHA256_final(&ctx2_);
+  }
+
+  virtual size_t hash_size() const {
+    return SHA256_DIGEST_SIZE;
+  }
+
+ private:
+  SHA256_CTX ctx2_;
+
+  DISALLOW_COPY_AND_ASSIGN(SHA256Hash);
+};
+
+class SHA1Hash : public HashInterface {
+ public:
+  SHA1Hash() {
+    SHA_init(&ctx_);
+  }
+  virtual ~SHA1Hash() {};
+
+  virtual void update(const void* data, unsigned int len) {
+    SHA_update(&ctx_, data, len);
+  }
+
+  virtual const uint8_t* final() {
+    return SHA_final(&ctx_);
+  }
+
+  virtual size_t hash_size() const {
+    return SHA_DIGEST_SIZE;
+  }
+
+ private:
+  SHA_CTX ctx_;
+
+  DISALLOW_COPY_AND_ASSIGN(SHA1Hash);
+};
+
+CryptDetails::HashInterface* CreateHasher(bool use_sha256) {
+  if (use_sha256) {
+    return new CryptDetails::SHA256Hash;
+  } else {
+    return new CryptDetails::SHA1Hash;
+  }
+}
+
+}  // namespace CryptDetails
 
 // Base64 encode/decode functions are part of ATL Server
 HRESULT Base64::Encode(const std::vector<byte>& buffer_in,
@@ -96,22 +198,26 @@ HRESULT Base64::Encode(const std::vector<byte>& buffer_in,
   ASSERT(encoded, (L""));
 
   if (buffer_in.empty()) {
-    encoded->resize(0);
+    encoded->clear();
     return S_OK;
   }
 
-  int32 encoded_len =
+  if (buffer_in.size() > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
+  int encoded_len =
     Base64EncodeGetRequiredLength(
-        buffer_in.size(),
+        static_cast<int>(buffer_in.size()),
         break_into_lines ? ATL_BASE64_FLAG_NONE : ATL_BASE64_FLAG_NOCRLF);
   ASSERT(encoded_len > 0, (L""));
 
   encoded->resize(encoded_len);
-  int32 str_out_len = encoded_len;
+  int str_out_len = encoded_len;
 
   BOOL result = Base64Encode(
       &buffer_in.front(),
-      buffer_in.size(),
+      static_cast<int>(buffer_in.size()),
       reinterpret_cast<char*>(&encoded->front()),
       &str_out_len,
       break_into_lines ? ATL_BASE64_FLAG_NONE : ATL_BASE64_FLAG_NOCRLF);
@@ -135,8 +241,12 @@ HRESULT Base64::Encode(const std::vector<byte>& buffer_in,
 
   std::vector<byte> buffer_out;
   RET_IF_FAILED(Encode(buffer_in, &buffer_out, break_into_lines));
+
+  if (buffer_out.size() > INT_MAX) {
+    return E_FAIL;
+  }
   encoded->Append(reinterpret_cast<const char*>(&buffer_out.front()),
-                                                buffer_out.size());
+                  static_cast<int>(buffer_out.size()));
 
   return S_OK;
 }
@@ -157,8 +267,13 @@ HRESULT Base64::Decode(const std::vector<byte>& encoded,
                        std::vector<byte>* buffer_out) {
   ASSERT(buffer_out, (L""));
 
-  size_t encoded_len = encoded.size();
-  int32 required_len = Base64DecodeGetRequiredLength(encoded_len);
+  const size_t encoded_len = encoded.size();
+  if (encoded_len > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
+  const int required_len = Base64DecodeGetRequiredLength(
+      static_cast<int>(encoded_len));
 
   buffer_out->resize(required_len);
 
@@ -166,9 +281,9 @@ HRESULT Base64::Decode(const std::vector<byte>& encoded,
     return S_OK;
   }
 
-  int32 bytes_written = required_len;
+  int bytes_written = required_len;
   BOOL result = Base64Decode(reinterpret_cast<const char*>(&encoded.front()),
-                             encoded_len,
+                             static_cast<int>(encoded_len),
                              &buffer_out->front(),
                              &bytes_written);
   if (!result)
@@ -187,7 +302,7 @@ HRESULT Base64::Decode(const CStringA& encoded, std::vector<byte>* buffer_out) {
   size_t encoded_len = encoded.GetLength();
   std::vector<byte> buffer_in(encoded_len);
   if (encoded_len != 0) {
-    ::memcpy(&buffer_in.front(), encoded.GetString(), encoded_len);
+    memcpy(&buffer_in.front(), encoded.GetString(), encoded_len);
   }
 
   return Decode(buffer_in, buffer_out);
@@ -202,13 +317,18 @@ HRESULT Base64::Decode(const CString& encoded, std::vector<byte>* buffer_out) {
   size_t encoded_len = ::strlen(encoded_a);
   std::vector<byte> buffer_in(encoded_len);
   if (encoded_len != 0) {
-    ::memcpy(&buffer_in.front(), encoded_a, encoded_len);
+    memcpy(&buffer_in.front(), encoded_a, encoded_len);
   }
 
   return Decode(buffer_in, buffer_out);
 }
 
-CryptoHash::CryptoHash() {
+const size_t CryptoHash::kSha1HashSize   = 20;
+const size_t CryptoHash::kSha256HashSize = 32;
+
+CryptoHash::CryptoHash(HashAlgorithm hash_algorithm)
+    : use_sha256_(hash_algorithm == kSha256) {
+  ASSERT1(hash_algorithm == kSha1 || hash_algorithm == kSha256);
 }
 
 CryptoHash::~CryptoHash() {
@@ -236,7 +356,6 @@ HRESULT CryptoHash::Compute(const std::vector<CString>& filepaths,
 
 HRESULT CryptoHash::Compute(const std::vector<byte>& buffer_in,
                             std::vector<byte>* hash_out) {
-  ASSERT1(buffer_in.size() > 0);
   ASSERT1(hash_out);
 
   return ComputeOrValidate(buffer_in, NULL, hash_out);
@@ -246,7 +365,7 @@ HRESULT CryptoHash::Validate(const TCHAR* filepath,
                              uint64 max_len,
                              const std::vector<byte>& hash_in) {
   ASSERT1(filepath);
-  ASSERT1(hash_in.size() == kHashSize);
+  ASSERT1(IsValidSize(hash_in.size()));
 
   std::vector<CString> filepaths;
   filepaths.push_back(filepath);
@@ -256,7 +375,7 @@ HRESULT CryptoHash::Validate(const TCHAR* filepath,
 HRESULT CryptoHash::Validate(const std::vector<CString>& filepaths,
                              uint64 max_len,
                              const std::vector<byte>& hash_in) {
-  ASSERT1(hash_in.size() == kHashSize);
+  ASSERT1(IsValidSize(hash_in.size()));
 
   return ComputeOrValidate(filepaths, max_len, &hash_in, NULL);
 }
@@ -264,8 +383,7 @@ HRESULT CryptoHash::Validate(const std::vector<CString>& filepaths,
 
 HRESULT CryptoHash::Validate(const std::vector<byte>& buffer_in,
                              const std::vector<byte>& hash_in) {
-  ASSERT1(buffer_in.size() > 0);
-  ASSERT1(hash_in.size() == kHashSize);
+  ASSERT1(IsValidSize(hash_in.size()));
 
   return ComputeOrValidate(buffer_in, &hash_in, NULL);
 }
@@ -278,30 +396,12 @@ HRESULT CryptoHash::ComputeOrValidate(const std::vector<CString>& filepaths,
   ASSERT1(hash_in && !hash_out || !hash_in && hash_out);
   UTIL_LOG(L1, (_T("[CryptoHash::ComputeOrValidate]")));
 
-  std::vector<byte> buf(kFileReadBufferSize);
   uint64 curr_len = 0;
+  std::vector<byte> buf(kFileReadBufferSize);
+  COMPILE_ASSERT(kFileReadBufferSize <= INT_MAX, buffer_size_too_large);
 
-  CryptDetails::scoped_crypt_context scoped_csp_handle;
-  if (0 == ::CryptAcquireContext(address(scoped_csp_handle),
-                                 NULL,
-                                 NULL,  // Use OS-default CSP.
-                                 kProviderType,
-                                 CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[CryptAcquireContext failed][0x%08lX]"), hr));
-    return hr;
-  }
-
-  CryptDetails::scoped_crypt_hash scoped_hash_handle;
-  if (0 == ::CryptCreateHash(get(scoped_csp_handle),
-                             kHashAlgorithm,
-                             NULL,
-                             0,
-                             address(scoped_hash_handle))) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[CryptCreateHash failed][0x%08lX]"), hr));
-    return hr;
-  }
+  scoped_ptr<CryptDetails::HashInterface> hasher(
+      CryptDetails::CreateHasher(use_sha256_));
 
   for (size_t i = 0; i < filepaths.size(); ++i) {
     scoped_hfile file_handle(::CreateFile(filepaths[i],
@@ -332,49 +432,31 @@ HRESULT CryptoHash::ComputeOrValidate(const std::vector<CString>& filepaths,
     do {
       if (!::ReadFile(get(file_handle),
                       &buf[0],
-                      buf.size(),
+                      static_cast<DWORD>(buf.size()),
                       &bytes_read,
                       NULL)) {
         return HRESULTFromLastError();
       }
 
       if (bytes_read > 0) {
-        if (0 == ::CryptHashData(get(scoped_hash_handle),
-                                 &buf[0],
-                                 bytes_read,
-                                 0)) {
-          HRESULT hr = HRESULTFromLastError();
-          UTIL_LOG(LE, (_T("[CryptHashData failed][0x%08lX]"), hr));
-          return hr;
-        }
+        hasher->update(&buf[0], bytes_read);
       }
     } while (bytes_read == buf.size());
   }
 
-  DWORD digest_size = kHashSize;
-  byte digest_data[kHashSize] = {};
-  if (0 == ::CryptGetHashParam(get(scoped_hash_handle),
-                               HP_HASHVAL,
-                               digest_data,
-                               &digest_size,
-                               0)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[CryptGetHashParam failed][0x%08lX]"), hr));
-    return hr;
-  }
-  if (digest_size != kHashSize) {
-    UTIL_LOG(LE, (_T("[CryptGetHashParam returned %d bytes]"), digest_size));
-    return E_UNEXPECTED;
-  }
+  DWORD digest_size = static_cast<DWORD>(hash_size());
+  std::vector<uint8> digest_data(digest_size);
+
+  memcpy(&digest_data.front(), hasher->final(), digest_size);
 
   if (hash_in) {
-    int res = ::memcmp(&hash_in->front(), digest_data, kHashSize);
+    int res = memcmp(&hash_in->front(), &digest_data.front(), digest_size);
     if (res == 0) {
       return S_OK;
     }
 
-    std::vector<byte> calculated_hash(kHashSize);
-    ::memcpy(&calculated_hash.front(), digest_data, kHashSize);
+    std::vector<byte> calculated_hash(digest_size);
+    memcpy(&calculated_hash.front(), &digest_data.front(), digest_size);
     CStringA base64_encoded_hash;
     Base64::Encode(calculated_hash, &base64_encoded_hash, false);
     CString hash = AnsiToWideString(base64_encoded_hash,
@@ -382,8 +464,8 @@ HRESULT CryptoHash::ComputeOrValidate(const std::vector<CString>& filepaths,
     REPORT_LOG(L1, (_T("[actual hash=%s]"), hash));
     return SIGS_E_INVALID_SIGNATURE;
   } else {
-    hash_out->resize(kHashSize);
-    ::memcpy(&hash_out->front(), digest_data, kHashSize);
+    hash_out->resize(digest_size);
+    memcpy(&hash_out->front(), &digest_data.front(), digest_size);
     return S_OK;
   }
 }
@@ -394,61 +476,29 @@ HRESULT CryptoHash::ComputeOrValidate(const std::vector<byte>& buffer_in,
   ASSERT1(hash_in && !hash_out || !hash_in && hash_out);
   UTIL_LOG(L1, (_T("[CryptoHash::ComputeOrValidate]")));
 
-  CryptDetails::scoped_crypt_context scoped_csp_handle;
-  if (0 == ::CryptAcquireContext(address(scoped_csp_handle),
-                                 NULL,
-                                 NULL,  // Use OS-default CSP.
-                                 kProviderType,
-                                 CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[CryptAcquireContext failed][0x%08lX]"), hr));
-    return hr;
+  if (buffer_in.size() > INT_MAX) {
+    return E_INVALIDARG;
   }
 
-  CryptDetails::scoped_crypt_hash scoped_hash_handle;
-  if (0 == ::CryptCreateHash(get(scoped_csp_handle),
-                             kHashAlgorithm,
-                             NULL,
-                             0,
-                             address(scoped_hash_handle))) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[CryptCreateHash failed][0x%08lX]"), hr));
-    return hr;
-  }
+  scoped_ptr<CryptDetails::HashInterface> hasher(
+      CryptDetails::CreateHasher(use_sha256_));
 
-  if (!buffer_in.empty()) {
-    if (0 == ::CryptHashData(get(scoped_hash_handle),
-                             &buffer_in.front(),
-                             buffer_in.size(),
-                             0)) {
-      HRESULT hr = HRESULTFromLastError();
-      UTIL_LOG(LE, (_T("[CryptHashData failed][0x%08lX]"), hr));
-      return hr;
-    }
-  }
+  const size_t datalen = buffer_in.size();
+  const uint8* data = datalen ? &buffer_in.front() : NULL;
 
-  DWORD digest_size = kHashSize;
-  byte digest_data[kHashSize] = {};
-  if (0 == ::CryptGetHashParam(get(scoped_hash_handle),
-                               HP_HASHVAL,
-                               digest_data,
-                               &digest_size,
-                               0)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[CryptGetHashParam failed][0x%08lX]"), hr));
-    return hr;
-  }
-  if (digest_size != kHashSize) {
-    UTIL_LOG(LE, (_T("[CryptGetHashParam returned %d bytes]"), digest_size));
-    return E_UNEXPECTED;
-  }
+  hasher->update(data, static_cast<unsigned int>(datalen));
+
+  DWORD digest_size = static_cast<DWORD>(hash_size());
+  std::vector<uint8> digest_data(digest_size);
+
+  memcpy(&digest_data.front(), hasher->final(), digest_size);
 
   if (hash_in) {
-    int res = ::memcmp(&hash_in->front(), digest_data, kHashSize);
+    int res = memcmp(&hash_in->front(), &digest_data.front(), digest_size);
     return (res == 0) ? S_OK : SIGS_E_INVALID_SIGNATURE;
   } else {
-    hash_out->resize(kHashSize);
-    ::memcpy(&hash_out->front(), digest_data, kHashSize);
+    hash_out->resize(digest_size);
+    memcpy(&hash_out->front(), &digest_data.front(), digest_size);
     return S_OK;
   }
 }
@@ -502,9 +552,13 @@ HRESULT CryptoSigningCertificate::ImportCertificate(
                 L"[%d bytes, subject_name '%s']",
                 certificate_in.size(), subject_name ? subject_name : L""));
 
+  if (certificate_in.size() > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
   // CryptoAPI treats the certificate as a "blob"
   CRYPT_DATA_BLOB blob;
-  blob.cbData = certificate_in.size();
+  blob.cbData = static_cast<DWORD>(certificate_in.size());
   blob.pbData = const_cast<BYTE*>(&certificate_in.front());
 
   // Ensure that it is PFX formatted
@@ -728,6 +782,10 @@ HRESULT CryptoComputeSignature::Sign(const std::vector<byte>& buffer_in,
   UTIL_LOG(L2, (L"[CryptoComputeSignature::Sign]"
                 L"[buffer of %d bytes]", buffer_in.size()));
 
+  if (buffer_in.size() > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
   // Get the proper CSP with the private key (certificate retains ownership)
   HCRYPTPROV csp = NULL;
   HRESULT hr = certificate_->GetCSPContext(&csp);
@@ -746,7 +804,10 @@ HRESULT CryptoComputeSignature::Sign(const std::vector<byte>& buffer_in,
   }
   UTIL_LOG(L3, (L"CryptoComputeSignature::Sign new hash 0x%08lx", get(hash)));
 
-  b = ::CryptHashData(get(hash), &buffer_in.front(), buffer_in.size(), 0);
+  b = ::CryptHashData(get(hash),
+                      &buffer_in.front(),
+                      static_cast<DWORD>(buffer_in.size()),
+                      0);
   if (!b) {
     DWORD err = ::GetLastError();
     UTIL_LOG(LE, (L"[CryptoComputeSignature::Sign]"
@@ -823,9 +884,16 @@ HRESULT CryptoSignatureVerificationCertificate::ImportCertificate(
     const TCHAR * subject_name) {
   // Import the certificate
   ASSERT1(!certificate_in.empty());
-  reset(certificate_, ::CertCreateCertificateContext(kEncodingType,
-                                                     &certificate_in.front(),
-                                                     certificate_in.size()));
+
+  if (certificate_in.size() > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
+  reset(certificate_,
+        ::CertCreateCertificateContext(
+            kEncodingType,
+            &certificate_in.front(),
+            static_cast<DWORD>(certificate_in.size())));
   if (!certificate_) {
     DWORD err = ::GetLastError();
     UTIL_LOG(LE, (L"[CryptoSignatureVerificationCertificate::ImportCertificate]"
@@ -901,10 +969,11 @@ HRESULT CryptoSignatureVerificationCertificate::GetCSPContextAndKey(
   // about creating/destroying a key container.
   // TODO(omaha):  Why wasn't PROV_RSA_SIG available?  Maybe looking for the
   // default isn't a good idea?
+  const DWORD provider_type = PROV_RSA_FULL;
   BOOL b = ::CryptAcquireContext(address(csp_),
                                  NULL,
                                  NULL,
-                                 kProviderType,
+                                 provider_type,
                                  CRYPT_VERIFYCONTEXT|CRYPT_SILENT);
   if (!b) {
     DWORD err = ::GetLastError();
@@ -974,6 +1043,10 @@ HRESULT CryptoVerifySignature::Validate(const std::vector<byte>& buffer_in,
                 L"[buffer of %d bytes, signature of %d bytes]",
                 buffer_in.size(), signature_in.size()));
 
+  if (buffer_in.size() > INT_MAX || signature_in.size() > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
   // Get the CSP context and the public key from the certificate
   HCRYPTPROV csp = NULL;
   HCRYPTKEY key = NULL;
@@ -995,7 +1068,7 @@ HRESULT CryptoVerifySignature::Validate(const std::vector<byte>& buffer_in,
 
   b = ::CryptHashData(get(hash),
                       &buffer_in.front(),
-                      buffer_in.size(),
+                     static_cast<DWORD>(buffer_in.size()),
                       0 /*flags*/);
   if (!b) {
     DWORD err = ::GetLastError();
@@ -1007,7 +1080,7 @@ HRESULT CryptoVerifySignature::Validate(const std::vector<byte>& buffer_in,
   // Verify the hash
   b = ::CryptVerifySignature(get(hash),
                              &signature_in.front(),
-                             signature_in.size(),
+                             static_cast<DWORD>(signature_in.size()),
                              key,
                              NULL,
                              0 /*flags*/);
@@ -1094,20 +1167,34 @@ HRESULT VerifyData(const std::vector<byte>& certificate_buffer,
   return S_OK;
 }
 
-// TODO(omaha): function is missing the unit test.
-HRESULT AuthenticateFiles(const std::vector<CString>& files,
-                          const CString& hash) {
+HRESULT VerifyFileHash(const std::vector<CString>& files,
+                       const CString& expected_hash) {
   ASSERT1(!files.empty());
 
   std::vector<byte> hash_vector;
-  RET_IF_FAILED(Base64::Decode(hash, &hash_vector));
-  if (hash_vector.size() != CryptoHash::kHashSize) {
+  RET_IF_FAILED(Base64::Decode(expected_hash, &hash_vector));
+
+  CryptoHash crypto(CryptoHash::kSha1);
+  if (!crypto.IsValidSize(hash_vector.size())) {
+    return E_INVALIDARG;
+  }
+  return crypto.Validate(files, kMaxFileSizeForAuthentication, hash_vector);
+}
+
+HRESULT VerifyFileHashSha256(const std::vector<CString>& files,
+                             const CString& expected_hash) {
+  ASSERT1(!files.empty());
+
+  std::vector<uint8> hash_vector;
+  if (!SafeHexStringToVector(expected_hash, &hash_vector)) {
     return E_INVALIDARG;
   }
 
-  CryptoHash crypto;
+  CryptoHash crypto(CryptoHash::kSha256);
+  if (!crypto.IsValidSize(hash_vector.size())) {
+    return E_INVALIDARG;
+  }
   return crypto.Validate(files, kMaxFileSizeForAuthentication, hash_vector);
 }
 
 }  // namespace omaha
-

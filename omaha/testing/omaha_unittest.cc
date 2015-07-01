@@ -31,14 +31,7 @@ namespace omaha {
 namespace {
 
 //
-// Subset of Google Test arguments.
-//
-const TCHAR* const kUnitTestBreakOnFailure   = _T("--gtest_break_on_failure");
-const TCHAR* const kUnitTestFilter           = _T("--gtest_filter");
-const TCHAR* const kUnitTestListTests        = _T("--gtest_list_tests");
-
-//
-// Omaha-specifc arguments.
+// Omaha-specific arguments.
 //
 const TCHAR* const kOmahaArgIsBuildSystem    = _T("--omaha_buildsystem");
 const TCHAR* const kOmahaArgPsexecDir        = _T("--omaha_psexec_dir");
@@ -195,15 +188,10 @@ bool ParseUnitTestArgs(int argc, TCHAR** argv) {
 
   _tprintf(_T("ERROR: Invalid Command line!\n"), argv[1]);
   _tprintf(_T("  First invalid command option: %s\n\n"), argv[1]);
-  _tprintf(_T("Valid options:\n"));
-  _tprintf(_T("%25s   Cause an av when a test fails (for use with debugger)\n"),
-           kUnitTestBreakOnFailure);
-  _tprintf(_T("%25s   Sets a filter on the unit tests.\n")
-           _T("%25s   Format: %s=Filter[:Filter] where\n")
-           _T("%25s   Filter is TestCase[.Test] and * is a wildcard.\n"),
-           kUnitTestFilter, _T(""), kUnitTestFilter, _T(""));
-  _tprintf(_T("%25s   Lists all tests\n"),
-           kUnitTestListTests);
+  _tprintf(_T("Use --help command line to see what flags can be used to ")
+           _T("control test selection, execution, output, and assertion ")
+           _T("behavior.\n"));
+
   return false;
 }
 
@@ -231,6 +219,7 @@ int RunTests(bool is_medium_or_large_test,
   }
   FailOnAssert fail_on_assert;
 
+  InitializeShellVersion();
   InitializeVersionFromModule(NULL);
 
   scoped_co_init co_init(COINIT_MULTITHREADED);

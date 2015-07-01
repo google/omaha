@@ -39,11 +39,13 @@ xml::UpdateResponseResult GetUpdateResponseResult(
   ASSERT1(app);
   ASSERT1(update_response);
 
+  const CString app_name = app->display_name();
   const CString language = app->app_bundle()->display_language();
 
   xml::UpdateResponseResult update_response_result =
       update_response_utils::GetResult(update_response,
                                        app->app_guid_string(),
+                                       app_name,
                                        language);
 
   const bool is_omaha   = !!::IsEqualGUID(kGoopdateGuid, app->app_guid());
@@ -82,6 +84,8 @@ void AppStateCheckingForUpdate::PostUpdateCheck(
 
   ASSERT1(app->model()->IsLockedByCaller());
 
+  app->SetCurrentTimeAs(App::TIME_UPDATE_CHECK_COMPLETE);
+
   update_response_ = update_response;
 
   const CString language = app->app_bundle()->display_language();
@@ -100,6 +104,7 @@ void AppStateCheckingForUpdate::PostUpdateCheck(
     return;
   }
 
+  app->set_day_of_last_response(update_response_->GetElapsedDaysSinceDatum());
   PersistUpdateCheckSuccessfullySent(*app);
 
   const xml::UpdateResponseResult update_response_result(
@@ -233,12 +238,22 @@ void AppStateCheckingForUpdate::HandleErrorResponse(App* app,
 
 void AppStateCheckingForUpdate::PersistUpdateCheckSuccessfullySent(
     const App& app) {
+  // For offline install, we didn't send actual pings to server and the response
+  // is loaded from XML manifest file, so no need to update metrics for ping
+  // sent event.
+  if (app.app_bundle()->is_offline_install()) {
+    return;
+  }
+
   AppManager& app_manager = *AppManager::Instance();
   VERIFY1(SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
-      app, update_response_->GetElapsedSecondsSinceDayStart())));
+      app,
+      update_response_->GetElapsedDaysSinceDatum(),
+      update_response_->GetElapsedSecondsSinceDayStart())));
 
   // Here we assume that some of the members in app object
-  // (days_since_last_active_ping_, days_since_last_roll_call_, iid_, did_run_)
+  // (days_since_last_active_ping_, days_since_last_roll_call_,
+  //  day_of_last_roll_call_, day_of_last_activity_, iid_, did_run_)
   // will not be used after the update check so there is no need to update them.
 }
 

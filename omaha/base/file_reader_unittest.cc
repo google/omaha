@@ -19,6 +19,7 @@
 #include <vector>
 #include "base/scoped_ptr.h"
 #include "omaha/base/file_reader.h"
+#include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -26,20 +27,17 @@ namespace omaha {
 class ReadingFilesTest : public testing::Test {
  protected:
   ReadingFilesTest() {
-    temp_file_[0] = '\0';
   }
 
   virtual void SetUp() {
     // create a temporary file
-    TCHAR temp_path[MAX_PATH] = {0};
-    EXPECT_LT(::GetTempPath(arraysize(temp_path), temp_path),
-              arraysize(temp_path));
-    EXPECT_NE(::GetTempFileName(temp_path, _T("ut_"), 0, temp_file_), 0);
+    temp_file_ = GetTempFilename(_T("ut_"));
+    ASSERT_FALSE(temp_file_.IsEmpty());
   }
 
   virtual void TearDown() {
     // remove the temporary file
-    if (::lstrlen(temp_file_) > 0) {
+    if (!temp_file_.IsEmpty()) {
       ASSERT_SUCCEEDED(File::Remove(temp_file_));
     }
   }
@@ -135,7 +133,7 @@ class ReadingFilesTest : public testing::Test {
     }
   }
 
-  TCHAR temp_file_[MAX_PATH];
+  CString temp_file_;
 
   DISALLOW_EVIL_CONSTRUCTORS(ReadingFilesTest);
 };
@@ -176,7 +174,7 @@ TEST_F(ReadingFilesTest, ReadFile1) {
   // read in the file line by line using the FileReader class
   std::vector<char*> lines2;
   FileReader file_read2;
-  size_t buffer_size = 512;
+  uint32 buffer_size = 512;
   ASSERT_SUCCEEDED(file_read2.Init(temp_file_, buffer_size));
   while (true) {
     scoped_array<char> line(new char[256]);

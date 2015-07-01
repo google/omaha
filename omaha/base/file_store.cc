@@ -80,7 +80,7 @@ bool FileStore::Remove(const TCHAR* name) {
 }
 
 // Get the number of values for this store
-bool FileStore::GetValueCount(uint32* value_count) {
+bool FileStore::GetValueCount(size_t* value_count) {
   ASSERT1(value_count);
 
   std::vector<CString> matching_paths;
@@ -95,7 +95,7 @@ bool FileStore::GetValueCount(uint32* value_count) {
 }
 
 // Get the value name for the given value name index
-bool FileStore::GetValueNameAt(uint32 index, CString* value_name) {
+bool FileStore::GetValueNameAt(size_t index, CString* value_name) {
   ASSERT1(value_name);
 
   std::vector<CString> matching_paths;

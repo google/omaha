@@ -16,6 +16,7 @@
 
 #include "omaha/ui/progress_wnd.h"
 #include "base/basictypes.h"
+#include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -23,6 +24,7 @@
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/goopdate_utils.h"
+#include "omaha/goopdate/non_localized_resource.h"
 #include "omaha/ui/ui_ctls.h"
 #include "omaha/ui/ui_metrics.h"
 
@@ -113,6 +115,19 @@ LRESULT InstallStoppedWnd::OnInitDialog(UINT,
                                         BOOL& handled) {    // NOLINT
   VERIFY1(!::EnableWindow(parent_, false));
   VERIFY1(message_loop_->AddMessageFilter(this));
+
+  // 9-pixel-high "Segoe UI".
+  VERIFY1(default_font_.CreatePointFont(90, _T("Segoe UI")));
+  SendMessageToDescendants(
+      WM_SETFONT,
+      reinterpret_cast<WPARAM>(static_cast<HFONT>(default_font_)),
+      0);
+
+  CreateOwnerDrawTitleBar(m_hWnd, GetDlgItem(IDC_TITLE_BAR_SPACER), kBkColor);
+  SetCustomDlgColors(kTextColor, kBkColor);
+
+  (EnableFlatButtons(m_hWnd));
+
   handled = true;
   return 1;
 }
@@ -175,13 +190,9 @@ LRESULT ProgressWnd::OnInitDialog(UINT message,
 
   InitializeDialog();
 
-  pause_resume_text_.reset(new StaticEx);
-  pause_resume_text_->SubclassWindow(GetDlgItem(IDC_PAUSE_RESUME_TEXT));
-
   CString state_text;
   VERIFY1(state_text.LoadString(IDS_INITIALIZING));
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), state_text));
-  VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
   VERIFY1(SUCCEEDED(ChangeControlState()));
 
   metrics_timer_.reset(new HighresTimer);
@@ -224,7 +235,7 @@ bool ProgressWnd::MaybeCloseWindow() {
           install_stopped_wnd_->GetDlgItem(IDCANCEL), button_text));
 
       CString s;
-      s.FormatMessage(IDS_INSTALL_STOPPED, bundle_name());
+      VERIFY1(s.LoadString(IDS_INSTALL_STOPPED));
       VERIFY1(::SetWindowText(
           install_stopped_wnd_->GetDlgItem(IDC_INSTALL_STOPPED_TEXT), s));
 
@@ -376,25 +387,46 @@ void ProgressWnd::OnCheckingForUpdate() {
   VERIFY1(s.LoadString(IDS_WAITING_TO_CONNECT));
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-  VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
   VERIFY1(SUCCEEDED(ChangeControlState()));
 }
 
-void ProgressWnd::OnUpdateAvailable(const CString& app_name,
+void ProgressWnd::OnUpdateAvailable(const CString& app_id,
+                                    const CString& app_name,
                                     const CString& version_string) {
   CORE_LOG(L3, (_T("[ProgressWnd::OnUpdateAvailable][%s][%s]"),
                 app_name, version_string));
+  UNREFERENCED_PARAMETER(app_id);
   UNREFERENCED_PARAMETER(app_name);
   UNREFERENCED_PARAMETER(version_string);
 
   ASSERT1(thread_id() == ::GetCurrentThreadId());
+
+  if (!app_id.CompareNoCase(kChromeAppId)) {
+    HBITMAP app_bitmap = reinterpret_cast<HBITMAP>(::LoadImage(
+        app_util::GetCurrentModuleHandle(),
+        MAKEINTRESOURCE(IDB_CHROME),
+        IMAGE_BITMAP,
+        0,
+        0,
+        LR_SHARED));
+    ASSERT1(app_bitmap);
+    SendDlgItemMessage(IDC_APP_BITMAP,
+                       STM_SETIMAGE,
+                       IMAGE_BITMAP,
+                       reinterpret_cast<LPARAM>(app_bitmap));
+  }
+
   if (!IsWindow()) {
     return;
   }
 }
 
-void ProgressWnd::OnWaitingToDownload(const CString& app_name) {
+void ProgressWnd::OnWaitingToDownload(const CString& app_id,
+                                      const CString& app_name) {
   CORE_LOG(L3, (_T("[ProgressWnd::OnWaitingToDownload][%s]"), app_name));
+  UNREFERENCED_PARAMETER(app_id);
+  UNREFERENCED_PARAMETER(app_name);
+
   ASSERT1(thread_id() == ::GetCurrentThreadId());
   if (!IsWindow()) {
     return;
@@ -403,19 +435,22 @@ void ProgressWnd::OnWaitingToDownload(const CString& app_name) {
   cur_state_ = STATE_WAITING_TO_DOWNLOAD;
 
   CString s;
-  s.FormatMessage(IDS_WAITING_TO_DOWNLOAD, app_name);
+  VERIFY1(s.LoadString(IDS_WAITING_TO_DOWNLOAD));
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-  VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
   VERIFY1(SUCCEEDED(ChangeControlState()));
 }
 
 // May be called repeatedly during download.
-void ProgressWnd::OnDownloading(const CString& app_name,
+void ProgressWnd::OnDownloading(const CString& app_id,
+                                const CString& app_name,
                                 int time_remaining_ms,
                                 int pos) {
   CORE_LOG(L5, (_T("[ProgressWnd::OnDownloading][%s][remaining ms=%d][pos=%d]"),
                 app_name, time_remaining_ms, pos));
+  UNREFERENCED_PARAMETER(app_id);
+  UNREFERENCED_PARAMETER(app_name);
+
   ASSERT1(thread_id() == ::GetCurrentThreadId());
   if (!IsWindow()) {
     return;
@@ -435,36 +470,45 @@ void ProgressWnd::OnDownloading(const CString& app_name,
 
   int time_remaining_sec = CeilingDivide(time_remaining_ms, kMsPerSec);
   if (time_remaining_ms < 0) {
-    s.FormatMessage(IDS_WAITING_TO_DOWNLOAD, app_name);
+    VERIFY1(s.LoadString(IDS_DOWNLOADING));
   } else if (time_remaining_ms == 0) {
-    s.FormatMessage(IDS_DOWNLOADING_COMPLETED, app_name);
+    VERIFY1(s.LoadString(IDS_DOWNLOADING_COMPLETED));
   } else if (time_remaining_sec < kSecPerMin) {
     // Less than one minute remaining.
-    s.FormatMessage(IDS_DOWNLOADING_SHORT, app_name, time_remaining_sec);
+    s.FormatMessage(IDS_DOWNLOADING_SHORT, time_remaining_sec);
   } else if (time_remaining_sec < kSecondsPerHour) {
     // Less than one hour remaining.
     int time_remaining_minute = CeilingDivide(time_remaining_sec, kSecPerMin);
-    s.FormatMessage(IDS_DOWNLOADING_LONG, app_name, time_remaining_minute);
+    s.FormatMessage(IDS_DOWNLOADING_LONG, time_remaining_minute);
   } else {
     int time_remaining_hour = CeilingDivide(time_remaining_sec,
                                             kSecondsPerHour);
-    s.FormatMessage(IDS_DOWNLOADING_VERY_LONG, app_name, time_remaining_hour);
+    s.FormatMessage(IDS_DOWNLOADING_VERY_LONG, time_remaining_hour);
   }
 
-  VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+  // Reduces flicker by only updating the control if the text has changed.
+  CString orig_text;
+  if (!GetDlgItemText(IDC_INSTALLER_STATE_TEXT, orig_text) || s != orig_text) {
+    VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+  }
+
   VERIFY1(SUCCEEDED(ChangeControlState()));
 
   // When the network is connecting keep the marquee moving, otherwise
   // the user has no indication something is still going on.
   // TODO(omaha): when resuming an incomplete download this will not work.
   VERIFY1(SUCCEEDED(SetMarqueeMode(pos == 0)));
-  ::SendMessage(GetDlgItem(IDC_PROGRESS), PBM_SETPOS, pos, 0);
+  SendDlgItemMessage(IDC_PROGRESS, PBM_SETPOS, pos, 0);
 }
 
-void ProgressWnd::OnWaitingRetryDownload(const CString& app_name,
+void ProgressWnd::OnWaitingRetryDownload(const CString& app_id,
+                                         const CString& app_name,
                                          time64 next_retry_time) {
   CORE_LOG(L5, (_T("[ProgressWnd::OnWaitingRetryDownload][%s][retry at:%llu]"),
                 app_name, next_retry_time));
+  UNREFERENCED_PARAMETER(app_id);
+  UNREFERENCED_PARAMETER(app_name);
+
   ASSERT1(thread_id() == ::GetCurrentThreadId());
   if (!IsWindow()) {
     return;
@@ -475,15 +519,19 @@ void ProgressWnd::OnWaitingRetryDownload(const CString& app_name,
     CString s;
     int retry_time_in_sec =
         static_cast<int>(CeilingDivide(next_retry_time - now, kSecsTo100ns));
-    s.FormatMessage(IDS_DOWNLOAD_RETRY, app_name, retry_time_in_sec);
+    s.FormatMessage(IDS_DOWNLOAD_RETRY, retry_time_in_sec);
     VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
     VERIFY1(SUCCEEDED(ChangeControlState()));
   }
 }
 
-void ProgressWnd::OnWaitingToInstall(const CString& app_name,
+void ProgressWnd::OnWaitingToInstall(const CString& app_id,
+                                     const CString& app_name,
                                      bool* can_start_install) {
   CORE_LOG(L3, (_T("[ProgressWnd::OnWaitingToInstall][%s]"), app_name));
+  UNREFERENCED_PARAMETER(app_id);
+  UNREFERENCED_PARAMETER(app_name);
+
   ASSERT1(thread_id() == ::GetCurrentThreadId());
   ASSERT1(can_start_install);
   if (!IsWindow()) {
@@ -494,10 +542,9 @@ void ProgressWnd::OnWaitingToInstall(const CString& app_name,
     cur_state_ = STATE_WAITING_TO_INSTALL;
 
     CString s;
-    s.FormatMessage(IDS_WAITING_TO_INSTALL, app_name);
+    VERIFY1(s.LoadString(IDS_WAITING_TO_INSTALL));
     VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-    VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
     VERIFY1(SUCCEEDED(ChangeControlState()));
   }
 
@@ -507,8 +554,16 @@ void ProgressWnd::OnWaitingToInstall(const CString& app_name,
 }
 
 // May be called repeatedly during install.
-void ProgressWnd::OnInstalling(const CString& app_name) {
-  CORE_LOG(L5, (_T("[ProgressWnd::OnInstalling][%s]"), app_name));
+void ProgressWnd::OnInstalling(const CString& app_id,
+                               const CString& app_name,
+                               int time_remaining_ms,
+                               int pos) {
+  CORE_LOG(L5, (_T("[ProgressWnd::OnInstalling][%s][remaining ms=%d][pos=%d]"),
+                app_name, time_remaining_ms, pos));
+  UNREFERENCED_PARAMETER(app_id);
+  UNREFERENCED_PARAMETER(app_name);
+  UNREFERENCED_PARAMETER(time_remaining_ms);
+
   ASSERT1(thread_id() == ::GetCurrentThreadId());
   if (!IsWindow()) {
     return;
@@ -521,11 +576,15 @@ void ProgressWnd::OnInstalling(const CString& app_name) {
     cur_state_ = STATE_INSTALLING;
 
     CString s;
-    s.FormatMessage(IDS_INSTALLING, app_name);
+    VERIFY1(s.LoadString(IDS_INSTALLING));
     VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-    VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
     VERIFY1(SUCCEEDED(ChangeControlState()));
+  }
+
+  VERIFY1(SUCCEEDED(SetMarqueeMode(pos <= 0)));
+  if (pos > 0) {
+    SendDlgItemMessage(IDC_PROGRESS, PBM_SETPOS, pos, 0);
   }
 }
 
@@ -745,7 +804,7 @@ HRESULT ProgressWnd::LaunchCmdLine(const AppCompletionInfo& app_info) {
   ASSERT1(!app_info.is_noupdate);
 
   HRESULT hr = goopdate_utils::LaunchCmdLine(
-      is_machine(), app_info.post_install_launch_command_line);
+      is_machine(), app_info.post_install_launch_command_line, NULL, NULL);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[goopdate_utils::LaunchCmdLine failed][0x%x]"), hr));
     return hr;
@@ -779,47 +838,15 @@ HRESULT ProgressWnd::ChangeControlState() {
 }
 
 HRESULT ProgressWnd::SetMarqueeMode(bool is_marquee) {
-  if (!SystemInfo::IsRunningOnXPOrLater()) {
-    // Marquee is not supported on OSes below XP.
-    return S_OK;
-  }
-
-  HWND progress_bar = GetDlgItem(IDC_PROGRESS);
-  if (!progress_bar) {
-    return GOOPDATE_E_UI_INTERNAL_ERROR;
-  }
-
-  LONG style = ::GetWindowLong(progress_bar, GWL_STYLE);
-  if (!style) {
-    return HRESULTFromLastError();
-  }
-
   if (is_marquee) {
-    if (style & PBS_MARQUEE) {
-      return S_OK;
-    }
-
-    style |= PBS_MARQUEE;
-    style = ::SetWindowLong(progress_bar, GWL_STYLE, style);
-    if (!style) {
-      return HRESULTFromLastError();
-    }
-
-    bool result = ::SendMessage(progress_bar, PBM_SETMARQUEE,
-                                is_marquee, kMarqueeModeUpdatesMs) != 0;
-    return result ? S_OK : GOOPDATE_E_UI_INTERNAL_ERROR;
+    GetDlgItem(IDC_MARQUEE).ShowWindow(SW_SHOW);
+    GetDlgItem(IDC_PROGRESS).ShowWindow(SW_HIDE);
   } else {
-    if (!(style & PBS_MARQUEE)) {
-      return S_OK;
-    }
-
-    style &= ~PBS_MARQUEE;
-    style = ::SetWindowLong(progress_bar, GWL_STYLE, style);
-    if (!style) {
-      return HRESULTFromLastError();
-    }
-    return S_OK;
+    GetDlgItem(IDC_MARQUEE).ShowWindow(SW_HIDE);
+    GetDlgItem(IDC_PROGRESS).ShowWindow(SW_SHOW);
   }
+
+  return S_OK;
 }
 
 bool ProgressWnd::IsInstallStoppedWindowPresent() {

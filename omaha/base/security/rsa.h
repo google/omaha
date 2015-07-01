@@ -1,4 +1,4 @@
-// Copyright 2006-2009 Google Inc.
+// Copyright 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,17 +13,18 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_RSA_H__
-#define OMAHA_COMMON_SECURITY_RSA_H__
+#ifndef OMAHA_BASE_SECURITY_RSA_H_
+#define OMAHA_BASE_SECURITY_RSA_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 
 class RSA {
  public:
   typedef const uint32_t PublicKeyInstance[];
   typedef const uint32_t* PublicKey;
 
-  // Public_key as montgomery precomputed array
+  // Public_key as montgomery precomputed array, as per
+  // /home/build/static/projects/security/util/lite/keytool --pubout
   explicit RSA(PublicKey public_key) : pkey_(public_key) {}
 
   // Verifies a Google style RSA message recovery signature.
@@ -37,7 +38,7 @@ class RSA {
   int verify(const uint8_t* sig, int sig_len,
              void* output, int output_max) const;
 
-  // Hybrid encrypt message.
+  // Hybrid encrypt message. See wiki/Main/KeymasterCryptoFormats.
   //
   // output_max should be at least encryptedSize(msg_len)
   // Returns 0 on failure, # output bytes on success.
@@ -63,4 +64,4 @@ class RSA {
   static const int kMaxWords = 64;
 };
 
-#endif  // OMAHA_COMMON_SECURITY_RSA_H__
+#endif  // OMAHA_BASE_SECURITY_RSA_H_

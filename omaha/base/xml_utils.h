@@ -147,7 +147,7 @@ HRESULT GetXMLChildByName(IXMLDOMElement* xmlnode,
 // child item_number.
 HRESULT InsertXMLBeforeItem(IXMLDOMNode* xmlnode,
                             IXMLDOMNode* new_child,
-                            size_t item_number);
+                            long item_number);  // NOLINT
 
 // Gets parse error information after a failed load.
 HRESULT GetXMLParseError(IXMLDOMDocument* xmldoc,
@@ -168,6 +168,10 @@ int GetNumAttributes(IXMLDOMNode* pnode);
 bool HasAttribute(IXMLDOMNode* node, const TCHAR* attr_name);
 
 // Reads and parses attributes of nodes.
+HRESULT ReadAttributeAt(IXMLDOMNode* node,
+                        int index,
+                        CString* attr_name,
+                        CString* attr_value);
 HRESULT ReadBooleanAttribute(IXMLDOMNode* node,
                              const TCHAR* attr_name,
                              bool* value);

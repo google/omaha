@@ -101,11 +101,16 @@ const TCHAR* const kNeedsAdminPrefers = _T("&needsadmin=prefers");
 // Environment variable inherited by an installer child process that indicates
 // whether GoogleUpdate is running as user or machine.
 const TCHAR* const kEnvVariableIsMachine = APP_NAME_IDENTIFIER _T("IsMachine");
+const TCHAR* const kEnvVariableUntrustedData = APP_NAME_IDENTIFIER
+                                               _T("UntrustedData");
+// Maximum allowed length of untrusted data (unescaped).
+const int kUntrustedDataMaxLength = 4096;
 
 // Registry values read from the Clients key for transmitting custom install
 // errors, messages, etc. On an update, the InstallerXXX values are renamed to
 // LastInstallerXXX values. The LastInstallerXXX values remain around until the
 // next update.
+const TCHAR* const kRegValueInstallerProgress    = _T("InstallerProgress");
 const TCHAR* const kRegValueInstallerResult      = _T("InstallerResult");
 const TCHAR* const kRegValueInstallerError       = _T("InstallerError");
 const TCHAR* const kRegValueInstallerExtraCode1  = _T("InstallerExtraCode1");
@@ -130,10 +135,13 @@ const TCHAR* const kRegValueLastInstallerSuccessLaunchCmdLine =
 const TCHAR* const kCommandsRegKeyName       = _T("Commands");
 
 // Registry values read from the Clients commands key.
-const TCHAR* const kRegValueCommandLine      = _T("CommandLine");
-const TCHAR* const kRegValueSendsPings       = _T("SendsPings");
-const TCHAR* const kRegValueWebAccessible    = _T("WebAccessible");
-const TCHAR* const kRegValueReportingId      = _T("ReportingId");
+const TCHAR* const kRegValueAutoRunOnOSUpgrade = _T("AutoRunOnOSUpgrade");
+const TCHAR* const kRegValueCaptureOutput      = _T("CaptureOutput");
+const TCHAR* const kRegValueCommandLine        = _T("CommandLine");
+const TCHAR* const kRegValueReportingId        = _T("ReportingId");
+const TCHAR* const kRegValueRunAsUser          = _T("RunAsUser");
+const TCHAR* const kRegValueSendsPings         = _T("SendsPings");
+const TCHAR* const kRegValueWebAccessible      = _T("WebAccessible");
 
 // Registry value in an app's Clients key that contains a registration update
 // hook CLSID.
@@ -155,10 +163,37 @@ const TCHAR* const kRegValueInstallationId   = _T("iid");
 const TCHAR* const kRegValueOemInstall       = _T("oeminstall");
 const TCHAR* const kRegValueReferralId       = _T("referral");
 
+// Prefix for App-Defined attribute values stored in the ClientState key.
+const TCHAR* const kRegValueAppDefinedPrefix = _T("_");
+
+// Aggregates are app-defined attribute subkeys that store values that need to
+// be aggregated. The only aggregate supported at the moment is "sum()".
+const TCHAR* const kRegValueAppDefinedAggregate    = _T("aggregate");
+const TCHAR* const kRegValueAppDefinedAggregateSum = _T("sum()");
+
+// Registry values stored at and under the ClientState\{AppID}\CurrentState key.
+const TCHAR* const kRegSubkeyCurrentState           = _T("CurrentState");
+const TCHAR* const kRegValueStateValue              = _T("StateValue");
+const TCHAR* const kRegValueDownloadTimeRemainingMs =
+    _T("DownloadTimeRemainingMs");
+const TCHAR* const kRegValueDownloadProgressPercent =
+    _T("DownloadProgressPercent");
+const TCHAR* const kRegValueInstallTimeRemainingMs  =
+    _T("InstallTimeRemainingMs");
+const TCHAR* const kRegValueInstallProgressPercent  =
+    _T("InstallProgressPercent");
+
 // This two registries hold client UTC timestamp of server's midnight of the day
 // that last active ping/roll call happened.
 const TCHAR* const kRegValueActivePingDayStartSec = _T("ActivePingDayStartSec");
 const TCHAR* const kRegValueRollCallDayStartSec   = _T("RollCallDayStartSec");
+
+// These three registry values hold the number of days have elapsed since
+// Jan 1. 2007 when initial install or last active ping/roll call happened.
+// The values are from server's response.
+const TCHAR* const kRegValueDayOfLastActivity     = _T("DayOfLastActivity");
+const TCHAR* const kRegValueDayOfLastRollCall     = _T("DayOfLastRollCall");
+const TCHAR* const kRegValueDayOfInstall          = _T("DayOfInstall");
 
 // Registry values stored in the ClientState key related to Omaha's actions.
 // A "successful check" means "noupdate" received from the server or an update
@@ -177,6 +212,10 @@ const TCHAR* const kRegValueTTToken               = _T("tttoken");
 const TCHAR* const kRegValueUpdateAvailableCount  = _T("UpdateAvailableCount");
 const TCHAR* const kRegValueUpdateAvailableSince  = _T("UpdateAvailableSince");
 
+const TCHAR* const kRegSubkeyCohort               = _T("cohort");
+const TCHAR* const kRegValueCohortHint            = _T("hint");
+const TCHAR* const kRegValueCohortName            = _T("name");
+
 // Registry values stored in the Update key.
 const TCHAR* const kRegValueDelayOmahaUninstall   = _T("DelayUninstall");
 const TCHAR* const kRegValueOmahaEulaAccepted     = _T("eulaaccepted");
@@ -186,16 +225,41 @@ const TCHAR* const kRegValueServiceName           = _T("omaha_service_name");
 const TCHAR* const kRegValueMediumServiceName     = _T("omaham_service_name");
 const TCHAR* const kRegValueTaskNameC             = _T("omaha_task_name_c");
 const TCHAR* const kRegValueTaskNameUA            = _T("omaha_task_name_ua");
+const TCHAR* const kRegValueLastStartedAU         = _T("LastStartedAU");
 const TCHAR* const kRegValueLastChecked           = _T("LastChecked");
+const TCHAR* const kRegValueLastCodeRedCheck      = _T("LastCodeRedCheck");
 const TCHAR* const kRegValueOemInstallTimeSec     = _T("OemInstallTime");
 const TCHAR* const kRegValueCacheSizeLimitMBytes  = _T("PackageCacheSizeLimit");
 const TCHAR* const kRegValueCacheLifeLimitDays    = _T("PackageCacheLifeLimit");
 const TCHAR* const kRegValueInstalledPath         = _T("path");
-const TCHAR* const kRegValueUserId                = _T("uid");
+const TCHAR* const kRegValueUninstallCmdLine      = _T("UninstallCmdLine");
 const TCHAR* const kRegValueSelfUpdateExtraCode1  = _T("UpdateCode1");
 const TCHAR* const kRegValueSelfUpdateErrorCode   = _T("UpdateError");
 const TCHAR* const kRegValueSelfUpdateVersion     = _T("UpdateVersion");
 const TCHAR* const kRegValueInstalledVersion      = _T("version");
+const TCHAR* const kRegValueIsMSIHelperRegistered = _T("IsMSIHelperRegistered");
+const TCHAR* const kRegValueLastOSVersion         = _T("LastOSVersion");
+
+// Indicates the time when it is safe for the client to connect to the server
+// for update checks. See the explanation of kHeaderXRetryAfter in constants.h.
+const TCHAR* const kRegValueRetryAfter            = _T("RetryAfter");
+
+// UID registry entries.
+const TCHAR* const kRegValueUserId                = _T("uid");
+const TCHAR* const kRegValueOldUserId             = _T("old-uid");
+const TCHAR* const kRegSubkeyUserId               = _T("uid");
+const TCHAR* const kRegValueUserIdCreateTime      = _T("uid-create-time");
+const TCHAR* const kRegValueUserIdNumRotations    = _T("uid-num-rotations");
+
+// This value is appended to the X-Old-UID header if no subkey "uid" existed.
+const TCHAR* const kRegValueDataLegacyUserId      = _T("; legacy");
+
+// These values are appended to the the X-Old-UID header in the format of
+// "X-Old-Uid: {UID}; legacy; age=150; cnt=2". cnt is the number of UID
+// rotations. age is the number of days since last rotation. Special value "-1"
+// is used when last rotation happened within the past 1 minute.
+const TCHAR* const kHeaderValueNumUidRotation     = _T("cnt");
+const TCHAR* const kHeaderValueUidAge             = _T("age");
 
 // TODO(omaha3): Consider moving all "gupdate" values to the customization file.
 // Use a non-gupdate name for the new medium service.
@@ -212,11 +276,16 @@ const TCHAR* const kScheduledTaskNameUASuffix   = _T("UA");
 const TCHAR* const kServiceFileName              = kOmahaShellFileName;
 const char*  const kGoopdateDllEntryAnsi         = "DllEntry";
 
+// The name of the Omaha product in Google's Crash reporting system.
+const TCHAR* const kCrashOmahaProductName        = _T("Update2");
 
 // Event Id's used for reporting in the event log.
 // Crash Report events.
 const int kCrashReportEventId        = 1;
 const int kCrashUploadEventId        = 2;
+
+// Omaha CustomInfoEntry entry names in Google's Crash reporting system.
+const TCHAR* const kCrashCustomInfoCommandLineMode  = _T("CommandLineMode");
 
 // Update Check events.
 const int kUpdateCheckEventId        = 11;
@@ -232,6 +301,12 @@ const int kNetworkRequestEventId     = 20;
 // <daystart ...> element. The value is one day plus an hour ("fall back"
 // daylight savings).
 const int kMaxTimeSinceMidnightSec   = ((24 + 1) * 60 * 60);
+
+// Value range the server can respond for elapsed_days attribute in
+// <daystart ...> element. The value is number of days has passed since
+// Jan. 1, 2007.
+const int kMinDaysSinceDatum   = 2400;  // Maps to Jul 28, 2013.
+const int kMaxDaysSinceDatum   = 50000;  // This will break on Nov 24, 2143.
 
 // Maximum time to keep the Installation ID. If the app was installed longer
 // than this time ago, the Installation ID will be deleted regardless of

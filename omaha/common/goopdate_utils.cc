@@ -14,12 +14,14 @@
 // ========================================================================
 
 #include "omaha/common/goopdate_utils.h"
+#include <ntddndis.h>
 #include <atlsecurity.h>
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/const_utils.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
@@ -30,8 +32,11 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/service_utils.h"
+#include "omaha/base/signatures.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/system_info.h"
@@ -59,7 +64,9 @@ bool IsMachineProcessWithoutPrivileges(bool is_machine_process) {
   return is_machine_process && !vista_util::IsUserAdmin();
 }
 
-HRESULT LaunchImpersonatedCmdLine(const CString& cmd_line) {
+HRESULT LaunchImpersonatedCmdLine(const CString& cmd_line,
+                                  HANDLE* process,
+                                  HANDLE* child_stdout) {
   CORE_LOG(L3, (_T("[LaunchImpersonatedCmdLine][%s]"), cmd_line));
 
   scoped_handle impersonation_token;
@@ -76,21 +83,93 @@ HRESULT LaunchImpersonatedCmdLine(const CString& cmd_line) {
     return hr;
   }
 
-  CComPtr<IProcessLauncher> launcher;
+  CComPtr<IProcessLauncher2> launcher;
   hr = launcher.CoCreateInstance(CLSID_ProcessLauncherClass,
                                  NULL,
                                  CLSCTX_LOCAL_SERVER);
   if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[CoCreateInstance IProcessLauncher failed][0x%x]"), hr));
+    UTIL_LOG(LE, (_T("[CoCreateInstance IProcessLauncher2 failed][0x%x]"), hr));
     return hr;
   }
 
-  hr = launcher->LaunchCmdLine(cmd_line);
+  if (!process && !child_stdout) {
+    hr = launcher->LaunchCmdLine(cmd_line);
+    if (FAILED(hr)) {
+      UTIL_LOG(LE, (_T("[IProcessLauncher2.LaunchCmdLine failed][0x%x]"), hr));
+    }
+    return hr;
+  }
+
+  DWORD server_process_id = 0;
+  scoped_process remote_command_process;
+  scoped_handle remote_command_stdout;
+  hr = launcher->LaunchCmdLineEx(cmd_line,
+                                 &server_process_id,
+                                 reinterpret_cast<ULONG_PTR*>(
+                                     address(remote_command_process)),
+                                 reinterpret_cast<ULONG_PTR*>(
+                                     address(remote_command_stdout)));
   if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[IProcessLauncher.LaunchBrowser failed][0x%x]"), hr));
+    UTIL_LOG(LE, (_T("[IProcessLauncher2.LaunchCmdLineEx failed][0x%x]"),
+                  hr));
     return hr;
   }
 
+  scoped_process server_process(
+      ::OpenProcess(PROCESS_DUP_HANDLE, false, server_process_id));
+  hr = get(server_process) ? S_OK : HRESULTFromLastError();
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[::OpenProcess for server process %d failed][0x%x]"),
+                  server_process_id, hr));
+    return hr;
+  }
+
+  // This is a pseudo handle that must not be closed.
+  HANDLE this_process_handle = ::GetCurrentProcess();
+
+  scoped_process local_command_process;
+  scoped_handle local_command_stdout;
+
+  if (process) {
+    DWORD desired_access = PROCESS_QUERY_INFORMATION | SYNCHRONIZE;
+    if (::DuplicateHandle(
+            get(server_process),             // Process receiving the handle.
+            get(remote_command_process),     // Process handle to duplicate.
+            this_process_handle,             // Current process.
+            address(local_command_process),  // Duplicated handle.
+            desired_access,                  // Requested access.
+            false,                           // Don't inherit the new handle.
+            DUPLICATE_CLOSE_SOURCE) == 0) {  // Flags.
+      hr = HRESULTFromLastError();
+      UTIL_LOG(LE, (_T("[failed call to DuplicateHandle][0x%08x]"), hr));
+      return hr;
+    }
+    release(remote_command_process);
+  }
+
+  if (child_stdout) {
+    DWORD desired_access = GENERIC_READ | SYNCHRONIZE;
+    if (::DuplicateHandle(
+            get(server_process),             // Process receiving the handle.
+            get(remote_command_stdout),      // Pipe handle to duplicate.
+            this_process_handle,             // Current process.
+            address(local_command_stdout),   // Duplicated handle.
+            desired_access,                  // Requested access.
+            false,                           // Don't inherit the new handle.
+            DUPLICATE_CLOSE_SOURCE) == 0) {  // Flags.
+      hr = HRESULTFromLastError();
+      UTIL_LOG(LE, (_T("[failed call to DuplicateHandle][0x%08x]"), hr));
+      return hr;
+    }
+    release(remote_command_stdout);
+  }
+
+  if (process) {
+    *process = release(local_command_process);
+  }
+  if (child_stdout) {
+    *child_stdout = release(local_command_stdout);
+  }
   return S_OK;
 }
 
@@ -129,18 +208,46 @@ HRESULT LaunchImpersonatedBrowser(BrowserType type, const CString& url) {
   return S_OK;
 }
 
+HRESULT InternalCreateExternalUpdaterActiveEvent(const CString& app_id,
+                                                 bool is_machine,
+                                                 scoped_event* event_handle) {
+  CString event_name(kExternalUpdaterActivityPrefix);
+  event_name += CString(app_id).MakeUpper();
+
+  NamedObjectAttributes attr;
+  GetNamedObjectAttributes(event_name, is_machine, &attr);
+
+  ::SetLastError(ERROR_SUCCESS);
+  HRESULT hr = CreateEvent(&attr, address(*event_handle));
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[CreateExternalUpdaterActiveEvent][CreateEvent failed]"),
+                  _T("[%d][%s][0x%08x]"), is_machine, attr.name, hr));
+    return hr;
+  }
+
+  if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+    reset(*event_handle);
+    return GOOPDATE_E_APP_USING_EXTERNAL_UPDATER;
+  }
+
+  return S_OK;
+}
+
 }  // namespace
 
-HRESULT LaunchCmdLine(bool is_machine, const CString& cmd_line) {
+HRESULT LaunchCmdLine(bool is_machine,
+                      const CString& cmd_line,
+                      HANDLE* process,
+                      HANDLE* child_stdout) {
   CORE_LOG(L3, (_T("[LaunchCmdLine][%d][%s]"), is_machine, cmd_line));
 
   if (is_machine && vista_util::IsVistaOrLater() && vista_util::IsUserAdmin()) {
-    return LaunchImpersonatedCmdLine(cmd_line);
+    return LaunchImpersonatedCmdLine(cmd_line, process, child_stdout);
   }
 
-  HRESULT hr = System::ShellExecuteCommandLine(cmd_line, NULL, NULL);
+  HRESULT hr = omaha::vista::RunAsCurrentUser(cmd_line, child_stdout, process);
   if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[ShellExecuteCommandLine failed][0x%x]"), hr));
+    UTIL_LOG(LE, (_T("[RunAsCurrentUser failed][0x%x]"), hr));
     return hr;
   }
 
@@ -181,45 +288,72 @@ CString BuildGoogleUpdateExePath(bool is_machine) {
   return full_file_path;
 }
 
-CString BuildGoogleUpdateServicesPath(bool is_machine) {
-  CORE_LOG(L3, (_T("[BuildGoogleUpdateServicesPath][%d]"), is_machine));
+CString BuildGoogleUpdateServicesPath(bool is_machine, bool use64bit) {
+  CORE_LOG(L3, (_T("[BuildGoogleUpdateServicesPath][%d][%d]"),
+               is_machine, use64bit));
 
   CPath full_file_path(BuildInstallDirectory(is_machine, GetVersionString()));
-  VERIFY1(full_file_path.Append(kCrashHandlerFileName));
+  VERIFY1(full_file_path.Append(use64bit ? kCrashHandler64FileName
+                                         : kCrashHandlerFileName));
 
   return full_file_path;
 }
 
-HRESULT StartElevatedSelfWithArgsAndWait(const TCHAR* args, DWORD* exit_code) {
+CString BuildGoogleUpdateServicesEnclosedPath(bool is_machine, bool use64bit) {
+  CString path(BuildGoogleUpdateServicesPath(is_machine, use64bit));
+  EnclosePath(&path);
+  return path;
+}
+
+HRESULT StartElevatedMetainstaller(const TCHAR* args, DWORD* exit_code) {
   ASSERT1(args);
   ASSERT1(exit_code);
-  CORE_LOG(L3, (_T("[StartElevatedSelfWithArgsAndWait]")));
+  CORE_LOG(L3, (_T("[StartElevatedMetainstaller]")));
 
-  // Get the process executable.
-  TCHAR filename[MAX_PATH] = {0};
-  if (::GetModuleFileName(NULL, filename, MAX_PATH) == 0) {
-    HRESULT hr = HRESULTFromLastError();
-    CORE_LOG(LEVEL_ERROR, (_T("[GetModuleFileName failed][0x%08x]"), hr));
-    return hr;
+  CPath metainstaller_path(app_util::GetCurrentModuleDirectory());
+  VERIFY1(metainstaller_path.Append(kOmahaMetainstallerFileName));
+  if (!File::Exists(metainstaller_path)) {
+    return GOOPDATE_E_METAINSTALLER_NOT_FOUND;
   }
 
-  // Launch self elevated and wait.
+  // In case the metainstaller has been tagged, append the /no_mi_tag switch
+  // to the end of the command line to signal the MI to not append its tag.
+  // The MI will remove the switch before launching the constant shell.
+  // TODO(omaha): Once the ApplyTag library has been refactored to allow
+  // removal/truncation of tags, remove the tag as part of setup (so that the
+  // MI in the permanent install is always untagged) and eliminate this switch.
+  CString new_args;
+  SafeCStringFormat(&new_args, _T("%s /%s"), args, kCmdLineNoMetainstallerTag);
+
+  // Launch metainstaller elevated and wait.
   *exit_code = 0;
-  CORE_LOG(L1,
-      (_T("[RunElevated filename='%s'][arguments='%s']"), filename, args));
+  CORE_LOG(L3, (_T("[Elevating][%s][%s]"), metainstaller_path, new_args));
+
   // According to the MSDN documentation for ::ShowWindow: "nCmdShow. This
   // parameter is ignored the first time an application calls ShowWindow, if
   // the program that launched the application provides a STARTUPINFO
   // structure.". We want to force showing the UI window. So we pass in
   // SW_SHOWNORMAL.
-  HRESULT hr(vista_util::RunElevated(filename, args, SW_SHOWNORMAL, exit_code));
-  CORE_LOG(L2, (_T("[elevated instance exit code][%u]"), *exit_code));
+  HRESULT hr = vista_util::RunElevated(metainstaller_path,
+                                       new_args,
+                                       SW_SHOWNORMAL,
+                                       exit_code);
+  CORE_LOG(L3, (_T("[elevated instance exit code][%u]"), *exit_code));
+
   if (FAILED(hr)) {
-    CORE_LOG(LEVEL_ERROR, (_T("[RunElevated failed][0x%08x]"), hr));
+    CORE_LOG(LE, (_T("[RunElevated failed][0x%08x]"), hr));
     return hr;
   }
 
   return S_OK;
+}
+
+CString GetInstalledShellVersion(bool is_machine) {
+  CORE_LOG(L3, (_T("[GetInstalledShellVersion][%d]"), is_machine));
+
+  const CString shell_path = BuildGoogleUpdateExePath(is_machine);
+  const ULONGLONG shell_version = app_util::GetVersionFromFile(shell_path);
+  return shell_version ? StringFromVersion(shell_version) : CString();
 }
 
 HRESULT StartGoogleUpdateWithArgs(bool is_machine,
@@ -245,10 +379,30 @@ HRESULT StartCrashHandler(bool is_machine) {
 
   ASSERT1(!is_machine || user_info::IsRunningAsSystem());
 
-  CString exe_path = BuildGoogleUpdateServicesPath(is_machine);
-  CommandLineBuilder builder(COMMANDLINE_MODE_CRASH_HANDLER);
-  CString cmd_line = builder.GetCommandLineArgs();
-  return System::StartProcessWithArgs(exe_path, cmd_line);
+  // Always attempt start the 32-bit crash handler.
+  CString exe_path = BuildGoogleUpdateServicesEnclosedPath(is_machine, false);
+  HRESULT hr = System::StartCommandLine(exe_path);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[can't start 32-bit crash handler][0x%08x]"), hr));
+    return hr;
+  }
+
+  // Attempt to start the 64-bit crash handler if we're running on a 64-bit OS.
+  BOOL is64bit = FALSE;
+  if (0 == Kernel32::IsWow64Process(GetCurrentProcess(), &is64bit)) {
+    is64bit = FALSE;
+    hr = HRESULTFromLastError();
+    CORE_LOG(LE, (_T("[Kernel32::IsWow64Process failed][0x%08x]"), hr));
+  }
+  if (!!is64bit) {
+    exe_path = BuildGoogleUpdateServicesEnclosedPath(is_machine, true);
+    hr = System::StartCommandLine(exe_path);
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[can't start 64-bit crash handler][0x%08x]"), hr));
+    }
+  }
+
+  return hr;
 }
 
 bool IsRunningFromOfficialGoopdateDir(bool is_machine) {
@@ -258,6 +412,15 @@ bool IsRunningFromOfficialGoopdateDir(bool is_machine) {
                          cm.IsRunningFromUserGoopdateInstallDir();
   CORE_LOG(L3, (_T("[running from official dir][%d]"), is_official_dir));
   return is_official_dir;
+}
+
+bool IsRunningFromDir(int csidl) {
+  CString folder_path;
+  if (FAILED(GetFolderPath(csidl, &folder_path))) {
+    return false;
+  }
+
+  return IsPathInFolder(app_util::GetModulePath(NULL), folder_path);
 }
 
 CString GetHKRoot() {
@@ -636,9 +799,8 @@ HRESULT TerminateAllBrowsers(
   ASSERT1(default_res);
   ASSERT1(browser_res);
 
-  if (type == BROWSER_UNKNOWN ||
-      type == BROWSER_DEFAULT ||
-      type >= BROWSER_MAX) {
+  if (type == BROWSER_UNKNOWN || type == BROWSER_DEFAULT ||
+      type < 0 || type >= BROWSER_MAX) {
     ASSERT1(false);
     return E_INVALIDARG;
   }
@@ -888,15 +1050,39 @@ CString ConvertBrowserTypeToString(BrowserType type) {
   return text;
 }
 
+bool GetKernel32OSInfo(CString* os_version, CString* sp_qfe) {
+  ASSERT1(os_version);
+  ASSERT1(sp_qfe);
+
+  CString s(SystemInfo::GetKernel32OSVersion());
+
+  int pos(0);
+  for (int i = 0; i < 2; ++i) {
+    CString q = s.Tokenize(_T("."), pos);
+    if (i == 0 && pos < 1) {
+      return false;
+    }
+  }
+
+  *os_version = s.Left(pos < 1 ? s.GetLength() : pos - 1);
+  *sp_qfe = pos < 1 ? CString() : s.Mid(pos);
+
+  return true;
+}
+
 HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
   ASSERT1(os_version);
   ASSERT1(service_pack);
 
-  OSVERSIONINFO os_version_info = { 0 };
-  os_version_info.dwOSVersionInfoSize = sizeof(os_version_info);
-  if (!::GetVersionEx(&os_version_info)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LW, (_T("[GetVersionEx failed][0x%08x]"), hr));
+  if (SystemInfo::IsRunningOnW81OrLater() &&
+      GetKernel32OSInfo(os_version, service_pack)) {
+    return S_OK;
+  }
+
+  OSVERSIONINFOEX os_version_info = {};
+  HRESULT hr = SystemInfo::GetOSVersion(&os_version_info);
+  if (FAILED(hr)) {
+    UTIL_LOG(LW, (_T("[SystemInfo::GetOSVersion failed][%#08x]"), hr));
     return hr;
   }
 
@@ -1166,6 +1352,31 @@ HRESULT WriteNameValuePairsToFile(const CString& file_path,
   return S_OK;
 }
 
+HRESULT WriteNameValuePairsToHandle(const HANDLE file_handle,
+                                    const CString& group_name,
+                                    const std::map<CString, CString>& pairs) {
+  CString content;
+  SafeCStringAppendFormat(&content, _T("[%s]\r\n"), group_name.GetString());
+  for (std::map<CString, CString>::const_iterator it = pairs.begin();
+       it != pairs.end();
+       ++it) {
+    SafeCStringAppendFormat(&content,
+                            _T("%s=%s\r\n"),
+                            it->first.GetString(),
+                            it->second.GetString());
+  }
+  DWORD bytes_written = 0;
+  if (!::WriteFile(file_handle,
+                   content.GetString(),
+                   content.GetLength() * sizeof(TCHAR),
+                   &bytes_written,
+                   NULL)) {
+    return HRESULTFromLastError();
+  }
+
+  return S_OK;
+}
+
 bool IsAppInstallWorkerRunning(bool is_machine) {
   CORE_LOG(L3, (_T("[IsAppInstallWorkerRunning][%d]"), is_machine));
   std::vector<uint32> processes;
@@ -1197,13 +1408,10 @@ HRESULT WriteInstallerDataToTempFile(const CString& installer_data,
     return S_FALSE;
   }
 
-  CString temp_file;
-  if (!::GetTempFileName(app_util::GetTempDir(),
-                         _T("gui"),
-                         0,
-                         CStrBuf(temp_file, MAX_PATH))) {
+  CString temp_file = GetTempFilename(_T("gui"));
+  if (temp_file.IsEmpty()) {
     HRESULT hr = HRESULTFromLastError();
-    CORE_LOG(LE, (_T("[::GetTempFileName failed][0x08%x]"), hr));
+    CORE_LOG(LE, (_T("[::GetTempFilename failed][0x08%x]"), hr));
     return hr;
   }
 
@@ -1237,29 +1445,6 @@ HRESULT WriteInstallerDataToTempFile(const CString& installer_data,
 
   *installer_data_file_path = temp_file;
   return S_OK;
-}
-
-// Returns true if the absolute difference between time moments is greater than
-// the interval between update checks.
-// Deals with clocks rolling backwards, in scenarios where the clock indicates
-// some time in the future, for example next year, last_checked_ is updated to
-// reflect that time, and then the clock is adjusted back to present.
-bool ShouldCheckForUpdates(bool is_machine) {
-  ConfigManager* cm = ConfigManager::Instance();
-  bool is_period_overridden = false;
-  const int update_interval = cm->GetLastCheckPeriodSec(&is_period_overridden);
-  if (0 == update_interval) {
-    ASSERT1(is_period_overridden);
-    OPT_LOG(L1, (_T("[ShouldCheckForUpdates returned 0][checks disabled]")));
-    return false;
-  }
-
-  const int time_difference = cm->GetTimeSinceLastCheckedSec(is_machine);
-
-  const bool result = time_difference >= update_interval ? true : false;
-  CORE_LOG(L3, (_T("[ShouldCheckForUpdates returned %d][%u]"),
-                result, is_period_overridden));
-  return result;
 }
 
 HRESULT UpdateLastChecked(bool is_machine) {
@@ -1320,6 +1505,223 @@ HRESULT EnableSEHOP(bool enable) {
       RegKey::DeleteValue(omaha_ifeo_key_path, kRegKeyDisableSEHOPValue);
 }
 
+// Note: IOCTL_NDIS_QUERY_GLOBAL_STATS "will be deprecated in later operating
+// system releases" according to MSDN. Microsoft recommends using WMI
+// Win32_NetworkAdapter. But WMI can be slow and can hang at times, hence the
+// avoidance for now.
+HRESULT GetMacHashesViaNDIS(std::vector<CString>* mac_hashes) {
+  CORE_LOG(L3, (_T("[GetMacHashesViaNDIS]")));
+  ASSERT1(mac_hashes);
+
+  RegKey reg_key;
+  HRESULT hr = reg_key.Open(kRegKeyNetworkCards, KEY_READ);
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[Failed to open][%s][%#x]"), kRegKeyNetworkCards, hr));
+    return hr;
+  }
+
+  LONG enum_result = ERROR_SUCCESS;
+  uint32 key_count = reg_key.GetSubkeyCount();
+
+  for (uint32 adapter_index = 0; adapter_index < key_count; ++adapter_index) {
+    CString key_name;
+    hr = reg_key.GetSubkeyNameAt(adapter_index, &key_name);
+    if (FAILED(hr)) {
+      CORE_LOG(LW, (_T("[Failed to get sub key][%d][%#x]"), adapter_index, hr));
+      continue;
+    }
+
+    RegKey sub_key;
+    hr = sub_key.Open(reg_key.Key(), key_name, KEY_READ);
+    if (FAILED(hr)) {
+      CORE_LOG(LW, (_T("[Failed to open][%s][%#x]"), key_name.GetString(), hr));
+      continue;
+    }
+
+    CString adapter_name;
+    hr = sub_key.GetValue(kRegValueAdapterServiceName, &adapter_name);
+    if (FAILED(hr)) {
+      CORE_LOG(LW, (_T("[Failed to read][%s][%#x]"), key_name, hr));
+      continue;
+    }
+
+    TCHAR device_name[MAX_PATH];
+    _sntprintf_s(device_name,
+                 arraysize(device_name),
+                 arraysize(device_name) - 1,
+                 _T("\\\\.\\%s"),
+                 adapter_name);
+
+    scoped_hfile file_handle(::CreateFile(device_name,
+                                          GENERIC_READ,
+                                          FILE_SHARE_DELETE |
+                                          FILE_SHARE_READ |
+                                          FILE_SHARE_WRITE,
+                                          NULL,
+                                          OPEN_EXISTING,
+                                          0,
+                                          NULL));
+    if (!file_handle) {
+      hr = HRESULTFromLastError();
+      CORE_LOG(LW, (_T("[Failed to open][%s][%#x]"), device_name, hr));
+      continue;
+    }
+
+    DWORD query = OID_802_3_PERMANENT_ADDRESS;
+    BYTE mac_address[6];
+    DWORD mac_size = sizeof(mac_address);
+    if (!::DeviceIoControl(get(file_handle),
+                           IOCTL_NDIS_QUERY_GLOBAL_STATS,
+                           &query,
+                           sizeof(query),
+                           mac_address,
+                           mac_size,
+                           &mac_size,
+                           NULL) ||
+        mac_size != arraysize(mac_address)) {
+      hr = HRESULTFromLastError();
+      CORE_LOG(LW, (_T("[Failed get mac address][%s][%#x]"), device_name, hr));
+      continue;
+    }
+
+    std::vector<byte> mac_address_buffer(arraysize(mac_address));
+    ::memcpy(&mac_address_buffer.front(), mac_address, arraysize(mac_address));
+
+    CStringA hashed_mac_address;
+    Base64::Encode(mac_address_buffer, &hashed_mac_address, false);
+    mac_hashes->push_back(AnsiToWideString(hashed_mac_address,
+                                           hashed_mac_address.GetLength()));
+  }
+
+  return S_OK;
+}
+
+// TODO(omaha): Perhaps move UserID functions into separate class/namespace.
+
+HRESULT InitializeUserIdLock(bool is_machine, GLock* user_id_lock) {
+  ASSERT1(user_id_lock);
+
+  NamedObjectAttributes lock_attr;
+  GetNamedObjectAttributes(kOptUserIdLock, is_machine, &lock_attr);
+  if (!user_id_lock->InitializeWithSecAttr(lock_attr.name, &lock_attr.sa) &&
+      !user_id_lock->InitializeWithSecAttr(lock_attr.name, NULL)) {
+    HRESULT hr = HRESULTFromLastError();
+    CORE_LOG(LW, (_T("[InitializeUserIdLock failed][%#x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT ResetMacHashesInRegistry(bool is_machine,
+                                 std::vector<CString> mac_hashes) {
+  ASSERT1(!mac_hashes.empty());
+
+  GLock user_id_lock;
+  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  __mutexScope(user_id_lock);
+
+  const ConfigManager& config_manager = *ConfigManager::Instance();
+  CString reg_path = config_manager.registry_update(is_machine);
+
+  reg_path = AppendRegKeyPath(reg_path, kRegSubkeyUserId);
+
+  // Delete any leftover/old MAC hashes.
+  VERIFY1(SUCCEEDED(RegKey::DeleteKey(reg_path)));
+
+  RegKey reg_key_uid;
+  DWORD disposition = 0;
+  HRESULT hr = reg_key_uid.Create(reg_path,
+                                  NULL,
+                                  0,
+                                  KEY_SET_VALUE | KEY_CREATE_SUB_KEY,
+                                  NULL,
+                                  &disposition);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  for (size_t i = 0; i < mac_hashes.size(); ++i) {
+    hr = reg_key_uid.SetValue(mac_hashes[i], _T(""));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  return S_OK;
+}
+
+HRESULT ResetUserIdIfMacMismatch(bool is_machine) {
+  std::vector<CString> mac_hashes;
+  HRESULT hr = GetMacHashesViaNDIS(&mac_hashes);
+  if (FAILED(hr) || mac_hashes.empty()) {
+    // The machine may not have an ethernet card at the moment. Return early.
+    return S_FALSE;
+  }
+
+  const ConfigManager& config_manager = *ConfigManager::Instance();
+  CString reg_path = config_manager.registry_update(is_machine);
+  reg_path = AppendRegKeyPath(reg_path, kRegSubkeyUserId);
+
+  if (!RegKey::HasKey(reg_path)) {
+    return ResetUserId(is_machine, true);
+  }
+
+  RegKey reg_key_uid;
+  hr = reg_key_uid.Open(reg_path, KEY_QUERY_VALUE);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  for (size_t i = 0; i < mac_hashes.size(); ++i) {
+    if (reg_key_uid.HasValue(mac_hashes[i])) {
+      return S_OK;
+    }
+  }
+
+  // None of the MAC hashes match. Reset User Id.
+  return ResetUserId(is_machine, false);
+}
+
+HRESULT ResetUserId(bool is_machine, bool is_legacy) {
+  GLock user_id_lock;
+  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  __mutexScope(user_id_lock);
+
+  RegKey update_key;
+  VERIFY1(SUCCEEDED(update_key.Open(
+      ConfigManager::Instance()->registry_update(is_machine))));
+  if (update_key.HasValue(kRegValueOldUserId)) {
+    VERIFY1(SUCCEEDED(update_key.DeleteValue(kRegValueUserId)));
+  } else {
+    VERIFY1(SUCCEEDED(update_key.RenameValue(kRegValueUserId,
+                                             kRegValueOldUserId)));
+
+    if (is_legacy) {
+      CString uid;
+      VERIFY1(SUCCEEDED(update_key.GetValue(kRegValueOldUserId, &uid)));
+      uid.Append(kRegValueDataLegacyUserId);
+      VERIFY1(SUCCEEDED(update_key.SetValue(kRegValueOldUserId, uid)));
+    }
+  }
+
+  return CreateUserId(is_machine);
+}
+
+void RecordNewUserIdCreated(const RegKey& update_key) {
+  // UID creation timestamp.
+  DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  VERIFY1(SUCCEEDED(update_key.SetValue(kRegValueUserIdCreateTime, now)));
+  CORE_LOG(L3, (_T("[New UID creation time: %d]"), now));
+
+  // Increment number of UID rotations.
+  DWORD num_rotations(0);
+  update_key.GetValue(kRegValueUserIdNumRotations, &num_rotations);
+  ++num_rotations;
+  VERIFY1(SUCCEEDED(update_key.SetValue(kRegValueUserIdNumRotations,
+                                        num_rotations)));
+}
+
 DEFINE_METRIC_count(opt_in_uid_generated);
 HRESULT CreateUserId(bool is_machine) {
   // Do not create user ID when doing OEM installation - to avoid a large
@@ -1329,13 +1731,9 @@ HRESULT CreateUserId(bool is_machine) {
   }
 
   GLock user_id_lock;
-  NamedObjectAttributes lock_attr;
-  GetNamedObjectAttributes(kOptUserIdLock, is_machine, &lock_attr);
-  if (!user_id_lock.InitializeWithSecAttr(lock_attr.name, &lock_attr.sa)) {
-    return E_FAIL;
-  }
-
+  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
   __mutexScope(user_id_lock);
+
   RegKey update_key;
   const ConfigManager& config_manager = *ConfigManager::Instance();
   HRESULT hr = update_key.Create(config_manager.registry_update(is_machine));
@@ -1360,12 +1758,41 @@ HRESULT CreateUserId(bool is_machine) {
 
   ++metric_opt_in_uid_generated;
   CORE_LOG(L3, (_T("[Create unique user ID: %s]"), user_id));
-  return S_OK;
+
+  RecordNewUserIdCreated(update_key);
+
+  // Save hashed MAC card IDs. If the Omaha installation is cloned on to a new
+  // machine, the user id is reset if one of the MAC IDs do not match.
+  std::vector<CString> mac_hashes;
+  hr = GetMacHashesViaNDIS(&mac_hashes);
+  if (FAILED(hr) || mac_hashes.empty()) {
+    // The machine may not have an ethernet card at the moment. Return early.
+    return S_FALSE;
+  }
+
+  return ResetMacHashesInRegistry(is_machine, mac_hashes);
 }
 
 void DeleteUserId(bool is_machine) {
-  RegKey::DeleteValue(ConfigManager::Instance()->registry_update(is_machine),
-                      kRegValueUserId);
+  if (is_machine && !vista_util::IsUserAdmin()) {
+    // Do not try to delete from the non-elevated instance.
+    return;
+  }
+
+  GLock user_id_lock;
+  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  __mutexScope(user_id_lock);
+
+  RegKey update_key;
+  HRESULT hr = update_key.Open(
+      ConfigManager::Instance()->registry_update(is_machine));
+  if (FAILED(hr)) {
+    return;
+  }
+
+  VERIFY1(SUCCEEDED(update_key.DeleteValue(kRegValueUserId)));
+  VERIFY1(SUCCEEDED(update_key.DeleteValue(kRegValueOldUserId)));
+  VERIFY1(SUCCEEDED(update_key.DeleteSubKey(kRegSubkeyUserId)));
 }
 
 CString GetUserIdLazyInit(bool is_machine) {
@@ -1378,7 +1805,9 @@ CString GetUserIdLazyInit(bool is_machine) {
 
   if (!RegKey::HasValue(config_manager.registry_update(is_machine),
                         kRegValueUserId)) {
-    VERIFY1(SUCCEEDED(CreateUserId(is_machine)));
+    CreateUserId(is_machine);
+  } else {
+    ResetUserIdIfMacMismatch(is_machine);
   }
 
   CString user_id;
@@ -1386,6 +1815,69 @@ CString GetUserIdLazyInit(bool is_machine) {
                    kRegValueUserId,
                    &user_id);
   return user_id;
+}
+
+CString GetUserIdHistory(bool is_machine) {
+  GLock user_id_lock;
+  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  __mutexScope(user_id_lock);
+
+  CString old_uid;
+  RegKey update_key;
+  if (FAILED(update_key.Open(
+      ConfigManager::Instance()->registry_update(is_machine)))) {
+    return old_uid;
+  }
+  update_key.GetValue(kRegValueOldUserId, &old_uid);
+
+  DWORD uid_creation_time(0);
+  update_key.GetValue(kRegValueUserIdCreateTime, &uid_creation_time);
+  DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  if (uid_creation_time != 0 && now >= uid_creation_time) {
+    DWORD time_diff_seconds = now - uid_creation_time;
+    int uid_age_day(0);
+    if (time_diff_seconds / kSecPerMin == 0) {
+      // The UID was created within the last minute, treat it as a new UID
+      // and send age=-1 to indicate that.
+      uid_age_day = -1;
+    } else {
+      uid_age_day = time_diff_seconds / kSecondsPerDay;
+    }
+
+    CString uid_age;
+    uid_age.Format(_T("%s%s=%d"),
+                   old_uid.IsEmpty() ? _T("") : _T("; "),
+                   kHeaderValueUidAge,
+                   uid_age_day);
+    old_uid.Append(uid_age);
+  }
+
+  DWORD num_rotations(0);
+  update_key.GetValue(kRegValueUserIdNumRotations, &num_rotations);
+  CString uid_num_rotations;
+  uid_num_rotations.Format(_T("%s%s=%d"),
+                           old_uid.IsEmpty() ? _T("") : _T("; "),
+                           kHeaderValueNumUidRotation,
+                           num_rotations);
+  old_uid.Append(uid_num_rotations);
+  return old_uid;
+}
+
+HRESULT CreateExternalUpdaterActiveEvent(const CString& app_id,
+                                         bool is_machine,
+                                         scoped_event* event_handle) {
+  if (is_machine && user_info::IsThreadImpersonating()) {
+    CORE_LOG(L6, (_T("[CreateExternalUpdaterEvent][reverting impersonation]")));
+
+    scoped_revert_to_self reversion;
+    return InternalCreateExternalUpdaterActiveEvent(app_id,
+                                                    is_machine,
+                                                    event_handle);
+  }
+
+  return InternalCreateExternalUpdaterActiveEvent(app_id,
+                                                  is_machine,
+                                                  event_handle);
 }
 
 }  // namespace goopdate_utils

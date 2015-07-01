@@ -85,14 +85,15 @@ void ProcessTerminator::CloseAllHandles() {
 bool ProcessTerminator::WaitForProcessInstancesToDie(
     uint32 timeout_msec) const {
   UTIL_LOG(L3, (_T("[WaitForProcessInstancesToDie]")));
-  size_t size = process_handles_.size();
+  const size_t size = process_handles_.size();
+  ASSERT1(size <= MAXIMUM_WAIT_OBJECTS);
   scoped_array<HANDLE> handles(new HANDLE[size]);
 
   for (size_t i = 0; i < size; i++) {
     handles[i] = process_handles_[i];
   }
 
-  DWORD wait_result = ::WaitForMultipleObjectsEx(size,
+  DWORD wait_result = ::WaitForMultipleObjectsEx(static_cast<DWORD>(size),
                                                  handles.get(),
                                                  true,
                                                  timeout_msec,

@@ -54,8 +54,6 @@ const int kMaxStackTraceDialogLen = 512;  // too long and dialog box fails
 typedef int DebugAssertFunctionType(const char *expression,
   const char *message, const char *file, int line);
 
-enum ReportType;
-enum DebugReportKind;
 class DebugObserver {
  public:
   virtual ~DebugObserver() {}

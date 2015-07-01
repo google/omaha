@@ -62,7 +62,7 @@ class RegistryMonitorTest : public testing::Test {
     EXPECT_TRUE(new_value_data);
     EXPECT_TRUE(user_data);
     RegistryMonitorTest* object = static_cast<RegistryMonitorTest*>(user_data);
-    DWORD actual_value = reinterpret_cast<DWORD>(new_value_data);
+    DWORD_PTR actual_value = reinterpret_cast<DWORD_PTR>(new_value_data);
     EXPECT_EQ(ULONG_MAX, actual_value);
     EXPECT_TRUE(::SetEvent(get(object->registry_changed_event_)));
   }
@@ -108,7 +108,7 @@ class RegistryMonitorTest : public testing::Test {
     EXPECT_TRUE(new_value_data);
     EXPECT_TRUE(user_data);
     RegistryMonitorTest* object = static_cast<RegistryMonitorTest*>(user_data);
-    DWORD actual_value = reinterpret_cast<DWORD>(new_value_data);
+    DWORD_PTR actual_value = reinterpret_cast<DWORD_PTR>(new_value_data);
     EXPECT_EQ(1, actual_value);
     EXPECT_TRUE(::SetEvent(get(object->registry_changed_event_)));
   }

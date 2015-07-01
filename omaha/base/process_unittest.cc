@@ -21,6 +21,7 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/path.h"
 #include "omaha/base/process.h"
+#include "omaha/base/proc_utils.h"
 #include "omaha/base/user_info.h"
 #include "omaha/testing/unit_test.h"
 
@@ -56,13 +57,13 @@ TEST(ProcessTest, StartOneProcess) {
 }
 
 // Dummy process to spin off and then find.  The numeric argument will make
-// netstat run until it's killed by the ScopedProcess destructor.
-const TCHAR kTestExecutable[] = _T("netstat.exe");
-const TCHAR kTestArguments[] = _T("10");
-const TCHAR kTestExcludeArguments[] = _T("-o 20");
-const TCHAR kTestExcludeString[] = _T("20");
-const TCHAR kTestIncludeArguments[] = _T("-o 30");
-const TCHAR kTestIncludeString[] = _T("30");
+// ping.exe run until it's killed by the ScopedProcess destructor.
+const TCHAR kTestExecutable[] = _T("ping.exe");
+const TCHAR kTestArguments[] = _T("-w 10000 1.1.1.1");
+const TCHAR kTestExcludeArguments[] = _T("-n 5 -w 20000 1.1.1.1");
+const TCHAR kTestExcludeString[] = _T("20000 1.1.1.1");
+const TCHAR kTestIncludeArguments[] = _T("-n 6 -w 30000 1.1.1.1");
+const TCHAR kTestIncludeString[] = _T("-w 30000 1.1.1.1");
 const int kWaitForProcessStartMs = 500;
 const int kMaxWaitIterations = 10;
 
@@ -104,12 +105,27 @@ TEST(ProcessTest, FindOneProcess) {
                                           user_sid,
                                           command_lines,
                                           &process_ids));
-  ASSERT_EQ(1, process_ids.size());  // Exit before accessing invalid element.
+  ASSERT_EQ(1, static_cast<int>(process_ids.size()));
   EXPECT_EQ(process.GetId(), process_ids[0]);
 }
 
 TEST(ProcessTest, ExcludeProcess) {
+  // We are going to terminate all kTestExecutable instances. On Windows 8.x,
+  // terminating a process which has been terminated previously would result
+  // in access denied error if this process adjusted token privilege in between.
+  // So before killing the processes, do a context switch to give previously
+  // killed instances of kTestExecutable a chance to clean themselves up.
+  ::Sleep(0);
+
   // Make sure the test process is not already running.
+  // Only kill processes that are owned by current user.
+  CString cur_user_sid;
+  EXPECT_SUCCEEDED(omaha::user_info::GetProcessUser(NULL, NULL, &cur_user_sid));
+  ProcessTerminator process_terminator(kTestExecutable, cur_user_sid);
+
+  EXPECT_SUCCEEDED(process_terminator.KillTheProcess(
+      5000, NULL, ProcessTerminator::KILL_METHOD_4_TERMINATE_PROCESS, false));
+
   uint32 exclude_mask = INCLUDE_ONLY_PROCESS_OWNED_BY_USER;
   CString user_sid;
   std::vector<CString> command_lines;
@@ -151,7 +167,7 @@ TEST(ProcessTest, ExcludeProcess) {
                                           user_sid,
                                           command_lines,
                                           &process_ids));
-  ASSERT_EQ(1, process_ids.size());
+  ASSERT_EQ(1, static_cast<int>(process_ids.size()));
   EXPECT_EQ(process.GetId(), process_ids[0]);
 }
 
@@ -186,7 +202,7 @@ TEST(ProcessTest, IncludeProcess) {
                                           user_sid,
                                           command_lines,
                                           &process_ids));
-  ASSERT_EQ(1, process_ids.size());
+  ASSERT_EQ(1, static_cast<int>(process_ids.size()));
   EXPECT_EQ(include_process.GetId(), process_ids[0]);
 }
 
@@ -195,11 +211,10 @@ TEST(ProcessTest, GetImagePath) {
   HMODULE handle = ::GetModuleHandle(NULL);
   ASSERT_TRUE(handle != NULL);
 
-  TCHAR file_name[MAX_PATH] = {0};
-  ASSERT_NE(::GetModuleFileName(handle, file_name, MAX_PATH), 0);
-  ASSERT_NE(0, wcslen(file_name));
+  CString filename = app_util::GetModulePath(handle);
+  ASSERT_FALSE(filename.IsEmpty());
 
-  CString exe = GetFileFromPath(file_name);
+  CString exe = GetFileFromPath(filename);
   ASSERT_FALSE(exe.IsEmpty());
 
   CString user_sid;
@@ -210,7 +225,9 @@ TEST(ProcessTest, GetImagePath) {
   ASSERT_SUCCEEDED(Process::GetImagePath(exe, user_sid, &path));
 
   // Compare the result.
-  ASSERT_STREQ(file_name, path);
+  // Should use ASSERT_STRCASEEQ, but CmpHelperSTRCASEEQ does not work for
+  // wchars.
+  ASSERT_STREQ(filename.MakeLower(), path.MakeLower());
 }
 
 TEST(ProcessTest, GetParentProcessId_CurrentProcess) {

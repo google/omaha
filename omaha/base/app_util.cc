@@ -25,7 +25,9 @@
 #include "omaha/base/file_ver.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
+#include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 
@@ -35,7 +37,7 @@ namespace app_util {
 
 HMODULE GetModuleHandleFromAddress(void* address) {
   MEMORY_BASIC_INFORMATION mbi = {0};
-  DWORD result = ::VirtualQuery(address, &mbi, sizeof(mbi));
+  size_t result = ::VirtualQuery(address, &mbi, sizeof(mbi));
   ASSERT1(result == sizeof(mbi));
   return static_cast<HMODULE>(mbi.AllocationBase);
 }
@@ -47,15 +49,26 @@ HMODULE GetCurrentModuleHandle() {
 
 CString GetModulePath(HMODULE module_handle) {
   ASSERT1(IsModuleHandleValid(module_handle));
-  CString mod_path;
 
-  DWORD result = ::GetModuleFileName(module_handle,
-                                     mod_path.GetBufferSetLength(MAX_PATH),
-                                     MAX_PATH);
-  mod_path.ReleaseBuffer();
-  ASSERT1(result == static_cast<DWORD>(mod_path.GetLength()));
+  CString modulePath;
 
-  return mod_path;
+  DWORD pathlen = MAX_PATH - 1;
+  DWORD bufsize = 0;
+  do {
+    bufsize = pathlen + 1;
+
+    // On WinXP, if path length >= bufsize, the output is truncated and NOT
+    // null-terminated.  On Vista and later, it will null-terminate the
+    // truncated string. We call ReleaseBuffer on all OSes to be safe.
+    pathlen = ::GetModuleFileName(module_handle,
+                                  modulePath.GetBuffer(bufsize),
+                                  bufsize);
+    ASSERT(pathlen != 0, (_T("::GetLastError[%d]"), ::GetLastError()));
+    modulePath.ReleaseBuffer(pathlen < bufsize ? pathlen : 0);
+  } while (pathlen >= bufsize);
+
+  ASSERT1(pathlen == static_cast<DWORD>(modulePath.GetLength()));
+  return modulePath;
 }
 
 CString GetModuleDirectory(HMODULE module_handle) {
@@ -117,34 +130,73 @@ CString GetHostName() {
 }
 
 CString GetWindowsDir() {
-  CString windows_path;
+  CString winPath;
 
-  DWORD result = ::GetWindowsDirectory(
-      windows_path.GetBufferSetLength(MAX_PATH), MAX_PATH);
-  windows_path.ReleaseBuffer();
-  ASSERT1(result == static_cast<DWORD>(windows_path.GetLength()));
+  UINT pathlen = MAX_PATH - 1;
+  UINT bufsize = 0;
+  do {
+    bufsize = pathlen + 1;
+    pathlen = ::GetWindowsDirectory(winPath.GetBuffer(bufsize), bufsize);
+    ASSERT(pathlen != 0, (_T("::GetLastError[%d]"), ::GetLastError()));
+    winPath.ReleaseBuffer(pathlen < bufsize ? pathlen : 0);
+  } while (pathlen >= bufsize);
 
-  return windows_path;
+  ASSERT1(pathlen == static_cast<UINT>(winPath.GetLength()));
+  return winPath;
 }
 
 CString GetSystemDir() {
   CString systemPath;
 
-  DWORD result = ::GetSystemDirectory(systemPath.GetBufferSetLength(MAX_PATH),
-                                      MAX_PATH);
-  systemPath.ReleaseBuffer();
-  ASSERT1(result == static_cast<DWORD>(systemPath.GetLength()));
+  UINT pathlen = MAX_PATH - 1;
+  UINT bufsize = 0;
+  do {
+    bufsize = pathlen + 1;
+    pathlen = ::GetSystemDirectory(systemPath.GetBuffer(bufsize), bufsize);
+    ASSERT(pathlen != 0, (_T("::GetLastError[%d]"), ::GetLastError()));
+    systemPath.ReleaseBuffer(pathlen < bufsize ? pathlen : 0);
+  } while (pathlen >= bufsize);
 
+  ASSERT1(pathlen == static_cast<UINT>(systemPath.GetLength()));
+  return systemPath;
+}
+
+CString GetSystemWow64Dir() {
+  // This function always fails under 32-bit Windows.  Return an empty string
+  // without asserting.
+  if (!Process::IsWow64(::GetCurrentProcessId())) {
+    UTIL_LOG(L5, (_T("[GetSystemWow64Directory called on 32-bit OS]")));
+    return _T("");
+  }
+
+  CString systemPath;
+
+  UINT pathlen = MAX_PATH - 1;
+  UINT bufsize = 0;
+  do {
+    bufsize = pathlen + 1;
+    pathlen = ::GetSystemWow64Directory(systemPath.GetBuffer(bufsize), bufsize);
+    ASSERT(pathlen != 0, (_T("::GetLastError[%d]"), ::GetLastError()));
+    systemPath.ReleaseBuffer(pathlen < bufsize ? pathlen : 0);
+  } while (pathlen >= bufsize);
+
+  ASSERT1(pathlen == static_cast<UINT>(systemPath.GetLength()));
   return systemPath;
 }
 
 CString GetTempDir() {
   CString tempPath;
 
-  DWORD result = ::GetTempPath(MAX_PATH, tempPath.GetBufferSetLength(MAX_PATH));
-  tempPath.ReleaseBuffer();
-  ASSERT1(result == static_cast<DWORD>(tempPath.GetLength()));
+  DWORD pathlen = MAX_PATH - 1;
+  DWORD bufsize = 0;
+  do {
+    bufsize = pathlen + 1;
+    pathlen = ::GetTempPath(bufsize, tempPath.GetBuffer(bufsize));
+    ASSERT(pathlen != 0, (_T("::GetLastError[%d]"), ::GetLastError()));
+    tempPath.ReleaseBuffer(pathlen < bufsize ? pathlen : 0);
+  } while (pathlen >= bufsize);
 
+  ASSERT1(pathlen == static_cast<DWORD>(tempPath.GetLength()));
   return tempPath;
 }
 
@@ -186,12 +238,7 @@ DWORD SystemDllGetVersion(const TCHAR* dll_name)  {
 }
 
 ULONGLONG GetVersionFromModule(HMODULE instance) {
-  TCHAR module_path[MAX_PATH] = {0};
-  if (!::GetModuleFileName(instance, module_path, MAX_PATH) != 0) {
-    return 0;
-  }
-
-  return GetVersionFromFile(module_path);
+  return GetVersionFromFile(GetModulePath(instance));
 }
 
 ULONGLONG GetVersionFromFile(const CString& file_path) {

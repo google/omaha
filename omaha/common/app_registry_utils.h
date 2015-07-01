@@ -58,6 +58,12 @@ HRESULT SetUsageStatsEnable(bool is_machine,
                             const CString& app_guid,
                             Tristate usage_stats_enable);
 
+// Writes initial value for DayOf* members. Initializes DayOfInstall to value
+// |num_days_since_datum|, initializes DayOfLastActivity & DayOfLastRollCall
+// to -1.
+HRESULT SetInitialDayOfValues(const CString& client_state_key_path,
+                              int num_days_since_datum);
+
 // Writes branding information for Google Update in the registry if it does not
 // already exist. Otherwise, the information remains unchanged.
 // Writes a default Omaha-specific brand code if one is not specified in args.
@@ -71,7 +77,8 @@ HRESULT SetGoogleUpdateBranding(const CString& client_state_key_path,
 HRESULT SetAppBranding(const CString& client_state_key_path,
                        const CString& brand_code,
                        const CString& client_id,
-                       const CString& referral_id);
+                       const CString& referral_id,
+                       int num_days_since_datum);
 
 // Updates the application state after a successful install or update.
 void PersistSuccessfulInstall(const CString& client_state_key_path,
@@ -94,6 +101,12 @@ HRESULT GetNumClients(bool is_machine, size_t* num_clients);
 // Reads app version from Clients key.
 void GetAppVersion(bool is_machine, const CString& app_id, CString* pv);
 
+// Reads name value from Clients key.
+void GetAppName(bool is_machine, const CString& app_id, CString* name);
+
+// Reads lang value from ClientState key.
+void GetAppLang(bool is_machine, const CString& app_id, CString* lang);
+
 // Reads persistent data for an application. The parameters can be NULL to
 // indicate that value is not required.
 void GetClientStateData(bool is_machine,
@@ -104,7 +117,17 @@ void GetClientStateData(bool is_machine,
                         CString* brand_code,
                         CString* client_id,
                         CString* iid,
-                        CString* experiment_labels);
+                        CString* experiment_labels,
+                        int* install_time_diff_sec,
+                        int* day_of_install);
+
+// Reads InstallTime and computes InstallTimeDiffSec.
+int GetInstallTimeDiffSec(bool is_machine, const CString& app_id);
+
+// Reads day_of_install from registry.
+HRESULT GetDayOfInstall(bool is_machine,
+                        const CString& app_id,
+                        DWORD* day_of_install);
 
 // Reads all uninstalled apps from the registry.
 HRESULT GetUninstalledApps(bool is_machine, std::vector<CString>* app_ids);
@@ -120,9 +143,20 @@ void RemoveClientStateForApps(bool is_machine,
 HRESULT GetExperimentLabels(bool is_machine, const CString& app_id,
                             CString* labels_out);
 
+// On machine only, retrieves experiment labels for an app from the Registry
+// in the ClientStateMedium key.
+HRESULT GetExperimentLabelsMedium(const CString& app_id, CString* labels_out);
+
 // Overwrites the experiment labels for an app in the Registry.
 HRESULT SetExperimentLabels(bool is_machine, const CString& app_id,
                             const CString& new_labels);
+
+// Retrieves the previously stored OS version from the Registry.
+HRESULT GetLastOSVersion(bool is_machine, OSVERSIONINFOEX* os_version_out);
+
+// Stores an OS version in the Registry as the last recorded version.
+// If |os_version| is NULL, stores the current OS's version.
+HRESULT SetLastOSVersion(bool is_machine, const OSVERSIONINFOEX* os_version);
 
 }  // namespace app_registry_utils
 

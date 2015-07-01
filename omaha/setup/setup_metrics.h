@@ -89,8 +89,6 @@ DECLARE_METRIC_count(setup_subsequent_install_should_install_true);
 DECLARE_METRIC_count(setup_files_total);
 // How many times Setup successfully installed the files.
 DECLARE_METRIC_count(setup_files_verification_succeeded);
-// How many times file install failed due to file verification before copy.
-DECLARE_METRIC_count(setup_files_verification_failed_pre);
 // How many times file install failed due to file verification after copy.
 DECLARE_METRIC_count(setup_files_verification_failed_post);
 

@@ -171,8 +171,8 @@ TEST_F(HistoryTest, AppendToHistoryTest_WrapAround) {
   for (int i = 0; i <= kMaxHistoryBufferSize; ++i) {
     expected_buffer[i] = _T('G');
   }
-  int msg6len = wcslen(msg6);
-  int msg7len = wcslen(msg7);
+  size_t msg6len = wcslen(msg6);
+  size_t msg7len = wcslen(msg7);
   memcpy(expected_buffer + kMaxHistoryBufferSize - msg6len - msg7len,
          msg6,
          msg6len * sizeof(TCHAR));

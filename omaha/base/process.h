@@ -74,15 +74,20 @@ class Process {
   virtual ~Process();
 
   // Start the process with some command line params if any.
-  // If a token is provided, it will be used to start
-  // the process in the default desktop of the
-  // token's session. The caller needs to be SYSTEM in
-  // this case.
+  // If a token is provided, it will be used to start the process in the default
+  // desktop of the token's session. The caller needs to be SYSTEM in this case.
+  //
+  // While not required, it is advisable that the environment block
+  // and the user token be correlated.
   virtual HRESULT Start(const TCHAR* command_line_parameters,
                         HANDLE runas_token);
+  virtual HRESULT StartWithEnvironment(const TCHAR* command_line_parameters,
+                                       HANDLE runas_token,
+                                       LPVOID env_block);
 
   // Restart the process with the old command line params.
   HRESULT Restart(HANDLE runas_token);
+  HRESULT RestartWithEnvironment(HANDLE runas_token, LPVOID env_block);
 
   // Set shutdown event using in signaling the process watch.
   void SetShutdownEvent(HANDLE shutdown_event);

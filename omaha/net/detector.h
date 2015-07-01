@@ -48,7 +48,7 @@ class RegistryOverrideProxyDetector : public ProxyDetectorInterface {
 
 class UpdateDevProxyDetector : public ProxyDetectorInterface {
  public:
-   UpdateDevProxyDetector();
+  UpdateDevProxyDetector();
   virtual HRESULT Detect(ProxyConfig* config) {
     return registry_detector_.Detect(config);
   }
@@ -56,6 +56,16 @@ class UpdateDevProxyDetector : public ProxyDetectorInterface {
  private:
   RegistryOverrideProxyDetector registry_detector_;
   DISALLOW_EVIL_CONSTRUCTORS(UpdateDevProxyDetector);
+};
+
+// A version that picks up proxy override from a group policy.
+class GroupPolicyProxyDetector : public ProxyDetectorInterface {
+ public:
+  GroupPolicyProxyDetector() {}
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("GroupPolicy"); }
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GroupPolicyProxyDetector);
 };
 
 // Detects winhttp proxy information. This is what the winhttp proxy
@@ -119,6 +129,8 @@ class FirefoxProxyDetector : public ProxyDetectorInterface {
   DISALLOW_EVIL_CONSTRUCTORS(FirefoxProxyDetector);
 };
 
+namespace internal {
+
 // Detects wininet proxy information for the current user. The caller must
 // run as user to retrieve the correct information.
 // It works only when the calling code runs as or it impersonates a user.
@@ -129,6 +141,44 @@ class IEProxyDetector : public ProxyDetectorInterface {
   virtual const TCHAR* source() { return _T("IE"); }
  private:
   DISALLOW_EVIL_CONSTRUCTORS(IEProxyDetector);
+};
+
+}  // namespace internal
+
+// Detects wininet WPAD proxy information for the current user.
+// It works only when the calling code runs as or impersonates a user.
+class IEWPADProxyDetector : public internal::IEProxyDetector {
+ public:
+  IEWPADProxyDetector() {}
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("IEWPAD"); }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(IEWPADProxyDetector);
+};
+
+// Detects wininet PAC proxy information for the current user.
+// It works only when the calling code runs as or impersonates a user.
+class IEPACProxyDetector : public internal::IEProxyDetector {
+ public:
+  IEPACProxyDetector() {}
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("IEPAC"); }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(IEPACProxyDetector);
+};
+
+// Detects wininet Named proxy information for the current user.
+// It works only when the calling code runs as or impersonates a user.
+class IENamedProxyDetector : public internal::IEProxyDetector {
+ public:
+  IENamedProxyDetector() {}
+  virtual HRESULT Detect(ProxyConfig* config);
+  virtual const TCHAR* source() { return _T("IENamed"); }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(IENamedProxyDetector);
 };
 
 }  // namespace omaha

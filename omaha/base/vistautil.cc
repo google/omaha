@@ -272,26 +272,63 @@ HRESULT IsUserRunningSplitToken(bool* is_split_token) {
   return S_OK;
 }
 
-bool IsUACMaybeOn() {
-  ASSERT1(vista_util::IsVistaOrLater());
+HRESULT IsUACOn(bool* is_uac_on) {
+  ASSERT1(is_uac_on);
+
+  if (!vista_util::IsVistaOrLater()) {
+    *is_uac_on = false;
+    return S_OK;
+  }
 
   // The presence of a split token definitively indicates that UAC is on. But
   // the absence does not necessarily indicate that UAC is off.
   bool is_split_token = false;
   if (SUCCEEDED(IsUserRunningSplitToken(&is_split_token)) && is_split_token) {
-    return true;
+    *is_uac_on = true;
+    return S_OK;
   }
+
+  uint32 pid = 0;
+  HRESULT hr = vista::GetExplorerPidForCurrentUserOrSession(&pid);
+  if (FAILED(hr)) {
+    UTIL_LOG(LW, (_T("[Could not get Explorer PID][%#x]"), hr));
+    return hr;
+  }
+
+  MANDATORY_LEVEL integrity_level = MandatoryLevelUntrusted;
+  hr = vista_util::GetProcessIntegrityLevel(pid, &integrity_level);
+  ASSERT(SUCCEEDED(hr), (_T("[%#x]"), hr));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  *is_uac_on = integrity_level <= MandatoryLevelMedium;
+  return S_OK;
+}
+
+HRESULT IsElevatedWithUACOn(bool* is_elevated_with_uac_on) {
+  ASSERT1(is_elevated_with_uac_on);
+
+  if (!IsUserAdmin() || !IsVistaOrLater()) {
+    *is_elevated_with_uac_on = false;
+    return S_OK;
+  }
+
+  return IsUACOn(is_elevated_with_uac_on);
+}
+
+bool IsEnableLUAOn() {
+  ASSERT1(vista_util::IsVistaOrLater());
 
   const TCHAR* key_name = _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\")
                           _T("CurrentVersion\\Policies\\System");
-
   DWORD enable_lua = 0;
   return FAILED(RegKey::GetValue(key_name, _T("EnableLUA"), &enable_lua)) ||
          enable_lua;
 }
 
-bool IsElevatedWithUACMaybeOn() {
-  return IsUserAdmin() && IsVistaOrLater() && IsUACMaybeOn();
+bool IsElevatedWithEnableLUAOn() {
+  return IsUserAdmin() && IsVistaOrLater() && IsEnableLUAOn();
 }
 
 HRESULT RunElevated(const TCHAR* file_path,
@@ -573,6 +610,20 @@ HRESULT AddLowIntegritySaclToExistingDesc(CSecurityDesc* sd) {
     HRESULT hr = HRESULTFromLastError();
     UTIL_LOG(LE, (_T("[Failed to set the low integrity SACL][0x%x]"), hr));
     free(new_sacl);
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT EnableProcessHeapMetadataProtection() {
+  if (!IsVistaOrLater()) {
+    return S_FALSE;
+  }
+
+  if (!::HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0)) {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LE, (_T("[Failed to enable heap metadata protection][0x%x]"), hr));
     return hr;
   }
 

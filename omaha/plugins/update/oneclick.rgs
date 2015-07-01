@@ -76,6 +76,10 @@
           {
             val ThreadingModel = s 'Apartment'
           }
+          'Implemented Categories'
+          {
+            '{59FB2056-D625-48D0-A944-1A85B5AB2640}' = s 'CATID_AppContainerCompatible'
+          }
         }
       }
       NoRemove MIME

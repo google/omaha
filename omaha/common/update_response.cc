@@ -50,6 +50,10 @@ int UpdateResponse::GetElapsedSecondsSinceDayStart() const {
   return response_.day_start.elapsed_seconds;
 }
 
+int UpdateResponse::GetElapsedDaysSinceDatum() const {
+  return response_.day_start.elapsed_days;
+}
+
 // Sets update_response's response_ member to response. Used by unit tests to
 // set the response without needing to craft corresponding XML. UpdateResponse
 // friends this function, allowing it to access the private member.

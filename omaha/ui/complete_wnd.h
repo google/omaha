@@ -18,7 +18,6 @@
 
 #include "base/scoped_ptr.h"
 #include "omaha/ui/ui.h"
-#include "omaha/ui/uilib/static_ex.h"
 
 namespace omaha {
 
@@ -41,9 +40,9 @@ class CompleteWnd : public OmahaWnd {
                                const CString& text,
                                const CString& help_url);
 
-  BEGIN_MSG_MAP(ErrorWnd)
+  BEGIN_MSG_MAP(CompleteWnd)
     MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-    NOTIFY_CODE_HANDLER(NM_STATICEX, OnUrlClicked)
+    COMMAND_HANDLER(IDC_GET_HELP, BN_CLICKED, OnClickedGetHelp)
     COMMAND_HANDLER(IDC_CLOSE, BN_CLICKED, OnClickedButton)
     CHAIN_MSG_MAP(OmahaWnd)
   END_MSG_MAP()
@@ -60,6 +59,10 @@ class CompleteWnd : public OmahaWnd {
                        WPARAM wparam,
                        LPARAM lparam,
                        BOOL& handled);  // NOLINT
+  LRESULT OnClickedGetHelp(WORD notify_code,
+                           WORD id,
+                           HWND wnd_ctl,
+                           BOOL& handled);   // NOLINT
   LRESULT OnClickedButton(WORD notify_code,
                           WORD id,
                           HWND wnd_ctl,
@@ -72,12 +75,7 @@ class CompleteWnd : public OmahaWnd {
 
   HRESULT SetControlState(bool is_success);
 
-  HRESULT ShowGetHelpLink(const CString& help_url);
-
-  // Due to a repaint issue in StaticEx we prefer to manage their lifetime
-  // very aggressively so we contain them by reference instead of value.
-  scoped_ptr<StaticEx> complete_text_;
-  scoped_ptr<StaticEx> get_help_text_;
+  CString help_url_;
 
   CompleteWndEvents* events_sink_;
   const DWORD control_classes_;

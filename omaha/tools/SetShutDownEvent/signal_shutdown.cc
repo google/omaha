@@ -15,12 +15,12 @@
 //
 // Simple tool to signal the shutdownevent.
 
-#include <Windows.h>
+#include <windows.h>
 #include <stdio.h>
 
-#include "omaha/common/const_object_names.h"
-#include "omaha/common/scoped_any.h"
-#include "omaha/common/utils.h"
+#include "omaha/base/const_object_names.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/utils.h"
 
 int _tmain(int argc, TCHAR* argv[]) {
   if (argc != 2) {

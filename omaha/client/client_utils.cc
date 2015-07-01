@@ -65,7 +65,12 @@ class ErrorWndEvents : public CompleteWndEvents {
 };
 
 bool CanLaunchBrowser() {
-  if (!vista_util::IsElevatedWithUACMaybeOn()) {
+  bool is_elevated_with_uac_on(false);
+  if (FAILED(vista_util::IsElevatedWithUACOn(&is_elevated_with_uac_on))) {
+    return false;
+  }
+
+  if (!is_elevated_with_uac_on) {
     return true;
   }
 

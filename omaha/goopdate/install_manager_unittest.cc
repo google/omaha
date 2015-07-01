@@ -21,6 +21,7 @@
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/synchronized.h"
@@ -86,15 +87,21 @@ const TCHAR kExecuteCommandAndTerminateSwitch[] = _T("/c %s");
 const TCHAR kExecuteTwoCommandsFormat[] = _T("\"%s & %s\"");
 
 const TCHAR kMsiInstallerBusyErrorMessage[] =
-    _T("Installation failed because the Windows Installer is busy. Please ")
-    _T("wait for any installers to finish, close all installer windows, and ")
-    _T("try installing again. If this problem persists, you may need ")
-    _T("to reboot your computer.");
+    _T("Installation failed. Please wait for other Windows installers to ")
+    _T("finish and try installing again.");
 
 const TCHAR kMsiLogFormat[] = _T("%s.log");
 
-// brand, InstallTime, and LastCheckSuccess are automatically populated.
-const int kNumAutoPopulatedValues = 3;
+// brand, InstallTime, DayOfInstall, DayOfLastActivity, DayOfLastRollCall, and
+// LastCheckSuccess are automatically populated.
+const int kNumAutoPopulatedValues = 6;
+
+FileHash CreateFileHash(const CString& sha1, const CString& sha256) {
+  FileHash hash;
+  hash.sha1 = sha1;
+  hash.sha256 = sha256;
+  return hash;
+}
 
 }  // namespace
 
@@ -114,10 +121,10 @@ class InstallManagerTest : public testing::Test {
   virtual void TearDown() {}
 };
 
-class InstallManagerInstallAppTest : public AppTestBaseWithRegistryOverride {
+class InstallManagerInstallAppTest : public AppTestBase {
  protected:
   explicit InstallManagerInstallAppTest(bool is_machine)
-      : AppTestBaseWithRegistryOverride(is_machine, false) {}
+      : AppTestBase(is_machine, false) {}
 
   static void SetUpTestCase() {
     CString system_path;
@@ -136,10 +143,23 @@ class InstallManagerInstallAppTest : public AppTestBaseWithRegistryOverride {
     set_installer_result_type_msi_error_cmd_.Format(
         _T("%s %s"),
         reg_path, kSetInstallerResultTypeMsiErrorRegCmdArgs);
+
+    unittest_support_dir_ = ConcatenatePath(
+        app_util::GetCurrentModuleDirectory(),
+        _T("unittest_support"));
+  }
+
+  static void TearDownTestCase() {
   }
 
   virtual void SetUp() {
-    AppTestBaseWithRegistryOverride::SetUp();
+    AppTestBase::SetUp();
+
+    RegKey::DeleteKey(kFullAppClientsKeyPath);
+    RegKey::DeleteKey(kFullAppClientStateKeyPath);
+    RegKey::DeleteKey(kFullFooAppClientKeyPath);
+    RegKey::DeleteKey(kFullFooAppClientStateKeyPath);
+    RegKey::DeleteKey(kFullApp2ClientsKeyPath);
 
     installer_wrapper_.reset(new InstallerWrapper(is_machine_));
     EXPECT_SUCCEEDED(installer_wrapper_->Initialize());
@@ -240,10 +260,12 @@ class InstallManagerInstallAppTest : public AppTestBaseWithRegistryOverride {
 
   static CPath cmd_exe_dir_;
   static CString set_installer_result_type_msi_error_cmd_;
+  static CString unittest_support_dir_;
 };
 
 CPath InstallManagerInstallAppTest::cmd_exe_dir_;
 CString InstallManagerInstallAppTest::set_installer_result_type_msi_error_cmd_;
+CString InstallManagerInstallAppTest::unittest_support_dir_;
 
 class InstallManagerInstallAppMachineTest
     : public InstallManagerInstallAppTest {
@@ -373,7 +395,8 @@ TEST_F(InstallManagerInstallAppUserTest,
 
 TEST_F(InstallManagerInstallAppUserTest,
        InstallApp_InstallerWithoutFilenameExtension) {
-  app_->next_version()->AddPackage(_T("foo"), 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      _T("foo"), 100, CreateFileHash(_T("hash"), _T("sha256hash")));
 
   // TODO(omaha): We should be able to eliminate this.
   SetArgumentsInManifest(CString(), _T("1.2.3.4"), app_);
@@ -394,7 +417,8 @@ TEST_F(InstallManagerInstallAppUserTest,
 
 TEST_F(InstallManagerInstallAppUserTest,
        InstallApp_UnsupportedInstallerFilenameExtension) {
-  app_->next_version()->AddPackage(_T("foo.bar"), 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      _T("foo.bar"), 100, CreateFileHash(_T("hash"), _T("sha256hash")));
 
   // TODO(omaha): We should be able to eliminate this.
   SetArgumentsInManifest(CString(), _T("1.2.3.4"), app_);
@@ -417,7 +441,8 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_InstallerEmtpyFilename) {
   // Package asserts that the filename and file path are not NULL.
   ExpectAsserts expect_asserts;
 
-  app_->next_version()->AddPackage(_T(""), 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      _T(""), 100, CreateFileHash(_T("hash"), _T("sha256hash")));
   // This test does not call
   // app_->next_version()->GetPackage(0)->set_local_file_path().
 
@@ -455,7 +480,8 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_NoPackage) {
 }
 
 TEST_F(InstallManagerInstallAppUserTest, InstallApp_ExeFileDoesNotExist) {
-  app_->next_version()->AddPackage(_T("foo.exe"), 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      _T("foo.exe"), 100, CreateFileHash(_T("hash"), _T("sha256hash")));
 
   // TODO(omaha): We should be able to eliminate this.
   SetArgumentsInManifest(CString(), _T("1.2.3.4"), app_);
@@ -508,7 +534,8 @@ TEST_F(InstallManagerInstallAppUserTest,
                                     kRegValueProductVersion,
                                     _T("0.10.69.5")));
 
-  app_->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      kCmdExecutable, 100, CreateFileHash(_T("hash"), _T("sha256hash")));
   EXPECT_SUCCEEDED(app_->put_displayName(CComBSTR(_T("Exe App"))));
 
   SetArgumentsInManifest(arguments, _T("0.10.69.5"), app_);
@@ -547,7 +574,8 @@ TEST_F(InstallManagerInstallAppUserTest,
                                     kRegValueProductVersion,
                                     _T("0.10.69.5")));
 
-  app_->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      kCmdExecutable, 100, CreateFileHash(_T("hash"), _T("sha256hash")));
 
   SetArgumentsInManifest(arguments, _T("0.10.69.5"), app_);
 
@@ -601,8 +629,9 @@ TEST_F(InstallManagerInstallAppMachineTest, InstallApp_MsiInstallerSucceeds) {
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
   // TODO(omaha): This should be just a filename.
-  app_->next_version()->AddPackage(kSetupFooV1RelativeLocation,
-                                   100, _T("hash"));
+  app_->next_version()->AddPackage(
+      kSetupFooV1RelativeLocation,
+      100, CreateFileHash(_T("hash"), _T("sha256hash")));
   app_->set_app_guid(StringToGuid(kFooId));
   EXPECT_SUCCEEDED(app_->put_displayName(CComBSTR(_T("Foo"))));
   EXPECT_SUCCEEDED(app_->put_iid(CComBSTR(kIid)));
@@ -627,7 +656,7 @@ TEST_F(InstallManagerInstallAppMachineTest, InstallApp_MsiInstallerSucceeds) {
   EXPECT_TRUE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
   RegKey state_key;
   EXPECT_SUCCEEDED(state_key.Open(kFullFooAppClientStateKeyPath));
-  EXPECT_EQ(2 + kNumAutoPopulatedValues, state_key.GetValueCount());
+  EXPECT_EQ(4 + kNumAutoPopulatedValues, state_key.GetValueCount());
   EXPECT_STREQ(kFooVersion, GetSzValue(kFullFooAppClientStateKeyPath,
                                        kRegValueProductVersion));
   EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
@@ -687,8 +716,9 @@ TEST_F(InstallManagerInstallAppMachineTest,
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
   // TODO(omaha): This should be just a filename.
-  app_->next_version()->AddPackage(kSetupFooV1RelativeLocation,
-                                   100, _T("hash"));
+  app_->next_version()->AddPackage(
+      kSetupFooV1RelativeLocation,
+      100, CreateFileHash(_T("hash"), _T("sha256hash")));
   app_->set_app_guid(StringToGuid(kFooId));
   EXPECT_SUCCEEDED(app_->put_displayName(CComBSTR(_T("Foo"))));
 
@@ -711,7 +741,7 @@ TEST_F(InstallManagerInstallAppMachineTest,
   EXPECT_TRUE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
   RegKey state_key;
   EXPECT_SUCCEEDED(state_key.Open(kFullFooAppClientStateKeyPath));
-  EXPECT_EQ(1 + kNumAutoPopulatedValues, state_key.GetValueCount());
+  EXPECT_EQ(4 + kNumAutoPopulatedValues, state_key.GetValueCount());
   EXPECT_STREQ(kFooVersion, GetSzValue(kFullFooAppClientStateKeyPath,
                                        kRegValueProductVersion));
   EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
@@ -719,10 +749,10 @@ TEST_F(InstallManagerInstallAppMachineTest,
   EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
                                 kRegValueInstallationId));
 
-  EXPECT_TRUE(RegKey::HasValue(kFullFooAppClientKeyPath,
+  EXPECT_TRUE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
                                kFooInstallerBarValueName));
   DWORD barprop_value;
-  EXPECT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientKeyPath,
+  EXPECT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientStateKeyPath,
                                     kFooInstallerBarValueName,
                                     &barprop_value));
   EXPECT_EQ(7, barprop_value);
@@ -738,12 +768,11 @@ TEST_F(InstallManagerInstallAppMachineTest,
 // Among other things, this test verifies that CheckApplicationRegistration() is
 // not called for self-updates.
 TEST_F(InstallManagerInstallAppUserTest, InstallApp_UpdateOmahaSucceeds) {
-  CString arguments;
-  arguments.Format(kExecuteCommandAndTerminateSwitch, _T(""));
-
   const CString kExistingVersion(_T("0.9.69.5"));
 
-  app_->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      _T("SaveArguments.exe"),
+      100, CreateFileHash(_T("hash"), _T("sha256hash")));
   app_->set_app_guid(StringToGuid(kGoogleUpdateAppId));
 
   // TODO(omaha3): This isn't supported yet.
@@ -751,7 +780,7 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_UpdateOmahaSucceeds) {
   isupdate = true
 #endif
 
-  SetArgumentsInManifest(arguments, _T("1.2.9.8"), app_);
+  SetArgumentsInManifest(_T(""), _T("1.2.9.8"), app_);
 
   // Because we don't actually run the Omaha installer, we need to make sure
   // its Clients key and pv value exist to avoid an error.
@@ -761,7 +790,7 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_UpdateOmahaSucceeds) {
                                     kRegValueProductVersion,
                                     kExistingVersion));
 
-  EXPECT_SUCCEEDED(InstallApp(kExistingVersion, app_, cmd_exe_dir_));
+  EXPECT_SUCCEEDED(InstallApp(kExistingVersion, app_, unittest_support_dir_));
 
   EXPECT_EQ(STATE_INSTALL_COMPLETE, app_->state());
   EXPECT_EQ(PingEvent::EVENT_RESULT_SUCCESS, GetCompletionResult(app_));
@@ -784,12 +813,11 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_UpdateOmahaSucceeds) {
 // In other words, it tests that CheckApplicationRegistration() is not called.
 TEST_F(InstallManagerInstallAppUserTest,
        InstallApp_UpdateOmahaSucceedsWhenClientsKeyAbsent) {
-  CString arguments;
-  arguments.Format(kExecuteCommandAndTerminateSwitch, _T(""));
-
   const CString kExistingVersion(_T("0.9.69.5"));
 
-  app_->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      _T("SaveArguments.exe"),
+      100, CreateFileHash(_T("hash"), _T("sha256hash")));
   app_->set_app_guid(StringToGuid(kGoogleUpdateAppId));
 
   // TODO(omaha3): This isn't supported yet.
@@ -797,9 +825,11 @@ TEST_F(InstallManagerInstallAppUserTest,
   isupdate = true
 #endif
 
-  SetArgumentsInManifest(arguments, _T("1.2.9.8"), app_);
+  SetArgumentsInManifest(_T(""), _T("1.2.9.8"), app_);
 
-  EXPECT_SUCCEEDED(InstallApp(kExistingVersion, app_, cmd_exe_dir_));
+  RegKey::DeleteKey(USER_REG_CLIENTS_GOOPDATE);
+
+  EXPECT_SUCCEEDED(InstallApp(kExistingVersion, app_, unittest_support_dir_));
 
   EXPECT_EQ(STATE_INSTALL_COMPLETE, app_->state());
   EXPECT_EQ(PingEvent::EVENT_RESULT_SUCCESS, GetCompletionResult(app_));
@@ -817,7 +847,8 @@ TEST_F(InstallManagerInstallAppUserTest,
   CString arguments;
   arguments.Format(kExecuteCommandAndTerminateSwitch, _T(""));
 
-  app_->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      kCmdExecutable, 100, CreateFileHash(_T("hash"), _T("")));
   EXPECT_SUCCEEDED(app_->put_displayName(CComBSTR(_T("Some App"))));
 
   SetArgumentsInManifest(arguments, _T("5.6.7.8"), app_);
@@ -855,7 +886,8 @@ TEST_F(InstallManagerInstallAppUserTest,
   ASSERT_SUCCEEDED(File::Remove(log_path));
   ASSERT_FALSE(File::Exists(log_path));
 
-  app_->next_version()->AddPackage(_T("foo.msi"), 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      _T("foo.msi"), 100, CreateFileHash(_T("hash"), _T("sha256hash")));
 
   // TODO(omaha): We should be able to eliminate this.
   SetArgumentsInManifest(CString(), _T("1.2.3.4"), app_);
@@ -898,13 +930,16 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_MsiIsBusy_NoRetries) {
   CString arguments;
   arguments.Format(kExecuteCommandAndTerminateSwitch, commands);
 
-  app_->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      kCmdExecutable, 100, CreateFileHash(_T("hash"), _T("sha256hash")));
   EXPECT_SUCCEEDED(app_->put_displayName(CComBSTR(_T("Some App"))));
 
   SetArgumentsInManifest(arguments, _T("1.2.3.4"), app_);
 
   LowResTimer install_timer(true);
 
+  // Disable the signature verification in order to run cmd.exe.
+  app_->set_can_skip_signature_verification(true);
   EXPECT_EQ(GOOPDATEINSTALL_E_MSI_INSTALL_ALREADY_RUNNING,
             InstallApp(_T(""), app_, cmd_exe_dir_));
 
@@ -949,7 +984,8 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_InstallMultipleApps) {
                                     kRegValueProductVersion,
                                     _T("0.10.69.5")));
 
-  app_->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app_->next_version()->AddPackage(
+      kCmdExecutable, 100, CreateFileHash(_T("hash"), _T("sha256hash")));
   EXPECT_SUCCEEDED(app_->put_displayName(CComBSTR(_T("Exe App"))));
 
   SetArgumentsInManifest(arguments1, _T("0.10.69.5"), app_);
@@ -980,7 +1016,8 @@ TEST_F(InstallManagerInstallAppUserTest, InstallApp_InstallMultipleApps) {
                                     kRegValueProductVersion,
                                     _T("0.10.69.5")));
 
-  app2->next_version()->AddPackage(kCmdExecutable, 100, _T("hash"));
+  app2->next_version()->AddPackage(
+      kCmdExecutable, 100, CreateFileHash(_T("hash"), _T("sha256hash")));
   EXPECT_SUCCEEDED(app2->put_displayName(CComBSTR(_T("Exe App"))));
 
   SetArgumentsInManifest(arguments2, _T("0.10.69.5"), app2);

@@ -42,7 +42,6 @@ class DownloadManagerInterface {
   virtual HRESULT CachePackage(const Package* package,
                                const CString* filename_path) = 0;
   virtual HRESULT DownloadApp(App* app) = 0;
-  virtual HRESULT DownloadPackage(Package* package) = 0;
   virtual HRESULT GetPackage(const Package* package,
                              const CString& dir) const = 0;
   virtual bool IsPackageAvailable(const Package* package) const = 0;
@@ -71,9 +70,6 @@ class DownloadManager : public DownloadManagerInterface {
   // error message. Progress is reported via the NetworkRequestCallback
   // method on the Package objects.
   virtual HRESULT DownloadApp(App* app);
-
-  // Downloads the specified package and stores it in the package cache.
-  virtual HRESULT DownloadPackage(Package* package);
 
   // Retrieves a package from the cache, if the package is locally available.
   virtual HRESULT GetPackage(const Package* package, const CString& dir) const;
@@ -126,6 +122,10 @@ class DownloadManager : public DownloadManagerInterface {
   HRESULT DeleteStateForApp(App* app);
 
   HRESULT DoDownloadPackage(Package* package, State* state);
+  HRESULT DoDownloadPackageFromUrl(const CString& url,
+                                   const CString& filename,
+                                   Package* package,
+                                   State* state);
 
   bool is_machine() const;
 

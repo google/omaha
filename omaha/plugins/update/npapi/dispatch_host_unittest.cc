@@ -70,8 +70,15 @@ class DispatchHostTest : public testing::Test {
 
   void PushArg(const char* value) {
     args_.push_back(NPVariant());
+
+    #pragma warning(push)
+    // conversion from 'size_t' to 'uint32_t', possible loss of data.
+    #pragma warning(disable : 4267)
+
     // TODO(omaha): _strdup is an implementation detail of the stubs.
     STRINGZ_TO_NPVARIANT(_strdup(value), args_.back());
+
+    #pragma warning(pop)
   }
 
   NPObject* dispatch_host_;
@@ -114,7 +121,7 @@ TEST_F(DispatchHostTest, InvokeWithArgs) {
   PushArg(27);
   EXPECT_TRUE(NPN_Invoke(NULL, dispatch_host_,
                          id_factory_.Create("AddAsMethod"), &args_.front(),
-                         args_.size(), &result_));
+                         static_cast<uint32_t>(args_.size()), &result_));
   EXPECT_TRUE(NPVARIANT_IS_INT32(result_));
   EXPECT_EQ(34, result_.value.intValue);
 }
@@ -125,7 +132,7 @@ TEST_F(DispatchHostTest, InvokePropertyWithArgs) {
   PushArg(15);
   EXPECT_TRUE(NPN_Invoke(NULL, dispatch_host_,
                          id_factory_.Create("AddAsProperty"), &args_.front(),
-                         args_.size(), &result_));
+                         static_cast<uint32_t>(args_.size()), &result_));
   EXPECT_TRUE(NPVARIANT_IS_INT32(result_));
   EXPECT_EQ(23, result_.value.intValue);
 }
@@ -145,7 +152,7 @@ TEST_F(DispatchHostTest, InvokeWithIncompatibleArgs) {
   INT32_TO_NPVARIANT(0x19881988, result_);
   EXPECT_FALSE(NPN_Invoke(NULL, dispatch_host_,
                           id_factory_.Create("AddAsMethod"), &args_.front(),
-                          args_.size(), &result_));
+                          static_cast<uint32_t>(args_.size()), &result_));
   EXPECT_TRUE(NPVARIANT_IS_VOID(result_));
 }
 
@@ -153,7 +160,8 @@ TEST_F(DispatchHostTest, InvokeWithIncorrectNumberOfArgs) {
   PushArg("Don't panic.");
   INT32_TO_NPVARIANT(0x77777777, result_);
   EXPECT_FALSE(NPN_Invoke(NULL, dispatch_host_, id_factory_.Create("Random"),
-                          &args_.front(), args_.size(), &result_));
+                          &args_.front(), static_cast<uint32_t>(args_.size()),
+                          &result_));
   EXPECT_TRUE(NPVARIANT_IS_VOID(result_));
 }
 
@@ -166,7 +174,7 @@ TEST_F(DispatchHostTest, InvokeDefaultPropertyWithArgs) {
   UseTestInterface2();
   PushArg(1048576);
   EXPECT_TRUE(NPN_InvokeDefault(NULL, dispatch_host_, &args_.front(),
-                                args_.size(), &result_));
+                                static_cast<uint32_t>(args_.size()), &result_));
   EXPECT_TRUE(NPVARIANT_IS_INT32(result_));
   EXPECT_EQ(1048576 * 2, result_.value.intValue);
 }

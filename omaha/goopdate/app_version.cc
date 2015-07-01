@@ -20,6 +20,7 @@
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/utils.h"
+#include "omaha/goopdate/file_hash.h"
 #include "omaha/goopdate/model.h"
 
 namespace omaha {
@@ -84,7 +85,7 @@ size_t AppVersion::GetNumberOfPackages() const {
 
 HRESULT AppVersion::AddPackage(const CString& filename,
                                uint32 size,
-                               const CString& hash) {
+                               const FileHash& hash) {
   __mutexScope(model()->lock());
   Package* package = new Package(this);
   package->SetFileInfo(filename, size, hash);
@@ -138,7 +139,13 @@ STDMETHODIMP AppVersion::get_version(BSTR* version) {
 STDMETHODIMP AppVersion::get_packageCount(long* count) {  // NOLINT
   __mutexScope(model()->lock());
 
-  *count = GetNumberOfPackages();
+  const size_t num_packages = GetNumberOfPackages();
+  if (num_packages > LONG_MAX) {
+    return E_FAIL;
+  }
+
+  *count = static_cast<long>(num_packages);
+
   return S_OK;
 }
 

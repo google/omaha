@@ -20,9 +20,10 @@
 #include <memory.h>
 #include "sha.h"
 #include "md5.h"
+#include "sha256.h"
 
-static void HMAC_init(HMAC_CTX* ctx, const void* key, int len) {
-  int i;
+static void HMAC_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
+  unsigned int i;
   memset(&ctx->opad[0], 0, sizeof(ctx->opad));
 
   if (len > sizeof(ctx->opad)) {
@@ -45,13 +46,18 @@ static void HMAC_init(HMAC_CTX* ctx, const void* key, int len) {
   }
 }
 
-void HMAC_MD5_init(HMAC_CTX* ctx, const void* key, int len) {
+void HMAC_MD5_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
   MD5_init(&ctx->hash);
   HMAC_init(ctx, key, len);
 }
 
-void HMAC_SHA_init(HMAC_CTX* ctx, const void* key, int len) {
+void HMAC_SHA_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
   SHA_init(&ctx->hash);
+  HMAC_init(ctx, key, len);
+}
+
+void HMAC_SHA256_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
+  SHA256_init(&ctx->hash);
   HMAC_init(ctx, key, len);
 }
 

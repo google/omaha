@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include <limits.h>
+#include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/file.h"
@@ -25,6 +26,7 @@
 #include "omaha/base/vistautil.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
+#include "omaha/common/const_group_policy.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -60,9 +62,11 @@ const TCHAR* const kInstallPolicyApp2 = _T("Install") APP_GUID2;
 const TCHAR* const kUpdatePolicyApp1 = _T("Update") APP_GUID1;
 const TCHAR* const kUpdatePolicyApp2 = _T("Update") APP_GUID2;
 
-// Helper to write policies to the registry. Eliminates ambiguity of which
-// overload of SetValue to use without the need for static_cast.
 HRESULT SetPolicy(const TCHAR* policy_name, DWORD value) {
+  return RegKey::SetValue(kPolicyKey, policy_name, value);
+}
+
+HRESULT SetPolicyString(const TCHAR* policy_name, const CString& value) {
   return RegKey::SetValue(kPolicyKey, policy_name, value);
 }
 
@@ -95,7 +99,10 @@ class ConfigManagerNoOverrideTest : public testing::Test {
   ConfigManager* cm_;
 };
 
-class ConfigManagerTest : public ConfigManagerNoOverrideTest {
+// This class is parameterized for Domain/Non-Domain using
+// ::testing::WithParamInterface<bool>.
+class ConfigManagerTest : public ConfigManagerNoOverrideTest,
+                          public ::testing::WithParamInterface<bool> {
  protected:
   ConfigManagerTest()
       : hive_override_key_name_(kRegistryHiveOverrideRoot) {
@@ -104,11 +111,32 @@ class ConfigManagerTest : public ConfigManagerNoOverrideTest {
   virtual void SetUp() {
     RegKey::DeleteKey(hive_override_key_name_, true);
     OverrideRegistryHives(hive_override_key_name_);
+    EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                      kRegValueIsEnrolledToDomain,
+                                      IsDomain() ? 1UL : 0UL));
   }
 
   virtual void TearDown() {
+    EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                         kRegValueIsEnrolledToDomain));
     RestoreRegistryHives();
     EXPECT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
+  }
+
+  bool IsDomain() {
+    return GetParam();
+  }
+
+  void ExpectTrueOnlyIfDomain(bool condition) {
+    if (IsDomain()) {
+      EXPECT_TRUE(condition);
+    } else {
+      EXPECT_FALSE(condition);
+    }
+  }
+
+  void ExpectFalseOnlyIfDomain(bool condition) {
+    ExpectTrueOnlyIfDomain(!condition);
   }
 
   void CanCollectStatsHelper(bool is_machine);
@@ -310,9 +338,8 @@ TEST_F(ConfigManagerNoOverrideTest, IsRunningFromUserGoopdateInstallDir) {
 }
 
 TEST_F(ConfigManagerNoOverrideTest, GetTempDownloadDir) {
-  TCHAR expected_path[MAX_PATH] = {0};
-  ASSERT_NE(0, ::GetTempPath(MAX_PATH, expected_path));
-
+  CString expected_path = app_util::GetTempDir();
+  EXPECT_FALSE(expected_path.IsEmpty());
   EXPECT_STREQ(expected_path, cm_->GetTempDownloadDir());
   EXPECT_TRUE(File::Exists(expected_path));
 }
@@ -359,8 +386,10 @@ TEST_F(ConfigManagerNoOverrideTest, IsRunningFromMachineGoopdateInstallDir) {
   EXPECT_FALSE(cm_->IsRunningFromMachineGoopdateInstallDir());
 }
 
+INSTANTIATE_TEST_CASE_P(IsDomain, ConfigManagerTest, ::testing::Bool());
+
 // Tests the GetUpdateCheckUrl override.
-TEST_F(ConfigManagerTest, GetUpdateCheckUrl) {
+TEST_P(ConfigManagerTest, GetUpdateCheckUrl) {
   CString url;
   EXPECT_SUCCEEDED(cm_->GetUpdateCheckUrl(&url));
   EXPECT_STREQ(url, kUrlUpdateCheck);
@@ -374,7 +403,7 @@ TEST_F(ConfigManagerTest, GetUpdateCheckUrl) {
 }
 
 // Tests the GetPingUrl override.
-TEST_F(ConfigManagerTest, GetPingUrl) {
+TEST_P(ConfigManagerTest, GetPingUrl) {
   CString url;
   EXPECT_SUCCEEDED(cm_->GetPingUrl(&url));
   EXPECT_STREQ(url, kUrlPing);
@@ -388,7 +417,7 @@ TEST_F(ConfigManagerTest, GetPingUrl) {
 }
 
 // Tests the GetCrashReportUrl override.
-TEST_F(ConfigManagerTest, GetCrashReportUrl) {
+TEST_P(ConfigManagerTest, GetCrashReportUrl) {
   CString url;
   EXPECT_SUCCEEDED(cm_->GetCrashReportUrl(&url));
   EXPECT_STREQ(url, kUrlCrashReport);
@@ -402,7 +431,7 @@ TEST_F(ConfigManagerTest, GetCrashReportUrl) {
 }
 
 // Tests the GetMoreInfoUrl override.
-TEST_F(ConfigManagerTest, GetMoreInfoUrl) {
+TEST_P(ConfigManagerTest, GetMoreInfoUrl) {
   CString url;
   EXPECT_SUCCEEDED(cm_->GetMoreInfoUrl(&url));
   EXPECT_STREQ(url, kUrlMoreInfo);
@@ -416,7 +445,7 @@ TEST_F(ConfigManagerTest, GetMoreInfoUrl) {
 }
 
 // Tests the GetUsageStatsReportUrl override.
-TEST_F(ConfigManagerTest, GetUsageStatsReportUrl) {
+TEST_P(ConfigManagerTest, GetUsageStatsReportUrl) {
   CString url;
   EXPECT_SUCCEEDED(cm_->GetUsageStatsReportUrl(&url));
   EXPECT_STREQ(url, kUrlUsageStatsReport);
@@ -430,7 +459,7 @@ TEST_F(ConfigManagerTest, GetUsageStatsReportUrl) {
 }
 
 // Tests LastCheckPeriodSec override.
-TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_Default) {
+TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_Default) {
   bool is_overridden = true;
   if (cm_->IsInternalUser()) {
     EXPECT_EQ(kLastCheckPeriodInternalUserSec,
@@ -441,7 +470,7 @@ TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_Default) {
   EXPECT_FALSE(is_overridden);
 }
 
-TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_UpdateDevOverride) {
+TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_UpdateDevOverride) {
   // Zero is a special value meaning disabled.
   DWORD val = 0;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
@@ -487,60 +516,107 @@ TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_UpdateDevOverride) {
   EXPECT_FALSE(is_overridden);
 }
 
-TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride) {
-  const DWORD kOverrideMinutes = 16000;
+TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride) {
+  const DWORD kOverrideMinutes = 4000;
   const DWORD kExpectedSeconds = kOverrideMinutes * 60;
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes));
   bool is_overridden = false;
-  EXPECT_EQ(kExpectedSeconds, cm_->GetLastCheckPeriodSec(&is_overridden));
-  EXPECT_TRUE(is_overridden);
+
+  if (IsDomain()) {
+    EXPECT_EQ(kExpectedSeconds, cm_->GetLastCheckPeriodSec(&is_overridden));
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
 }
 
-TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride_TooLow) {
+TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride_TooLow) {
   const DWORD kOverrideMinutes = 1;
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes));
+
   bool is_overridden = false;
-  EXPECT_EQ(kMinLastCheckPeriodSec, cm_->GetLastCheckPeriodSec(&is_overridden));
-  EXPECT_TRUE(is_overridden);
+  const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
+
+  if (IsDomain()) {
+    EXPECT_EQ(kMinLastCheckPeriodSec, check_period);
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
 }
 
-TEST_F(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride_Zero) {
+TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GPO_Zero_Domain_NonDomain) {
   const DWORD kOverrideMinutes = 0;
+  const DWORD kExpectedSecondsDomain = kOverrideMinutes * 60;
+
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes));
+
   bool is_overridden = false;
-  EXPECT_EQ(0, cm_->GetLastCheckPeriodSec(&is_overridden));
-  EXPECT_TRUE(is_overridden);
+  const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
+
+  if (IsDomain()) {
+    EXPECT_EQ(kExpectedSecondsDomain, check_period);
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
 }
 
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GPO_High_Domain_NonDomain) {
+  const DWORD kOverrideMinutes = 15000;
+  const DWORD kExpectedSecondsDomain = kOverrideMinutes * 60;
+
+  EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
+                             kOverrideMinutes));
+
+  bool is_overridden = false;
+  const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
+
+  if (IsDomain()) {
+    EXPECT_EQ(kExpectedSecondsDomain, check_period);
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
+}
+
+TEST_P(ConfigManagerTest,
        GetLastCheckPeriodSec_GroupPolicyOverride_Overflow_SecondsConversion) {
   const DWORD kOverrideMinutes = UINT_MAX;
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes));
   bool is_overridden = false;
-  EXPECT_EQ(INT_MAX, cm_->GetLastCheckPeriodSec(&is_overridden));
-  EXPECT_TRUE(is_overridden);
+  int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
+  if (IsDomain()) {
+    EXPECT_EQ(INT_MAX, check_period);
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
 
   const DWORD kOverrideMinutes2 = INT_MAX + static_cast<uint32>(1);
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes2));
   is_overridden = false;
-  EXPECT_EQ(INT_MAX, cm_->GetLastCheckPeriodSec(&is_overridden));
-  EXPECT_TRUE(is_overridden);
+  check_period = cm_->GetLastCheckPeriodSec(&is_overridden);
+  if (IsDomain()) {
+    EXPECT_EQ(INT_MAX, check_period);
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
 
   const DWORD kOverrideMinutes3 = 0xf0000000;
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes3));
   is_overridden = false;
-  EXPECT_EQ(INT_MAX, cm_->GetLastCheckPeriodSec(&is_overridden));
-  EXPECT_TRUE(is_overridden);
+  check_period = cm_->GetLastCheckPeriodSec(&is_overridden);
+  if (IsDomain()) {
+    EXPECT_EQ(INT_MAX, check_period);
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
 }
 
 // Overflow the integer but not the minutes to seconds conversion.
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        GetLastCheckPeriodSec_GroupPolicyOverride_Overflow_Int) {
   const DWORD kOverrideMinutes = UINT_MAX / 60;
   EXPECT_GT(UINT_MAX, kOverrideMinutes);
@@ -548,12 +624,16 @@ TEST_F(ConfigManagerTest,
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
                              kOverrideMinutes));
   bool is_overridden = false;
-  EXPECT_EQ(INT_MAX, cm_->GetLastCheckPeriodSec(&is_overridden));
-  EXPECT_TRUE(is_overridden);
+  const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
+  if (IsDomain()) {
+    EXPECT_EQ(INT_MAX, check_period);
+  }
+
+  ExpectTrueOnlyIfDomain(is_overridden);
 }
 
 // UpdateDev takes precedence over the Group Policy override.
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        GetLastCheckPeriodSec_GroupPolicyAndUpdateDevOverrides) {
   const DWORD kGroupPolicyOverrideMinutes = 100;
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
@@ -569,7 +649,7 @@ TEST_F(ConfigManagerTest,
   EXPECT_TRUE(is_overridden);
 }
 
-TEST_F(ConfigManagerTest, CanCollectStats_LegacyLocationNewName) {
+TEST_P(ConfigManagerTest, CanCollectStats_LegacyLocationNewName) {
   DWORD val = 1;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("usagestats"),
@@ -577,16 +657,16 @@ TEST_F(ConfigManagerTest, CanCollectStats_LegacyLocationNewName) {
   EXPECT_FALSE(cm_->CanCollectStats(true));
 }
 
-TEST_F(ConfigManagerTest, CanCollectStats_MachineOnly) {
+TEST_P(ConfigManagerTest, CanCollectStats_MachineOnly) {
   CanCollectStatsHelper(true);
 }
 
-TEST_F(ConfigManagerTest, CanCollectStats_UserOnly) {
+TEST_P(ConfigManagerTest, CanCollectStats_UserOnly) {
   CanCollectStatsHelper(false);
 }
 
 // This tests that the legacy conversion is honored.
-TEST_F(ConfigManagerTest, CanCollectStats_GoopdateGuidIsChecked) {
+TEST_P(ConfigManagerTest, CanCollectStats_GoopdateGuidIsChecked) {
   EXPECT_FALSE(cm_->CanCollectStats(true));
 
   DWORD val = 1;
@@ -596,16 +676,16 @@ TEST_F(ConfigManagerTest, CanCollectStats_GoopdateGuidIsChecked) {
   EXPECT_TRUE(cm_->CanCollectStats(true));
 }
 
-TEST_F(ConfigManagerTest, CanCollectStats_MachineIgnoresUser) {
+TEST_P(ConfigManagerTest, CanCollectStats_MachineIgnoresUser) {
   CanCollectStatsIgnoresOppositeHiveHelper(true);
 }
 
-TEST_F(ConfigManagerTest, CanCollectStats_UserIgnoresMachine) {
+TEST_P(ConfigManagerTest, CanCollectStats_UserIgnoresMachine) {
   CanCollectStatsIgnoresOppositeHiveHelper(false);
 }
 // Unfortunately, the app's ClientStateMedium key is not checked if there is no
 // corresponding ClientState key.
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        CanCollectStats_Machine_ClientStateMediumOnly_AppClientStateKeyMissing) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStateMediumPath1,
                                     _T("usagestats"),
@@ -613,7 +693,7 @@ TEST_F(ConfigManagerTest,
   EXPECT_FALSE(cm_->CanCollectStats(true));
 }
 
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        CanCollectStats_Machine_ClientStateMediumOnly_AppClientStateKeyExists) {
   EXPECT_SUCCEEDED(RegKey::CreateKey(kAppMachineClientStatePath1));
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStateMediumPath1,
@@ -622,7 +702,7 @@ TEST_F(ConfigManagerTest,
   EXPECT_TRUE(cm_->CanCollectStats(true));
 }
 
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        CanCollectStats_Machine_ClientStateMediumInvalid) {
   EXPECT_SUCCEEDED(RegKey::CreateKey(kAppMachineClientStatePath1));
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStateMediumPath1,
@@ -631,7 +711,7 @@ TEST_F(ConfigManagerTest,
   EXPECT_FALSE(cm_->CanCollectStats(true));
 }
 
-TEST_F(ConfigManagerTest, CanCollectStats_User_ClientStateMediumOnly) {
+TEST_P(ConfigManagerTest, CanCollectStats_User_ClientStateMediumOnly) {
   EXPECT_SUCCEEDED(RegKey::CreateKey(kAppUserClientStatePath1));
   EXPECT_SUCCEEDED(RegKey::SetValue(
       _T("HKCU\\") OMAHA_KEY_REL _T("\\ClientStateMedium\\") APP_GUID1,
@@ -640,7 +720,7 @@ TEST_F(ConfigManagerTest, CanCollectStats_User_ClientStateMediumOnly) {
   EXPECT_FALSE(cm_->CanCollectStats(false));
 }
 
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        CanCollectStats_Machine_ClientStateZeroClientStateMediumOne) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath1,
                                     _T("usagestats"),
@@ -653,7 +733,7 @@ TEST_F(ConfigManagerTest,
   EXPECT_TRUE(cm_->CanCollectStats(true));
 }
 
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        CanCollectStats_Machine_ClientStateOneClientStateMediumZero) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath1,
                                     _T("usagestats"),
@@ -667,7 +747,7 @@ TEST_F(ConfigManagerTest,
 }
 
 // Tests OverInstall override.
-TEST_F(ConfigManagerTest, CanOverInstall) {
+TEST_P(ConfigManagerTest, CanOverInstall) {
   EXPECT_EQ(cm_->CanOverInstall(), !OFFICIAL_BUILD);
 
   DWORD val = 1;
@@ -692,7 +772,7 @@ TEST_F(ConfigManagerTest, CanOverInstall) {
 }
 
 // Tests AuCheckPeriodMs override.
-TEST_F(ConfigManagerTest, GetAutoUpdateTimerIntervalMs) {
+TEST_P(ConfigManagerTest, GetAutoUpdateTimerIntervalMs) {
   EXPECT_EQ(cm_->IsInternalUser() ? kAUCheckPeriodInternalUserMs :
                                     kAUCheckPeriodMs,
             cm_->GetAutoUpdateTimerIntervalMs());
@@ -737,7 +817,7 @@ TEST_F(ConfigManagerTest, GetAutoUpdateTimerIntervalMs) {
 }
 
 // Tests CrCheckPeriodMs override.
-TEST_F(ConfigManagerTest, GetCodeRedTimerIntervalMs) {
+TEST_P(ConfigManagerTest, GetCodeRedTimerIntervalMs) {
   EXPECT_EQ(kCodeRedCheckPeriodMs, cm_->GetCodeRedTimerIntervalMs());
 
   DWORD val = 0;
@@ -780,7 +860,7 @@ TEST_F(ConfigManagerTest, GetCodeRedTimerIntervalMs) {
 }
 
 // Tests CanLogEvents override.
-TEST_F(ConfigManagerTest, CanLogEvents_WithOutOverride) {
+TEST_P(ConfigManagerTest, CanLogEvents_WithOutOverride) {
   EXPECT_FALSE(cm_->CanLogEvents(EVENTLOG_SUCCESS));
   EXPECT_TRUE(cm_->CanLogEvents(EVENTLOG_ERROR_TYPE));
   EXPECT_TRUE(cm_->CanLogEvents(EVENTLOG_WARNING_TYPE));
@@ -789,7 +869,7 @@ TEST_F(ConfigManagerTest, CanLogEvents_WithOutOverride) {
   EXPECT_FALSE(cm_->CanLogEvents(EVENTLOG_AUDIT_FAILURE));
 }
 
-TEST_F(ConfigManagerTest, CanLogEvents) {
+TEST_P(ConfigManagerTest, CanLogEvents) {
   EXPECT_FALSE(cm_->CanLogEvents(EVENTLOG_INFORMATION_TYPE));
 
   DWORD val = LOG_EVENT_LEVEL_ALL;
@@ -816,7 +896,7 @@ TEST_F(ConfigManagerTest, CanLogEvents) {
 }
 
 // Tests GetTestSource override.
-TEST_F(ConfigManagerTest, GetTestSource_Dev) {
+TEST_P(ConfigManagerTest, GetTestSource_Dev) {
   CString expected_value;
 #if DEBUG || !OFFICIAL_BUILD
   expected_value = kRegValueTestSourceAuto;
@@ -831,7 +911,7 @@ TEST_F(ConfigManagerTest, GetTestSource_Dev) {
   EXPECT_STREQ(_T("dev"), test_source);
 }
 
-TEST_F(ConfigManagerTest, GetTestSource_EmptyRegKey) {
+TEST_P(ConfigManagerTest, GetTestSource_EmptyRegKey) {
   CString expected_value;
 
 #if DEBUG || !OFFICIAL_BUILD
@@ -852,24 +932,24 @@ TEST_F(ConfigManagerTest, GetTestSource_EmptyRegKey) {
 //
 
 // Covers UpdateEulaAccepted case.
-TEST_F(ConfigManagerTest, CanUseNetwork_Machine_Normal) {
+TEST_P(ConfigManagerTest, CanUseNetwork_Machine_Normal) {
   EXPECT_TRUE(cm_->CanUseNetwork(true));
 }
 
 // Covers UpdateEulaAccepted case.
-TEST_F(ConfigManagerTest, CanUseNetwork_User_Normal) {
+TEST_P(ConfigManagerTest, CanUseNetwork_User_Normal) {
   EXPECT_TRUE(cm_->CanUseNetwork(false));
 }
 
 // These cover the not OEM install mode cases.
-TEST_F(ConfigManagerTest, CanUseNetwork_Machine_UpdateEulaNotAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_Machine_UpdateEulaNotAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
   EXPECT_FALSE(cm_->CanUseNetwork(true));
 }
 
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        CanUseNetwork_Machine_UpdateEulaNotAccepted_AppEulaAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
@@ -880,35 +960,35 @@ TEST_F(ConfigManagerTest,
   EXPECT_FALSE(cm_->CanUseNetwork(true));
 }
 
-TEST_F(ConfigManagerTest, CanUseNetwork_Machine_AppEulaNotAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_Machine_AppEulaNotAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath1,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
   EXPECT_TRUE(cm_->CanUseNetwork(true));
 }
 
-TEST_F(ConfigManagerTest, CanUseNetwork_Machine_AppEulaAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_Machine_AppEulaAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppMachineClientStatePath1,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(1)));
   EXPECT_TRUE(cm_->CanUseNetwork(true));
 }
 
-TEST_F(ConfigManagerTest, CanUseNetwork_Machine_UserUpdateEulaNotAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_Machine_UserUpdateEulaNotAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
   EXPECT_TRUE(cm_->CanUseNetwork(true));
 }
 
-TEST_F(ConfigManagerTest, CanUseNetwork_User_UpdateEulaNotAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_User_UpdateEulaNotAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
   EXPECT_FALSE(cm_->CanUseNetwork(false));
 }
 
-TEST_F(ConfigManagerTest,
+TEST_P(ConfigManagerTest,
        CanUseNetwork_User_UpdateEulaNotAccepted_AppEulaAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("eulaaccepted"),
@@ -919,21 +999,21 @@ TEST_F(ConfigManagerTest,
   EXPECT_FALSE(cm_->CanUseNetwork(false));
 }
 
-TEST_F(ConfigManagerTest, CanUseNetwork_User_AppEulaNotAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_User_AppEulaNotAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppUserClientStatePath1,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
   EXPECT_TRUE(cm_->CanUseNetwork(false));
 }
 
-TEST_F(ConfigManagerTest, CanUseNetwork_User_AppEulaAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_User_AppEulaAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kAppUserClientStatePath1,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(1)));
   EXPECT_TRUE(cm_->CanUseNetwork(false));
 }
 
-TEST_F(ConfigManagerTest, CanUseNetwork_User_MachineUpdateEulaNotAccepted) {
+TEST_P(ConfigManagerTest, CanUseNetwork_User_MachineUpdateEulaNotAccepted) {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE,
                                     _T("eulaaccepted"),
                                     static_cast<DWORD>(0)));
@@ -941,17 +1021,17 @@ TEST_F(ConfigManagerTest, CanUseNetwork_User_MachineUpdateEulaNotAccepted) {
 }
 
 // TODO(omaha): Figure out a way to test the result.
-TEST_F(ConfigManagerTest, IsInternalUser) {
+TEST_P(ConfigManagerTest, IsInternalUser) {
   cm_->IsInternalUser();
 }
 
-TEST_F(ConfigManagerTest, IsWindowsInstalling_Normal) {
+TEST_P(ConfigManagerTest, IsWindowsInstalling_Normal) {
   EXPECT_FALSE(cm_->IsWindowsInstalling());
 }
 
 // While this test passes, the return value of IsWindowsInstalling() is not
 // fully tested because the account is not Administrator.
-TEST_F(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_InvalidValues) {
+TEST_P(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_InvalidValues) {
   if (!vista_util::IsVistaOrLater()) {
     return;
   }
@@ -978,7 +1058,7 @@ TEST_F(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_InvalidValues) {
 
 // TODO(omaha): This test fails because the account is not Administrator. Maybe
 // just delete them if this is the final implementation of Audit Mode detection.
-TEST_F(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
+TEST_P(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
   if (!vista_util::IsVistaOrLater()) {
     return;
   }
@@ -1022,390 +1102,526 @@ TEST_F(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
   EXPECT_TRUE(cm_->IsWindowsInstalling());
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {
+TEST_P(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DifferentAppDisabled) {
+TEST_P(ConfigManagerTest, CanInstallApp_DifferentAppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, 0));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppDisabled) {
+TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
-  EXPECT_FALSE(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppEnabled) {
+TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppInvalid) {
+TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultDisabled_NoAppValue) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
-  EXPECT_FALSE(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppDisabled) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
-  EXPECT_FALSE(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppEnabled) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
 // Invalid value defaulting to true overrides the InstallDefault disable.
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppInvalid) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultEnabled_NoAppValue) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppDisabled) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
-  EXPECT_FALSE(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppEnabled) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_NoGroupPolicy) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoGroupPolicy) {
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DifferentAppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DifferentAppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp2, 0));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DifferentAppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DifferentAppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp2, 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppDisabled) {
-  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DifferentAppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp2, 3));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppDisabled) {
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_NoAppValue) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
 // Invalid value defaulting to true overrides the UpdateDefault disable.
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppInvalid) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
-  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_NoAppValue) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppInvalid) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_NoAppValue) {
-  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppInvalid) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_NoAppValue) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, false));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppInvalid) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_DefaultInvalid_NoAppValue) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppInvalid) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_Omaha_DefaultDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppDisabled) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppEnabled) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppManualOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppInvalid) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultInvalid_NoAppValue) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 4));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_Omaha_DefaultDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_Omaha_DefaultManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_Omaha_DefaultManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Auto_Omaha_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_Omaha_DefaultAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, false));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Auto_Omaha_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("Update") GOOPDATE_APP_ID, 0));
   EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, false));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_NoGroupPolicy) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoGroupPolicy) {
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DifferentAppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DifferentAppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp2, 0));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DifferentAppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DifferentAppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp2, 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppDisabled) {
-  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, true));
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DifferentAppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp2, 3));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppDisabled) {
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_NoAppValue) {
-  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, true));
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_NoAppValue) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, true));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
 }
 
 // Invalid value defaulting to true overrides the UpdateDefault disable.
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppInvalid) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
-  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_NoAppValue) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, true));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppInvalid) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppInvalid) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_NoAppValue) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
-  EXPECT_FALSE(CanUpdateApp(kAppGuid1, true));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppEnabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Maual_DefaultManualOnly_AppInvalid) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppInvalid) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_DefaultInvalid_NoAppValue) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppDisabled) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppEnabled) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_Omaha_DefaultDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppManualOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
+  ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppInvalid) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultInvalid_NoAppValue) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 4));
+  EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_Omaha_DefaultDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_Omaha_DefaultManualOnly) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_Omaha_DefaultManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, true));
 }
 
-TEST_F(ConfigManagerTest, CanUpdateApp_Manual_Omaha_AppDisabled) {
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_Omaha_DefaultAutoOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
+  EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, true));
+}
+
+TEST_P(ConfigManagerTest, CanUpdateApp_Manual_Omaha_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("Update") GOOPDATE_APP_ID, 0));
   EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, true));
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Default) {
+TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Default) {
   EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes());
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_TooBig) {
+TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_TooBig) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheSizeLimitMBytes, 8192));
   EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes());
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_TooSmall) {
+TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_TooSmall) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheSizeLimitMBytes, 0));
   EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes());
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_Valid) {
+TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_Valid) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheSizeLimitMBytes, 250));
-  EXPECT_EQ(250, cm_->GetPackageCacheSizeLimitMBytes());
+  EXPECT_EQ(IsDomain() ? 250 : 500, cm_->GetPackageCacheSizeLimitMBytes());
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Default) {
+TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Default) {
   EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays());
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_TooBig) {
+TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_TooBig) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheLifeLimitDays, 3600));
   EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays());
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_TooSmall) {
+TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_TooSmall) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheLifeLimitDays, 0));
   EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays());
 }
 
-TEST_F(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_Valid) {
+TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_Valid) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheLifeLimitDays, 60));
-  EXPECT_EQ(60, cm_->GetPackageCacheExpirationTimeDays());
+  EXPECT_EQ(IsDomain() ? 60 : 180, cm_->GetPackageCacheExpirationTimeDays());
 }
 
-TEST_F(ConfigManagerTest, LastCheckedTime) {
+TEST_P(ConfigManagerTest, LastCheckedTime) {
   DWORD time = 500;
   EXPECT_SUCCEEDED(cm_->SetLastCheckedTime(true, time));
   EXPECT_EQ(time, cm_->GetLastCheckedTime(true));
@@ -1415,8 +1631,30 @@ TEST_F(ConfigManagerTest, LastCheckedTime) {
   EXPECT_EQ(time, cm_->GetLastCheckedTime(false));
 }
 
+TEST_P(ConfigManagerTest, RetryAfterTime) {
+  DWORD time = 500;
+  EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(true, time));
+  EXPECT_EQ(time, cm_->GetRetryAfterTime(true));
+
+  time = 77003;
+  EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(false, time));
+  EXPECT_EQ(time, cm_->GetRetryAfterTime(false));
+}
+
+TEST_P(ConfigManagerTest, CanRetryNow) {
+  EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(true, 0));
+  EXPECT_TRUE(cm_->CanRetryNow(true));
+
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(true, now - 10));
+  EXPECT_TRUE(cm_->CanRetryNow(true));
+
+  EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(false, now + kSecondsPerHour));
+  EXPECT_FALSE(cm_->CanRetryNow(false));
+}
+
 // Tests GetDir indirectly.
-TEST_F(ConfigManagerTest, GetDir) {
+TEST_P(ConfigManagerTest, GetDir) {
   RestoreRegistryHives();
 
   CString user_install_dir = cm_->GetUserGoopdateInstallDir();
@@ -1427,7 +1665,7 @@ TEST_F(ConfigManagerTest, GetDir) {
   ASSERT_TRUE(String_StartsWith(user_install_dir, user_profile, true));
 }
 
-TEST_F(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs_Repeated) {
+TEST_P(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs_Repeated) {
   if (!SystemInfo::IsRunningOnXPOrLater()) {
     std::wcout << _T("\tTest did not run because GenRandom breaks on Windows ")
                << _T("2000 if the registry keys are overridden.") << std::endl;
@@ -1442,7 +1680,7 @@ TEST_F(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs_Repeated) {
   }
 }
 
-TEST_F(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs) {
+TEST_P(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs) {
   if (!SystemInfo::IsRunningOnXPOrLater()) {
     std::wcout << _T("\tTest did not run because GenRandom breaks on Windows ")
                << _T("2000 if the registry keys are overridden.") << std::endl;
@@ -1476,7 +1714,7 @@ TEST_F(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs) {
   EXPECT_TRUE(found_one_not_equal);
 }
 
-TEST_F(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs_Override) {
+TEST_P(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs_Override) {
   // Test that the initial delay time to launch a worker can be overriden.
   DWORD val = 3320;
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
@@ -1487,7 +1725,7 @@ TEST_F(ConfigManagerTest, GetUpdateWorkerStartUpDelayMs_Override) {
   EXPECT_EQ(val, random);
 }
 
-TEST_F(ConfigManagerTest, GetTimeSinceLastCheckedSec_User) {
+TEST_P(ConfigManagerTest, GetTimeSinceLastCheckedSec_User) {
   // First, there is no value present in the registry.
   uint32 now_sec = Time64ToInt32(GetCurrent100NSTime());
   int time_since_last_checked_sec = cm_->GetTimeSinceLastCheckedSec(false);
@@ -1499,7 +1737,7 @@ TEST_F(ConfigManagerTest, GetTimeSinceLastCheckedSec_User) {
   EXPECT_EQ(0, time_since_last_checked_sec);
 }
 
-TEST_F(ConfigManagerTest, GetTimeSinceLastCheckedSec_Machine) {
+TEST_P(ConfigManagerTest, GetTimeSinceLastCheckedSec_Machine) {
   uint32 now_sec = Time64ToInt32(GetCurrent100NSTime());
   int time_since_last_checked_sec = cm_->GetTimeSinceLastCheckedSec(true);
   EXPECT_EQ(now_sec, time_since_last_checked_sec);
@@ -1509,7 +1747,7 @@ TEST_F(ConfigManagerTest, GetTimeSinceLastCheckedSec_Machine) {
   EXPECT_EQ(0, time_since_last_checked_sec);
 }
 
-TEST_F(ConfigManagerTest, GetNetConfig) {
+TEST_P(ConfigManagerTest, GetNetConfig) {
   CString actual_value;
   EXPECT_HRESULT_FAILED(cm_->GetNetConfig(&actual_value));
 
@@ -1522,24 +1760,24 @@ TEST_F(ConfigManagerTest, GetNetConfig) {
   EXPECT_STREQ(expected_value, actual_value);
 }
 
-TEST_F(ConfigManagerTest, GetInstallTime) {
+TEST_P(ConfigManagerTest, GetLastUpdateTime) {
   EXPECT_SUCCEEDED(DeleteUpdateTime(false));
   EXPECT_SUCCEEDED(DeleteFirstInstallTime(false));
-  EXPECT_EQ(0, ConfigManager::GetInstallTime(false));
+  EXPECT_EQ(0, ConfigManager::GetLastUpdateTime(false));
 
   DWORD time = 500;
   EXPECT_SUCCEEDED(SetFirstInstallTime(false, time));
-  EXPECT_EQ(time, ConfigManager::GetInstallTime(false));
+  EXPECT_EQ(time, ConfigManager::GetLastUpdateTime(false));
 
   time = 1000;
   EXPECT_SUCCEEDED(SetUpdateTime(false, time));
-  EXPECT_EQ(time, ConfigManager::GetInstallTime(false));
+  EXPECT_EQ(time, ConfigManager::GetLastUpdateTime(false));
 
   EXPECT_SUCCEEDED(DeleteFirstInstallTime(false));
-  EXPECT_EQ(time, ConfigManager::GetInstallTime(false));
+  EXPECT_EQ(time, ConfigManager::GetLastUpdateTime(false));
 }
 
-TEST_F(ConfigManagerTest, Is24HoursSinceInstall) {
+TEST_P(ConfigManagerTest, Is24HoursSinceLastUpdate) {
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
   const int k12HourPeriodSec = 12 * 60 * 60;
   const int k48HourPeriodSec = 48 * 60 * 60;
@@ -1548,19 +1786,19 @@ TEST_F(ConfigManagerTest, Is24HoursSinceInstall) {
   const uint32 first_install_48 = now - k48HourPeriodSec;
 
   EXPECT_SUCCEEDED(SetFirstInstallTime(false, first_install_12));
-  EXPECT_FALSE(ConfigManager::Is24HoursSinceInstall(false));
+  EXPECT_FALSE(ConfigManager::Is24HoursSinceLastUpdate(false));
 
   EXPECT_SUCCEEDED(SetFirstInstallTime(false, first_install_48));
-  EXPECT_TRUE(ConfigManager::Is24HoursSinceInstall(false));
+  EXPECT_TRUE(ConfigManager::Is24HoursSinceLastUpdate(false));
 
   EXPECT_SUCCEEDED(SetUpdateTime(false, first_install_12));
-  EXPECT_FALSE(ConfigManager::Is24HoursSinceInstall(false));
+  EXPECT_FALSE(ConfigManager::Is24HoursSinceLastUpdate(false));
 
   EXPECT_SUCCEEDED(SetUpdateTime(false, first_install_48));
-  EXPECT_TRUE(ConfigManager::Is24HoursSinceInstall(false));
+  EXPECT_TRUE(ConfigManager::Is24HoursSinceLastUpdate(false));
 }
 
-TEST_F(ConfigManagerTest, AlwaysAllowCrashUploads) {
+TEST_P(ConfigManagerTest, AlwaysAllowCrashUploads) {
   EXPECT_FALSE(cm_->AlwaysAllowCrashUploads());
 
   DWORD value = 1;
@@ -1576,6 +1814,82 @@ TEST_F(ConfigManagerTest, AlwaysAllowCrashUploads) {
                                     value));
 
   EXPECT_FALSE(cm_->AlwaysAllowCrashUploads());
+}
+
+TEST_P(ConfigManagerTest, MaxCrashUploadsPerDay) {
+  // Default is 5 for both debug and opt builds.
+  const int kDefaultUploadsPerDay = 20;
+
+  EXPECT_EQ(kDefaultUploadsPerDay, cm_->MaxCrashUploadsPerDay());
+
+  DWORD value = 42;
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueMaxCrashUploadsPerDay,
+                                    value));
+
+  EXPECT_EQ(value, cm_->MaxCrashUploadsPerDay());
+
+  value = 0;
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueMaxCrashUploadsPerDay,
+                                    value));
+
+  EXPECT_EQ(value, cm_->MaxCrashUploadsPerDay());
+
+  value = (DWORD) -1;
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueMaxCrashUploadsPerDay,
+                                    value));
+
+  EXPECT_EQ(INT_MAX, cm_->MaxCrashUploadsPerDay());
+
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueMaxCrashUploadsPerDay));
+
+  EXPECT_EQ(kDefaultUploadsPerDay, cm_->MaxCrashUploadsPerDay());
+}
+
+// This test is slighly flaky due to the random nature of the jitter.
+TEST_P(ConfigManagerTest, GetAutoUpdateJitterMs) {
+  // Test successive calls return different values.
+  const int x = cm_->GetAutoUpdateJitterMs();
+  const int y = cm_->GetAutoUpdateJitterMs();
+  EXPECT_NE(x, y);
+
+  // Test the range.
+  const int kMaxJitterMs = 60000;
+  EXPECT_LT(x, kMaxJitterMs);
+  EXPECT_LT(y, kMaxJitterMs);
+  EXPECT_GE(x, 0);
+  EXPECT_GE(y, 0);
+
+  // Test that the value can be overriden by generating a random value and
+  // reading it back.
+  DWORD val = cm_->GetAutoUpdateJitterMs();
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueAutoUpdateJitterMs,
+                                    val));
+  EXPECT_EQ(val, cm_->GetAutoUpdateJitterMs());
+
+  // Test the range of values are not exceeded when overriding.
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueAutoUpdateJitterMs,
+                                    100000UL));
+  EXPECT_EQ(kMaxJitterMs - 1, cm_->GetAutoUpdateJitterMs());
+}
+
+TEST_P(ConfigManagerTest, GetDownloadPreferenceGroupPolicy) {
+  EXPECT_STREQ(_T(""), cm_->GetDownloadPreferenceGroupPolicy());
+
+  EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
+                                   _T("unknown")));
+  EXPECT_STREQ(_T(""), cm_->GetDownloadPreferenceGroupPolicy());
+
+  EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
+                                   kDownloadPreferenceCacheable));
+  EXPECT_STREQ(IsDomain() ? kDownloadPreferenceCacheable : _T(""),
+               cm_->GetDownloadPreferenceGroupPolicy());
 }
 
 }  // namespace omaha

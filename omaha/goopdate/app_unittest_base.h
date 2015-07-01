@@ -22,11 +22,14 @@
 #include <atlcom.h>
 #include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
+#include "omaha/common/const_group_policy.h"
 #include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/app_bundle_state_initialized.h"
+#include "omaha/goopdate/goopdate.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/goopdate/worker_mock.h"
+#include "omaha/goopdate/update_response_utils.h"
 #include "omaha/testing/unit_test.h"
 
 using ::testing::Return;
@@ -38,7 +41,8 @@ class AppTestBase : public testing::Test {
  protected:
   AppTestBase(bool is_machine, bool use_strict_mock)
       : is_machine_(is_machine),
-        use_strict_mock_(use_strict_mock) {
+        use_strict_mock_(use_strict_mock),
+        goopdate_(is_machine) {
   }
 
   virtual void SetUp() {
@@ -82,6 +86,32 @@ class AppTestBase : public testing::Test {
     AppManager::DeleteInstance();
   }
 
+  static HRESULT LoadBundleFromXml(AppBundle* app_bundle,
+                                   const CStringA& buffer_string) {
+    __mutexScope(app_bundle->model()->lock());
+
+    std::vector<uint8> buffer(buffer_string.GetLength());
+    memcpy(&buffer.front(), buffer_string, buffer.size());
+
+    scoped_ptr<xml::UpdateResponse> update_response(
+        xml::UpdateResponse::Create());
+    HRESULT hr = update_response->Deserialize(buffer);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
+      hr = update_response_utils::BuildApp(update_response.get(),
+                                           S_OK,
+                                           app_bundle->GetApp(i));
+      if (FAILED(hr)) {
+        return hr;
+      }
+    }
+
+    return S_OK;
+  }
+
   const bool is_machine_;
   const bool use_strict_mock_;
 
@@ -90,13 +120,16 @@ class AppTestBase : public testing::Test {
   scoped_ptr<MockWorker> mock_worker_;
   scoped_ptr<Model> model_;
 
+  Goopdate goopdate_;
   shared_ptr<AppBundle> app_bundle_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AppTestBase);
 };
 
-class AppTestBaseWithRegistryOverride : public AppTestBase {
+class AppTestBaseWithRegistryOverride
+    : public AppTestBase,
+      public ::testing::WithParamInterface<bool> {
  protected:
   AppTestBaseWithRegistryOverride(bool is_machine, bool use_strict_mock)
       : AppTestBase(is_machine, use_strict_mock),
@@ -113,10 +146,26 @@ class AppTestBaseWithRegistryOverride : public AppTestBase {
   }
 
   virtual void TearDown() {
+    RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueIsEnrolledToDomain);
+
     RestoreRegistryHives();
     RegKey::DeleteKey(hive_override_key_name_);
 
     AppTestBase::TearDown();
+  }
+
+  bool IsDomain() {
+    return GetParam();
+  }
+
+  void SetPolicy(const CString& policy, DWORD value) {
+    EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                      kRegValueIsEnrolledToDomain,
+                                      IsDomain() ? 1UL : 0UL));
+
+    EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                                      policy,
+                                      value));
   }
 
   CString hive_override_key_name_;

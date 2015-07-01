@@ -27,35 +27,54 @@ TEST(VistaUtilTest, IsUserAdmin) {
   EXPECT_EQ(is_admin, IsUserAdmin());
 }
 
-// Tests the code returns true if Vista or later.
-TEST(VistaUtilTest, IsUACMaybeOn) {
+TEST(VistaUtilTest, IsUACOn) {
   if (!IsVistaOrLater()) {
     std::wcout << _T("\tSkipping test because not running on Vista or later.")
                << std::endl;
     return;
   }
 
-  bool is_uac_maybe_on = false;
+  bool is_uac_on(false);
+  EXPECT_HRESULT_SUCCEEDED(IsUACOn(&is_uac_on));
 
-  bool is_split_token = false;
-  if (SUCCEEDED(IsUserRunningSplitToken(&is_split_token)) && is_split_token) {
-    is_uac_maybe_on = true;
-  } else {
-    const TCHAR* key_name = _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\")
-                            _T("CurrentVersion\\Policies\\System");
+  const TCHAR* key_name = _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\")
+                          _T("CurrentVersion\\Policies\\System");
 
-    DWORD enable_lua = 0;
-    is_uac_maybe_on =
-        FAILED(RegKey::GetValue(key_name, _T("EnableLUA"), &enable_lua)) ||
-        enable_lua;
-  }
+  DWORD enable_lua = 0;
+  bool lua_indicates_uac_on =
+      FAILED(RegKey::GetValue(key_name, _T("EnableLUA"), &enable_lua)) ||
+      enable_lua;
 
-  EXPECT_EQ(is_uac_maybe_on, IsUACMaybeOn());
+  EXPECT_EQ(lua_indicates_uac_on, is_uac_on);
 }
 
-TEST(VistaUtilTest, IsElevatedWithUACMaybeOn) {
-  EXPECT_EQ(IsUserAdmin() && IsVistaOrLater() && IsUACMaybeOn(),
-            IsElevatedWithUACMaybeOn());
+TEST(VistaUtilTest, IsElevatedWithUACOn) {
+  bool is_elevated_with_uac_on(false);
+  VERIFY1(SUCCEEDED(vista_util::IsElevatedWithUACOn(&is_elevated_with_uac_on)));
+  EXPECT_EQ(IsElevatedWithEnableLUAOn(), is_elevated_with_uac_on);
+}
+
+TEST(VistaUtilTest, IsEnableLUAOn) {
+  if (!IsVistaOrLater()) {
+    std::wcout << _T("\tSkipping test because not running on Vista or later.")
+               << std::endl;
+    return;
+  }
+
+  const TCHAR* key_name = _T("HKLM\\SOFTWARE\\Microsoft\\Windows\\")
+                          _T("CurrentVersion\\Policies\\System");
+
+  DWORD enable_lua = 0;
+  bool is_enable_lua_on =
+      FAILED(RegKey::GetValue(key_name, _T("EnableLUA"), &enable_lua)) ||
+      enable_lua;
+
+  EXPECT_EQ(is_enable_lua_on, IsEnableLUAOn());
+}
+
+TEST(VistaUtilTest, IsElevatedWithEnableLUAOn) {
+  EXPECT_EQ(IsUserAdmin() && IsVistaOrLater() && IsEnableLUAOn(),
+            IsElevatedWithEnableLUAOn());
 }
 
 }  // namespace vista_util

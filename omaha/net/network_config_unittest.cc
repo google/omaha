@@ -18,13 +18,11 @@
 #include <algorithm>
 #include <cstring>
 #include "base/basictypes.h"
-#include "omaha/base/module_utils.h"
+#include "omaha/base/app_util.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
-#include "omaha/net/cup_request.h"
-#include "omaha/net/cup_utils.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/network_config.h"
 #include "omaha/testing/unit_test.h"
@@ -68,41 +66,6 @@ TEST_F(NetworkConfigTest, GetAccessType) {
   config.proxy = _T("foo");
   EXPECT_EQ(NetworkConfig::GetAccessType(config),
             WINHTTP_ACCESS_TYPE_NAMED_PROXY);
-}
-
-TEST_F(NetworkConfigTest, CupCredentials) {
-  NetworkConfig* network_config = NULL;
-  EXPECT_HRESULT_SUCCEEDED(
-      NetworkConfigManager::Instance().GetUserNetworkConfig(&network_config));
-  EXPECT_HRESULT_SUCCEEDED(network_config->SetCupCredentials(NULL));
-
-  CupCredentials cup_credentials1;
-  EXPECT_HRESULT_FAILED(network_config->GetCupCredentials(&cup_credentials1));
-
-  // Start with some random bytes. Persist them as sk and as B64-encoded c.
-  // Read back and verify they match.
-  uint8 data[20] = {0};
-  EXPECT_TRUE(GenRandom(data, arraysize(data)));
-
-  const uint8* first = data;
-  const uint8* last  = data + arraysize(data);
-  cup_credentials1.sk.insert(cup_credentials1.sk.begin(), first, last);
-  cup_credentials1.c = cup_utils::B64Encode(data, arraysize(data));
-
-  EXPECT_HRESULT_SUCCEEDED(
-      network_config->SetCupCredentials(&cup_credentials1));
-
-  CupCredentials cup_credentials2;
-  EXPECT_HRESULT_SUCCEEDED(
-      network_config->GetCupCredentials(&cup_credentials2));
-  EXPECT_EQ(cup_credentials1.sk.size(), cup_credentials2.sk.size());
-  EXPECT_TRUE(memcmp(&cup_credentials1.sk.front(),
-                     &cup_credentials2.sk.front(),
-                     cup_credentials1.sk.size()) == 0);
-  EXPECT_STREQ(cup_credentials1.c, cup_credentials2.c);
-
-  EXPECT_HRESULT_SUCCEEDED(network_config->SetCupCredentials(NULL));
-  EXPECT_HRESULT_FAILED(network_config->GetCupCredentials(&cup_credentials1));
 }
 
 TEST_F(NetworkConfigTest, JoinStrings) {
@@ -228,11 +191,10 @@ TEST_F(NetworkConfigTest, ConfigurationOverride) {
 }
 
 TEST_F(NetworkConfigTest, GetProxyForUrlLocal) {
-  TCHAR module_directory[MAX_PATH] = {0};
-  ASSERT_TRUE(GetModuleDirectory(NULL, module_directory));
-  CString pac_file_path;
-  pac_file_path.Format(_T("%s\\unittest_support\\localproxytest.pac"),
-                       module_directory);
+  CString pac_file_path = app_util::GetModuleDirectory(NULL);
+  ASSERT_FALSE(pac_file_path.IsEmpty());
+  pac_file_path.Append(_T("\\unittest_support\\localproxytest.pac"));
+  ASSERT_TRUE(::PathFileExists(pac_file_path));
 
   HttpClient::ProxyInfo proxy_info = {};
 
@@ -260,51 +222,6 @@ TEST_F(NetworkConfigTest, GetProxyForUrlLocal) {
   EXPECT_EQ(WINHTTP_ACCESS_TYPE_NO_PROXY, proxy_info.access_type);
   EXPECT_EQ(NULL, proxy_info.proxy);
   EXPECT_EQ(NULL, proxy_info.proxy_bypass);
-}
-
-class NetworkConfigManagerTest : public testing::Test {
- protected:
-  NetworkConfigManagerTest() {}
-
-  static void SetUpTestCase() {}
-
-  static void TearDownTestCase() {}
-
-  virtual void SetUp() {
-    NetworkConfigManager::Instance().ClearCupCredentials();
-  }
-
-  virtual void TearDown() {
-    NetworkConfigManager::Instance().ClearCupCredentials();
-  }
-};
-
-TEST_F(NetworkConfigManagerTest, CupCredentials) {
-  NetworkConfigManager& ncm(NetworkConfigManager::Instance());
-
-  CupCredentials cup_credentials;
-  EXPECT_EQ(E_INVALIDARG, ncm.SetCupCredentials(cup_credentials));
-
-  ncm.ClearCupCredentials();
-
-  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_NOT_FOUND),
-            ncm.GetCupCredentials(&cup_credentials));
-
-  const int kKeySizeBytes = 16;
-  cup_credentials.sk.resize(kKeySizeBytes);
-  EXPECT_TRUE(GenRandom(&cup_credentials.sk.front(),
-                         cup_credentials.sk.size()));
-  cup_credentials.c = "a cookie";
-
-  EXPECT_HRESULT_SUCCEEDED(ncm.SetCupCredentials(cup_credentials));
-
-  CupCredentials actual_cup_credentials;
-  EXPECT_HRESULT_SUCCEEDED(ncm.GetCupCredentials(&actual_cup_credentials));
-
-  EXPECT_TRUE(std::equal(actual_cup_credentials.sk.begin(),
-                         actual_cup_credentials.sk.end(),
-                         cup_credentials.sk.begin()));
-  EXPECT_STREQ(actual_cup_credentials.c, cup_credentials.c);
 }
 
 }  // namespace omaha

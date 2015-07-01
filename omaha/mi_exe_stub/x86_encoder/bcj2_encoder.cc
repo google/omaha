@@ -87,6 +87,8 @@ int GetIndex(uint8 byte0, uint8 byte1) {
 
 }  // namespace
 
+// Conversions from signed char to uint8/unsigned char are preserving the
+// bit pattern, which is the desired behavior for this implementation.
 bool Bcj2Encode(const std::string& input,
                 std::string* main_output,
                 std::string* call_output,
@@ -141,11 +143,11 @@ bool Bcj2Encode(const std::string& input,
 
       uint8 next_byte = input[input_position + 4];
       uint32 src =
-        static_cast<uint32>(next_byte) << 24 |
-        static_cast<uint32>(input[input_position + 3]) << 16 |
-        static_cast<uint32>(input[input_position + 2]) << 8 |
-        input[input_position + 1];
-      uint32 dst = input_position + src + 5;
+        static_cast<uint8>(next_byte) << 24 |
+        static_cast<uint8>(input[input_position + 3]) << 16 |
+        static_cast<uint8>(input[input_position + 2]) << 8 |
+        static_cast<uint8>(input[input_position + 1]);
+      size_t dst = input_position + src + 5;
 
       uint32 index = GetIndex(previous_byte, byte);
       if (dst < input.size()) {

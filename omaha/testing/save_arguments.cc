@@ -60,8 +60,8 @@ void DoUnitTestHelpers() {
   // The following code adapted from mi.cpp allows unit test to verify that the
   // executable file still exists and has not been deleted after the process
   // is created.
-  TCHAR file_name[MAX_PATH] = {0};
-  if (!::GetModuleFileName(NULL, file_name, MAX_PATH)) {
+  CString file_name = omaha::app_util::GetModulePath(NULL);
+  if (file_name.IsEmpty()) {
     HandleWin32ErrorAndExit(_T("GetModuleFileName"));
   }
   DWORD handle = 0;

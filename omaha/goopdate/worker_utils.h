@@ -36,6 +36,7 @@ bool FormatMessageForNetworkError(HRESULT error,
 
 // Adds http request details to the event log.
 void AddHttpRequestDataToEventLog(HRESULT hr,
+                                  HRESULT ssl_hr,
                                   int http_status_code,
                                   const CString& http_trace,
                                   bool is_machine);

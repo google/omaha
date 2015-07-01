@@ -57,33 +57,34 @@ class CommandLineParser {
 
   // TODO(Omaha): Name these methods "Required".
   // Gets the number of required switches in the parsed command line.
-  int GetSwitchCount() const;
+  size_t GetSwitchCount() const;
 
   // Returns the required switch at a particular index.
-  HRESULT GetSwitchNameAtIndex(int index, CString* switch_name) const;
+  HRESULT GetSwitchNameAtIndex(size_t index, CString* switch_name) const;
 
   // Returns true if a required switch with the name switch_name is found.
   bool HasSwitch(const CString& switch_name) const;
 
   // Returns the number of required arguments for required switch switch_name.
   HRESULT GetSwitchArgumentCount(const CString& switch_name,
-                                 int* count) const;
+                                 size_t* count) const;
 
   // Returns the value of a required switch argument at the specified offset.
   HRESULT GetSwitchArgumentValue(const CString& switch_name,
-                                 int argument_index,
+                                 size_t argument_index,
                                  CString* argument_value) const;
 
   // Functions that have the same functionality as the above functions,
   // except they operate on the optional switches.
-  int GetOptionalSwitchCount() const;
+  size_t GetOptionalSwitchCount() const;
   bool HasOptionalSwitch(const CString& switch_name) const;
-  HRESULT GetOptionalSwitchNameAtIndex(int index, CString* switch_name) const;
+  HRESULT GetOptionalSwitchNameAtIndex(size_t index,
+                                       CString* switch_name) const;
   HRESULT GetOptionalSwitchArgumentCount(const CString& switch_name,
-                                         int* count) const;
+                                         size_t* count) const;
   HRESULT GetOptionalSwitchArgumentValue(
       const CString& switch_name,
-      int argument_index,
+      size_t argument_index,
       CString* argument_value) const;
 
  private:

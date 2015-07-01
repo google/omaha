@@ -26,6 +26,7 @@
 // standard libraries.
 
 #include "omaha/base/serializable_object.h"
+#include <intsafe.h>
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 
@@ -36,7 +37,7 @@ bool SerializableObject::Serialize(std::vector<byte>* data) const {
   ASSERT(data, (_T("")));
 
   // Estimate how much memory we need
-  int size = data->size();
+  size_t size = data->size();
   for (size_t i = 0; i < members_.size(); ++i)
     size += (members_[i].size > 0) ? members_[i].size : sizeof(int);
 
@@ -47,7 +48,7 @@ bool SerializableObject::Serialize(std::vector<byte>* data) const {
   for (size_t i = 0; i < members_.size(); ++i) {
     switch (members_[i].type) {
       case SERIALIZABLE_VALUE_TYPE: {
-        int pos = data->size();
+        size_t pos = data->size();
         data->resize(data->size() + members_[i].size);
         memcpy(&(*data)[pos], members_[i].ptr, members_[i].size);
         break;
@@ -122,13 +123,12 @@ bool SerializableObject::Serialize(std::vector<byte>* data) const {
 
 // Serialize the size and count values
 void SerializableObject::SerializeSizeAndCount(std::vector<byte>* data,
-                                               int size,
-                                               int count) const {
+                                               size_t size,
+                                               size_t count) const {
   ASSERT(data, (_T("")));
-  ASSERT(size >= 0, (_T("")));
 
   // Get current size
-  int pos = data->size();
+  const size_t pos = data->size();
 
   // Adjust the size of the data buffer
   data->resize(data->size() + 2 * sizeof(int));
@@ -154,10 +154,9 @@ void SerializableObject::SerializeSizeAndCount(std::vector<byte>* data,
 //   count:     the number of the elements in the list
 void SerializableObject::SerializeValueList(std::vector<byte>* ser_data,
                                             const byte* raw_data,
-                                            int size,
-                                            int count) const {
+                                            size_t size,
+                                            size_t count) const {
   ASSERT(ser_data, (_T("")));
-  ASSERT(size > 0, (_T("")));
 
   // Serialize the size and count values
   SerializeSizeAndCount(ser_data, size, count);
@@ -165,7 +164,7 @@ void SerializableObject::SerializeValueList(std::vector<byte>* ser_data,
   // Push data
   if (count > 0) {
     // Get current size
-    int pos = ser_data->size();
+    const size_t pos = ser_data->size();
 
     // Adjust the size of the data buffer
     ser_data->resize(ser_data->size() + count * size);
@@ -179,9 +178,8 @@ void SerializableObject::SerializeValueList(std::vector<byte>* ser_data,
 }
 
 // Deserialize
-bool SerializableObject::Deserialize(byte* data, int size, uint32 version) {
+bool SerializableObject::Deserialize(byte* data, size_t size, uint32 version) {
   ASSERT(data, (_T("")));
-  ASSERT(size > 0, (_T("")));
 
   byte* tail = data + size;
   byte** data_ptr = &data;
@@ -199,10 +197,9 @@ bool SerializableObject::Deserialize(byte* data, int size, uint32 version) {
 
 // Deserialize helper
 bool SerializableObject::DeserializeHelper(byte** data,
-                                           int size,
+                                           size_t size,
                                            uint32 version) {
   ASSERT(data, (_T("")));
-  ASSERT(size > 0, (_T("")));
 
   byte* tail = *data + size;
 
@@ -233,8 +230,12 @@ bool SerializableObject::DeserializeHelper(byte** data,
           return false;
         CString* s = reinterpret_cast<CString*>(members_[i].ptr);
         if (deser_data.size() != 0) {
+          const size_t length = deser_data.size() / members_[i].size;
+          if (length > INT_MAX) {
+            return false;
+          }
           s->SetString(reinterpret_cast<const TCHAR*>(&deser_data.front()),
-                       deser_data.size() / members_[i].size);
+                       static_cast<int>(length));
         } else {
           s->SetString(_T(""));
         }
@@ -261,10 +262,10 @@ bool SerializableObject::DeserializeHelper(byte** data,
       case SERIALIZABLE_VECTOR | SERIALIZABLE_CSTRING: {
         std::vector<CString>* v =
               reinterpret_cast<std::vector<CString>*>(members_[i].ptr);
-        int count = 0;
+        size_t count = 0;
         if (!DeserializeSizeAndCount(&count, 1, data, tail - *data))
           return false;
-        for (int j = 0; j < count; ++j) {
+        for (size_t j = 0; j < count; ++j) {
           std::vector<byte> deser_data;
           if (!DeserializeValueList(&deser_data,
                                     members_[i].size,
@@ -274,8 +275,12 @@ bool SerializableObject::DeserializeHelper(byte** data,
 
           CString s;
           if (deser_data.size() != 0) {
+            const size_t length = deser_data.size() / members_[i].size;
+            if (length > INT_MAX) {
+              return false;
+            }
             s = CString(reinterpret_cast<const TCHAR*>(&deser_data.front()),
-                        deser_data.size() / members_[i].size);
+                        static_cast<int>(length));
           }
           v->push_back(s);
         }
@@ -301,12 +306,11 @@ bool SerializableObject::DeserializeHelper(byte** data,
 }
 
 // Serialize the size and count values
-bool SerializableObject::DeserializeSizeAndCount(int* count,
-                                                 int size,
+bool SerializableObject::DeserializeSizeAndCount(size_t* count,
+                                                 size_t size,
                                                  byte** ser_data,
-                                                 int ser_size) const {
+                                                 size_t ser_size) const {
   ASSERT(ser_data, (_T("")));
-  ASSERT(count, (_T("")));
 
   byte* ser_tail = *ser_data + ser_size;
 
@@ -320,7 +324,7 @@ bool SerializableObject::DeserializeSizeAndCount(int* count,
 
   // Get size
   // If the passing size is 0, skip the size check
-  int size2 = *(reinterpret_cast<const int*>(*ser_data));
+  size_t size2 = *(reinterpret_cast<const int*>(*ser_data));
   *ser_data += sizeof(int);
   if (size && size != size2)
     return false;
@@ -340,16 +344,15 @@ bool SerializableObject::DeserializeSizeAndCount(int* count,
 //   raw_data:  pointer to the raw data to be serialized
 //   ser_size:  size of the serization data
 bool SerializableObject::DeserializeValueList(std::vector<byte>* raw_data,
-                                              int size,
+                                              size_t size,
                                               byte** ser_data,
-                                              int ser_size) {
+                                              size_t ser_size) {
   ASSERT(raw_data, (_T("")));
-  ASSERT(ser_data, (_T("")));
 
   byte* ser_tail = *ser_data + ser_size;
 
   // Deserialize the size and count values
-  int count = 0;
+  size_t count = 0;
   bool ret = DeserializeSizeAndCount(&count, size, ser_data, ser_size);
   if (!ret)
     return false;

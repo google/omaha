@@ -103,6 +103,10 @@ CString JobStateToString(BG_JOB_STATE job_state);
 // Converts a BITS auth scheme to a string.
 CString BitsAuthSchemeToString(int auth_scheme);
 
+// Gets the URL currently being downloaded.  This may be different from the
+// originally requested URL if it responded with a 302 redirect.
+HRESULT GetFirstFileInJob(IBackgroundCopyJob* job, CString* url_out);
+
 }   // namespace omaha
 
 #endif  // OMAHA_NET_BITS_UTILS_H__

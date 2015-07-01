@@ -23,7 +23,7 @@
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder">
-        <Directory Id="GoogleProgramDir" Name="Google">
+        <Directory Id="GoogleProgramDir" Name="OmahaCompanyName">
           <Directory Id="UpdateDir" Name="Update">
 
             <Component Id="MainComponent" Guid="717B7059-A988-492f-AF1B-DCF70BE809AB">
@@ -32,7 +32,7 @@
               <File Id="RequiredFile" Name="RequiredFile.txt" DiskId="1" Source="$(var.RequiredFile)" Vital="yes"/>
 <?endif?>
               <!-- Cannot have an empty component -->
-              <RegistryValue Id="NonEmptyComponent" Action="write" Root="HKLM" Key="SOFTWARE\Google\Update" Name="MsiStubRun" Type="integer" Value="0" />
+              <RegistryValue Id="NonEmptyComponent" Action="write" Root="HKLM" Key="SOFTWARE\OmahaCompanyName\Update" Name="MsiStubRun" Type="integer" Value="0" />
             </Component>
 
           </Directory>

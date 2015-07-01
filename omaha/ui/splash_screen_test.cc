@@ -23,8 +23,11 @@
 #include <windows.h>
 #include "omaha/base/app_util.h"
 #include "omaha/base/scoped_any.h"
+#include "omaha/base/smart_handle.h"
+#include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/goopdate/resource_manager.h"
+#include "omaha/testing/resource.h"
 #include "omaha/testing/unit_test.h"
 #include "omaha/ui/splash_screen.h"
 
@@ -38,6 +41,10 @@ class SplashScreenTest : public testing::Test {
     CString resource_dir = app_util::GetModuleDirectory(NULL);
     EXPECT_HRESULT_SUCCEEDED(
         ResourceManager::Create(false, resource_dir, _T("en")));
+
+    omaha_dll.Attach(::LoadLibraryEx(
+        kOmahaDllName, NULL, LOAD_LIBRARY_AS_DATAFILE));
+    EXPECT_TRUE(omaha_dll.IsValid());
   }
   static void TearDownTestCase() {
     ResourceManager::Delete();
@@ -47,7 +54,24 @@ class SplashScreenTest : public testing::Test {
     ASSERT_TRUE(splash_screen.IsWindow());
     ::PostMessage(splash_screen.m_hWnd, WM_CLOSE, 0, 0);
   }
+
+  static void FormatMessage(DWORD message_id, SplashScreen* splash_screen) {
+    ASSERT_TRUE(splash_screen);
+    CString text;
+    text.LoadString(message_id);
+    if (String_Contains(text, _T("%1"))) {
+      text.FormatMessage(message_id,
+                         _T("Parameter One"),
+                         _T("Parameter Two"),
+                         _T("Parameter Three"));
+    }
+    splash_screen->text_ = text;
+  }
+
+  static AutoLibrary omaha_dll;
 };
+
+AutoLibrary SplashScreenTest::omaha_dll;
 
 TEST_F(SplashScreenTest, SplashScreen) {
   SplashScreen splash_screen(NULL);
@@ -74,6 +98,106 @@ TEST_F(SplashScreenTest, SplashScreen_PostCloseMessage) {
   ::Sleep(100);
   splash_screen.Dismiss();
 }
+
+/*
+// The following tests take too long to run. Commenting it out for the moment.
+TEST_F(SplashScreenTest, RenderResourceStrings_en) {
+  // The last message ID needs to be kept in sync with goopdateres.grh.
+  for (DWORD message_id = IDS_FRIENDLY_COMPANY_NAME;
+       message_id <= IDS_PROXY_PROMPT_MESSAGE;
+       ++message_id) {
+    SplashScreen splash_screen(NULL);
+    FormatMessage(message_id, &splash_screen);
+    splash_screen.Show();
+    ::Sleep(200);
+    splash_screen.Dismiss();
+  }
+}
+
+TEST_F(SplashScreenTest, RenderResourceStrings) {
+  if (!ShouldRunLargeTest()) {
+    return;
+  }
+
+  const TCHAR * const langs[] = {
+    _T("am"),
+    _T("ar"),
+    _T("bg"),
+    _T("bn"),
+    _T("ca"),
+    _T("cs"),
+    _T("da"),
+    _T("de"),
+    _T("el"),
+    _T("en"),
+    _T("en-GB"),
+    _T("es"),
+    _T("es-419"),
+    _T("et"),
+    _T("fa"),
+    _T("fi"),
+    _T("fil"),
+    _T("fr"),
+    _T("gu"),
+    _T("hi"),
+    _T("hr"),
+    _T("hu"),
+    _T("id"),
+    _T("is"),
+    _T("it"),
+    _T("iw"),
+    _T("ja"),
+    _T("kn"),
+    _T("ko"),
+    _T("lt"),
+    _T("lv"),
+    _T("ml"),
+    _T("mr"),
+    _T("ms"),
+    _T("nl"),
+    _T("no"),
+    _T("pl"),
+    _T("pt-BR"),
+    _T("pt-PT"),
+    _T("ro"),
+    _T("ru"),
+    _T("sk"),
+    _T("sl"),
+    _T("sr"),
+    _T("sv"),
+    _T("sw"),
+    _T("ta"),
+    _T("te"),
+    _T("th"),
+    _T("tr"),
+    _T("uk"),
+    _T("ur"),
+    _T("vi"),
+    _T("zh-CN"),
+    _T("zh-TW"),
+  };
+
+  const CString resource_dir =
+      app_util::GetModuleDirectory(NULL) + _T("\\..\\staging");
+  for (size_t lang_index = 0; lang_index < arraysize(langs); ++lang_index) {
+    ResourceManager::Delete();
+
+    ASSERT_SUCCEEDED(
+        ResourceManager::Create(false, resource_dir, langs[lang_index]));
+
+    // The last message ID needs to be kept in sync with goopdateres.grh.
+    for (DWORD message_id = IDS_FRIENDLY_COMPANY_NAME;
+         message_id <= IDS_PROXY_PROMPT_MESSAGE;
+         ++message_id) {
+      SplashScreen splash_screen(NULL);
+      FormatMessage(message_id, &splash_screen);
+      splash_screen.Show();
+      ::Sleep(200);
+      splash_screen.Dismiss();
+    }
+  }
+}
+*/
 
 }   // namespace omaha
 

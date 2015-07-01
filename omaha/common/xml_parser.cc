@@ -23,6 +23,7 @@
 #include "omaha/base/utils.h"
 #include "omaha/base/xml_utils.h"
 #include "omaha/common/config_manager.h"
+#include "omaha/common/const_group_policy.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/update_response.h"
@@ -154,7 +155,7 @@ CString ConvertProcessorArchitectureToString(DWORD arch) {
     default:
       ASSERT1(false);
       return xml::value::kArchUnknown;
-  };
+  }
 }
 
 // The ElementHandler classes should also be in an anonymous namespace but
@@ -257,7 +258,46 @@ class AppElementHandler : public ElementHandler {
       }
     }
 
+    hr = ReadCohortAttributes(node, &app);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
     response->apps.push_back(app);
+    return S_OK;
+  }
+
+  HRESULT ReadCohortAttributes(IXMLDOMNode* node, response::App* app) {
+    ASSERT1(node);
+    ASSERT1(app);
+
+    if (HasAttribute(node, xml::attribute::kCohort)) {
+      HRESULT hr = ReadStringAttribute(node,
+                                       xml::attribute::kCohort,
+                                       &app->cohort);
+      if (FAILED(hr)) {
+        return hr;
+      }
+    }
+
+    if (HasAttribute(node, xml::attribute::kCohortHint)) {
+      HRESULT hr = ReadStringAttribute(node,
+                                       xml::attribute::kCohortHint,
+                                       &app->cohort_hint);
+      if (FAILED(hr)) {
+        return hr;
+      }
+    }
+
+    if (HasAttribute(node, xml::attribute::kCohortName)) {
+      HRESULT hr = ReadStringAttribute(node,
+                                       xml::attribute::kCohortName,
+                                       &app->cohort_name);
+      if (FAILED(hr)) {
+        return hr;
+      }
+    }
+
     return S_OK;
   }
 };
@@ -324,11 +364,9 @@ class ManifestElementHandler : public ElementHandler {
   virtual HRESULT Parse(IXMLDOMNode* node, response::Response* response) {
     InstallManifest& install_manifest =
         response->apps.back().update_check.install_manifest;
-    // TODO(omaha3): Uncomment when version becomes a required value for
-    // version 2 configs.
-    /*return*/ ReadStringAttribute(node,
-                               xml::attribute::kVersion,
-                               &install_manifest.version);
+    ReadStringAttribute(node,
+                        xml::attribute::kVersion,
+                        &install_manifest.version);
     return S_OK;
   }
 };
@@ -372,9 +410,12 @@ class PackageElementHandler : public ElementHandler {
     }
 
     hr = ReadStringAttribute(node,
-                             xml::attribute::kHash,
-                             &install_package.hash);
-    if (FAILED(hr)) {
+                             xml::attribute::kHashSha256,
+                             &install_package.hash_sha256);
+    HRESULT hr2 = ReadStringAttribute(node,
+                                      xml::attribute::kHash,
+                                      &install_package.hash_sha1);
+    if (FAILED(hr) && FAILED(hr2)) {
       return hr;
     }
 
@@ -460,32 +501,31 @@ class DataElementHandler : public ElementHandler {
       return hr;
     }
 
-    CString data_name;
+    CString& data_name = data.name;
     hr = ReadStringAttribute(node, xml::attribute::kName, &data_name);
     if (FAILED(hr)) {
       return hr;
     }
 
-    if (xml::value::kInstallData != data_name) {
-      return E_UNEXPECTED;
-    }
-
-    hr = ReadStringAttribute(node,
-                             xml::attribute::kIndex,
-                             &data.install_data_index);
-    if (FAILED(hr)) {
-      return hr;
-    }
-
-    if (data.status != kResponseStatusOkValue) {
-      // There is no data, so do not try to read it.
+    if (data_name == xml::value::kInstallData) {
+      hr = ReadStringAttribute(node,
+                               xml::attribute::kIndex,
+                               &data.install_data_index);
+      if (FAILED(hr)) {
+        return hr;
+      }
+      if (data.status == xml::response::kStatusOkValue) {
+        return ReadStringValue(node, &data.install_data);
+      }
+      return S_OK;
+    } else if (data_name == xml::value::kUntrusted) {
       return S_OK;
     }
 
-    return ReadStringValue(node, &data.install_data);
+    ASSERT(false, (data_name));
+    return E_UNEXPECTED;
   }
 };
-
 
 // Parses 'ping'.
 class PingElementHandler : public ElementHandler {
@@ -496,11 +536,10 @@ class PingElementHandler : public ElementHandler {
   virtual HRESULT Parse(IXMLDOMNode* node, response::Response* response) {
     response::Ping& ping = response->apps.back().ping;
     ReadStringAttribute(node, xml::attribute::kStatus, &ping.status);
-    ASSERT1(ping.status == kResponseStatusOkValue);
+    ASSERT1(ping.status == xml::response::kStatusOkValue);
     return S_OK;
   }
 };
-
 
 // Parses 'event'.
 class EventElementHandler : public ElementHandler {
@@ -511,7 +550,7 @@ class EventElementHandler : public ElementHandler {
   virtual HRESULT Parse(IXMLDOMNode* node, response::Response* response) {
     response::Event event;
     ReadStringAttribute(node, xml::attribute::kStatus, &event.status);
-    ASSERT1(event.status == kResponseStatusOkValue);
+    ASSERT1(event.status == xml::response::kStatusOkValue);
     response::App& app = response->apps.back();
     app.events.push_back(event);
     return S_OK;
@@ -528,6 +567,16 @@ class DayStartElementHandler : public ElementHandler {
     ReadIntAttribute(node,
                      xml::attribute::kElapsedSeconds,
                      &response->day_start.elapsed_seconds);
+
+    HRESULT hr = ReadIntAttribute(node,
+                                  xml::attribute::kElapsedDays,
+                                  &response->day_start.elapsed_days);
+    if (FAILED(hr)) {
+      CORE_LOG(LW, (_T("[DayStartElementHandler][hr=%#x]"), hr));
+      return hr;
+    }
+    ASSERT1(response->day_start.elapsed_days >= kMinDaysSinceDatum);
+    ASSERT1(response->day_start.elapsed_days <= kMaxDaysSinceDatum);
     return S_OK;
   }
 };
@@ -546,7 +595,7 @@ namespace attributev2 {
 // capital 'V'.
 const TCHAR* const kVersionProperCased = _T("Version");
 
-}  // namespace attribute
+}  // namespace attributev2
 
 namespace value {
 
@@ -588,7 +637,7 @@ class UpdateCheckElementHandler : public ElementHandler {
       return hr;
     }
 
-    if (update_check.status.CompareNoCase(kResponseStatusOkValue)) {
+    if (update_check.status.CompareNoCase(xml::response::kStatusOkValue)) {
       return S_OK;
     }
 
@@ -628,7 +677,7 @@ class UpdateCheckElementHandler : public ElementHandler {
     }
     hr = ReadStringAttribute(node,
                              xml::attribute::kHash,
-                             &install_package.hash);
+                             &install_package.hash_sha1);
     if (FAILED(hr)) {
       return hr;
     }
@@ -804,13 +853,16 @@ HRESULT XmlParser::BuildRequestElement() {
 
   // Add attributes to the top element:
   // * protocol - protocol version
-  // * version - Omaha version
+  // * version - Omaha (goopdate.dll) version
+  // * shell_version - Omaha shell (GoogleUpdate.exe) version
   // * ismachine - is machine Omaha
   // * installsource - install source
   // * originurl - origin url, primarily set by Update3Web plugins
   // * testsource - test source
   // * requestid - unique request ID
   // * periodoverridesec - override value for update check frequency
+  // * dedup - the algorithm used to dedup users
+  // * dlpref - the GPO settings for download url preference
 
   hr = AddXMLAttributeNode(element,
                            kXmlNamespace,
@@ -824,6 +876,14 @@ HRESULT XmlParser::BuildRequestElement() {
                            kXmlNamespace,
                            xml::attribute::kVersion,
                            request_->omaha_version);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kShellVersion,
+                           request_->omaha_shell_version);
   if (FAILED(hr)) {
     return hr;
   }
@@ -904,6 +964,29 @@ HRESULT XmlParser::BuildRequestElement() {
     }
   }
 
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kDedup,
+                           xml::value::kClientRegulated);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (request_->dlpref == kDownloadPreferenceCacheable) {
+    hr = AddXMLAttributeNode(element,
+                             kXmlNamespace,
+                             xml::attribute::kDlPref,
+                             xml::value::kCacheable);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  hr = BuildHwElement(element);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
   hr = BuildOsElement(element);
   if (FAILED(hr)) {
     return hr;
@@ -923,6 +1006,90 @@ HRESULT XmlParser::BuildRequestElement() {
   }
 
   hr = document_->putref_documentElement(element_node);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT XmlParser::BuildHwElement(IXMLDOMNode* parent_node) {
+  CORE_LOG(L3, (_T("[XmlParser::BuildHwElement]")));
+
+  ASSERT1(parent_node);
+  ASSERT1(request_);
+
+  CComPtr<IXMLDOMNode> element;
+  HRESULT hr = CreateElementNode(xml::element::kHw, _T(""), &element);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kPhysMemory,
+                           itostr(request_->hw.physmemory));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kSse,
+                           request_->hw.has_sse ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kSse2,
+                           request_->hw.has_sse2 ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kSse3,
+                           request_->hw.has_sse3 ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kSsse3,
+                           request_->hw.has_ssse3 ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kSse41,
+                           request_->hw.has_sse41 ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kSse42,
+                           request_->hw.has_sse42 ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kAvx,
+                           request_->hw.has_avx ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = parent_node->appendChild(element, NULL);
   if (FAILED(hr)) {
     return hr;
   }
@@ -1023,6 +1190,11 @@ HRESULT XmlParser::BuildAppElement(IXMLDOMNode* parent_node) {
       return hr;
     }
 
+    hr = AddAppDefinedAttributes(app, element);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
     if (!app.ap.IsEmpty()) {
       hr = AddXMLAttributeNode(element,
                                kXmlNamespace,
@@ -1083,6 +1255,23 @@ HRESULT XmlParser::BuildAppElement(IXMLDOMNode* parent_node) {
       }
     }
 
+    // Three possible categories for value of DayOfInstall:
+    //   -1: it's a new installation.
+    //   0: unknown day of install. Probably it's a legacy app. Skip sending.
+    //   Positive number: will be adjusted to the first day of the install week.
+    //       (install cohort is weekly based).
+    if (app.day_of_install != 0) {
+      ASSERT1(app.day_of_install >= kMinDaysSinceDatum ||
+              app.day_of_install == -1);
+      hr = AddXMLAttributeNode(element,
+                               kXmlNamespace,
+                               xml::attribute::kInstallDate,
+                               itostr(app.day_of_install));
+      if (FAILED(hr)) {
+        return hr;
+      }
+    }
+
     if (!app.iid.IsEmpty() && app.iid != GuidToString(GUID_NULL)) {
       hr = AddXMLAttributeNode(element,
                                kXmlNamespace,
@@ -1091,6 +1280,11 @@ HRESULT XmlParser::BuildAppElement(IXMLDOMNode* parent_node) {
       if (FAILED(hr)) {
         return hr;
       }
+    }
+
+    hr = AddCohortAttributes(app, element);
+    if (FAILED(hr)) {
+      return hr;
     }
 
     hr = BuildUpdateCheckElement(app, element);
@@ -1114,6 +1308,66 @@ HRESULT XmlParser::BuildAppElement(IXMLDOMNode* parent_node) {
     }
 
     hr = parent_node->appendChild(element, NULL);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  return S_OK;
+}
+
+HRESULT XmlParser::AddAppDefinedAttributes(const request::App& app,
+                                           IXMLDOMNode* element) {
+  CORE_LOG(L3, (_T("[XmlParser::AddAppDefinedAttributes]")));
+
+  if (app.app_defined_attributes.empty()) {
+    return S_OK;
+  }
+
+  for (size_t i = 0; i < app.app_defined_attributes.size(); ++i) {
+    const CString& name(app.app_defined_attributes[i].first);
+    const CString& value(app.app_defined_attributes[i].second);
+
+    ASSERT1(String_StartsWith(name, xml::attribute::kAppDefinedPrefix, false));
+
+    HRESULT hr = AddXMLAttributeNode(element, kXmlNamespace, name, value);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  return S_OK;
+}
+
+HRESULT XmlParser::AddCohortAttributes(const request::App& app,
+                                       IXMLDOMNode* element) {
+  CORE_LOG(L3, (_T("[XmlParser::AddCohortAttributes]")));
+
+  if (!app.cohort.IsEmpty()) {
+    HRESULT hr = AddXMLAttributeNode(element,
+                                     kXmlNamespace,
+                                     xml::attribute::kCohort,
+                                     app.cohort);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (!app.cohort_hint.IsEmpty()) {
+    HRESULT hr = AddXMLAttributeNode(element,
+                                     kXmlNamespace,
+                                     xml::attribute::kCohortHint,
+                                     app.cohort_hint);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (!app.cohort_name.IsEmpty()) {
+    HRESULT hr = AddXMLAttributeNode(element,
+                                     kXmlNamespace,
+                                     xml::attribute::kCohortName,
+                                     app.cohort_name);
     if (FAILED(hr)) {
       return hr;
     }
@@ -1206,37 +1460,55 @@ HRESULT XmlParser::BuildDataElement(const request::App& app,
   ASSERT1(parent_node);
 
   // Create a DOM element only if there is a data object.
-  if (app.data.install_data_index.IsEmpty()) {
+  if (app.data.empty()) {
     return S_OK;
   }
 
-  ASSERT1(app.update_check.is_valid);
+  for (size_t i = 0; i != app.data.size(); ++i) {
+    CComPtr<IXMLDOMNode> element;
+    HRESULT hr = CreateElementNode(xml::element::kData, _T(""), &element);
+    if (FAILED(hr)) {
+      return hr;
+    }
 
-  CComPtr<IXMLDOMNode> element;
-  HRESULT hr = CreateElementNode(xml::element::kData, _T(""), &element);
-  if (FAILED(hr)) {
-    return hr;
-  }
+    const xml::request::Data& data = app.data[i];
 
-  hr = AddXMLAttributeNode(element,
-                           kXmlNamespace,
-                           xml::attribute::kName,
-                           xml::value::kInstallData);
-  if (FAILED(hr)) {
-    return hr;
-  }
+    hr = AddXMLAttributeNode(element,
+                             kXmlNamespace,
+                             xml::attribute::kName,
+                             data.name);
+    if (FAILED(hr)) {
+      return hr;
+    }
 
-  hr = AddXMLAttributeNode(element,
-                           kXmlNamespace,
-                           xml::attribute::kIndex,
-                           app.data.install_data_index);
-  if (FAILED(hr)) {
-    return hr;
-  }
+    const CString& install_data_index = data.install_data_index;
+    const CString& untrusted_data     = data.untrusted_data;
 
-  hr = parent_node->appendChild(element, NULL);
-  if (FAILED(hr)) {
-    return hr;
+    ASSERT1(install_data_index.IsEmpty() != untrusted_data.IsEmpty());
+
+    using xml::value::kInstall;
+    using xml::value::kUntrusted;
+
+    if (data.name == kInstall && !install_data_index.IsEmpty()) {
+      hr = AddXMLAttributeNode(element,
+                               kXmlNamespace,
+                               xml::attribute::kIndex,
+                               data.install_data_index);
+    } else if (data.name == kUntrusted && !untrusted_data.IsEmpty()) {
+      hr = element->put_text(CComBSTR(untrusted_data));
+    } else {
+      ASSERT1(false);
+      hr = E_UNEXPECTED;
+    }
+
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    hr = parent_node->appendChild(element, NULL);
+    if (FAILED(hr)) {
+      return hr;
+    }
   }
 
   return S_OK;
@@ -1247,14 +1519,16 @@ HRESULT XmlParser::BuildDidRunElement(const request::App& app,
   CORE_LOG(L3, (_T("[XmlParser::BuildDidRunElement]")));
   ASSERT1(parent_node);
 
-  bool was_active = app.ping.active == ACTIVE_RUN;
-  bool need_active = app.ping.active != ACTIVE_UNKNOWN;
-  bool has_sent_a_today = app.ping.days_since_last_active_ping == 0;
-  bool need_a = was_active && !has_sent_a_today;
-  bool need_r = app.ping.days_since_last_roll_call != 0;
+  const bool was_active = app.ping.active == ACTIVE_RUN;
+  const bool need_active = app.ping.active != ACTIVE_UNKNOWN;
+  const bool has_sent_a_today = app.ping.days_since_last_active_ping == 0;
+  const bool need_a = was_active && !has_sent_a_today;
+  const bool need_r = app.ping.days_since_last_roll_call != 0;
+  const bool need_ad = was_active && app.ping.day_of_last_activity != 0;
+  const bool need_rd = app.ping.day_of_last_roll_call != 0;
 
   // Create a DOM element only if the didrun object has actual state.
-  if (!need_active && !need_a && !need_r) {
+  if (!need_active && !need_a && !need_r && !need_ad && !need_rd) {
     return S_OK;
   }
 
@@ -1293,6 +1567,26 @@ HRESULT XmlParser::BuildDidRunElement(const request::App& app,
                              kXmlNamespace,
                              xml::attribute::kDaysSinceLastRollCall,
                              itostr(app.ping.days_since_last_roll_call));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (need_ad) {
+    hr = AddXMLAttributeNode(element,
+                             kXmlNamespace,
+                             xml::attribute::kDayOfLastActivity,
+                             itostr(app.ping.day_of_last_activity));
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (need_rd) {
+    hr = AddXMLAttributeNode(element,
+                             kXmlNamespace,
+                             xml::attribute::kDayOfLastRollCall,
+                             itostr(app.ping.day_of_last_roll_call));
     if (FAILED(hr)) {
       return hr;
     }
@@ -1340,13 +1634,15 @@ HRESULT XmlParser::DeserializeResponse(const std::vector<uint8>& buffer,
     return hr;
   }
 
-  xml_parser.response_ = &update_response->response_;
+  response::Response response;
+  xml_parser.response_ = &response;
 
   hr = xml_parser.Parse();
   if (FAILED(hr)) {
     return hr;
   }
 
+  update_response->response_ = response;
   return S_OK;
 }
 
@@ -1454,4 +1750,3 @@ HRESULT XmlParser::VisitElement(IXMLDOMNode* node) {
 }  // namespace xml
 
 }  // namespace omaha
-

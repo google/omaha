@@ -31,13 +31,13 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/module_utils.h"
 #include "omaha/base/path.h"
 #include "omaha/base/program_instance.h"
 #include "omaha/base/reactor.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/service_utils.h"
 #include "omaha/base/shutdown_handler.h"
+#include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/time.h"
 #include "omaha/base/user_info.h"
@@ -53,6 +53,8 @@
 #include "omaha/core/core_metrics.h"
 #include "omaha/core/scheduler.h"
 #include "omaha/core/system_monitor.h"
+#include "omaha/goopdate/app_command.h"
+#include "omaha/goopdate/app_command_configuration.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/goopdate/worker.h"
 #include "omaha/net/network_config.h"
@@ -69,8 +71,6 @@ Core::Core()
 
 Core::~Core() {
   CORE_LOG(L1, (_T("[Core::~Core]")));
-  scheduler_.reset(NULL);
-  system_monitor_.reset(NULL);
 }
 
 // We always return S_OK, because the core can be invoked from the system
@@ -108,7 +108,7 @@ bool Core::AreScheduledTasksHealthy() const {
       scheduled_task_utils::GetExitCodeGoopdateTaskUA(is_system_);
 
   if (ua_task_last_exit_code == SCHED_S_TASK_HAS_NOT_RUN &&
-      !ConfigManager::Is24HoursSinceInstall(is_system_)) {
+      !ConfigManager::Is24HoursSinceLastUpdate(is_system_)) {
     // Not 24 hours yet since install or update. Let us give the UA task the
     // benefit of the doubt, and assume all is well for right now.
     CORE_LOG(L3, (_T("[Core::AreScheduledTasksHealthy]")
@@ -127,7 +127,7 @@ bool Core::AreScheduledTasksHealthy() const {
 }
 
 bool Core::IsCheckingForUpdates() const {
-  if (!ConfigManager::Is24HoursSinceInstall(is_system_)) {
+  if (!ConfigManager::Is24HoursSinceLastUpdate(is_system_)) {
     CORE_LOG(L3, (_T("[Core::IsCheckingForUpdates]")
                   _T("[Not yet 24 hours since install/update]")));
     return true;
@@ -212,6 +212,12 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
     }
   }
 
+  // Check to see if the currently installed OS has changed, and if so, launch
+  // any defined app commands that are marked to auto run on an OS upgrade.
+  if (HasOSUpgraded()) {
+    LaunchAppCommandsOnOSUpgrade();
+  }
+
   if (!ShouldRunForever()) {
     return S_OK;
   }
@@ -225,22 +231,22 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   MSG msg = {0};
   ::PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
 
-  reactor_.reset(new Reactor);
-  shutdown_handler_.reset(new ShutdownHandler);
-  HRESULT hr = shutdown_handler_->Initialize(reactor_.get(), this, is_system_);
+  scoped_ptr<Reactor> reactor(new Reactor);
+  scoped_ptr<ShutdownHandler> shutdown_handler(new ShutdownHandler);
+  HRESULT hr = shutdown_handler->Initialize(reactor.get(), this, is_system_);
   if (FAILED(hr)) {
     return hr;
   }
 
-  scheduler_.reset(new Scheduler(*this));
-  hr = scheduler_->Initialize();
+  scoped_ptr<Scheduler> scheduler(new Scheduler(*this));
+  hr = scheduler->Initialize();
   if (FAILED(hr)) {
     return hr;
   }
 
-  system_monitor_.reset(new SystemMonitor(is_system_));
-  VERIFY1(SUCCEEDED(system_monitor_->Initialize(true)));
-  system_monitor_->set_observer(this);
+  scoped_ptr<SystemMonitor> system_monitor(new SystemMonitor(is_system_));
+  VERIFY1(SUCCEEDED(system_monitor->Initialize(true)));
+  system_monitor->set_observer(this);
 
   // Start processing messages and events from the system.
   return DoRun();
@@ -289,9 +295,8 @@ HRESULT Core::DoRun() {
   // Trim the process working set to minimum. It does not need a more complex
   // algorithm for now. Likely the working set will increase slightly over time
   // as the core is handling events.
-  VERIFY1(::SetProcessWorkingSetSize(::GetCurrentProcess(),
-                                     static_cast<uint32>(-1),
-                                     static_cast<uint32>(-1)));
+  VERIFY1(SUCCEEDED(System::EmptyProcessWorkingSet()));
+
   return DoHandleEvents();
 }
 
@@ -334,13 +339,36 @@ HRESULT Core::StartUpdateWorkerInternal() const {
   return hr;
 }
 
-HRESULT Core::StartCodeRed() const {
+bool Core::ShouldRunCodeRed() const {
   if (RegKey::HasValue(MACHINE_REG_UPDATE_DEV, kRegValueNoCodeRedCheck)) {
     CORE_LOG(LW, (_T("[Code Red is disabled for this system]")));
-    return E_ABORT;
+    return false;
   }
 
+  ConfigManager* cm = ConfigManager::Instance();
+  const time64 check_interval_ms = cm->GetCodeRedTimerIntervalMs();
+  const time64 time_difference_ms =
+      cm->GetTimeSinceLastCodeRedCheckMs(is_system_);
+
+  const bool result = time_difference_ms >= check_interval_ms;
+  CORE_LOG(L3, (_T("[ShouldRunCodeRed][%s][%llu][%llu]"),
+                String_BoolToString(result),
+                check_interval_ms,
+                time_difference_ms));
+  return result;
+}
+
+HRESULT Core::UpdateLastCodeRedCheckTime() const {
+  const time64 now = GetCurrentMsTime();
+  return ConfigManager::Instance()->SetLastCodeRedCheckTimeMs(is_system_, now);
+}
+
+HRESULT Core::StartCodeRed() const {
   CORE_LOG(L2, (_T("[Core::StartCodeRed]")));
+
+  if (!ShouldRunCodeRed()) {
+    return S_FALSE;
+  }
 
   CString exe_path = goopdate_utils::BuildGoogleUpdateExePath(is_system_);
   CommandLineBuilder builder(COMMANDLINE_MODE_CODE_RED_CHECK);
@@ -348,11 +376,93 @@ HRESULT Core::StartCodeRed() const {
   HRESULT hr = System::StartProcessWithArgs(exe_path, cmd_line);
   if (SUCCEEDED(hr)) {
     ++metric_core_cr_succeeded;
+    VERIFY1(SUCCEEDED(UpdateLastCodeRedCheckTime()));
   } else {
     CORE_LOG(LE, (_T("[can't start Code Red worker][0x%08x]"), hr));
   }
   ++metric_core_cr_total;
   return hr;
+}
+
+bool Core::HasOSUpgraded() const {
+  CORE_LOG(L2, (_T("[Core::HasOSUpgraded]")));
+
+  OSVERSIONINFOEX last_os;
+  HRESULT hr = app_registry_utils::GetLastOSVersion(is_system_, &last_os);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[GetLastOSVersion failed][%#08x]"), hr));
+    return false;
+  }
+
+  return SystemInfo::CompareOSVersions(&last_os, VER_GREATER);
+}
+
+void Core::LaunchAppCommandsOnOSUpgrade() const {
+  CORE_LOG(L2, (_T("[Core::LaunchAppCommandsOnOSUpgrade]")));
+  ++metric_core_osupgrade_started;
+
+  // Generate a session ID for any pings that might be generated.
+  CString session_id;
+  VERIFY1(SUCCEEDED(GetGuid(&session_id)));
+
+  // Enumerate all registered app commands.  If any of them fail to launch, we
+  // record the failure but continue enumerating.
+  typedef std::vector<CString> AppCommandVector;
+  typedef std::map<CString, AppCommandVector> AppCommandMap;
+  AppCommandMap app_commands;
+  HRESULT hr = AppCommandConfiguration::EnumAllCommands(is_system_,
+                                                        &app_commands);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[AppCommandConfiguration::EnumAllCommands failed]")
+                  _T("[%#08x]"), hr));
+    ++metric_core_osupgrade_failed_to_enumerate;
+    return;
+  }
+
+  for (AppCommandMap::const_iterator map_it = app_commands.begin();
+       map_it != app_commands.end();
+       ++map_it) {
+    const CString& app_guid = map_it->first;
+    const AppCommandVector& command_ids = map_it->second;
+
+    for (AppCommandVector::const_iterator cmd_it = command_ids.begin();
+         cmd_it != command_ids.end();
+         ++cmd_it) {
+      const CString& command_id = *cmd_it;
+
+      scoped_ptr<AppCommandConfiguration> configuration;
+      hr = AppCommandConfiguration::Load(app_guid, is_system_, command_id,
+                                         address(configuration));
+      if (FAILED(hr)) {
+        CORE_LOG(LE, (_T("[AppCommand::Load failed][%s][%d][%s][%#08x]"),
+                      app_guid, is_system_, command_id, hr));
+        ++metric_core_osupgrade_failed_to_load_command;
+        continue;
+      }
+
+      if (configuration->auto_run_on_os_upgrade()) {
+        // This app command is marked for automatic launch on OS upgrade.
+        // Attempt to launch it.  (We don't care about the return value of
+        // the process, only that we successfully created it.)
+        scoped_ptr<AppCommand> app_command(
+            configuration->Instantiate(session_id));
+
+        scoped_process process;
+        hr = app_command->Execute(
+            NULL, std::vector<CString>(), address(process));
+        if (FAILED(hr)) {
+          CORE_LOG(LE, (_T("[AppCommand::Execute failed][%s][%d][%s][%#08x]"),
+                        app_guid, is_system_, command_id, hr));
+          ++metric_core_osupgrade_failed_to_create_process;
+        }
+      }
+    }
+  }
+
+  // Save the current OS as the old OS version, preventing this code from
+  // running until the OS version changes again.
+  VERIFY1(SUCCEEDED(app_registry_utils::SetLastOSVersion(is_system_, NULL)));
+  ++metric_core_osupgrade_completed;
 }
 
 HRESULT Core::StartCrashHandler() const {

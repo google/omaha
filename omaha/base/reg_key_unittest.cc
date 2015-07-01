@@ -16,6 +16,7 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/utils.h"
+#include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -208,7 +209,7 @@ TEST(RegKeyTest, RegKey) {
   double double_val = 0;
   TCHAR * str_val = NULL;
   byte * binary_val = NULL;
-  DWORD byte_count = 0;
+  size_t byte_count = 0;
 
   // Just in case...
   // make sure the no test key residue is left from previous aborted runs
@@ -702,6 +703,63 @@ TEST(RegKeyTest, RegKey) {
 
   hr = RegKey::DeleteKey(kStTestRkeyBase);
   ASSERT_SUCCEEDED(hr);
+}
+
+TEST_F(RegKeyTestClass, VerifyWow64Redirection) {
+  // Verifies that Open/Create calls accessing HKLM/SOFTWARE always redirect
+  // to the 32-bit copy of the key (HKLM/SOFTWARE/Wow6432Node) on a 64-bit OS.
+
+  bool should_run = false;
+#ifdef _WIN64
+  // Always run if the code being tested is 64-bit native.
+  should_run = true;
+#else
+  // We still want to verify this if we're 32-bit code on a 64-bit OS.
+  BOOL is64bit = FALSE;
+  ASSERT_NE(0, Kernel32::IsWow64Process(GetCurrentProcess(), &is64bit));
+  should_run = !!is64bit;
+#endif
+
+  if (!should_run) {
+    std::cout << "Skipping VerifyWow64Redirection on 32-bit." << std::endl;
+    return;
+  }
+
+  HKEY hk = NULL;
+  const REGSAM perms32 = KEY_ALL_ACCESS | KEY_WOW64_32KEY;
+  const REGSAM perms64 = KEY_ALL_ACCESS | KEY_WOW64_64KEY;
+
+  EXPECT_SUCCEEDED(RegKey::CreateKey(_T("HKLM\\Software\\UpdateRedirTest")));
+
+  LONG err = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Software\\UpdateRedirTest"),
+                       0, perms32, &hk);
+  EXPECT_EQ(ERROR_SUCCESS, err);
+  if (err == ERROR_SUCCESS) {
+    ::RegCloseKey(hk);
+  }
+  err = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Software\\UpdateRedirTest"),
+                       0, perms64, &hk);
+  EXPECT_EQ(ERROR_FILE_NOT_FOUND, err);
+  if (err == ERROR_SUCCESS) {
+    ::RegCloseKey(hk);
+  }
+
+  EXPECT_SUCCEEDED(RegKey::DeleteKey(_T("HKLM\\Software\\UpdateRedirTest")));
+
+  err = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Software\\UpdateRedirTest"),
+                       0, perms32, &hk);
+  EXPECT_EQ(ERROR_FILE_NOT_FOUND, err);
+  if (err == ERROR_SUCCESS) {
+    // TODO(omaha): If we're okay with the unit tests only running on Vista+,
+    // it'd be nice to add a call to ::RegDeleteTree(hk, NULL) here, and below.
+    ::RegCloseKey(hk);
+  }
+  err = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Software\\UpdateRedirTest"),
+                       0, perms64, &hk);
+  EXPECT_EQ(ERROR_FILE_NOT_FOUND, err);
+  if (err == ERROR_SUCCESS) {
+    ::RegCloseKey(hk);
+  }
 }
 
 // RegKey::GetValue changes the output CString when errors occur.

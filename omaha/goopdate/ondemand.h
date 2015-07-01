@@ -28,6 +28,7 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/preprocessor_fun.h"
 #include "omaha/base/scope_guard.h"
+#include "omaha/base/synchronized.h"
 #include "omaha/base/thread_pool_callback.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/const_goopdate.h"
@@ -49,16 +50,19 @@ struct OnDemandParameters {
                      bool is_check_only,
                      const CString& sess_id,
                      HANDLE caller_impersonation_token,
-                     HANDLE caller_primary_token)
+                     HANDLE caller_primary_token,
+                     Gate* gate)
       : app_id(guid),
         job_observer_git_cookie(job_observer_cookie),
         is_update_check_only(is_check_only),
         session_id(sess_id),
         impersonation_token(caller_impersonation_token),
-        primary_token(caller_primary_token) {
+        primary_token(caller_primary_token),
+        on_demand_gate(gate) {
     ASSERT1(guid.GetLength() > 0);
     ASSERT1(IsGuid(session_id));
     ASSERT1(job_observer_cookie);
+    ASSERT1(gate);
   }
 
   CString app_id;
@@ -67,6 +71,7 @@ struct OnDemandParameters {
   CString session_id;
   HANDLE impersonation_token;
   HANDLE primary_token;
+  Gate* on_demand_gate;
 };
 
 HRESULT DoOnDemand(bool is_machine,
@@ -180,6 +185,7 @@ class ATL_NO_VTABLE OnDemand
     // check. The thread pool owns this call back object. The thread owns the
     // impersonation and primary tokens.
     typedef StaticThreadPoolCallBack1<internal::OnDemandParameters> Callback;
+    Gate on_demand_gate;
     scoped_ptr<Callback> callback(
         new Callback(&OnDemand::DoOnDemandInternal,
                      internal::OnDemandParameters(
@@ -188,9 +194,11 @@ class ATL_NO_VTABLE OnDemand
                          is_update_check_only,
                          session_id_,
                          dup_impersonation_token.GetHandle(),
-                         dup_primary_token.GetHandle())));
+                         dup_primary_token.GetHandle(),
+                         &on_demand_gate)));
 
     hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
+                                                COINIT_APARTMENTTHREADED,
                                                 WT_EXECUTELONGFUNCTION);
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("[QueueUserWorkItem failed][0x%x]"), hr));
@@ -203,6 +211,7 @@ class ATL_NO_VTABLE OnDemand
     }
 
     callback.release();
+    VERIFY1(on_demand_gate.Wait(INFINITE));
 
     return S_OK;
   }
@@ -214,17 +223,12 @@ class ATL_NO_VTABLE OnDemand
     _pAtlModule->Lock();
     ON_SCOPE_EXIT_OBJ(*_pAtlModule, &CAtlModule::Unlock);
 
+    VERIFY1(on_demand_params.on_demand_gate->Open());
+
     scoped_handle impersonation_token(on_demand_params.impersonation_token);
     scoped_handle primary_token(on_demand_params.primary_token);
 
-    scoped_co_init init_com_apt(COINIT_APARTMENTTHREADED);
-    HRESULT hr = init_com_apt.hresult();
-    if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[init_com_apt failed][0x%x]"), hr));
-      return;
-    }
-
-    hr = internal::DoOnDemand(T::is_machine(), on_demand_params);
+    HRESULT hr = internal::DoOnDemand(T::is_machine(), on_demand_params);
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("[DoOnDemand failed][0x%x]"), hr));
       return;

@@ -12,16 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
-// Optimized for code size. Lacking decrypt functionality.
-// Currently 1042 bytes of code.
 
 #include "aes.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 static const uint8_t sbox_e[256]= {
     99  , 124 , 119 , 123 , 242 , 107 , 111 , 197
@@ -58,9 +55,10 @@ static const uint8_t sbox_e[256]= {
   , 65  , 153 , 45  , 15  , 176 , 84  , 187 , 22
   };
 
-static uint8_t xtime(int in) {
+static uint8_t xtime(uint32_t in) {
+  in &= 255;
   in <<= 1;
-  if( in&0x100 ) in ^= 0x11b;
+  in ^= 0x11b * (in >> 8);
   return (uint8_t)in;
   }
 
@@ -70,7 +68,7 @@ static void expand_key(const uint8_t* key, uint32_t* expanded_key) {
     uint8_t b[16];
     uint32_t w[4];
     } W;
-  uint8_t xor = 1;
+  uint8_t xor_val = 1;
 
   memcpy( &W, key, 16 );
   memcpy( expanded_key, &W, 16 );
@@ -78,7 +76,7 @@ static void expand_key(const uint8_t* key, uint32_t* expanded_key) {
   for( nrounds = 0; nrounds < 10; ++nrounds ) {
 
       // update key schedule
-    W.b[0] ^= sbox_e[W.b[12+1]] ^ xor;
+    W.b[0] ^= sbox_e[W.b[12+1]] ^ xor_val;
     W.b[1] ^= sbox_e[W.b[12+2]];
     W.b[2] ^= sbox_e[W.b[12+3]];
     W.b[3] ^= sbox_e[W.b[12+0]];
@@ -86,7 +84,7 @@ static void expand_key(const uint8_t* key, uint32_t* expanded_key) {
     W.w[2] ^= W.w[1];
     W.w[3] ^= W.w[2];
 
-    xor = xtime( xor );
+    xor_val = xtime( xor_val );
 
     expanded_key += 4;
     memcpy( expanded_key, &W, 16 );
@@ -106,7 +104,7 @@ void AES_encrypt_block(const uint8_t* key, const uint8_t* in, uint8_t* out) {
 
   memcpy( &rd_state, in, 16 );
 
-    // xor with initial key
+  // xor with initial key
   rd_state.w[0] ^= *expkey++;
   rd_state.w[1] ^= *expkey++;
   rd_state.w[2] ^= *expkey++;

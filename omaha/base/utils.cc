@@ -14,13 +14,14 @@
 // ========================================================================
 
 #include "omaha/base/utils.h"
-
+#include <lm.h>
 #include <ras.h>
 #include <regstr.h>
 #include <urlmon.h>
 #include <wincrypt.h>
 #include <ATLComTime.h>
 #include <atlpath.h>
+#include <intsafe.h>
 #include <map>
 #include <vector>
 #include "base/basictypes.h"
@@ -176,7 +177,7 @@ HRESULT GetNewFileNameInDirectory(const CString& dir, CString* file_name) {
   GUID guid = {0};
   HRESULT hr = ::CoCreateGuid(&guid);
   if (FAILED(hr)) {
-    CORE_LOG(LEVEL_WARNING, (_T("[CoCreateGuid failed][0x%08x]"), hr));
+    UTIL_LOG(LEVEL_WARNING, (_T("[CoCreateGuid failed][0x%08x]"), hr));
     return hr;
   }
 
@@ -234,6 +235,53 @@ void GetEveryoneDaclSecurityDescriptor(CSecurityDesc* sd,
 
   sd->SetDacl(dacl);
   sd->MakeAbsolute();
+}
+
+bool GetCurrentUserDefaultSecurityAttributes(CSecurityAttributes* sec_attr) {
+  ASSERT1(sec_attr);
+
+  CAccessToken token;
+  if (!token.GetProcessToken(TOKEN_QUERY)) {
+    return false;
+  }
+
+  CSecurityDesc security_desc;
+  CSid sid_owner;
+  if (!token.GetOwner(&sid_owner)) {
+    return false;
+  }
+
+  security_desc.SetOwner(sid_owner);
+  CSid sid_group;
+  if (!token.GetPrimaryGroup(&sid_group)) {
+    return false;
+  }
+
+  security_desc.SetGroup(sid_group);
+
+  CDacl dacl;
+  if (!token.GetDefaultDacl(&dacl)) {
+    return false;
+  }
+
+  CSid sid_user;
+  if (!token.GetUser(&sid_user)) {
+    return false;
+  }
+  if (!dacl.AddAllowedAce(sid_user, GENERIC_ALL)) {
+    return false;
+  }
+
+  security_desc.SetDacl(dacl);
+  sec_attr->Set(security_desc);
+
+#ifdef DEBUG
+  CString sddl;
+  security_desc.ToString(&sddl);
+  UTIL_LOG(L3, (_T("[GetCurrentUserDefaultSecurityAttributes][%s]"), sddl));
+#endif
+
+  return true;
 }
 
 void GetAdminDaclSecurityDescriptor(CSecurityDesc* sd, ACCESS_MASK accessmask) {
@@ -355,6 +403,7 @@ void GetNamedObjectAttributes(const TCHAR* base_name,
     attr->name = kGoopdatePrivateNamespacePrefix;
   } else {
     ASSERT1(!SystemInfo::IsRunningOnVistaOrLater());
+  }
 #endif
 
   attr->name = omaha::kGlobalPrefix;
@@ -363,6 +412,7 @@ void GetNamedObjectAttributes(const TCHAR* base_name,
     CString user_sid;
     VERIFY1(SUCCEEDED(omaha::user_info::GetProcessUser(NULL, NULL, &user_sid)));
     attr->name += user_sid;
+    VERIFY1(GetCurrentUserDefaultSecurityAttributes(&attr->sa));
   } else {
     // Grant access to administrators and system.
     GetAdminDaclSecurityAttributes(&attr->sa, GENERIC_ALL);
@@ -457,10 +507,27 @@ HRESULT GetFolderPath(int csidl, CString* path) {
   if (!path) {
     return E_INVALIDARG;
   }
+  path->Empty();
 
   TCHAR buffer[MAX_PATH] = {0};
   HRESULT hr = ::SHGetFolderPath(NULL, csidl, NULL, SHGFP_TYPE_CURRENT, buffer);
   if (FAILED(hr)) {
+    UTIL_LOG(LW, (_T("SHGetFolderPath failed][%d][%#x]"), csidl, hr));
+
+    // In locked-down environments or with registry redirection,
+    // ::SHGetFolderPath can fail. We try to fall back on environment variables
+    // for the CSIDL values below.
+    csidl &= CSIDL_FLAG_MASK ^ 0xFFFF;
+    if (csidl == CSIDL_PROGRAM_FILES) {
+      *path = GetEnvironmentVariableAsString(_T("ProgramFiles"));
+    } else if (csidl == CSIDL_LOCAL_APPDATA) {
+      *path = GetEnvironmentVariableAsString(_T("LocalAppData"));
+    }
+
+    if (!path->IsEmpty()) {
+      return S_FALSE;
+    }
+
     return hr;
   }
 
@@ -594,8 +661,7 @@ HRESULT DeleteDirectory(const TCHAR* dir_name) {
           hr = hr1;
         }
       }
-    }
-    while (::FindNextFile(get(hfind), &find_data));
+    } while (::FindNextFile(get(hfind), &find_data));
   }
 
   // Delete the empty directory itself
@@ -849,6 +915,7 @@ HRESULT WaitWithMessageLoopAnyInternal(
   ASSERT1(pos && message_handler);
   // cnt and phandles are either both zero or both not zero.
   ASSERT1(!cnt == !phandles);
+  ASSERT1(cnt <= MAXIMUM_WAIT_OBJECTS);
 
   // Loop until an error happens or the wait is satisfied by a signaled
   // object or an abandoned mutex.
@@ -870,7 +937,7 @@ HRESULT WaitWithMessageLoopAnyInternal(
         // We need to re-post the quit message we retrieved so that it could
         // propagate to the outer layer. Otherwise, the program will seem to
         // "get stuck" in its shutdown code.
-        ::PostQuitMessage(msg.wParam);
+        ::PostQuitMessage(static_cast<int>(msg.wParam));
         return S_FALSE;
       }
 
@@ -936,7 +1003,10 @@ class BasicMessageHandlerInternal : public BasicMessageHandler,
 
 bool WaitWithMessageLoopAny(const std::vector<HANDLE>& handles, uint32* pos) {
   BasicMessageHandlerInternal msg_handler;
-  return WaitWithMessageLoopAnyInternal(&handles.front(), handles.size(), pos,
+  ASSERT1(handles.size() <= kuint32max);
+  return WaitWithMessageLoopAnyInternal(&handles.front(),
+                                        static_cast<uint32>(handles.size()),
+                                        pos,
                                         &msg_handler) != S_FALSE;
 }
 
@@ -999,14 +1069,15 @@ void MessageLoopWithWait::set_message_handler(
 HRESULT MessageLoopWithWait::Process() {
   while (true) {
     ASSERT1(callback_handles_.size() == callbacks_.size());
+    ASSERT1(callback_handles_.size() <= kuint32max);
 
     // The implementation allows for an empty array of handles. Taking the
     // address of elements in an empty container is not allowed so we must
     // deal with this case here.
-    size_t pos(0);
+    uint32 pos(0);
     HRESULT hr = WaitWithMessageLoopAnyInternal(
         callback_handles_.empty() ? NULL : &callback_handles_.front(),
-        callback_handles_.size(),
+        static_cast<uint32>(callback_handles_.size()),
         &pos,
         this);
 
@@ -1040,8 +1111,10 @@ void MessageLoopWithWait::Process(MSG* msg, const HANDLE** handles,
 
   // Set the handles and count again because they may have changed
   // while processing the message.
+  ASSERT1(callback_handles_.size() <= kuint32max);
+
   *handles = callback_handles_.empty() ? NULL : &callback_handles_.front();
-  *cnt = callback_handles_.size();
+  *cnt = static_cast<uint32>(callback_handles_.size());
 }
 // Starts waiting on the given handle
 bool MessageLoopWithWait::RegisterWaitForSingleObject(
@@ -1251,7 +1324,7 @@ HRESULT ReadEntireFileShareMode(const TCHAR* filepath,
     return S_OK;
   }
 
-  int old_size = buffer_out->size();
+  size_t old_size = buffer_out->size();
   buffer_out->resize(old_size + file_len);
 
   uint32 bytes_read = 0;
@@ -1278,6 +1351,10 @@ HRESULT WriteEntireFile(const TCHAR * filepath,
                         const std::vector<byte>& buffer_in) {
   ASSERT1(filepath);
 
+  if (buffer_in.size() > kuint32max) {
+    return E_INVALIDARG;
+  }
+
   // File::WriteAt doesn't implement clear-on-open-for-write semantics,
   // so just delete the file if it exists instead of writing into it.
 
@@ -1297,7 +1374,11 @@ HRESULT WriteEntireFile(const TCHAR * filepath,
   ON_SCOPE_EXIT_OBJ(file, &File::Close);
 
   uint32 bytes_written = 0;
-  hr = file.WriteAt(0, &buffer_in.front(), buffer_in.size(), 0, &bytes_written);
+  hr = file.WriteAt(0,
+                    &buffer_in.front(),
+                    static_cast<uint32>(buffer_in.size()),
+                    0,
+                    &bytes_written);
   if (FAILED(hr)) {
     return hr;
   }
@@ -1313,8 +1394,13 @@ HRESULT WriteEntireFile(const TCHAR * filepath,
 // Conversions between a byte stream and a std::string
 HRESULT BufferToString(const std::vector<byte>& buffer_in, CStringA* str_out) {
   ASSERT1(str_out);
+
+  if (buffer_in.size() > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
   str_out->Append(reinterpret_cast<const char*>(&buffer_in.front()),
-                  buffer_in.size());
+                  static_cast<int>(buffer_in.size()));
   return S_OK;
 }
 
@@ -1328,11 +1414,16 @@ HRESULT StringToBuffer(const CStringA& str_in, std::vector<byte>* buffer_out) {
 HRESULT BufferToString(const std::vector<byte>& buffer_in, CString* str_out) {
   ASSERT1(str_out);
 
-  size_t len2 = buffer_in.size();
+  const size_t len2 = buffer_in.size();
   ASSERT1(len2 % 2 == 0);
-  size_t len = len2 / 2;
+  const size_t len = len2 / 2;
 
-  str_out->Append(reinterpret_cast<const TCHAR*>(&buffer_in.front()), len);
+  if (len > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
+  str_out->Append(reinterpret_cast<const TCHAR*>(&buffer_in.front()),
+                  static_cast<int>(len));
 
   return S_OK;
 }
@@ -1398,7 +1489,8 @@ HRESULT ExpandEnvLikeStrings(const TCHAR* src,
     const TCHAR* s = src + marker_pos1 + 1;
     for (; *s; ++s) {
       if (*s == kMarker) {
-        marker_pos2 = s - src;
+        // TODO(portability): cast is unsafe.
+        marker_pos2 = static_cast<int>(s - src);
         break;
       }
       if (!String_IsIdentifierChar(*s)) {
@@ -1437,7 +1529,8 @@ HRESULT ExpandEnvLikeStrings(const TCHAR* src,
     pos = marker_pos2 + 1;
   }
 
-  int len = _tcslen(src);
+  // TODO(portability): cast is unsafe.
+  int len = static_cast<int>(_tcslen(src));
   if (pos < len) {
     dest->Append(src + pos, len - pos);
   }
@@ -1530,25 +1623,50 @@ HRESULT DuplicateTokenIntoCurrentProcess(HANDLE source_process,
   ASSERT1(duplicated_token);
 
   scoped_handle alt_token;
+  HRESULT hr = DuplicateHandleIntoCurrentProcess(source_process,
+                                                 token_to_duplicate,
+                                                 address(alt_token));
+
+  if (SUCCEEDED(hr)) {
+    duplicated_token->Attach(release(alt_token));
+  }
+
+  return hr;
+}
+
+HRESULT DuplicateHandleIntoCurrentProcess(HANDLE source_process,
+                                          HANDLE to_duplicate,
+                                          HANDLE* destination) {
+  ASSERT1(source_process);
+  ASSERT1(to_duplicate);
+  ASSERT1(destination);
+
   bool res = ::DuplicateHandle(
       source_process,                 // Process whose handle needs duplicating.
-      token_to_duplicate,             // Handle to duplicate.
+      to_duplicate,                   // Handle to duplicate.
       ::GetCurrentProcess(),          // Current process receives the handle.
-      address(alt_token),             // Duplicated handle.
-      TOKEN_ALL_ACCESS,               // Access requested for the new handle.
-      false,                          // Do not inherit the new handle.
-      DUPLICATE_SAME_ACCESS) != 0;    // Same access as token_to_duplicate.
+      destination,                    // Duplicated handle.
+      0,                              // Ignored due to DUPLICATE_SAME_ACCESS.
+      FALSE,                          // Do not inherit the new handle.
+      DUPLICATE_SAME_ACCESS) != 0;    // Same access as to_duplicate.
 
   if (!res) {
     HRESULT hr = HRESULTFromLastError();
-    CORE_LOG(LE, (_T("[DuplicateTokenIntoCurrentProcess failed][0x%x]"), hr));
+    UTIL_LOG(LE, (_T("[DuplicateHandleIntoCurrentProcess failed][0x%x]"), hr));
     return hr;
   }
 
-  duplicated_token->Attach(release(alt_token));
   return S_OK;
 }
 
+bool TimeHasElapsed(DWORD baseline, DWORD milisecs) {
+  DWORD current = ::GetTickCount();
+  DWORD wrap_bias = 0;
+  if (current < baseline) {
+    wrap_bias = static_cast<DWORD>(0xFFFFFFFF);
+  }
+  return (current - baseline + wrap_bias) >= milisecs ? true : false;
+}
 
 // get a time64 value
 // NOTE: If the value is greater than the
@@ -1665,7 +1783,7 @@ CString AppendRegKeyPath(const CString& one, const CString& two,
 
 HRESULT GetUserKeysFromHkeyUsers(std::vector<CString>* key_names) {
   ASSERT1(key_names);
-  CORE_LOG(L3, (_T("[GetUserKeysFromHkeyUsers]")));
+  UTIL_LOG(L3, (_T("[GetUserKeysFromHkeyUsers]")));
 
   TCHAR user_key_name[MAX_PATH] = {0};
   int i = 0;
@@ -1685,7 +1803,7 @@ HRESULT GetUserKeysFromHkeyUsers(std::vector<CString>* key_names) {
       if (::LookupAccountSid(NULL, sid, user_name, &size,
                              domain_name, &size_domain, &sid_type) == 0) {
         HRESULT hr = HRESULTFromLastError();
-        CORE_LOG(LW, (_T("[GetUserKeysFromHkeyUsers LookupAccountSid failed]")
+        UTIL_LOG(LW, (_T("[GetUserKeysFromHkeyUsers LookupAccountSid failed]")
                       _T("[0x%08x]"), hr));
         continue;
       }
@@ -1740,7 +1858,7 @@ bool IsClickOnceDisabled() {
   }
 
   DWORD policy = URLPOLICY_DISALLOW;
-  size_t policy_size = sizeof(policy);
+  const DWORD policy_size = sizeof(policy);
   hr = zone_mgr->GetZoneActionPolicy(URLZONE_INTERNET,
                                      URLACTION_MANAGED_UNSIGNED,
                                      reinterpret_cast<BYTE*>(&policy),
@@ -1855,12 +1973,16 @@ bool ShellExecuteExEnsureParent(LPSHELLEXECUTEINFO shell_exec_info) {
 // altered or made unavailable in future versions of the operating system.
 bool GenRandom(void* buffer, size_t buffer_length) {
   ASSERT1(buffer);
+  if (buffer_length > ULONG_MAX) {
+    return false;
+  }
   scoped_library lib(::LoadLibrary(_T("ADVAPI32.DLL")));
   if (lib) {
     typedef BOOLEAN (APIENTRY *RtlGenRandomType)(void*, ULONG);
     RtlGenRandomType rtl_gen_random = reinterpret_cast<RtlGenRandomType>(
         ::GetProcAddress(get(lib), "SystemFunction036"));
-    return rtl_gen_random && rtl_gen_random(buffer, buffer_length);
+    return rtl_gen_random &&
+           rtl_gen_random(buffer, static_cast<ULONG>(buffer_length));
   }
 
   // Use CAPI to generate randomness for systems which do not support
@@ -1868,7 +1990,9 @@ bool GenRandom(void* buffer, size_t buffer_length) {
   const uint32 kCspFlags = CRYPT_VERIFYCONTEXT | CRYPT_SILENT;
   HCRYPTPROV csp = NULL;
   if (::CryptAcquireContext(&csp, NULL, NULL, PROV_RSA_FULL, kCspFlags)) {
-    if (::CryptGenRandom(csp, buffer_length, static_cast<BYTE*>(buffer))) {
+    if (::CryptGenRandom(csp,
+                         static_cast<ULONG>(buffer_length),
+                         static_cast<BYTE*>(buffer))) {
       return true;
     }
   }
@@ -1948,13 +2072,19 @@ HRESULT WaitForMSIExecute(int timeout_ms) {
 }
 
 CString GetEnvironmentVariableAsString(const TCHAR* name) {
+  UTIL_LOG(L6, (_T("GetEnvironmentVariableAsString][%s]"), name));
+
   CString value;
-  size_t value_length = ::GetEnvironmentVariable(name, NULL, 0);
+  DWORD value_length = ::GetEnvironmentVariable(name, NULL, 0);
   if (value_length) {
     VERIFY1(::GetEnvironmentVariable(name,
                                      CStrBuf(value, value_length),
                                      value_length));
+  } else {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LW, (_T("GetEnvironmentVariable failed][%s][%#x]"), name, hr));
   }
+
   return value;
 }
 
@@ -2013,7 +2143,7 @@ HRESULT GetGuid(CString* guid) {
 }
 
 CString GetMessageForSystemErrorCode(DWORD error_code) {
-  CORE_LOG(L3, (_T("[GetMessageForSystemErrorCode][%u]"), error_code));
+  UTIL_LOG(L3, (_T("[GetMessageForSystemErrorCode][%u]"), error_code));
 
   TCHAR* system_allocated_buffer = NULL;
   const DWORD kFormatOptions = FORMAT_MESSAGE_ALLOCATE_BUFFER |
@@ -2041,4 +2171,108 @@ CString GetMessageForSystemErrorCode(DWORD error_code) {
   return message;
 }
 
+CString GetTempFilename(const TCHAR* prefix) {
+  ASSERT1(prefix);
+
+  CString temp_dir = app_util::GetTempDir();
+  VERIFY1(!temp_dir.IsEmpty());
+
+  return GetTempFilenameAt(temp_dir, prefix);
+}
+
+CString GetTempFilenameAt(const TCHAR* dir, const TCHAR* prefix) {
+  ASSERT1(dir);
+  ASSERT1(prefix);
+
+  CString temp_file;
+  UINT result = ::GetTempFileName(dir, prefix, 0, CStrBuf(temp_file, MAX_PATH));
+  ASSERT1(result != 0 && result != ERROR_BUFFER_OVERFLOW);
+  if (result == 0 || result == ERROR_BUFFER_OVERFLOW) {
+    temp_file.Empty();
+  }
+
+  return temp_file;
+}
+
+DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout) {
+  if (count <= MAXIMUM_WAIT_OBJECTS) {
+    return ::WaitForMultipleObjects(static_cast<DWORD>(count),
+                                    handles,
+                                    TRUE,
+                                    timeout);
+  }
+
+  UTIL_LOG(L3, (_T("[WaitForAllObjects][%Iu][%Lu ms]"), count, timeout));
+
+  // Spin in a loop, calling ::WFMO() on blocks of handles at a time. If it
+  // returns WAIT_TIMEOUT or WAIT_FAILED, we can immediately exit without
+  // having to check any more handles. For successful return values, we find
+  // the total time we spent waiting, and subtract that from the timeout on
+  // the next call.
+
+  const DWORD start_time = GetTickCount();
+  DWORD time_waited = 0;
+  bool abandoned = false;
+  for (size_t i = 0; i < count; i += MAXIMUM_WAIT_OBJECTS) {
+    DWORD num_waits;
+    if ((i + MAXIMUM_WAIT_OBJECTS) <= count) {
+      num_waits = MAXIMUM_WAIT_OBJECTS;
+    } else {
+      num_waits = static_cast<DWORD>(count - i);
+    }
+
+    DWORD result = ::WaitForMultipleObjects(num_waits, handles + i,
+                                            TRUE, timeout - time_waited);
+
+    if (result == WAIT_TIMEOUT || result == WAIT_FAILED) {
+      return result;
+    }
+    if (result >= WAIT_ABANDONED_0 && result < (WAIT_ABANDONED_0 + num_waits)) {
+      abandoned = true;
+    }
+
+    if (timeout != INFINITE) {
+      time_waited = GetTickCount() - start_time;
+      if (time_waited > timeout) {
+        // If the timeout has passed, clamp it, so that ::WFMO() is called with
+        // a timeout of zero. This makes the call non-blocking, but means we
+        // can still return WAIT_OBJECT_0 if later blocks are all signaled.
+        time_waited = timeout;
+      }
+    }
+  }
+
+  // All handles are either signaled or abandoned.
+  return abandoned ? WAIT_ABANDONED_0 : WAIT_OBJECT_0;
+}
+
+enum DomainEnrollementState {UNKNOWN = -1, NOT_ENROLLED, ENROLLED};
+static volatile LONG g_domain_state = UNKNOWN;
+
+bool IsEnrolledToDomain() {
+  DWORD is_enrolled(false);
+  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                                 kRegValueIsEnrolledToDomain,
+                                 &is_enrolled))) {
+    return !!is_enrolled;
+  }
+
+  if (g_domain_state == UNKNOWN) {
+    LPWSTR domain;
+    NETSETUP_JOIN_STATUS join_status;
+    if (::NetGetJoinInformation(NULL, &domain, &join_status) != NERR_Success) {
+      return false;
+    }
+
+    ::NetApiBufferFree(domain);
+    ::InterlockedCompareExchange(&g_domain_state,
+                                 join_status == ::NetSetupDomainName ?
+                                     ENROLLED : NOT_ENROLLED,
+                                 UNKNOWN);
+  }
+
+  return g_domain_state == ENROLLED;
+}
+
 }  // namespace omaha
+

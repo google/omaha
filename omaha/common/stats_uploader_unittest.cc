@@ -81,7 +81,7 @@ class StatsUploaderTest : public testing::Test {
     CString key_name = key_name_ + CString(_T("Booleans"));
 
     scoped_array<byte> buffer;
-    DWORD byte_count(0);
+    size_t byte_count(0);
     HRESULT hr = RegKey::GetValue(key_name,
                                   value_name,
                                   address(buffer),

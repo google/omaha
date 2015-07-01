@@ -34,6 +34,7 @@ namespace omaha {
 class App;
 class AppBundle;
 class Package;
+struct FileHash;
 
 class AppVersion : public ModelObject {
  public:
@@ -62,7 +63,8 @@ class AppVersion : public ModelObject {
   const Package* GetPackage(size_t index) const;
 
   // Adds a package to this app version.
-  HRESULT AddPackage(const CString& filename, uint32 size, const CString& hash);
+  HRESULT AddPackage(const CString& filename, uint32 size,
+                     const FileHash& expected_hash);
 
   // Returns the list of download servers to use in order of preference.
   const std::vector<CString>& download_base_urls() const;

@@ -13,8 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_OMAHA_VERSION_H__
-#define OMAHA_COMMON_OMAHA_VERSION_H__
+#ifndef OMAHA_BASE_OMAHA_VERSION_H_
+#define OMAHA_BASE_OMAHA_VERSION_H_
 
 #include <windows.h>
 #include <tchar.h>
@@ -26,6 +26,9 @@ namespace omaha {
 // compile time ambiguities or surprising results at runtime, such as
 // which overload is being called if foobar(NULL).
 
+// Initializes the shell version from the currently running executable.
+void InitializeShellVersion();
+
 // Initializes the version variables from the version resource of the module.
 void InitializeVersionFromModule(HINSTANCE instance);
 
@@ -35,9 +38,12 @@ void InitializeVersion(ULONGLONG version);
 // Returns the version string as "major.minor.build.patch".
 const TCHAR* GetVersionString();
 
+// Returns the shell version string as "major.minor.build.patch".
+const TCHAR* GetShellVersionString();
+
 // Returns the version string as a ULONGLONG.
 ULONGLONG GetVersion();
 
 }  // namespace omaha
 
-#endif  // OMAHA_COMMON_OMAHA_VERSION_H__
+#endif  // OMAHA_BASE_OMAHA_VERSION_H_

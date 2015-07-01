@@ -125,9 +125,8 @@ int GetNumMsiTries() {
 extern const TCHAR kRegExecutable[] = _T("reg.exe");
 extern const TCHAR kSetInstallerResultTypeMsiErrorRegCmdArgs[] =
     _T("add HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
-    _T("\\UnitTest\\HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\")
-    PRODUCT_NAME _T("\\ClientState\\{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE} ")
-    _T("/v InstallerResult /t REG_DWORD /d 2");
+    _T("\\ClientState\\{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE} ")
+    _T("/v InstallerResult /t REG_DWORD /d 2 /f");
 extern const TCHAR kMsiInstallerBusyExitCodeCmd[] = _T("exit 1618");
 
 extern const TCHAR kError1619MessagePrefix[] =
@@ -190,8 +189,7 @@ void UninstallTestMsi(const CString& installer_path) {
 class InstallerWrapperTest : public testing::Test {
  protected:
   explicit InstallerWrapperTest(bool is_machine)
-      : is_machine_(is_machine),
-        hive_override_key_name_(kRegistryHiveOverrideRoot) {
+      : is_machine_(is_machine) {
   }
 
   static void SetUpTestCase() {
@@ -211,13 +209,13 @@ class InstallerWrapperTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    RegKey::DeleteKey(hive_override_key_name_, true);
-    OverrideRegistryHivesWithExecutionPermissions(hive_override_key_name_);
+    RegKey::DeleteKey(kFullAppClientsKeyPath);
+    RegKey::DeleteKey(kFullAppClientStateKeyPath);
 
     EXPECT_SUCCEEDED(AppManager::CreateInstance(is_machine_));
 
-    im_.reset(new InstallerWrapper(is_machine_));
-    EXPECT_SUCCEEDED(im_->Initialize());
+    iw_.reset(new InstallerWrapper(is_machine_));
+    EXPECT_SUCCEEDED(iw_->Initialize());
 
     EXPECT_SUCCEEDED(ResourceManager::Create(
           is_machine_, app_util::GetCurrentModuleDirectory(), _T("en")));
@@ -226,8 +224,6 @@ class InstallerWrapperTest : public testing::Test {
   virtual void TearDown() {
     AppManager::DeleteInstance();
 
-    RestoreRegistryHives();
-    ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
     ResourceManager::Delete();
   }
 
@@ -392,7 +388,7 @@ class InstallerWrapperTest : public testing::Test {
                                     InstallerResultInfo* result_info) {
     ASSERT1(result_info);
 
-    im_->GetInstallerResultHelper(
+    iw_->GetInstallerResultHelper(
         app_guid,
         static_cast<InstallerWrapper::InstallerType>(installer_type),
         exit_code,
@@ -413,8 +409,7 @@ class InstallerWrapperTest : public testing::Test {
   static const int kOtherInstaller = InstallerWrapper::CUSTOM_INSTALLER;
 
   bool is_machine_;
-  CString hive_override_key_name_;
-  scoped_ptr<InstallerWrapper> im_;
+  scoped_ptr<InstallerWrapper> iw_;
 
   // Used as an argument to various functions.
   InstallerResultInfo result_info_;
@@ -477,88 +472,88 @@ TEST(InstallerWrapperTest, GetMessageForSystemErrorCode) {
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_EmptyRegisteredVersion) {
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_WRITE_CLIENTS_KEY,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T(""), _T(""), _T(""), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_WRITE_CLIENTS_KEY,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T(""), _T(""), _T(""), true));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_WRITE_CLIENTS_KEY,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T(""), _T("1.2.3.4"), _T(""), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_WRITE_CLIENTS_KEY,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T(""), _T("1.2.3.4"), _T(""), true));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_WRITE_CLIENTS_KEY,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T(""), _T("1.2.3.4"), _T("1.2.3.3"), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_WRITE_CLIENTS_KEY,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T(""), _T("1.2.3.4"), _T("1.2.3.3"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_NoExpectedOrPreviousVersion) {
-  EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
                        kAppGuid, _T("0.9.6.4"), _T(""), _T(""), false));
-  EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
                        kAppGuid, _T("0.9.6.4"), _T(""), _T(""), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMatch_NoPreviousVersion) {
-  EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
                        kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T(""), false));
-  EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
                        kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T(""), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_NoExpectedVersion_PreviousVersionOlder) {
-  EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
                        kAppGuid, _T("0.9.6.4"), _T(""), _T("0.9.6.3"), false));
-  EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
                        kAppGuid, _T("0.9.6.4"), _T(""), _T("0.9.6.3"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMatch_PreviousVersionSame_UnchangedAllowed) {  // NOLINT
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(
+      iw_->CheckApplicationRegistration(
           kAppGuid, _T("0.9.6.4"), _T(""), _T("0.9.6.4"), false));
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(
+      iw_->CheckApplicationRegistration(
           kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T("0.9.6.4"), false));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMatch_PreviousVersionSame_UnchangedNotAllowed) {  // NOLINT
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_CHANGE_VERSION,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T(""), _T("0.9.6.4"), true));
 
   ExpectAsserts expect_asserts;  // expected_version is expected to be greater.
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_CHANGE_VERSION,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T("0.9.6.4"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMatch_PreviousVersionOlder) {
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(
+      iw_->CheckApplicationRegistration(
           kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T("0.9.6.3"), false));
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(
+      iw_->CheckApplicationRegistration(
           kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T("0.9.6.3"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMatch_PreviousVersionNewer) {
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(
+      iw_->CheckApplicationRegistration(
           kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T("0.9.6.5"), false));
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(
+      iw_->CheckApplicationRegistration(
           kAppGuid, _T("0.9.6.4"), _T("0.9.6.4"), _T("0.9.6.5"), true));
 }
 
@@ -568,14 +563,14 @@ TEST_F(InstallerWrapperUserTest,
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMatch_RegisteredNewer_NoPreviousVersion_NewInstall) {  // NOLINT
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(
+      iw_->CheckApplicationRegistration(
           kAppGuid, _T("0.9.6.4"), _T("0.9.6.3"), _T(""), false));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMismatch_RegisteredNewer_NoPreviousVersion_Update) {  // NOLINT
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.3"), _T(""), true));
 }
 
@@ -585,88 +580,88 @@ TEST_F(InstallerWrapperUserTest,
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMismatch_RegisteredNewer_PreviousVersionSame) {  // NOLINT
   EXPECT_SUCCEEDED(
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.3"), _T("0.9.6.4"), false));
   ExpectAsserts expect_asserts;  // expected_version is expected to be greater.
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_CHANGE_VERSION,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.3"), _T("0.9.6.4"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMismatch_RegisteredNewer_PreviousVersionDifferent) {  // NOLINT
   EXPECT_SUCCEEDED(
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.3"), _T("0.9.6.3"), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.3"), _T("0.9.6.3"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMismatch_RegisteredOlder_NoPreviousVersion) {  // NOLINT
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.2"), _T("0.9.6.3"), _T(""), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.2"), _T("0.9.6.3"), _T(""), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMismatch_RegisteredOlder_PreviousVersionSame) {  // NOLINT
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.2"), _T("0.9.6.3"), _T("0.9.6.2"), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.2"), _T("0.9.6.3"), _T("0.9.6.2"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMismatch_RegisteredOlder_PreviousVersionDifferent) {  // NOLINT
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.2"), _T("0.9.6.3"), _T("0.9.6.1"), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.2"), _T("0.9.6.3"), _T("0.9.6.1"), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
        CheckApplicationRegistration_ExpectedMismatch_RegisteredNewer_PreviousVersionSame_UnrecognizedVersions) {  // NOLINT
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4.0"), _T("0.9.6.3"), _T("0.9.6.4.0"),
                 false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4.0"), _T("0.9.6.3"), _T("0.9.6.4.0"),
                 true));
 
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.3.0"), _T("0.9.6.4"),
                 false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4"), _T("0.9.6.3.0"), _T("0.9.6.4"),
                 true));
 
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4.0"), _T("0.9.6.3.0"), _T("0.9.6.4.0"),
                 false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6.4.0"), _T("0.9.6.3.0"), _T("0.9.6.4.0"),
                 true));
 
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6"), _T("0.9.5"), _T("0.9.6"), false));
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH,
-            im_->CheckApplicationRegistration(
+            iw_->CheckApplicationRegistration(
                 kAppGuid, _T("0.9.6"), _T("0.9.5"), _T("0.9.6"), true));
 }
 
@@ -676,12 +671,14 @@ TEST_F(InstallerWrapperUserTest,
 
 TEST_F(InstallerWrapperUserTest, InstallApp_InstallerWithoutFilenameExtension) {
   EXPECT_EQ(GOOPDATEINSTALL_E_FILENAME_INVALID,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             _T("c:\\temp\\foo"),
                             _T(""),  // Arguments.
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_UNKNOWN, result_info_.type);
@@ -695,12 +692,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallerWithoutFilenameExtension) {
 TEST_F(InstallerWrapperUserTest,
        InstallApp_UnsupportedInstallerFilenameExtension) {
   EXPECT_EQ(GOOPDATEINSTALL_E_FILENAME_INVALID,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             _T("c:\\temp\\foo.bar"),
                             _T(""),  // Arguments.
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_UNKNOWN, result_info_.type);
@@ -713,12 +712,14 @@ TEST_F(InstallerWrapperUserTest,
 
 TEST_F(InstallerWrapperUserTest, InstallApp_InstallerEmtpyFilename) {
   EXPECT_EQ(GOOPDATEINSTALL_E_FILENAME_INVALID,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             _T(""),
                             _T(""),  // Arguments.
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_UNKNOWN, result_info_.type);
@@ -732,12 +733,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallerEmtpyFilename) {
 TEST_F(InstallerWrapperUserTest, InstallApp_ExeFileDoesNotExist) {
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_FAILED_START,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             _T("c:\\temp\\foo.exe"),
                             _T(""),  // Arguments.
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_UNKNOWN, result_info_.type);
@@ -777,12 +780,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_ExeInstallerWithArgumentsSucceeds) {
                                     _T("0.10.69.5")));
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    kAppGuid,
                                    cmd_exe_path_,
                                    arguments,
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
@@ -793,7 +798,7 @@ TEST_F(InstallerWrapperUserTest, InstallApp_ExeInstallerWithArgumentsSucceeds) {
   EXPECT_EQ(POST_INSTALL_ACTION_DEFAULT, result_info_.post_install_action);
 
   // EXPECT_SUCCEEDED(
-  //     im_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
+  //     iw_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
 
   EXPECT_TRUE(File::Exists(kPayloadFileName));
   EXPECT_SUCCEEDED(File::Remove(kPayloadFileName));
@@ -815,12 +820,14 @@ TEST_F(InstallerWrapperUserTest,
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_FAILED,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             cmd_exe_path_,
                             arguments,
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_ERROR_OTHER, result_info_.type);
@@ -855,10 +862,12 @@ TEST_F(InstallerWrapperUserTest,
                                true, kLaunchCmdLine);
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
-  EXPECT_SUCCEEDED(im_->InstallApp(kAppGuid,
+  EXPECT_SUCCEEDED(iw_->InstallApp(kAppGuid,
                                    cmd_exe_path_,
                                    arguments,
                                    _T(""),  // Installer data.
+                                   kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
@@ -870,7 +879,7 @@ TEST_F(InstallerWrapperUserTest,
             result_info_.post_install_action);
 
   EXPECT_SUCCEEDED(
-      im_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
+      iw_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
 
   VerifyLastRegistryValues(kAppId,
                            true, kResultSuccess,
@@ -890,7 +899,7 @@ TEST_F(InstallerWrapperMachineTest, InstallApp_MsiInstallerSucceeds) {
   // installer.
   RestoreRegistryHives();
 
-  AdjustMsiTries(im_.get());
+  AdjustMsiTries(iw_.get());
 
   CString installer_full_path(
       ConcatenatePath(app_util::GetCurrentModuleDirectory(),
@@ -909,16 +918,18 @@ TEST_F(InstallerWrapperMachineTest, InstallApp_MsiInstallerSucceeds) {
   ASSERT_FALSE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    StringToGuid(kFooGuid),
                                    installer_full_path,
                                    _T(""),  // Arguments.
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
-  EXPECT_EQ(S_OK, result_info_.code);
+  EXPECT_EQ(1234, result_info_.code);
   EXPECT_TRUE(result_info_.text.IsEmpty());
   EXPECT_TRUE(result_info_.post_install_launch_command_line.IsEmpty());
   EXPECT_TRUE(result_info_.post_install_url.IsEmpty());
@@ -927,12 +938,12 @@ TEST_F(InstallerWrapperMachineTest, InstallApp_MsiInstallerSucceeds) {
   EXPECT_TRUE(File::Exists(installer_log_full_path));
 
   EXPECT_TRUE(RegKey::HasKey(kFullFooAppClientKeyPath));
-  EXPECT_FALSE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
+  EXPECT_TRUE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
   // Verify the installer did not write a value that is to be written only in
   // the presence of an MSI property that was not specified.
   EXPECT_FALSE(RegKey::HasValue(kFullFooAppClientKeyPath,
                                 kFooInstallerBarValueName));
-  // EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  // EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
   //                      StringToGuid(kFooGuid), _T("0.9.70.1"), false));
 
   UninstallTestMsi(installer_full_path);
@@ -953,7 +964,7 @@ TEST_F(InstallerWrapperMachineTest,
   // installer.
   RestoreRegistryHives();
 
-  AdjustMsiTries(im_.get());
+  AdjustMsiTries(iw_.get());
 
   CString installer_full_path(
       ConcatenatePath(app_util::GetCurrentModuleDirectory(),
@@ -972,16 +983,18 @@ TEST_F(InstallerWrapperMachineTest,
   ASSERT_FALSE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    StringToGuid(kFooGuid),
                                    installer_full_path,
                                    kFooInstallerBarPropertyArg,
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
-  EXPECT_EQ(S_OK, result_info_.code);
+  EXPECT_EQ(1234, result_info_.code);
   EXPECT_TRUE(result_info_.text.IsEmpty());
   EXPECT_TRUE(result_info_.post_install_launch_command_line.IsEmpty());
   EXPECT_TRUE(result_info_.post_install_url.IsEmpty());
@@ -990,16 +1003,16 @@ TEST_F(InstallerWrapperMachineTest,
   EXPECT_TRUE(File::Exists(installer_log_full_path));
 
   EXPECT_TRUE(RegKey::HasKey(kFullFooAppClientKeyPath));
-  EXPECT_FALSE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
-  EXPECT_TRUE(RegKey::HasValue(kFullFooAppClientKeyPath,
+  EXPECT_TRUE(RegKey::HasKey(kFullFooAppClientStateKeyPath));
+  EXPECT_TRUE(RegKey::HasValue(kFullFooAppClientStateKeyPath,
                                kFooInstallerBarValueName));
   DWORD barprop_value = 0;
-  EXPECT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientKeyPath,
+  EXPECT_SUCCEEDED(RegKey::GetValue(kFullFooAppClientStateKeyPath,
                                     kFooInstallerBarValueName,
                                     &barprop_value));
   EXPECT_EQ(7, barprop_value);
 
-  // EXPECT_SUCCEEDED(im_->CheckApplicationRegistration(
+  // EXPECT_SUCCEEDED(iw_->CheckApplicationRegistration(
   //                      StringToGuid(kFooGuid), _T("0.9.70.1"), false));
 
   UninstallTestMsi(installer_full_path);
@@ -1025,12 +1038,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_UpdateOmahaSucceeds) {
                                     kExistingVersion));
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    kGoopdateGuid,
                                    cmd_exe_path_,
                                    arguments,
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
@@ -1059,13 +1074,17 @@ TEST_F(InstallerWrapperUserTest,
 
   const CString kExistingVersion(_T("0.9.69.5"));
 
+  RegKey::DeleteKey(USER_REG_CLIENTS_GOOPDATE);
+
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    kGoopdateGuid,
                                    cmd_exe_path_,
                                    arguments,
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
@@ -1085,12 +1104,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallerDoesNotWriteClientsKey) {
   arguments.Format(kExecuteCommandAndTerminateSwitch, _T(""));
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    kAppGuid,
                                    cmd_exe_path_,
                                    arguments,
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_FALSE(RegKey::HasKey(kFullAppClientsKeyPath));
@@ -1104,7 +1125,7 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallerDoesNotWriteClientsKey) {
   EXPECT_EQ(POST_INSTALL_ACTION_DEFAULT, result_info_.post_install_action);
 
   // EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_DID_NOT_WRITE_CLIENTS_KEY,
-  //           im_->CheckApplicationRegistration(kAppGuid, _T(""), true));
+  //           iw_->CheckApplicationRegistration(kAppGuid, _T(""), true));
 }
 
 TEST_F(InstallerWrapperUserTest,
@@ -1113,19 +1134,21 @@ TEST_F(InstallerWrapperUserTest,
   msi_path.Append(_T("foo.msi"));
   const CString log_path = msi_path + _T(".log");
 
-  AdjustMsiTries(im_.get());
+  AdjustMsiTries(iw_.get());
 
   ASSERT_SUCCEEDED(File::Remove(log_path));
   ASSERT_FALSE(File::Exists(log_path));
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
   EXPECT_EQ(GOOPDATEINSTALL_E_INSTALLER_FAILED,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             msi_path,
                             _T(""),  // Arguments.
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_ERROR_MSI, result_info_.type);
@@ -1162,12 +1185,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_MsiIsBusy_NoRetries) {
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
   EXPECT_EQ(GOOPDATEINSTALL_E_MSI_INSTALL_ALREADY_RUNNING,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             cmd_exe_path_,
                             arguments,
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_GT(2, install_timer.GetSeconds());  // Check Omaha did not retry.
@@ -1197,18 +1222,20 @@ TEST_F(InstallerWrapperUserTest, InstallApp_MsiIsBusy_TwoTries) {
   CString arguments;
   arguments.Format(kExecuteCommandAndTerminateSwitch, commands);
 
-  im_->set_num_tries_when_msi_busy(2);
+  iw_->set_num_tries_when_msi_busy(2);
 
   LowResTimer install_timer(true);
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
   EXPECT_EQ(GOOPDATEINSTALL_E_MSI_INSTALL_ALREADY_RUNNING,
-            im_->InstallApp(NULL,
+            iw_->InstallApp(NULL,
                             kAppGuid,
                             cmd_exe_path_,
                             arguments,
                             _T(""),  // Installer data.
                             kLanguageEnglish,
+                            _T(""),  // Untrusted data.
+                            0,
                             &result_info_));
 
   EXPECT_LE(5, install_timer.GetSeconds());  // Check Omaha did retry.
@@ -1254,12 +1281,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallMultipleApps) {
 
   __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
 
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    kAppGuid,
                                    cmd_exe_path_,
                                    arguments1,
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
@@ -1270,7 +1299,7 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallMultipleApps) {
   EXPECT_EQ(POST_INSTALL_ACTION_DEFAULT, result_info_.post_install_action);
 
   // EXPECT_SUCCEEDED(
-  //     im_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
+  //     iw_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
 
   EXPECT_TRUE(File::Exists(kPayloadFileName1));
   EXPECT_SUCCEEDED(File::Remove(kPayloadFileName1));
@@ -1280,12 +1309,14 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallMultipleApps) {
   result_info_.type = INSTALLER_RESULT_UNKNOWN;
   result_info_.code = kInitialErrorValue;
 
-  EXPECT_SUCCEEDED(im_->InstallApp(NULL,
+  EXPECT_SUCCEEDED(iw_->InstallApp(NULL,
                                    kAppGuid,
                                    cmd_exe_path_,
                                    arguments2,
                                    _T(""),  // Installer data.
                                    kLanguageEnglish,
+                                   _T(""),  // Untrusted data.
+                                   0,
                                    &result_info_));
 
   EXPECT_EQ(INSTALLER_RESULT_SUCCESS, result_info_.type);
@@ -1296,7 +1327,7 @@ TEST_F(InstallerWrapperUserTest, InstallApp_InstallMultipleApps) {
   EXPECT_EQ(POST_INSTALL_ACTION_DEFAULT, result_info_.post_install_action);
 
   // EXPECT_SUCCEEDED(
-  //     im_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
+  //     iw_->CheckApplicationRegistration(kAppGuid, _T("0.9.70.1"), false));
 
   EXPECT_TRUE(File::Exists(kPayloadFileName2));
   EXPECT_SUCCEEDED(File::Remove(kPayloadFileName2));

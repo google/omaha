@@ -48,6 +48,7 @@ void VerifyExtraArgsHaveSpecificValues(
          const CString& expected_app_guid,
          const CString& expected_app_name,
          const CString& expected_app_experiment_labels,
+         const CString& expected_untrusted_data,
          NeedsAdmin expected_needs_admin,
          Tristate expected_usage_stats_enable,
          bool expected_runtime_only,
@@ -70,6 +71,7 @@ void VerifyExtraArgsHaveSpecificValues(
   app_args.encoded_installer_data = expected_encoded_installer_data;
   app_args.install_data_index = expected_install_data_index;
   app_args.experiment_labels = expected_app_experiment_labels;
+  app_args.untrusted_data = expected_untrusted_data;
 
   CommandLineExtraArgs expected;
   expected.apps.push_back(app_args);
@@ -479,6 +481,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsHaveDoubleAmpersand) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
       false,
@@ -504,6 +507,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsAmpersandOnly) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{00000000-0000-0000-0000-000000000000}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -534,6 +538,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsBeginInAmpersand) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
       false,
@@ -560,6 +565,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsEndInAmpersand) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -636,6 +642,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsOneValid) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
       false,
@@ -661,6 +668,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsTwoValid) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -827,6 +835,7 @@ TEST(ExtraArgsParserTest, UsageStatsOn) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
       false,
@@ -852,6 +861,7 @@ TEST(ExtraArgsParserTest, UsageStatsOff) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -880,6 +890,7 @@ TEST(ExtraArgsParserTest, UsageStatsNone) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -933,6 +944,7 @@ TEST(ExtraArgsParserTest, BundleNameValid) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
       false,
@@ -960,6 +972,7 @@ TEST(ExtraArgsParserTest, BundleNameNotPresentButAppNameIs) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T("Google Chrome"),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
       false,
@@ -983,6 +996,7 @@ TEST(ExtraArgsParserTest, BundleNameNorAppNamePresent) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1009,6 +1023,7 @@ TEST(ExtraArgsParserTest, BundleNameNotPresentAndNoApp) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{00000000-0000-0000-0000-000000000000}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1038,6 +1053,7 @@ TEST(ExtraArgsParserTest, InstallationGuidValid) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1099,6 +1115,7 @@ TEST(ExtraArgsParserTest, BrandCodeValid) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
       false,
@@ -1135,6 +1152,7 @@ TEST(ExtraArgsParserTest, ClientIdValid) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
       false,
@@ -1160,6 +1178,7 @@ TEST(ExtraArgsParserTest, OmahaExperimentIdValid) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1189,6 +1208,7 @@ TEST(ExtraArgsParserTest, AppExperimentIdValid) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T("experiment=groupA|expir"),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
       false,
@@ -1214,6 +1234,7 @@ TEST(ExtraArgsParserTest, ReferralIdValid) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1243,6 +1264,7 @@ TEST(ExtraArgsParserTest, ApValid) {
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
       false,
@@ -1268,6 +1290,7 @@ TEST(ExtraArgsParserTest, TTValid) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1298,6 +1321,7 @@ TEST(ExtraArgsParserTest, AppArgsValid) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1360,6 +1384,7 @@ TEST(ExtraArgsParserTest, InstallDataIndexValid) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{8617EE50-F91C-4DC1-B937-0969EEF59B0B}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1501,6 +1526,7 @@ TEST(ExtraArgsParserTest, RuntimeValid) {
       _T("{00000000-0000-0000-0000-000000000000}"),
       _T(""),
       _T(""),
+      _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
       true,
@@ -1528,6 +1554,7 @@ TEST(ExtraArgsParserTest, RuntimeWithExtraArgs) {
   VerifyExtraArgsHaveSpecificValues(
       args,
       _T("{00000000-0000-0000-0000-000000000000}"),
+      _T(""),
       _T(""),
       _T(""),
       NEEDS_ADMIN_NO,
@@ -1598,11 +1625,13 @@ TEST(ExtraArgsParserTestMultipleEntries, ThreeApplications) {
                        _T("brand=GOOG&")
                        _T("client=_some_client&")
                        _T("experiments=_experiment_a&")
+                       _T("untrusteddata=ABCDEFG&")
                        _T("referral=A123456789&")
                        _T("appguid={5E46DE36-737D-4271-91C1-C062F9FE21D9}&")
                        _T("appname=TestApp2&")
                        _T("needsadmin=true&")
                        _T("experiments=_experiment_b&")
+                       _T("untrusteddata=1234567&")
                        _T("iid={98CEC468-9429-4984-AEDE-4F53C6A14869}&")
                        _T("ap=test_ap2&")
                        _T("tttoken=foobar2&")
@@ -1629,6 +1658,7 @@ TEST(ExtraArgsParserTestMultipleEntries, ThreeApplications) {
   input1.tt_token = _T("foobar");
   input1.encoded_installer_data = _T("installerdata_app1");
   input1.experiment_labels = _T("_experiment_a");
+  input1.untrusted_data = _T("A=3&Message=Hello,%20World!");
 
   CommandLineAppArgs input2;
   input2.app_guid = StringToGuid(_T("{5E46DE36-737D-4271-91C1-C062F9FE21D9}"));
@@ -1637,6 +1667,7 @@ TEST(ExtraArgsParserTestMultipleEntries, ThreeApplications) {
   input2.ap = _T("test_ap2");
   input2.tt_token = _T("foobar2");
   input2.experiment_labels = _T("_experiment_b");
+  input2.untrusted_data = _T("X=5");
 
   CommandLineAppArgs input3;
   input3.app_guid = StringToGuid(_T("{5F46DE36-737D-4271-91C1-C062F9FE21D9}"));

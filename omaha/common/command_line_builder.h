@@ -45,6 +45,9 @@ class CommandLineBuilder {
   bool is_eula_required_set() const { return is_eula_required_set_; }
   void set_is_eula_required_set(bool is_eula_required_set);
 
+  bool is_enterprise_set() const { return is_enterprise_set_; }
+  void set_is_enterprise_set(bool is_enterprise_set);
+
   CString extra_args() const { return extra_args_; }
   void set_extra_args(const CString& extra_args);
 
@@ -78,10 +81,14 @@ class CommandLineBuilder {
   CString ping_string() const { return ping_string_; }
   void set_ping_string(const CString& ping_string);
 
-  CString offline_dir() const { return offline_dir_; }
+  CString offline_dir_name() const { return offline_dir_name_; }
 
-  // Sets the offline directory after removing any trailing backslash.
-  void SetOfflineDir(const CString& offline_dir);
+  // The offline directory name is a string GUID. This function sets the
+  // offline directory name. It takes as input an offline_dir that is either a
+  // GUID or ends with a GUID. For instance:
+  // "{GUID}" and "C:\Path\{GUID}" are both valid inputs.
+  // In the latter case, "C:\Path\" is stripped off to get "{GUID}".
+  HRESULT SetOfflineDirName(const CString& offline_dir);
 
   // Outputs the proper command line string for the properties that are set.
   // If the properties aren't in a valid combination, function will assert.
@@ -124,6 +131,7 @@ class CommandLineBuilder {
   bool is_machine_set_;
   bool is_silent_set_;
   bool is_eula_required_set_;
+  bool is_enterprise_set_;
   CString extra_args_;
   CString app_args_;
   CString install_source_;
@@ -133,7 +141,7 @@ class CommandLineBuilder {
   CString webplugin_args_;
   CString code_red_metainstaller_path_;
   CString ping_string_;
-  CString offline_dir_;
+  CString offline_dir_name_;
   CString session_id_;
 
   DISALLOW_EVIL_CONSTRUCTORS(CommandLineBuilder);

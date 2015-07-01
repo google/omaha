@@ -35,7 +35,6 @@ typedef HANDLE WINAPI CreateMutexExFunction(
   DWORD desired_access
 );
 
-#define CREATE_EVENT_MANUAL_RESET 0x01
 typedef HANDLE WINAPI CreateEventExFunction(
   LPSECURITY_ATTRIBUTES attributes,
   const WCHAR* name,
@@ -109,7 +108,7 @@ AutoSync::AutoSync(const Lockable &rLock)
 // d-tor will release mutex.
 AutoSync::~AutoSync() {
   ASSERT(lock_, (L""));
-  VERIFY(lock_->Unlock(), (L"Failed to unlock in denstructor"));
+  VERIFY(lock_->Unlock(), (L"Failed to unlock in destructor"));
 }
 
 // Allows to write the for loop of __mutexBlock macro
@@ -212,9 +211,9 @@ bool LLock::Unlock() const {
 // LockCount is initialized to a value of -1; a value of 0 or greater indicates
 // that the critical section is held or owned. When LockCount is not equal
 // to -1, the OwningThread field contains the thread id that owns the section.
-DWORD LLock::GetOwner() const {
+DWORD_PTR LLock::GetOwner() const {
   return critical_section_.LockCount != -1 ?
-         reinterpret_cast<DWORD>(critical_section_.OwningThread) : 0;
+         reinterpret_cast<DWORD_PTR>(critical_section_.OwningThread) : 0;
 }
 
 // Use this c-tor for interprocess gates.
@@ -284,10 +283,12 @@ HRESULT Gate::WaitMultipleHelper(Gate const * const *gates,
                                  int *selected_gate,
                                  bool wait_all) {
   ASSERT1(gates);
-  ASSERT(num_gates > 0, (_T("There must be at least 1 gate")));
 
-  if ( num_gates <= 0 ) {
-    return E_FAIL;
+  if (num_gates <= 0) {
+    return E_INVALIDARG;
+  }
+  if (num_gates > MAXIMUM_WAIT_OBJECTS) {
+    return E_INVALIDARG;
   }
   HANDLE *gate_array = new HANDLE[ num_gates ];
   ASSERT1(gate_array);
@@ -300,16 +301,19 @@ HRESULT Gate::WaitMultipleHelper(Gate const * const *gates,
                                      msec);
   delete[] gate_array;
 
-#pragma warning(disable : 4296)
-// C4296: '>=' : expression is always true
-  if (WAIT_OBJECT_0 <= res && res < (WAIT_OBJECT_0 + num_gates)) {
+  if (res < (WAIT_OBJECT_0 + num_gates)) {
     if (selected_gate) {
       *selected_gate = res - WAIT_OBJECT_0;
     }
     return S_OK;
+  } else if (res == WAIT_TIMEOUT) {
+    return HRESULT_FROM_WIN32(WAIT_TIMEOUT);
+  } else if (res == WAIT_FAILED) {
+    return HRESULTFromLastError();
+  } else {
+    // Abandoned mutex, or a completely unexpected return value.
+    return E_FAIL;
   }
-#pragma warning(default : 4296)
-  return E_FAIL;
 }
 
 bool WaitAllowRepaint(const Gate& gate, DWORD msec) {

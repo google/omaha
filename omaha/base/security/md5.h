@@ -1,4 +1,4 @@
-// Copyright 2005-2009 Google Inc.
+// Copyright 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_MD5_H__
-#define OMAHA_COMMON_SECURITY_MD5_H__
+#ifndef OMAHA_BASE_SECURITY_MD5_H_
+#define OMAHA_BASE_SECURITY_MD5_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 #include "hash-internal.h"
 
 #ifdef __cplusplus
@@ -26,11 +26,12 @@ extern "C" {
 typedef HASH_CTX MD5_CTX;
 
 void MD5_init(MD5_CTX* ctx);
-void MD5_update(MD5_CTX* ctx, const void* data, int len);
+void MD5_update(MD5_CTX* ctx, const void* data, unsigned int len);
 const uint8_t* MD5_final(MD5_CTX* ctx);
 
 // Convenience method. Returns digest address.
-const uint8_t* MD5(const void* data, int len, uint8_t* digest);
+// NOTE: *digest needs to hold MD5_DIGEST_SIZE bytes.
+const uint8_t* MD5_hash(const void* data, unsigned int len, uint8_t* digest);
 
 #define MD5_DIGEST_SIZE 16
 
@@ -38,4 +39,4 @@ const uint8_t* MD5(const void* data, int len, uint8_t* digest);
 }
 #endif // __cplusplus
 
-#endif  // OMAHA_COMMON_SECURITY_MD5_H__
+#endif  // OMAHA_BASE_SECURITY_MD5_H_

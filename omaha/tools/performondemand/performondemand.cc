@@ -20,10 +20,10 @@
 #include <shlobj.h>
 #include <atltime.h>
 #include <tchar.h>
-#include "omaha/common/system.h"
-#include "omaha/common/system_info.h"
-#include "omaha/common/utils.h"
-#include "omaha/common/vistautil.h"
+#include "omaha/base/system.h"
+#include "omaha/base/system_info.h"
+#include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
 
 namespace omaha {
 
@@ -40,8 +40,8 @@ bool ParseParams(int argc, TCHAR* argv[], CString* guid, bool* is_machine,
   *guid = argv[1];
 
   // Verify that the guid is valid.
-  GUID parsed = StringToGuid(*guid);
-  if (parsed == GUID_NULL) {
+  GUID parsed;
+  if (FAILED(StringToGuidSafe(*guid, &parsed))) {
     return false;
   }
 
@@ -78,7 +78,7 @@ DWORD SetTokenIntegrityLevelMedium(HANDLE token) {
 
   size_t size = sizeof(TOKEN_MANDATORY_LABEL) + ::GetLengthSid(medium_sid);
   BOOL success = ::SetTokenInformation(token, TokenIntegrityLevel, &label,
-                                      size);
+                                       static_cast<DWORD>(size));
   DWORD result = success ? ERROR_SUCCESS : ::GetLastError();
   ::LocalFree(medium_sid);
   return result;
@@ -136,7 +136,11 @@ HRESULT RegisterHKCUPSClsid(IID iid,
     return hr;
   }
   CComPtr<IPSFactoryBuffer> fb;
-  CLSID proxy_clsid = StringToGuid(proxy_clsid32_value);
+  GUID proxy_clsid;
+  hr = StringToGuidSafe(proxy_clsid32_value, &proxy_clsid);
+  if (FAILED(hr)) {
+    return hr;
+  }
   hr = (*fn)(proxy_clsid, IID_IPSFactoryBuffer, reinterpret_cast<void**>(&fb));
   if (FAILED(hr)) {
     wprintf(_T("DllGetClassObject failed [0x%x]\n"), hr);
@@ -309,6 +313,7 @@ int DoMain(int argc, TCHAR* argv[]) {
     return -1;
   }
   wprintf(_T("GUID: %s\n"), guid);
+
   CComModule module;
   scoped_co_init com_apt;
   VistaProxyRegistrar registrar;

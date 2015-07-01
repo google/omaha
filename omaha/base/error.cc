@@ -53,5 +53,9 @@ HRESULT HRESULTFromHttpStatusCode(int status_code) {
   return hr;
 }
 
+bool IsCupError(HRESULT hr) {
+  return hr >= OMAHA_NET_E_CUP_FIRST && hr <= OMAHA_NET_E_CUP_LAST;
+}
+
 }  // namespace omaha
 

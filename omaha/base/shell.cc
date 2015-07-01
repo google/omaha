@@ -174,7 +174,7 @@ HRESULT Shell::OpenLinkInNewWindow(const TCHAR* url, UseBrowser use_browser) {
   // Try to open with IE if can't open with default browser or required
   if (use_browser == USE_DEFAULT_BROWSER ||
       use_browser == USE_INTERNET_EXPLORER) {
-    hr = RegKey::GetValue(kRegKeyIeClass, kRegValueIeClass, &browser_path);
+    hr = GetIEPath(&browser_path);
     if (SUCCEEDED(hr)) {
       hr = System::ShellExecuteProcess(browser_path, url, NULL, NULL);
       if (SUCCEEDED(hr)) {
@@ -305,9 +305,6 @@ HRESULT Shell::GetSpecialFolder(DWORD csidl,
   return hr;
 }
 
-#pragma warning(disable : 4510 4610)
-// C4510: default constructor could not be generated
-// C4610: struct can never be instantiated - user defined constructor required
 struct {
   const TCHAR* name;
   const DWORD csidl;
@@ -325,7 +322,6 @@ struct {
   L"SYSTEM",             CSIDL_SYSTEM,
   L"WINDOWS",            CSIDL_WINDOWS,
 };
-#pragma warning(default : 4510 4610)
 
 HRESULT Shell::GetSpecialFolderKeywordsMapping(
     std::map<CString, CString>* special_folders_map) {

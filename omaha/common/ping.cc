@@ -27,6 +27,7 @@
 #include "omaha/common/command_line.h"
 #include "omaha/common/command_line_builder.h"
 #include "omaha/common/config_manager.h"
+#include "omaha/common/experiment_labels.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/update_response.h"
@@ -40,6 +41,10 @@ namespace omaha {
 const TCHAR* const Ping::kRegKeyPing = _T("Pings");
 const time64 Ping::kPingExpiry100ns  = 10 * kDaysTo100ns;  // 10 days.
 
+// Minimum compatible Omaha version that understands the /ping command line.
+// 1.3.0.0.
+const ULONGLONG kMinOmahaVersionForPingOOP = 0x0001000300000000;
+
 Ping::Ping(bool is_machine,
            const CString& session_id,
            const CString& install_source)
@@ -48,6 +53,11 @@ Ping::Ping(bool is_machine,
                                                session_id,
                                                install_source,
                                                CString())) {
+  CString shell_version_string =
+      goopdate_utils::GetInstalledShellVersion(is_machine);
+  if (!shell_version_string.IsEmpty()) {
+    ping_request_->set_omaha_shell_version(shell_version_string);
+  }
 }
 
 Ping::~Ping() {
@@ -89,7 +99,9 @@ void Ping::LoadOmahaDataFromRegistry() {
       &omaha_data_.brand_code,
       &omaha_data_.client_id,
       &omaha_data_.installation_id,
-      &omaha_data_.experiment_labels);
+      &omaha_data_.experiment_labels,
+      &omaha_data_.install_time_diff_sec,
+      &omaha_data_.day_of_install);
 }
 
 void Ping::LoadAppDataFromRegistry(const std::vector<CString>& app_ids) {
@@ -105,11 +117,27 @@ void Ping::LoadAppDataFromRegistry(const std::vector<CString>& app_ids) {
         &app_data.brand_code,
         &app_data.client_id,
         &app_data.installation_id,
-        &app_data.experiment_labels);
+        &app_data.experiment_labels,
+        &app_data.install_time_diff_sec,
+        &app_data.day_of_install);
     apps_data_.push_back(app_data);
   }
 
   LoadOmahaDataFromRegistry();
+}
+
+void Ping::AddExtraOmahaLabel(const CString& label_set) {
+  CORE_LOG(L3, (_T("[Ping::AddExtraOmahaLabel][%s]"), label_set));
+  if (label_set.IsEmpty()) {
+    return;
+  }
+
+  CString new_labels;
+  if (ExperimentLabels::MergeLabelSets(omaha_data_.experiment_labels,
+                                       label_set,
+                                       &new_labels)) {
+    omaha_data_.experiment_labels = new_labels;
+  }
 }
 
 HRESULT Ping::Send(bool is_fire_and_forget) {
@@ -169,30 +197,50 @@ xml::request::App Ping::BuildOmahaApp(const CString& version,
                                       const CString& next_version) const {
   xml::request::App app;
 
-  app.app_id         = omaha_data_.app_id;
-  app.lang           = omaha_data_.language;
-  app.brand_code     = omaha_data_.brand_code;
-  app.client_id      = omaha_data_.client_id;
-  app.experiments    = omaha_data_.experiment_labels;
-  app.iid            = omaha_data_.installation_id;
+  app.app_id                = omaha_data_.app_id;
+  app.lang                  = omaha_data_.language;
+  app.brand_code            = omaha_data_.brand_code;
+  app.client_id             = omaha_data_.client_id;
+  app.experiments           = omaha_data_.experiment_labels;
+  app.iid                   = omaha_data_.installation_id;
+  app.install_time_diff_sec = omaha_data_.install_time_diff_sec;
+  app.day_of_install        = omaha_data_.day_of_install;
 
-  app.version        = version;
-  app.next_version   = next_version;
+  app.version               = version;
+  app.next_version          = next_version;
 
   return app;
+}
+
+void Ping::BuildAppPing(const CString& app_id,
+                        const CString& version,
+                        const CString& next_version,
+                        const CString& client_id,
+                        const PingEventPtr& ping_event) {
+  xml::request::App app;
+
+  app.app_id                = app_id;
+  app.version               = version;
+  app.next_version          = next_version;
+  app.client_id             = client_id;
+
+  app.ping_events.push_back(ping_event);
+  ping_request_->AddApp(app);
 }
 
 void Ping::BuildAppsPing(const PingEventPtr& ping_event) {
   for (size_t i = 0; i != apps_data_.size(); ++i) {
     xml::request::App app;
 
-    app.version        = apps_data_[i].pv;
-    app.app_id         = apps_data_[i].app_id;
-    app.lang           = apps_data_[i].language;
-    app.brand_code     = apps_data_[i].brand_code;
-    app.client_id      = apps_data_[i].client_id;
-    app.experiments    = apps_data_[i].experiment_labels;
-    app.iid            = apps_data_[i].installation_id;
+    app.version               = apps_data_[i].pv;
+    app.app_id                = apps_data_[i].app_id;
+    app.lang                  = apps_data_[i].language;
+    app.brand_code            = apps_data_[i].brand_code;
+    app.client_id             = apps_data_[i].client_id;
+    app.experiments           = apps_data_[i].experiment_labels;
+    app.iid                   = apps_data_[i].installation_id;
+    app.install_time_diff_sec = apps_data_[i].install_time_diff_sec;
+    app.day_of_install        = apps_data_[i].day_of_install;
 
     app.ping_events.push_back(ping_event);
     ping_request_->AddApp(app);
@@ -201,6 +249,13 @@ void Ping::BuildAppsPing(const PingEventPtr& ping_event) {
 
 HRESULT Ping::SendUsingGoogleUpdate(const CString& request_string,
                                     DWORD wait_timeout_ms) const {
+  CString pv;
+  app_registry_utils::GetAppVersion(is_machine_, kGoogleUpdateAppId, &pv);
+  if (VersionFromString(pv) < kMinOmahaVersionForPingOOP) {
+    // Older versions could display a dialog box if they are run with /ping.
+    return E_NOTIMPL;
+  }
+
   CStringA request_string_utf8(WideToUtf8(request_string));
   CStringA ping_string_utf8;
   WebSafeBase64Escape(request_string_utf8, &ping_string_utf8);
@@ -417,23 +472,27 @@ HRESULT Ping::SendString(bool is_machine,
 HRESULT Ping::HandlePing(bool is_machine, const CString& ping_string) {
   CORE_LOG(L3, (_T("[Ping::HandlePing][%s]"), ping_string));
 
-  CStringA ping_string_utf8(WideToUtf8(ping_string));
+  // |ping_string| is web safe base64 encoded. It must be decoded before
+  // sending it.
+  const CStringA ping_string_utf8(WideToUtf8(ping_string));
 
   CStringA request_string_utf8;
-  int out_buffer_length = ping_string_utf8.GetLength();
+  const int out_buffer_length = ping_string_utf8.GetLength();
   char* out_buffer = request_string_utf8.GetBufferSetLength(out_buffer_length);
 
-  out_buffer_length = WebSafeBase64Unescape(ping_string_utf8,
-                                            ping_string_utf8.GetLength(),
-                                            out_buffer,
-                                            out_buffer_length);
-  ASSERT1(out_buffer_length <= ping_string_utf8.GetLength());
-  request_string_utf8.ReleaseBufferSetLength(out_buffer_length);
+  const int num_chars = WebSafeBase64Unescape(ping_string_utf8,
+                                              ping_string_utf8.GetLength(),
+                                              out_buffer,
+                                              out_buffer_length);
+  if (num_chars < 0) {
+    return E_FAIL;
+  }
+  request_string_utf8.ReleaseBufferSetLength(num_chars);
 
-  CString request_string(Utf8ToWideChar(request_string_utf8,
-                                        request_string_utf8.GetLength()));
-
-  return Ping::SendString(is_machine, HeadersVector(), request_string);
+  return Ping::SendString(
+      is_machine,
+      HeadersVector(),
+      Utf8ToWideChar(request_string_utf8, request_string_utf8.GetLength()));
 }
 
 }  // namespace omaha

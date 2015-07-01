@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #define rol(bits, value) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
@@ -77,7 +77,7 @@ static const HASH_VTAB SHA_VTAB = {
   SHA_init,
   SHA_update,
   SHA_final,
-  SHA,
+  SHA_hash,
   SHA_DIGEST_SIZE
 };
 
@@ -92,8 +92,8 @@ void SHA_init(SHA_CTX* ctx) {
 }
 
 
-void SHA_update(SHA_CTX* ctx, const void* data, int len) {
-  int i = ctx->count & 63;
+void SHA_update(SHA_CTX* ctx, const void* data, unsigned int len) {
+  unsigned int i = (unsigned int)(ctx->count & 63);
   const uint8_t* p = (const uint8_t*)data;
 
   ctx->count += len;
@@ -118,23 +118,23 @@ const uint8_t* SHA_final(SHA_CTX* ctx) {
     SHA_update(ctx, (uint8_t*)"\0", 1);
   }
   for (i = 0; i < 8; ++i) {
-    uint8_t tmp = cnt >> ((7 - i) * 8);
+    uint8_t tmp = (uint8_t) (cnt >> ((7 - i) * 8));
     SHA_update(ctx, &tmp, 1);
   }
 
   for (i = 0; i < 5; i++) {
     uint32_t tmp = ctx->state[i];
-    *p++ = tmp >> 24;
-    *p++ = tmp >> 16;
-    *p++ = tmp >> 8;
-    *p++ = tmp >> 0;
+    *p++ = (uint8_t)(tmp >> 24);
+    *p++ = (uint8_t)(tmp >> 16);
+    *p++ = (uint8_t)(tmp >> 8);
+    *p++ = (uint8_t)(tmp >> 0);
   }
 
   return ctx->buf;
 }
 
 /* Convenience function */
-const uint8_t* SHA(const void* data, int len, uint8_t* digest) {
+const uint8_t* SHA_hash(const void* data, unsigned int len, uint8_t* digest) {
   SHA_CTX ctx;
   SHA_init(&ctx);
   SHA_update(&ctx, data, len);

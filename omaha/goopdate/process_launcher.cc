@@ -18,7 +18,6 @@
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/debug.h"
-#include "omaha/base/exception_barrier.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/system.h"
 #include "omaha/base/vista_utils.h"
@@ -37,31 +36,11 @@ ProcessLauncher::~ProcessLauncher() {
 
 STDMETHODIMP ProcessLauncher::LaunchCmdLine(const TCHAR* cmd_line) {
   CORE_LOG(L1, (_T("[ProcessLauncher::LaunchCmdLine][%s]"), cmd_line));
-  // The exception barrier is needed, because any exceptions that are thrown
-  // in this method will get caught by the COM run time. We compile with
-  // exceptions off, and do not expect to throw any exceptions. This barrier
-  // will treat an exception in this method as a unhandled exception.
-  ExceptionBarrier barrier;
-  if (cmd_line == NULL) {
-    return E_INVALIDARG;
-  }
-
-  // http://b/3329538: In the impersonated case, need to create a fresh
-  // environment block and ::CreateProcess. RunAsCurrentUser does just that.
-  HRESULT hr = vista::RunAsCurrentUser(cmd_line);
-  if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("[RunAsCurrentUser failed][0x%x]"), hr));
-  }
-  return hr;
+  return LaunchCmdLineEx(cmd_line, NULL, NULL, NULL);
 }
 
 STDMETHODIMP ProcessLauncher::LaunchBrowser(DWORD type, const TCHAR* url) {
   CORE_LOG(L1, (_T("[ProcessLauncher::LaunchBrowser][%d][%s]"), type, url));
-  // The exception barrier is needed, because any exceptions that are thrown
-  // in this method will get caught by the COM run time. We compile with
-  // exceptions off, and do not expect to throw any exceptions. This barrier
-  // will treat an exception in this method as a unhandled exception.
-  ExceptionBarrier barrier;
   if (type >= BROWSER_MAX || url == NULL) {
     return E_INVALIDARG;
   }
@@ -83,8 +62,6 @@ STDMETHODIMP ProcessLauncher::LaunchCmdElevated(const WCHAR* app_guid,
   CORE_LOG(L3, (_T("[ProcessLauncher::LaunchCmdElevated]")
                 _T("[app %s][cmd %s][pid %d]"),
                 app_guid, cmd_id, caller_proc_id));
-
-  ExceptionBarrier barrier;
 
   ASSERT1(app_guid);
   ASSERT1(cmd_id);
@@ -122,6 +99,37 @@ STDMETHODIMP ProcessLauncher::LaunchCmdElevated(const WCHAR* app_guid,
                                                cmd_id,
                                                caller_proc_id,
                                                proc_handle);
+}
+
+STDMETHODIMP ProcessLauncher::LaunchCmdLineEx(const TCHAR* cmd_line,
+                                              DWORD* server_proc_id,
+                                              ULONG_PTR* proc_handle,
+                                              ULONG_PTR* stdout_handle) {
+  CORE_LOG(L1, (_T("[ProcessLauncher::LaunchCmdLineEx][%s]"), cmd_line));
+  if (cmd_line == NULL) {
+    return E_INVALIDARG;
+  }
+  if ((server_proc_id == NULL) != (proc_handle == NULL) ||
+      (server_proc_id == NULL) != (stdout_handle == NULL)) {
+    return E_INVALIDARG;
+  }
+
+  // http://b/3329538: In the impersonated case, need to create a fresh
+  // environment block and ::CreateProcess. RunAsCurrentUser does just that.
+  HRESULT hr = vista::RunAsCurrentUser(
+      cmd_line,
+      reinterpret_cast<HANDLE*>(stdout_handle),
+      reinterpret_cast<HANDLE*>(proc_handle));
+  if (FAILED(hr)) {
+    UTIL_LOG(LW, (_T("[RunAsCurrentUser failed][0x%x]"), hr));
+    return hr;
+  }
+
+  if (server_proc_id) {
+    *server_proc_id = ::GetCurrentProcessId();
+  }
+
+  return S_OK;
 }
 
 }  // namespace omaha

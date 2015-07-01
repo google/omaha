@@ -30,41 +30,62 @@ namespace webplugin_utils {
     _T("appname=YouTubeUploader&needsadmin=False&lang=en\"")
 
 
-TEST(WebPluginUtilsTest, BuildOneClickRequestString_NullOutParam) {
-  CommandLineArgs args;
-  EXPECT_EQ(E_INVALIDARG, BuildOneClickRequestString(args, NULL));
+TEST(WebPluginUtilsTest, SanitizeExtraArgs_Valid) {
+  CString extra_args = _T("appguid={8A69D345-D564-463c-AFF1-A69D9E530F96}")
+                       _T("&appname=Google%20Chrome&needsadmin=true&lang=en");
+
+  CString escaped_extra_args;
+  EXPECT_SUCCEEDED(SanitizeExtraArgs(extra_args, &escaped_extra_args));
+  EXPECT_STREQ(extra_args, escaped_extra_args);
 }
 
-TEST(WebPluginUtilsTest, BuildOneClickRequestString_WrongArgs) {
-  CommandLineArgs args;
-  CString request;
-  EXPECT_EQ(E_UNEXPECTED, BuildOneClickRequestString(args, &request));
+TEST(WebPluginUtilsTest, SanitizeExtraArgs_Invalid) {
+  CString extra_args = _T("\"appguid={8A69D345-D564-463c-AFF1-A69D9E530F96}")
+                       _T("&appname=Google Chrome&needsadmin=true&lang=en\"")
+                       _T(" /offline 1");
+
+  CString escaped_extra_args;
+  EXPECT_SUCCEEDED(SanitizeExtraArgs(extra_args, &escaped_extra_args));
+  EXPECT_STREQ(_T("%22appguid={8A69D345-D564-463c-AFF1-A69D9E530F96}&")
+               _T("appname=Google%20Chrome&needsadmin=true&lang=en%22")
+               _T("%20%2Foffline%201"),
+               escaped_extra_args);
 }
 
-TEST(WebPluginUtilsTest, BuildOneClickRequestString_NoUrlDomain) {
-  CommandLineArgs args;
-  CString request;
+TEST(WebPluginUtilsTest, BuildWebPluginCommandLine_Valid) {
+  CString url_domain(_T("http://www.google.com/"));
+  CString extra_args = _T("appguid={8A69D345-D564-463c-AFF1-A69D9E530F96}")
+                       _T("&appname=Google%20Chrome&needsadmin=true&lang=en");
 
-  args.mode = COMMANDLINE_MODE_WEBPLUGIN;
-  EXPECT_EQ(E_UNEXPECTED, BuildOneClickRequestString(args, &request));
+  CString final_cmd_line_args;
+  EXPECT_SUCCEEDED(BuildWebPluginCommandLine(url_domain,
+                                             extra_args,
+                                             &final_cmd_line_args));
+  EXPECT_STREQ(
+      _T("\"http:%2F%2Fwww.google.com%2F\" \"%2Finstall%20%22appguid=")
+      _T("%7B8A69D345-D564-463c-AFF1-A69D9E530F96%7D%26appname=")
+      _T("Google%2520Chrome%26needsadmin=true%26lang=")
+      _T("en%22\" /installsource oneclick"),
+      final_cmd_line_args);
 }
 
-TEST(WebPluginUtilsTest, BuildOneClickRequestString_Valid) {
-  CommandLineArgs args;
-  CString request;
+TEST(WebPluginUtilsTest, BuildWebPluginCommandLine_Invalid) {
+  CString url_domain(_T("http://www.google.com/"));
+  CString extra_args = _T("\"appguid={8A69D345-D564-463c-AFF1-A69D9E530F96}")
+                       _T("&appname=Google Chrome&needsadmin=true&lang=en\"")
+                       _T(" /offline 1");
 
-  args.mode = COMMANDLINE_MODE_WEBPLUGIN;
-  args.webplugin_urldomain = _T("http://www.google.com/");
-  args.webplugin_args = _T("/install \"appguid=")
-      _T("{8A69D345-D564-463c-AFF1-A69D9E530F96}")
-      _T("&appname=Google Chrome&needsadmin=true&lang=en\"");
-  EXPECT_EQ(S_OK, BuildOneClickRequestString(args, &request));
-
-  EXPECT_STREQ(_T("?du=http://www.google.com/&args=/install%20")
-               _T("%22appguid=%7B8A69D345-D564-463c-AFF1-A69D9E530F96")
-               _T("%7D%26appname=Google%20Chrome%26needsadmin=true%26")
-               _T("lang=en%22"),
-               request);
+  ExpectAsserts expect_asserts;
+  CString final_cmd_line_args;
+  EXPECT_SUCCEEDED(BuildWebPluginCommandLine(url_domain,
+                                             extra_args,
+                                             &final_cmd_line_args));
+  EXPECT_STREQ(
+      _T("\"http:%2F%2Fwww.google.com%2F\" \"%2Finstall%20%22%2522appguid=")
+      _T("%7B8A69D345-D564-463c-AFF1-A69D9E530F96%7D%26appname=")
+      _T("Google%2520Chrome%26needsadmin=true%26lang=")
+      _T("en%2522%2520%252Foffline%25201%22\" /installsource oneclick"),
+      final_cmd_line_args);
 }
 
 TEST(WebPluginUtilsTest, BuildOneClickWorkerArgs_Valid) {

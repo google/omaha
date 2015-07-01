@@ -36,6 +36,7 @@ HRESULT SetEulaAccepted(bool is_machine);
 HRESULT InstallSelf(bool is_machine,
                     bool is_eula_required,
                     bool is_oem_install,
+                    bool is_enterprise_install,
                     const CString& current_version,
                     const CString& install_source,
                     const CommandLineExtraArgs& extra_args,

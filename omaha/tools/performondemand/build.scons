@@ -19,59 +19,61 @@
 Import('env')
 
 
-local_env = env.Clone()
-local_env.Append(
-    CPPDEFINES = [
-        'UNICODE',
-        '_UNICODE'
-        ],
-    CPPPATH = [
-        '$OBJ_ROOT',
-        ],
-    LIBS = [
-        ('atls.lib', 'atlsd.lib')[local_env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[local_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[local_env.Bit('debug')],
-        'comctl32.lib',
-        'crypt32.lib',
-        'Iphlpapi.lib',
-        'mstask.lib',
-        'netapi32.lib',
-        'psapi.lib',
-        'rasapi32.lib',
-        'shlwapi.lib',
-        'urlmon.lib',
-        'userenv.lib',
-        'version.lib',
-        'wininet.lib',
-        'wtsapi32.lib',
+def BuildPerformOnDemand(local_env):
+  local_env.Append(
+      CPPDEFINES = [
+          'UNICODE',
+          '_UNICODE'
+          ],
+      CPPPATH = [
+          '$OBJ_ROOT',
+          ],
+      LIBS = [
+          local_env['atls_libs'][local_env.Bit('debug')],
+          ('libcmt.lib', 'libcmtd.lib')[local_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[local_env.Bit('debug')],
+          'comctl32.lib',
+          'crypt32.lib',
+          'Iphlpapi.lib',
+          'mstask.lib',
+          'netapi32.lib',
+          'psapi.lib',
+          'rasapi32.lib',
+          'shlwapi.lib',
+          'urlmon.lib',
+          'userenv.lib',
+          'version.lib',
+          'wininet.lib',
+          'wtsapi32.lib',
 
-        '$LIB_DIR/common.lib',
-        '$LIB_DIR/goopdate_dll.lib',
-        '$LIB_DIR/logging.lib',
-        '$LIB_DIR/net.lib',
-        '$LIB_DIR/statsreport.lib',
-        ],
-)
+          local_env.GetMultiarchLibName('base'),
+          local_env.GetMultiarchLibName('common'),
+          local_env.GetMultiarchLibName('logging'),
+          local_env.GetMultiarchLibName('net'),
+          local_env.GetMultiarchLibName('statsreport'),
+          ],
+  )
 
-local_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
-local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+  local_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
+  local_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
 
-no_precomp_env = local_env.Clone()
-idl_obj = no_precomp_env.ComponentObject(
-    source='$OBJ_ROOT/goopdate/google_update_idl_i.c')
+  target_name = 'performondemand%s' % ('', '64')[local_env.Bit('x64')]
+  inputs = [
+      'performondemand.cc',
+      ]
+  if local_env.Bit('x64'):
+    inputs.append('$OBJ_ROOT/goopdate/omaha3_idl_64_i.obj64')
+  else:
+    inputs.append('$OBJ_ROOT/goopdate/omaha3_idl_i.obj')
 
-target_name = 'performondemand'
+  if local_env.Bit('use_precompiled_headers'):
+    inputs += local_env.EnablePrecompile(target_name)
 
-inputs = [
-    'performondemand.cc',
-    idl_obj,
-    ]
-if env.Bit('use_precompiled_headers'):
-  inputs += local_env.EnablePrecompile(target_name)
+  local_env.ComponentTestProgram(
+      prog_name=target_name,
+      source=inputs,
+      COMPONENT_TEST_RUNNABLE=False
+  )
 
-local_env.ComponentTestProgram(
-    prog_name=target_name,
-    source=inputs,
-    COMPONENT_TEST_RUNNABLE=False
-)
+BuildPerformOnDemand(env.Clone())
+BuildPerformOnDemand(env.CloneAndMake64Bit())

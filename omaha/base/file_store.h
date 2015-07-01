@@ -48,10 +48,10 @@ class FileStore {
   bool Remove(const TCHAR* name);
 
   // Get the number of values for this store
-  bool GetValueCount(uint32* value_count);
+  bool GetValueCount(size_t* value_count);
 
   // Get the value name for the given value name index
-  bool GetValueNameAt(uint32 index, CString* value_name);
+  bool GetValueNameAt(size_t index, CString* value_name);
 
  private:
   CString file_path_;      // Full path to the file store

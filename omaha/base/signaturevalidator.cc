@@ -13,7 +13,6 @@
 // limitations under the License.
 // ========================================================================
 
-
 #include "omaha/base/signaturevalidator.h"
 
 #include <atltime.h>
@@ -29,6 +28,9 @@
 #pragma warning(pop)
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
+#include "omaha/base/string.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/base/security/sha256.h"
 
 namespace omaha {
 
@@ -214,6 +216,10 @@ CertInfo::CertInfo(const CERT_CONTEXT* given_cert_context)
                       &issuing_company_name_,
                       &issuing_dept_name_,
                       &trust_authority_name_);
+
+    ExtractThumbprint(cert_context_, &thumbprint_);
+
+    ExtractPublicKeyHash(cert_context_, &public_key_hash_);
   }
 }
 
@@ -298,13 +304,52 @@ bool CertInfo::ExtractIssuerInfo(const CERT_CONTEXT* cert_context,
   return true;
 }
 
+bool CertInfo::ExtractThumbprint(const CERT_CONTEXT* cert_context,
+                                 CString* thumbprint) {
+  thumbprint->Empty();
+  const size_t kShaDigestSize = 20;
+  uint8 cert_hash[kShaDigestSize] = {0};
+  DWORD num_bytes = arraysize(cert_hash);
+  if (!::CryptHashCertificate(NULL,
+                              CALG_SHA1,
+                              0,
+                              cert_context->pbCertEncoded,
+                              cert_context->cbCertEncoded,
+                              cert_hash,
+                              &num_bytes)) {
+    return false;
+  }
+  thumbprint->SetString(BytesToHex(cert_hash, arraysize(cert_hash)));
+  return true;
+}
 
-void CertList::FindFirstCert(CertInfo** result_cert_info,
+bool CertInfo::ExtractPublicKeyHash(const CERT_CONTEXT* cert_context,
+                                    CString* public_key_hash) {
+  public_key_hash->Empty();
+
+  CRYPT_BIT_BLOB cbb = cert_context->pCertInfo->SubjectPublicKeyInfo.PublicKey;
+  size_t public_key_length = cbb.cbData;
+  uint8* public_key = cbb.pbData;
+  size_t num_unused_bits = cbb.cUnusedBits;
+
+  if (num_unused_bits != 0) {
+    ASSERT1(false);  // This case is not handled yet.
+    return false;
+  }
+
+  uint8 hash[SHA256_DIGEST_SIZE] = {0};
+  SHA256_hash(public_key, static_cast<int>(public_key_length), hash);
+
+  public_key_hash->SetString(BytesToHex(hash, arraysize(hash)));
+  return true;
+}
+
+void CertList::FindFirstCert(const CertInfo** result_cert_info,
                              const CString &company_name_to_match,
                              const CString &orgn_unit_to_match,
                              const CString &trust_authority_to_match,
                              bool allow_test_variant,
-                             bool check_cert_is_valid_now) {
+                             bool check_cert_is_valid_now) const {
   if (!result_cert_info)
     return;
   (*result_cert_info) = NULL;
@@ -377,36 +422,45 @@ void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
 }
 
 // Only check the CN. The OU can change.
-// TODO(omaha): A better way to implement the valid now check would be to add
-// a parameter to VerifySignature that adds WTD_LIFETIME_SIGNING_FLAG.
-bool VerifySigneeIsGoogleInternal(const wchar_t* signed_file,
-                                  bool check_cert_is_valid_now) {
+// TODO(omaha): implement the valid now check by adding a parameter to
+// VerifyAuthenticodeSignature that adds WTD_LIFETIME_SIGNING_FLAG.
+HRESULT VerifyCertificate(const wchar_t* signed_file,
+                          const wchar_t* subject,
+                          bool allow_test_variant,
+                          bool check_cert_is_valid_now,
+                          const std::vector<CString>* expected_hashes) {
   CertList cert_list;
   ExtractAllCertificatesFromSignature(signed_file, &cert_list);
-  if (cert_list.size() > 0) {
-    CertInfo* required_cert = NULL;
-    // now, see if one of the certificates in the signature belongs to Google.
-    cert_list.FindFirstCert(&required_cert,
-                            kCertificateSubjectName,
-                            CString(),
-                            CString(),
-                            true,
-                            check_cert_is_valid_now);
-    if (required_cert != NULL) {
-      return true;
-    }
+  if (cert_list.size() == 0) {
+    return GOOPDATE_E_SIGNATURE_NOT_SIGNED;
   }
-  return false;
+
+  const CertInfo* required_cert = NULL;
+  cert_list.FindFirstCert(&required_cert,
+                          subject,
+                          CString(),
+                          CString(),
+                          allow_test_variant,
+                          check_cert_is_valid_now);
+  if (required_cert == NULL) {
+    return GOOPDATE_E_SIGNATURE_NOT_TRUSTED_SUBJECT;
+  }
+
+  if (expected_hashes != NULL) {
+    const CString& public_key_hash = required_cert->public_key_hash_;
+    for (size_t i = 0; i != expected_hashes->size(); ++i) {
+      if (public_key_hash.CompareNoCase((*expected_hashes)[i]) == 0) {
+        return S_OK;
+      }
+    }
+    return GOOPDATE_E_SIGNATURE_NOT_TRUSTED_PIN;
+  }
+
+  return S_OK;
 }
 
-// Does not verify that the certificate is currently valid.
-// VerifySignature verifies that the certificate was valid at signing time as
-// part of the normal signature verification.
-bool VerifySigneeIsGoogle(const wchar_t* signed_file) {
-  return VerifySigneeIsGoogleInternal(signed_file, false);
-}
-
-HRESULT VerifySignature(const wchar_t* signed_file, bool allow_network_check) {
+HRESULT VerifyAuthenticodeSignature(const wchar_t* signed_file,
+                                    bool allow_network_check) {
   // Don't pop up any windows
   HWND const kWindowMode = reinterpret_cast<HWND>(INVALID_HANDLE_VALUE);
 
@@ -429,8 +483,18 @@ HRESULT VerifySignature(const wchar_t* signed_file, bool allow_network_check) {
   trust_data.fdwRevocationChecks = WTD_REVOKE_NONE;
   trust_data.dwProvFlags = WTD_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT;
 
-  if (!allow_network_check)
-    trust_data.dwProvFlags |= WTD_CACHE_ONLY_URL_RETRIEVAL;
+  // WTD_CACHE_ONLY_URL_RETRIEVAL uses only the local cache for revocation
+  // checks. Prevents revocation checks over the network.
+  // WTD_CACHE_ONLY_URL_RETRIEVAL is not supported on Windows XP and Windows
+  // 2000. So for versions lower than Vista, we turn off revocation checks
+  // entirely if allow_network_check is false.
+  if (!allow_network_check) {
+    if (vista_util::IsVistaOrLater()) {
+      trust_data.dwProvFlags |= WTD_CACHE_ONLY_URL_RETRIEVAL;
+    } else {
+      trust_data.dwProvFlags = WTD_REVOCATION_CHECK_NONE;
+    }
+  }
 
   trust_data.dwUnionChoice = WTD_CHOICE_FILE;        // check a file
   trust_data.pFile = &file_info;                     // check this file

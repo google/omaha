@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_CHALLENGER_H__
-#define OMAHA_COMMON_SECURITY_CHALLENGER_H__
+#ifndef OMAHA_BASE_SECURITY_CHALLENGER_H_
+#define OMAHA_BASE_SECURITY_CHALLENGER_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #include "md5.h"
 #include "aes.h"
@@ -47,4 +47,4 @@ class Challenger {
   RSA rsa_;
 };
 
-#endif  // OMAHA_COMMON_SECURITY_CHALLENGER_H__
+#endif  // OMAHA_BASE_SECURITY_CHALLENGER_H_

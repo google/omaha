@@ -124,6 +124,25 @@ const ULONG kFacilityOmaha = 67;
 #define SIGS_E_INVALID_SIGNATURE                  \
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x0204)
 
+// Crypto error codes.
+// Obsolete: GOOPDATE_E_CRYPT_CANT_CREATE_KEY    0x210
+// Obsolete: GOOPDATE_E_CRYPT_CANT_CREATE_SIGNER 0x211
+// Obsolete: GOOPDATE_E_CRYPT_CANT_SIGN          0x212
+// Obsolete: GOOPDATE_E_CRYPT_INVALID_PUBLIC_KEY 0x213
+// Obsolete: GOOPDATE_E_CRYPT_INVALID_SIGNATURE  0x214
+// Obsolete: GOOPDATE_E_CRYPT_FILE_IS_NOT_SIGNED 0x215
+// Obsolete: GOOPDATE_E_CRYPT_MISSING_SIGNATURE  0x216
+// Obsolete: GOOPDATE_E_CRYPT_FILE_NOT_TRUSTED   0x217
+
+// Certificate pinning error codes.
+#define GOOPDATE_E_SIGNATURE_NOT_SIGNED           \
+    MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x230)
+#define GOOPDATE_E_SIGNATURE_NOT_TRUSTED_SUBJECT  \
+    MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x231)
+#define GOOPDATE_E_SIGNATURE_NOT_TRUSTED_PIN      \
+    MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x232)
+
+
 // Goopdate XML parser error codes.
 #define GOOPDATEXML_E_STRTOUINT                   \
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x300)
@@ -258,6 +277,12 @@ const ULONG kFacilityOmaha = 67;
     MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x721)
 #define GOOPDATE_E_POST_COPY_VERIFICATION_FAILED    \
     MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x722)
+#define GOOPDATE_E_METAINSTALLER_NOT_FOUND          \
+      MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x723)
+#define GOOPDATE_E_TOO_MANY_WAITS                   \
+    MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x724)
+#define GOOPDATE_E_ACCESSDENIED_COPYING_MI          \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x725)
 
 // Metainstaller custom error codes.
 #define GOOPDATE_E_UNTAGGED_METAINSTALLER           \
@@ -311,12 +336,20 @@ const ULONG kFacilityOmaha = 67;
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x81a)
 #define GOOPDATE_E_SERVER_RESPONSE_UNSUPPORTED_PROTOCOL \
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x81b)
-#define GOOPDATE_E_UPDATE_DEFERRED                      \
+#define GOOPDATE_E_UPDATE_DEFERRED                  \
     MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x81c)
+#define GOOPDATE_E_APP_USING_EXTERNAL_UPDATER       \
+      MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x81d)
+#define GOOPDATE_E_HW_NOT_SUPPORTED                 \
+      MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x81e)
 
 //
 // Network stack error codes.
 //
+
+// Range [0x880, 0x890) is reserved for CUP errors.
+#define OMAHA_NET_E_CUP_FIRST                      \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x880)
 
 // The CUP response is missing the ETag header containing the server proof.
 #define OMAHA_NET_E_CUP_NO_SERVER_PROOF            \
@@ -335,9 +368,37 @@ const ULONG kFacilityOmaha = 67;
 #define OMAHA_NET_E_CUP_NO_ENTROPY                  \
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x884)
 
+// The CUP-ECDSA response has an unparsable / corrupted ETag header.
+#define OMAHA_NET_E_CUP_ECDSA_CORRUPT_ETAG          \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x885)
+
+// The CUP-ECDSA response is not trusted due to request hash mismatch.
+#define OMAHA_NET_E_CUP_ECDSA_NOT_TRUSTED_REQUEST   \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x886)
+
+// The CUP-ECDSA response is not trusted due to signature validation failure.
+#define OMAHA_NET_E_CUP_ECDSA_NOT_TRUSTED_SIGNATURE \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x887)
+
+#define OMAHA_NET_E_CUP_LAST                        \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x889)
+
 // Non-CUP network errors.
+
+// WinHTTP could not be initialized.
 #define OMAHA_NET_E_WINHTTP_NOT_AVAILABLE           \
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x890)
+
+// A response with HTTP 200 was actually a login/EULA page for a captive portal.
+#define OMAHA_NET_E_CAPTIVEPORTAL                   \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x891)
+
+// Our network stack has reached an excessively long retry delay, and is giving
+// up rather than attempting further retries.  (This is expected to happen when
+// the update server has given repeated HTTP 5xx errors, since the retry delay
+// grows very quickly in that case.)
+#define OMAHA_NET_E_EXCEEDED_MAX_RETRY_DELAY        \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x892)
 
 // Install Manager custom error codes.
 #define GOOPDATEINSTALL_E_FILENAME_INVALID         \
@@ -364,6 +425,9 @@ const ULONG kFacilityOmaha = 67;
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x90A)
 #define GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH  \
     MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x90B)
+#define GOOPDATEINSTALL_E_INVALID_UNTRUSTED_DATA      \
+    MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x90C)
+
 
 // GoopdateUtils custom error codes.
 #define GOOPDATEUTILS_E_BROWSERTYPE                 \
@@ -408,6 +472,8 @@ const ULONG kFacilityOmaha = 67;
 // ApplyTagTool error codes.
 #define APPLYTAG_E_ALREADY_TAGGED                   \
     MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x1000)
+#define APPLYTAG_E_NOT_SIGNED                       \
+    MAKE_HRESULT(SEVERITY_ERROR, FACILITY_ITF, 0x1001)
 
 // The range [0x2000, 0x2400) is reserved for certain network stack errors
 // when the server returns an HTTP result code that is not a success code.
@@ -474,6 +540,8 @@ const ULONG kFacilityOmaha = 67;
 // additional error information in canary builds.
 int error_extra_code1();
 void set_error_extra_code1(int extra_code);
+
+bool IsCupError(HRESULT hr);
 
 }  // namespace omaha
 

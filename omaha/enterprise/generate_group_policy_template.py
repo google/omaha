@@ -53,7 +53,7 @@ PREFERENCES = """
           PART !!Part_AutoUpdateCheckPeriod NUMERIC
             VALUENAME AutoUpdateCheckPeriodMinutes
             DEFAULT 1400  ; 23 hours 20 minutes.
-            MIN 60
+            MIN 0
             MAX 43200     ; 30 days.
             SPIN 60       ; Increment in hour chunks.
           END PART
@@ -71,7 +71,65 @@ PREFERENCES = """
           END PART
         END POLICY
 
+        POLICY !!Pol_PayloadType
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_3_26_0
+          #endif
+          EXPLAIN !!Explain_PayloadType
+          PART !!Part_PayloadType DROPDOWNLIST
+            VALUENAME "PayloadType"
+            ITEMLIST
+              NAME !!PayloadType_Cacheable VALUE "cacheable"
+            END ITEMLIST
+          END PART
+        END POLICY
+
       END CATEGORY  ; Preferences
+
+      CATEGORY !!Cat_ProxyServer
+        KEYNAME \"""" + MAIN_POLICY_KEY + """\"
+
+        POLICY !!Pol_ProxyMode
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_3_21_81
+          #endif
+          EXPLAIN !!Explain_ProxyMode
+
+          PART !!Part_ProxyMode  DROPDOWNLIST
+            VALUENAME "ProxyMode"
+            ITEMLIST
+              NAME !!ProxyDisabled_DropDown VALUE "direct"
+              NAME !!ProxyAutoDetect_DropDown VALUE "auto_detect"
+              NAME !!ProxyPacScript_DropDown VALUE "pac_script"
+              NAME !!ProxyFixedServers_DropDown VALUE "fixed_servers"
+              NAME !!ProxyUseSystem_DropDown VALUE "system"
+            END ITEMLIST
+          END PART
+        END POLICY
+
+        POLICY !!Pol_ProxyServer
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_3_21_81
+          #endif
+          EXPLAIN !!Explain_ProxyServer
+
+          PART !!Part_ProxyServer  EDITTEXT
+            VALUENAME "ProxyServer"
+          END PART
+        END POLICY
+
+        POLICY !!Pol_ProxyPacUrl
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_3_21_81
+          #endif
+          EXPLAIN !!Explain_ProxyPacUrl
+
+          PART !!Part_ProxyPacUrl  EDITTEXT
+            VALUENAME "ProxyPacUrl"
+          END PART
+        END POLICY
+
+      END CATEGORY
 """
 
 APPLICATIONS_HEADER = """
@@ -82,10 +140,12 @@ APPLICATIONS_HEADER = """
 
 UPDATE_POLICY_ITEMLIST = """\
             ITEMLIST
-              NAME  !!Name_AutomaticUpdates
+              NAME  !!Name_UpdatesEnabled
               VALUE NUMERIC 1
-              NAME  !!Name_ManualUpdates
+              NAME  !!Name_ManualUpdatesOnly
               VALUE NUMERIC 2
+              NAME  !!Name_AutomaticUpdatesOnly
+              VALUE NUMERIC 3
               NAME  !!Name_UpdatesDisabled
               VALUE NUMERIC 0
             END ITEMLIST
@@ -159,12 +219,14 @@ UPDATE_POLICY = 'Update policy override'
 DEFAULT_UPDATE_POLICY = UPDATE_POLICY + ' default'
 
 # Update policy options that are used in multiple locations.
-AUTOMATIC_UPDATES = 'Automatic silent updates'
-MANUAL_UPDATES = 'Manual updates only'
+UPDATES_ENABLED = 'Always allow updates'
+AUTOMATIC_UPDATES_ONLY = 'Automatic silent updates only'
+MANUAL_UPDATES_ONLY = 'Manual updates only'
 UPDATES_DISABLED = 'Updates disabled'
 
 # Category names that are used in multiple locations.
 PREFERENCES_CATEGORY = 'Preferences'
+PROXYSERVER_CATEGORY = 'Proxy Server'
 APPLICATIONS_CATEGORY = 'Applications'
 
 # The captions for update policy were selected such that they appear in order of
@@ -174,25 +236,45 @@ HORIZONTAL_RULE +
 """
 [strings]
 Sup_GoogleUpdate1_2_145_5=At least Google Update 1.2.145.5
+Sup_GoogleUpdate1_3_21_81=At least Google Update 1.3.21.81
+Sup_GoogleUpdate1_3_26_0=At least Google Update 1.3.26.0
 
 Cat_Google=Google
 Cat_GoogleUpdate=Google Update
 Cat_Preferences=""" + PREFERENCES_CATEGORY + """
+Cat_ProxyServer=""" + PROXYSERVER_CATEGORY + """
 Cat_Applications=""" + APPLICATIONS_CATEGORY + """
 
 Pol_AutoUpdateCheckPeriod=Auto-update check period override
+Pol_PayloadType=Download URL class override
+Pol_ProxyMode=Choose how to specify proxy server settings
+Pol_ProxyServer=Address or URL of proxy server
+Pol_ProxyPacUrl=URL to a proxy .pac file
 Pol_DefaultAllowInstallation=""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """
 Pol_AllowInstallation=""" + ALLOW_INSTALLATION_POLICY + """
 Pol_DefaultUpdatePolicy=""" + DEFAULT_UPDATE_POLICY + """
 Pol_UpdatePolicy=""" + UPDATE_POLICY + """
 
 Part_AutoUpdateCheckPeriod=Minutes between update checks
+Part_PayloadType=Type of download URL to request
 Part_DisableAllAutoUpdateChecks=Disable all auto-update checks (not recommended)
+Part_ProxyMode=Choose how to specify proxy server settings
+Part_ProxyServer=Address or URL of proxy server
+Part_ProxyPacUrl=URL to a proxy .pac file
 Part_UpdatePolicy=Policy
 
-Name_AutomaticUpdates=""" + AUTOMATIC_UPDATES + """ (recommended)
-Name_ManualUpdates=""" + MANUAL_UPDATES + """
+Name_UpdatesEnabled=""" + UPDATES_ENABLED + """ (recommended)
+Name_ManualUpdatesOnly=""" + MANUAL_UPDATES_ONLY + """
+Name_AutomaticUpdatesOnly=""" + AUTOMATIC_UPDATES_ONLY + """
 Name_UpdatesDisabled=""" + UPDATES_DISABLED + """
+
+ProxyDisabled_DropDown=Never use a proxy
+ProxyAutoDetect_DropDown=Auto detect proxy settings
+ProxyPacScript_DropDown=Use a .pac proxy script
+ProxyFixedServers_DropDown=Use fixed proxy servers
+ProxyUseSystem_DropDown=Use system proxy settings
+
+PayloadType_Cacheable=Cacheable download URLs
 
 """)
 
@@ -207,8 +289,9 @@ Cat_$AppLegalId$=$AppName$
 # The word is specified by replacing the $PreApplicationWord$ token.
 STRINGS_UPDATE_POLICY_OPTIONS = """\
     \\n\\nOptions:\\
-    \\n - """ + AUTOMATIC_UPDATES + """: Updates are automatically applied when they are found via the periodic update check.\\
-    \\n - """ + MANUAL_UPDATES + """: Updates are only applied when the user does a manual update check. (Not all apps provide an interface for this.)\\
+    \\n - """ + UPDATES_ENABLED + """: Updates are always applied when found, either by periodic update check or by a manual update check.\\
+    \\n - """ + MANUAL_UPDATES_ONLY + """: Updates are only applied when the user does a manual update check. (Not all apps provide an interface for this.)\\
+    \\n - """ + AUTOMATIC_UPDATES_ONLY + """: Updates are only applied when they are found via the periodic update check.\\
     \\n - """ + UPDATES_DISABLED + """: Never apply updates.\\
     \\n\\nIf you select manual updates, you should periodically check for updates using $PreApplicationWord$ application's manual update mechanism if available. If you disable updates, you should periodically check for updates and distribute them to users."""
 
@@ -222,6 +305,11 @@ HORIZONTAL_RULE + """
 Explain_Preferences=General policies for Google Update.
 
 Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.
+Explain_PayloadType=If enabled, the Google Update server will attempt to provide cache-friendly URLs for update payloads in its responses.
+
+Explain_ProxyMode=Allows you to specify the proxy server used by Google Update.\\n\\nIf you choose to never use a proxy server and always connect directly, all other options are ignored.\\n\\nIf you choose to use system proxy settings or auto detect the proxy server, all other options are ignored.\\n\\nIf you choose fixed server proxy mode, you can specify further options in 'Address or URL of proxy server'.\\n\\nIf you choose to use a .pac proxy script, you must specify the URL to the script in 'URL to a proxy .pac file'.
+Explain_ProxyServer=You can specify the URL of the proxy server here.\\n\\nThis policy only takes effect if you have selected manual proxy settings at 'Choose how to specify proxy server settings'.
+Explain_ProxyPacUrl=You can specify a URL to a proxy .pac file here.\\n\\nThis policy only takes effect if you have selected manual proxy settings at 'Choose how to specify proxy server settings'.
 
 """ +
 HORIZONTAL_RULE +

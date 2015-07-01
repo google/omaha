@@ -70,8 +70,7 @@ class SetupFiles {
                            const CString& destination_dir,
                            bool overwrite);
 
-  // Copies each file from the source path to its corresponding destination
-  // path. Verifies the signature of the file on each side of the copy.
+  // Copies each file from the source path to corresponding destination path.
   // If overwrite is true, files are moved to .old and scheduled for delete
   // after reboot, which only works for elevated admins.
   HRESULT CopyAndValidateFiles(
@@ -79,19 +78,13 @@ class SetupFiles {
       const std::vector<CString>& destination_file_paths,
       bool overwrite);
 
-  // Verifies the file is signed with the Google Certificate.
-  // Returns true if filepath is properly signed.
-  // Only verifies files if they are being installed to a secure location.
-  // If not an official build, allows the Google Test Certificate.
-  // Only checks certain extensions since not all extensions can be signed.
-  HRESULT VerifyFileSignature(const CString& filepath);
-
   // Returns whether an older shell version is compatible.
   static bool IsOlderShellVersionCompatible(ULONGLONG version);
 
   const bool is_machine_;
   CString saved_shell_path_;  // Path of the previous shell saved for roll back.
   std::vector<CString> core_program_files_;
+  std::vector<CString> metainstaller_files_;
   std::vector<CString> optional_files_;
 
   int extra_code1_;

@@ -48,6 +48,7 @@ void VerifyCommandLineArgs(const CommandLineArgs& expected,
   EXPECT_EQ(expected.is_install_elevated, actual.is_install_elevated);
   EXPECT_EQ(expected.is_silent_set, actual.is_silent_set);
   EXPECT_EQ(expected.is_eula_required_set, actual.is_eula_required_set);
+  EXPECT_EQ(expected.is_enterprise_set, actual.is_enterprise_set);
   EXPECT_EQ(expected.is_offline_set, actual.is_offline_set);
   EXPECT_EQ(expected.is_oem_set, actual.is_oem_set);
 
@@ -61,7 +62,7 @@ void VerifyCommandLineArgs(const CommandLineArgs& expected,
   EXPECT_STREQ(expected.webplugin_args, actual.webplugin_args);
   EXPECT_STREQ(expected.code_red_metainstaller_path,
                actual.code_red_metainstaller_path);
-  EXPECT_STREQ(expected.offline_dir, actual.offline_dir);
+  EXPECT_STREQ(expected.offline_dir_name, actual.offline_dir_name);
 
   VerifyCommandLineExtraArgs(expected.extra, actual.extra);
 }
@@ -357,6 +358,17 @@ TEST_F(CommandLineTest, ParseCommandLine_InstallWithOem) {
   VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
 }
 
+// Parse: <path> /install "extraargs" /enterprise
+TEST_F(CommandLineTest, ParseCommandLine_InstallWithEnterprise) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /install ") YOUTUBEUPLOADEREN_TAG
+                          _T(" /enterprise");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_INSTALL;
+  expected_.is_enterprise_set = true;
+  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
+}
+
 // Parse: <path> /install "extraargs" [/oem
 // This tests how we handle a switch with a bracket, which represents optional
 // parameters in a rule, when it appears in an actual command line.
@@ -560,43 +572,6 @@ TEST_F(CommandLineTest, ParseCommandLine_Handoff) {
   VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
 }
 
-// Parse: <path> /handoff "extraargs" /offlinedir "c:\dir\ "
-TEST_F(CommandLineTest, ParseCommandLine_OfflineDirTrailingBackslashSpace) {
-  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
-                          _T(" /offlinedir \"c:\\offline dir\\ \"");
-  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
-
-  expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
-  expected_.is_offline_set = true;
-  expected_.offline_dir = _T("c:\\offline dir");
-  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
-}
-
-// Parse: <path> /handoff "extraargs" /offlinedir "c:\dir\\"
-TEST_F(CommandLineTest,
-       ParseCommandLine_OfflineDirTrailingDoubleBackslashNoSpace) {
-  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
-                          _T(" /offlinedir \"c:\\offline dir\\\\\"");
-  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
-
-  expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
-  expected_.is_offline_set = true;
-  expected_.offline_dir = _T("c:\\offline dir");
-  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
-}
-
-// Parse: <path> /handoff "extraargs" /offlinedir "c:\dir\"
-TEST_F(CommandLineTest, ParseCommandLine_OfflineDirTrailingBackslashNoSpace) {
-  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
-                          _T(" /offlinedir \"c:\\offline dir\\\"");
-  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
-
-  expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
-  expected_.is_offline_set = true;
-  expected_.offline_dir = _T("c:\\offline dir");
-  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
-}
-
 // Parse: <path> /handoff "extraargs" /installsource "asd"
 TEST_F(CommandLineTest, ParseCommandLine_HandoffWithSource) {
   const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
@@ -621,19 +596,54 @@ TEST_F(CommandLineTest, ParseCommandLine_HandoffWithSourceOffline) {
   VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
 }
 
+// Parse: <path> /handoff "extraargs" /offlinedir "{GUID}"
+TEST_F(CommandLineTest, ParseCommandLine_OfflineDirGUID) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
+                          _T(" /offlinedir")
+                          _T(" \"{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}\"");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
+  expected_.is_offline_set = true;
+  expected_.offline_dir_name = _T("{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}");
+  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
+}
+
+// Parse: <path> /handoff "extraargs" /offlinedir "Z:\{GUID}"
+TEST_F(CommandLineTest, ParseCommandLine_OfflineDirAbsolutePathEndsInGUID) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
+                          _T(" /offlinedir")
+                          _T(" \"Z:\\{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}\"");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
+  expected_.is_offline_set = true;
+  expected_.offline_dir_name = _T("{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}");
+  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
+}
+
+// Parse: <path> /handoff "extraargs" /offlinedir "c:\dir"
+// Fails since only a GUID is allowed for the offline dir name.
+TEST_F(CommandLineTest, ParseCommandLine_OfflineDirAbsolutePathNoGUID) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
+                          _T(" /offlinedir \"c:\\offline_dir\"");
+  EXPECT_FAILED(ParseCommandLine(kCmdLine, &args_));
+}
+
 // Parse: <path> /handoff "extraargs" /appargs <appargs>
-//               /installsource offline /offlinedir "dir"
+//               /installsource offline /offlinedir "{GUID}"
 TEST_F(CommandLineTest, ParseCommandLine_HandoffWithAppArgsSourceOffline) {
   const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
                           _T(" /appargs ") YOUTUBEUPLOADEREN_APP_ARGS
                           _T(" /installsource offline")
-                          _T(" /offlinedir \"c:\\offline_dir\"");
+                          _T(" /offlinedir")
+                          _T(" \"{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}\"");
   EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
 
   expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
   expected_.install_source = _T("offline");
   expected_.is_offline_set = true;
-  expected_.offline_dir = _T("c:\\offline_dir");
+  expected_.offline_dir_name = _T("{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}");
   VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, true, true);
 }
 
@@ -645,6 +655,17 @@ TEST_F(CommandLineTest, ParseCommandLine_HandoffSilent) {
 
   expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
   expected_.is_silent_set = true;
+  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
+}
+
+// Parse: <path> /handoff "extraargs" /enterprise
+TEST_F(CommandLineTest, ParseCommandLine_HandoffEnterprise) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
+                          _T(" /enterprise");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
+  expected_.is_enterprise_set = true;
   VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
 }
 

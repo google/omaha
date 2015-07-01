@@ -24,7 +24,7 @@
 #include "omaha/base/wtl_atlapp_wrapper.h"
 #include "omaha/client/install_progress_observer.h"
 #include "omaha/ui/complete_wnd.h"
-#include "omaha/ui/uilib/static_ex.h"
+#include "omaha/ui/owner_draw_title_bar.h"
 
 namespace omaha {
 
@@ -65,6 +65,8 @@ class ProgressWndEvents : public CompleteWndEvents {
 // a user message to its parent to notify which button the user has clicked on.
 class InstallStoppedWnd
     : public CAxDialogImpl<InstallStoppedWnd>,
+      public OwnerDrawTitleBar,
+      public CustomDlgColors,
       public CMessageFilter {
   typedef CAxDialogImpl<InstallStoppedWnd> Base;
  public:
@@ -86,6 +88,8 @@ class InstallStoppedWnd
     COMMAND_ID_HANDLER(IDOK, OnClickButton)
     COMMAND_ID_HANDLER(IDCANCEL, OnClickButton)
     CHAIN_MSG_MAP(Base)
+    CHAIN_MSG_MAP(OwnerDrawTitleBar)
+    CHAIN_MSG_MAP(CustomDlgColors)
   END_MSG_MAP()
 
  private:
@@ -96,6 +100,8 @@ class InstallStoppedWnd
 
   CMessageLoop* message_loop_;
   HWND parent_;
+
+  CFont default_font_;
 
   DISALLOW_EVIL_CONSTRUCTORS(InstallStoppedWnd);
 };
@@ -117,17 +123,25 @@ class ProgressWnd
   // one state to another. The methods are always executed by the thread
   // that created this window.
   virtual void OnCheckingForUpdate();
-  virtual void OnUpdateAvailable(const CString& app_name,
+  virtual void OnUpdateAvailable(const CString& app_id,
+                                 const CString& app_name,
                                  const CString& version_string);
-  virtual void OnWaitingToDownload(const CString& app_name);
-  virtual void OnDownloading(const CString& app_name,
+  virtual void OnWaitingToDownload(const CString& app_id,
+                                   const CString& app_name);
+  virtual void OnDownloading(const CString& app_id,
+                             const CString& app_name,
                              int time_remaining_ms,
                              int pos);
-  virtual void OnWaitingRetryDownload(const CString& app_name,
+  virtual void OnWaitingRetryDownload(const CString& app_id,
+                                      const CString& app_name,
                                       time64 next_retry_time);
-  virtual void OnWaitingToInstall(const CString& app_name,
+  virtual void OnWaitingToInstall(const CString& app_id,
+                                  const CString& app_name,
                                   bool* can_start_install);
-  virtual void OnInstalling(const CString& app_name);
+  virtual void OnInstalling(const CString& app_id,
+                            const CString& app_name,
+                            int time_remaining_ms,
+                            int pos);
   virtual void OnPause();
   virtual void OnComplete(const ObserverCompletionInfo& observer_info);
 
@@ -197,10 +211,6 @@ class ProgressWnd
 
   scoped_ptr<HighresTimer> metrics_timer_;
 
-  // Due to a repaint issue in StaticEx we prefer to manage their lifetime
-  // very aggressively so we contain them by reference instead of value.
-  scoped_ptr<StaticEx> pause_resume_text_;
-
   States cur_state_;
 
   scoped_ptr<InstallStoppedWnd> install_stopped_wnd_;
@@ -208,15 +218,12 @@ class ProgressWnd
   ProgressWndEvents* events_sink_;
   std::vector<CString> post_install_urls_;
   bool is_canceled_;
+  bool is_chrome_appid_;
 
-#pragma warning(disable : 4510 4610)
-// C4510: default constructor could not be generated
-// C4610: struct can never be instantiated - user defined constructor required
   struct ControlState {
     const int id_;
     const ControlAttributes attr_[ProgressWnd::STATE_END + 1];
   };
-#pragma warning(default : 4510 4610)
 
   static const ControlState ctls_[];
 

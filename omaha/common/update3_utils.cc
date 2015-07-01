@@ -29,6 +29,17 @@ namespace update3_utils {
 
 namespace {
 
+bool UseInProcCOMServer() {
+  DWORD value = 0;
+  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                                 kRegValueUseInProcCOMServer,
+                                 &value))) {
+    return value != 0;
+  } else {
+    return false;
+  }
+}
+
 template <typename Update3COMClassT>
 HRESULT CreateGoogleUpdate3LocalClass(IGoogleUpdate3** server) {
   CORE_LOG(L3, (_T("[CreateGoogleUpdate3LocalClass]")));
@@ -58,9 +69,14 @@ HRESULT CreateGoogleUpdate3LocalClass(IGoogleUpdate3** server) {
 HRESULT SetProxyBlanketAllowImpersonate(IUnknown* server) {
   ASSERT1(server);
 
-  HRESULT hr = ::CoSetProxyBlanket(server, RPC_C_AUTHN_DEFAULT,
-      RPC_C_AUTHZ_DEFAULT, COLE_DEFAULT_PRINCIPAL, RPC_C_AUTHN_LEVEL_DEFAULT,
-      RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_DEFAULT);
+  HRESULT hr = ::CoSetProxyBlanket(server,
+                                   RPC_C_AUTHN_DEFAULT,
+                                   RPC_C_AUTHZ_DEFAULT,
+                                   COLE_DEFAULT_PRINCIPAL,
+                                   RPC_C_AUTHN_LEVEL_PKT_PRIVACY,
+                                   RPC_C_IMP_LEVEL_IMPERSONATE,
+                                   NULL,
+                                   EOAC_DYNAMIC_CLOAKING);
 
   // E_NOINTERFACE indicates an in-proc intra-apartment call.
   if (FAILED(hr) && hr != E_NOINTERFACE) {
@@ -98,6 +114,11 @@ HRESULT CreateGoogleUpdate3MachineClass(IGoogleUpdate3** machine_server) {
   ASSERT1(machine_server);
   ASSERT1(vista_util::IsUserAdmin());
 
+  if (UseInProcCOMServer()) {
+    return
+        CreateGoogleUpdate3LocalClass<Update3COMClassService>(machine_server);
+  }
+
   CComPtr<IGoogleUpdate3> server;
   HRESULT hr = server.CoCreateInstance(__uuidof(GoogleUpdate3ServiceClass));
 
@@ -126,6 +147,10 @@ HRESULT CreateGoogleUpdate3MachineClass(IGoogleUpdate3** machine_server) {
 HRESULT CreateGoogleUpdate3UserClass(IGoogleUpdate3** user_server) {
   ASSERT1(user_server);
 
+  if (UseInProcCOMServer()) {
+    return CreateGoogleUpdate3LocalClass<Update3COMClassUser>(user_server);
+  }
+
   CComPtr<IGoogleUpdate3> server;
   HRESULT hr = server.CoCreateInstance(__uuidof(GoogleUpdate3UserClass));
   if (FAILED(hr)) {
@@ -135,8 +160,8 @@ HRESULT CreateGoogleUpdate3UserClass(IGoogleUpdate3** user_server) {
     // is that COM does not look at HKCU registration when the code is running
     // elevated. We fall back to an in-proc mode. The in-proc mode is limited to
     // one install at a time, so we use it only as a backup mechanism.
-    OPT_LOG(LE, (_T("[IsElevatedWithUACMaybeOn][%d]"),
-                 vista_util::IsElevatedWithUACMaybeOn()));
+    OPT_LOG(LE, (_T("[IsElevatedWithEnableLUAOn][%d]"),
+                 vista_util::IsElevatedWithEnableLUAOn()));
     hr = CreateGoogleUpdate3LocalClass<Update3COMClassUser>(&server);
     if (FAILED(hr)) {
       return hr;
@@ -208,6 +233,27 @@ HRESULT GetApp(IAppBundle* app_bundle, long index, IApp** app) {  // NOLINT
   ASSERT1(app_idispatch);
 
   return app_idispatch.QueryInterface(app);
+}
+
+HRESULT GetAppCommand(IApp* app, BSTR command_id, IAppCommand2** app_command) {
+  ASSERT1(app);
+  ASSERT1(command_id);
+  ASSERT1(app_command);
+
+  *app_command = NULL;
+
+  CComPtr<IDispatch> idispatch;
+  HRESULT hr = app->get_command(command_id, &idispatch);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  if (hr == S_FALSE) {
+    return S_FALSE;
+  }
+
+  ASSERT1(idispatch);
+
+  return idispatch.QueryInterface(app_command);
 }
 
 HRESULT GetCurrentAppVersion(IApp* app, IAppVersion** app_version) {

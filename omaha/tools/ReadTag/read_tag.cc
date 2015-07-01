@@ -18,8 +18,8 @@
 #include <Windows.h>
 #include <stdio.h>
 #include "base/scoped_ptr.h"
-#include "omaha/common/file.h"
-#include "omaha/common/extractor.h"
+#include "omaha/base/file.h"
+#include "omaha/base/extractor.h"
 
 int _tmain(int argc, TCHAR* argv[]) {
   if (argc != 2) {

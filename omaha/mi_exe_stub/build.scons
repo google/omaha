@@ -15,60 +15,7 @@
 
 Import('env')
 
-# Build subdirectories before switching to use WDK
 env.BuildSConscript('x86_encoder')
-
-# Build at warning level 4.
-env.FilterOut(CCFLAGS=['/W3'])
-env.Append(
-    CCFLAGS = [
-        '/W4',
-        '/Wall',
-    ],
-)
-
-def _UseWdkCrt(env):
-  env.Prepend(
-      WDK_PATH = '$GOOGLECLIENT/third_party/windows_driver_kit_vc80/files',
-      CPPPATH = [
-          '$WDK_PATH/inc/api/crt/stl70',
-          '$WDK_PATH/inc/crt',
-          '$WDK_PATH/inc/crt/atl71',
-      ],
-      LIBPATH = [
-          '$WDK_PATH/lib/atl/i386',
-          '$WDK_PATH/lib/crt/i386',
-      ],
-  )
-  # Magic for STL to work. Note that even though we're using ATL, a few things
-  # from STL are still required to correctly build, e.g. the iosfwd header.
-  env.Append(
-      CPPDEFINES = [
-          '_CRT_SECURE_NO_WARNINGS',
-          '_STATIC_CPPLIB',   # Taken from WDK makefile.
-          '_STL70_',          # Taken from WDK makefile.
-          # Prefer ATL CRT replacements to system CRT. This makes a big
-          # difference on calls to CStringT::Format style functions--in testing,
-          # I measured a 5 KiB difference.
-          '_ATL_MIN_CRT',
-          '_ATL_CSTRING_NO_CRT',
-      ],
-      CCFLAGS = [
-          '/D_SECURE_SCL=0',
-          '/EHsc',
-          '/FI$MAIN_DIR/mi_exe_stub/ptrdiff_t.h',
-          '/wd4068',  # unknown pragma (ATL uses PreFAST pragmas)
-      ],
-  )
-  env.FilterOut(
-      CPPDEFINES = [
-          'NOMINMAX',
-      ],
-      CCFLAGS = [
-          '/D_HAS_EXCEPTIONS=0',
-          '/RTC1',
-      ],
-  )
 
 for omaha_version_info in env['omaha_versions_info']:
   prefix = omaha_version_info.filename_prefix
@@ -80,14 +27,24 @@ for omaha_version_info in env['omaha_versions_info']:
     raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
 
   temp_env.Append(
+      CPPDEFINES = [
+        '/D_HAS_EXCEPTIONS=0',
+        '_CRT_SECURE_NO_WARNINGS',
+        '_STATIC_CPPLIB',
+        '_ATL_MIN_CRT',
+        '_ATL_CSTRING_NO_CRT',
+      ],
+      CCFLAGS = [
+          '/D_SECURE_SCL=1',
+          '/EHsc',
+          '/FI$MAIN_DIR/mi_exe_stub/ptrdiff_t.h',
+      ],
       LIBS = [
           'lzma',
           'mi_exe_stub_lib',
-          ('atls', 'atlsd')[temp_env.Bit('debug')],
-          ('msvcrt', 'libcmtd')[temp_env.Bit('debug')],
-          ('msvcprt', 'libcpmtd')[temp_env.Bit('debug')],
-          # 'msvcprt_btowc.lib',
-          # 'ntstc_msvcrt',  # Only required if STL classes are used.
+          temp_env['atls_libs'][temp_env.Bit('debug')],
+          ('libcmt', 'libcmtd')[temp_env.Bit('debug')],
+          ('libcpmt', 'libcpmtd')[temp_env.Bit('debug')],
           'shlwapi',
           'version',
           ],
@@ -99,11 +56,6 @@ for omaha_version_info in env['omaha_versions_info']:
           '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
               omaha_version_info.GetVersionString()),
           '/DLANGUAGE_STRING=\\"%s\\"' % 'en'
-          ],
-
-      # This avoids missing __load_config_used
-      LINKFLAGS = [
-          '/SAFESEH:NO'
           ],
   )
 
@@ -124,10 +76,6 @@ for omaha_version_info in env['omaha_versions_info']:
         target=prefix + base_name + '.res',
         source=base_name + '.rc',
     )
-
-  if not temp_env.Bit('debug'):
-    # Stubs for W2k compatibility.
-    exe_inputs += '$WDK_PATH/lib/w2k/i386/msvcrt_win2000.obj',
 
   temp_env.ComponentProgram(
       prog_name = prefix + 'mi_exe_stub',

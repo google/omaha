@@ -27,11 +27,10 @@
 #include "omaha/base/utils.h"
 #include "omaha/base/xml_utils.h"
 #include "omaha/common/command_line_builder.h"
+#include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/lang.h"
-#include "omaha/net/browser_request.h"
-#include "omaha/net/cup_request.h"
 #include "omaha/net/network_request.h"
 #include "omaha/net/simple_request.h"
 
@@ -39,32 +38,74 @@ namespace omaha {
 
 namespace webplugin_utils {
 
-HRESULT BuildOneClickRequestString(const CommandLineArgs& args,
-                                   CString* request_str) {
-  if (NULL == request_str) {
-    return E_INVALIDARG;
+HRESULT SanitizeExtraArgs(const CString& extra_args_in,
+                          CString* extra_args_out) {
+  ASSERT1(extra_args_out);
+
+  HRESULT hr = StringEscape(extra_args_in, true, extra_args_out);
+  if (FAILED(hr)) {
+    return hr;
   }
 
-  // If we're not /webplugin or the urldomain is empty, something's wrong.
-  if (args.mode != COMMANDLINE_MODE_WEBPLUGIN ||
-      args.webplugin_urldomain.IsEmpty()) {
+  // Now we unescape a selective white-list of characters.
+  extra_args_out->Replace(_T("%3D"), _T("="));
+  extra_args_out->Replace(_T("%26"), _T("&"));
+  extra_args_out->Replace(_T("%7B"), _T("{"));
+  extra_args_out->Replace(_T("%7D"), _T("}"));
+  extra_args_out->Replace(_T("%25"), _T("%"));
+
+  return hr;
+}
+
+HRESULT BuildWebPluginCommandLine(const CString& url_domain,
+                                  const CString& extra_args,
+                                  CString* final_cmd_line_args) {
+  ASSERT1(!extra_args.IsEmpty());
+  ASSERT1(final_cmd_line_args);
+
+  CORE_LOG(L2, (_T("[BuildWebPluginCommandLine][%s][%s]"),
+                url_domain, extra_args));
+
+  CString extra_args_sanitized;
+  HRESULT hr = webplugin_utils::SanitizeExtraArgs(extra_args,
+                                                  &extra_args_sanitized);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  CommandLineBuilder install_builder(COMMANDLINE_MODE_INSTALL);
+  install_builder.set_extra_args(extra_args_sanitized);
+  CString cmd_line_args(install_builder.GetCommandLineArgs());
+
+  CString url_domain_encoded;
+  CString cmd_line_args_encoded;
+  hr = StringEscape(url_domain, true, &url_domain_encoded);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = StringEscape(cmd_line_args, true, &cmd_line_args_encoded);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  CommandLineBuilder webplugin_builder(COMMANDLINE_MODE_WEBPLUGIN);
+  webplugin_builder.set_webplugin_url_domain(url_domain_encoded);
+  webplugin_builder.set_webplugin_args(cmd_line_args_encoded);
+  webplugin_builder.set_install_source(kCmdLineInstallSource_OneClick);
+  CString webplugin_cmd_line(webplugin_builder.GetCommandLineArgs());
+
+  CString cmd_line_web_plugin;
+  cmd_line_web_plugin.Format(_T("/%s"), kCmdLineWebPlugin);
+
+  if (!String_StartsWith(webplugin_cmd_line, cmd_line_web_plugin, false)) {
     return E_UNEXPECTED;
   }
 
-  const TCHAR* request_string_template = _T("?du=%s&args=%s");
-  CString request;
+  *final_cmd_line_args =
+      webplugin_cmd_line.Mid(cmd_line_web_plugin.GetLength() + 1);
 
-  CString urldomain_escaped;
-  CString pluginargs_escaped;
-
-  StringEscape(args.webplugin_urldomain, false, &urldomain_escaped);
-  StringEscape(args.webplugin_args, false, &pluginargs_escaped);
-
-  SafeCStringFormat(&request, request_string_template,
-                    urldomain_escaped,
-                    pluginargs_escaped);
-
-  *request_str = request;
+  CORE_LOG(L2, (_T("[BuildWebPluginCommandLine][%s]"), *final_cmd_line_args));
   return S_OK;
 }
 
@@ -145,23 +186,18 @@ HRESULT CopyGoopdateToTempDir(const CPath& current_goopdate_path,
   ASSERT1(goopdate_temp_path);
 
   // Create a unique directory in the user's temp directory.
-  TCHAR pathbuf[MAX_PATH] = {0};
-  DWORD ret = ::GetTempPath(arraysize(pathbuf), pathbuf);
-  if (0 == ret) {
-    return HRESULTFromLastError();
-  }
-  if (ret >= arraysize(pathbuf)) {
-    return E_FAIL;
-  }
-
   GUID guid = GUID_NULL;
   HRESULT hr = ::CoCreateGuid(&guid);
   if (FAILED(hr)) {
     return hr;
   }
-
   CString guid_str = GuidToString(guid);
-  CPath temp_path = pathbuf;
+  ASSERT1(!guid_str.IsEmpty());
+
+  CString temp_dir = app_util::GetTempDir();
+  ASSERT1(!temp_dir.IsEmpty());
+
+  CPath temp_path = temp_dir.GetString();
   temp_path.Append(guid_str);
   temp_path.Canonicalize();
 
@@ -221,4 +257,3 @@ HRESULT DoOneClickInstall(const CommandLineArgs& args) {
 }  // namespace webplugin_utils
 
 }  // namespace omaha
-

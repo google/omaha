@@ -34,19 +34,16 @@ namespace {
 // TODO(omaha3): Update the numbers in the else block as we build more files.
 // Eventually use the original values in the if block.
 const int kNumberOfLanguageDlls = 55;
-const int kNumberOfRequiredFiles = 6;
-#if 0
+const int kNumberOfCoreFiles = 10;
+const int kNumberOfMetainstallerFiles = 1;
 const int kNumberOfOptionalFiles = 4;
-#else
-const int kNumberOfOptionalFiles = 3;
-#endif
 const int kNumberOfInstalledRequiredFiles =
-    kNumberOfLanguageDlls + kNumberOfRequiredFiles;
+    kNumberOfLanguageDlls + kNumberOfCoreFiles;
 // FindFiles returns "." and ".." in addition to the actual files.
 const int kExtraFilesReturnedByFindFiles = 2;
 const int kExpectedFilesReturnedByFindFiles =
-    kNumberOfInstalledRequiredFiles + kNumberOfOptionalFiles +
-    kExtraFilesReturnedByFindFiles;
+    kNumberOfInstalledRequiredFiles + kNumberOfMetainstallerFiles +
+    kNumberOfOptionalFiles + kExtraFilesReturnedByFindFiles;
 
 const TCHAR kFutureVersionString[] = _T("9.8.7.6");
 const ULONGLONG kFutureVersion = 0x0009000800070006;
@@ -66,18 +63,24 @@ void CopyGoopdateFiles(const CString& omaha_path, const CString& version) {
   EXPECT_SUCCEEDED(CreateDir(version_path, NULL));
 
   const TCHAR* files[] = {kCrashHandlerFileName,
+                          kCrashHandler64FileName,
                           kOmahaShellFileName,
                           kHelperInstallerName,
+                          kOmahaCOMRegisterShell64,
                           kOmahaDllName,
+                          kOmahaMetainstallerFileName,
                           kOmahaBrokerFileName,
                           kOmahaOnDemandFileName,
+                          kOmahaWebPluginFileName,
 // TODO(omaha3): Enable once this is being built.
 #if 0
                           _T("GoopdateBho.dll"),
 #endif
                           UPDATE_PLUGIN_FILENAME,
                           kPSFileNameMachine,
+                          kPSFileNameMachine64,
                           kPSFileNameUser,
+                          kPSFileNameUser64,
                           };
   for (size_t i = 0; i < arraysize(files); ++i) {
     EXPECT_SUCCEEDED(File::Copy(
@@ -158,6 +161,8 @@ class SetupFilesTest : public testing::Test {
 
     ASSERT_EQ(kNumberOfInstalledRequiredFiles,
               setup_files_->core_program_files_.size());
+    ASSERT_EQ(kNumberOfMetainstallerFiles,
+              setup_files_->metainstaller_files_.size());
     ASSERT_EQ(kNumberOfOptionalFiles, setup_files_->optional_files_.size());
 
     DeleteDirectory(version_path);
@@ -175,10 +180,14 @@ class SetupFilesTest : public testing::Test {
     ASSERT_EQ(kExpectedFilesReturnedByFindFiles, files.size());
     int file_index = kExtraFilesReturnedByFindFiles;
     EXPECT_STREQ(kCrashHandlerFileName, files[file_index++]);
+    EXPECT_STREQ(kCrashHandler64FileName, files[file_index++]);
     EXPECT_STREQ(kOmahaShellFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaBrokerFileName, files[file_index++]);
+    EXPECT_STREQ(kOmahaCOMRegisterShell64, files[file_index++]);
     EXPECT_STREQ(kHelperInstallerName, files[file_index++]);
     EXPECT_STREQ(kOmahaOnDemandFileName, files[file_index++]);
+    EXPECT_STREQ(kOmahaMetainstallerFileName, files[file_index++]);
+    EXPECT_STREQ(kOmahaWebPluginFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaDllName, files[file_index++]);
 // TODO(omaha3): Enable as this is built.
 #if 0
@@ -241,7 +250,9 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(_T("goopdateres_zh-TW.dll"), files[file_index++]);
     EXPECT_STREQ(UPDATE_PLUGIN_FILENAME, files[file_index++]);
     EXPECT_STREQ(kPSFileNameMachine, files[file_index++]);
+    EXPECT_STREQ(kPSFileNameMachine64, files[file_index++]);
     EXPECT_STREQ(kPSFileNameUser, files[file_index++]);
+    EXPECT_STREQ(kPSFileNameUser64, files[file_index++]);
 
     EXPECT_SUCCEEDED(DeleteDirectory(version_path));
   }
@@ -462,21 +473,18 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsSame) {
 }
 
 TEST_F(SetupFilesUserTest, IsOlderShellVersionCompatible_Compatible) {
-  EXPECT_TRUE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 131, 7)));
-  EXPECT_TRUE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 9)));
+  EXPECT_TRUE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 21, 103)));
+  EXPECT_TRUE(IsOlderShellVersionCompatible(_UI64_MAX));
 }
 
 TEST_F(SetupFilesUserTest, IsOlderShellVersionCompatible_Incompatible) {
-  // Vary the four elements of the version.
-  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 7)));
-  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 185, 9)));
-  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 183, 9)));
-  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(2, 2, 183, 9)));
-
-  // Corner cases
-  EXPECT_FALSE(IsOlderShellVersionCompatible(_UI64_MAX));
-  EXPECT_FALSE(IsOlderShellVersionCompatible(0));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 21, 101)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 21)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 9)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 131, 7)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 131, 5)));
   EXPECT_FALSE(IsOlderShellVersionCompatible(1));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(0));
 }
 
 TEST_F(SetupFilesUserTest,
@@ -488,7 +496,7 @@ TEST_F(SetupFilesUserTest,
   bool should_copy = false;
   bool already_exists = false;
   EXPECT_SUCCEEDED(ShouldCopyShell(target_path, &should_copy, &already_exists));
-  EXPECT_FALSE(should_copy);
+  EXPECT_TRUE(should_copy);
   EXPECT_TRUE(already_exists);
 }
 
@@ -501,7 +509,7 @@ TEST_F(SetupFilesUserTest,
   bool should_copy = false;
   bool already_exists = false;
   EXPECT_SUCCEEDED(ShouldCopyShell(target_path, &should_copy, &already_exists));
-  EXPECT_FALSE(should_copy);
+  EXPECT_TRUE(should_copy);
   EXPECT_TRUE(already_exists);
 }
 
@@ -517,9 +525,6 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderMinor) {
   EXPECT_TRUE(already_exists);
 }
 
-// The 1.3.x directory will not always have an older GoogleUpdate.exe than the
-// saved version that we use for official builds.
-#if !OFFICIAL_BUILD
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderSameMinor) {
   CString target_path = ConcatenatePath(
       ConcatenatePath(exe_parent_dir_, _T("omaha_1.3.x")),
@@ -531,7 +536,6 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsOlderSameMinor) {
   EXPECT_TRUE(should_copy);
   EXPECT_TRUE(already_exists);
 }
-#endif
 
 // Assumes LongRunningSilent.exe does not have a version resource.
 TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingHasNoVersion) {

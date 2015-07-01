@@ -29,8 +29,7 @@ namespace omaha {
 const int kErrorMs = 50;
 
 // The tests that use the Timer class are flaky (see warning in timer.h),
-// and Timer isn't used in production Omaha code, so we leave out everything
-// but the LowResTimer test.
+// and Timer isn't used in production Omaha code, so we leave out everything.
 // TODO(omaha): Is there a better way to do this? Maybe not run on build system?
 #if 0
 
@@ -65,7 +64,7 @@ bool TimerTest::busted_ = false;
 
 #endif  // #if 0
 
-TEST(TimerTest, LowResTimer) {
+TEST(TimerTest, DISABLED_LowResTimer) {
   // This test was flaky on the build machine.
   // TODO(omaha): Is this still the case? Can we improve the test?
   if (omaha::IsBuildSystem()) {

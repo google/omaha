@@ -39,7 +39,6 @@
 #include "omaha/base/const_timeouts.h"
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/module_utils.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
@@ -47,6 +46,7 @@
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
+#include "omaha/base/system_info.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
@@ -117,12 +117,8 @@ static CString MakeFullDebugFilename(const TCHAR *filename) {
 // a message box in the active console session.
 void ShowAssertDialog(const TCHAR *message, const TCHAR *title) {
   int ret = 0;
-  OSVERSIONINFOEX osviex = {sizeof(OSVERSIONINFOEX), 0};
-  const bool is_vista_or_greater =
-     ::GetVersionEx(reinterpret_cast<OSVERSIONINFO*>(&osviex)) &&
-     osviex.dwMajorVersion >= 6;
   bool is_system_process = false;
-  if (is_vista_or_greater &&
+  if (SystemInfo::IsRunningOnVistaOrLater() &&
       SUCCEEDED(IsSystemProcess(&is_system_process)) &&
       is_system_process) {
     DWORD session_id = System::WTSGetActiveConsoleSessionId();
@@ -133,9 +129,9 @@ void ShowAssertDialog(const TCHAR *message, const TCHAR *title) {
     ::WTSSendMessage(WTS_CURRENT_SERVER_HANDLE,
                      session_id,
                      const_cast<TCHAR*>(title),
-                     _tcslen(title) * sizeof(TCHAR),
+                     static_cast<DWORD>(_tcslen(title) * sizeof(TCHAR)),
                      const_cast<TCHAR*>(message),
-                     _tcslen(message) * sizeof(TCHAR),
+                     static_cast<DWORD>(_tcslen(message) * sizeof(TCHAR)),
                      MB_ABORTRETRYIGNORE | MB_ICONERROR,
                      0,
                      &response,
@@ -349,8 +345,17 @@ bool DebugReport(unsigned int id,
                  const char *filename,
                  int linenumber,
                  DebugReportKind debug_report_kind) {
+  // In the x64 build, InterlockedDecrement is implemented as intrinsics by the
+  // platform and the build breaks with an unresolved external symbol. Use the
+  // wrapper below as a work around.
+  struct Wrapper {
+    static inline LONG InterlockedDecrement(LONG volatile *addend) {
+      return ::InterlockedDecrement(addend);
+    }
+  };
+
   int recursion_count = ::InterlockedIncrement(&g_debugassertrecursioncheck);
-  ON_SCOPE_EXIT(::InterlockedDecrement, &g_debugassertrecursioncheck);
+  ON_SCOPE_EXIT(Wrapper::InterlockedDecrement, &g_debugassertrecursioncheck);
   if (recursion_count > 1) {
     ::OutputDebugString(_T("recursive debugreport skipped\n"));
     return 1;
@@ -520,9 +525,11 @@ bool DebugReport(unsigned int id,
                                    conv_bytes,
                                    &bytes_written,
                                    NULL);
+              const DWORD debug_log_separator_num_bytes =
+                  static_cast<DWORD>(strlen(DEBUG_LOG_SEPARATOR_CHAR));
               result = ::WriteFile(h,
                                    (LPCVOID)DEBUG_LOG_SEPARATOR_CHAR,
-                                   strlen(DEBUG_LOG_SEPARATOR_CHAR),
+                                   debug_log_separator_num_bytes,
                                    &bytes_written,
                                    NULL);
             }
@@ -566,8 +573,7 @@ bool DebugReport(unsigned int id,
   ::OutputDebugString(L"show assert dialog\r\n");
   ::OutputDebugString(stack_trace.GetString());
 
-  CString process_path;
-  GetModuleFileName(NULL, &process_path);
+  CString process_path(app_util::GetModulePath(NULL));
 
   static TCHAR clipboard_string[4096] = {0};
   lstrcpyn(clipboard_string,
@@ -699,7 +705,7 @@ void ReportIds::MergeReports(ReportData *data1, const ReportData *data2) {
 }
 
 bool ReportIds::LoadReportData(ReportData **data) {
-  DWORD byte_count = 0;
+  size_t byte_count = 0;
   *data = NULL;
   HRESULT hr = RegKey::GetValue(GetRegKeyShared(),
                                 kRegValueReportIds,

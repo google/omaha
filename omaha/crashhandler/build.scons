@@ -1,0 +1,200 @@
+#!/usr/bin/python2.4
+# Copyright 2011 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+import omaha_version_utils
+
+Import('env')
+
+def BuildCrashHandler(local_env):
+  lib_env = local_env.Clone()
+
+  lib_inputs = [
+      'crash_analyzer.cc',
+      'crash_analyzer_checks.cc',
+      'crash_handler.cc',
+      'crash_dump_util.cc',
+      'crashhandler_metrics.cc',
+      'crash_worker.cc'
+      ]
+  lib_env.Append(
+      LIBS = [
+          'advapi32.lib',
+          'crypt32.lib',
+          'iphlpapi.lib',
+          'kernel32.lib',
+          'netapi32.lib',
+          'ole32.lib',
+          'psapi.lib',
+          'rasapi32.lib',
+          'rpcrt4.lib',
+          'shell32.lib',
+          'shlwapi.lib',
+          'user32.lib',
+          'userenv.lib',
+          'version.lib',
+          'wtsapi32.lib',
+          lib_env['atls_libs'][lib_env.Bit('debug')],
+          ('libcmt.lib', 'libcmtd.lib')[lib_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[lib_env.Bit('debug')],
+          lib_env.GetMultiarchLibName('base'),
+          lib_env.GetMultiarchLibName('breakpad'),
+          lib_env.GetMultiarchLibName('common'),
+          lib_env.GetMultiarchLibName('net'),
+          lib_env.GetMultiarchLibName('statsreport'),
+          ]
+  )
+  lib_name = 'crash_handler%s' % ('', '_64')[lib_env.Bit('x64')]
+  library_crash_handler = lib_env.ComponentLibrary(
+      lib_name,
+      lib_inputs
+  )
+
+  gch_env = local_env.Clone()
+  omaha_version_info = gch_env['omaha_versions_info'][0]
+  gch_env.Append(
+      LIBS = [
+          'advapi32.lib',
+          'crypt32.lib',
+          'iphlpapi.lib',
+          'kernel32.lib',
+          'netapi32.lib',
+          'ole32.lib',
+          'psapi.lib',
+          'rasapi32.lib',
+          'rpcrt4.lib',
+          'shell32.lib',
+          'shlwapi.lib',
+          'user32.lib',
+          'userenv.lib',
+          'version.lib',
+          'wtsapi32.lib',
+          gch_env['atls_libs'][gch_env.Bit('debug')],
+          ('libcmt.lib', 'libcmtd.lib')[gch_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[gch_env.Bit('debug')],
+          gch_env.GetMultiarchLibName('base'),
+          gch_env.GetMultiarchLibName('breakpad'),
+          gch_env.GetMultiarchLibName('common'),
+          gch_env.GetMultiarchLibName('crash_handler'),
+          gch_env.GetMultiarchLibName('net'),
+          gch_env.GetMultiarchLibName('security'),
+          gch_env.GetMultiarchLibName('statsreport'),
+          ],
+    RCFLAGS = [
+        '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+        '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+        '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+        '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+            omaha_version_info.GetVersionString()),
+        ],
+  )
+
+  gch_res_target = 'resource%s.res' % ('','64')[gch_env.Bit('x64')]
+  gch_res = gch_env.RES(source = 'resource.rc', target = gch_res_target)
+  gch_env.Depends(gch_res, 'GoogleCrashHandler.manifest')
+
+  gch_inputs = [
+      'winmain.cc',
+      gch_res,
+      ]
+
+  # We disable runtime stack check to avoid increasing the code size.
+  # There is a compiler pragma to programmatically disable the stack checks
+  # but for some reason it did not work.
+  gch_env.FilterOut(CPPFLAGS = ['/GS'])
+
+  # Disable stack checks for VC80. Stack checks are on by default.
+  if gch_env['msc_ver'] >= 1400:
+    gch_env['CCFLAGS'] += ['/GS-']
+
+  # Change the name of the executable based on the architecture, and
+  # change the names of the objects to prevent collisions.
+  exe_name = 'GoogleCrashHandler%s' % ('', '64')[gch_env.Bit('x64')]
+
+  unsigned_crash_handler = gch_env.ComponentProgram(
+      prog_name='%s_unsigned.exe' % exe_name,
+      source=gch_inputs,
+  )
+
+  signed_crash_handler = gch_env.SignedBinary(
+      target='%s.exe' % exe_name,
+      source=unsigned_crash_handler,
+  )
+
+  local_env.Replicate('$STAGING_DIR', signed_crash_handler)
+
+def BuildCrashAnalysisTest(local_env):
+  td_env = local_env.Clone()
+
+  omaha_version_info = td_env['omaha_versions_info'][0]
+
+  td_env.Append(
+      CPPPATH = [],
+      LIBS = [
+          ('libcmt.lib', 'libcmtd.lib')[td_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[td_env.Bit('debug')]
+          ],
+    RCFLAGS = [
+        '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+        '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+        '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+        '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+        '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+            omaha_version_info.GetVersionString()),
+        ],
+  )
+
+  td_inputs = ['crash_analyzer_debugee_test.cc']
+
+  # We disable runtime stack check to avoid increasing the code size.
+  # There is a compiler pragma to programmatically disable the stack checks
+  # but for some reason it did not work.
+  td_env.FilterOut(CPPFLAGS = ['/GS'])
+
+  # Disable stack checks for VC80. Stack checks are on by default.
+  if td_env['msc_ver'] >= 1400:
+    td_env['CCFLAGS'] += ['/GS-']
+
+  test_debugee = td_env.ComponentProgram(
+      prog_name='CrashHandlerTestDebugee.exe',
+      source=td_inputs,
+  )
+
+  local_env.Replicate('$TESTS_DIR', test_debugee)
+
+BuildCrashHandler(env)
+BuildCrashHandler(env.CloneAndMake64Bit())
+
+BuildCrashAnalysisTest(env)
+crash_analyzer_test_env = env.Clone()
+crash_analyzer_test_env.OmahaUnittest(
+    name='crash_analyzer_unittest',
+    source=[
+        'crash_analyzer_unittest.cc'
+    ],
+    LIBS=[
+        'crypt32.lib',
+        crash_analyzer_test_env.GetMultiarchLibName('common'),
+        crash_analyzer_test_env.GetMultiarchLibName('crash_handler'),
+        crash_analyzer_test_env.GetMultiarchLibName('breakpad'),
+        crash_analyzer_test_env.GetMultiarchLibName('security'),
+        ('libcmt.lib', 'libcmtd.lib')[crash_analyzer_test_env.Bit('debug')],
+        ('libcpmt.lib', 'libcpmtd.lib')[crash_analyzer_test_env.Bit('debug')]
+    ],
+    all_in_one=False,
+    COMPONENT_TEST_SIZE='small',
+    is_small_tests_using_resources=True,
+)

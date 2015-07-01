@@ -86,6 +86,11 @@ void GetEveryoneDaclSecurityDescriptor(CSecurityDesc* sd,
                                        ACCESS_MASK admin_access_mask,
                                        ACCESS_MASK non_admin_access_mask);
 
+// Gets the security descriptor with the default DACL for the current process
+// user. The owner is the current user, the group is the current primary group.
+// Returns true and populates sec_attr on success, false on failure.
+bool GetCurrentUserDefaultSecurityAttributes(CSecurityAttributes* sec_attr);
+
 // Get security descriptor containing a DACL that grants the ACCESS_MASK access
 // to admins and system.
 void GetAdminDaclSecurityDescriptor(CSecurityDesc* sd, ACCESS_MASK accessmask);
@@ -151,14 +156,14 @@ bool IsClickOnceDisabled();
 // Wrapper around ::GetProcAddress().
 template <typename T>
 bool GPA(HMODULE module, const char* function_name, T* function_pointer) {
-  ASSERT1(module);
-  ASSERT1(function_name);
-  ASSERT1(function_pointer);
+  if (!module || !function_pointer || !function_name) {
+    return false;
+  }
 
   *function_pointer = reinterpret_cast<T>(::GetProcAddress(module,
                                                            function_name));
   if (NULL == *function_pointer) {
-    UTIL_LOG(LW, (_T("GetProcAddress failed [%s]"), CA2T(function_name)));
+    UTIL_LOG(LW, (_T("[GetProcAddress failed %s]"), CA2T(function_name)));
   }
   return NULL != *function_pointer;
 }
@@ -274,6 +279,10 @@ TimeCategory GetTimeCategory(time64 t);
 
 // Returns true if a given time is likely to be valid.
 bool IsValidTime(time64 t);
+
+// Returns true if delta time since 'baseline' is greater or equal than
+// 'milisecs'. Note: GetTickCount wraps around every ~48 days.
+bool TimeHasElapsed(DWORD baseline, DWORD milisecs);
 
 // Gets a time64 value.
 // If the value is greater than the
@@ -404,12 +413,6 @@ void EnsureRasmanLoaded();
 // v-table or virtual bases.
 template <typename T>
 inline void SetZero(T& p) {   // NOLINT
-  // Guard against the easy mistake of
-  //    foo(int *p) { SetZero(p); } instead of
-  //                  SetZero(*p);
-  // which it should be.
-  STATIC_ASSERT(sizeof(p) != sizeof(void*));    // NOLINT
-
   // A POD (plain old data) object has one of these data types:
   // a fundamental type, union, struct, array,
   // or class--with no constructor. PODs don't have virtual functions or
@@ -504,9 +507,11 @@ bool ShellExecuteExEnsureParent(LPSHELLEXECUTEINFO shell_exec_info);
 
 // Waits with a message loop until any of the synchronization objects is
 // signaled. Return the index of the object that satisfied the wait.
+// This function accepts no more than 64 objects to wait on.
 bool WaitWithMessageLoopAny(const std::vector<HANDLE>& handles, uint32* pos);
 
 // Waits with message loop until all the synchronization objects are signaled.
+// This function accepts no more than 64 objects to wait on.
 bool WaitWithMessageLoopAll(const std::vector<HANDLE>& handles);
 
 // Waits with message loop until the synchronization object is signaled.
@@ -764,6 +769,11 @@ HRESULT DuplicateTokenIntoCurrentProcess(HANDLE source_process,
                                          HANDLE token_to_duplicate,
                                          CAccessToken* duplicated_token);
 
+// Duplicates the given handle from the source_process into the current process.
+HRESULT DuplicateHandleIntoCurrentProcess(HANDLE source_process,
+                                          HANDLE to_duplicate,
+                                          HANDLE* destination);
+
 // Helper class for an ATL module that registers a custom AccessPermission
 // to allow local calls from interactive users and the system account.
 // Derive from this class as well as CAtlModuleT (or a derivative).
@@ -897,6 +907,22 @@ inline T CeilingDivide(T m, T n) {
 
   return (m + n - 1) / n;
 }
+
+// Gets the full path name to a temporary file in the temp dir of the user.
+// Returns an empty string in case of errors.
+CString GetTempFilename(const TCHAR* prefix);
+
+// Gets the full path name to a temporary file in the specified directory.
+// Returns an empty string in case of errors.
+CString GetTempFilenameAt(const TCHAR* dir, const TCHAR* prefix);
+
+// This function is roughly equivalent to ::WaitForMultipleObjects() with the
+// bWaitAll parameter set to TRUE; however, it supports more than 64 handles.
+DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout);
+
+// Checks if the computer is part of a domain. This is code from chromium
+// base/win/win_util.cc.
+bool IsEnrolledToDomain();
 
 }  // namespace omaha
 

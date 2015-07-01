@@ -35,7 +35,6 @@
 
 namespace omaha {
 
-class Reactor;
 class Scheduler;
 class ShutdownHandler;
 
@@ -65,17 +64,22 @@ class Core
   // Aggregates the core metrics.
   void AggregateMetrics() const;
 
-  Reactor* reactor() const { return reactor_.get(); }
   bool is_system() const { return is_system_; }
 
   virtual LONG Unlock() throw() {
-    // We are long-running independent of the ATL module count, therefore
-    // transition to zero does not by itself unload the process.
+    // CAtlExeModuleT::Unlock() posts a WM_QUIT message if the ATL module count
+    // drops to zero. The Core needs to keep running when either of these
+    // conditions are true:
+    // * Shutdown event is not signaled
+    // * ATL module count is non-zero
+    // Because CAtlExeModuleT::Unlock() only transitions on the latter condition
+    // we bypass it and call on CAtlModuleT<Core>::Unlock() instead which just
+    // decrements the module count.
+    // The shutdown logic for the Core is handled in ShutdownInternal().
     return CAtlModuleT<Core>::Unlock();
   }
 
  private:
-
   HRESULT DoMain(bool is_system, bool is_crash_handler_enabled);
 
   // Starts an update worker process.
@@ -98,6 +102,12 @@ class Core
   HRESULT DoRun();
   HRESULT DoHandleEvents();
 
+  bool ShouldRunCodeRed() const;
+  HRESULT UpdateLastCodeRedCheckTime() const;
+
+  bool HasOSUpgraded() const;
+  void LaunchAppCommandsOnOSUpgrade() const;
+
   // Collects ambient core metrics.
   void CollectMetrics()const;
 
@@ -107,11 +117,6 @@ class Core
   bool is_crash_handler_enabled_;
 
   DWORD main_thread_id_;        // The id of the thread that runs Core::Main.
-
-  scoped_ptr<Reactor>               reactor_;
-  scoped_ptr<ShutdownHandler>       shutdown_handler_;
-  scoped_ptr<Scheduler>             scheduler_;
-  scoped_ptr<SystemMonitor>         system_monitor_;
 
   friend class CoreUtilsTest;
 

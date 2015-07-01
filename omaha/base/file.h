@@ -172,8 +172,10 @@ class File {
     // PendingFileRenameOperations MULTISZ needs to be deleted. This is
     // signified by a returned *value_size_chars_ptr of 0.
     static HRESULT GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
-      bool prefix_match, TCHAR** value_multisz_ptr, DWORD* value_size_chars_ptr,
-      bool* found_ptr);
+                                                  bool prefix_match,
+                                                  TCHAR** value_multisz_ptr,
+                                                  size_t* value_size_chars_ptr,
+                                                  bool* found_ptr);
 
     HANDLE handle_;
     CString file_name_;
@@ -182,7 +184,6 @@ class File {
     uint32 pos_;
     uint32 encryption_seed_;
     uint32 sequence_id_;
-    enum EncryptionTypes encryption_;
 
     static const int kMaxFileSize = kint32max;
 

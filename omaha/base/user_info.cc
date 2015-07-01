@@ -118,6 +118,29 @@ bool IsThreadImpersonating() {
   return access_token.GetThreadToken(TOKEN_READ);
 }
 
+HRESULT GetUserAccountAndDomainNames(CString* account_name,
+                                     CString* domain_name) {
+  ASSERT1(account_name);
+  ASSERT1(domain_name);
+
+  CString sid_string;
+  HRESULT hr = GetEffectiveUserSid(&sid_string);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  PSID psid = NULL;
+  if (!::ConvertStringSidToSid(sid_string, &psid)) {
+     return HRESULTFromLastError();
+  }
+  CSid csid(static_cast<const SID*>(psid));
+  ::LocalFree(psid);
+
+  domain_name->SetString(csid.Domain());
+  account_name->SetString(csid.AccountName());
+  return S_OK;
+}
+
 }  // namespace user_info
 
 }  // namespace omaha

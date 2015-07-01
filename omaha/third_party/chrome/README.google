@@ -1,0 +1,6 @@
+URL: http://src.chromium.org/viewvc/chrome/trunk/src/?revision=HEAD
+License File: LICENSE
+
+Description:
+Chromium files. This code is copied from the Chromium source tree
+to reuse certain base functionality.

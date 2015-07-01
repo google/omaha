@@ -36,29 +36,24 @@ TEST(WorkerUtilsTest, FormatMessageForNetworkError) {
                                                kEnglish,
                                                &message));
   EXPECT_STREQ(
-      _T("The installer could not connect to the Internet. Ensure that your ")
-      _T("computer is connected to the Internet and your firewall allows ")
-      _T("GoogleUpdate.exe to connect then try again."),
+      _T("Unable to connect to the Internet. If you use a firewall, please ")
+      _T("whitelist GoogleUpdate.exe."),
       message);
 
   EXPECT_EQ(true, FormatMessageForNetworkError(GOOPDATE_E_NETWORK_UNAUTHORIZED,
                                                kEnglish,
                                                &message));
   EXPECT_STREQ(
-      _T("The installer could not connect to the Internet because of ")
-      _T("an HTTP 401 Unauthorized response. This is likely a proxy ")
-      _T("configuration issue. Please configure the proxy server to allow ")
-      _T("network access and try again or contact your network administrator."),
+      _T("Unable to connect to the Internet. HTTP 401 Unauthorized. Please ")
+      _T("check your proxy configuration."),
       message);
 
   EXPECT_EQ(true, FormatMessageForNetworkError(GOOPDATE_E_NETWORK_FORBIDDEN,
                                                kEnglish,
                                                &message));
   EXPECT_STREQ(
-      _T("The installer could not connect to the Internet because of ")
-      _T("an HTTP 403 Forbidden response. This is likely a proxy ")
-      _T("configuration issue. Please configure the proxy server to allow ")
-      _T("network access and try again or contact your network administrator."),
+      _T("Unable to connect to the Internet. HTTP 403 Forbidden. Please check ")
+      _T("your proxy configuration."),
       message);
 
   EXPECT_EQ(true,
@@ -66,17 +61,14 @@ TEST(WorkerUtilsTest, FormatMessageForNetworkError) {
                                          kEnglish,
                                          &message));
   EXPECT_STREQ(
-      _T("The installer could not connect to the Internet because a ")
-      _T("proxy server required user authentication. Please configure the ")
-      _T("proxy server to allow network access and try again or contact your ")
-      _T("network administrator."),
+      _T("Unable to connect to the Internet. Proxy server requires ")
+      _T("authentication."),
       message);
 
   EXPECT_EQ(false, FormatMessageForNetworkError(E_FAIL, kEnglish, &message));
   EXPECT_STREQ(
-      _T("The installer could not connect to the Internet. Ensure that your ")
-      _T("computer is connected to the Internet and your firewall allows ")
-      _T("GoogleUpdate.exe to connect then try again."),
+      _T("Unable to connect to the Internet. If you use a firewall, please ")
+      _T("whitelist GoogleUpdate.exe."),
       message);
 
   ResourceManager::Delete();

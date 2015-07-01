@@ -28,6 +28,7 @@
 // independent of languages? This would allow simple replacement of Omaha's
 // UI without impacting the core or error messages.
 #include "omaha/client/resource.h"
+#include "omaha/ui/owner_draw_title_bar.h"
 
 namespace omaha {
 
@@ -40,9 +41,24 @@ class OmahaWndEvents {
   virtual void DoExit() = 0;
 };
 
+// This class turns off visual styles for all direct child windows under
+// hwnd_parent that have the BS_FLAT style. BS_FLAT requires that visual styles
+// be turned off.
+class EnableFlatButtons {
+ public:
+  explicit EnableFlatButtons(HWND hwnd_parent);
+
+ private:
+  static BOOL CALLBACK EnableFlatButtonsProc(HWND hwnd, LPARAM lParam);
+
+  DISALLOW_COPY_AND_ASSIGN(EnableFlatButtons);
+};
+
 // Implements the UI progress window.
 class OmahaWnd
     : public CAxDialogImpl<OmahaWnd>,
+      public OwnerDrawTitleBar,
+      public CustomDlgColors,
       public CMessageFilter {
   typedef CAxDialogImpl<OmahaWnd> Base;
  public:
@@ -73,19 +89,18 @@ class OmahaWnd
     MESSAGE_HANDLER(WM_NCDESTROY, OnNCDestroy)
     COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
     CHAIN_MSG_MAP(Base)
+    CHAIN_MSG_MAP(OwnerDrawTitleBar)
+    CHAIN_MSG_MAP(CustomDlgColors)
   END_MSG_MAP()
 
  protected:
-#pragma warning(disable : 4510 4610)
-// C4510: default constructor could not be generated
-// C4610: struct can never be instantiated - user defined constructor required
   struct ControlAttributes {
+    const bool is_ignore_entry_;
     const bool is_visible_;
     const bool is_enabled_;
     const bool is_button_;
     const bool is_default_;
   };
-#pragma warning(default : 4510 4610)
 
   OmahaWnd(int dialog_id, CMessageLoop* message_loop, HWND parent);
 
@@ -126,6 +141,7 @@ class OmahaWnd
 
   static const ControlAttributes kVisibleTextAttributes;
   static const ControlAttributes kDefaultActiveButtonAttributes;
+  static const ControlAttributes kDisabledButtonAttributes;
   static const ControlAttributes kNonDefaultActiveButtonAttributes;
   static const ControlAttributes kVisibleImageAttributes;
   static const ControlAttributes kDisabledNonButtonAttributes;
@@ -151,6 +167,12 @@ class OmahaWnd
 
   // Handle to large icon to show when ALT-TAB
   scoped_hicon hicon_;
+
+  CFont default_font_;
+  CFont font_;
+  CFont error_font_;
+
+  CustomProgressBarCtrl progress_bar_;
 
   DISALLOW_EVIL_CONSTRUCTORS(OmahaWnd);
 };

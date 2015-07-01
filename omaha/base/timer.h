@@ -119,9 +119,8 @@ class Timer {
   DISALLOW_EVIL_CONSTRUCTORS(Timer);
 };
 
-// lint -e{533}  Function should return a value
 // lint -e{31}   Redefinition of symbol
-__forceinline time64 Timer::GetRdtscCounter() { __asm rdtsc }
+__forceinline time64 Timer::GetRdtscCounter() { return __rdtsc(); }
 
 inline double Timer::PerfCountToNanoSeconds(time64 perf_count) const {
   return (static_cast<double>(perf_count) / static_cast<double>(count_freq_)) *

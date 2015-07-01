@@ -21,6 +21,7 @@
 #include "omaha/common/update_request.h"
 #include "omaha/common/update_response.h"
 #include "omaha/goopdate/app_state_checking_for_update.h"
+#include "omaha/goopdate/app_state_installing.h"
 #include "omaha/goopdate/app_state_update_available.h"
 #include "omaha/goopdate/app_state_waiting_to_check_for_update.h"
 #include "omaha/goopdate/app_unittest_base.h"
@@ -42,16 +43,13 @@ const TCHAR* const kAppId1ClientsKeyPathUser =
 const TCHAR* const kGuid1ClientStateKeyPathUser =
     _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\")
                            PRODUCT_NAME _T("\\ClientState\\") APP_ID1;
+const TCHAR* const kChromeClientStateKeyPathUser =
+    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\")
+                           PRODUCT_NAME _T("\\ClientState\\") CHROME_APP_ID;
 
 #define APP_ID2 _T("{EF3CACD4-89EB-46b7-B9BF-B16B15F08584}");
 const TCHAR* const kInstallPolicyApp2 = _T("Install") APP_ID2;
 const TCHAR* const kUpdatePolicyApp2 = _T("Update") APP_ID2;
-
-void SetPolicy(const CString& policy, DWORD value) {
-  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                                    policy,
-                                    value));
-}
 
 }  // namespace
 
@@ -70,11 +68,15 @@ class AppTest : public AppTestBaseWithRegistryOverride {
 
   void AddAppResponse(const CString& status) {
     xml::response::App app;
-    app.status = kResponseStatusOkValue;
+    app.status = xml::response::kStatusOkValue;
     app.appid = kAppId1;
     app.update_check.status = status;
 
     xml::response::Response response;
+
+    // Client expects elapsed_days in response falls into range
+    // [kMinDaysSinceDatum, kMaxDaysSinceDatum].
+    response.day_start.elapsed_days = kMinDaysSinceDatum + 111;
     response.apps.push_back(app);
 
     SetResponseForUnitTest(update_response_.get(), response);
@@ -150,6 +152,10 @@ class AppAutoUpdateTest : public AppManualUpdateTest  {
   }
 };
 
+INSTANTIATE_TEST_CASE_P(IsDomain, AppInstallTest, ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(IsDomain, AppManualUpdateTest, ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(IsDomain, AppAutoUpdateTest, ::testing::Bool());
+
 //
 // CheckGroupPolicy Tests.
 //
@@ -166,50 +172,53 @@ TEST_F(AppAutoUpdateTest, CheckGroupPolicy_NoPolicy) {
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
-TEST_F(AppInstallTest, CheckGroupPolicy_InstallDisabled) {
+TEST_P(AppInstallTest, CheckGroupPolicy_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
-  EXPECT_EQ(GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY,
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY : S_OK,
             app_->CheckGroupPolicy());
 }
 
-TEST_F(AppManualUpdateTest, CheckGroupPolicy_InstallDisabled) {
+TEST_P(AppManualUpdateTest, CheckGroupPolicy_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
-TEST_F(AppAutoUpdateTest, CheckGroupPolicy_InstallDisabled) {
+TEST_P(AppAutoUpdateTest, CheckGroupPolicy_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
-TEST_F(AppInstallTest, CheckGroupPolicy_AllUpdatesDisabled) {
+TEST_P(AppInstallTest, CheckGroupPolicy_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
-TEST_F(AppManualUpdateTest, CheckGroupPolicy_AllUpdatesDisabled) {
+TEST_P(AppManualUpdateTest, CheckGroupPolicy_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
-  EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY, app_->CheckGroupPolicy());
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
+            app_->CheckGroupPolicy());
 }
 
-TEST_F(AppAutoUpdateTest, CheckGroupPolicy_AllUpdatesDisabled) {
+TEST_P(AppAutoUpdateTest, CheckGroupPolicy_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
-  EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY, app_->CheckGroupPolicy());
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
+            app_->CheckGroupPolicy());
 }
 
-TEST_F(AppInstallTest, CheckGroupPolicy_AutoUpdatesDisabled) {
+TEST_P(AppInstallTest, CheckGroupPolicy_AutoUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
-TEST_F(AppManualUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
+TEST_P(AppManualUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
-TEST_F(AppAutoUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
+TEST_P(AppAutoUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
-  EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY, app_->CheckGroupPolicy());
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
+            app_->CheckGroupPolicy());
 }
 
 //
@@ -218,7 +227,7 @@ TEST_F(AppAutoUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
 
 TEST_F(AppInstallTest, PostUpdateCheck_NoUpdate) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusNoUpdate);
+  AddAppResponse(xml::response::kStatusNoUpdate);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_ERROR, app_->state());
@@ -227,7 +236,7 @@ TEST_F(AppInstallTest, PostUpdateCheck_NoUpdate) {
 
 TEST_F(AppInstallTest, PostUpdateCheck_UpdateAvailable) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -235,10 +244,10 @@ TEST_F(AppInstallTest, PostUpdateCheck_UpdateAvailable) {
 }
 
 // Policy is not checked by this function.
-TEST_F(AppInstallTest, PostUpdateCheck_UpdateAvailable_InstallDisabled) {
+TEST_P(AppInstallTest, PostUpdateCheck_UpdateAvailable_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -247,7 +256,7 @@ TEST_F(AppInstallTest, PostUpdateCheck_UpdateAvailable_InstallDisabled) {
 
 TEST_F(AppManualUpdateTest, PostUpdateCheck_NoUpdate) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusNoUpdate);
+  AddAppResponse(xml::response::kStatusNoUpdate);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_NO_UPDATE, app_->state());
@@ -256,7 +265,7 @@ TEST_F(AppManualUpdateTest, PostUpdateCheck_NoUpdate) {
 
 TEST_F(AppManualUpdateTest, PostUpdateCheck_UpdateAvailable) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -264,11 +273,11 @@ TEST_F(AppManualUpdateTest, PostUpdateCheck_UpdateAvailable) {
 }
 
 // Policy is not checked by this function.
-TEST_F(AppManualUpdateTest,
+TEST_P(AppManualUpdateTest,
        PostUpdateCheck_UpdateAvailable_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -277,7 +286,7 @@ TEST_F(AppManualUpdateTest,
 
 TEST_F(AppAutoUpdateTest, PostUpdateCheck_NoUpdate) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusNoUpdate);
+  AddAppResponse(xml::response::kStatusNoUpdate);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_NO_UPDATE, app_->state());
@@ -286,7 +295,7 @@ TEST_F(AppAutoUpdateTest, PostUpdateCheck_NoUpdate) {
 
 TEST_F(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -294,10 +303,10 @@ TEST_F(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable) {
 }
 
 // Policy is not checked by this function.
-TEST_F(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable_AllUpdatesDisabled) {
+TEST_P(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(kResponseStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue);
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -316,16 +325,21 @@ TEST_F(AppInstallTest, QueueDownload_NoPolicy) {
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppInstallTest, QueueDownload_InstallDisabled) {
+TEST_P(AppInstallTest, QueueDownload_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
-  EXPECT_EQ(STATE_ERROR, app_->state());
-  EXPECT_EQ(GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY, app_->error_code());
+
+  if (IsDomain()) {
+    EXPECT_EQ(STATE_ERROR, app_->state());
+  }
+
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY : S_OK,
+            app_->error_code());
 }
 
-TEST_F(AppInstallTest,
+TEST_P(AppInstallTest,
        QueueDownload_InstallDisabledForDifferentApp) {
   SetPolicy(kInstallPolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
@@ -335,7 +349,7 @@ TEST_F(AppInstallTest,
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppInstallTest, QueueDownload_AllUpdatesDisabled) {
+TEST_P(AppInstallTest, QueueDownload_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
@@ -352,16 +366,21 @@ TEST_F(AppManualUpdateTest, QueueDownload_NoPolicy) {
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppManualUpdateTest, QueueDownload_AllUpdatesDisabled) {
+TEST_P(AppManualUpdateTest, QueueDownload_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
-  EXPECT_EQ(STATE_ERROR, app_->state());
-  EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY, app_->error_code());
+
+  if (IsDomain()) {
+    EXPECT_EQ(STATE_ERROR, app_->state());
+  }
+
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
+            app_->error_code());
 }
 
-TEST_F(AppManualUpdateTest,
+TEST_P(AppManualUpdateTest,
        QueueDownload_AllUpdatesDisabledForDifferentApp) {
   SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
@@ -371,7 +390,7 @@ TEST_F(AppManualUpdateTest,
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppManualUpdateTest, QueueDownload_AutoUpdatesDisabled) {
+TEST_P(AppManualUpdateTest, QueueDownload_AutoUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
@@ -380,7 +399,7 @@ TEST_F(AppManualUpdateTest, QueueDownload_AutoUpdatesDisabled) {
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppManualUpdateTest, QueueDownload_InstallDisabled) {
+TEST_P(AppManualUpdateTest, QueueDownload_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
@@ -397,16 +416,21 @@ TEST_F(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled_NoPolicy) {
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled) {
+TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
-  EXPECT_EQ(STATE_ERROR, app_->state());
-  EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY, app_->error_code());
+
+  if (IsDomain()) {
+    EXPECT_EQ(STATE_ERROR, app_->state());
+  }
+
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
+            app_->error_code());
 }
 
-TEST_F(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabledForDifferentApp) {
+TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabledForDifferentApp) {
   SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
@@ -415,16 +439,21 @@ TEST_F(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabledForDifferentApp) {
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppAutoUpdateTest, QueueDownload_AutoUpdatesDisabled) {
+TEST_P(AppAutoUpdateTest, QueueDownload_AutoUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
-  EXPECT_EQ(STATE_ERROR, app_->state());
-  EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY, app_->error_code());
+
+  if (IsDomain()) {
+    EXPECT_EQ(STATE_ERROR, app_->state());
+  }
+
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
+            app_->error_code());
 }
 
-TEST_F(AppAutoUpdateTest, QueueDownload_InstallDisabled) {
+TEST_P(AppAutoUpdateTest, QueueDownload_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
@@ -522,6 +551,187 @@ TEST_F(AppAutoUpdateTest, PreUpdateCheck_EulaNotAccepted) {
   EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_EULA_NOT_ACCEPTED,
             app_->error_code());
   EXPECT_TRUE(update_request->IsEmpty()) << _T("Should not add request.");
+}
+
+TEST_F(AppInstallTest, InstallProgress_NonChrome_MissingInstallerProgress) {
+  SetAppStateForUnitTest(app_, new fsm::AppStateInstalling);
+  EXPECT_EQ(STATE_INSTALLING, app_->state());
+
+  CComPtr<ICurrentState> icurrent_state;
+  CComPtr<IDispatch> idispatch;
+  EXPECT_SUCCEEDED(app_->get_currentState(&idispatch));
+  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
+
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_percentage);
+}
+
+TEST_F(AppInstallTest, InstallProgress_NonChrome_ValidInstallerProgress) {
+  SetAppStateForUnitTest(app_, new fsm::AppStateInstalling);
+  EXPECT_EQ(STATE_INSTALLING, app_->state());
+
+  const DWORD progress_percent = 11;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kGuid1ClientStateKeyPathUser,
+                                    kRegValueInstallerProgress,
+                                    progress_percent));
+
+  CComPtr<ICurrentState> icurrent_state;
+  CComPtr<IDispatch> idispatch;
+  EXPECT_SUCCEEDED(app_->get_currentState(&idispatch));
+  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
+
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
+  EXPECT_EQ(progress_percent, local_percentage);
+}
+
+TEST_F(AppInstallTest, InstallProgress_NonChrome_InvalidInstallerProgress) {
+  SetAppStateForUnitTest(app_, new fsm::AppStateInstalling);
+  EXPECT_EQ(STATE_INSTALLING, app_->state());
+
+  const DWORD progress_percent = 111;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kGuid1ClientStateKeyPathUser,
+                                    kRegValueInstallerProgress,
+                                    progress_percent));
+
+  CComPtr<ICurrentState> icurrent_state;
+  CComPtr<IDispatch> idispatch;
+  EXPECT_SUCCEEDED(app_->get_currentState(&idispatch));
+  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
+
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
+  EXPECT_EQ(100, local_percentage);
+}
+
+TEST_F(AppInstallTest, InstallProgress_Chrome_ValidExtraCode1) {
+  App* chrome_app = NULL;
+  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
+  ASSERT_TRUE(chrome_app);
+
+  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
+  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
+
+  const DWORD expected_extra_code1 = 11;
+  const DWORD expected_installer_progress =
+      expected_extra_code1 * 100 / kChromeInstallerNumStages;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
+                                    kRegValueInstallerExtraCode1,
+                                    expected_extra_code1));
+
+  CComPtr<ICurrentState> icurrent_state;
+  CComPtr<IDispatch> idispatch;
+  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
+  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
+
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
+  EXPECT_EQ(expected_installer_progress, local_percentage);
+}
+
+TEST_F(AppInstallTest, InstallProgress_Chrome_InvalidExtraCode1) {
+  App* chrome_app = NULL;
+  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
+  ASSERT_TRUE(chrome_app);
+
+  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
+  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
+
+  const DWORD unexpected_extra_code1 = 11 + kChromeInstallerNumStages + 1;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
+                                    kRegValueInstallerExtraCode1,
+                                    unexpected_extra_code1));
+
+  CComPtr<ICurrentState> icurrent_state;
+  CComPtr<IDispatch> idispatch;
+  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
+  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
+
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
+  EXPECT_EQ(100, local_percentage);
+}
+
+TEST_F(AppInstallTest, InstallProgress_Chrome_MissingProgress) {
+  App* chrome_app = NULL;
+  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
+  ASSERT_TRUE(chrome_app);
+
+  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
+  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
+
+  CComPtr<ICurrentState> icurrent_state;
+  CComPtr<IDispatch> idispatch;
+  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
+  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
+
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_percentage);
+}
+
+TEST_F(AppInstallTest, InstallProgress_Chrome_ValidInstallerProgress) {
+  App* chrome_app = NULL;
+  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
+  ASSERT_TRUE(chrome_app);
+
+  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
+  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
+
+  const DWORD progress_percent = 11;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
+                                    kRegValueInstallerProgress,
+                                    progress_percent));
+
+  const DWORD unexpected_extra_code1 = 9;
+  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
+                                    kRegValueInstallerExtraCode1,
+                                    unexpected_extra_code1));
+
+  CComPtr<ICurrentState> icurrent_state;
+  CComPtr<IDispatch> idispatch;
+  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
+  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
+  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
+
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
+  EXPECT_EQ(progress_percent, local_percentage);
 }
 
 }  // namespace omaha

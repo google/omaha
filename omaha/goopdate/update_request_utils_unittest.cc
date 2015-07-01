@@ -29,7 +29,8 @@ namespace update_request_utils {
 
 namespace {
 
-#define USER_UPDATE_KEY _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\")
+#define USER_UPDATE_KEY \
+    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\")
 #define APP_ID1 _T("{DDE97E2B-A82C-4790-A630-FCA02F64E8BE}");
 const TCHAR* const kAppId1 = APP_ID1
 const TCHAR* const kAppId1ClientsKeyPathUser =
@@ -39,12 +40,6 @@ const TCHAR* const kAppId1ClientStateKeyPathUser =
 const TCHAR* const kInstallPolicyApp1 = _T("Install") APP_ID1;
 const TCHAR* const kUpdatePolicyApp1 = _T("Update") APP_ID1;
 const TCHAR* const kAppDidRunValueName = _T("dr");
-
-void SetPolicy(const CString& policy, DWORD value) {
-  EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                                    policy,
-                                    value));
-}
 
 }  // namespace
 
@@ -74,6 +69,8 @@ class UpdateRequestUtilsTest : public AppTestBaseWithRegistryOverride {
  private:
   DISALLOW_COPY_AND_ASSIGN(UpdateRequestUtilsTest);
 };
+
+INSTANTIATE_TEST_CASE_P(IsDomain, UpdateRequestUtilsTest, ::testing::Bool());
 
 // TODO(omaha): write tests.
 
@@ -132,7 +129,7 @@ TEST_F(UpdateRequestUtilsTest, BuildRequest_UpdateCheck) {
   EXPECT_FALSE(update_check.is_update_disabled);
 }
 
-TEST_F(UpdateRequestUtilsTest,
+TEST_P(UpdateRequestUtilsTest,
        BuildRequest_UpdateCheck_GroupPolicy_InstallDisabled) {
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -146,7 +143,7 @@ TEST_F(UpdateRequestUtilsTest,
   const xml::request::App& app = request.apps[0];
   const xml::request::UpdateCheck& update_check = app.update_check;
   EXPECT_TRUE(update_check.is_valid);
-  EXPECT_TRUE(update_check.is_update_disabled);
+  EXPECT_EQ(IsDomain(), update_check.is_update_disabled);
 }
 
 TEST_F(UpdateRequestUtilsTest,
@@ -172,6 +169,8 @@ TEST_F(UpdateRequestUtilsTest,
   EXPECT_EQ(ACTIVE_UNKNOWN, ping.active);
   EXPECT_EQ(0, ping.days_since_last_active_ping);
   EXPECT_EQ(0, ping.days_since_last_roll_call);
+  EXPECT_EQ(0, ping.day_of_last_activity);
+  EXPECT_EQ(0, ping.day_of_last_roll_call);
 }
 
 TEST_F(UpdateRequestUtilsTest,
@@ -197,6 +196,79 @@ TEST_F(UpdateRequestUtilsTest,
   EXPECT_EQ(ACTIVE_RUN, ping.active);
   EXPECT_EQ(-1, ping.days_since_last_active_ping);
   EXPECT_EQ(-1, ping.days_since_last_roll_call);
+  EXPECT_EQ(-1, ping.day_of_last_activity);
+  EXPECT_EQ(-1, ping.day_of_last_roll_call);
+}
+
+TEST_F(UpdateRequestUtilsTest,
+       BuildRequest_UpdateCheckShouldSendAppDefinedAttributes) {
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  RegKey key;
+  EXPECT_SUCCEEDED(key.Create(kAppId1ClientStateKeyPathUser));
+
+  struct AttributePair {
+    CString attribute_name;
+    CString attribute_value;
+  };
+
+  AttributePair pairs[] = {
+    {_T("_Foo"), _T("***")},
+    {_T("_Bar"), _T("&&&&")},
+    {_T("_Baz"), _T("BazBaz")},
+  };
+
+  for (int i = 0; i < arraysize(pairs); ++i) {
+    EXPECT_SUCCEEDED(key.SetValue(pairs[i].attribute_name,
+                                  pairs[i].attribute_value));
+  }
+
+  __mutexScope(app_->model()->lock());
+  AppManager::Instance()->ReadAppPersistentData(app_);
+
+  BuildRequest(app_, true, update_request_.get());
+
+  const xml::request::Request& request = update_request_->request();
+  EXPECT_EQ(1, request.apps.size());
+  EXPECT_EQ(arraysize(pairs), request.apps[0].app_defined_attributes.size());
+  for (int i = 0; i < arraysize(pairs); ++i) {
+    EXPECT_STREQ(pairs[i].attribute_name.MakeLower(),
+                 request.apps[0].app_defined_attributes[i].first);
+    EXPECT_STREQ(pairs[i].attribute_value,
+                 request.apps[0].app_defined_attributes[i].second);
+  }
+}
+
+TEST_F(UpdateRequestUtilsTest,
+       BuildRequest_UpdateCheckShouldSendCohortAttributes) {
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  RegKey key;
+  const CString cohort_key_name(
+      AppendRegKeyPath(kAppId1ClientStateKeyPathUser, kRegSubkeyCohort));
+  EXPECT_SUCCEEDED(key.Create(cohort_key_name));
+
+  const Cohort cohorts[] = {
+    {_T("Cohort1"), _T("Hint1"), _T("Name1")},
+    {_T("Cohort2"), _T(""), _T("Name2")},
+    {_T("Cohort3"), _T("Hint3"), _T("")},
+  };
+
+  for (size_t i = 0; i < arraysize(cohorts); ++i) {
+    EXPECT_SUCCEEDED(key.SetValue(NULL, cohorts[i].cohort));
+    EXPECT_SUCCEEDED(key.SetValue(kRegValueCohortHint, cohorts[i].hint));
+    EXPECT_SUCCEEDED(key.SetValue(kRegValueCohortName, cohorts[i].name));
+
+    __mutexScope(app_->model()->lock());
+    AppManager::Instance()->ReadAppPersistentData(app_);
+
+    BuildRequest(app_, true, update_request_.get());
+
+    const xml::request::Request& request = update_request_->request();
+    EXPECT_STREQ(cohorts[i].cohort, request.apps[i].cohort);
+    EXPECT_STREQ(cohorts[i].hint, request.apps[i].cohort_hint);
+    EXPECT_STREQ(cohorts[i].name, request.apps[i].cohort_name);
+  }
 }
 
 }  // namespace update_request_utils

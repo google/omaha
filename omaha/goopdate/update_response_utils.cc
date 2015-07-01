@@ -14,11 +14,13 @@
 // ========================================================================
 
 #include "omaha/goopdate/update_response_utils.h"
+#include <algorithm>
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/common/lang.h"
 #include "omaha/common/experiment_labels.h"
+#include "omaha/common/xml_const.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/server_resource.h"
 #include "omaha/goopdate/string_formatter.h"
@@ -42,6 +44,22 @@ const xml::response::App* GetApp(const xml::response::Response& response,
   return NULL;
 }
 
+// Checks the response only includes one "untrusted" data item and the
+// status of that item is "ok".
+HRESULT ValidateUntrustedData(const std::vector<xml::response::Data>& data) {
+  size_t num_untrusted_data_elements = 0;
+  bool is_valid = false;
+  std::vector<xml::response::Data>::const_iterator it;
+  for (it = data.begin(); it != data.end(); ++it) {
+    if (it->name == xml::value::kUntrusted) {
+      ++num_untrusted_data_elements;
+      is_valid = it->status == xml::response::kStatusOkValue;
+    }
+  }
+  return (num_untrusted_data_elements == 1 && is_valid) ?
+      S_OK : GOOPDATEINSTALL_E_INVALID_UNTRUSTED_DATA;
+}
+
 HRESULT GetInstallData(const std::vector<xml::response::Data>& data,
                        const CString& install_data_index,
                        CString* install_data) {
@@ -56,8 +74,8 @@ HRESULT GetInstallData(const std::vector<xml::response::Data>& data,
       continue;
     }
 
-    if (it->status != kResponseStatusOkValue) {
-      ASSERT1(it->status == kResponseDataStatusNoData);
+    if (it->status != xml::response::kStatusOkValue) {
+      ASSERT1(it->status == xml::response::kStatusNoData);
       return GOOPDATE_E_INVALID_INSTALL_DATA_INDEX;
     }
 
@@ -72,33 +90,33 @@ HRESULT GetInstallData(const std::vector<xml::response::Data>& data,
 // Check the outer elements first, then check any child elements only if the
 // outer element was successful.
 CString GetAppResponseStatus(const xml::response::App& app) {
-  if (_tcsicmp(kResponseStatusOkValue, app.status) != 0) {
+  if (_tcsicmp(xml::response::kStatusOkValue, app.status) != 0) {
     ASSERT1(!app.status.IsEmpty());
     return app.status;
   }
 
   if (!app.update_check.status.IsEmpty() &&
-      _tcsicmp(kResponseStatusOkValue, app.update_check.status) != 0) {
+      _tcsicmp(xml::response::kStatusOkValue, app.update_check.status) != 0) {
     return app.update_check.status;
   }
 
   std::vector<xml::response::Data>::const_iterator data;
   for (data = app.data.begin(); data != app.data.end(); ++data) {
     if (!data->status.IsEmpty() &&
-        _tcsicmp(kResponseStatusOkValue, data->status) != 0) {
+        _tcsicmp(xml::response::kStatusOkValue, data->status) != 0) {
       return data->status;
     }
   }
 
   if (!app.ping.status.IsEmpty() &&
-      _tcsicmp(kResponseStatusOkValue, app.ping.status) != 0) {
+      _tcsicmp(xml::response::kStatusOkValue, app.ping.status) != 0) {
     return app.ping.status;
   }
 
   std::vector<xml::response::Event>::const_iterator it;
   for (it = app.events.begin(); it != app.events.end(); ++it) {
     if (!it->status.IsEmpty() &&
-        _tcsicmp(kResponseStatusOkValue, it->status) != 0) {
+        _tcsicmp(xml::response::kStatusOkValue, it->status) != 0) {
       return it->status;
     }
   }
@@ -127,6 +145,12 @@ HRESULT BuildApp(const xml::UpdateResponse* update_response,
 
   VERIFY1(SUCCEEDED(app->put_ttToken(CComBSTR(update_check.tt_token))));
 
+  Cohort cohort;
+  cohort.cohort = response_app->cohort;
+  cohort.hint = response_app->cohort_hint;
+  cohort.name = response_app->cohort_name;
+  app->set_cohort(cohort);
+
   if (code == GOOPDATE_E_NO_UPDATE_RESPONSE) {
     return S_OK;
   }
@@ -141,9 +165,17 @@ HRESULT BuildApp(const xml::UpdateResponse* update_response,
   for (size_t i = 0; i < update_check.install_manifest.packages.size(); ++i) {
     const xml::InstallPackage& package(
         update_check.install_manifest.packages[i]);
-    HRESULT hr = next_version->AddPackage(package.name,
-                                          package.size,
-                                          package.hash);
+    FileHash hash;
+    hash.sha1 = package.hash_sha1;
+    hash.sha256 = package.hash_sha256;
+    HRESULT hr = next_version->AddPackage(package.name, package.size, hash);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  if (!app->untrusted_data().IsEmpty()) {
+    HRESULT hr = ValidateUntrustedData(response_app->data);
     if (FAILED(hr)) {
       return hr;
     }
@@ -177,6 +209,7 @@ HRESULT BuildApp(const xml::UpdateResponse* update_response,
 // interpreting "noupdate" as it sees fit.
 xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
                                     const CString& appid,
+                                    const CString& app_name,
                                     const CString& language) {
   ASSERT1(update_response);
   const xml::response::App* response_app(GetApp(update_response->response(),
@@ -196,50 +229,49 @@ xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
   const CString& display_name = update_check.install_manifest.name;
 
   ASSERT1(!status.IsEmpty());
-  CORE_LOG(L1, (_T("[UpdateResponse::GetResult][%s][%s][%s]"),
-                appid, status, display_name));
+  CORE_LOG(L1, (_T("[UpdateResponse::GetResult][%s][%s][%s][%s]"),
+                appid, app_name, status, display_name));
 
   // ok
-  if (_tcsicmp(kResponseStatusOkValue, status) == 0) {
+  if (_tcsicmp(xml::response::kStatusOkValue, status) == 0) {
     return std::make_pair(S_OK, CString());
   }
 
   // noupdate
-  if (_tcsicmp(kResponseStatusNoUpdate, status) == 0) {
+  if (_tcsicmp(xml::response::kStatusNoUpdate, status) == 0) {
     VERIFY1(SUCCEEDED(formatter.LoadString(IDS_NO_UPDATE_RESPONSE, &text)));
     return std::make_pair(GOOPDATE_E_NO_UPDATE_RESPONSE, text);
   }
 
   // "restricted"
-  if (_tcsicmp(kResponseStatusRestrictedExportCountry, status) == 0) {
+  if (_tcsicmp(xml::response::kStatusRestrictedExportCountry, status) == 0) {
     VERIFY1(SUCCEEDED(formatter.LoadString(IDS_RESTRICTED_RESPONSE_FROM_SERVER,
                                            &text)));
     return std::make_pair(GOOPDATE_E_RESTRICTED_SERVER_RESPONSE, text);
   }
 
   // "error-UnKnownApplication"
-  if (_tcsicmp(kResponseStatusUnKnownApplication, status) == 0) {
+  if (_tcsicmp(xml::response::kStatusUnKnownApplication, status) == 0) {
     VERIFY1(SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION, &text)));
     return std::make_pair(GOOPDATE_E_UNKNOWN_APP_SERVER_RESPONSE, text);
   }
 
-  // "error-OsNotSupported"
-  if (_tcsicmp(kResponseStatusOsNotSupported, status) == 0) {
-    const CString& error_url(update_check.error_url);
+  // "error-hwnotsupported"
+  if (_tcsicmp(xml::response::kStatusHwNotSupported, status) == 0) {
+    VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
+                                              IDS_HW_NOT_SUPPORTED,
+                                              app_name)));
+    return std::make_pair(GOOPDATE_E_HW_NOT_SUPPORTED, text);
+  }
+
+  // "error-osnotsupported"
+  if (_tcsicmp(xml::response::kStatusOsNotSupported, status) == 0) {
     VERIFY1(SUCCEEDED(formatter.LoadString(IDS_OS_NOT_SUPPORTED, &text)));
-    if (!error_url.IsEmpty()) {
-      // TODO(omaha3): The error URL is no longer in the error string. Either
-      // we need to provide this URL to the client or we need to deprecate
-      // error_url and put this information in the Get Help redirect.
-      // Alternatively, we could have the COM server build error URLs in all
-      // cases. The current UI would still need to build an URL for the entire
-      // bundle, though, because it does not have per-app links.
-    }
     return std::make_pair(GOOPDATE_E_OS_NOT_SUPPORTED, text);
   }
 
   // "error-internal"
-  if (_tcsicmp(kResponseStatusInternalError, status) == 0) {
+  if (_tcsicmp(xml::response::kStatusInternalError, status) == 0) {
     VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
                                               IDS_NON_OK_RESPONSE_FROM_SERVER,
                                               status)));
@@ -247,7 +279,7 @@ xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
   }
 
   // "error-hash"
-  if (_tcsicmp(kResponseStatusHashError, status) == 0) {
+  if (_tcsicmp(xml::response::kStatusHashError, status) == 0) {
     VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
                                               IDS_NON_OK_RESPONSE_FROM_SERVER,
                                               status)));
@@ -255,7 +287,7 @@ xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
   }
 
   // "error-unsupportedprotocol"
-  if (_tcsicmp(kResponseStatusUnsupportedProtocol, status) == 0) {
+  if (_tcsicmp(xml::response::kStatusUnsupportedProtocol, status) == 0) {
     // TODO(omaha): Ideally, we would provide an app-specific URL instead of
     // just the publisher name. If it was a link, we could use point to a
     // redirect URL and provide the app GUID rather than somehow obtaining the
@@ -278,6 +310,7 @@ bool IsOmahaUpdateAvailable(const xml::UpdateResponse* update_response) {
   xml::UpdateResponseResult update_response_result(
       update_response_utils::GetResult(update_response,
                                        kGoogleUpdateAppId,
+                                       CString(),
                                        lang::GetDefaultLanguage(true)));
   return update_response_result.first == S_OK;
 }

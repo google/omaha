@@ -12,19 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
-// The class structure is as following:
-//    - NetworkRequest and the underlying NetworkRequestImpl provide fault
-//      tolerant client server http transactions.
-//    - HttpRequestInterface defines an interface for different mechanisms that
-//      can move bytes between the client and the server. These mechanisms are
-//      chained up so that the control passes from one mechanism to the next
-//      until one of them is able to fulfill the request or an error is
-//      generated. Currently, SimpleRequest and BitsRequest are provided.
-//    - HttpClient is the c++ wrapper over winhttp-wininet.
 
-#ifndef OMAHA_NET_NETWORK_REQUEST_IMPL_H__
-#define OMAHA_NET_NETWORK_REQUEST_IMPL_H__
+#ifndef OMAHA_NET_NETWORK_REQUEST_IMPL_H_
+#define OMAHA_NET_NETWORK_REQUEST_IMPL_H_
 
 #include <windows.h>
 #include <atlstr.h>
@@ -39,8 +29,17 @@
 
 namespace omaha {
 
-namespace detail {
+namespace internal {
 
+// The class structure is as following:
+//    - NetworkRequest and the underlying NetworkRequestImpl provide fault
+//      tolerant client server http transactions.
+//    - HttpRequestInterface defines an interface for different mechanisms that
+//      can move bytes between the client and the server. These mechanisms are
+//      chained up so that the control passes from one mechanism to the next
+//      until one of them is able to fulfill the request or an error is
+//      generated. Currently, SimpleRequest and BitsRequest are provided.
+//    - HttpClient is the c++ wrapper over winhttp-wininet.
 class NetworkRequestImpl {
  public:
   explicit NetworkRequestImpl(const NetworkConfig::Session& network_session);
@@ -78,7 +77,11 @@ class NetworkRequestImpl {
   void set_num_retries(int num_retries) { num_retries_ = num_retries; }
 
   void set_time_between_retries(int time_between_retries_ms) {
-    time_between_retries_ms_ = time_between_retries_ms;
+    initial_retry_delay_ms_ = time_between_retries_ms;
+  }
+
+  void set_retry_delay_jitter(int jitter_ms) {
+    retry_delay_jitter_ms_ = jitter_ms;
   }
 
   void set_callback(NetworkRequestCallback* callback) {
@@ -96,11 +99,11 @@ class NetworkRequestImpl {
     }
   }
 
-  void set_preserve_protocol(bool preserve_protocol) {
-    preserve_protocol_ = preserve_protocol;
-  }
-
   CString trace() const { return trace_; }
+
+  std::vector<DownloadMetrics> download_metrics() const {
+    return download_metrics_;
+  }
 
   // Detects the available proxy configurations and returns the chain of
   // configurations to be used.
@@ -121,20 +124,32 @@ class NetworkRequestImpl {
   // Sends a single request and receives the response.
   HRESULT DoSend(int* http_status_code,
                  CString* response_headers,
-                 std::vector<uint8>* response) const;
+                 std::vector<uint8>* response);
 
   // Sends the request using the current configuration. The request is tried for
   // each HttpRequestInterface in the fallback chain until one of them succeeds
   // or the end of the chain is reached.
   HRESULT DoSendWithConfig(int* http_status_code,
                            CString* response_headers,
-                           std::vector<uint8>* response) const;
+                           std::vector<uint8>* response);
 
   // Sends an http request using the current HttpRequest interface over the
   // current network configuration.
   HRESULT DoSendHttpRequest(int* http_status_code,
                             CString* response_headers,
-                            std::vector<uint8>* response) const;
+                            std::vector<uint8>* response);
+
+  // Returns true if we should continue to retry a network request, false if
+  // we should bail out early.
+  bool CanRetryRequest();
+
+  // Delays for a specified interval, notifying any specified callbacks at the
+  // beginning and end of the wait.
+  HRESULT DoWaitBetweenRetries();
+
+  // Adjusts the delay until the next retry, given the current retry status
+  // and the result of the previous network attempt.
+  void ComputeNextRetryDelay(HttpClient::StatusCodeClass previous_result);
 
   // Builds headers for the current HttpRequest and network configuration.
   CString BuildPerRequestHeaders() const;
@@ -160,7 +175,8 @@ class NetworkRequestImpl {
   ProxyAuthConfig proxy_auth_config_;
   int      num_retries_;
   bool     low_priority_;
-  int time_between_retries_ms_;
+  int      initial_retry_delay_ms_;
+  int      retry_delay_jitter_ms_;
 
   // Output data members.
   int      http_status_code_;
@@ -171,46 +187,51 @@ class NetworkRequestImpl {
   NetworkRequestCallback*       callback_;
 
   // The http request and the network configuration currently in use.
-  mutable HttpRequestInterface* cur_http_request_;
-  mutable const ProxyConfig*    cur_proxy_config_;
+  HttpRequestInterface* cur_http_request_;
+  const ProxyConfig*    cur_proxy_config_;
 
   // The HRESULT and HTTP status code updated by the prior
   // DoSendHttpRequest() call.
-  mutable HRESULT  last_hr_;
-  mutable int      last_http_status_code_;
+  HRESULT  last_hr_;
+  int      last_http_status_code_;
 
-  // The current retry count defined by the outermost DoSendWithRetries() call.
+  // This member stores the value of the optional X-Retry-After header. If the
+  // server sends a positive value in seconds for this header, the request will
+  // stop processing fallbacks and will return from the
+  // NetworkRequestImpl::DoSendWithRetries() call immediately.
+  // The default value is -1 when the header is not found.
+  int retry_after_seconds_;
+
+  // The current retry count and delay between retries, defined by the outermost
+  // DoSendWithRetries() call.
   int cur_retry_count_;
+  int cur_retry_delay_ms_;
+
+  // Count of DoSendHttpRequest() calls.
+  int http_attempts_;
 
   volatile LONG is_canceled_;
   scoped_event event_cancel_;
 
   LLock lock_;
 
-  bool preserve_protocol_;
-
   // Contains the trace of the request as handled by the fallback chain.
-  mutable CString trace_;
+  CString trace_;
 
-  static const int kDefaultTimeBetweenRetriesMs   = 5000;     // 5 seconds.
-  static const int kTimeBetweenRetriesMultiplier  = 2;
+  std::vector<DownloadMetrics> download_metrics_;
+
+  static const int kDefaultTimeBetweenRetriesMs      = 5000;    // 5 seconds.
+  static const int kServerErrMinTimeBetweenRetriesMs = 20000;   // 20 seconds.
+  static const int kMaxTimeBetweenRetriesMs          = 100000;  // 100 seconds.
+  static const int kTimeBetweenRetriesMultiplier     = 2;
+  static const int kDefaultRetryTimeJitterMs         = 3000;    // +- 3 seconds.
 
   DISALLOW_EVIL_CONSTRUCTORS(NetworkRequestImpl);
 };
 
-HRESULT PostRequest(NetworkRequest* network_request,
-                    bool fallback_to_https,
-                    const CString& url,
-                    const CString& request_string,
-                    std::vector<uint8>* response);
 
-HRESULT GetRequest(NetworkRequest* network_request,
-                   const CString& url,
-                   std::vector<uint8>* response);
-
-}   // namespace detail
+}   // namespace internal
 
 }   // namespace omaha
 
-#endif  // OMAHA_NET_NETWORK_REQUEST_IMPL_H__
-
+#endif  // OMAHA_NET_NETWORK_REQUEST_IMPL_H_

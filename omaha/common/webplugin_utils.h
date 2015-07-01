@@ -27,6 +27,17 @@ namespace omaha {
 
 namespace webplugin_utils {
 
+// This function escapes all unsafe characters, and then unescapes a selective
+// white-list of characters: '=', '&', '{', '}', '%'. For a properly formatted
+// extra args string, extra_args_out will be exactly equal to extra_args_in.
+HRESULT SanitizeExtraArgs(const CString& extra_args_in,
+                          CString* extra_args_out);
+
+// This function builds a sanitized /pi command line.
+HRESULT BuildWebPluginCommandLine(const CString& url_domain,
+                                  const CString& extra_args,
+                                  CString* final_cmd_line_args);
+
 // Parses the arguments, extracts the language parameter, and verifies that we
 // support the requested language.
 HRESULT IsLanguageSupported(const CString& webplugin_args);

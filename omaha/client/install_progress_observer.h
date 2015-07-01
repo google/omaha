@@ -132,17 +132,25 @@ class InstallProgressObserver {
  public:
   virtual ~InstallProgressObserver() {}
   virtual void OnCheckingForUpdate() = 0;
-  virtual void OnUpdateAvailable(const CString& app_name,
+  virtual void OnUpdateAvailable(const CString& app_id,
+                                 const CString& app_name,
                                  const CString& version_string) = 0;
-  virtual void OnWaitingToDownload(const CString& app_name) = 0;
-  virtual void OnDownloading(const CString& app_name,
+  virtual void OnWaitingToDownload(const CString& app_id,
+                                   const CString& app_name) = 0;
+  virtual void OnDownloading(const CString& app_id,
+                             const CString& app_name,
                              int time_remaining_ms,
                              int pos) = 0;
-  virtual void OnWaitingRetryDownload(const CString& app_name,
+  virtual void OnWaitingRetryDownload(const CString& app_id,
+                                      const CString& app_name,
                                       time64 next_retry_time) = 0;
-  virtual void OnWaitingToInstall(const CString& app_name,
+  virtual void OnWaitingToInstall(const CString& app_id,
+                                  const CString& app_name,
                                   bool* can_start_install) = 0;
-  virtual void OnInstalling(const CString& app_name) = 0;
+  virtual void OnInstalling(const CString& app_id,
+                            const CString& app_name,
+                            int time_remaining_ms,
+                            int pos) = 0;
   virtual void OnPause() = 0;
   virtual void OnComplete(const ObserverCompletionInfo& observer_info) = 0;
 };

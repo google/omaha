@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
 
 #include "omaha/base/atl_regexp.h"
+#include <intsafe.h>
 
 namespace omaha {
 
@@ -59,7 +59,11 @@ bool AtlRE::DoMatchImpl(const TCHAR* text,
   const TCHAR* end = 0;
   for (int i = 0; i < n; ++i) {
     matches.GetMatch(i, &start, &end);
-    ptrdiff_t len = end - start;
+    const ptrdiff_t size = end - start;
+    if (size > INT_MAX) {
+      return false;
+    }
+    const int len = static_cast<int>(size);
     ASSERT(args[i], (L""));
     // len+1 for the NULL character that's placed by lstrlen
     VERIFY1(lstrcpyn(args[i]->GetBufferSetLength(len), start, len + 1) != NULL);

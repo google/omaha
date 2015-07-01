@@ -23,11 +23,13 @@
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
+#include "omaha/common/app_registry_utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/core/core.h"
+#include "omaha/goopdate/app_command_test_base.h"
 #include "omaha/setup/setup_service.h"
 #include "omaha/testing/unit_test.h"
 
@@ -123,6 +125,59 @@ TEST_F(CoreTest, Shutdown) {
   EXPECT_HRESULT_SUCCEEDED(ResetShutdownEvent());
 }
 
+TEST_F(CoreTest, HasOSUpgraded) {
+  const TCHAR* const kAppGuid1 = _T("{3B1A3CCA-0525-4418-93E6-A0DB3398EC9B}");
+  const TCHAR* const kCmdId1 = _T("command one");
+  const TCHAR* const kCmdLineExit0 =
+      _T("cmd.exe /c \"ping localhost && exit 0\"");
+
+  // Signal existing core instances to shutdown, otherwise new instances
+  // can't start.
+  ASSERT_HRESULT_SUCCEEDED(SignalShutdownEvent());
+  ::Sleep(0);
+  ASSERT_HRESULT_SUCCEEDED(ResetShutdownEvent());
+
+  // Delete any existing LastOSVersion value.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(
+      ConfigManager::Instance()->registry_update(is_machine_),
+      kRegValueLastOSVersion));
+
+  // Build a key with a lower major version to look like we upgraded.
+  OSVERSIONINFOEX oldmajor = {};
+  EXPECT_SUCCEEDED(SystemInfo::GetOSVersion(&oldmajor));
+  --oldmajor.dwMajorVersion;
+  EXPECT_SUCCEEDED(app_registry_utils::SetLastOSVersion(is_machine_,
+                                                        &oldmajor));
+
+  // Add in an App with a registered OSUpgrade command.
+  omaha::AppCommandTestBase::CreateAppClientKey(kAppGuid1, is_machine_);
+  omaha::AppCommandTestBase::CreateAutoRunOnOSUpgradeCommand(kAppGuid1,
+                                                             is_machine_,
+                                                             kCmdId1,
+                                                             kCmdLineExit0);
+
+  // Start a thread to run the core, signal the core to exit, and wait a while
+  // for the thread to exit. Terminate the thread if it is still running.
+  Thread thread;
+  CoreRunner core_runner(is_machine_);
+  EXPECT_TRUE(thread.Start(&core_runner));
+
+  // Give the core a little time to run before signaling it to exit.
+  ::Sleep(100);
+  EXPECT_HRESULT_SUCCEEDED(SignalShutdownEvent());
+  EXPECT_TRUE(thread.WaitTillExit(2000));
+  if (thread.Running()) {
+    thread.Terminate(-1);
+  }
+
+  // Cleanup.
+  EXPECT_HRESULT_SUCCEEDED(ResetShutdownEvent());
+  omaha::AppCommandTestBase::DeleteAppClientKey(kAppGuid1, is_machine_);
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(
+      ConfigManager::Instance()->registry_update(is_machine_),
+      kRegValueLastOSVersion));
+}
+
 class CoreUtilsTest : public testing::Test {
  public:
   CoreUtilsTest() : is_machine_(vista_util::IsUserAdmin()) {}
@@ -151,6 +206,14 @@ class CoreUtilsTest : public testing::Test {
     return core_->IsCheckingForUpdates();
   }
 
+  bool HasOSUpgraded() {
+    return core_->HasOSUpgraded();
+  }
+
+  bool ShouldRunCodeRed() {
+    return core_->ShouldRunCodeRed();
+  }
+
   static HRESULT DoInstallService(const TCHAR* service_cmd_line) {
     return SetupUpdate3Service::DoInstallService(service_cmd_line);
   }
@@ -166,6 +229,10 @@ class CoreUtilsTest : public testing::Test {
 };
 
 TEST_F(CoreUtilsTest, AreScheduledTasksHealthy) {
+  ConfigManager* cm = ConfigManager::Instance();
+
+  const CString cs_key = cm->registry_client_state_goopdate(is_machine_);
+
   EXPECT_SUCCEEDED(scheduled_task_utils::UninstallGoopdateTasks(is_machine_));
   EXPECT_FALSE(AreScheduledTasksHealthy());
 
@@ -173,46 +240,233 @@ TEST_F(CoreUtilsTest, AreScheduledTasksHealthy) {
                                       _T("LongRunningSilent.exe"));
   EXPECT_SUCCEEDED(scheduled_task_utils::InstallGoopdateTasks(task_path,
                                                               is_machine_));
-  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  const uint32 now_sec = Time64ToInt32(GetCurrent100NSTime());
   const int k12HourPeriodSec = 12 * 60 * 60;
-  const DWORD first_install_12 = now - k12HourPeriodSec;
-  EXPECT_SUCCEEDED(RegKey::SetValue(
-      ConfigManager::Instance()->registry_client_state_goopdate(is_machine_),
-      kRegValueInstallTimeSec,
-      first_install_12));
+  const int k36HourPeriodSec = 36 * 60 * 60;
+  const DWORD back_12_hours_sec = now_sec - k12HourPeriodSec;
+  const DWORD back_36_hours_sec = now_sec - k36HourPeriodSec;
+
+  // Recent install.
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
+  EXPECT_TRUE(AreScheduledTasksHealthy());
+
+  // Recent update.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_TRUE(AreScheduledTasksHealthy());
+
+  // Old install.
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
+  EXPECT_FALSE(AreScheduledTasksHealthy());
+
+  // Old update.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_FALSE(AreScheduledTasksHealthy());
+
+  // Old install, recent update.
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_12_hours_sec));
   EXPECT_TRUE(AreScheduledTasksHealthy());
 
   EXPECT_SUCCEEDED(scheduled_task_utils::UninstallGoopdateTasks(is_machine_));
 }
 
 TEST_F(CoreUtilsTest, IsCheckingForUpdates) {
-  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+  ConfigManager* cm = ConfigManager::Instance();
+
+  const CString update_key = cm->registry_update(is_machine_);
+  const CString cs_key = cm->registry_client_state_goopdate(is_machine_);
+
+  const uint32 now_sec = Time64ToInt32(GetCurrent100NSTime());
   const int k12HourPeriodSec = 12 * 60 * 60;
-  const DWORD first_install_12_hours_back = now - k12HourPeriodSec;
-  EXPECT_SUCCEEDED(RegKey::SetValue(
-      ConfigManager::Instance()->registry_client_state_goopdate(is_machine_),
-      kRegValueInstallTimeSec,
-      first_install_12_hours_back));
+  const int k36HourPeriodSec = 36 * 60 * 60;
+  const int k15DaysSec = 14 * 24 * 60 * 60;
+  const DWORD back_12_hours_sec = now_sec - k12HourPeriodSec;
+  const DWORD back_36_hours_sec = now_sec - k36HourPeriodSec;
+  const DWORD back_15days_sec   = now_sec - k15DaysSec;
 
-  ConfigManager::Instance()->SetLastCheckedTime(is_machine_, 10);
-  EXPECT_TRUE(IsCheckingForUpdates());
-
-  const int k48HourPeriodSec = 48 * 60 * 60;
-  const DWORD first_install_48_hours_back = now - k48HourPeriodSec;
-  EXPECT_SUCCEEDED(RegKey::SetValue(
-      ConfigManager::Instance()->registry_client_state_goopdate(is_machine_),
-      kRegValueInstallTimeSec,
-      first_install_48_hours_back));
+  // No values are set => false.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
   EXPECT_FALSE(IsCheckingForUpdates());
 
+  // Recent install time only => too early to tell, assume true.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
+  EXPECT_TRUE(IsCheckingForUpdates());
+
+  // Old install time only => false.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
+  EXPECT_FALSE(IsCheckingForUpdates());
+
+  // Recent install and update times => too early to tell, assume true.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_TRUE(IsCheckingForUpdates());
+
+  // Old install but recent update times => too early to tell, assume true.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_TRUE(IsCheckingForUpdates());
+
+  // Old install and old update times => false.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_FALSE(IsCheckingForUpdates());
+
+  // No install time and recent update time => true.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_TRUE(IsCheckingForUpdates());
+
+  // No install time, old update time => false.
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(update_key, kRegValueLastChecked));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_FALSE(IsCheckingForUpdates());
+
+
+  // No install time, no update time, recent last checked => true.
+  EXPECT_SUCCEEDED(cm->SetLastCheckedTime(is_machine_, back_12_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
+  EXPECT_TRUE(IsCheckingForUpdates());
+
+  // No install time, no update time, current last checked => true.
   EXPECT_SUCCEEDED(goopdate_utils::UpdateLastChecked(is_machine_));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
   EXPECT_TRUE(IsCheckingForUpdates());
 
-  const int k15DaysPeriodSec = 15 * 24 * 60 * 60;
-  const DWORD last_checked_15_days_back = now - k15DaysPeriodSec;
-  ConfigManager::Instance()->SetLastCheckedTime(is_machine_,
-                                                last_checked_15_days_back);
+  // No install time, no update time, old last checked => false.
+  EXPECT_SUCCEEDED(cm->SetLastCheckedTime(is_machine_, back_15days_sec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueInstallTimeSec));
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(cs_key, kRegValueLastUpdateTimeSec));
   EXPECT_FALSE(IsCheckingForUpdates());
+
+  // Old install time, recent update time, old last checked => true.
+  EXPECT_SUCCEEDED(cm->SetLastCheckedTime(is_machine_, back_15days_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_36_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_TRUE(IsCheckingForUpdates());
+
+  // Recent install time, recent update time, recent last checked => true.
+  EXPECT_SUCCEEDED(cm->SetLastCheckedTime(is_machine_, back_12_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueInstallTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_SUCCEEDED(RegKey::SetValue(cs_key,
+                                    kRegValueLastUpdateTimeSec,
+                                    back_12_hours_sec));
+  EXPECT_TRUE(IsCheckingForUpdates());
+}
+
+TEST_F(CoreUtilsTest, HasOSUpgraded) {
+  const bool is_machine = vista_util::IsUserAdmin();
+
+  // Temporarily redirect the registry elsewhere.
+  RegKey::DeleteKey(kRegistryHiveOverrideRoot, true);
+  OverrideRegistryHives(kRegistryHiveOverrideRoot);
+
+  // In the absence of a key, assume we haven't upgraded.
+  EXPECT_FALSE(HasOSUpgraded());
+
+  // If the key is equal to the current OS, we haven't upgraded.
+  EXPECT_SUCCEEDED(app_registry_utils::SetLastOSVersion(is_machine, NULL));
+  EXPECT_FALSE(HasOSUpgraded());
+
+  // Build a key with a different major version; we've upgraded.
+  OSVERSIONINFOEX oldmajor = {};
+  EXPECT_SUCCEEDED(SystemInfo::GetOSVersion(&oldmajor));
+  --oldmajor.dwMajorVersion;
+  EXPECT_SUCCEEDED(app_registry_utils::SetLastOSVersion(is_machine, &oldmajor));
+  EXPECT_TRUE(HasOSUpgraded());
+
+  // Restore the registry redirection.
+  RestoreRegistryHives();
+  RegKey::DeleteKey(kRegistryHiveOverrideRoot, true);
+}
+
+TEST_F(CoreUtilsTest, ShouldRunCodeRed) {
+  const bool is_machine = vista_util::IsUserAdmin();
+  const TCHAR* reg_update_key(is_machine ? MACHINE_REG_UPDATE: USER_REG_UPDATE);
+
+  const time64 now = GetCurrentMsTime();
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCodeRedCheck,
+                                    now));
+  EXPECT_FALSE(ShouldRunCodeRed());
+
+  const time64 nowMinus23Hours = now -
+                                 (kSecondsPerDay - kSecondsPerHour) * kMsPerSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCodeRedCheck,
+                                    nowMinus23Hours));
+  EXPECT_FALSE(ShouldRunCodeRed());
+
+  const time64 nowMinus24Hours = now - (kSecondsPerDay + 1) * kMsPerSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCodeRedCheck,
+                                    nowMinus24Hours));
+  EXPECT_TRUE(ShouldRunCodeRed());
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(reg_update_key,
+                                       kRegValueLastCodeRedCheck));
+  EXPECT_TRUE(ShouldRunCodeRed());
+
+  const time64 nowPlus2000Days = now +
+                                 2000ULL * kSecondsPerDay * kMsPerSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCodeRedCheck,
+                                    nowPlus2000Days));
+  EXPECT_TRUE(ShouldRunCodeRed());
 }
 
 }  // namespace omaha

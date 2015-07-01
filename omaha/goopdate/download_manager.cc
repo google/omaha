@@ -22,8 +22,12 @@
 // class interface to allow the path as a parameter.
 
 #include "omaha/goopdate/download_manager.h"
+
+#include <shlwapi.h>
+
 #include <algorithm>
 #include <vector>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
@@ -78,11 +82,13 @@ HRESULT CreateNetworkRequest(NetworkRequest** network_request_ptr) {
     bits_request->set_minimum_retry_delay(kSecPerMin);
     bits_request->set_no_progress_timeout(5 * kSecPerMin);
     network_request->AddHttpRequest(bits_request);
+  } else {
+    ++metric_worker_download_skipped_bits_machine;
   }
 
   network_request->AddHttpRequest(new SimpleRequest);
 
-  network_request->set_num_retries(3);
+  network_request->set_num_retries(1);
   *network_request_ptr = network_request;
   return S_OK;
 }
@@ -112,6 +118,23 @@ HRESULT ValidateSize(const CString& file_path, uint64 expected_size) {
 
   ASSERT1(file_size == expected_size);
   return S_OK;
+}
+
+// Adds the corresponding EVENT_{INSTALL,UPDATE}_DOWNLOAD_FINISH ping events
+// for the |download_metrics| provided as a parameter.
+void AddDownloadMetricsPingEvents(
+    const std::vector<DownloadMetrics>& download_metrics,
+    App* app) {
+  ASSERT1(app);
+
+  for (size_t i = 0; i != download_metrics.size(); ++i) {
+    const PingEvent::Results result = download_metrics[i].error ?
+        PingEvent::EVENT_RESULT_ERROR : PingEvent::EVENT_RESULT_SUCCESS;
+    PingEventPtr ping_event(new PingEventDownloadMetrics(app->is_update(),
+                                                         result,
+                                                         download_metrics[i]));
+    app->AddPingEvent(ping_event);
+  }
 }
 
 }  // namespace
@@ -254,9 +277,6 @@ HRESULT DownloadManager::DownloadApp(App* app) {
 
   if (SUCCEEDED(hr)) {
     app->DownloadComplete();
-
-    // TODO(omaha3): Extract and apply differential update if necessary.
-
     app->MarkReadyToInstall();
   } else {
     app->Error(ErrorContext(hr, error_extra_code1()), message);
@@ -269,17 +289,6 @@ HRESULT DownloadManager::DownloadApp(App* app) {
   VERIFY1(SUCCEEDED(DeleteStateForApp(app)));
 
   return hr;
-}
-
-HRESULT DownloadManager::DownloadPackage(Package* package) {
-  CORE_LOG(L3, (_T("[DownloadManager::DownloadPackage][0x%p]"), package));
-  ASSERT1(package);
-
-  UNREFERENCED_PARAMETER(package);
-
-  // TODO(omaha): implement in terms of DoDownloadPackage.
-
-  return E_NOTIMPL;
 }
 
 HRESULT DownloadManager::GetPackage(const Package* package,
@@ -295,8 +304,7 @@ HRESULT DownloadManager::GetPackage(const Package* package,
   const CString dest_file(ConcatenatePath(dir, package_name));
   CORE_LOG(L3, (_T("[destination file is '%s']"), dest_file));
 
-  const CString hash(package->expected_hash());
-  HRESULT hr = package_cache()->Get(key, dest_file, hash);
+  HRESULT hr = package_cache()->Get(key, dest_file, package->expected_hash());
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[failed to get from cache][0x%08x]"), hr));
     return hr;
@@ -315,8 +323,7 @@ bool DownloadManager::IsPackageAvailable(const Package* package) const {
   CORE_LOG(L3, (_T("[DownloadManager::IsPackageAvailable][%s]"),
       key.ToString()));
 
-  const CString hash(package->expected_hash());
-  return package_cache()->IsCached(key, hash);
+  return package_cache()->IsCached(key, package->expected_hash());
 }
 
 // Attempts a package download by trying the fallback urls. It does not
@@ -343,12 +350,10 @@ HRESULT DownloadManager::DoDownloadPackage(Package* package, State* state) {
 
   PackageCache::Key key(app_id, version, package_name);
 
-  CORE_LOG(L3, (_T("[DownloadManager::DoDownloadPackage][%s]"),
+  OPT_LOG(L3, (_T("[DownloadManager::DoDownloadPackage][%s]"),
       key.ToString()));
 
-  const CString hash(package->expected_hash());
-
-  if (!package_cache()->IsCached(key, hash)) {
+  if (!package_cache()->IsCached(key, package->expected_hash())) {
     CORE_LOG(L3, (_T("[The package is not cached]")));
 
     // TODO(omaha3): May need to consider the DownloadPackage case. Also, we may
@@ -382,63 +387,42 @@ HRESULT DownloadManager::DoDownloadPackage(Package* package, State* state) {
         package->app_version()->download_base_urls());
 
     hr = E_FAIL;
-    for (size_t i = 0; i < download_base_urls.size() && FAILED(hr); ++i) {
-      // TODO(omaha3): Append nicely.
-      const CString url = download_base_urls[i] + package_name;
-
-      if (i > 0) {
-        CORE_LOG(L3, (_T("[retrying download with fallback base url][%s]"),
-                      url));
-      }
-      // TODO(omaha3): Increment a usage stat for the ith url being used.
-      // Supporting 3 or 4 should be enough.
-
-      CORE_LOG(L3, (_T("[starting file download][from '%s'][to '%s']"),
-                   url, unique_filename_path));
-
-      // Downloading a file is a blocking call. It assumes the model is not
-      // locked by the calling thread, otherwise other threads won't be able to
-      // to access the model until the file download is complete.
-      ASSERT1(!package->model()->IsLockedByCaller());
-
-      hr = network_request->DownloadFile(url, unique_filename_path);
+    app->SetCurrentTimeAs(App::TIME_DOWNLOAD_START);
+    for (size_t i = 0; i != download_base_urls.size(); ++i) {
+      CString url;
+      DWORD url_length(INTERNET_MAX_URL_LENGTH);
+      hr = ::UrlCombine(download_base_urls[i],
+                        package_name,
+                        CStrBuf(url, INTERNET_MAX_URL_LENGTH),
+                        &url_length,
+                        0);
       if (FAILED(hr)) {
-        CORE_LOG(LW, (_T("[DownloadFile failed from url][0x%08x]['%s']['%s']"),
-                      hr, package_name, download_base_urls[i]));
-        worker_utils::AddHttpRequestDataToEventLog(
-            hr,
-            network_request->http_status_code(),
-            network_request->trace(),
-            is_machine_);
         continue;
       }
 
-      // A file has been successfully downloaded from current url. Validate
-      // and cache it.
-      hr = CallAsSelfAndImpersonate2(
-          this,
-          &DownloadManager::CachePackage,
-          static_cast<const Package*>(package),
-          static_cast<const CString*>(&unique_filename_path));
+      ASSERT1(static_cast<DWORD>(url.GetLength()) == url_length);
+
+      hr = DoDownloadPackageFromUrl(url, unique_filename_path, package, state);
+      AddDownloadMetricsPingEvents(network_request->download_metrics(), app);
       if (SUCCEEDED(hr)) {
+        app->set_source_url_index(static_cast<int>(i));
         break;
       }
-
-      CORE_LOG(LE, (_T("[failed to cache package][0x%08x]"), hr));
     }
+
     VERIFY1(SUCCEEDED(network_request->Close()));
     DeleteBeforeOrAfterReboot(unique_filename_path);
+    app->SetCurrentTimeAs(App::TIME_DOWNLOAD_COMPLETE);
 
     if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[DownloadFile/caching failed from all urls][0x%08x]"),
-                    hr));
+      CORE_LOG(LE, (_T("[download failed from all urls][0x%08x]"), hr));
       return hr;
     }
 
     // Assumes that downloaded bytes equal to the expected package size.
     app->UpdateNumBytesDownloaded(package->expected_size());
   } else {
-    CORE_LOG(L3, (_T("[package is cached]")));
+    OPT_LOG(L3, (_T("[package is cached]")));
 
     // TODO(omaha3): We probably need to update the download stats that
     // Package::OnProgress would set. It may be misleading to set
@@ -448,9 +432,48 @@ HRESULT DownloadManager::DoDownloadPackage(Package* package, State* state) {
     // final size. See the TODO in the unit tests.
   }
 
-  ASSERT1(package_cache()->IsCached(key, hash));
+  ASSERT1(package_cache()->IsCached(key, package->expected_hash()));
   return S_OK;
 }
+
+HRESULT DownloadManager::DoDownloadPackageFromUrl(const CString& url,
+                                                  const CString& filename,
+                                                  Package* package,
+                                                  State* state) {
+  OPT_LOG(L3, (_T("[starting download][from '%s'][to '%s']"), url, filename));
+
+  // Downloading a file is a blocking call. It assumes the model is not
+  // locked by the calling thread, otherwise other threads won't be able to
+  // to access the model until the file download is complete.
+  ASSERT1(!package->model()->IsLockedByCaller());
+
+  NetworkRequest* network_request = state->network_request();
+
+  HRESULT hr = network_request->DownloadFile(url, filename);
+  if (FAILED(hr)) {
+    OPT_LOG(LE, (_T("[DownloadFile failed][%#x]"), hr));
+    worker_utils::AddHttpRequestDataToEventLog(
+        hr,
+        S_OK,
+        network_request->http_status_code(),
+        network_request->trace(),
+        is_machine_);
+    return hr;
+  }
+
+  // A file has been successfully downloaded from current url. Validate the file
+  // and cache it.
+  hr = CallAsSelfAndImpersonate2(this,
+                                 &DownloadManager::CachePackage,
+                                 static_cast<const Package*>(package),
+                                 static_cast<const CString*>(&filename));
+  if (FAILED(hr)) {
+    OPT_LOG(LE, (_T("[DownloadManager::CachePackage failed][%#x]"), hr));
+  }
+
+  return hr;
+}
+
 
 void DownloadManager::Cancel(App* app) {
   CORE_LOG(L3, (_T("[DownloadManager::Cancel][0x%p]"), app));
@@ -495,9 +518,8 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   const CString package_name(package->filename());
   PackageCache::Key key(app_id, version, package_name);
 
-  const CString hash(package->expected_hash());
-
-  HRESULT hr = package_cache()->Put(key, *filename_path, hash);
+  HRESULT hr = package_cache()->Put(
+      key, *filename_path, package->expected_hash());
   if (hr != SIGS_E_INVALID_SIGNATURE) {
     if (FAILED(hr)) {
       set_error_extra_code1(static_cast<int>(hr));

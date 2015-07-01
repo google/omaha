@@ -1,4 +1,4 @@
-// Copyright 2005-2009 Google Inc.
+// Copyright 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SECURITY_RC4_H__
-#define OMAHA_COMMON_SECURITY_RC4_H__
+#ifndef OMAHA_BASE_SECURITY_RC4_H_
+#define OMAHA_BASE_SECURITY_RC4_H_
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,4 +37,4 @@ void RC4_stream(RC4_CTX* ctx, uint8_t* out, int len);
 }
 #endif
 
-#endif  // OMAHA_COMMON_SECURITY_RC4_H__
+#endif  // OMAHA_BASE_SECURITY_RC4_H_

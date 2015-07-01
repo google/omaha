@@ -18,4 +18,14 @@
 
 #include "omaha/net/http_client.h"
 
+namespace omaha {
+
+namespace internal {
+
+HttpClient* WinHttpClientCreator();
+
+}  // namespace internal
+
+}  // namespace omaha
+
 #endif  // OMAHA_NET_WINHTTP_H_

@@ -32,10 +32,60 @@
 #include "omaha/base/user_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/time.h"
+#include "omaha/common/const_group_policy.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/network_config.h"
 
 namespace omaha {
+
+namespace internal {
+
+HRESULT IEProxyDetector::Detect(ProxyConfig* config) {
+  ASSERT1(config);
+
+  // Internet Explorer proxy configuration is not available when running as
+  // local system.
+  if (user_info::IsRunningAsSystem()) {
+    return E_FAIL;
+  }
+
+  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+
+  // We expect to be able to instantiate either of the http clients.
+  ASSERT1(http_client.get());
+  if (!http_client.get()) {
+    return E_UNEXPECTED;
+  }
+  HRESULT hr = http_client->Initialize();
+  if (FAILED(hr)) {
+    return hr;
+  }
+  HttpClient::CurrentUserIEProxyConfig ie_proxy_config = {0};
+  hr = http_client->GetIEProxyConfiguration(&ie_proxy_config);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  config->source = source();
+  config->auto_detect = ie_proxy_config.auto_detect;
+  config->auto_config_url = ie_proxy_config.auto_config_url;
+  config->proxy = ie_proxy_config.proxy;
+  config->proxy_bypass = ie_proxy_config.proxy_bypass;
+
+  // If IE is the default brower, promotes its proxy priority.
+  BrowserType browser_type(BROWSER_UNKNOWN);
+  if (SUCCEEDED(GetDefaultBrowserType(&browser_type)) &&
+      browser_type == BROWSER_IE) {
+    config->priority = ProxyConfig::PROXY_PRIORITY_DEFAULT_BROWSER;
+  }
+
+  ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.auto_config_url));
+  ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.proxy));
+  ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.proxy_bypass));
+
+  return S_OK;
+};
+
+}  // namespace internal
 
 HRESULT RegistryOverrideProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
@@ -63,6 +113,50 @@ HRESULT RegistryOverrideProxyDetector::Detect(ProxyConfig* config) {
 
 UpdateDevProxyDetector::UpdateDevProxyDetector()
     : registry_detector_(MACHINE_REG_UPDATE_DEV) {
+}
+
+HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
+  ASSERT1(config);
+
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GroupPolicyProxyDetector::Detect][Ignoring group policy]")
+                 _T("[machine is not part of a domain]")));
+    return E_FAIL;
+  }
+
+  CString proxy_mode;
+  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                kRegValueProxyMode,
+                                &proxy_mode);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  NET_LOG(L4, (_T("[group policy proxy mode][%s]"), proxy_mode));
+
+  *config = ProxyConfig();
+  config->source = source();
+  config->priority = ProxyConfig::PROXY_PRIORITY_OVERRIDE;
+
+  if (proxy_mode.CompareNoCase(kProxyModeDirect) == 0) {
+    return S_OK;  // Default-initialized ProxyConfig = direct connection.
+  } else if (proxy_mode.CompareNoCase(kProxyModeAutoDetect) == 0) {
+    config->auto_detect = true;
+    return S_OK;
+  } else if (proxy_mode.CompareNoCase(kProxyModePacScript) == 0) {
+    return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                            kRegValueProxyPacUrl,
+                            &config->auto_config_url);
+  } else if (proxy_mode.CompareNoCase(kProxyModeFixedServers) == 0) {
+    return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                            kRegValueProxyServer,
+                            &config->proxy);
+  } else if (proxy_mode.CompareNoCase(kProxyModeSystem) == 0) {
+    // Fall through, and let the rest of the proxy detectors deal with it.
+    return E_FAIL;
+  } else {
+    // Unrecognized ProxyMode string.
+    return E_INVALIDARG;
+  }
 }
 
 FirefoxProxyDetector::FirefoxProxyDetector()
@@ -357,48 +451,61 @@ HRESULT DefaultProxyDetector::Detect(ProxyConfig* config) {
   }
 }
 
-HRESULT IEProxyDetector::Detect(ProxyConfig* config) {
+HRESULT IEWPADProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
 
-  // Internet Explorer proxy configuration is not available when running as
-  // local system.
-  if (user_info::IsRunningAsSystem()) {
-    return E_FAIL;
-  }
-
-  scoped_ptr<HttpClient> http_client(CreateHttpClient());
-
-  // We expect to be able to instantiate either of the http clients.
-  ASSERT1(http_client.get());
-  if (!http_client.get()) {
-    return E_UNEXPECTED;
-  }
-  HRESULT hr = http_client->Initialize();
+  ProxyConfig ie_proxy_config;
+  HRESULT hr = internal::IEProxyDetector::Detect(&ie_proxy_config);
   if (FAILED(hr)) {
     return hr;
   }
-  HttpClient::CurrentUserIEProxyConfig ie_proxy_config = {0};
-  hr = http_client->GetIEProxyConfiguration(&ie_proxy_config);
-  if (FAILED(hr)) {
-    return hr;
+
+  if (!ie_proxy_config.auto_detect) {
+    return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
   }
-  config->source = source();
+
+  config->source = ie_proxy_config.source;
   config->auto_detect = ie_proxy_config.auto_detect;
+  config->priority = ie_proxy_config.priority;
+  return S_OK;
+};
+
+HRESULT IEPACProxyDetector::Detect(ProxyConfig* config) {
+  ASSERT1(config);
+
+  ProxyConfig ie_proxy_config;
+  HRESULT hr = internal::IEProxyDetector::Detect(&ie_proxy_config);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (ie_proxy_config.auto_config_url.IsEmpty()) {
+    return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+  }
+
+  config->source = ie_proxy_config.source;
   config->auto_config_url = ie_proxy_config.auto_config_url;
+  config->priority = ie_proxy_config.priority;
+  return S_OK;
+};
+
+HRESULT IENamedProxyDetector::Detect(ProxyConfig* config) {
+  ASSERT1(config);
+
+  ProxyConfig ie_proxy_config;
+  HRESULT hr = internal::IEProxyDetector::Detect(&ie_proxy_config);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (ie_proxy_config.proxy.IsEmpty()) {
+    return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+  }
+
+  config->source = ie_proxy_config.source;
   config->proxy = ie_proxy_config.proxy;
   config->proxy_bypass = ie_proxy_config.proxy_bypass;
-
-  // If IE is the default brower, promotes its proxy priority.
-  BrowserType browser_type(BROWSER_UNKNOWN);
-  if (SUCCEEDED(GetDefaultBrowserType(&browser_type)) &&
-      browser_type == BROWSER_IE) {
-    config->priority = ProxyConfig::PROXY_PRIORITY_DEFAULT_BROWSER;
-  }
-
-  ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.auto_config_url));
-  ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.proxy));
-  ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.proxy_bypass));
-
+  config->priority = ie_proxy_config.priority;
   return S_OK;
 };
 

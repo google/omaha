@@ -184,7 +184,10 @@ TEST_F(GoogleUpdateCoreTest,
   RegisterOrUnregisterGoopdateService(false);
 }
 
-TEST_F(GoogleUpdateCoreTest, LaunchCmdElevated_ServiceRunning) {
+// TODO(omaha): This test is disabled because it frequently gets
+// ERROR_SERVICE_CANNOT_ACCEPT_CTRL when trying to stop the service during
+// cleanup.
+TEST_F(GoogleUpdateCoreTest, DISABLED_LaunchCmdElevated_ServiceRunning) {
   if (!vista_util::IsUserAdmin()) {
     SUCCEED() << "\tTest did not run because the user is not an admin.";
     return;
@@ -197,12 +200,24 @@ TEST_F(GoogleUpdateCoreTest, LaunchCmdElevated_ServiceRunning) {
 
   EXPECT_SUCCEEDED(SetupUpdateMediumService::StartService());
   CComPtr<IUnknown> service_com;
-  EXPECT_SUCCEEDED(
-      service_com.CoCreateInstance(__uuidof(GoogleUpdateCoreClass)));
+
+  // On slow machines, the service may take some time to start, and the first
+  // couple of attempts at CoCreation fail on slower machines. Adding in 2
+  // retries to address this issue.
+  HRESULT hr_create_core_class = CO_E_SERVER_EXEC_FAILURE;
+  for (int i = 0;
+       hr_create_core_class == CO_E_SERVER_EXEC_FAILURE && i < 3;
+       ++i) {
+    hr_create_core_class =
+        service_com.CoCreateInstance(__uuidof(GoogleUpdateCoreClass));
+  }
+
+  EXPECT_SUCCEEDED(hr_create_core_class);
 
   DoLaunchCmdElevatedTests(service_com);
 
   service_com.Release();
+  EXPECT_SUCCEEDED(SetupUpdateMediumService::StopService());
 
   RegisterOrUnregisterGoopdateLocalServer(false);
   RegisterOrUnregisterGoopdateService(false);

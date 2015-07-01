@@ -14,16 +14,11 @@
 // ========================================================================
 
 #include <atlstr.h>
+#include "omaha/base/string.h"
 #include "omaha/base/system_info.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
-
-TEST(SystemInfoTest, SystemInfo) {
-  SystemInfo::OSVersionType os_type = SystemInfo::OS_WINDOWS_UNKNOWN;
-  DWORD service_pack = 0;
-  ASSERT_SUCCEEDED(SystemInfo::CategorizeOS(&os_type, &service_pack));
-}
 
 TEST(SystemInfoTest, GetSystemVersion) {
   int major_version(0);
@@ -31,17 +26,12 @@ TEST(SystemInfoTest, GetSystemVersion) {
   int service_pack_major(0);
   int service_pack_minor(0);
 
-  CString name;
   ASSERT_TRUE(SystemInfo::GetSystemVersion(&major_version,
                                            &minor_version,
                                            &service_pack_major,
-                                           &service_pack_minor,
-                                           CStrBuf(name, MAX_PATH),
-                                           MAX_PATH));
+                                           &service_pack_minor));
   EXPECT_NE(0, major_version);
   EXPECT_EQ(0, service_pack_minor);
-
-  EXPECT_FALSE(name.IsEmpty());
 }
 
 TEST(SystemInfoTest, Is64BitWindows) {
@@ -61,6 +51,131 @@ TEST(SystemInfoTest, GetProcessorArchitecture) {
   // registry to detect.
   EXPECT_TRUE(arch == PROCESSOR_ARCHITECTURE_INTEL ||
               arch == PROCESSOR_ARCHITECTURE_AMD64);
+}
+
+TEST(SystemInfoTest, CompareOSVersions_SameAsCurrent) {
+  OSVERSIONINFOEX this_os = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&this_os));
+
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&this_os, VER_EQUAL));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&this_os, VER_GREATER_EQUAL));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&this_os, VER_GREATER));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&this_os, VER_LESS));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&this_os, VER_LESS_EQUAL));
+}
+
+TEST(SystemInfoTest, CompareOSVersions_NewBuildNumber) {
+  OSVERSIONINFOEX prior_os = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&prior_os));
+  ASSERT_GT(prior_os.dwBuildNumber, 0UL);
+  --prior_os.dwBuildNumber;
+
+  // We don't count build numbers, so this should be treated as equal.
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER_EQUAL));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
+}
+
+TEST(SystemInfoTest, CompareOSVersions_NewMajor) {
+  OSVERSIONINFOEX prior_os = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&prior_os));
+  ASSERT_GT(prior_os.dwMajorVersion, 0UL);
+  --prior_os.dwMajorVersion;
+
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER_EQUAL));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
+}
+
+TEST(SystemInfoTest, CompareOSVersions_NewMinor) {
+  OSVERSIONINFOEX prior_os = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&prior_os));
+
+  // This test is meaningful only if the current OS has a minor version.
+  // For example, Vista does not have a minor version. Its version is 6.0.
+  if (prior_os.dwMinorVersion >= 1) {
+    --prior_os.dwMinorVersion;
+
+    EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
+    EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER_EQUAL));
+    EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
+    EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS));
+    EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
+  }
+}
+
+TEST(SystemInfoTest, CompareOSVersions_NewMajorWithLowerMinor) {
+  OSVERSIONINFOEX prior_os = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&prior_os));
+  ASSERT_GT(prior_os.dwMajorVersion, 0UL);
+  --prior_os.dwMajorVersion;
+  ++prior_os.dwMinorVersion;
+
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER_EQUAL));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
+}
+
+TEST(SystemInfoTest, CompareOSVersions_OldMajor) {
+  OSVERSIONINFOEX prior_os = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&prior_os));
+  ++prior_os.dwMajorVersion;
+
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER_EQUAL));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
+}
+
+TEST(SystemInfoTest, CompareOSVersions_OldMajorWithHigherMinor) {
+  OSVERSIONINFOEX prior_os = {};
+  ASSERT_SUCCEEDED(SystemInfo::GetOSVersion(&prior_os));
+
+  // This test is meaningful only if the current OS has a minor version.
+  // For example, Vista does not have a minor version. Its version is 6.0.
+  if (prior_os.dwMinorVersion >= 1) {
+    ++prior_os.dwMajorVersion;
+    --prior_os.dwMinorVersion;
+
+    EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
+    EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER_EQUAL));
+    EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
+    EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS));
+    EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
+  }
+}
+
+TEST(SystemInfoTest, IsRunningOnW81OrLater) {
+  OSVERSIONINFOEX os_version_info = {};
+  EXPECT_SUCCEEDED(SystemInfo::GetOSVersion(&os_version_info));
+
+  if (os_version_info.dwMajorVersion > 6 ||
+      (os_version_info.dwMajorVersion == 6 &&
+       os_version_info.dwMinorVersion >= 3)) {
+    EXPECT_TRUE(SystemInfo::IsRunningOnW81OrLater());
+  } else {
+    EXPECT_FALSE(SystemInfo::IsRunningOnW81OrLater());
+  }
+}
+
+TEST(SystemInfoTest, GetKernel32OSVersion) {
+  EXPECT_GT(SystemInfo::GetKernel32OSVersion().GetLength(), 0);
+
+  OSVERSIONINFOEX os_version_info = {};
+  EXPECT_SUCCEEDED(SystemInfo::GetOSVersion(&os_version_info));
+  CString os_version;
+  os_version.Format(_T("%d.%d"),
+                    os_version_info.dwMajorVersion,
+                    os_version_info.dwMinorVersion);
+  EXPECT_TRUE(
+      String_StartsWith(SystemInfo::GetKernel32OSVersion(), os_version, true));
 }
 
 }  // namespace omaha

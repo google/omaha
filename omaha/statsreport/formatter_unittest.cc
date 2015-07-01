@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-#include "omaha/third_party/gtest/include/gtest/gtest.h"
-#include "formatter.h"
+
+#include "omaha/statsreport/formatter.h"
+#include "third_party/gtest/include/gtest/gtest.h"
 
 using stats_report::Formatter;
 
 TEST(Formatter, Format) {
   Formatter formatter("test_application", 86400);
-  
+
   formatter.AddCount("count1", 10);
   formatter.AddTiming("timing1", 2, 150, 50, 200);
   formatter.AddInteger("integer1", 3000);
   formatter.AddBoolean("boolean1", true);
   formatter.AddBoolean("boolean2", false);
-  
+
   EXPECT_STREQ("test_application&86400"
                "&count1:c=10"
                "&timing1:t=2;150;50;200"

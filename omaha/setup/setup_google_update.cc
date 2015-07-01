@@ -36,10 +36,13 @@
 #include "omaha/base/service_utils.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/user_info.h"
+#include "omaha/base/vistautil.h"
+#include "omaha/common/app_registry_utils.h"
 #include "omaha/common/command_line_builder.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
+#include "omaha/common/experiment_labels.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/setup/setup_metrics.h"
@@ -122,10 +125,42 @@ HRESULT RegisterOrUnregisterService(bool reg, CString service_path) {
   return RegisterOrUnregisterExe(service_path, cmd_line);
 }
 
+HRESULT SetB2173996ExperimentLabelIfNeeded(bool is_machine,
+                                           const CString& shell_path) {
+  if (is_machine || !::IsUserAnAdmin() || !vista_util::IsVistaOrLater()) {
+    return S_FALSE;
+  }
+
+  const ULONGLONG kShellVersion1_2_131_7 = 0x0001000200830007;
+
+  ULONGLONG shell_version = app_util::GetVersionFromFile(shell_path);
+  if (shell_version > kShellVersion1_2_131_7) {
+    return S_FALSE;
+  }
+
+  bool is_uac_on(false);
+  if (vista_util::IsVistaOrLater()) {
+    VERIFY1(SUCCEEDED(vista_util::IsUACOn(&is_uac_on)));
+  }
+
+  const TCHAR* const kLabelName = _T("B2173996");
+  CString label_value;
+  label_value.Format(_T("UAC%d"), is_uac_on);
+  const time64 kValidityPeriod =
+      static_cast<time64>(kSecsTo100ns) * kSecondsPerDay * 60;
+
+  ExperimentLabels labels;
+  VERIFY1(SUCCEEDED(labels.ReadFromRegistry(true, kGoogleUpdateAppId)));
+  time64 now = GetCurrent100NSTime();
+  labels.SetLabel(kLabelName, label_value, now + kValidityPeriod);
+  return labels.WriteToRegistry(true, kGoogleUpdateAppId);
+}
+
 }  // namespace
 
-SetupGoogleUpdate::SetupGoogleUpdate(bool is_machine)
+SetupGoogleUpdate::SetupGoogleUpdate(bool is_machine, bool is_self_update)
     : is_machine_(is_machine),
+      is_self_update_(is_self_update),
       extra_code1_(S_OK)
 #ifdef _DEBUG
       , have_called_uninstall_previous_versions_(false)
@@ -157,18 +192,31 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
 
   hr = InstallLaunchMechanisms();
   if (FAILED(hr)) {
-    SETUP_LOG(LE, (_T("[InstallLaunchMechanisms failed][0x%08x]"), hr));
-    return hr;
+    SETUP_LOG(LE, (_T("[InstallLaunchMechanisms failed][0x%x][0x%x]"),
+                   hr, extra_code1_));
+
+    if (is_self_update_) {
+      return hr;
+    }
+
+    // Fall through for installs. Omaha will attempt to install using the
+    // in-proc mode. Not installing the launch mechanisms does mean that Omaha
+    // will not be able to update itself or the product. But OneClick and
+    // Handoffs should continue to work.
+    //
+    // extra_code1_ contains the HRESULT from the Scheduled Task install
+    // failure, but it is more useful to send the service install failure in the
+    // success ping. So the extra_code1_ is overwritten here with the service
+    // install failure.
+    extra_code1_ = hr;
   }
 
-  hr = InstallMsiHelper();
-  if (FAILED(hr)) {
-    SETUP_LOG(L1, (_T("[InstallMsiHelper failed][0x%08x]"), hr));
-    // TODO(omaha): Retry on ERROR_INSTALL_ALREADY_RUNNING like InstallerWrapper
-    // if we move helper MSI installation after app installation.
-    ASSERT1(HRESULT_FROM_WIN32(ERROR_INSTALL_SERVICE_FAILURE) == hr ||
-            HRESULT_FROM_WIN32(ERROR_INSTALL_ALREADY_RUNNING) == hr);
-  }
+  // Reset kRegValueIsMSIHelperRegistered so that the MSI helper is registered
+  // on the next UA run.
+  const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
+  VERIFY1(SUCCEEDED(RegKey::SetValue(key_name,
+                                     kRegValueIsMSIHelperRegistered,
+                                     static_cast<DWORD>(0))));
 
   hr = RegisterOrUnregisterCOMLocalServer(true);
   if (FAILED(hr)) {
@@ -182,6 +230,10 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
   // We would prefer to uninstall previous versions last, but the web plugin
   // requires that the old plugin is uninstalled before installing the new one.
   VERIFY1(SUCCEEDED(UninstallPreviousVersions()));
+
+  // Set the LastOSVersion to the currently installed OS version.  This is used
+  // by the core to determine when an OS upgrade has occurred.
+  VERIFY1(SUCCEEDED(app_registry_utils::SetLastOSVersion(is_machine_, NULL)));
 
   // Writing this value indicates that this Omaha version was successfully
   // installed. This is an artifact of Omaha 2 when pv was set earlier in Setup.
@@ -197,6 +249,11 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
   // avoiding deferring application updates for too long in the case where both
   // Omaha and application updates are available.
   RegKey::DeleteValue(reg_update, kRegValueLastChecked);
+
+  // The LastCodeRedCheck value is cleaned up on every install/update of Omaha.
+  const ConfigManager* cm = ConfigManager::Instance();
+  VERIFY1(SUCCEEDED(RegKey::DeleteValue(
+      cm->registry_update(is_machine_), kRegValueLastCodeRedCheck)));
 
   return S_OK;
 }
@@ -238,6 +295,18 @@ HRESULT SetupGoogleUpdate::InstallRegistryValues() {
                         shell_path);
   if (FAILED(hr)) {
     SETUP_LOG(LE, (_T("[Failed to write shell path][0x%08x]"), hr));
+    return hr;
+  }
+
+  // This UninstallCmdLine can be used by app installers to request Omaha to
+  // uninstall if Omaha has no other applications registered with it.
+  CommandLineBuilder builder(COMMANDLINE_MODE_UNINSTALL);
+  CString uninstall_cmd_line = builder.GetCommandLine(shell_path);
+  hr = RegKey::SetValue(cm->registry_update(is_machine_),
+                        kRegValueUninstallCmdLine,
+                        uninstall_cmd_line);
+  if (FAILED(hr)) {
+    SETUP_LOG(LE, (_T("[Failed to write uninstall string][%#x]"), hr));
     return hr;
   }
 
@@ -284,6 +353,8 @@ HRESULT SetupGoogleUpdate::InstallRegistryValues() {
     VERIFY1(SUCCEEDED(goopdate_utils::EnableSEHOP(true)));
   }
 
+  VERIFY1(SUCCEEDED(SetB2173996ExperimentLabelIfNeeded(is_machine_,
+                                                       shell_path)));
   return S_OK;
 }
 
@@ -294,8 +365,10 @@ HRESULT SetupGoogleUpdate::InstallRegistryValues() {
 HRESULT SetupGoogleUpdate::CreateClientStateMedium() {
   ASSERT1(is_machine_);
 
-  // Authenticated non-admins may read, write, and create values.
-  const ACCESS_MASK kNonAdminAccessMask = KEY_READ | KEY_SET_VALUE;
+  // Authenticated non-admins may read, write, create subkeys and values.
+  const ACCESS_MASK kNonAdminAccessMask = KEY_READ |
+                                          KEY_SET_VALUE |
+                                          KEY_CREATE_SUB_KEY;
   // The override privileges apply to all subkeys and values but not to the
   // ClientStateMedium key itself.
   const uint8 kAceFlags =
@@ -354,7 +427,10 @@ void SetupGoogleUpdate::UninstallLaunchMechanisms() {
     CString current_dir = app_util::GetModuleDirectory(NULL);
     CString service_path = ConcatenatePath(current_dir, kServiceFileName);
 
-    VERIFY1(SUCCEEDED(RegisterOrUnregisterService(false, service_path)));
+    HRESULT hr = RegisterOrUnregisterService(false, service_path);
+    if (FAILED(hr)) {
+      SETUP_LOG(LE, (_T("[RegisterOrUnregisterService failed][0x%x]"), hr));
+    }
   } else {
     // We only need to do this in case of the user goopdate, as
     // there is no machine Run at startup installation.
@@ -671,9 +747,12 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
     return HRESULT_FROM_WIN32(err);
   }
 
-  // Find the rightmost path element of the download directory.
+  // The download and install directories are left alone here. They are cleaned
+  // up by DownloadManager::Initialize() and InstallManager::InstallManager().
   CPath download_dir(OMAHA_REL_DOWNLOAD_STORAGE_DIR);
   download_dir.StripPath();
+  CPath install_dir(OMAHA_REL_INSTALL_WORKING_DIR);
+  install_dir.StripPath();
 
   BOOL found_next = TRUE;
   for (; found_next; found_next = ::FindNextFile(get(find_handle),
@@ -688,7 +767,8 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
     } else if (_tcscmp(file_data.cFileName, _T("..")) &&
                _tcscmp(file_data.cFileName, _T(".")) &&
                _tcsicmp(file_data.cFileName, this_version_) &&
-               _tcsicmp(file_data.cFileName, download_dir)) {
+               _tcsicmp(file_data.cFileName, download_dir) &&
+               _tcsicmp(file_data.cFileName, install_dir)) {
       // Unregister the previous version OneClick if it exists. Ignore
       // failures. The file is named npGoogleOneClick*.dll.
       CPath old_oneclick(file_or_directory);
@@ -812,8 +892,8 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
   }
 
   std::vector<CString> sub_keys;
-  size_t num_keys = root.GetSubkeyCount();
-  for (size_t i = 0; i < num_keys; ++i) {
+  int num_keys = static_cast<int>(root.GetSubkeyCount());
+  for (int i = 0; i < num_keys; ++i) {
     CString sub_key_name;
     hr = root.GetSubkeyNameAt(i, &sub_key_name);
     ASSERT1(hr == S_OK);
@@ -822,9 +902,9 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
     }
   }
 
-  ASSERT1(num_keys == sub_keys.size());
+  ASSERT1(num_keys == static_cast<int>(sub_keys.size()));
   // Delete all the sub keys of the root key.
-  for (size_t i = 0; i < num_keys; ++i) {
+  for (int i = 0; i < num_keys; ++i) {
     VERIFY1(SUCCEEDED(root.RecurseDeleteSubKey(sub_keys[i])));
   }
 
@@ -832,9 +912,9 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
   // The Last* values are not deleted.
   // TODO(omaha3): The above is a temporary fix for bug 1539293. Need a better
   // long-term solution in Omaha 3.
-  size_t num_values = root.GetValueCount();
+  int num_values = static_cast<int>(root.GetValueCount());
   std::vector<CString> value_names;
-  for (size_t i = 0; i < num_values; ++i) {
+  for (int i = 0; i < num_values; ++i) {
     CString value_name;
     DWORD type = 0;
     hr = root.GetValueNameAt(i, &value_name, &type);

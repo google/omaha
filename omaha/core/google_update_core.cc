@@ -16,7 +16,6 @@
 #include "omaha/core/google_update_core.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
-#include "omaha/base/exception_barrier.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
@@ -26,6 +25,7 @@
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/goopdate/app_command.h"
+#include "omaha/goopdate/app_command_configuration.h"
 
 namespace omaha {
 
@@ -44,9 +44,6 @@ STDMETHODIMP GoogleUpdateCoreBase::LaunchCmdElevated(const WCHAR* app_guid,
   CORE_LOG(L3, (_T("[GoogleUpdateCoreBase::LaunchCmdElevated]")
                 _T("[app %s][cmd %s][pid %d]"),
                 app_guid, cmd_id, caller_proc_id));
-
-  ExceptionBarrier barrier;
-
   ASSERT1(app_guid);
   ASSERT1(cmd_id);
   ASSERT1(proc_handle);
@@ -69,13 +66,12 @@ STDMETHODIMP GoogleUpdateCoreBase::LaunchCmdElevated(const WCHAR* app_guid,
   CString session_id;
   GetGuid(&session_id);
 
-  scoped_ptr<AppCommand> app_command;
+  scoped_ptr<AppCommandConfiguration> configuration;
   // true == machine level
-  hr = AppCommand::Load(app_guid,
-                        true,
-                        cmd_id,
-                        session_id,
-                        address(app_command));
+  hr = AppCommandConfiguration::Load(app_guid,
+                                     true,
+                                     cmd_id,
+                                     address(configuration));
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[failed to load command configuration][0x%x]"), hr));
     return hr;
@@ -87,7 +83,10 @@ STDMETHODIMP GoogleUpdateCoreBase::LaunchCmdElevated(const WCHAR* app_guid,
   scoped_process command_process;
   scoped_process duplicate_proc_handle;
 
-  hr = app_command->Execute(address(command_process));
+  scoped_ptr<AppCommand> app_command(configuration->Instantiate(session_id));
+
+  hr = app_command->Execute(
+      NULL, std::vector<CString>(), address(command_process));
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[failed to launch app command][0x%x]"), hr));
     return hr;

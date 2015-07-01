@@ -18,11 +18,13 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
+#include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/experiment_labels.h"
+#include "omaha/goopdate/app_command_model.h"
 #include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/app_state.h"
 #include "omaha/goopdate/app_state_init.h"
@@ -45,6 +47,10 @@ App::App(const GUID& app_guid, bool is_update, AppBundle* app_bundle)
       browser_type_(BROWSER_UNKNOWN),
       days_since_last_active_ping_(0),
       days_since_last_roll_call_(0),
+      day_of_last_activity_(0),
+      day_of_last_roll_call_(0),
+      day_of_install_(0),
+      day_of_last_response_(0),
       usage_stats_enable_(TRISTATE_NONE),
       did_run_(ACTIVE_UNKNOWN),
       is_canceled_(false),
@@ -52,10 +58,11 @@ App::App(const GUID& app_guid, bool is_update, AppBundle* app_bundle)
       installer_result_code_(0),
       installer_result_extra_code1_(0),
       post_install_action_(POST_INSTALL_ACTION_DEFAULT),
+      can_skip_signature_verification_(false),
       previous_total_download_bytes_(0),
-      download_start_time_ms_(0),
-      download_complete_time_ms_(0),
-      num_bytes_downloaded_(0) {
+      num_bytes_downloaded_(0),
+      source_url_index_(-1),
+      state_cancelled_(STATE_ERROR) {
   ASSERT1(!::IsEqualGUID(GUID_NULL, app_guid_));
 
   current_version_.reset(new AppVersion(this));
@@ -67,12 +74,19 @@ App::App(const GUID& app_guid, bool is_update, AppBundle* app_bundle)
   // and the working version in set to next always.
   working_version_ = next_version_.get();
   app_state_.reset(new fsm::AppStateInit);
+
+  ::ZeroMemory(time_metrics_, sizeof(time_metrics_));
 }
 
 // Destruction of App objects happens within the scope of their parent,
 // which controls the locking.
 App::~App() {
   ASSERT1(model()->IsLockedByCaller());
+
+  for (size_t i = 0; i < loaded_app_commands_.size(); ++i) {
+    delete loaded_app_commands_[i];
+  }
+
   working_version_ = NULL;
   app_bundle_ = NULL;
 }
@@ -300,7 +314,7 @@ STDMETHODIMP App::put_usageStatsEnable(UINT usage_stats_enable) {
 STDMETHODIMP App::get_currentState(IDispatch** current_state) {
   __mutexScope(model()->lock());
 
-  CORE_LOG(L3, (_T("[App::get_currentState][0x%p]"), this));
+  CORE_LOG(L6, (_T("[App::get_currentState][0x%p]"), this));
   ASSERT1(current_state);
 
   ULONGLONG bytes_downloaded = 0;
@@ -339,12 +353,21 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
                                &total_bytes_to_download,
                                &download_time_remaining_ms,
                                &next_download_retry_time);
+      if (SUCCEEDED(hr)) {
+        VERIFY1(SUCCEEDED(AppManager::Instance()->WriteDownloadProgress(
+                *this,
+                bytes_downloaded,
+                total_bytes_to_download,
+                download_time_remaining_ms)));
+      }
       break;
     case STATE_WAITING_TO_INSTALL:
       break;
     case STATE_INSTALLING:
-      // TODO(omaha3): Obtain install_progress_percentage and
-      // install_time_remaining_ms.
+      hr = GetInstallProgress(&install_progress_percentage,
+                              &install_time_remaining_ms);
+      VERIFY1(SUCCEEDED(AppManager::Instance()->WriteInstallProgress(
+              *this, install_progress_percentage, install_time_remaining_ms)));
       break;
     case STATE_INSTALL_COMPLETE:
       install_progress_percentage = 100;
@@ -354,6 +377,9 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
       ASSERT1(!completion_message_.IsEmpty());
       ASSERT1(completion_result_ == PingEvent::EVENT_RESULT_SUCCESS ||
               completion_result_ == PingEvent::EVENT_RESULT_SUCCESS_REBOOT);
+
+      VERIFY1(SUCCEEDED(AppManager::Instance()->WriteInstallProgress(
+              *this, install_progress_percentage, install_time_remaining_ms)));
       break;
     case STATE_PAUSED:
       break;
@@ -372,6 +398,8 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
       hr = E_FAIL;
       break;
   }
+
+  VERIFY1(SUCCEEDED(AppManager::Instance()->WriteStateValue(*this, state())));
 
   if (FAILED(hr)) {
     return hr;
@@ -401,6 +429,19 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
   }
 
   return state_object->QueryInterface(current_state);
+}
+
+STDMETHODIMP App::get_untrustedData(BSTR* data) {
+  __mutexScope(model()->lock());
+  ASSERT1(data);
+  *data = untrusted_data_.AllocSysString();
+  return S_OK;
+}
+
+STDMETHODIMP App::put_untrustedData(BSTR data) {
+  __mutexScope(model()->lock());
+  untrusted_data_ = data;
+  return S_OK;
 }
 
 // TODO(omaha3): If some packages are already cached, there may be awkward jumps
@@ -462,6 +503,80 @@ HRESULT App::GetDownloadProgress(uint64* bytes_downloaded,
   return S_OK;
 }
 
+HRESULT App::GetInstallProgress(LONG* install_progress_percentage,
+                                LONG* install_time_remaining_ms) {
+  ASSERT1(model()->IsLockedByCaller());
+
+  ASSERT1(install_progress_percentage);
+  ASSERT1(install_time_remaining_ms);
+
+  *install_progress_percentage = kCurrentStateProgressUnknown;
+  *install_time_remaining_ms = kCurrentStateProgressUnknown;
+
+  // Installation progress is reported in "InstallerProgress" under
+  // Google\\Update\\ClientState\\{AppID}. It is a value that goes from 0% to
+  // 100%.
+  const CString base_key_name(ConfigManager::Instance()->registry_client_state(
+      app_bundle_->is_machine()));
+  const CString app_id_key_name(AppendRegKeyPath(base_key_name,
+                                                 app_guid_string()));
+  DWORD progress_percent = 0;
+  HRESULT hr = RegKey::GetValue(app_id_key_name,
+                                kRegValueInstallerProgress,
+                                &progress_percent);
+  if (FAILED(hr)) {
+    if (app_guid_string().CompareNoCase(kChromeAppId)) {
+      return S_FALSE;
+    }
+
+    // Legacy Install progress written by the Chrome Installer.
+    return GetInstallProgressChrome(install_progress_percentage,
+                                    install_time_remaining_ms);
+  }
+
+  *install_progress_percentage = std::min<DWORD>(100, progress_percent);
+
+  CORE_LOG(L6, (_T("[App::GetInstallProgress][%s][%d][%d]"),
+                app_guid_string(),
+                progress_percent,
+                *install_progress_percentage));
+  return S_OK;
+}
+
+HRESULT App::GetInstallProgressChrome(LONG* install_progress_percentage,
+                                      LONG* install_time_remaining_ms) {
+  ASSERT1(model()->IsLockedByCaller());
+  ASSERT1(!app_guid_string().CompareNoCase(kChromeAppId));
+  ASSERT1(install_progress_percentage);
+  ASSERT1(install_time_remaining_ms);
+
+  *install_progress_percentage = kCurrentStateProgressUnknown;
+  *install_time_remaining_ms = kCurrentStateProgressUnknown;
+
+  // Installation progress is reported in "InstallerExtraCode1" under
+  // Google\\Update\\ClientState\\{ChromeAppID}.
+  const CString base_key_name(ConfigManager::Instance()->registry_client_state(
+      app_bundle_->is_machine()));
+  const CString app_id_key_name(AppendRegKeyPath(base_key_name,
+                                                 app_guid_string()));
+  DWORD installer_extra_code1 = 0;
+  HRESULT hr = RegKey::GetValue(app_id_key_name,
+                                kRegValueInstallerExtraCode1,
+                                &installer_extra_code1);
+  if (FAILED(hr)) {
+    return S_FALSE;
+  }
+
+  DWORD progress_percentage = installer_extra_code1 * 100 /
+                              kChromeInstallerNumStages;
+  *install_progress_percentage = std::min<DWORD>(100, progress_percentage);
+
+  CORE_LOG(L6, (_T("[App::GetInstallProgressChrome][%d][%d]"),
+                installer_extra_code1,
+                *install_progress_percentage));
+  return S_OK;
+}
+
 AppBundle* App::app_bundle() {
   __mutexScope(model()->lock());
   return app_bundle_;
@@ -490,6 +605,25 @@ AppVersion* App::next_version() {
 const AppVersion* App::next_version() const {
   __mutexScope(model()->lock());
   return next_version_.get();
+}
+
+AppCommandModel* App::command(const CString& command_id) {
+  __mutexScope(model()->lock());
+  AppCommandModel* command = NULL;
+  HRESULT hr = AppCommandModel::Load(this,
+                                     command_id,
+                                     &command);
+  if (FAILED(hr)) {
+    // This includes undefined commands as well as system errors.
+    // AppCommandModel::Load takes care of relevant logging.
+    return NULL;
+  }
+  ASSERT1(command);
+
+  // Make sure this command gets freed upon model destruction.
+  loaded_app_commands_.push_back(command);
+
+  return command;
 }
 
 CString App::app_guid_string() const {
@@ -530,6 +664,11 @@ bool App::is_update() const {
   __mutexScope(model()->lock());
   ASSERT1(current_version_->version().IsEmpty() != is_update_);
   return is_update_;
+}
+
+bool App::is_bundled() const {
+  __mutexScope(model()->lock());
+  return app_bundle_->GetNumberOfApps() > 1;
 }
 
 bool App::has_update_available() const {
@@ -601,6 +740,20 @@ uint32 App::install_time_diff_sec() const {
   return install_time_diff_sec_;
 }
 
+int App::day_of_install() const {
+  __mutexScope(model()->lock());
+  return day_of_install_;
+}
+
+int App::day_of_last_response() const {
+  __mutexScope(model()->lock());
+  return day_of_last_response_;
+}
+void App::set_day_of_last_response(int day_num) {
+  __mutexScope(model()->lock());
+  day_of_last_response_ = day_num;
+}
+
 ActiveStates App::did_run() const {
   __mutexScope(model()->lock());
   return did_run_;
@@ -626,9 +779,34 @@ void App::set_days_since_last_roll_call(int days) {
   days_since_last_roll_call_ = days;
 }
 
+int App::day_of_last_activity() const {
+  __mutexScope(model()->lock());
+  return day_of_last_activity_;
+}
+
+void App::set_day_of_last_activity(int day_num) {
+  __mutexScope(model()->lock());
+  day_of_last_activity_ = day_num;
+}
+
+int App::day_of_last_roll_call() const {
+  __mutexScope(model()->lock());
+  return day_of_last_roll_call_;
+}
+
+void App::set_day_of_last_roll_call(int day_num) {
+  __mutexScope(model()->lock());
+  day_of_last_roll_call_ = day_num;
+}
+
 CString App::ap() const {
   __mutexScope(model()->lock());
   return ap_;
+}
+
+std::vector<StringPair> App::app_defined_attributes() const {
+  __mutexScope(model()->lock());
+  return app_defined_attributes_;
 }
 
 CString App::tt_token() const {
@@ -636,9 +814,24 @@ CString App::tt_token() const {
   return tt_token_;
 }
 
+Cohort App::cohort() const {
+  __mutexScope(model()->lock());
+  return cohort_;
+}
+
+void App::set_cohort(const Cohort& cohort) {
+  __mutexScope(model()->lock());
+  cohort_ = cohort;
+}
+
 CString App::server_install_data_index() const {
   __mutexScope(model()->lock());
   return server_install_data_index_;
+}
+
+CString App::untrusted_data() const {
+  __mutexScope(model()->lock());
+  return untrusted_data_;
 }
 
 HRESULT App::error_code() const {
@@ -674,6 +867,44 @@ AppVersion* App::working_version() {
 const AppVersion* App::working_version() const {
   __mutexScope(model()->lock());
   return working_version_;
+}
+
+bool App::can_skip_signature_verification() const {
+  __mutexScope(model()->lock());
+  return can_skip_signature_verification_;
+}
+
+void App::set_can_skip_signature_verification(
+    bool can_skip_signature_verification) {
+  __mutexScope(model()->lock());
+  can_skip_signature_verification_ = can_skip_signature_verification;
+}
+
+void App::set_external_updater_event(HANDLE event_handle) {
+  __mutexScope(model()->lock());
+  reset(external_updater_event_, event_handle);
+}
+
+int App::source_url_index() const {
+  __mutexScope(model()->lock());
+  return source_url_index_;
+}
+
+void App::set_source_url_index(int index) {
+  ASSERT1(index >= 0);
+  __mutexScope(model()->lock());
+  source_url_index_ = index;
+}
+
+
+CurrentState App::state_cancelled() const {
+  __mutexScope(model()->lock());
+  return state_cancelled_;
+}
+
+void App::set_state_cancelled(CurrentState state_cancelled) {
+  __mutexScope(model()->lock());
+  state_cancelled_ = state_cancelled;
 }
 
 CString App::FetchAndResetLogText() {
@@ -728,35 +959,12 @@ HRESULT App::CheckGroupPolicy() const {
   return S_OK;
 }
 
-void App::SetDownloadStartTime() {
-  __mutexScope(model()->lock());
-  ASSERT1(download_complete_time_ms_ == 0);
-  ASSERT1(num_bytes_downloaded_ == 0);
-
-  download_start_time_ms_ = GetCurrentMsTime();
-}
-
-void App::SetDownloadCompleteTime() {
-  __mutexScope(model()->lock());
-  download_complete_time_ms_ = GetCurrentMsTime();
-}
-
 void App::UpdateNumBytesDownloaded(uint64 num_bytes) {
   __mutexScope(model()->lock());
 
   CORE_LOG(L3, (_T("[RecordDownloadedBytes][new bytes downloaded: %llu]"),
                 num_bytes));
   num_bytes_downloaded_ += num_bytes;
-}
-
-int App::GetDownloadTimeMs() const {
-  __mutexScope(model()->lock());
-
-  if (download_complete_time_ms_ < download_start_time_ms_) {
-    return 0;
-  }
-
-  return static_cast<int>(download_complete_time_ms_ - download_start_time_ms_);
 }
 
 uint64 App::num_bytes_downloaded() const {
@@ -774,6 +982,57 @@ uint64 App::GetPackagesTotalSize() const {
   }
 
   return total_size;
+}
+
+void App::SetCurrentTimeAs(TimeMetricType time_type) {
+  __mutexScope(model()->lock());
+  ASSERT1(time_type < TIME_METRICS_MAX);
+  time_metrics_[time_type] = GetCurrentMsTime();
+}
+
+
+int App::GetTimeDifferenceMs(TimeMetricType time_start_metric_type,
+                             TimeMetricType time_end_metric_type) const {
+  __mutexScope(model()->lock());
+
+  uint64 start_time_ms = time_metrics_[time_start_metric_type];
+  uint64 end_time_ms = time_metrics_[time_end_metric_type];
+  if (start_time_ms == 0 || start_time_ms > end_time_ms) {
+    return 0;
+  }
+
+  return static_cast<int>(end_time_ms - start_time_ms);
+}
+
+int App::GetDownloadTimeMs() const {
+  return GetTimeDifferenceMs(TIME_DOWNLOAD_START, TIME_DOWNLOAD_COMPLETE);
+}
+
+int App::GetInstallTimeMs() const {
+  return GetTimeDifferenceMs(TIME_INSTALL_START, TIME_INSTALL_COMPLETE);
+}
+
+int App::GetUpdateCheckTimeMs() const {
+  return GetTimeDifferenceMs(TIME_UPDATE_CHECK_START,
+                             TIME_UPDATE_CHECK_COMPLETE);
+}
+
+int App::GetTimeSinceUpdateAvailable() const {
+  __mutexScope(model()->lock());
+  if (time_metrics_[TIME_UPDATE_AVAILABLE] == 0 ||
+      time_metrics_[TIME_CANCELLED] == 0) {
+    return -1;
+  }
+  return GetTimeDifferenceMs(TIME_UPDATE_AVAILABLE, TIME_CANCELLED);
+}
+
+int App::GetTimeSinceDownloadStart() const {
+  __mutexScope(model()->lock());
+  if (time_metrics_[TIME_DOWNLOAD_START] == 0 ||
+      time_metrics_[TIME_CANCELLED] == 0) {
+    return -1;
+  }
+  return GetTimeDifferenceMs(TIME_DOWNLOAD_START, TIME_CANCELLED);
 }
 
 //
@@ -997,6 +1256,19 @@ STDMETHODIMP AppWrapper::get_nextVersion(IDispatch** next_version) {
                                    next_version);
 }
 
+STDMETHODIMP AppWrapper::get_command(BSTR command_id, IDispatch** command) {
+  __mutexScope(model()->lock());
+  ASSERT1(command);
+  *command = NULL;
+  AppCommandModel* unwrapped_command = wrapped_obj()->command(command_id);
+  if (!unwrapped_command) {
+    return S_FALSE;
+  }
+  return AppCommandWrapper::Create(controlling_ptr(),
+                                   unwrapped_command,
+                                   command);
+}
+
 // IApp.
 STDMETHODIMP AppWrapper::get_appId(BSTR* app_id) {
   __mutexScope(model()->lock());
@@ -1146,6 +1418,16 @@ STDMETHODIMP AppWrapper::get_serverInstallDataIndex(BSTR* index) {
 STDMETHODIMP AppWrapper::put_serverInstallDataIndex(BSTR index) {
   __mutexScope(model()->lock());
   return wrapped_obj()->put_serverInstallDataIndex(index);
+}
+
+STDMETHODIMP AppWrapper::get_untrustedData(BSTR* data) {
+  __mutexScope(model()->lock());
+  return wrapped_obj()->get_untrustedData(data);
+}
+
+STDMETHODIMP AppWrapper::put_untrustedData(BSTR data) {
+  __mutexScope(model()->lock());
+  return wrapped_obj()->put_untrustedData(data);
 }
 
 STDMETHODIMP AppWrapper::get_usageStatsEnable(UINT* usage_stats_enable) {

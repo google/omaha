@@ -98,8 +98,10 @@ class SetupService {
     ASSERT1(file_path);
 
     // Append the arguments to be passed to the service entry point.
+    CString file_path_service(file_path);
+    EnclosePath(&file_path_service);
+    CString service_cmd_line(file_path_service);
 
-    CString service_cmd_line(file_path);
     CommandLineBuilder builder(T::commandline_mode());
     SafeCStringAppendFormat(&service_cmd_line, _T(" %s"),
                             builder.GetCommandLineArgs());

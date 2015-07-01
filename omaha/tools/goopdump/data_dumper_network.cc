@@ -24,9 +24,11 @@
 namespace omaha {
 
 DataDumperNetwork::DataDumperNetwork() {
+  NetworkConfigManager::Instance();
 }
 
 DataDumperNetwork::~DataDumperNetwork() {
+  NetworkConfigManager::DeleteInstance();
 }
 
 void DataDumperNetwork::DumpNetworkConfig(const DumpLog& dump_log) {

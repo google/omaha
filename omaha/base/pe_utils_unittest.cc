@@ -64,7 +64,7 @@ TEST(PEUtilsTest, PEUtils) {
   std::vector<byte> buffer;
   ASSERT_SUCCEEDED(ReadEntireFile(temp_exe, 0, &buffer));
 
-  int buffer_data_len = buffer.size();
+  size_t buffer_data_len = buffer.size();
   uint8 *buffer_data = reinterpret_cast<uint8*>(&buffer.front());
 
   ASSERT_SUCCEEDED(SetPEChecksumToBuffer(buffer_data, buffer_data_len, kChk1));

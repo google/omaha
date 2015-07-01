@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/common/extra_args_parser.h"
+#include <intsafe.h>
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -70,6 +71,10 @@ HRESULT HandleAppArgsToken(const CString& token,
   ASSERT1(cur_app_args_index);
   ASSERT1(*cur_app_args_index < static_cast<int>(args->apps.size()));
 
+  if (args->apps.size() > INT_MAX) {
+    return E_INVALIDARG;
+  }
+
   CString name;
   CString value;
   if (!ParseNameValuePair(token, kNameValueSeparatorChar, &name, &value)) {
@@ -80,7 +85,7 @@ HRESULT HandleAppArgsToken(const CString& token,
     *cur_app_args_index = -1;
     for (size_t i = 0; i < args->apps.size(); ++i) {
       if (!value.CompareNoCase(GuidToString(args->apps[i].app_guid))) {
-        *cur_app_args_index = i;
+        *cur_app_args_index = static_cast<int>(i);
         break;
       }
     }
@@ -184,6 +189,7 @@ HRESULT ExtraArgsParser::ParseExtraArgs(const TCHAR* extra_args,
     CORE_LOG(L2, (_T("[ExtraArgsParser::Parse][token=%s]"), token));
     hr = HandleToken(token, args);
     if (FAILED(hr)) {
+      OPT_LOG(L2, (_T("[Failed to parse extra argument][%s]"), token));
       return hr;
     }
 
@@ -308,6 +314,8 @@ HRESULT ExtraArgsParser::HandleToken(const CString& token,
     }
   } else if (name.CompareNoCase(kExtraArgInstallDataIndex) == 0) {
     cur_extra_app_args_.install_data_index = value;
+  } else if (name.CompareNoCase(kExtraArgUntrustedData) == 0) {
+    cur_extra_app_args_.untrusted_data = value;
   } else {
     // Unrecognized token
     return E_INVALIDARG;

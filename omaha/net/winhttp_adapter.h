@@ -29,6 +29,9 @@ namespace omaha {
 // WinHttp client. Solves the issue of reliably canceling of WinHttp calls by
 // closing the handles and avoding the race condition between handle closing
 // and the incoming WinHttp call.
+// The WinHttpAdapter class is meant to be called in sequential and
+// single-threaded fashion, except for CloseHandles() which can be called from
+// a different thread.
 // The class manages the connection and the request handles. It registers a
 // callback for all WinHttp status notifications. Once an asynchrous WinHttp
 // call is made, the code blocks waiting for the corresponding notification
@@ -41,6 +44,7 @@ namespace omaha {
 class WinHttpAdapter {
  public:
   WinHttpAdapter();
+  ~WinHttpAdapter();
 
   HRESULT Initialize();
 
@@ -118,13 +122,13 @@ class WinHttpAdapter {
   void StatusCallback(HINTERNET handle,
                       uint32 status,
                       void* info,
-                      uint32 info_len);
+                      DWORD info_len);
 
   static void __stdcall WinHttpStatusCallback(HINTERNET handle,
-                                              uint32 context,
+                                              DWORD_PTR context,
                                               uint32 status,
                                               void* info,
-                                              uint32 info_len);
+                                              DWORD info_len);
 
   scoped_ptr<HttpClient> http_client_;
 
@@ -140,6 +144,7 @@ class WinHttpAdapter {
   DWORD                  async_bytes_available_;
   DWORD                  async_bytes_read_;
   scoped_event           async_completion_event_;
+  scoped_event           async_handle_closing_event_;
 
   LLock                  lock_;
 

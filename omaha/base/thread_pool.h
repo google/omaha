@@ -60,7 +60,9 @@ class ThreadPool {
 
   // Adds a work item to the queue. If the add fails the ownership of the
   // work items remains with the caller.
-  HRESULT QueueUserWorkItem(UserWorkItem* work_item, uint32 flags);
+  HRESULT QueueUserWorkItem(UserWorkItem* work_item,
+                            DWORD coinit_flags,
+                            uint32 flags);
 
  private:
   // Calls UserWorkItem::Process() in the context of the worker thread.

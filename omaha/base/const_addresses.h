@@ -48,30 +48,40 @@ const TCHAR* const kGoopdateServer = _T("tools.") COMPANY_DOMAIN;
 #define kDefaultHttpProxyPort     80
 #define kDefaultSslProxyPort      443
 
-// Update checks and manifest requests.
+// The urls below fall back to http for transport failover purposes. In a small
+// number of cases, http requests could succeed even though https requests
+// have failed. Since the update checks and pings are critical for update
+// functionality, these two types of requests may use unencrypted connections if
+// https failed.
+//
+// Update checks.
+// The channel for update checks is secured by using CUP to sign the messages.
+// It does not depend solely on https security in any case.
 const TCHAR* const kUrlUpdateCheck =
-    kHttpsProto _T("tools.") COMPANY_DOMAIN _T("/service/update2");
+    _T("https://tools.") COMPANY_DOMAIN _T("/service/update2");
 
 // Pings.
 const TCHAR* const kUrlPing =
-    _T("http://tools.") COMPANY_DOMAIN _T("/service/update2");
+    _T("https://tools.") COMPANY_DOMAIN _T("/service/update2");
 
+// The urls below never fall back to http.
+//
 // Crash reports.
 const TCHAR* const kUrlCrashReport =
-    _T("http://clients2.") COMPANY_DOMAIN _T("/cr/report");
+    _T("https://clients2.") COMPANY_DOMAIN _T("/cr/report");
 
 // More information url.
 // Must allow query parameters to be appended to it.
 const TCHAR* const kUrlMoreInfo =
-    _T("http://www.") COMPANY_DOMAIN _T("/support/installer/?");
+    _T("https://www.") COMPANY_DOMAIN _T("/support/installer/?");
 
 // Code Red check url.
 const TCHAR* const kUrlCodeRedCheck =
-    _T("http://cr-tools.clients.") COMPANY_DOMAIN _T("/service/check2");
+    _T("https://clients2.") COMPANY_DOMAIN _T("/service/check2");
 
 // Usage stats url.
 const TCHAR* const kUrlUsageStatsReport =
-    _T("http://clients5.") COMPANY_DOMAIN _T("/tbproxy/usagestats");
+    _T("https://clients5.") COMPANY_DOMAIN _T("/tbproxy/usagestats");
 
 }  // namespace omaha
 

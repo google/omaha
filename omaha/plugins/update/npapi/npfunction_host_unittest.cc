@@ -60,7 +60,7 @@ class MockFunctionNPObject : public NPObject {
   explicit MockFunctionNPObject(NPP npp) : npp_(npp), creator_(NULL) {}
 
   static NPUTF8* NPN_ReallocateStringZ(const char* string) {
-    uint32 buflen = strlen(string) + 1;
+    uint32 buflen = static_cast<uint32>(strlen(string) + 1);
     NPUTF8* npnstr = reinterpret_cast<NPUTF8*>(NPN_MemAlloc(buflen));
     memmove(npnstr, string, buflen);
     return npnstr;
@@ -136,8 +136,14 @@ bool MockFunctionNPObject::InvokeDefaultLocal(const NPVariant* args,
       break;
     case 2:
       {
+      #pragma warning(push)
+      // conversion from 'size_t' to 'uint32_t', possible loss of data.
+      #pragma warning(disable : 4267)
+
         NPUTF8* utf8string = NPN_ReallocateStringZ(kMultiStringReturn);
         STRINGZ_TO_NPVARIANT(utf8string, *result);
+
+      #pragma warning(pop)
       }
       break;
     default:
@@ -202,7 +208,7 @@ TEST_F(NpFunctionHostTest, Invoke_NoArgs_NullDispParams) {
                                  NULL,
                                  NULL));
 
-  EXPECT_EQ(0, mock_args_.size());
+  EXPECT_EQ(0, static_cast<int>(mock_args_.size()));
 
   EXPECT_TRUE(NPVARIANT_IS_VOID(mock_result_));
   EXPECT_EQ(VT_EMPTY, retval.vt);
@@ -220,7 +226,7 @@ TEST_F(NpFunctionHostTest, Invoke_NoArgs_ValidDispParams) {
                                  NULL,
                                  NULL));
 
-  EXPECT_EQ(0, mock_args_.size());
+  EXPECT_EQ(0, static_cast<int>(mock_args_.size()));
 
   EXPECT_TRUE(NPVARIANT_IS_VOID(mock_result_));
   EXPECT_EQ(VT_EMPTY, retval.vt);

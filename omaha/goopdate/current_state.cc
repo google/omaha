@@ -84,11 +84,9 @@ CurrentAppState::CurrentAppState()
       installer_result_code_(0),
       installer_result_extra_code1_(0),
       post_install_action_(0) {
-  CORE_LOG(L6, (_T("[CurrentAppState::CurrentAppState()")));
 }
 
 CurrentAppState::~CurrentAppState() {
-  CORE_LOG(L6, (_T("[CurrentAppState::~CurrentAppState()")));
 }
 
 // ICurrentState.
@@ -105,7 +103,6 @@ STDMETHODIMP CurrentAppState::get_stateValue(LONG* state_value) {
   ASSERT1(state_value);
 
   *state_value = state_value_;
-  CORE_LOG(L6, (_T("[CurrentAppState::get_stateValue][%d]"), state_value_));
   return S_OK;
 }
 

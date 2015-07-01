@@ -16,6 +16,7 @@
 #include "omaha/goopdate/app_state_init.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
+#include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/app_state_waiting_to_check_for_update.h"
 #include "omaha/goopdate/model.h"
 
@@ -33,6 +34,9 @@ void AppStateInit::QueueUpdateCheck(App* app) {
   // Omaha should never be part of an app bundle in the install case. This is
   // an important debug check to ensure that duplicate pings are not sent.
   ASSERT1(!::IsEqualGUID(kGoopdateGuid, app->app_guid()) || app->is_update());
+
+  AppManager::Instance()->ResetCurrentStateKey(app->app_guid_string());
+
   ChangeState(app, new AppStateWaitingToCheckForUpdate);
 }
 

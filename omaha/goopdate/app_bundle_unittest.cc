@@ -17,9 +17,12 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/thread_pool.h"
 #include "omaha/base/utils.h"
+#include "omaha/common/config_manager.h"
+#include "omaha/common/goopdate_utils.h"
 #include "omaha/common/lang.h"
 #include "omaha/goopdate/app_bundle_state_busy.h"
 #include "omaha/goopdate/app_bundle_state_initialized.h"
@@ -27,6 +30,7 @@
 #include "omaha/goopdate/app_bundle_state_ready.h"
 #include "omaha/goopdate/app_bundle_state_stopped.h"
 #include "omaha/goopdate/app_manager.h"
+#include "omaha/goopdate/goopdate.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/goopdate/worker.h"
@@ -37,7 +41,7 @@ namespace omaha {
 
 const int kKnownError = 0x87658765;
 
-const TCHAR* const kDefaultAppName = _T("Google Application");
+const TCHAR* const kDefaultAppName = SHORT_COMPANY_NAME _T(" Application");
 
 const uint32 kInitialInstallTimeDiff = static_cast<uint32>(-1 * kSecondsPerDay);
 
@@ -72,6 +76,8 @@ void ValidateFreshInstallDefaultValues(const App& app) {
   EXPECT_EQ(ACTIVE_UNKNOWN, app.did_run());
   EXPECT_EQ(0, app.days_since_last_active_ping());
   EXPECT_EQ(0, app.days_since_last_roll_call());
+  EXPECT_EQ(0, app.day_of_last_activity());
+  EXPECT_EQ(0, app.day_of_last_roll_call());
 
   EXPECT_TRUE(app.current_version()->version().IsEmpty());
   EXPECT_TRUE(app.next_version()->version().IsEmpty());
@@ -114,6 +120,11 @@ void ValidateExpectedValues(const App& expected, const App& actual) {
                actual.current_version()->version());
   EXPECT_STREQ(expected.next_version()->version(),
                actual.next_version()->version());
+  EXPECT_EQ(expected.app_defined_attributes(), actual.app_defined_attributes());
+
+  EXPECT_EQ(expected.cohort().cohort, actual.cohort().cohort);
+  EXPECT_EQ(expected.cohort().hint, actual.cohort().hint);
+  EXPECT_EQ(expected.cohort().name, actual.cohort().name);
 
   // TODO(omaha3): Add all the new values (state(), etc.)?
 }
@@ -134,6 +145,11 @@ const TCHAR* const kGuid5 = _T("{3B1A3CCA-0525-4418-93E6-A0DB3398EC9B}");
 const TCHAR* const kGuid6 = _T("{F3F2CFD4-5F98-4bf0-ABB0-BEEEA46C62B4}");
 const TCHAR* const kGuid7 = _T("{6FD2272F-8583-4bbd-895A-E65F8003FC7B}");
 
+void InitializeRegistryForTest(bool is_machine) {
+  RegKey::DeleteKey(ConfigManager::Instance()->registry_clients(is_machine));
+  RegKey::DeleteKey(
+      ConfigManager::Instance()->registry_client_state(is_machine));
+}
 
 class DummyUserWorkItem : public UserWorkItem {
  private:
@@ -151,7 +167,7 @@ ACTION_P(SetWorkItem, work_item) {
 class AppBundleNoBundleTest : public testing::Test {
  protected:
   explicit AppBundleNoBundleTest(bool is_machine)
-      : is_machine_(is_machine) {}
+      : is_machine_(is_machine), goopdate_(is_machine) {}
 
   virtual void SetUp() {
     EXPECT_SUCCEEDED(AppManager::CreateInstance(is_machine_));
@@ -174,6 +190,8 @@ class AppBundleNoBundleTest : public testing::Test {
   scoped_ptr<Model> model_;
 
  private:
+  Goopdate goopdate_;
+
   DISALLOW_IMPLICIT_CONSTRUCTORS(AppBundleNoBundleTest);
 };
 
@@ -328,11 +346,19 @@ class AppBundleNoBundleUserTest : public AppBundleNoBundleTest {
 class AppBundleInitializedMachineTest : public AppBundleInitializedTest {
  protected:
   AppBundleInitializedMachineTest() : AppBundleInitializedTest(true) {}
+  virtual void SetUp() {
+    AppBundleInitializedTest::SetUp();
+    InitializeRegistryForTest(true);
+  }
 };
 
 class AppBundleInitializedUserTest : public AppBundleInitializedTest {
  protected:
   AppBundleInitializedUserTest() : AppBundleInitializedTest(false) {}
+  virtual void SetUp() {
+    AppBundleInitializedTest::SetUp();
+    InitializeRegistryForTest(false);
+  }
 };
 
 
@@ -365,14 +391,12 @@ TEST_F(AppBundleNoBundleMachineTest, ConstructorAndDestructor) {
 class AppBundlePopulatedRegistryTest : public AppBundleInitializedTest {
  protected:
   explicit AppBundlePopulatedRegistryTest(bool is_machine)
-      : AppBundleInitializedTest(is_machine),
-        hive_override_key_name_(kRegistryHiveOverrideRoot) {}
+      : AppBundleInitializedTest(is_machine) {}
 
   virtual void SetUp() {
     AppBundleInitializedTest::SetUp();
 
-    RegKey::DeleteKey(hive_override_key_name_);
-    OverrideRegistryHives(hive_override_key_name_);
+    InitializeRegistryForTest(is_machine_);
 
     EXPECT_SUCCEEDED(ResourceManager::Create(
       is_machine_, app_util::GetCurrentModuleDirectory(), _T("en")));
@@ -396,9 +420,6 @@ class AppBundlePopulatedRegistryTest : public AppBundleInitializedTest {
     dummy_app_bundle_for_expected_apps_.reset();
 
     ResourceManager::Delete();
-
-    RestoreRegistryHives();
-    RegKey::DeleteKey(hive_override_key_name_);
 
     AppBundleInitializedTest::TearDown();
   }
@@ -439,10 +460,10 @@ class AppBundlePopulatedRegistryTest : public AppBundleInitializedTest {
     AppManager::Instance()->ReadAppInstallTimeDiff(opposite_hive_app2);
   }
 
-  CString hive_override_key_name_;
   shared_ptr<AppBundle> dummy_app_bundle_for_expected_apps_;
   LLock lock_;
 
+ private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(AppBundlePopulatedRegistryTest);
 };
 
@@ -1067,6 +1088,140 @@ TEST_F(AppBundlePopulatedRegistryUserTest,
 }
 
 TEST_F(AppBundlePopulatedRegistryUserTest,
+       createInstalledApp_ExternalUpdaterRunning_NotPresent) {
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+
+  App* app0_created = NULL;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+            app_bundle_->createInstalledApp(CComBSTR(kGuid1), &app0_created));
+  EXPECT_FALSE(app0_created);
+  EXPECT_EQ(0, app_bundle_->GetNumberOfApps());
+}
+
+TEST_F(AppBundlePopulatedRegistryUserTest,
+       createInstalledApp_ExternalUpdaterRunning_Present) {
+  App *expected_app0, *expected_app1, *expected_app2;
+  PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
+                                                              &expected_app1,
+                                                              &expected_app2);
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+
+  App* app0_created = NULL;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+            app_bundle_->createInstalledApp(CComBSTR(kGuid1), &app0_created));
+  EXPECT_FALSE(app0_created);
+  EXPECT_EQ(0, app_bundle_->GetNumberOfApps());
+}
+
+TEST_F(AppBundlePopulatedRegistryUserTest,
+       createInstalledApp_ExternalUpdaterRunning_Present_Release) {
+  App *expected_app0, *expected_app1, *expected_app2;
+  PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
+                                                              &expected_app1,
+                                                              &expected_app2);
+
+  App* app0_created = NULL;
+  EXPECT_HRESULT_SUCCEEDED(app_bundle_->createInstalledApp(CComBSTR(kGuid1),
+                                                           &app0_created));
+  EXPECT_TRUE(app0_created);
+  EXPECT_EQ(1, app_bundle_->GetNumberOfApps());
+
+  scoped_event event;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+            goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                             is_machine_,
+                                                             &event));
+  ASSERT_FALSE(get(event));
+
+  app_bundle_.reset();
+  app_bundle_ = model_->CreateAppBundle(is_machine_);
+  EXPECT_TRUE(app_bundle_.get());
+
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+}
+
+TEST_F(AppBundlePopulatedRegistryMachineTest,
+       createInstalledApp_ExternalUpdaterRunning_NotPresent) {
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+
+  App* app0_created = NULL;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+            app_bundle_->createInstalledApp(CComBSTR(kGuid1), &app0_created));
+  EXPECT_FALSE(app0_created);
+  EXPECT_EQ(0, app_bundle_->GetNumberOfApps());
+}
+
+TEST_F(AppBundlePopulatedRegistryMachineTest,
+       createInstalledApp_ExternalUpdaterRunning_Present) {
+  App *expected_app0, *expected_app1, *expected_app2;
+  PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
+                                                              &expected_app1,
+                                                              &expected_app2);
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+
+  App* app0_created = NULL;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+            app_bundle_->createInstalledApp(CComBSTR(kGuid1), &app0_created));
+  EXPECT_FALSE(app0_created);
+  EXPECT_EQ(0, app_bundle_->GetNumberOfApps());
+}
+
+TEST_F(AppBundlePopulatedRegistryMachineTest,
+       createInstalledApp_ExternalUpdaterRunning_Present_Release) {
+  App *expected_app0, *expected_app1, *expected_app2;
+  PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
+                                                              &expected_app1,
+                                                              &expected_app2);
+
+  App* app0_created = NULL;
+  EXPECT_SUCCEEDED(app_bundle_->createInstalledApp(CComBSTR(kGuid1),
+                                                   &app0_created));
+  EXPECT_TRUE(app0_created);
+  EXPECT_EQ(1, app_bundle_->GetNumberOfApps());
+
+  scoped_event event;
+  EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
+            goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                             is_machine_,
+                                                             &event));
+  ASSERT_FALSE(get(event));
+
+  app_bundle_.reset();
+  app_bundle_ = model_->CreateAppBundle(is_machine_);
+  ASSERT_TRUE(app_bundle_.get());
+
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+}
+
+TEST_F(AppBundlePopulatedRegistryUserTest,
        createInstalledApp_AfterUpdateCheck) {
   App *expected_app0, *expected_app1, *expected_app2;
   PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
@@ -1376,6 +1531,58 @@ TEST_F(AppBundlePopulatedRegistryUserTest,
   EXPECT_EQ(GOOPDATE_E_CALL_UNEXPECTED, app_bundle_->createAllInstalledApps());
 }
 
+TEST_F(AppBundlePopulatedRegistryUserTest,
+       createAllInstalledApps_ExternalUpdaterRunning) {
+  App *expected_app0, *expected_app1, *expected_app2;
+  PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
+                                                              &expected_app1,
+                                                              &expected_app2);
+  EXPECT_SUCCEEDED(RegKey::CreateKey(
+      AppendRegKeyPath(USER_REG_CLIENT_STATE, kGuid4)));  // Avoid assert.
+
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+
+  EXPECT_SUCCEEDED(app_bundle_->createAllInstalledApps());
+
+  ASSERT_EQ(1, app_bundle_->GetNumberOfApps());
+  App* app1 = app_bundle_->GetApp(0);
+  EXPECT_STREQ(CString(kGuid2).MakeUpper(), app1->app_guid_string());
+  SetDisplayName(kDefaultAppName, expected_app1);
+  EXPECT_SUCCEEDED(expected_app1->put_isEulaAccepted(VARIANT_TRUE));
+  ValidateExpectedValues(*expected_app1, *app1);
+}
+
+TEST_F(AppBundlePopulatedRegistryMachineTest,
+       createAllInstalledApps_ExternalUpdaterRunning) {
+  App *expected_app0, *expected_app1, *expected_app2;
+  PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
+                                                              &expected_app1,
+                                                              &expected_app2);
+  EXPECT_SUCCEEDED(RegKey::CreateKey(
+      AppendRegKeyPath(MACHINE_REG_CLIENT_STATE, kGuid4)));  // Avoid assert.
+
+  scoped_event event;
+  EXPECT_HRESULT_SUCCEEDED(
+      goopdate_utils::CreateExternalUpdaterActiveEvent(kGuid1,
+                                                       is_machine_,
+                                                       &event));
+  ASSERT_TRUE(get(event));
+
+  EXPECT_HRESULT_SUCCEEDED(app_bundle_->createAllInstalledApps());
+
+  ASSERT_EQ(1, app_bundle_->GetNumberOfApps());
+  App* app1 = app_bundle_->GetApp(0);
+  EXPECT_STREQ(CString(kGuid2).MakeUpper(), app1->app_guid_string());
+  SetDisplayName(kDefaultAppName, expected_app1);
+  EXPECT_SUCCEEDED(expected_app1->put_isEulaAccepted(VARIANT_TRUE));
+  ValidateExpectedValues(*expected_app1, *app1);
+}
+
 // TODO(omaha): Enable if we end up needing such a function.
 #if 0
 TEST_F(AppBundlePopulatedRegistryMachineTest, createUninstalledApps) {
@@ -1414,20 +1621,15 @@ TEST_F(AppBundlePopulatedRegistryUserTest, createUninstalledApps) {
 class AppBundleStateUserTest : public AppBundleTest {
  protected:
   AppBundleStateUserTest()
-      : AppBundleTest(false),
-        hive_override_key_name_(kRegistryHiveOverrideRoot) {}
+      : AppBundleTest(false) {}
 
   virtual void SetUp() {
     AppBundleTest::SetUp();
 
-    RegKey::DeleteKey(hive_override_key_name_);
-    OverrideRegistryHives(hive_override_key_name_);
+    InitializeRegistryForTest(false);
   }
 
   virtual void TearDown() {
-    RestoreRegistryHives();
-    RegKey::DeleteKey(hive_override_key_name_);
-
     AppBundleTest::TearDown();
   }
 
@@ -1441,8 +1643,6 @@ class AppBundleStateUserTest : public AppBundleTest {
                                       kRegValueAppName,
                                       _T("Test App")));
   }
-
-  CString hive_override_key_name_;
 };
 
 

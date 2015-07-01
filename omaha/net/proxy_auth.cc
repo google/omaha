@@ -14,7 +14,9 @@
 // ========================================================================
 #include "omaha/net/proxy_auth.h"
 #include <atlcom.h>
+#if (_MSC_VER < 1800)
 #include <pstore.h>
+#endif
 #include <wincred.h>
 #include <wincrypt.h>
 #include "omaha/base/commontypes.h"
@@ -332,7 +334,11 @@ bool ProxyAuth::ReadFromIE7(const CString& server) {
   return found;
 }
 
+// The pstore.lib has been deprecated in the newer Windows platforms in favor of
+// using the CryptProtectData and CryptUnprotectData functions. Therefore,
+// reading credentials from the IE6 is not supported anymore.
 bool ProxyAuth::ReadFromPreIE7(const CString& server) {
+#if (_MSC_VER < 1800)
   scoped_library pstore_lib(::LoadLibrary(L"pstorec.dll"));
   ASSERT1(pstore_lib);
   if (!pstore_lib)
@@ -413,6 +419,11 @@ bool ProxyAuth::ReadFromPreIE7(const CString& server) {
   }
 
   return found;
+#else
+  UNREFERENCED_PARAMETER(server);
+  NET_LOG(L3, (_T("[ProxyAuth::ReadFromPreIE7][unsupported in this build]")));
+  return false;
+#endif
 }
 
 }  // namespace omaha

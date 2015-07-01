@@ -22,6 +22,7 @@
 Import('env')
 
 clickonce_name = 'clickonce_bootstrap'
+clickonce_binary_unsigned = clickonce_name + '_unsigned.exe'
 clickonce_binary = clickonce_name + '.exe'
 clickonce_res = clickonce_name + '.res'
 
@@ -29,7 +30,8 @@ clickonce_res = clickonce_name + '.res'
 #
 # Build the .res file.
 #
-env.RES(target=clickonce_res, source='clickonce_bootstrap.rc')
+exe_res = env.RES(target=clickonce_res, source='clickonce_bootstrap.rc')
+env.Depends(exe_res, 'clickonce_bootstrap.manifest')
 
 
 #
@@ -38,14 +40,19 @@ env.RES(target=clickonce_res, source='clickonce_bootstrap.rc')
 exe_action = 'csc.exe /target:winexe /platform:x86 /out:$TARGET /win32res:%s '\
     '$SOURCES' % (env.File(clickonce_res).path)
 
-exe_output = env.Command(
-    target=clickonce_binary,
+exe_output_unsigned = env.Command(
+    target=clickonce_binary_unsigned,
     source='clickonce_bootstrap.cs',
     action=exe_action
 )
 
 # Inform Hammer that the .res file must be built before the executeable
-env.Requires(exe_output, clickonce_res)
+env.Requires(exe_output_unsigned, clickonce_res)
+
+exe_output = env.SignedBinary(
+    target=clickonce_binary,
+    source=exe_output_unsigned,
+)
 
 clickonce_deploy_dir = '$TARGET_ROOT/Clickonce_Deployment'
 clickonce_deploy_bin_dir = clickonce_deploy_dir + '/bin'
@@ -62,8 +69,8 @@ omaha_versions_info = env['omaha_versions_info']
 version_string = omaha_versions_info[0].GetVersionString()
 
 generate_manifest_action = ('@mage -New Application -ToFile $TARGET -Name %s'
-    ' -Version %s -FromDirectory %s -Processor x86 -TrustLevel FullTrust' % (
-    clickonce_name, version_string, env.Dir(clickonce_deploy_bin_dir).abspath))
+    ' -Version %s -FromDirectory %s -Processor x86 -TrustLevel FullTrust' %
+    (clickonce_name, version_string, env.Dir(clickonce_deploy_bin_dir).abspath))
 
 unsigned_manifest = env.Command(
     target=clickonce_binary + '.manifest',

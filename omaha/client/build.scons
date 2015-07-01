@@ -54,9 +54,11 @@ no_xml_parser_test_env.OmahaUnittest(
         '$LIB_DIR/statsreport.lib',   # Required by anything using metrics.
         '$LIB_DIR/ui.lib',
         'crypt32.lib',    # Required by base.
+        'imagehlp.lib',   # Required by base.
         'msi.lib',        # Required by setup.
         'mstask.lib',     # Required by common.
         'taskschd.lib',
+        'uxtheme.lib',
         'wininet.lib',
         'wintrust.lib',   # Required by base.
 
@@ -84,8 +86,11 @@ utils_test_env.OmahaUnittest(
         '$LIB_DIR/common.lib',
         '$LIB_DIR/logging.lib',       # Required by statsreport.
         '$LIB_DIR/omaha3_idl.lib',
+        '$LIB_DIR/security.lib',
         '$LIB_DIR/statsreport.lib',
         '$LIB_DIR/ui.lib',
+        'crypt32.lib',
+        'uxtheme.lib',
     ],
     all_in_one=False,
     COMPONENT_TEST_SIZE='small',
@@ -102,6 +107,8 @@ help_url_builder_test_env.OmahaUnittest(
         '$LIB_DIR/client.lib',
         '$LIB_DIR/common.lib',
         '$LIB_DIR/omaha3_idl.lib',  # Required by common
+        '$LIB_DIR/security.lib',
+        'crypt32.lib',
     ],
     all_in_one=False,
     COMPONENT_TEST_SIZE='small',

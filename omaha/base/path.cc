@@ -191,9 +191,10 @@ HRESULT GetFileFromCommandString(const TCHAR* s, CString* file) {
 
   // Otherwise, try to find the file till reaching ".exe"
   // For example: "C:\Program Files\Google\Google Desktop Search\GoogleDesktopSetup.exe -uninstall"  // NOLINT
+  const int dot_exe_length = static_cast<int>(_tcslen(kDotExe));
   for (int i = 0; i < str.GetLength(); ++i) {
     if (String_StartsWith(str.GetString() + i, kDotExe, true)) {
-      file->SetString(str, i + _tcslen(kDotExe));
+      file->SetString(str, i + dot_exe_length);
       return S_OK;
     }
   }
@@ -320,7 +321,7 @@ CString GetPathRemoveExtension(const CString& path) {
 bool IsAbsolutePath(const TCHAR* path) {
   ASSERT1(path);
 
-  int len = ::_tcslen(path);
+  const size_t len = ::_tcslen(path);
   if (len < 3)
     return false;
   if (*path == _T('"'))
@@ -330,6 +331,19 @@ bool IsAbsolutePath(const TCHAR* path) {
   if (String_StartsWith(path, _T("\\\\"), false))
     return true;
   return false;
+}
+
+bool IsPathInFolder(const TCHAR* path, const TCHAR* folder) {
+  ASSERT1(path);
+  ASSERT1(folder);
+  CString folder_path(folder);
+  folder_path.TrimRight(_T('\\'));
+  folder_path.MakeLower();
+
+  const CPath common_path = CPath(path).CommonPrefix(folder_path);
+  CString common_prefix = static_cast<CString>(common_path);
+  common_prefix.MakeLower();
+  return folder_path == common_prefix;
 }
 
 void EnclosePath(CString* path) {

@@ -57,6 +57,8 @@ class InstallerWrapper {
                      const CString& arguments,
                      const CString& installer_data,
                      const CString& language,
+                     const CString& untrusted_data,
+                     int install_priority,
                      InstallerResultInfo* result_info);
 
   // Validate that the installer wrote the client key and the product version.
@@ -98,6 +100,8 @@ class InstallerWrapper {
                                      const CString& command_line,
                                      InstallerType installer_type,
                                      const CString& language,
+                                     const CString& untrusted_data,
+                                     int install_priority,
                                      InstallerResultInfo* result_info);
 
   // Executes the installer for ExecuteAndWaitForInstaller.
@@ -107,6 +111,8 @@ class InstallerWrapper {
                                        const CString& command_line,
                                        InstallerType installer_type,
                                        const CString& language,
+                                       const CString& untrusted_data,
+                                       int install_priority,
                                        InstallerResultInfo* result_info);
 
   // Determines whether the installer succeeded and returns completion info.
@@ -133,6 +139,8 @@ class InstallerWrapper {
                        const CString& arguments,
                        const CString& installer_data,
                        const CString& language,
+                       const CString& untrusted_data,
+                       int install_priority,
                        InstallerResultInfo* result_info);
 
   // Whether this object is running in a machine Goopdate instance.
@@ -150,7 +158,7 @@ class InstallerWrapper {
   static const int kMsiAlreadyRunningRetryDelayBaseMs = 5000;
 
   // Interval to wait for installer completion.
-  static const int kInstallerCompleteIntervalMs = 15 * 60 * 1000;
+  static const int kInstallerCompleteIntervalMs = 30 * 60 * 1000;
 
   // Ensures that a single installer is run by us at a time.
   // Not sure if we can run installers in different sessions without

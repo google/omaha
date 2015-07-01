@@ -137,9 +137,8 @@ HRESULT UploadMetrics(bool is_machine,
   network_request.set_num_retries(1);
   network_request.AddHttpRequest(new SimpleRequest);
 
-  // PostRequest falls back to https.
   std::vector<uint8> response_buffer;
-  return PostRequest(&network_request, true, url, content, &response_buffer);
+  return network_request.PostString(url, content, &response_buffer);
 }
 
 HRESULT ReportMetrics(bool is_machine,

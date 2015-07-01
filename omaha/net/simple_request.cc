@@ -28,6 +28,7 @@
 
 #include "omaha/net/simple_request.h"
 #include <atlconv.h>
+#include <intsafe.h>
 #include <climits>
 #include <memory>
 #include <vector>
@@ -39,12 +40,27 @@
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
+#include "omaha/common/ping_event_download_metrics.h"
 #include "omaha/net/network_config.h"
 #include "omaha/net/network_request.h"
 #include "omaha/net/proxy_auth.h"
 #include "omaha/net/winhttp_adapter.h"
 
 namespace omaha {
+
+SimpleRequest::TransientRequestState::TransientRequestState()
+    : port(0),
+      http_status_code(0),
+      proxy_authentication_scheme(0),
+      is_https(false),
+      content_length(0),
+      current_bytes(0),
+      request_begin_ms(0),
+      request_end_ms(0) {
+}
+
+SimpleRequest::TransientRequestState::~TransientRequestState() {
+}
 
 SimpleRequest::SimpleRequest()
     : request_buffer_(NULL),
@@ -143,9 +159,9 @@ bool SimpleRequest::IsResumeNeeded() const {
   return pause_happened_;
 }
 
+// Pause is not supported currently.
 bool SimpleRequest::IsPauseSupported() const {
-  __mutexScope(lock_);
-  return valid(event_resume_) && !IsPostRequest() && !filename_.IsEmpty();
+  return false;
 }
 
 HRESULT SimpleRequest::Pause() {
@@ -224,6 +240,22 @@ HRESULT SimpleRequest::Send() {
     }
   }
 
+  request_state_->request_begin_ms = GetCurrentMsTime();
+  hr = DoSend();
+  request_state_->request_end_ms = GetCurrentMsTime();
+
+  request_state_->download_metrics.reset(
+      new DownloadMetrics(MakeDownloadMetrics(hr)));
+
+  NET_LOG(L3, (_T("[SimpleRequest::Send][0x%x][%d]"), hr, GetHttpStatusCode()));
+  return hr;
+}
+
+HRESULT SimpleRequest::DoSend() {
+  ASSERT1(request_state_.get());
+
+  HRESULT hr = S_OK;
+
   for (bool first_time = true, cancelled = false;
        !cancelled;
        first_time = false) {
@@ -238,9 +270,6 @@ HRESULT SimpleRequest::Send() {
         } else {
           if (is_canceled_) {
             hr = GOOPDATE_E_CANCELLED;
-
-            // Once cancelled, we should set downloaded bytes to 0
-            request_state_->current_bytes = 0;
           }
 
           // Macro __mutexBlock has a hidden loop built-in and thus one break
@@ -265,8 +294,6 @@ HRESULT SimpleRequest::Send() {
     }
   }
 
-  NET_LOG(L3,
-          (_T("[SimpleRequest::Send][0x%08x][%d]"), hr, GetHttpStatusCode()));
   return hr;
 }
 
@@ -334,8 +361,10 @@ HRESULT SimpleRequest::Connect() {
     }
   }
 
-  // If the WPAD detection fails, allow the request to go direct connection.
-  SetProxyInformation();
+  hr = SetProxyInformation();
+  if (FAILED(hr)) {
+    return hr;
+  }
 
   return S_OK;
 }
@@ -401,6 +430,10 @@ HRESULT SimpleRequest::SendRequest() {
   CString password;
   HRESULT hr = S_OK;
 
+  if (request_buffer_length_ > DWORD_MAX) {
+    return E_FAIL;
+  }
+
   bool done = false;
   while (!done) {
     uint32& request_scheme = request_state_->proxy_authentication_scheme;
@@ -423,7 +456,7 @@ HRESULT SimpleRequest::SendRequest() {
                                                             flags)));
     }
 
-    size_t bytes_to_send = request_buffer_length_;
+    const DWORD bytes_to_send = static_cast<DWORD>(request_buffer_length_);
     hr = winhttp_adapter_->SendRequest(NULL,
                                        0,
                                        request_buffer_,
@@ -585,7 +618,7 @@ HRESULT SimpleRequest::ReceiveData(HANDLE file_handle) {
     winhttp_adapter_->QueryDataAvailable(&bytes_available);
     buffer.resize(1 + bytes_available);
     hr = winhttp_adapter_->ReadData(&buffer.front(),
-                                    buffer.size(),
+                                    static_cast<DWORD>(buffer.size()),
                                     &bytes_available);
     if (FAILED(hr)) {
       return hr;
@@ -597,7 +630,9 @@ HRESULT SimpleRequest::ReceiveData(HANDLE file_handle) {
         DWORD num_bytes(0);
         if (!::WriteFile(file_handle,
                          reinterpret_cast<const char*>(&buffer.front()),
-                         buffer.size(), &num_bytes, NULL)) {
+                         static_cast<DWORD>(buffer.size()),
+                         &num_bytes,
+                         NULL)) {
           return HRESULTFromLastError();
         }
         ASSERT1(num_bytes == buffer.size());
@@ -630,6 +665,11 @@ HRESULT SimpleRequest::ReceiveData(HANDLE file_handle) {
     // All bytes must be written to the file in the file download case.
     ASSERT1(::SetFilePointer(file_handle, 0, NULL, FILE_CURRENT) ==
             static_cast<DWORD>(request_state_->current_bytes));
+  }
+
+  if (request_state_->content_length &&
+      request_state_->content_length != request_state_->current_bytes) {
+    return HRESULT_FROM_WIN32(ERROR_WINHTTP_CONNECTION_ERROR);
   }
 
   download_completed_ = true;
@@ -683,7 +723,6 @@ HRESULT SimpleRequest::QueryHeadersString(uint32 info_level,
 }
 
 CString SimpleRequest::GetResponseHeaders() const {
-  CString response_headers;
   if (winhttp_adapter_.get()) {
     CString response_headers;
     if (SUCCEEDED(winhttp_adapter_->QueryRequestHeadersString(
@@ -724,18 +763,21 @@ uint32 SimpleRequest::ChooseProxyAuthScheme(uint32 supported_schemes) {
   return 0;
 }
 
-void SimpleRequest::SetProxyInformation() {
+HRESULT SimpleRequest::SetProxyInformation() {
   bool uses_proxy = false;
+  HRESULT hr = S_FALSE;
   CString proxy, proxy_bypass;
-  int access_type = NetworkConfig::GetAccessType(proxy_config_);
+
+  const int access_type = NetworkConfig::GetAccessType(proxy_config_);
   if (access_type == WINHTTP_ACCESS_TYPE_AUTO_DETECT) {
     HttpClient::ProxyInfo proxy_info = {0};
     NetworkConfig* network_config = NULL;
     NetworkConfigManager& network_manager = NetworkConfigManager::Instance();
-    HRESULT hr = network_manager.GetUserNetworkConfig(&network_config);
+    hr = network_manager.GetUserNetworkConfig(&network_config);
     if (SUCCEEDED(hr)) {
       hr = network_config->GetProxyForUrl(
           url_,
+          proxy_config_.auto_detect,
           proxy_config_.auto_config_url,
           &proxy_info);
       if (SUCCEEDED(hr)) {
@@ -752,7 +794,7 @@ void SimpleRequest::SetProxyInformation() {
 
         ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy));
         ::GlobalFree(const_cast<wchar_t*>(proxy_info.proxy_bypass));
-        } else {
+      } else {
         ASSERT1(!uses_proxy);
         NET_LOG(LW, (_T("[GetProxyForUrl failed][0x%08x]"), hr));
       }
@@ -779,10 +821,17 @@ void SimpleRequest::SetProxyInformation() {
     proxy_info.proxy_bypass = request_state_->proxy_bypass;
 
     NET_LOG(L3, (_T("[using proxy %s]"), proxy_info.proxy));
-    VERIFY1(SUCCEEDED(winhttp_adapter_->SetRequestOption(WINHTTP_OPTION_PROXY,
-                                                         &proxy_info,
-                                                         sizeof(proxy_info))));
+    hr = winhttp_adapter_->SetRequestOption(WINHTTP_OPTION_PROXY,
+                                            &proxy_info,
+                                            sizeof(proxy_info));
+    if (FAILED(hr)) {
+      NET_LOG(LW, (_T("[SetRequestOption failed][0x%08x]"), hr));
+    }
+    return hr;
   }
+
+  NET_LOG(L3, (_T("[using direct]")));
+  return S_OK;
 }
 
 void SimpleRequest::LogResponseHeaders() {
@@ -794,5 +843,36 @@ void SimpleRequest::LogResponseHeaders() {
   NET_LOG(L3, (_T("[response headers...]\r\n%s"), response_headers));
 }
 
-}  // namespace omaha
+DownloadMetrics SimpleRequest::MakeDownloadMetrics(HRESULT hr) const {
+  ASSERT1(request_state_.get());
 
+  // The error reported by the metrics is:
+  //  * 0 when the status code is 200
+  //  * an HRESULT derived from the status code, if a status code is available
+  //  * an HRESULT for any other error that could have happened.
+  const int status_code = request_state_->http_status_code;
+  const int error = status_code == HTTP_STATUS_OK ?
+      0 : (SUCCEEDED(hr) ? HRESULTFromHttpStatusCode(status_code) : hr);
+
+  DownloadMetrics download_metrics;
+  download_metrics.url = url_;
+  download_metrics.downloader = DownloadMetrics::kWinHttp;
+  download_metrics.error = error;
+  download_metrics.downloaded_bytes = request_state_->current_bytes;
+  download_metrics.total_bytes = request_state_->content_length;
+  download_metrics.download_time_ms =
+      request_state_->request_end_ms - request_state_->request_begin_ms;
+  return download_metrics;
+}
+
+bool SimpleRequest::download_metrics(DownloadMetrics* dm) const {
+  ASSERT1(dm);
+  if (request_state_.get() && request_state_->download_metrics.get()) {
+    *dm = *(request_state_->download_metrics);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+}  // namespace omaha

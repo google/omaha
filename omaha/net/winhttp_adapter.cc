@@ -29,10 +29,26 @@ WinHttpAdapter::WinHttpAdapter()
       async_bytes_available_(0),
       async_bytes_read_(0) {
   memset(&async_call_result_, 0, sizeof(async_call_result_));
+  NET_LOG(L3, (_T("[WinHttpAdapter::WinHttpAdapter][0x%p]"), this));
+}
+
+WinHttpAdapter::~WinHttpAdapter() {
+  NET_LOG(L3, (_T("[WinHttpAdapter::~WinHttpAdapter][0x%p]"), this));
+
+  CloseHandles();
+
+  static const int kWinhttpAdapterShutdownDelayMs = 120000;
+  if (valid(async_handle_closing_event_)) {
+    const DWORD result = ::WaitForSingleObject(get(async_handle_closing_event_),
+                                               kWinhttpAdapterShutdownDelayMs);
+    ASSERT(result == WAIT_OBJECT_0, (_T("[%d]"), result));
+  }
 }
 
 HRESULT WinHttpAdapter::Initialize() {
   __mutexScope(lock_);
+
+  NET_LOG(L3, (_T("[WinHttpAdapter::Initialize][0x%p]"), this));
 
   http_client_.reset(CreateHttpClient());
 
@@ -42,7 +58,6 @@ HRESULT WinHttpAdapter::Initialize() {
   }
 
   reset(async_completion_event_, ::CreateEvent(NULL, true, false, NULL));
-
   return async_completion_event_ ? S_OK : HRESULTFromLastError();
 }
 
@@ -68,19 +83,9 @@ HRESULT WinHttpAdapter::Connect(HINTERNET session_handle,
                                      server,
                                      port,
                                      &connection_handle_);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  HttpClient::StatusCallback old_callback =
-      http_client_->SetStatusCallback(connection_handle_,
-                                      &WinHttpAdapter::WinHttpStatusCallback,
-                                      WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS);
-  ASSERT1(old_callback == NULL || old_callback == kInvalidStatusCallback);
-
-  return http_client_->SetOptionInt(connection_handle_,
-                                    WINHTTP_OPTION_CONTEXT_VALUE,
-                                    reinterpret_cast<int>(this));
+  NET_LOG(L3, (_T("[WinHttpAdapter::Connect][0x%p][0x%x][0x%x]"),
+              this, connection_handle_, hr));
+  return hr;
 }
 
 HRESULT WinHttpAdapter::OpenRequest(const TCHAR* verb,
@@ -91,14 +96,37 @@ HRESULT WinHttpAdapter::OpenRequest(const TCHAR* verb,
                                     uint32 flags) {
   __mutexScope(lock_);
 
-  return http_client_->OpenRequest(connection_handle_,
-                                   verb,
-                                   uri,
-                                   version,
-                                   referrer,
-                                   accept_types,
-                                   flags,
-                                   &request_handle_);
+  HRESULT hr = http_client_->OpenRequest(connection_handle_,
+                                         verb,
+                                         uri,
+                                         version,
+                                         referrer,
+                                         accept_types,
+                                         flags,
+                                         &request_handle_);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  NET_LOG(L3, (_T("[WinHttpAdapter::OpenRequest][0x%p][0x%x]"),
+              this, request_handle_));
+
+  HttpClient::StatusCallback old_callback =
+      http_client_->SetStatusCallback(request_handle_,
+                                      &WinHttpAdapter::WinHttpStatusCallback,
+                                      WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS);
+  ASSERT1(old_callback == NULL || old_callback == kInvalidStatusCallback);
+
+  hr = http_client_->SetOptionPtr(request_handle_,
+                                  WINHTTP_OPTION_CONTEXT_VALUE,
+                                  reinterpret_cast<DWORD_PTR>(this));
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // This manual reset event is set by WINHTTP_CALLBACK_STATUS_HANDLE_CLOSING.
+  reset(async_handle_closing_event_, ::CreateEvent(NULL, TRUE, FALSE, NULL));
+  return valid(async_handle_closing_event_) ? S_OK : HRESULTFromLastError();
 }
 
 HRESULT WinHttpAdapter::AddRequestHeaders(const TCHAR* headers,
@@ -167,21 +195,24 @@ HRESULT WinHttpAdapter::SendRequest(const TCHAR* headers,
                                     const void* optional_data,
                                     DWORD optional_data_length,
                                     DWORD content_length) {
-  __mutexScope(lock_);
-
   HRESULT hr = AsyncCallBegin(API_SEND_REQUEST);
   if (FAILED(hr)) {
     return hr;
   }
 
   const DWORD_PTR context = reinterpret_cast<DWORD_PTR>(this);
-  hr = http_client_->SendRequest(request_handle_,
-                                 headers,
-                                 headers_length,
-                                 optional_data,
-                                 optional_data_length,
-                                 content_length,
-                                 context);
+  __mutexBlock(lock_) {
+    NET_LOG(L3, (_T("[WinHttpAdapter::SendRequest][0x%p][0x%x]"),
+                this, request_handle_));
+    hr = http_client_->SendRequest(request_handle_,
+                                   headers,
+                                   headers_length,
+                                   optional_data,
+                                   optional_data_length,
+                                   content_length,
+                                   context);
+  }
+
   if (FAILED(hr)) {
     return hr;
   }
@@ -190,14 +221,15 @@ HRESULT WinHttpAdapter::SendRequest(const TCHAR* headers,
 }
 
 HRESULT WinHttpAdapter::ReceiveResponse() {
-  __mutexScope(lock_);
-
   HRESULT hr = AsyncCallBegin(API_RECEIVE_RESPONSE);
   if (FAILED(hr)) {
     return hr;
   }
 
-  hr = http_client_->ReceiveResponse(request_handle_);
+  __mutexBlock(lock_) {
+    hr = http_client_->ReceiveResponse(request_handle_);
+  }
+
   if (FAILED(hr)) {
     return hr;
   }
@@ -206,8 +238,6 @@ HRESULT WinHttpAdapter::ReceiveResponse() {
 }
 
 HRESULT WinHttpAdapter::QueryDataAvailable(DWORD* num_bytes) {
-  __mutexScope(lock_);
-
   HRESULT hr = AsyncCallBegin(API_QUERY_DATA_AVAILABLE);
   if (FAILED(hr)) {
     return hr;
@@ -215,7 +245,10 @@ HRESULT WinHttpAdapter::QueryDataAvailable(DWORD* num_bytes) {
 
   async_bytes_available_ = 0;
 
-  hr = http_client_->QueryDataAvailable(request_handle_, NULL);
+  __mutexBlock(lock_) {
+    hr = http_client_->QueryDataAvailable(request_handle_, NULL);
+  }
+
   if (FAILED(hr)) {
     return hr;
   }
@@ -233,8 +266,6 @@ HRESULT WinHttpAdapter::QueryDataAvailable(DWORD* num_bytes) {
 HRESULT WinHttpAdapter::ReadData(void* buffer,
                                  DWORD buffer_length,
                                  DWORD* bytes_read) {
-  __mutexScope(lock_);
-
   HRESULT hr = AsyncCallBegin(API_READ_DATA);
   if (FAILED(hr)) {
     return hr;
@@ -242,10 +273,13 @@ HRESULT WinHttpAdapter::ReadData(void* buffer,
 
   async_bytes_read_ = 0;
 
-  hr = http_client_->ReadData(request_handle_,
-                              buffer,
-                              buffer_length,
-                              NULL);
+  __mutexBlock(lock_) {
+    hr = http_client_->ReadData(request_handle_,
+                                buffer,
+                                buffer_length,
+                                NULL);
+  }
+
   if (FAILED(hr)) {
     return hr;
   }
@@ -296,12 +330,15 @@ HRESULT WinHttpAdapter::AsyncCallEnd(DWORD async_call_type) {
 
   const DWORD result = ::WaitForSingleObject(get(async_completion_event_),
                                              INFINITE);
+
   ASSERT1(result == WAIT_OBJECT_0);
   switch (result) {
     case WAIT_OBJECT_0:
       break;
+
     case WAIT_TIMEOUT:
       return HRESULT_FROM_WIN32(ERROR_TIMEOUT);
+
     case WAIT_FAILED:
       return HRESULTFromLastError();
   }
@@ -318,7 +355,7 @@ HRESULT WinHttpAdapter::AsyncCallEnd(DWORD async_call_type) {
 void WinHttpAdapter::StatusCallback(HINTERNET handle,
                                     uint32 status,
                                     void* info,
-                                    uint32 info_len) {
+                                    DWORD info_len) {
   UNREFERENCED_PARAMETER(handle);
 
   switch (status) {
@@ -362,6 +399,11 @@ void WinHttpAdapter::StatusCallback(HINTERNET handle,
       async_call_is_error_ = true;
       break;
 
+    case WINHTTP_CALLBACK_STATUS_HANDLE_CLOSING:
+      NET_LOG(L3, (_T("[Signaling async_handle_closing_event_][0x%p]"), this));
+      VERIFY1(::SetEvent(get(async_handle_closing_event_)));
+      break;
+
     default:
       break;
   }
@@ -378,10 +420,10 @@ void WinHttpAdapter::StatusCallback(HINTERNET handle,
 }
 
 void __stdcall WinHttpAdapter::WinHttpStatusCallback(HINTERNET handle,
-                                                     uint32 context,
+                                                     DWORD_PTR context,
                                                      uint32 status,
                                                      void* info,
-                                                     uint32 info_len) {
+                                                     DWORD info_len) {
   ASSERT1(handle);
   ASSERT1(context);
   WinHttpAdapter* http_adapter = reinterpret_cast<WinHttpAdapter*>(context);
@@ -473,7 +515,8 @@ void __stdcall WinHttpAdapter::WinHttpStatusCallback(HINTERNET handle,
   }
 
   CString log_line;
-  log_line.AppendFormat(_T("[WinHttp status callback][handle=0x%08x]"), handle);
+  log_line.AppendFormat(_T("[WinHttp status callback][%p][handle=0x%08x]"),
+                        http_adapter, handle);
   if (!status_string.IsEmpty()) {
     log_line.AppendFormat(_T("[%s]"), status_string);
   } else {

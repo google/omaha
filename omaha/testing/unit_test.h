@@ -22,16 +22,13 @@
 #include <atlstr.h>
 #include "base/scoped_ptr.h"
 #include "omaha/testing/unittest_debug_helper.h"
+
 #pragma warning(push)
 // C4628: digraphs not supported with -Ze.
 #pragma warning(disable : 4628)
-// C4826: Conversion from 'TYPE *' to 'testing::internal::UInt64' is
-// sign-extended. This may cause unexpected runtime behavior.
-// Caused by a hack in DefaultPrintTo.
-#pragma warning(disable : 4826)
-#include "omaha/third_party/gmock/include/gmock/gmock.h"
+#include "third_party/gmock/include/gmock/gmock.h"
+#include "third_party/gtest/include/gtest/gtest.h"
 #pragma warning(pop)
-#include "omaha/third_party/gtest/include/gtest/gtest.h"
 
 namespace omaha {
 

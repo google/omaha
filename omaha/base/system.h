@@ -42,7 +42,6 @@ const DWORD kInvalidSessionId = 0xFFFFFFFF;
 
 class System {
   public:
-
     // disk activity.
 
     // waits up to specified time for disk activity to occur; sleeps in
@@ -81,15 +80,33 @@ class System {
     // The three functions below start background processes via ::CreateProcess.
     // Use the ShellExecuteProcessXXX functions when starting foreground
     // processes.
-    static HRESULT StartProcessWithArgs(const TCHAR *process_name,
-                                        const TCHAR *cmd_line_arguments);
-    static HRESULT StartProcessWithArgsAndInfo(const TCHAR *process_name,
-                                               const TCHAR *cmd_line_arguments,
-                                               PROCESS_INFORMATION *pi);
+    static HRESULT StartProcessWithArgs(const TCHAR* process_name,
+                                        const TCHAR* cmd_line_arguments);
+    static HRESULT StartProcessWithArgsAndInfo(const TCHAR* process_name,
+                                               const TCHAR* cmd_line_arguments,
+                                               PROCESS_INFORMATION* pi);
+    static HRESULT StartProcessWithArgsAndInfoWithEnvironment(
+        const TCHAR* process_name,
+        const TCHAR* cmd_line_arguments,
+        LPVOID env_block,
+        PROCESS_INFORMATION* pi);
+
     static HRESULT StartCommandLine(const TCHAR* command_line_to_execute);
-    static HRESULT StartProcess(const TCHAR *process_name,
-                                TCHAR *command_line,
-                                PROCESS_INFORMATION *pi);
+
+    static HRESULT StartProcess(const TCHAR* process_name,
+                                TCHAR* command_line,
+                                PROCESS_INFORMATION* pi);
+    static HRESULT StartProcessWithEnvironment(
+        const TCHAR* process_name,
+        TCHAR* command_line,
+        LPVOID env_block,
+        PROCESS_INFORMATION* pi);
+    static HRESULT StartProcessWithEnvironment(
+        const TCHAR* process_name,
+        TCHAR* command_line,
+        LPVOID env_block,
+        BOOL inherit_handles,
+        PROCESS_INFORMATION* pi);
 
     // Start the process with the provided token, in the specified desktop of
     // the token's session. The caller needs to be SYSTEM.
@@ -98,6 +115,20 @@ class System {
                                       const CString& parameters,
                                       LPWSTR desktop,
                                       PROCESS_INFORMATION* pi);
+
+    // This function is similar with the function above, and it allows an
+    // optional environment block to be passed as an argument.
+    // When provided, the environment block should match the user which
+    // the user_token belongs to. The function is not enforcing this match,
+    // however the behavior of the newly created process could be undefined if
+    // the wrong environment was provided.
+    static HRESULT StartProcessAsUserWithEnvironment(
+        HANDLE user_token,
+        const CString& executable_path,
+        const CString& parameters,
+        LPWSTR desktop,
+        LPVOID env_block,
+        PROCESS_INFORMATION* pi);
 
     // start another process painlessly via ::ShellExecuteEx. Use this method
     // instead of the StartProcessXXX methods that use ::CreateProcess where
@@ -145,7 +176,7 @@ class System {
     // pages will still be in the page cache so they'll be relatively cheap
     // soft page faults. This function is best used to reduce memory footprint
     // when a component is about to go idle for "awhile".
-    static void FreeProcessWorkingSet();
+    static HRESULT EmptyProcessWorkingSet();
 
     // returns the number of ms the system has had no user input.
     static int GetUserIdleTime();
@@ -218,6 +249,10 @@ class System {
     // Returns true if a system battery is detected and the AC line
     // status is 'offline', otherwise it returns false.
     static bool IsRunningOnBatteries();
+
+    // Creates an anonymous pipe whose write HANDLE is inheritable. Both pipes
+    // are rendered accessible to System, Admins, and the current user.
+    static HRESULT CreateChildOutputPipe(HANDLE* read, HANDLE* write);
 
   private:
     static HRESULT GetRebootCheckDummyFileName(const TCHAR* base_file,

@@ -46,8 +46,6 @@ const PingEvent* AppStateDownloading::CreatePingEvent(
 void AppStateDownloading::DownloadComplete(App* app) {
   CORE_LOG(L3, (_T("[AppStateDownloading::DownloadComplete][%p]"), app));
   ASSERT1(app);
-
-  app->SetDownloadCompleteTime();
   ChangeState(app, new AppStateDownloadComplete);
 }
 

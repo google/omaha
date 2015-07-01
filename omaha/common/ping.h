@@ -69,13 +69,24 @@
 #include "omaha/common/ping_event.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/web_services_client.h"
-#include "third_party/gtest/include/gtest/gtest.h"
+#include "third_party/gtest/include/gtest/gtest_prod.h"
 
 namespace omaha {
 
 struct CommandLineExtraArgs;
 class App;
 
+// Loads, builds, serializes, and sends pings. There are two ways to manipulate
+// ping instances. The simplest way is to have another entity, such as
+// AppBundle, drive this class by repeatedly calling BuildRequest. This is
+// usually the case when a set of ping events contained by different apps
+// have to be sent. In some cases, there is no model object to hold the
+// metadata about apps and their ping events. The metadata has to come from a
+// source, and therefore, must be loaded from the registry, or the extra args
+// provided on the command line.
+// After this class has loaded the apps metadata, an Omaha ping or an apps ping
+// can be built and serialized. This is usually the case when pings have to be
+// sent from the setup, before any model object could be created.
 class Ping {
  public:
   Ping(bool is_machine,
@@ -93,6 +104,9 @@ class Ping {
   void LoadAppDataFromRegistry(const std::vector<CString>& apps);
   void LoadOmahaDataFromRegistry();
 
+  // Add additional one-off experiment labels to the Omaha app.
+  void AddExtraOmahaLabel(const CString& label_set);
+
   // Builds pings for Omaha or apps loaded previously.
   void BuildOmahaPing(const CString& version,
                       const CString& next_version,
@@ -104,6 +118,12 @@ class Ping {
                       const PingEventPtr& ping_event2);
 
   void BuildAppsPing(const PingEventPtr& ping_event);
+
+  void BuildAppPing(const CString& app_id,
+                    const CString& version,
+                    const CString& next_version,
+                    const CString& client_id,
+                    const PingEventPtr& ping_event);
 
   // Serializes a ping request as a string.
   HRESULT BuildRequestString(CString* request_string) const;
@@ -141,7 +161,7 @@ class Ping {
   FRIEND_TEST(PingTest, BuildOmahaPingWithSessionOverride);
   FRIEND_TEST(PingTest, BuildAppsPing);
   FRIEND_TEST(PingTest, BuildAppsPingFromRegistry);
-  FRIEND_TEST(PingTest, SendString);
+  FRIEND_TEST(PingTest, DISABLED_SendString);
   FRIEND_TEST(PingTest, SendInProcess);
   FRIEND_TEST(PingTest, IsPingExpired_PastTime);
   FRIEND_TEST(PingTest, IsPingExpired_CurrentTime);
@@ -187,6 +207,8 @@ class Ping {
 
   // Information about apps.
   struct AppData {
+    AppData() : install_time_diff_sec(0), day_of_install(0) {}
+
     CString app_id;
     CString language;
     CString brand_code;
@@ -194,6 +216,8 @@ class Ping {
     CString installation_id;
     CString pv;
     CString experiment_labels;
+    int install_time_diff_sec;
+    int day_of_install;
   };
   std::vector<AppData> apps_data_;
   AppData omaha_data_;

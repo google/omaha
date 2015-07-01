@@ -76,8 +76,7 @@ LRESULT CompleteWnd::OnInitDialog(UINT message,
 
   SetControlAttributes(IDC_COMPLETE_TEXT, kDisabledNonButtonAttributes);
   SetControlAttributes(IDC_ERROR_TEXT, kDisabledNonButtonAttributes);
-  SetControlAttributes(IDC_IMAGE, kDisabledNonButtonAttributes);
-  SetControlAttributes(IDC_GET_HELP_TEXT, kDisabledNonButtonAttributes);
+  SetControlAttributes(IDC_GET_HELP, kDisabledButtonAttributes);
   SetControlAttributes(IDC_CLOSE, kDefaultActiveButtonAttributes);
 
   return 1;  // Let the system set the focus.
@@ -100,18 +99,20 @@ LRESULT CompleteWnd::OnClickedButton(WORD notify_code,
   return 0;
 }
 
-LRESULT CompleteWnd::OnUrlClicked(int, LPNMHDR params, BOOL& handled) {  // NOLINT
-  CORE_LOG(L3, (_T("[CompleteWnd::OnUrlClicked]")));
-  ASSERT1(params);
+LRESULT CompleteWnd::OnClickedGetHelp(WORD notify_code,
+                                      WORD id,
+                                      HWND wnd_ctl,
+                                      BOOL& handled) {  // NOLINT
+  CORE_LOG(L3, (_T("[CompleteWnd::OnClickedGetHelp]")));
+  UNREFERENCED_PARAMETER(id);
+  UNREFERENCED_PARAMETER(notify_code);
+  UNREFERENCED_PARAMETER(wnd_ctl);
 
-  if (IDC_GET_HELP_TEXT == params->idFrom) {
-    ++metric_worker_ui_get_help_click;
-  }
+  ++metric_worker_ui_get_help_click;
 
-  NMSTATICEX* notification = reinterpret_cast<NMSTATICEX*>(params);
   ASSERT1(events_sink_);
   if (events_sink_) {
-    bool is_launched = events_sink_->DoLaunchBrowser(notification->action);
+    bool is_launched = events_sink_->DoLaunchBrowser(help_url_);
     // Assert that the launch succeeded because this code should not be called
     // if the launch mechanism (i.e. IProcessLauncher when running elevated) is
     // not in place. This could also fail if the default browser has been
@@ -149,32 +150,21 @@ void CompleteWnd::DisplayCompletionDialog(bool is_success,
     return;
   }
 
-  // It is possible for the OnComplete callback to be called multiple times.
-  // Subclassing the control multiple times results in a crash, therefore
-  // unsubclass the control if the control has been created and subclassed
-  // before.
-  if (complete_text_ != NULL) {
-    // TODO(omaha3): I'm not sure this can happen in the polling model.
-    ASSERT1(false);
-
-    complete_text_->UnsubclassWindow(true);
-    complete_text_.reset(NULL);
-  }
-
   CString s;
+  VERIFY1(s.LoadString(IDS_CLOSE));
+  VERIFY1(::SetWindowText(GetDlgItem(IDC_CLOSE), s));
+
   if (is_success) {
-    VERIFY1(s.LoadString(IDS_CLOSE));
-    VERIFY1(::SetWindowText(GetDlgItem(IDC_CLOSE), s));
-    complete_text_.reset(new StaticEx);
-    complete_text_->SubclassWindow(GetDlgItem(IDC_COMPLETE_TEXT));
     VERIFY1(::SetWindowText(GetDlgItem(IDC_COMPLETE_TEXT), text));
   } else {
-    VERIFY1(s.LoadString(IDS_CLOSE));
-    VERIFY1(::SetWindowText(GetDlgItem(IDC_CLOSE), s));
-    complete_text_.reset(new StaticEx);
-    complete_text_->SubclassWindow(GetDlgItem(IDC_ERROR_TEXT));
     VERIFY1(::SetWindowText(GetDlgItem(IDC_ERROR_TEXT), display_text));
-    VERIFY1(SUCCEEDED(ShowGetHelpLink(help_url)));
+
+    if (!help_url.IsEmpty()) {
+      help_url_ = help_url;
+      VERIFY1(s.LoadString(IDS_GET_HELP_TEXT));
+      VERIFY1(::SetWindowText(GetDlgItem(IDC_GET_HELP), s));
+      ++metric_worker_ui_get_help_displayed;
+    }
   }
 
   VERIFY1(SUCCEEDED(SetControlState(is_success)));
@@ -186,37 +176,16 @@ void CompleteWnd::DisplayCompletionDialog(bool is_success,
 HRESULT CompleteWnd::SetControlState(bool is_success) {
   SetControlAttributes(is_success ? IDC_COMPLETE_TEXT : IDC_ERROR_TEXT,
                        kVisibleTextAttributes);
-  if (is_success) {
-    SetControlAttributes(IDC_IMAGE, kVisibleImageAttributes);
-  } else {
-    SetControlAttributes(IDC_GET_HELP_TEXT, kVisibleTextAttributes);
+
+  if (!is_success) {
+    SetControlAttributes(IDC_ERROR_ILLUSTRATION, kVisibleImageAttributes);
+  }
+
+  if (!help_url_.IsEmpty()) {
+    SetControlAttributes(IDC_GET_HELP, kNonDefaultActiveButtonAttributes);
   }
   SetControlAttributes(IDC_CLOSE, kDefaultActiveButtonAttributes);
 
-  return S_OK;
-}
-
-// If help_url is empty, no link will be displayed.
-HRESULT CompleteWnd::ShowGetHelpLink(const CString& help_url) {
-  // If there is no event sink, clicking the URL will fail.
-  ASSERT1(events_sink_);
-
-  if (help_url.IsEmpty()) {
-    return S_OK;
-  }
-  ASSERT1(0 == help_url.Find(_T("http://")));
-
-  const TCHAR* const kLinkFormat = _T("<b><a=%s>%s</a></b>");
-  CString display_text;
-  VERIFY1(display_text.LoadString(IDS_GET_HELP_TEXT));
-  CString link_string;
-  SafeCStringFormat(&link_string, kLinkFormat, help_url, display_text);
-
-  get_help_text_.reset(new StaticEx);
-  get_help_text_->SubclassWindow(GetDlgItem(IDC_GET_HELP_TEXT));
-  VERIFY1(::SetWindowText(GetDlgItem(IDC_GET_HELP_TEXT), link_string));
-
-  ++metric_worker_ui_get_help_displayed;
   return S_OK;
 }
 

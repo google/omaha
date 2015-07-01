@@ -137,4 +137,14 @@ TEST(UserInfoTest, IsThreadImpersonating) {
   EXPECT_TRUE(user_info::IsThreadImpersonating());
 }
 
+// Tests that the GetUserAccountAndDomainNames function succeeds and at least
+// it returns something.
+TEST(UserInfoTest, GetUserAccountAndDomainNames) {
+  CString account_name;
+  CString domain_name;
+  EXPECT_HRESULT_SUCCEEDED(
+      user_info::GetUserAccountAndDomainNames(&account_name, &domain_name));
+  EXPECT_FALSE(account_name.IsEmpty());
+}
+
 }  // namespace omaha

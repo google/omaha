@@ -14,14 +14,14 @@
 // ========================================================================
 
 
-#ifndef OMAHA_TOOLS_SRC_PERFORMONDEMAND_PERFORMONDEMAND_H_
-#define OMAHA_TOOLS_SRC_PERFORMONDEMAND_PERFORMONDEMAND_H_
+#ifndef OMAHA_TOOLS_PERFORMONDEMAND_PERFORMONDEMAND_H_
+#define OMAHA_TOOLS_PERFORMONDEMAND_PERFORMONDEMAND_H_
 
 #pragma once
 #include <windows.h>
 #include <atlbase.h>
 #include <atlcom.h>
-#include "goopdate\google_update_idl.h"  // NOLINT
+#include "goopdate/omaha3_idl.h"
 
 // Keep this list syncronized with qa\client\lib\on_demand_lib.py
 #define ON_COMPLETE_SUCCESS                           0x00000001
@@ -46,10 +46,12 @@
 
 class JobObserver
   : public CComObjectRootEx<CComSingleThreadModel>,
-    public IJobObserver {
+    public IJobObserver,
+    public IJobObserver2 {
  public:
   BEGIN_COM_MAP(JobObserver)
     COM_INTERFACE_ENTRY(IJobObserver)
+    COM_INTERFACE_ENTRY(IJobObserver2)
   END_COM_MAP()
 
   // Each interaction enables a bit in observed, which is eventually returned as
@@ -133,11 +135,15 @@ class JobObserver
     wprintf(L"OnInstalling\n");
     return HandleEvent(ON_INSTALLING);
   }
+  STDMETHOD(OnInstalling2)(int time_remaining_ms, int pos) {
+    wprintf(L"OnInstalling2 [%d][%d]\n", time_remaining_ms, pos);
+    return HandleEvent(ON_INSTALLING);
+  }
   STDMETHOD(OnPause)() {
     wprintf(L"OnPause\n");
     return HandleEvent(ON_PAUSE);
   }
-  STDMETHOD(OnComplete)(CompletionCodes code, const TCHAR* text) {
+  STDMETHOD(OnComplete)(LegacyCompletionCodes code, const TCHAR* text) {
     wprintf(L"OnComplete [%d][%s]\n", code, text);
     int event_code = 0;
     switch (code) {
@@ -178,7 +184,7 @@ class JobObserver
     return HandleEvent(event_code);
   }
   STDMETHOD(SetEventSink)(IProgressWndEvents* event_sink) {
-    wprintf(L"SetEventSink [%d]\n", event_sink);
+    wprintf(L"SetEventSink [%p]\n", event_sink);
     event_sink_ = event_sink;
     return HandleEvent(SET_EVENT_SINK);
   }
@@ -186,4 +192,4 @@ class JobObserver
   CComPtr<IProgressWndEvents> event_sink_;
 };
 
-#endif  // OMAHA_TOOLS_SRC_PERFORMONDEMAND_PERFORMONDEMAND_H_
+#endif  // OMAHA_TOOLS_PERFORMONDEMAND_PERFORMONDEMAND_H_

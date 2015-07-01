@@ -15,6 +15,7 @@
 
 #include "base/scoped_ptr.h"
 #include "omaha/base/const_addresses.h"
+#include "omaha/base/reg_key.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
@@ -52,7 +53,16 @@ class WebServicesClientTest : public testing::Test {
   }
 
   NetworkRequest* network_request() const {
-    return web_service_client_->network_request();
+    return web_service_client_->network_request_.get();
+  }
+
+  CString FindHttpHeaderValue(const CString& all_headers,
+                              const CString& search_name) {
+    return WebServicesClient::FindHttpHeaderValue(all_headers, search_name);
+  }
+
+  void CaptureCustomHeaderValues() {
+    return web_service_client_->CaptureCustomHeaderValues();
   }
 
   CString update_check_url_;
@@ -60,6 +70,8 @@ class WebServicesClientTest : public testing::Test {
   scoped_ptr<WebServicesClient> web_service_client_;
   scoped_ptr<xml::UpdateRequest> update_request_;
   scoped_ptr<xml::UpdateResponse> update_response_;
+  bool reg_value_enable_ecdsa_exists_;
+  DWORD ecdsa_enabled_;
 };
 
 TEST_F(WebServicesClientTest, Send) {
@@ -95,6 +107,10 @@ TEST_F(WebServicesClientTest, SendUsingCup) {
                                                            HeadersVector(),
                                                            true));
 
+  // Check the initial value of the custom headers.
+  EXPECT_EQ(-1, web_service_client_->http_xdaystart_header_value());
+  EXPECT_EQ(-1, web_service_client_->http_xdaynum_header_value());
+
   // Test sending a user update check request.
   EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(update_request_.get(),
                                                      update_response_.get()));
@@ -128,12 +144,14 @@ TEST_F(WebServicesClientTest, SendUsingCup) {
                                       &response_cookie);
   const bool has_cup_response_cookie = response_cookie.Find(_T("c=")) != -1;
 
-  EXPECT_TRUE(has_cup_request_cookie || has_cup_response_cookie);
-
   CString etag;
   EXPECT_HRESULT_SUCCEEDED(network_request->QueryHeadersString(
       WINHTTP_QUERY_ETAG, WINHTTP_HEADER_NAME_BY_INDEX, &etag));
   EXPECT_FALSE(etag.IsEmpty());
+
+  // Check the custom headers after the response has been received.
+  EXPECT_LT(0, web_service_client_->http_xdaystart_header_value());
+  EXPECT_LT(0, web_service_client_->http_xdaynum_header_value());
 }
 
 TEST_F(WebServicesClientTest, SendForcingHttps) {
@@ -239,6 +257,23 @@ TEST_F(WebServicesClientTest, SendStringWithCustomHeader) {
       &foobar_header);
 
   EXPECT_STREQ(_T("424"), foobar_header);
+}
+
+TEST_F(WebServicesClientTest, FindHttpHeaderValue) {
+  const CString headers(_T("HTTP/1.0 200 OK\r\n")
+                        _T("Date: Thu, 09 Aug 2012 19:27:58 GMT\r\n")
+                        _T("Pragma: no-cache\r\n")
+                        _T("Content-Type: text/xml; charset=UTF-8\r\n")
+                        _T("X-Frame-Options: SAMEORIGIN\r\n")
+                        _T("TestNumber: 12345\r\n")
+                        _T("\r\n"));
+  // Finding header values is case-insensitive.
+  EXPECT_STREQ(_T(""), FindHttpHeaderValue(_T(""), _T("NoInput")));
+  EXPECT_STREQ(_T(""), FindHttpHeaderValue(headers, _T("NoSuchKey")));
+  EXPECT_STREQ(_T(""), FindHttpHeaderValue(headers, _T("HTTP")));
+  EXPECT_STREQ(_T("12345"), FindHttpHeaderValue(headers, _T("TestNumber")));
+  EXPECT_STREQ(_T("12345"), FindHttpHeaderValue(headers, _T("Testnumber")));
+  EXPECT_STREQ(_T("no-cache"), FindHttpHeaderValue(headers, _T("Pragma")));
 }
 
 }  // namespace omaha

@@ -17,10 +17,10 @@
 #ifndef OMAHA_MI_EXE_STUB_TAR_H_
 #define OMAHA_MI_EXE_STUB_TAR_H_
 
+#include <windows.h>
 #include <tchar.h>
 #include <atlsimpcoll.h>
 #include <atlstr.h>
-#include <windows.h>
 
 namespace omaha {
 

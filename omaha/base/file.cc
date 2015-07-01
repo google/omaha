@@ -483,13 +483,13 @@ HRESULT File::MoveAfterReboot(const TCHAR* from, const TCHAR* to) {
 HRESULT File::GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
                                              bool prefix_match,
                                              TCHAR** value_multisz_ptr,
-                                             DWORD* value_size_chars_ptr,
+                                             size_t* value_size_chars_ptr,
                                              bool* found_ptr) {
   ASSERT1(in_directory && *in_directory);
 
   // Convert to references for easier-to-read-code:
   TCHAR*& value_multisz = *value_multisz_ptr;
-  DWORD& value_size_chars = *value_size_chars_ptr;
+  size_t& value_size_chars = *value_size_chars_ptr;
   bool& found = *found_ptr;
 
   // Initialize [out] parameters
@@ -501,9 +501,9 @@ HRESULT File::GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
   // We will only set the corresponding [out] parameters when we have something
   // meaningful to return to the caller
   scoped_array<TCHAR> value_multisz_local;
-  DWORD value_size_chars_local = 0;
+  size_t value_size_chars_local = 0;
 
-  DWORD value_size_bytes = 0;
+  size_t value_size_bytes = 0;
   // Get the current value of the key
   // If the Key is missing, that's totally acceptable.
   RET_IF_FALSE(
@@ -640,7 +640,7 @@ HRESULT File::RemoveFromMovesPendingReboot(const TCHAR* in_directory,
   bool found = false;
   // scoped_array will free the value_multisz buffer on stack unwind:
   scoped_array<TCHAR> value_multisz;
-  DWORD value_size_chars = 0;
+  size_t value_size_chars = 0;
   HRESULT hr = GetPendingRenamesValueMinusDir(in_directory,
                                               prefix_match,
                                               address(value_multisz),
@@ -685,7 +685,7 @@ bool File::AreMovesPendingReboot(const TCHAR* in_directory, bool prefix_match) {
   bool found = false;
   // scoped_array will free the value_multisz buffer on stack unwind:
   scoped_array<TCHAR> value_multisz;
-  DWORD value_size_chars = 0;
+  size_t value_size_chars = 0;
 
   if (SUCCEEDED(GetPendingRenamesValueMinusDir(in_directory,
                                                prefix_match,

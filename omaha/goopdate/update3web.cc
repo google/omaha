@@ -110,10 +110,13 @@ class ATL_NO_VTABLE AppWeb
   STDMETHOD(get_appId)(BSTR* app_id);
   STDMETHOD(get_currentVersionWeb)(IDispatch** current);
   STDMETHOD(get_nextVersionWeb)(IDispatch** next);
+  STDMETHOD(get_command)(BSTR command_id, IDispatch** command);
   STDMETHOD(cancel)();
   STDMETHOD(get_currentState)(IDispatch** current_state);
   STDMETHOD(launch)();
   STDMETHOD(uninstall)();
+  STDMETHOD(get_serverInstallDataIndex)(BSTR* language);
+  STDMETHOD(put_serverInstallDataIndex)(BSTR language);
 
  protected:
   virtual ~AppWeb();
@@ -122,6 +125,47 @@ class ATL_NO_VTABLE AppWeb
   CComPtr<IApp> app_;
 
   DISALLOW_COPY_AND_ASSIGN(AppWeb);
+};
+
+class ATL_NO_VTABLE AppCommandWeb
+    : public CComObjectRootEx<CComObjectThreadModel>,
+      public IDispatchImpl<IAppCommandWeb,
+                           &__uuidof(IAppCommandWeb),
+                           &CAtlModule::m_libid,
+                           kMajorTypeLibVersion,
+                           kMinorTypeLibVersion> {
+ public:
+  AppCommandWeb();
+  HRESULT Init(IAppCommand2* app_command);
+
+  DECLARE_NOT_AGGREGATABLE(AppCommandWeb);
+  DECLARE_NO_REGISTRY();
+
+  BEGIN_COM_MAP(AppCommandWeb)
+    COM_INTERFACE_ENTRY(IDispatch)
+    COM_INTERFACE_ENTRY(IAppCommandWeb)
+  END_COM_MAP()
+
+  STDMETHOD(get_status)(UINT* status);
+  STDMETHOD(get_exitCode)(DWORD* exit_code);
+  STDMETHOD(get_output)(BSTR* output);
+  STDMETHOD(execute)(VARIANT arg1,
+                     VARIANT arg2,
+                     VARIANT arg3,
+                     VARIANT arg4,
+                     VARIANT arg5,
+                     VARIANT arg6,
+                     VARIANT arg7,
+                     VARIANT arg8,
+                     VARIANT arg9);
+
+ protected:
+  virtual ~AppCommandWeb();
+
+ private:
+  CComPtr<IAppCommand2> app_command_;
+
+  DISALLOW_COPY_AND_ASSIGN(AppCommandWeb);
 };
 
 class ATL_NO_VTABLE AppVersionWeb
@@ -426,6 +470,32 @@ STDMETHODIMP AppWeb::get_nextVersionWeb(IDispatch** next) {
   return ComInitHelper<AppVersionWeb>(app_version.p, next);
 }
 
+STDMETHODIMP AppWeb::get_command(BSTR command_id, IDispatch** command) {
+  ASSERT1(command);
+  *command = NULL;
+
+  CComPtr<IAppCommand2> app_command;
+  HRESULT hr = update3_utils::GetAppCommand(app_, command_id, &app_command);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  if (hr == S_FALSE) {
+    return S_FALSE;
+  }
+  ASSERT1(app_command);
+
+  VARIANT_BOOL is_web_accessible;
+  hr = app_command->get_isWebAccessible(&is_web_accessible);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  if (!is_web_accessible) {
+    return E_ACCESSDENIED;
+  }
+
+  return ComInitHelper<AppCommandWeb>(app_command.p, command);
+}
+
 STDMETHODIMP AppWeb::cancel() {
   return E_NOTIMPL;
 }
@@ -444,7 +514,51 @@ STDMETHODIMP AppWeb::uninstall() {
   return E_NOTIMPL;
 }
 
+STDMETHODIMP AppWeb::get_serverInstallDataIndex(BSTR* install_data_index) {
+  return app_->get_serverInstallDataIndex(install_data_index);
+}
+
+STDMETHODIMP AppWeb::put_serverInstallDataIndex(BSTR install_data_index) {
+  return app_->put_serverInstallDataIndex(install_data_index);
+}
+
 AppWeb::~AppWeb() {
+}
+
+AppCommandWeb::AppCommandWeb() {
+}
+
+HRESULT AppCommandWeb::Init(IAppCommand2* app_command) {
+  app_command_ = app_command;
+  return S_OK;
+}
+
+HRESULT AppCommandWeb::get_status(UINT* status) {
+  return app_command_->get_status(status);
+}
+
+HRESULT AppCommandWeb::get_exitCode(DWORD* exit_code) {
+  return app_command_->get_exitCode(exit_code);
+}
+
+HRESULT AppCommandWeb::get_output(BSTR* output) {
+  return app_command_->get_output(output);
+}
+
+HRESULT AppCommandWeb::execute(VARIANT arg1,
+                               VARIANT arg2,
+                               VARIANT arg3,
+                               VARIANT arg4,
+                               VARIANT arg5,
+                               VARIANT arg6,
+                               VARIANT arg7,
+                               VARIANT arg8,
+                               VARIANT arg9) {
+  return app_command_->execute(
+      arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+}
+
+AppCommandWeb::~AppCommandWeb() {
 }
 
 AppVersionWeb::AppVersionWeb() {

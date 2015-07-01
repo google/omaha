@@ -44,6 +44,8 @@ class UpdateResponse {
 
   int GetElapsedSecondsSinceDayStart() const;
 
+  int GetElapsedDaysSinceDatum() const;
+
   const response::Response& response() const { return response_; }
 
  private:

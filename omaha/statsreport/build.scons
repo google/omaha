@@ -39,4 +39,4 @@ inputs = [
     ]
 
 # Build these into a library.
-local_env.ComponentStaticLibrary('statsreport', inputs)
+local_env.ComponentStaticLibraryMultiarch('statsreport', inputs)

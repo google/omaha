@@ -7,7 +7,7 @@
       </urls>
       <manifest version="1.2.3.4">
         <packages>
-          <package hash="abcdef" name="foo_installer.exe" required="true" size="12345678"/>
+          <package hash="abcdef" hash_sha256="sha256hash_foobar" name="foo_installer.exe" required="true" size="12345678"/>
         </packages>
         <actions>
           <action event="install" needsadmin="false" run="foo_installer.exe" arguments="-baz"/>

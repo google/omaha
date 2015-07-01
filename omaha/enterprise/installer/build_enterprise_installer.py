@@ -64,6 +64,7 @@ def BuildGoogleUpdateFragment(env,
   Raises:
     Nothing.
   """
+  msi_product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
 
   product_name_legal_identifier = product_name.replace(' ', '')
 
@@ -78,7 +79,8 @@ def BuildGoogleUpdateFragment(env,
   wix_defines = [
       '-dProductName="%s"' % product_name,
       '-dProductNameLegalIdentifier="%s"' % product_name_legal_identifier,
-      '-dProductVersion=' + product_version,
+      '-dProductVersion=' + msi_product_version,
+      '-dProductOriginalVersionString=' + product_version,
       '-dProductGuid="%s"' % product_guid,
       '-dProductCustomParams="%s"' % product_custom_params,
       '-dGoogleUpdateMetainstallerPath="%s"' % (
@@ -109,7 +111,7 @@ def _BuildMsiForExe(env,
                     msi_base_name,
                     google_update_wixobj_output,
                     enterprise_installer_dir,
-                    show_error_action_dll_path,
+                    custom_action_dll_path,
                     metainstaller_path,
                     output_dir):
   """Build an MSI installer for use in enterprise situations.
@@ -140,10 +142,13 @@ def _BuildMsiForExe(env,
         installer.
     enterprise_installer_dir: path to dir which contains
         enterprise_installer.wxs.xml
-    show_error_action_dll_path: path to the error display custom action dll that
-        exports a ShowInstallerResultUIString method. This CA method will read
-        the LastInstallerResultUIString from the product's ClientState key in
+    custom_action_dll_path: path to the custom action dll that
+        exports a ShowInstallerResultUIString and ExtractTagInfoFromInstaller
+        methods. ShowInstallerResultUIString reads the
+        LastInstallerResultUIString from the product's ClientState key in
         the registry and display the string via MsiProcessMessage.
+        ExtractTagInfoFromInstaller extracts brand code from tagged MSI
+        package.
     metainstaller_path: path to the Omaha metainstaller. Should be same file
         used for google_update_wixobj_output. Used only to force rebuilds.
     output_dir: path to the directory that will contain the resulting MSI
@@ -157,6 +162,8 @@ def _BuildMsiForExe(env,
 
   product_name_legal_identifier = product_name.replace(' ', '')
   msi_name = msi_base_name + '.msi'
+
+  msi_product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
 
   omaha_installer_namespace = binascii.a2b_hex(_GOOGLE_UPDATE_NAMESPACE_GUID)
 
@@ -186,14 +193,15 @@ def _BuildMsiForExe(env,
       WIXCANDLEFLAGS=[
           '-dProductName=' + product_name,
           '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
-          '-dProductVersion=' + product_version,
+          '-dProductVersion=' + msi_product_version,
+          '-dProductOriginalVersionString=' + product_version,
           '-dProductGuid=' + product_guid,
           '-dProductInstallerPath=' + env.File(product_installer_path).abspath,
           '-dProductInstallerInstallCommand=' + (
               product_installer_install_command),
           '-dProductInstallerDisableUpdateRegistrationArg=' + (
               product_installer_disable_update_registration_arg),
-          '-dShowErrorCADll=' + env.File(show_error_action_dll_path).abspath,
+          '-dMsiInstallerCADll=' + env.File(custom_action_dll_path).abspath,
           '-dProductUninstallerAdditionalArgs=' + (
               product_uninstaller_additional_args),
           '-dMsiProductId=' + msi_product_id,
@@ -217,7 +225,7 @@ def _BuildMsiForExe(env,
   # before the MSI.
   wix_env.Depends(wix_output, [product_installer_path,
                                metainstaller_path,
-                               show_error_action_dll_path])
+                               custom_action_dll_path])
 
   sign_output = wix_env.SignedBinary(
       target=msi_name,
@@ -265,7 +273,7 @@ def GenerateNameBasedGUID(namespace, name):
   clock_seq_hi_and_reserved = 0x80 | (clock_seq_hi_and_reserved & 0x3f)
 
   return (
-      '%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x' % (
+      '%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X' % (
           ord(md5_hash[0]), ord(md5_hash[1]), ord(md5_hash[2]),
           ord(md5_hash[3]),
           ord(md5_hash[4]), ord(md5_hash[5]),
@@ -285,15 +293,21 @@ def ConvertToMSIVersionNumberIfNeeded(product_version):
 
   As such, the following scheme is used:
 
-  Product a.b.c.d -> a.(c>>8).(((c & 0xFF) << 8) + d)
+  Product a.b.c.d -> MSI X.Y.Z:
+    X = (1 << 6) | ((C & 0xffff) >> 10)
+    Y = (C >> 2) & 0xff
+    Z = ((C & 0x3) << 14) | (D & 0x3FFF)
 
-  So eg. 6.1.420.8 would become 6.1.41992.
+  So eg. 6.1.420.8 would become 64.105.8
 
   This assumes:
-  1) we don't care about the product minor number, e.g. we will never reset
-     the 'c' number after an increase in 'b'.
-  2) 'd' will always be <= 255
+  1) we care about neither the product major number nor the product minor
+     number, e.g. we will never reset the 'c' number after an increase in
+     either 'a' or 'b'.
+  2) 'd' will always be <= 16383
   3) 'c' is <= 65535
+
+  We assert on assumptions 2) and 3)
 
   As a final note, if product_version is not of the format a.b.c.d then
   this function returns the original product_version value.
@@ -307,13 +321,13 @@ def ConvertToMSIVersionNumberIfNeeded(product_version):
     # just return the original string.
     return product_version
 
-  # Input version number was out of range. Return the original string.
-  if patch > 255 or build > 65535:
-    return product_string
+  # Check that the input version number is in range.
+  assert patch <= 16383, "Error, patch number %s out of range." % patch
+  assert build <= 65535, "Error, build number %s out of range." % build
 
-  msi_major = major
-  msi_minor = build >> 8
-  msi_build = ((build & 0xff) << 8) + patch
+  msi_major = (1 << 6) | ((build & 0xffff) >> 10)
+  msi_minor = (build >> 2) & 0xff
+  msi_build = ((build & 0x3) << 14) | (patch & 0x3FFF)
 
   return str(msi_major) + '.' + str(msi_minor) + '.' + str(msi_build)
 
@@ -329,7 +343,7 @@ def BuildEnterpriseInstaller(env,
                              product_uninstaller_additional_args,
                              msi_base_name,
                              enterprise_installer_dir,
-                             show_error_action_dll_path,
+                             custom_action_dll_path,
                              metainstaller_path,
                              output_dir='$STAGING_DIR'):
   """Build an installer for use in enterprise situations.
@@ -355,10 +369,13 @@ def BuildEnterpriseInstaller(env,
     msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_installer.wxs.xml
-    show_error_action_dll_path: path to the error display custom action dll that
-        exports a ShowInstallerResultUIString method. This CA method will read
-        the LastInstallerResultUIString from the product's ClientState key in
+    custom_action_dll_path: path to the custom action dll that
+        exports a ShowInstallerResultUIString and ExtractTagInfoFromInstaller
+        methods. ShowInstallerResultUIString reads the
+        LastInstallerResultUIString from the product's ClientState key in
         the registry and display the string via MsiProcessMessage.
+        ExtractTagInfoFromInstaller extracts brand code from tagged MSI
+        package.
     metainstaller_path: path to the Omaha metainstaller to include
     output_dir: path to the directory that will contain the resulting MSI
 
@@ -368,8 +385,6 @@ def BuildEnterpriseInstaller(env,
   Raises:
     Nothing.
   """
-  product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
-
   google_update_wixobj_output = BuildGoogleUpdateFragment(
       env,
       metainstaller_path,
@@ -392,7 +407,7 @@ def BuildEnterpriseInstaller(env,
       msi_base_name,
       google_update_wixobj_output,
       enterprise_installer_dir,
-      show_error_action_dll_path,
+      custom_action_dll_path,
       metainstaller_path,
       output_dir)
 
@@ -406,7 +421,7 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
     product_uninstaller_additional_args,
     product_installer_data,
     standalone_installer_path,
-    show_error_action_dll_path,
+    custom_action_dll_path,
     msi_base_name,
     enterprise_installer_dir,
     output_dir='$STAGING_DIR'):
@@ -436,10 +451,13 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
         passed to the product installer when it is wrapped in a standalone
         installer.
     standalone_installer_path: path to product's standalone installer
-    show_error_action_dll_path: path to the error display custom action dll that
-        exports a ShowInstallerResultUIString method. This CA method will read
-        the LastInstallerResultUIString from the product's ClientState key in
+    custom_action_dll_path: path to the custom action dll that
+        exports a ShowInstallerResultUIString and ExtractTagInfoFromInstaller
+        methods. ShowInstallerResultUIString reads the
+        LastInstallerResultUIString from the product's ClientState key in
         the registry and display the string via MsiProcessMessage.
+        ExtractTagInfoFromInstaller extracts brand code from tagged MSI
+        package.
     msi_base_name: root of name for the MSI
     enterprise_installer_dir: path to dir which contains
         enterprise_standalone_installer.wxs.xml
@@ -453,16 +471,18 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   """
   product_name_legal_identifier = product_name.replace(' ', '')
   msi_name = msi_base_name + '.msi'
-  product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
+  msi_product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
 
   omaha_installer_namespace = binascii.a2b_hex(_GOOGLE_UPDATE_NAMESPACE_GUID)
 
   # Include the .msi filename in the Product Code generation because "the
   # product code must be changed if... the name of the .msi file has been
   # changed" according to http://msdn.microsoft.com/en-us/library/aa367850.aspx.
+  # Also include the version number since we process version changes as major
+  # upgrades.
   msi_product_id = GenerateNameBasedGUID(
       omaha_installer_namespace,
-      'Product %s %s' % (product_name, msi_base_name)
+      'Product %s %s %s' % (product_name, msi_base_name, product_version)
   )
   msi_upgradecode_guid = GenerateNameBasedGUID(
       omaha_installer_namespace,
@@ -484,12 +504,13 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   wix_candle_flags = [
       '-dProductName=' + product_name,
       '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
-      '-dProductVersion=' + product_version,
+      '-dProductVersion=' + msi_product_version,
+      '-dProductOriginalVersionString=' + product_version,
       '-dProductGuid="%s"' % product_guid,
       '-dProductCustomParams="%s"' % product_custom_params,
       '-dStandaloneInstallerPath=' + (
           env.File(standalone_installer_path).abspath),
-      '-dShowErrorCADll=' + env.File(show_error_action_dll_path).abspath,
+      '-dMsiInstallerCADll=' + env.File(custom_action_dll_path).abspath,
       '-dProductUninstallerAdditionalArgs=' + (
           product_uninstaller_additional_args),
       '-dMsiProductId=' + msi_product_id,
@@ -520,7 +541,7 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   # Also force a dependency on the CA DLL. Otherwise, it might not be built
   # before the MSI.
   wix_env.Depends(wix_output, [standalone_installer_path,
-                               show_error_action_dll_path])
+                               custom_action_dll_path])
 
   sign_output = wix_env.SignedBinary(
       target=output_directory_name + '/' + msi_name,

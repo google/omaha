@@ -19,7 +19,6 @@
 #include <windows.h>
 #include <stdarg.h>
 #include <vector>
-#include "omaha/base/app_util.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/system_info.h"
@@ -98,7 +97,9 @@ void NetDiags::Initialize() {
     PrintToConsole(_T("Default browser is Firefox\n"));
     network_config->Add(new FirefoxProxyDetector());
   }
-  network_config->Add(new IEProxyDetector());
+  network_config->Add(new IEWPADProxyDetector);
+  network_config->Add(new IEPACProxyDetector);
+  network_config->Add(new IENamedProxyDetector);
 
   std::vector<ProxyConfig> configs = network_config->GetConfigurations();
   if (configs.empty()) {
@@ -142,7 +143,7 @@ void NetDiags::DoGet(const CString& url) {
   network_request.set_callback(this);
   network_request.set_num_retries(2);
   std::vector<uint8> response;
-  hr = GetRequest(&network_request, url, &response);
+  hr = network_request.Get(url, &response);
   int status = network_request.http_status_code();
   if (FAILED(hr)) {
     PrintToConsole(_T("GET request failed. HRESULT=[0x%x], HTTP Status=[%d]\n"),
@@ -169,13 +170,9 @@ void NetDiags::DoDownload(const CString& url) {
   network_request.set_callback(this);
   network_request.set_num_retries(2);
 
-  CString temp_dir = app_util::GetTempDir();
-  CString temp_file;
-  if (!::GetTempFileName(temp_dir,
-                         _T("tmp"),
-                         0,
-                         CStrBuf(temp_file, MAX_PATH))) {
-    PrintToConsole(_T("::GetTempFileName Failed [%d]\n"), ::GetLastError());
+  CString temp_file = GetTempFilename(_T("tmp"));
+  if (temp_file.IsEmpty()) {
+    PrintToConsole(_T("::GetTempFilename Failed [%d]\n"), ::GetLastError());
     return;
   }
 

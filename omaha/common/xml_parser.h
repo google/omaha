@@ -45,9 +45,9 @@ CString ConvertProcessorArchitectureToString(DWORD processor_architecture);
 // parser and dealing with stale and dirty data.
 class XmlParser {
  public:
-  // Parses the update response buffer and fills in the UpdateResponse. In case
-  // of errors, the UpdateResponse object may contain partial information up
-  // to the point of the parsing error.
+  // Parses the update response buffer and fills in the UpdateResponse.
+  // The UpdateResponse object is not modified in case of errors and it can
+  // be safely reused for subsequent parsing attempts.
   // TODO(omaha): since the xml docs are strings we could use a CString as
   // an input parameter, no reason why this should be a buffer.
   static HRESULT DeserializeResponse(const std::vector<uint8>& buffer,
@@ -70,11 +70,23 @@ class XmlParser {
   // Builds the 'request' element.
   HRESULT BuildRequestElement();
 
+  // Creates the 'hw' element.
+  HRESULT BuildHwElement(IXMLDOMNode* parent_node);
+
   // Creates the 'os' element.
   HRESULT BuildOsElement(IXMLDOMNode* parent_node);
 
   // Creates the 'app' element. This is usually a sequence of elements.
   HRESULT BuildAppElement(IXMLDOMNode* parent_node);
+
+  // Adds attributes under the 'app' element corresponding to values with a '_'
+  // prefix under the ClientState/ClientStateMedium key.
+  HRESULT AddAppDefinedAttributes(const request::App& app,
+                                  IXMLDOMNode* parent_node);
+
+  // Adds cohort attributes under the 'app' element corresponding to values
+  // under the ClientState/{AppID}/Cohort key.
+  HRESULT AddCohortAttributes(const request::App& app, IXMLDOMNode* element);
 
   // Creates the 'updatecheck' element for an application.
   HRESULT BuildUpdateCheckElement(const request::App& app,

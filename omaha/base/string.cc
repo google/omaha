@@ -14,15 +14,18 @@
 // ========================================================================
 
 #include "omaha/base/string.h"
-
 #include <wininet.h>        // For INTERNET_MAX_URL_LENGTH.
 #include <algorithm>
 #include <cstdlib>
+#include <string>
+#include <intsafe.h>
 #include "base/scoped_ptr.h"
 #include "omaha/base/commontypes.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/localization.h"
 #include "omaha/base/logging.h"
+
+using std::string;
 
 namespace omaha {
 
@@ -112,14 +115,15 @@ int Trim(TCHAR *s) {
   }
 
   // Copy the part we want
-  int len = last_space - start;
+  ptrdiff_t len = last_space - start;
   // lint -e{802}  Conceivably passing a NULL pointer
   memmove(s, start, len * sizeof(TCHAR));
 
   // 0 terminate
   s[len] = 0;
 
-  return len;
+  // TODO(portability): this conversion is unsafe.
+  return static_cast<int>(len);
 }
 
 void TrimString(CString& s, const TCHAR* delimiters) {
@@ -164,15 +168,21 @@ void TextToLines(const CString& text, const TCHAR* delimiter, std::vector<CStrin
   ASSERT(delimiter, (L""));
   ASSERT(lines, (L""));
 
-  size_t delimiter_len = ::lstrlen(delimiter);
+  // TODO(portability): this conversion is not safe.
+  const int delimiter_len = static_cast<int>(::lstrlen(delimiter));
+  ASSERT1(delimiter_len <= INT_MAX);
+
   int b = 0;
   int e = 0;
 
   for (b = 0; e != -1 && b < text.GetLength(); b = e + delimiter_len) {
     e = text.Find(delimiter, b);
     if (e != -1) {
-      ASSERT1(e - b > 0);
-      lines->push_back(text.Mid(b, e - b));
+      if (e - b > 0) {
+        lines->push_back(text.Mid(b, e - b));
+      } else {
+        lines->push_back(_T(""));
+      }
     } else {
       lines->push_back(text.Mid(b));
     }
@@ -188,8 +198,12 @@ void LinesToText(const std::vector<CString>& lines, const TCHAR* delimiter, CStr
   for (size_t i = 0; i < lines.size(); ++i) {
     len += lines[i].GetLength() + delimiter_len;
   }
+
+  ASSERT1(len <= INT_MAX);
+
+  // TODO(portability): cast is unsafe.
   text->Empty();
-  text->Preallocate(len);
+  text->Preallocate(static_cast<int>(len));
   for (std::vector<CString>::size_type i = 0; i < lines.size(); ++i) {
     text->Append(lines[i]);
     if (delimiter_len) {
@@ -241,7 +255,8 @@ int CleanupWhitespace(TCHAR *str) {
   // 0-terminate
   *dest = 0;
 
-  return dest - str;
+  // TODO(portability): cast is unsafe.
+  return static_cast<int>(dest - str);
 }
 
 // Take 1 single hexadecimal "digit" (as a character) and return its decimal value
@@ -357,8 +372,10 @@ BOOL AnsiToWideString(const char *from, int length, UINT codepage, CString *to) 
 CString AnsiToWideString(const char *from, int length) {
   ASSERT(from, (L""));
   ASSERT1(length >= -1);
-  if (length < 0)
-    length = strlen(from);
+  if (length < 0) {
+    // TODO(portability): cast is unsafe.
+    length = static_cast<int>(strlen(from));
+  }
   CString to;
   TCHAR *buffer = to.GetBufferSetLength(length);
   for (int i = 0; i < length; ++i)
@@ -398,6 +415,22 @@ CStringA WideToUtf8(const CString& w) {
   return out;
 }
 
+// Transform a unicode string into UTF8, as represented by a byte vector.
+void WideToUtf8Vector(const CString& wstr, std::vector<uint8>* vec_out) {
+  ASSERT1(vec_out);
+
+  if (wstr.IsEmpty()) {
+    vec_out->clear();
+    return;
+  }
+
+  CStringA str_as_utf8(WideToUtf8(wstr));
+
+  ASSERT1(str_as_utf8.GetLength() > 0);
+  vec_out->resize(str_as_utf8.GetLength());
+  memcpy(&vec_out->front(), CStrBufA(str_as_utf8), vec_out->size());
+}
+
 CString Utf8ToWideChar(const char* utf8, uint32 num_bytes) {
   ASSERT1(utf8);
   if (num_bytes == 0) {
@@ -429,9 +462,10 @@ CString Utf8ToWideChar(const char* utf8, uint32 num_bytes) {
 
 CString Utf8BufferToWideChar(const std::vector<uint8>& buffer) {
   CString result;
-  if (!buffer.empty()) {
+  if (!buffer.empty() && buffer.size() < INT_MAX) {
     result = Utf8ToWideChar(
-        reinterpret_cast<const char*>(&buffer.front()), buffer.size());
+        reinterpret_cast<const char*>(&buffer.front()),
+                                      static_cast<int>(buffer.size()));
   }
   return result;
 }
@@ -889,11 +923,12 @@ inline bool UnescapeSequence(const CString &src, int pos,
 
   ASSERT1(dst <= buf + max_dst_length);  // just to make sure
 
+  // TODO(portability): cast is unsafe.
   *consumed_length = s - pos;
   if (is_utf8)
-    AnsiToWideString(buf, dst - buf, CP_UTF8, out);
+    AnsiToWideString(buf, static_cast<int>(dst - buf), CP_UTF8, out);
   else
-    *out = AnsiToWideString(buf, dst - buf);
+    *out = AnsiToWideString(buf, static_cast<int>(dst - buf));
   return eos_encounted;
 }
 
@@ -938,7 +973,8 @@ CString Unencode(const CString &input) {
         ++s;
     }
   }
-  int out_len = dst - head;
+  // TODO(portability): cast is unsafe.
+  int out_len = static_cast<int>(dst - head);
   out.ReleaseBuffer(out_len);
   return out;
 }
@@ -1320,7 +1356,8 @@ default:
   ASSERT(false, (L"Logic problem? szsrc = %S",szsrc));
   break;
   }
-  return (cur_dest - dest);
+  // TODO(portability): cast is unsafe.
+  return static_cast<int>(cur_dest - dest);
 }
 
 #define kBase64Chars  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -1731,7 +1768,8 @@ int QuotedPrintableUnescape(const WCHAR *source, int slen,
       case '=':
         if (p == source+slen-1) {
           // End of line, no need to print the =..
-          return (d-dest);
+          // TODO(portability): cast is unsafe.
+          return static_cast<int>(d-dest);
         }
         // if its valid, convert to hex and insert
         if (p < source+slen-2 && IsHexDigit(p[1]) && IsHexDigit(p[2])) {
@@ -1751,7 +1789,8 @@ int QuotedPrintableUnescape(const WCHAR *source, int slen,
         break;
     }
   }
-  return (d-dest);
+  // TODO(portability): cast is unsafe.
+  return static_cast<int>(d-dest);
 }
 
 // TODO(omaha): currently set not to use IsCharUpper because that is relatively slow
@@ -1767,8 +1806,8 @@ int String_ToUpper(int c) {
   if (c < 128)
     return String_ToUpperA(static_cast<char>(c));
 
-  TCHAR * p_c = reinterpret_cast<TCHAR *>(c);
-  int conv_c = reinterpret_cast<int>(::CharUpper(p_c));
+  TCHAR * p_c = reinterpret_cast<TCHAR *>(static_cast<INT_PTR>(c));
+  int conv_c = static_cast<int>(reinterpret_cast<INT_PTR>(::CharUpper(p_c)));
   return conv_c;
 }
 
@@ -1790,7 +1829,7 @@ void String_ToUpper(TCHAR* str) {
 
 // String comparison based on length
 // Replacement for the CRT strncmp(i)
-int String_StrNCmp(const TCHAR * str1, const TCHAR * str2, uint32 len, bool ignore_case) {
+int String_StrNCmp(const TCHAR * str1, const TCHAR * str2, size_t len, bool ignore_case) {
   ASSERT(str2, (L""));
   ASSERT(str1, (L""));
 
@@ -1815,7 +1854,7 @@ int String_StrNCmp(const TCHAR * str1, const TCHAR * str2, uint32 len, bool igno
 
 // TODO(omaha): Why do we introduce this behaviorial difference?
 // Replacement for strncpy() - except ALWAYS ends string with null
-TCHAR* String_StrNCpy(TCHAR* destination, const TCHAR* source, uint32 len) {
+TCHAR* String_StrNCpy(TCHAR* destination, const TCHAR* source, size_t len) {
   ASSERT (source, (L""));
   ASSERT (destination, (L""));
 
@@ -2236,7 +2275,8 @@ int String_FindString(const TCHAR *s1, const TCHAR *s2) {
   if (NULL == found)
     return -1;
 
-  return found - s1;
+  // TODO(portability): cast is unsafe.
+  return static_cast<int>(found - s1);
 }
 
 int String_FindString(const TCHAR *s1, const TCHAR *s2, int start_pos) {
@@ -2260,15 +2300,18 @@ int String_FindString(const TCHAR *s1, const TCHAR *s2, int start_pos) {
   if (NULL == found)
     return -1;
 
-  return found - s1;
+  // TODO(portability): cast is unsafe.
+  return static_cast<int>(found - s1);
 }
 
 int String_FindChar(const TCHAR *str, const TCHAR c) {
   ASSERT (str, (L""));
   const TCHAR *s = str;
   while (*s) {
-    if (*s == c)
-      return s - str;
+    if (*s == c) {
+      // TODO(portability): cast is unsafe.
+      return static_cast<int>(s - str);
+    }
     ++s;
   }
 
@@ -2286,8 +2329,10 @@ int String_ReverseFindChar(const TCHAR * str,TCHAR c) {
   while (--str != start && *str != (TCHAR)c)
     ;
 
-  if (*str == (TCHAR)c)             /* found ? */
-    return( str - start );
+  if (*str == (TCHAR)c) {            /* found ? */
+    // TODO(portability): cast is unsafe.
+    return static_cast<int>(str - start);
+  }
 
   return -1;
 }
@@ -2297,8 +2342,10 @@ int String_FindChar(const TCHAR *str, const TCHAR c, int start_pos) {
   int n = 0;
   const TCHAR *s = str;
   while (*s) {
-    if (n++ >= start_pos && *s == c)
-      return s - str;
+    if (n++ >= start_pos && *s == c) {
+      // TODO(portability): cast is unsafe.
+      return static_cast<int>(s - str);
+    }
     ++s;
   }
 
@@ -2393,7 +2440,9 @@ int ReplaceCString (CString & src, const TCHAR *from, unsigned int from_len,
     // Note: oddly enough, this is the most expensive line in the function under normal usage. So I am optimizing the heck out of it
     TCHAR * buf_ptr = buffer + i;
     while (*buf_ptr != from_0) { ++buf_ptr; }
-    i = buf_ptr - buffer;
+
+    // TODO(portability): cast is unsafe.
+    i = static_cast<int>(buf_ptr - buffer);
 
     // We're done!
     if (i >= cur_len)
@@ -3047,10 +3096,8 @@ HRESULT String_StringToBool(const TCHAR* str, bool* value) {
   return S_OK;
 }
 
-HRESULT String_BoolToString(bool value, CString* string) {
-  ASSERT1(string);
-  *string = value ? kTrue : kFalse;
-  return S_OK;
+const TCHAR* const String_BoolToString(bool value) {
+  return value ? kTrue : kFalse;
 }
 
 CString String_ReplaceIgnoreCase(const CString& string,
@@ -3229,8 +3276,8 @@ bool ContainsOnlyAsciiChars(const CString& str) {
 }
 CString BytesToHex(const uint8* bytes, size_t num_bytes) {
   CString result;
-  if (bytes) {
-    result.Preallocate(num_bytes * sizeof(TCHAR));
+  if (bytes && num_bytes < INT_MAX/sizeof(TCHAR)) {
+    result.Preallocate(static_cast<int>(num_bytes * sizeof(TCHAR)));
     static const TCHAR* const kHexChars = _T("0123456789abcdef");
     for (size_t i = 0; i != num_bytes; ++i) {
       result.AppendChar(kHexChars[(bytes[i] >> 4)]);
@@ -3264,11 +3311,16 @@ void JoinStrings(const std::vector<CString>& components,
     length += components[i].GetLength();
   }
 
-  result->Preallocate(length);
+  ASSERT1(length <= INT_MAX && delim_length <= INT_MAX);
+  if (length > INT_MAX || delim_length > INT_MAX) {
+    return;
+  }
+
+  result->Preallocate(static_cast<int>(length));
 
   for (size_t i = 0; i != components.size(); ++i) {
     if (i != 0 && delim) {
-      result->Append(delim, delim_length);
+      result->Append(delim, static_cast<int>(delim_length));
     }
     result->Append(components[i]);
   }
@@ -3385,6 +3437,155 @@ HRESULT Utf8UrlEncodedStringToWideString(const CString& str, CString* out) {
 
   *out = app_name;
   return S_OK;
+}
+
+static char hex_value[256] = {
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  1,  2,  3,  4,  5,  6, 7, 8, 9, 0, 0, 0, 0, 0, 0,  // '0'..'9'
+  0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 'A'..'F'
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 'a'..'f'
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+static char hex_char[] = "0123456789abcdef";
+
+// This is a templated function so that T can be either a char*
+// or a string.  This works because we use the [] operator to access
+// individual characters at a time.
+template <typename T>
+static void a2b_hex_t(const char* a, T b, size_t num) {
+  for (size_t i = 0; i < num; i++) {
+    b[i] = (hex_value[a[i * 2] & 0xFF] << 4)
+         + (hex_value[a[i * 2 + 1] & 0xFF]);
+  }
+}
+
+string a2b_bin(const string& a, bool byte_order_msb) {
+  string result;
+  const char *data = a.c_str();
+  size_t num_bytes = (a.size()+7)/8;
+  for (size_t byte_offset = 0; byte_offset < num_bytes; ++byte_offset) {
+    unsigned char c = 0;
+    for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset) {
+      if (*data == '\0')
+        break;
+      if (*data++ != '0') {
+        size_t bits_to_shift = (byte_order_msb) ? 7-bit_offset : bit_offset;
+        c |= (1 << bits_to_shift);
+      }
+    }
+    result.append(1, c);
+  }
+  return result;
+}
+
+// This is a templated function so that T can be either a char*
+// or a string.  This works because we use the [] operator to access
+// individual characters at a time.
+template <typename T>
+static void b2a_hex_t(const unsigned char* b, T a, size_t num) {
+  for (size_t i = 0; i < num; i++) {
+    a[i * 2 + 0] = hex_char[b[i] >> 4];
+    a[i * 2 + 1] = hex_char[b[i] & 0xf];
+  }
+}
+
+string b2a_bin(const string& b, bool byte_order_msb) {
+  string result;
+  for (size_t byte_offset = 0; byte_offset < b.size(); ++byte_offset) {
+    for (size_t bit_offset = 0; bit_offset < 8; ++bit_offset) {
+      size_t x = (byte_order_msb) ? 7-bit_offset : bit_offset;
+      result.append(1, (b[byte_offset] & (1 << x)) ? '1' : '0');
+    }
+  }
+  return result;
+}
+
+void b2a_hex(const unsigned char* b, char* a, size_t num) {
+  b2a_hex_t<char*>(b, a, num);
+}
+
+void a2b_hex(const char* a, unsigned char* b, size_t num) {
+  a2b_hex_t<unsigned char*>(a, b, num);
+}
+
+void a2b_hex(const char* a, char* b, size_t num) {
+  a2b_hex_t<char*>(a, b, num);
+}
+
+string b2a_hex(const char* b, size_t len) {
+  string result;
+  result.resize(len << 1);
+  b2a_hex_t<string&>(reinterpret_cast<const unsigned char*>(b), result, len);
+  return result;
+}
+
+string a2b_hex(const string& a) {
+  string result;
+  a2b_hex(a.c_str(), &result, a.size()/2);
+
+  return result;
+}
+
+void b2a_hex(const unsigned char* from, string* to, size_t num) {
+  to->resize(num << 1);
+  b2a_hex_t<string&>(from, *to, num);
+}
+
+void a2b_hex(const char* from, string* to, size_t num) {
+  to->resize(num);
+  a2b_hex_t<string&>(from, *to, num);
+}
+
+template <typename T> bool CheckHexString(const T& str) {
+  if (str.IsEmpty()) {
+    return false;
+  }
+
+  const int kStrLen = str.GetLength();
+  if (kStrLen % 2 != 0) {
+    return false;
+  }
+
+  for (int i = 0; i < kStrLen; ++i) {
+    if (!IsHexDigit(str[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool SafeHexStringToVector(const CStringA& str, std::vector<uint8>* vec_out) {
+  ASSERT1(vec_out);
+
+  if (!CheckHexString(str)) {
+    return false;
+  }
+
+  vec_out->resize(str.GetLength() / 2);
+  a2b_hex(str.GetString(), &vec_out->front(), vec_out->size());
+  return true;
+}
+
+bool SafeHexStringToVector(const CStringW& str, std::vector<uint8>* vec_out) {
+  // Check for input validity before we do a Wide->ANSI conversion.
+  if (!CheckHexString(str)) {
+    return false;
+  }
+
+  return SafeHexStringToVector(WideToAnsiDirect(str), vec_out);
 }
 
 }  // namespace omaha

@@ -34,7 +34,7 @@ bool IsLanguageIDSupported(LANGID langid);
 bool IsLanguageSupported(const CString& language);
 void GetSupportedLanguages(std::vector<CString>* codes);
 
-// Returnes requested_language if supported. Otherwise returns current user's
+// Returns requested_language if supported. Otherwise returns current user's
 // language if supported or "en" if both of them are not supported.
 CString GetLanguageForProcess(const CString& requested_language);
 

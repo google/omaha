@@ -54,12 +54,14 @@ dll_env = env.Clone(
 
 dll_env.Append(
     LIBS = [
-        ('atls.lib', 'atlsd.lib')[dll_env.Bit('debug')],
+        dll_env['atls_libs'][dll_env.Bit('debug')],
         ('libcmt.lib', 'libcmtd.lib')[dll_env.Bit('debug')],
         ('libcpmt.lib', 'libcpmtd.lib')[dll_env.Bit('debug')],
         '$LIB_DIR/base.lib',
+        '$LIB_DIR/common.lib',
         '$LIB_DIR/google_update_recovery.lib',
         '$LIB_DIR/repair_goopdate.lib',
+        '$LIB_DIR/security.lib',
         'crypt32.lib',
         'msi.lib',
         'wintrust.lib',
@@ -99,7 +101,7 @@ dll_env.ComponentLibrary(
 test_env = env.Clone()
 
 test_env['LIBS'] += [
-    ('atls.lib', 'atlsd.lib')[test_env.Bit('debug')],
+    test_env['atls_libs'][test_env.Bit('debug')],
     ('libcmt.lib', 'libcmtd.lib')[test_env.Bit('debug')],
     ('libcpmt.lib', 'libcpmtd.lib')[test_env.Bit('debug')],
     '$LIB_DIR/base.lib',
@@ -118,8 +120,8 @@ test_env['LIBS'] += [
     ]
 
 # This is a console application.
-test_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS'])
-test_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE']
+test_env.FilterOut(LINKFLAGS = ['/SUBSYSTEM:WINDOWS,5.01'])
+test_env['LINKFLAGS'] += ['/SUBSYSTEM:CONSOLE,5.01']
 
 target_name = 'testelevateusingmsp'
 

@@ -128,7 +128,10 @@ bool VerifyLogFileHandle() {
   if (!log_file_name[0]) {
     // nobody has called InitLogging to specify a debug log file, so here we
     // initialize the log file name to the default
-    GetModuleFileName(NULL, log_file_name, MAX_PATH);
+    DWORD result = GetModuleFileName(NULL, log_file_name, MAX_PATH);
+    if (result == 0 || result >= MAX_PATH) {
+      return false;
+    }
     TCHAR* last_backslash = _tcsrchr(log_file_name, '\\');
     if (last_backslash)
       last_backslash[1] = 0; // name now ends with the backslash
@@ -159,7 +162,10 @@ void DisplayDebugMessage(const std::string& str) {
 
   // look for the debug dialog program next to our application
   wchar_t prog_name[MAX_PATH];
-  GetModuleFileNameW(NULL, prog_name, MAX_PATH);
+  DWORD result = GetModuleFileNameW(NULL, prog_name, MAX_PATH);
+  if (result == 0 || result >= MAX_PATH) {
+    return;
+  }
   wchar_t* backslash = wcsrchr(prog_name, '\\');
   if (backslash)
     backslash[1] = 0;
@@ -257,7 +263,7 @@ LogMessage::~LogMessage() {
   if (severity_ < min_log_level)
     return;
 
-  std::string str_newline(stream_.str(), stream_.pcount());
+  std::string str_newline(stream_.str(), static_cast<size_t>(stream_.pcount()));
   str_newline.append("\r\n");
   if (logging_destination != LOG_ONLY_TO_FILE)
     OutputDebugStringA(str_newline.c_str());
@@ -306,11 +312,13 @@ LogMessage::~LogMessage() {
       DebugBreak();
     } else {
       if (log_assert_handler) {
-        log_assert_handler(std::string(stream_.str(), stream_.pcount()));
+        log_assert_handler(std::string(stream_.str(),
+                                       static_cast<size_t>(stream_.pcount())));
       } else {
         // don't use the string with the newline, get a fresh version to send to
         // the debug message process
-        DisplayDebugMessage(std::string(stream_.str(), stream_.pcount()));
+        DisplayDebugMessage(std::string(stream_.str(),
+                                        static_cast<size_t>(stream_.pcount())));
         TerminateProcess(GetCurrentProcess(), 1);
       }
     }

@@ -23,6 +23,7 @@
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/firewall_product_detection.h"
+#include "omaha/base/highres_timer-win32.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reactor.h"
@@ -37,6 +38,7 @@
 #include "omaha/common/event_logger.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/ping.h"
+#include "omaha/common/ping_event.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/update_response.h"
 #include "omaha/common/web_services_client.h"
@@ -76,7 +78,6 @@ void RecordUpdateAvailableUsageStats() {
   AppIdVector registered_app_ids;
   HRESULT hr = app_manager.GetRegisteredApps(&registered_app_ids);
   if (FAILED(hr)) {
-    ASSERT1(false);
     return;
   }
 
@@ -209,16 +210,37 @@ HRESULT SendOemInstalledPing(bool is_machine, const CString& session_id) {
   return S_OK;
 }
 
+void SendCupFailurePing(bool is_machine,
+                        const CString& session_id,
+                        const CString& install_source,
+                        const HRESULT extra_code) {
+  Ping ping(is_machine, session_id, install_source);
+  PingEventPtr ping_event(new PingEvent(PingEvent::EVENT_DEBUG,
+                                        PingEvent::EVENT_RESULT_ERROR,
+                                        PingEvent::DEBUG_SOURCE_UPDATE_CHECK,
+                                        static_cast<int>(extra_code)));
+  ping.LoadOmahaDataFromRegistry();
+  ping.BuildOmahaPing(NULL, NULL, ping_event);
+
+  HRESULT hr = ping.Send(false);
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[SendCupFailurePing failed][0x%x]"), hr));
+  }
+}
+
 }  // namespace internal
 
 Worker::Worker()
-    : is_machine_(false) {
+    : is_machine_(false),
+      lock_count_(0),
+      single_instance_hr_(E_FAIL) {
   CORE_LOG(L1, (_T("[Worker::Worker]")));
 }
 
 Worker::~Worker() {
   CORE_LOG(L1, (_T("[Worker::~Worker]")));
 
+  ASSERT1(!lock_count_);
   // TODO(omaha3): Remove when Run() is used. See TODO in GoogleUpdate::Main().
   Stop();
 
@@ -238,11 +260,49 @@ Worker& Worker::Instance() {
   return *instance_;
 }
 
+HRESULT Worker::EnsureSingleInstance() {
+  __mutexScope(model()->lock());
+
+  CORE_LOG(L2, (_T("[Worker::EnsureSingleInstance]")));
+  if (single_instance_.get()) {
+    return single_instance_hr_;
+  }
+
+  NamedObjectAttributes attr;
+  GetNamedObjectAttributes(kGoogleUpdate3SingleInstance, is_machine_, &attr);
+
+  single_instance_.reset(new ProgramInstance(attr.name));
+  if (!single_instance_.get()) {
+    CORE_LOG(LE, (_T("[Failed to create Worker Single Instance]")));
+    single_instance_hr_ = E_OUTOFMEMORY;
+    return single_instance_hr_;
+  }
+
+  if (!single_instance_->EnsureSingleInstance()) {
+    CORE_LOG(LW, (_T("[Another Worker instance already running]")));
+    single_instance_hr_ = GOOPDATE_E_INSTANCES_RUNNING;
+    return single_instance_hr_;
+  }
+
+  single_instance_hr_ = S_OK;
+  return single_instance_hr_;
+}
+
 int Worker::Lock() {
+  __mutexScope(model()->lock());
+
+  ++lock_count_;
   return _pAtlModule->Lock();
 }
 
 int Worker::Unlock() {
+  __mutexScope(model()->lock());
+
+  if (!--lock_count_) {
+    single_instance_.reset();
+    single_instance_hr_ = E_FAIL;
+  }
+
   return _pAtlModule->Unlock();
 }
 
@@ -255,21 +315,12 @@ HRESULT Worker::Initialize(bool is_machine) {
   shutdown_handler_.reset(new ShutdownHandler);
   model_.reset(new Model(this));
 
-  ASSERT1(!single_instance_.get());
-  NamedObjectAttributes attr;
-  GetNamedObjectAttributes(kGoogleUpdate3SingleInstance, is_machine, &attr);
-  single_instance_.reset(new ProgramInstance(attr.name));
-  if (!single_instance_.get()) {
-    CORE_LOG(LE, (_T("[Failed to create Worker Single Instance]")));
-    return E_OUTOFMEMORY;
+  HRESULT hr = EnsureSingleInstance();
+  if (FAILED(hr)) {
+    return hr;
   }
 
-  if (!single_instance_->EnsureSingleInstance()) {
-    CORE_LOG(LW, (_T("[Another Worker instance already running]")));
-    return GOOPDATE_E_INSTANCES_RUNNING;
-  }
-
-  HRESULT hr = AppManager::CreateInstance(is_machine_);
+  hr = AppManager::CreateInstance(is_machine_);
   if (FAILED(hr)) {
     return hr;
   }
@@ -349,8 +400,13 @@ void Worker::CollectAmbientUsageStats() {
   metric_worker_shell_version = app_util::GetVersionFromModule(NULL);
 
   metric_worker_is_windows_installing.Set(IsWindowsInstalling());
-  metric_worker_is_uac_disabled.Set(vista_util::IsVistaOrLater() &&
-                                    !vista_util::IsUACMaybeOn());
+
+  bool is_uac_on(false);
+  if (vista_util::IsVistaOrLater() &&
+      SUCCEEDED(vista_util::IsUACOn(&is_uac_on))) {
+    metric_worker_is_uac_disabled.Set(!is_uac_on);
+  }
+
   metric_worker_is_clickonce_disabled.Set(IsClickOnceDisabled());
 }
 
@@ -360,13 +416,15 @@ HRESULT Worker::CheckForUpdateAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  HRESULT hr = QueueDeferredFunctionCall0(app_bundle, &Worker::CheckForUpdate);
+  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  HRESULT hr = QueueDeferredFunctionCall0(shared_bundle,
+                                          &Worker::CheckForUpdate);
   if (FAILED(hr)) {
     return hr;
   }
 
-  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
-    App* app = app_bundle->GetApp(i);
+  for (size_t i = 0; i != shared_bundle->GetNumberOfApps(); ++i) {
+    App* app = shared_bundle->GetApp(i);
     app->QueueUpdateCheck();
   }
 
@@ -434,6 +492,19 @@ void Worker::CheckForUpdateHelper(AppBundle* app_bundle,
                             hr,
                             update_response.get());
 
+  // If we used HTTPS at any time during this update check, and the HTTPS
+  // attempt failed due to a CUP authentication failure, send a debug ping.
+  if (FAILED(hr) && app_bundle->update_check_client()->http_used_ssl()) {
+    const HRESULT ssl_hr = app_bundle->update_check_client()->http_ssl_result();
+    if (IsCupError(ssl_hr)) {
+      CORE_LOG(L3, (_T("[CUP-via-HTTPS failed.][%#08x][%#08x]"), hr, ssl_hr));
+      internal::SendCupFailurePing(is_machine_,
+                                   app_bundle->session_id(),
+                                   app_bundle->install_source(),
+                                   ssl_hr);
+    }
+  }
+
   CString event_description;
   event_description.Format(_T("Update check. Status = 0x%08x"), hr);
   CString event_text;
@@ -455,13 +526,14 @@ HRESULT Worker::DownloadAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  HRESULT hr = QueueDeferredFunctionCall0(app_bundle, &Worker::Download);
+  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  HRESULT hr = QueueDeferredFunctionCall0(shared_bundle, &Worker::Download);
   if (FAILED(hr)) {
     return hr;
   }
 
-  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
-    App* app = app_bundle->GetApp(i);
+  for (size_t i = 0; i != shared_bundle->GetNumberOfApps(); ++i) {
+    App* app = shared_bundle->GetApp(i);
     app->QueueDownload();
   }
 
@@ -509,14 +581,15 @@ HRESULT Worker::DownloadAndInstallAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  HRESULT hr = QueueDeferredFunctionCall0(app_bundle,
+  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  HRESULT hr = QueueDeferredFunctionCall0(shared_bundle,
                                           &Worker::DownloadAndInstall);
   if (FAILED(hr)) {
     return hr;
   }
 
-  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
-    App* app = app_bundle->GetApp(i);
+  for (size_t i = 0; i != shared_bundle->GetNumberOfApps(); ++i) {
+    App* app = shared_bundle->GetApp(i);
     // Queue the download or install depending on the current state. The correct
     // one must be queued so that all apps are moved into waiting now and remain
     // there until the download or install starts for that app.
@@ -529,6 +602,15 @@ HRESULT Worker::DownloadAndInstallAsync(AppBundle* app_bundle) {
 void Worker::DownloadAndInstall(shared_ptr<AppBundle> app_bundle) {
   CORE_LOG(L3, (_T("[Worker::DownloadAndInstall][0x%p]"), app_bundle.get()));
   ASSERT1(app_bundle.get());
+
+  // If any applications have been uninstalled and /ua hasn't run yet, queue
+  // their uninstall pings now, and clear out their ClientState.  This ensures
+  // that they'll have a clean slate in the case of a uninstall+reinstall.
+  // However, continue with the download/install if it fails.
+  HRESULT hr = internal::AddUninstalledAppsPings(app_bundle.get());
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[AddUninstalledAppsPings failed][0x%08x]"), hr));
+  }
 
   DownloadAndInstallHelper(app_bundle.get());
 
@@ -590,13 +672,15 @@ HRESULT Worker::UpdateAllAppsAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  HRESULT hr = QueueDeferredFunctionCall0(app_bundle, &Worker::UpdateAllApps);
+  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  HRESULT hr = QueueDeferredFunctionCall0(shared_bundle,
+                                          &Worker::UpdateAllApps);
   if (FAILED(hr)) {
     return hr;
   }
 
-  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
-    App* app = app_bundle->GetApp(i);
+  for (size_t i = 0; i != shared_bundle->GetNumberOfApps(); ++i) {
+    App* app = shared_bundle->GetApp(i);
     app->QueueUpdateCheck();
   }
 
@@ -621,30 +705,29 @@ void Worker::UpdateAllApps(shared_ptr<AppBundle> app_bundle) {
     app->QueueDownloadOrInstall();
   }
 
-  DownloadAndInstallHelper(app_bundle.get());
-
-  internal::RecordUpdateAvailableUsageStats();
-  CollectAmbientUsageStats();
-
   HRESULT hr = internal::AddUninstalledAppsPings(app_bundle.get());
   if (FAILED(hr)) {
     CORE_LOG(LW, (_T("[AddUninstalledAppsPings failed][0x%08x]"), hr));
   }
+
+  DownloadAndInstallHelper(app_bundle.get());
+
+  internal::RecordUpdateAvailableUsageStats();
+  CollectAmbientUsageStats();
 
   app_bundle->CompleteAsyncCall();
 }
 
 HRESULT Worker::DownloadPackageAsync(Package* package) {
   ASSERT1(package);
-  AppBundle* app_bundle = package->app_version()->app()->app_bundle();
-  ASSERT1(app_bundle);
-
   ASSERT1(model_->IsLockedByCaller());
 
+  shared_ptr<AppBundle> shared_bundle =
+      package->app_version()->app()->app_bundle()->controlling_ptr();
   CORE_LOG(L3, (_T("[Worker::DownloadPackageAsync][0x%p][0x%p]"),
-      app_bundle, package));
+      shared_bundle.get(), package));
 
-  HRESULT hr = QueueDeferredFunctionCall1<Package*>(app_bundle,
+  HRESULT hr = QueueDeferredFunctionCall1<Package*>(shared_bundle,
                                                     package,
                                                     &Worker::DownloadPackage);
   if (FAILED(hr)) {
@@ -864,16 +947,39 @@ HRESULT Worker::DoUpdateCheck(AppBundle* app_bundle,
     ++metric_worker_update_check_total;
   }
 
+  HighresTimer update_check_timer;
+
   // This is a blocking call on the network.
   HRESULT hr = app_bundle->update_check_client()->Send(update_request,
                                                        update_response);
+
+  CORE_LOG(L3, (_T("[Update check HTTP trace][%s]"),
+      app_bundle->update_check_client()->http_trace()));
+
+  PersistRetryAfter(
+    app_bundle->update_check_client()->http_xretryafter_header_value());
+
   if (FAILED(hr)) {
+    metric_updatecheck_failed_ms.AddSample(update_check_timer.GetElapsedMs());
+
     CORE_LOG(LE, (_T("[Send failed][0x%08x]"), hr));
     worker_utils::AddHttpRequestDataToEventLog(
         hr,
+        app_bundle->update_check_client()->http_ssl_result(),
         app_bundle->update_check_client()->http_status_code(),
         app_bundle->update_check_client()->http_trace(),
         is_machine_);
+
+    // If we got a response that appears to be from the official Omaha server,
+    // but doesn't validate for some reason, it might have a X-DayStart or
+    // X-Daynum header. If so, assume that we delivered the last-active and
+    // roll-call reports correctly, and roll the counters on our end.  (On a
+    // successful network call, the App objects will do it themselves when they
+    // transition out of the CheckingForUpdate state.)
+    PersistUpdateCheckSuccessfullySent(
+      app_bundle,
+      app_bundle->update_check_client()->http_xdaynum_header_value(),
+      app_bundle->update_check_client()->http_xdaystart_header_value());
 
     // TODO(omaha3): Omaha 2 would launch a web browser here for installs by
     // calling goopdate_utils::LaunchBrowser(). Browser launch needs to be in
@@ -881,6 +987,8 @@ HRESULT Worker::DoUpdateCheck(AppBundle* app_bundle,
     // error. Even here, we don't know that the it wasn't a parsing, etc. error.
     return hr;
   }
+
+  metric_updatecheck_succeeded_ms.AddSample(update_check_timer.GetElapsedMs());
 
   if (is_update) {
     ++metric_worker_update_check_succeeded;
@@ -915,19 +1023,69 @@ void Worker::DoPostUpdateCheck(AppBundle* app_bundle,
   }
 }
 
+void Worker::PersistRetryAfter(int retry_after_sec) const {
+  CORE_LOG(L6, (_T("[Worker::PersistRetryAfter][%d]"), retry_after_sec));
+
+  if (retry_after_sec <= 0) {
+    ConfigManager::Instance()->SetRetryAfterTime(is_machine_, 0);
+    return;
+  }
+
+  const int kMaxRetryAfterSeconds = 5 * kSecondsPerHour;
+  if (retry_after_sec > kMaxRetryAfterSeconds) {
+    retry_after_sec = kSecondsPerDay;
+  }
+
+  const uint32 now_sec = Time64ToInt32(GetCurrent100NSTime());
+  DWORD retry_after_time_sec = now_sec + retry_after_sec;
+  ConfigManager::Instance()->SetRetryAfterTime(is_machine_,
+                                               retry_after_time_sec);
+}
+
+void Worker::PersistUpdateCheckSuccessfullySent(AppBundle* app_bundle,
+                                                int daynum,
+                                                int daystart) {
+  ASSERT1(app_bundle);
+
+  // This function will be called even when network request fails. In this case,
+  // Omaha looks into response headers for relevant values. |daynum| or
+  // |daystart|will be -1 if the corresponding header value is absent. Client
+  // should not persist if either value is -1.
+  if (daystart == -1 || daynum == -1) {
+    return;
+  }
+
+  ASSERT1(daystart >= 0);
+  ASSERT1(daynum >= kMinDaysSinceDatum);
+  ASSERT1(daynum <= kMaxDaysSinceDatum);
+
+  CORE_LOG(LE, (_T("[Worker::PersistUpdateCheckSuccessfullySent][%d]"),
+                daystart));
+
+  AppManager& app_manager = *AppManager::Instance();
+
+  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
+    App* app = app_bundle->GetApp(i);
+    app->set_day_of_last_response(daynum);
+    VERIFY1(SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
+        *app, daynum, daystart)));
+  }
+}
+
 // Creates a thread pool work item for deferred execution of deferred_function.
 // The thread pool owns this callback object.
 HRESULT Worker::QueueDeferredFunctionCall0(
-    AppBundle* app_bundle,
+    shared_ptr<AppBundle> app_bundle,
     void (Worker::*deferred_function)(shared_ptr<AppBundle>)) {
-  ASSERT1(app_bundle);
+  ASSERT1(app_bundle.get());
   ASSERT1(deferred_function);
 
   typedef ThreadPoolCallBack1<Worker, shared_ptr<AppBundle> > Callback;
   scoped_ptr<Callback> callback(new Callback(this,
                                              deferred_function,
-                                             app_bundle->controlling_ptr()));
+                                             app_bundle));
   HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
+                                                      COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
     return hr;
@@ -942,18 +1100,19 @@ HRESULT Worker::QueueDeferredFunctionCall0(
 // The thread pool owns this callback object.
 template <typename P1>
 HRESULT Worker::QueueDeferredFunctionCall1(
-    AppBundle* app_bundle,
+    shared_ptr<AppBundle> app_bundle,
     P1 p1,
     void (Worker::*deferred_function)(shared_ptr<AppBundle>, P1)) {
-  ASSERT1(app_bundle);
+  ASSERT1(app_bundle.get());
   ASSERT1(deferred_function);
 
   typedef ThreadPoolCallBack2<Worker, shared_ptr<AppBundle>, P1> Callback;
   scoped_ptr<Callback> callback(new Callback(this,
                                              deferred_function,
-                                             app_bundle->controlling_ptr(),
+                                             app_bundle,
                                              p1));
   HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
+                                                      COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
     return hr;

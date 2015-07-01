@@ -14,8 +14,8 @@
 // ========================================================================
 
 
-#ifndef OMAHA_COMMON_EXTRACTOR_H_
-#define OMAHA_COMMON_EXTRACTOR_H_
+#ifndef OMAHA_BASE_EXTRACTOR_H_
+#define OMAHA_BASE_EXTRACTOR_H_
 
 #include <windows.h>
 
@@ -72,7 +72,7 @@ class TagExtractor {
                     char* tag_buffer,
                     int* tag_buffer_len);
 
-    int cert_length() const { return cert_length_; }
+    int cert_dir_length() const { return cert_dir_length_; }
     const void* cert_dir_base() const { return cert_dir_base_; }
 
  private:
@@ -80,14 +80,14 @@ class TagExtractor {
   HANDLE file_mapping_;
   LPVOID file_base_;
   size_t file_length_;
-  int cert_length_;
+  int cert_dir_length_;
   const void* cert_dir_base_;
 
-  bool ReadTag(const char* tag_pointer,
+  bool ReadTag(const char* read_base,
                char* tag_buffer,
                int* tag_buffer_len) const;
 
-  const void* GetCertificateDirectoryPointer(const void* base) const;
+  const IMAGE_DATA_DIRECTORY* GetCertificateDirectory(const void* base) const;
 
   const void* GetASN1SignaturePointer(const void* base) const;
 
@@ -102,4 +102,4 @@ class TagExtractor {
 
 }  // namespace omaha
 
-#endif  // OMAHA_COMMON_EXTRACTOR_H_
+#endif  // OMAHA_BASE_EXTRACTOR_H_

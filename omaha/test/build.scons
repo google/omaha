@@ -223,7 +223,7 @@ omaha_system_env.Append(
         ],
     LIBS = [
         '$LIB_PATH/common.lib',
-        ('atls.lib', 'atlsd.lib')[env.Bit('debug')],
+        omaha_system_env['atls_libs'][env.Bit('debug')],
         ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
         ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
         ],

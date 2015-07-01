@@ -17,8 +17,11 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/config_manager.h"
+#include "omaha/common/goopdate_utils.h"
 #include "omaha/common/web_services_client.h"
 #include "omaha/goopdate/app_bundle_state_busy.h"
 #include "omaha/goopdate/app_bundle_state_paused.h"
@@ -29,6 +32,21 @@
 namespace omaha {
 
 namespace fsm {
+
+namespace {
+
+bool IsAppInBundle(AppBundle* app_bundle, const GUID& app_guid) {
+  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
+    App* existing_app = app_bundle->GetApp(i);
+    if (::IsEqualGUID(existing_app->app_guid(), app_guid)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+}  // end namespace
 
 HRESULT AppBundleStateInitialized::Pause(AppBundle* app_bundle) {
   CORE_LOG(L3, (_T("[AppBundleStateInitialized::Pause][0x%p]"), app_bundle));
@@ -87,9 +105,10 @@ HRESULT AppBundleStateInitialized::CreateApp(AppBundle* app_bundle,
   }
 
   // When overinstalling, we want the install age for the existing install, so
-  // explicitly get it here. This is the only value read from the registry for
-  // installs.
+  // explicitly get it here. These are the only values read from the registry
+  // for installs.
   AppManager::Instance()->ReadAppInstallTimeDiff(local_app.get());
+  AppManager::Instance()->ReadDayOfInstall(local_app.get());
 
   *app = local_app.release();
   has_new_app_ = true;
@@ -265,7 +284,38 @@ HRESULT AppBundleStateInitialized::AddInstalledApp(AppBundle* app_bundle,
     return hr;
   }
 
+  // Check if this app already exists in the bundle.  (This is double-checked
+  // by AddApp() as well, but if we make the check here, we can return a proper
+  // error code instead of failing to create the external updater mutex.)
+  if (IsAppInBundle(app_bundle, app_guid)) {
+    CORE_LOG(LE, (_T("[App already in bundle][%s]"), app_id));
+    return GOOPDATE_E_CALL_UNEXPECTED;
+  }
+
+  // Create a global event (mutex) to determine if this product is currently
+  // being updated by its own private updater.  If so, this event should
+  // already exist, and we don't add it to the bundle.  If not, the event
+  // will be created, and we give the handle to the App to be cleaned up later.
+  //
+  // If creating the event fails for any reason OTHER than the event already
+  // existing, log the error in CORE_LOG but move on with updating anyways.
+  // This is somewhat risky, but it prevents Omaha from being DOSed.
+  scoped_event external_updater_event;
+  hr = goopdate_utils::CreateExternalUpdaterActiveEvent(
+      app_id, app_bundle->is_machine(), &external_updater_event);
+  if (FAILED(hr)) {
+    if (hr == GOOPDATE_E_APP_USING_EXTERNAL_UPDATER) {
+      OPT_LOG(LW, (_T("[Skipping app, external updater running][%s]"), app_id));
+      return hr;
+    }
+
+    CORE_LOG(LE, (_T("[CreateExternalUpdaterActiveEvent failed][0x%x][%s][%d]"),
+                  hr, app_id, app_bundle->is_machine()));
+  }
+
   scoped_ptr<App> local_app(new App(app_guid, true, app_bundle));
+
+  local_app->set_external_updater_event(release(external_updater_event));
 
   hr = AppManager::Instance()->ReadAppPersistentData(local_app.get());
   if (FAILED(hr)) {
@@ -289,12 +339,9 @@ HRESULT AppBundleStateInitialized::AddApp(AppBundle* app_bundle, App* app) {
   ASSERT1(app);
   ASSERT1(app_bundle->model()->IsLockedByCaller());
 
-  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
-    App* existing_app = app_bundle->GetApp(i);
-    if (::IsEqualGUID(existing_app->app_guid(), app->app_guid())) {
-      CORE_LOG(LE, (_T("[App already in bundle][%s]"), app->app_guid_string()));
-      return GOOPDATE_E_CALL_UNEXPECTED;
-    }
+  if (IsAppInBundle(app_bundle, app->app_guid())) {
+    CORE_LOG(LE, (_T("[App already in bundle][%s]"), app->app_guid_string()));
+    return GOOPDATE_E_CALL_UNEXPECTED;
   }
 
   AddAppToBundle(app_bundle, app);

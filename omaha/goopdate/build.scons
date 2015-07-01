@@ -21,11 +21,16 @@ import omaha_version_utils
 Import('env')
 
 def BuildCOMForwarder(cmd_line_switch,
-                      signed_exe_name):
+                      signed_exe_name,
+                      should_append_cmd_line):
   com_forwarder_env = env.Clone()
 
   com_forwarder_env.FilterOut(CCFLAGS=['/GL', '/RTC1', '/GS'])
   com_forwarder_env.FilterOut(LINKFLAGS=['/LTCG'])
+
+  should_append_string = 'FALSE'
+  if should_append_cmd_line:
+    should_append_string = 'TRUE'
 
   com_forwarder_env.Append(
       CCFLAGS=[
@@ -34,9 +39,10 @@ def BuildCOMForwarder(cmd_line_switch,
       ],
       CPPDEFINES = [
           'CMD_LINE_SWITCH=_T(\\"%s\\")' % cmd_line_switch,
+          'SHOULD_APPEND_CMD_LINE=%s' % should_append_string,
       ],
       LINKFLAGS=[
-          '/ENTRY:WinMainCRTStartup',
+          '/ENTRY:wWinMainCRTStartup',
       ],
       LIBS=[
           'libcmt.lib',
@@ -45,11 +51,14 @@ def BuildCOMForwarder(cmd_line_switch,
   )
   # The resource file used is the same as the one for GoogleUpdate.exe.
   # The version resource used is the same as the one for goopdate.dll.
+  com_forwarder_res = com_forwarder_env.RES('%s.res' % signed_exe_name,
+                                            '../google_update/resource.rc')
+  com_forwarder_env.Depends(com_forwarder_res,
+                            '../google_update/GoogleUpdate.manifest')
   com_forwarder_inputs = [
        com_forwarder_env.ComponentObject('%s.obj' % signed_exe_name,
                                          'com_forwarder.cc'),
-       com_forwarder_env.RES('%s.res' % signed_exe_name,
-                             '../google_update/resource.rc'),
+       com_forwarder_res,
        '$OBJ_ROOT/goopdate/goopdate_version.res',
   ]
 
@@ -64,74 +73,148 @@ def BuildCOMForwarder(cmd_line_switch,
   env.Replicate('$STAGING_DIR', signed_broker)
 
 
-# Build the broker forwarder and legacy on-demand.
-BuildCOMForwarder('/broker', 'GoogleUpdateBroker')
-BuildCOMForwarder('/ondemand', 'GoogleUpdateOnDemand')
+# Build the broker/legacy on-demand/WebPlugin forwarders.
+BuildCOMForwarder('/broker', 'GoogleUpdateBroker', False)
+BuildCOMForwarder('/ondemand', 'GoogleUpdateOnDemand', False)
+BuildCOMForwarder('/pi', 'GoogleUpdateWebPlugin', True)
 
-#
-# Build COM libraries and headers.
-#
-midl_env = env.Clone()
-midl_env.Tool('midl')
-midl_env['MIDLFLAGS'] += [
-    '/Oicf',  # generate optimized stubless proxy/stub code
-    ]
+def BuildCOMRegisterShell64():
+  com_register_shell_env = env.CloneAndMake64Bit()
+  com_register_shell_env.FilterOut(CCFLAGS=['/GL', '/RTC1', '/GS'])
+  com_register_shell_env.FilterOut(LINKFLAGS=['/LTCG'])
+
+  com_register_shell_env.Append(
+      CCFLAGS=[
+          '/GS-',
+          '/Zl',
+      ],
+      LINKFLAGS=[
+          '/ENTRY:WinMainCRTStartup',
+      ],
+      LIBS=[
+          '$LIB_DIR/base_64.lib',
+          '$LIB_DIR/common_64.lib',
+          '$LIB_DIR/logging_64.lib',
+          '$LIB_DIR/goopdate_lib_64.lib',
+          '$LIB_DIR/security_64.lib',
+          com_register_shell_env['atls_libs'][
+              com_register_shell_env.Bit('debug')
+          ],
+          ('libcmt.lib', 'libcmtd.lib')[com_register_shell_env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[com_register_shell_env.Bit('debug')],
+          'crypt32.lib',
+          'delayimp.lib',
+          'netapi32.lib',
+          'psapi.lib',
+          'rasapi32.lib',
+          'shlwapi.lib',
+          'version.lib',
+          'userenv.lib',
+          'wtsapi32.lib',
+      ],
+  )
+  unsigned_exe = com_register_shell_env.ComponentProgram(
+      prog_name='GoogleUpdateComRegisterShell64_unsigned',
+      source= [
+          'com_register_shell.cc',
+          ]
+  )
+  signed_exe = com_register_shell_env.SignedBinary(
+      target='GoogleUpdateComRegisterShell64.exe',
+      source=unsigned_exe,
+  )
+  env.Replicate('$STAGING_DIR', signed_exe)
+
+# Build the COM register shell.
+BuildCOMRegisterShell64()
 
 #
 # Generate omaha3_idl.idl. The output is an IDL file with a variant CLSID
 # for coclass GoogleComProxyMachineClass and GoogleComProxyUserClass.
 #
-generated_idl = env.Command(
-    target='omaha3_idl.idl',
-    source='$MAIN_DIR/goopdate/omaha3_idl.idl',
-    action=('python %s/tools/generate_omaha3_idl.py --idl_template_file '
-        '$SOURCE --idl_output_file $TARGET' % env['MAIN_DIR'])
-)
+def GenerateOmaha3IDLFile():
+  return env.Command(
+      target='omaha3_idl.idl',
+      source='$MAIN_DIR/goopdate/omaha3_idl.idl',
+      action=('python %s/tools/generate_omaha3_idl.py --idl_template_file '
+          '$SOURCE --idl_output_file $TARGET' % env['MAIN_DIR'])
+  )
 
-# Compile the .idl file into .tlb, .c & .h files
-midl_input = 'omaha3_idl.idl'
-midl_outputs = midl_env.TypeLibrary(generated_idl)
+#
+# Build omaha3_idl COM proxy.
+#
+def BuildGoogleUpdateCOMProxy(midl_env, generated_idl):
+  midl_env.Tool('midl')
+  midl_env['MIDLFLAGS'] += [
+      '/Oicf',  # generate optimized stubless proxy/stub code
+      ]
 
-# Save the .idl and the produced .tlb and .h files so we can provide
-# them to clients.
-env.Replicate('$STAGING_DIR/idls', midl_input)
-for node in midl_outputs:
-  if not str(node).endswith('.c'):
-    env.Replicate('$STAGING_DIR/idls', node)
+  suffix = ('', '_64')[midl_env.Bit('x64')]
+  if midl_env.Bit('x64'):
+    midl_env['MIDLFLAGS'] += [ '/amd64' ]
 
-midl_env.ComponentLibrary(
-    lib_name='omaha3_idl',
-    source='omaha3_idl_i.c',
-)
+    # Make a copy of the IDL file with different name so the output won't
+    # collide with the output from 32-bit version IDL.
+    target_idl = 'omaha3_idl_64.idl',
+    midl_env.Command(target_idl, 'omaha3_idl.idl', Copy('$TARGET', '$SOURCE'))
+    midl_env.TypeLibrary(target_idl)
+  else:
+    midl_outputs = midl_env.TypeLibrary('omaha3_idl.idl')
 
-handler_common_env = env.Clone()
-handler_common_env.Append(
-    CPPDEFINES = [
-        '_ATL_FREE_THREADED',
-    ],
-    CPPPATH = [
-        '$OBJ_ROOT',  # Needed for generated files.
-    ],
-    LIBS = [
-        '$LIB_DIR/base.lib',
-        '$LIB_DIR/goopdate_lib.lib',
-        ('atls.lib', 'atlsd.lib')[env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
-        'psapi.lib',
-        'netapi32.lib',
-        'rasapi32.lib',
-        'shlwapi.lib',
-        'userenv.lib',
-        'version.lib',
-        'wtsapi32.lib',
-    ],
-)
+    # Save the .idl and the produced .tlb and .h files so we can provide
+    # them to clients. This process is needed only for 32-bit since Omaha is
+    # 32-bit only.
+    midl_env.Replicate('$STAGING_DIR/idls', 'omaha3_idl.idl')
+    for node in midl_outputs:
+      if not str(node).endswith('.c'):
+         midl_env.Replicate('$STAGING_DIR/idls', node)
 
-def BuildGoogleUpdateHandlerDll(omaha_version_info, is_machine_handler, psname):
+  # Generate the interface library as an object file.
+  midl_lib_inputs = [
+      'omaha3_idl%s_i.c' % suffix,
+      ]
+
+  midl_env.ComponentStaticLibrary(
+      'omaha3_idl%s' % suffix,
+      midl_lib_inputs,
+      use_pch_default=False
+  )
+
+generated_omaha3_idl = GenerateOmaha3IDLFile()
+BuildGoogleUpdateCOMProxy(env.Clone(), generated_omaha3_idl)
+BuildGoogleUpdateCOMProxy(env.CloneAndMake64Bit(), generated_omaha3_idl)
+
+def BuildGoogleUpdateHandlerDll(handler_env,
+                                omaha_version_info,
+                                is_machine_handler,
+                                psname):
+  handler_env.Append(
+      CPPDEFINES = [
+          '_ATL_FREE_THREADED',
+          '_USRDLL',
+          '_WINDLL',
+      ],
+      CPPPATH = [
+          '$OBJ_ROOT',  # Needed for generated files.
+      ],
+      LIBS = [
+          handler_env.GetMultiarchLibName('base'),
+          handler_env.GetMultiarchLibName('goopdate_lib'),
+          handler_env.GetMultiarchLibName('security'),
+          handler_env['atls_libs'][env.Bit('debug')],
+          ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
+          ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
+          'psapi.lib',
+          'netapi32.lib',
+          'rasapi32.lib',
+          'shlwapi.lib',
+          'userenv.lib',
+          'version.lib',
+          'wtsapi32.lib',
+      ],
+  )
   version_string = omaha_version_info.GetVersionString()
   prefix = omaha_version_info.filename_prefix
-  handler_env = handler_common_env.Clone(COMPONENT_STATIC = False)
 
   if prefix == 'TEST_':
     handler_env['OBJPREFIX'] = handler_env.subst('test/$OBJPREFIX')
@@ -143,7 +226,8 @@ def BuildGoogleUpdateHandlerDll(omaha_version_info, is_machine_handler, psname):
           'IS_MACHINE_HANDLER=%d' % is_machine_handler,
       ],
       LIBS = [
-          '$LIB_DIR/common.lib',
+          handler_env.GetMultiarchLibName('common'),
+          'crypt32.lib',
           'wininet.lib',
           'rpcrt4.lib',
       ],
@@ -156,24 +240,26 @@ def BuildGoogleUpdateHandlerDll(omaha_version_info, is_machine_handler, psname):
       ],
   )
 
-  resource = handler_env.RES(target='%s%s_resource.res' % (prefix, psname),
-                             source='google_update_ps_resource.rc')
+  suffix = ('', '_64')[handler_env.Bit('x64')]
+  resource = handler_env.RES(
+      target='%s%s_resource%s.res' % (prefix, psname, suffix),
+      source='google_update_ps_resource.rc')
 
   handler_env.Depends(
       resource,
       ['$MAIN_DIR/VERSION',
        '$MAIN_DIR/base/generic_reg_file_dll_handler.rgs'])
 
-  target_name = '%s%s_unsigned' % (prefix, psname)
+  target_name = '%s%s_unsigned%s' % (prefix, psname, suffix)
 
   inputs = [
       'google_update_ps.def',
       resource,
       prefix + 'goopdate_version.res',
       ]
-  inputs += handler_env.Object('google_update_ps_%s.obj' % psname,
+  inputs += handler_env.Object('google_update_ps_%s%s.obj' % (psname, suffix),
                                '$OBJ_ROOT/goopdate/google_update_ps.cc')
-  inputs += handler_env.Object('omaha3_idl_datax_%s.obj' % psname,
+  inputs += handler_env.Object('omaha3_idl_datax_%s%s.obj' % (psname, suffix),
                                '$OBJ_ROOT/goopdate/omaha3_idl_datax.c')
 
   unsigned_dll = handler_env.ComponentLibrary(
@@ -182,7 +268,7 @@ def BuildGoogleUpdateHandlerDll(omaha_version_info, is_machine_handler, psname):
   )
 
   signed_dll = handler_env.SignedBinary(
-      target='%s%s.dll' % (prefix, psname),
+      target='%s%s%s.dll' % (prefix, psname, suffix),
       source=unsigned_dll,
   )
 
@@ -190,9 +276,16 @@ def BuildGoogleUpdateHandlerDll(omaha_version_info, is_machine_handler, psname):
   env.Replicate('$STAGING_DIR', [f for f in unsigned_dll if f.suffix == '.pdb'])
 
 
+handler_env = env.Clone(COMPONENT_STATIC = False)
 for omaha_version_info in env['omaha_versions_info']:
-  BuildGoogleUpdateHandlerDll(omaha_version_info, 1, 'psmachine')
-  BuildGoogleUpdateHandlerDll(omaha_version_info, 0, 'psuser')
+  BuildGoogleUpdateHandlerDll(handler_env.Clone(),
+                              omaha_version_info, 1, 'psmachine')
+  BuildGoogleUpdateHandlerDll(handler_env.CloneAndMake64Bit(),
+                              omaha_version_info, 1, 'psmachine')
+  BuildGoogleUpdateHandlerDll(handler_env.Clone(),
+                              omaha_version_info, 0, 'psuser')
+  BuildGoogleUpdateHandlerDll(handler_env.CloneAndMake64Bit(),
+                              omaha_version_info, 0, 'psuser')
 
 gd_env = env.Clone()
 
@@ -204,7 +297,6 @@ gd_env['CPPDEFINES'] += [
 # Need to look in output dir to find .h files generated by midl compiler.
 gd_env['CPPPATH'] += [
     '$OBJ_ROOT',  # Needed for generated files.
-    '$MAIN_DIR/third_party/breakpad/src/',
     ]
 
 target_name = 'goopdate_lib'
@@ -220,6 +312,11 @@ gd_inputs = [
     'app_bundle_state_ready.cc',
     'app_bundle_state_stopped.cc',
     'app_command.cc',
+    'app_command_completion_observer.cc',
+    'app_command_configuration.cc',
+    'app_command_formatter.cc',
+    'app_command_model.cc',
+    'app_command_ping_delegate.cc',
     'app_manager.cc',
     'app_state.cc',
     'app_state_error.cc',
@@ -242,8 +339,8 @@ gd_inputs = [
     'cocreate_async.cc',
     'cred_dialog.cc',
     'current_state.cc',
-    'download_complete_ping_event.cc',
     'download_manager.cc',
+    'google_app_command_verifier.cc',
     'google_update.cc',
     'goopdate.cc',
     'goopdate_metrics.cc',
@@ -258,6 +355,7 @@ gd_inputs = [
     'string_formatter.cc',
     'package.cc',
     'package_cache.cc',
+    'ping_event_cancel.cc',
     'process_launcher.cc',
     'resource_manager.cc',
     'update3web.cc',
@@ -267,11 +365,9 @@ gd_inputs = [
     'worker_utils.cc',
     'worker_metrics.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  gd_inputs += gd_env.EnablePrecompile(target_name)
 
 # Compile the library.
-gd_env.ComponentLibrary(target_name, gd_inputs)
+gd_env.ComponentStaticLibraryMultiarch(target_name, gd_inputs)
 
 
 #
@@ -316,7 +412,7 @@ for omaha_version_info in env['omaha_versions_info']:
           '$LIB_DIR/setup.lib',
           '$LIB_DIR/statsreport.lib',
           '$LIB_DIR/ui.lib',
-          ('atls.lib', 'atlsd.lib')[temp_env.Bit('debug')],
+          temp_env['atls_libs'][temp_env.Bit('debug')],
           ('libcmt.lib', 'libcmtd.lib')[temp_env.Bit('debug')],
           ('libcpmt.lib', 'libcpmtd.lib')[temp_env.Bit('debug')],
           # TODO(omaha3): This must be linked in because we have UI in the DLL.
@@ -324,6 +420,7 @@ for omaha_version_info in env['omaha_versions_info']:
           'comctl32.lib',
           'crypt32.lib',
           'delayimp.lib',
+          'imagehlp.lib',
           'iphlpapi.lib',
           'msi.lib',
           'msimg32.lib',
@@ -337,24 +434,13 @@ for omaha_version_info in env['omaha_versions_info']:
           'taskschd.lib',
           'version.lib',
           'userenv.lib',
+          'uxtheme.lib',
           'wininet.lib',
           'wintrust.lib',
           'ws2_32.lib',
           'wtsapi32.lib',
           ],
       LINKFLAGS = [
-          '/DELAYLOAD:oleaut32.dll',
-          '/DELAYLOAD:psapi.dll',
-          '/DELAYLOAD:rasapi32.dll',
-          '/DELAYLOAD:shell32.dll',
-          '/DELAYLOAD:shlwapi.dll',
-          '/DELAYLOAD:userenv.dll',
-          '/DELAYLOAD:version.dll',
-          '/DELAYLOAD:wtsapi32.dll',
-
-          # Forces the dependency on ws2_32.lib.
-          '/INCLUDE:_WSAStartup@8',
-
           # TODO(Omaha) - Choose a rebase address which does not conflict
           # with other DLLs loaded in our process. For now, we just picked
           # an arbitrary address.
@@ -429,17 +515,20 @@ customization_test_env = env.Clone()
 customization_test_env.Append(
     LIBS = [
         '$LIB_DIR/common.lib',
+        '$LIB_DIR/security.lib',
+        'crypt32.lib',
     ],
 )
 
 customization_test_env['CPPPATH'] += [
     '$OBJ_ROOT',  # Needed for generated files.
     ]
+
 customization_test = customization_test_env.OmahaUnittest(
     name='omaha_customization_goopdate_apis_unittest',
     source=[
-        'omaha_customization_goopdate_apis_unittest.cc',
-        'omaha3_idl_i.obj',  # Needed for LIBID_*.
+          'omaha_customization_goopdate_apis_unittest.cc',
+          'omaha3_idl_i.obj',
     ],
     all_in_one=False,
     COMPONENT_TEST_SIZE='small',
@@ -451,3 +540,57 @@ customization_test_env.Depends(customization_test, '$STAGING_DIR/goopdate.dll')
 
 # Build all the resource dlls.
 env.BuildSConscript('resources')
+
+test_installer_env = env.Clone()
+
+test_installer_env.Append(
+  CCFLAGS = [
+      '/wd4995',
+      '/FIgoogle_update/precompile.h',
+      ],
+  LIBS = [
+      'delayimp.lib',
+      'advapi32.lib',
+      'crypt32.lib',
+      'kernel32.lib',
+      'netapi32.lib',
+      'psapi.lib',
+      'rasapi32.lib',
+      'shell32.lib',
+      'shlwapi.lib',
+      'user32.lib',
+      'userenv.lib',
+      'version.lib',
+      'wintrust.lib',
+      'wtsapi32.lib',
+      test_installer_env['atls_libs'][test_installer_env.Bit('debug')],
+      ('libcmt.lib', 'libcmtd.lib')[test_installer_env.Bit('debug')],
+      ('libcpmt.lib', 'libcpmtd.lib')[test_installer_env.Bit('debug')],
+      '$LIB_DIR/base.lib',
+      ],
+  LINKFLAGS = [
+      '/NODEFAULTLIB',
+      '/MERGE:.rdata=.text'
+      ],
+)
+
+test_installer_res = test_installer_env.RES('TestOmahaExeInstaller.res',
+                                            '../google_update/resource.rc')
+test_installer_env.Depends(test_installer_res,
+                           '../google_update/GoogleUpdate.manifest')
+test_installer_inputs = [
+    test_installer_env.ComponentObject('TestOmahaExeInstaller.obj',
+                                       'test_omaha_exe_installer.cc'),
+    test_installer_res,
+]
+
+unsigned_test_installer = test_installer_env.ComponentProgram(
+    prog_name='TestOmahaExeInstaller_unsigned',
+    source=test_installer_inputs,
+)
+signed_test_installer = test_installer_env.SignedBinary(
+    target='TestOmahaExeInstaller.exe',
+    source=unsigned_test_installer,
+)
+env.Replicate('$STAGING_DIR', signed_test_installer)
+

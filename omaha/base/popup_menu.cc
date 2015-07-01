@@ -167,7 +167,7 @@ bool PopupMenu::ModifyMenuItem(int menu_item, bool by_pos, const TCHAR* text,
   }
 
   OwnerDrawData* old_owner_data = NULL;
-  if ((menuitem_info.fType | MFT_OWNERDRAW) && menuitem_info.dwItemData) {
+  if ((menuitem_info.fType & MFT_OWNERDRAW) && menuitem_info.dwItemData) {
     old_owner_data =
         reinterpret_cast<OwnerDrawData *>(menuitem_info.dwItemData);
   }
@@ -207,7 +207,7 @@ bool PopupMenu::RemoveMenuItem(int menu_item, bool by_pos) {
   }
 
   OwnerDrawData* old_owner_data = NULL;
-  if ((menuitem_info.fType | MFT_OWNERDRAW) && menuitem_info.dwItemData) {
+  if ((menuitem_info.fType & MFT_OWNERDRAW) && menuitem_info.dwItemData) {
     old_owner_data =
         reinterpret_cast<OwnerDrawData *>(menuitem_info.dwItemData);
   }

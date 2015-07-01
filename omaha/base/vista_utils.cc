@@ -17,6 +17,7 @@
 
 #include <vector>
 #include "base/scoped_ptr.h"
+#include "omaha/base/browser_utils.h"
 #include "omaha/base/commontypes.h"
 #include "omaha/base/const_utils.h"
 #include "omaha/base/constants.h"
@@ -47,7 +48,9 @@ namespace {
 // TODO(Omaha): Unit test for this method.
 HRESULT RunAsUser(const CString& command_line,
                   HANDLE user_token,
-                  bool run_as_current_user) {
+                  bool run_as_current_user,
+                  HANDLE* child_stdout,
+                  HANDLE* process) {
   if (INVALID_HANDLE_VALUE == user_token) {
     return E_INVALIDARG;
   }
@@ -56,6 +59,23 @@ HRESULT RunAsUser(const CString& command_line,
 
   STARTUPINFO startup_info = { sizeof(startup_info) };
   PROCESS_INFORMATION process_info = {0};
+  BOOL inherit_handles = FALSE;
+  scoped_handle pipe_read;
+  scoped_handle pipe_write;
+
+  if (child_stdout) {
+    HRESULT hr = System::CreateChildOutputPipe(address(pipe_read),
+                                               address(pipe_write));
+    if (FAILED(hr)) {
+      UTIL_LOG(LW, (_T("[CreateChildOutputPipe failed][0x%x]"), hr));
+      return hr;
+    }
+    startup_info.dwFlags = STARTF_USESTDHANDLES;
+    startup_info.hStdInput = ::GetStdHandle(STD_INPUT_HANDLE);
+    startup_info.hStdOutput = get(pipe_write);
+    startup_info.hStdError = ::GetStdHandle(STD_ERROR_HANDLE);
+    inherit_handles = TRUE;
+  }
 
   DWORD creation_flags(0);
   void* environment_block(NULL);
@@ -70,11 +90,12 @@ HRESULT RunAsUser(const CString& command_line,
   // ::CreateProcessAsUser() does not work unless the caller is SYSTEM. Does not
   // matter if the user token is for the current user.
   BOOL success = run_as_current_user ?
-      ::CreateProcess(0, CStrBuf(cmd, MAX_PATH), 0, 0, false, creation_flags,
-                      environment_block, 0, &startup_info, &process_info) :
-      ::CreateProcessAsUser(user_token, 0, CStrBuf(cmd, MAX_PATH), 0, 0, false,
-                            creation_flags, environment_block, 0, &startup_info,
-                            &process_info);
+      ::CreateProcess(0, CStrBuf(cmd, MAX_PATH), 0, 0, inherit_handles,
+                      creation_flags, environment_block, 0, &startup_info,
+                      &process_info) :
+      ::CreateProcessAsUser(user_token, 0, CStrBuf(cmd, MAX_PATH), 0, 0,
+                            inherit_handles, creation_flags, environment_block,
+                            0, &startup_info, &process_info);
 
   if (!success) {
     HRESULT hr(HRESULTFromLastError());
@@ -83,7 +104,15 @@ HRESULT RunAsUser(const CString& command_line,
   }
 
   VERIFY1(::CloseHandle(process_info.hThread));
-  VERIFY1(::CloseHandle(process_info.hProcess));
+  if (!process) {
+    VERIFY1(::CloseHandle(process_info.hProcess));
+  } else {
+    *process = process_info.hProcess;
+  }
+
+  if (child_stdout) {
+    *child_stdout = release(pipe_read);
+  }
 
   return S_OK;
 }
@@ -176,7 +205,9 @@ HRESULT AllowProtectedProcessAccessToSharedObject(const TCHAR* name) {
   return HRESULT_FROM_WIN32(ret);
 }
 
-HRESULT RunAsCurrentUser(const CString& command_line) {
+HRESULT RunAsCurrentUser(const CString& command_line,
+                         HANDLE* child_stdout,
+                         HANDLE* process) {
   scoped_handle token;
   if (!::OpenProcessToken(::GetCurrentProcess(),
                           TOKEN_QUERY | TOKEN_DUPLICATE,
@@ -186,16 +217,15 @@ HRESULT RunAsCurrentUser(const CString& command_line) {
     return hr;
   }
 
-  return RunAsUser(command_line, get(token), true);
+  return RunAsUser(command_line, get(token), true,
+                   child_stdout, process);
 }
 
 static HRESULT StartInternetExplorerAsUser(HANDLE user_token,
                                            const CString& options) {
   // Internet Explorer path
   CString ie_file_path;
-  HRESULT result = RegKey::GetValue(kRegKeyIeClass,
-                                    kRegValueIeClass,
-                                    &ie_file_path);
+  HRESULT result = GetIEPath(&ie_file_path);
   ASSERT1(SUCCEEDED(result));
 
   if (SUCCEEDED(result)) {
@@ -205,7 +235,7 @@ static HRESULT StartInternetExplorerAsUser(HANDLE user_token,
     UTIL_LOG(L5, (_T("[StartInternetExplorerAsUser]")
                   _T("[Running IExplore with command line][%s]"),
                   command_line));
-    result = RunAsUser(command_line, user_token, false);
+    result = RunAsUser(command_line, user_token, false, NULL, NULL);
   }
   return result;
 }
@@ -448,7 +478,7 @@ HRESULT StartProcessWithTokenOfProcess(uint32 pid,
   // Start process using the token.
   UTIL_LOG(L5, (_T("[StartProcessWithTokenOfProcess][Running process %s]"),
                 command_line));
-  hr = RunAsUser(command_line, get(user_token), false);
+  hr = RunAsUser(command_line, get(user_token), false, NULL, NULL);
 
   if (FAILED(hr)) {
     UTIL_LOG(LEVEL_ERROR,

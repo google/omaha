@@ -402,6 +402,8 @@ void Decode (uint32 *output, unsigned char *input, unsigned int len) {
     ASSERT(input, (L""));
     ASSERT(output, (L""));
 
+    UNREFERENCED_PARAMETER(len);
+
     register uint32 out,other;
 
     // for (i = 0, j = 0; j < len; i++, j += 4)

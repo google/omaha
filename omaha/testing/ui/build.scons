@@ -29,7 +29,7 @@ local_env.Append(
     CPPPATH = [
         '$OBJ_ROOT',                    # Needed for the generated files
         '$MAIN_DIR/goopdate/resources',
-        '$MAIN_DIR/third_party/gtest/include',
+        '$THIRD_PARTY/gtest/include',
         ],
     CPPDEFINES = [
         'UNITTEST',
@@ -51,7 +51,7 @@ local_env.Append(
         '$LIB_DIR/worker.lib',
         '$LIB_DIR/gtest.lib',
         '$LIB_DIR/common.lib',
-        ('atls.lib', 'atlsd.lib')[local_env.Bit('debug')],
+        local_env['atls_libs'][local_env.Bit('debug')],
         'comctl32.lib',
         'crypt32.lib',
         'iphlpapi.lib',
@@ -84,6 +84,7 @@ local_env.Append(
 unittest_res = local_env.RES('ui_unittest.rc'),
 
 local_env.Depends(unittest_res, '$MAIN_DIR/VERSION')
+local_env.Depends(unittest_res, 'ui_unittest.manifest')
 
 # A test is a console application, so we tell mk to link to
 # main() as opposed to WinMain().

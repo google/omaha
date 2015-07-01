@@ -18,7 +18,6 @@
 #include <vector>
 #include "base/scoped_ptr.h"
 #include "base/basictypes.h"
-#include "omaha/base/app_util.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
@@ -31,11 +30,10 @@
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/net/bits_request.h"
-#include "omaha/net/cup_request.h"
+#include "omaha/net/cup_ecdsa_request.h"
 #include "omaha/net/network_config.h"
 #include "omaha/net/network_request.h"
 #include "omaha/net/simple_request.h"
-#include "omaha/net/urlmon_request.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -60,7 +58,9 @@ class NetworkRequestTest
     if (browser_type == BROWSER_FIREFOX) {
       network_config->Add(new FirefoxProxyDetector);
     }
-    network_config->Add(new IEProxyDetector);
+    network_config->Add(new IEWPADProxyDetector);
+    network_config->Add(new IEPACProxyDetector);
+    network_config->Add(new IENamedProxyDetector);
     network_config->Add(new DefaultProxyDetector);
 
     vista::GetLoggedOnUserToken(&token_);
@@ -84,6 +84,7 @@ class NetworkRequestTest
       NetworkConfigManager::Instance().GetUserNetworkConfig(&network_config));
 
     network_request_.reset(new NetworkRequest(network_config->session()));
+    network_request_->set_retry_delay_jitter(0);
   }
 
   virtual void TearDown() {}
@@ -182,10 +183,9 @@ class NetworkRequestTest
   void DownloadHelper() {
     CString url = _T("http://dl.google.com/update2/UpdateData.bin");
 
-    CString temp_dir = app_util::GetTempDir();
-    CString temp_file;
-    EXPECT_TRUE(::GetTempFileName(temp_dir, _T("tmp"), 0,
-                                  CStrBuf(temp_file, MAX_PATH)));
+    CString temp_file = GetTempFilename(_T("tmp"));
+    ASSERT_FALSE(temp_file.IsEmpty());
+
     network_request_->set_num_retries(2);
     network_request_->set_low_priority(true);
     network_request_->set_callback(this);
@@ -218,22 +218,18 @@ class NetworkRequestTest
     std::vector<uint8> response;
     CString url = _T("http://tools.google.com/service/update2");
     CString request = _T("<o:gupdate xmlns:o=\"http://www.google.com/update2/request\" testsource=\"dev\"/>");  // NOLINT
-    EXPECT_HRESULT_SUCCEEDED(PostRequest(network_request_.get(),
-                                         true,
-                                         url,
-                                         request,
-                                         &response));
+    EXPECT_HRESULT_SUCCEEDED(network_request_->PostString(url,
+                                                          request,
+                                                          &response));
   }
 
   void PostRequestNegativeTestHelper() {
     std::vector<uint8> response;
     CString url = _T("http://no_such_host.google.com/service/update2");
     CString request = _T("<o:gupdate xmlns:o=\"http://www.google.com/update2/request\" testsource=\"dev\"/>");  // NOLINT
-    EXPECT_HRESULT_FAILED(PostRequest(network_request_.get(),
-                                      true,
-                                      url,
-                                      request,
-                                      &response));
+    EXPECT_HRESULT_FAILED(network_request_->PostString(url,
+                                                       request,
+                                                       &response));
   }
 
   void RetriesNegativeTestHelper() {
@@ -295,35 +291,16 @@ TEST_F(NetworkRequestTest, HttpGet) {
   HttpGetHelper();
 }
 
-// http get.
-TEST_F(NetworkRequestTest, HttpGetUrlmon) {
-  network_request_->AddHttpRequest(new UrlmonRequest);
-  HttpGetHelper();
-}
-
 // https get.
 TEST_F(NetworkRequestTest, HttpsGet) {
   network_request_->AddHttpRequest(new SimpleRequest);
   HttpsGetHelper();
 }
 
-// https get.
-TEST_F(NetworkRequestTest, HttpsGetUrlmon) {
-  network_request_->AddHttpRequest(new UrlmonRequest);
-  HttpsGetHelper();
-}
-
 // http post.
 TEST_F(NetworkRequestTest, HttpPost) {
-  network_request_->AddHttpRequest(new CupRequest(new SimpleRequest));
+  network_request_->AddHttpRequest(new CupEcdsaRequest(new SimpleRequest));
   network_request_->AddHttpRequest(new SimpleRequest);
-  HttpPostHelper();
-}
-
-// http post.
-TEST_F(NetworkRequestTest, HttpPostUrlmon) {
-  network_request_->AddHttpRequest(new CupRequest(new UrlmonRequest));
-  network_request_->AddHttpRequest(new UrlmonRequest);
   HttpPostHelper();
 }
 
@@ -342,25 +319,8 @@ TEST_F(NetworkRequestTest, Download) {
   DownloadHelper();
 }
 
-// Download http file.
-TEST_F(NetworkRequestTest, DownloadUrlmon) {
-  BitsRequest* bits_request(new BitsRequest);
-  // Bits specific settings.
-  bits_request->set_minimum_retry_delay(60);
-  bits_request->set_no_progress_timeout(5);
-
-  network_request_->AddHttpRequest(bits_request);
-  network_request_->AddHttpRequest(new UrlmonRequest);
-  DownloadHelper();
-}
-
 TEST_F(NetworkRequestTest, MultipleRequests) {
-  network_request_->AddHttpRequest(new CupRequest(new SimpleRequest));
-  MultipleRequestsHelper();
-}
-
-TEST_F(NetworkRequestTest, MultipleRequestsUrlmon) {
-  network_request_->AddHttpRequest(new CupRequest(new UrlmonRequest));
+  network_request_->AddHttpRequest(new CupEcdsaRequest(new SimpleRequest));
   MultipleRequestsHelper();
 }
 
@@ -369,28 +329,13 @@ TEST_F(NetworkRequestTest, PostRequest) {
   PostRequestHelper();
 }
 
-TEST_F(NetworkRequestTest, PostRequestUrlmon) {
-  network_request_->AddHttpRequest(new UrlmonRequest);
-  PostRequestHelper();
-}
-
 TEST_F(NetworkRequestTest, PostRequestNegativeTest) {
   network_request_->AddHttpRequest(new SimpleRequest);
   PostRequestNegativeTestHelper();
 }
 
-TEST_F(NetworkRequestTest, PostRequestNegativeTestUrlmon) {
-  network_request_->AddHttpRequest(new UrlmonRequest);
-  PostRequestNegativeTestHelper();
-}
-
 TEST_F(NetworkRequestTest, RetriesNegativeTest) {
   network_request_->AddHttpRequest(new SimpleRequest);
-  RetriesNegativeTestHelper();
-}
-
-TEST_F(NetworkRequestTest, RetriesNegativeTestUrlmon) {
-  network_request_->AddHttpRequest(new UrlmonRequest);
   RetriesNegativeTestHelper();
 }
 
@@ -442,4 +387,3 @@ TEST_F(NetworkRequestTest, CancelTest_Get) {
 }
 
 }  // namespace omaha
-

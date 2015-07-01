@@ -36,7 +36,7 @@ Challenger::Challenger(RSA::PublicKey pkey,
     : rsa_(pkey) {
   memset(count_, 0, sizeof(count_));
   // Use seed as key for AES. Compress seed first.
-  MD5(seed, seed_size, seed_);
+  MD5_hash(seed, seed_size, seed_);
 }
 
 const char* Challenger::challenge() {
@@ -53,7 +53,10 @@ const char* Challenger::challenge() {
   p += snprintf(challenge_, sizeof(challenge_), "%d:", rsa_.version());
 
   // Append our current challenge.
-  B64_encode(ctr, sizeof(ctr), p, sizeof(challenge_) - (p - challenge_));
+  B64_encode(ctr,
+             sizeof(ctr),
+             p,
+             static_cast<int>(sizeof(challenge_) - (p - challenge_)));
 
   return challenge_;
 }

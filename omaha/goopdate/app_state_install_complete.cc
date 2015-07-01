@@ -13,8 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#include "omaha/common/config_manager.h"
 #include "omaha/goopdate/app_state_install_complete.h"
+
+#include "omaha/common/config_manager.h"
+#include "omaha/common/ping_event.h"
 #include "omaha/base/logging.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/worker.h"
@@ -32,7 +34,7 @@ AppStateInstallComplete::AppStateInstallComplete(App* app)
   bool is_machine = app->app_bundle()->is_machine();
   if (ConfigManager::Instance()->CanCollectStats(is_machine) &&
       (!is_machine || user_info::IsRunningAsSystem())) {
-    VERIFY1(SUCCEEDED(goopdate_utils::StartCrashHandler(is_machine)));
+    goopdate_utils::StartCrashHandler(is_machine);
   }
 
   VERIFY1(SUCCEEDED(app->model()->PurgeAppLowerVersions(
@@ -68,9 +70,16 @@ const PingEvent* AppStateInstallComplete::CreatePingEvent(
   const HRESULT error_code(app->error_code());
   ASSERT1(SUCCEEDED(error_code));
 
-  return can_ping ?
-      new PingEvent(event_type, GetCompletionResult(*app), error_code, 0) :
-      NULL;
+  return can_ping ? new PingEvent(event_type,
+                                  GetCompletionResult(*app),
+                                  error_code,
+                                  0,
+                                  app->source_url_index(),
+                                  app->GetUpdateCheckTimeMs(),
+                                  app->GetDownloadTimeMs(),
+                                  app->num_bytes_downloaded(),
+                                  app->GetPackagesTotalSize(),
+                                  app->GetInstallTimeMs()) : NULL;
 }
 
 // Canceling while in a terminal state has no effect.

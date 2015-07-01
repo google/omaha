@@ -16,8 +16,8 @@
 // BCJ encodes a file to increase its compressibility.
 
 #include <windows.h>
+#include <intsafe.h>
 #include <shellapi.h>
-
 #include <string>
 
 #include "base/basictypes.h"
@@ -69,27 +69,30 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   //   size of stream 2
   //   size of stream 3
   //   size of stream 4
-  const DWORD output_buffer_length = 5 * sizeof(uint32) +  // NOLINT
-                                     out1.size() + out2.size() + out3.size() +
-                                     out4.size();
-  DWORD buffer_remaining = output_buffer_length;
+  const size_t output_buffer_length = 5 * sizeof(uint32) +  // NOLINT
+      out1.size() + out2.size() + out3.size() + out4.size();
+  if (output_buffer_length > DWORD_MAX) {
+    return 13;
+  }
+
+  size_t buffer_remaining = output_buffer_length;
   scoped_array<uint8> output_buffer(new uint8[output_buffer_length]);
   uint8* p = output_buffer.get();
   *reinterpret_cast<uint32*>(p) = bytes_read;
-  p += sizeof(uint32);  // NOLINT
-  buffer_remaining -= sizeof(uint32);  // NOLINT
-  *reinterpret_cast<uint32*>(p) = out1.size();
-  p += sizeof(uint32);  // NOLINT
-  buffer_remaining -= sizeof(uint32);  // NOLINT
-  *reinterpret_cast<uint32*>(p) = out2.size();
-  p += sizeof(uint32);  // NOLINT
-  buffer_remaining -= sizeof(uint32);  // NOLINT
-  *reinterpret_cast<uint32*>(p) = out3.size();
-  p += sizeof(uint32);  // NOLINT
-  buffer_remaining -= sizeof(uint32);  // NOLINT
-  *reinterpret_cast<uint32*>(p) = out4.size();
-  p += sizeof(uint32);  // NOLINT
-  buffer_remaining -= sizeof(uint32);  // NOLINT
+  p += sizeof(uint32);                                                // NOLINT
+  buffer_remaining -= sizeof(uint32);                                 // NOLINT
+  *reinterpret_cast<uint32*>(p) = static_cast<uint32>(out1.size());
+  p += sizeof(uint32);                                                // NOLINT
+  buffer_remaining -= sizeof(uint32);                                 // NOLINT
+  *reinterpret_cast<uint32*>(p) = static_cast<uint32>(out2.size());
+  p += sizeof(uint32);                                                // NOLINT
+  buffer_remaining -= sizeof(uint32);                                 // NOLINT
+  *reinterpret_cast<uint32*>(p) = static_cast<uint32>(out3.size());
+  p += sizeof(uint32);                                                // NOLINT
+  buffer_remaining -= sizeof(uint32);                                 // NOLINT
+  *reinterpret_cast<uint32*>(p) = static_cast<uint32>(out4.size());
+  p += sizeof(uint32);                                                // NOLINT
+  buffer_remaining -= sizeof(uint32);                                 // NOLINT
   if (!out1.empty()) {
     if (0 != memcpy_s(p, buffer_remaining, &out1[0], out1.size())) {
       return 9;
@@ -130,7 +133,9 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   }
 
   DWORD bytes_written = 0;
-  if (!::WriteFile(get(file), output_buffer.get(), output_buffer_length,
+  if (!::WriteFile(get(file),
+                   output_buffer.get(),
+                   static_cast<DWORD>(output_buffer_length),
                    &bytes_written, NULL)) {
     return 7;
   }

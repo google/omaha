@@ -29,6 +29,10 @@ namespace update_response_utils {
 const xml::response::App* GetApp(const xml::response::Response& response,
                                  const CString& appid);
 
+// Checks the status of the "untrusted" data element. Returns S_OK if the status
+// is "ok" or GOOPDATEINSTALL_E_INVALID_UNTRUSTED_DATA otherwise.
+HRESULT ValidateUntrustedData(const std::vector<xml::response::Data>& data);
+
 // Retrieves the install_data string corresponding to the install_data_index
 // in the response data object. Returns an error if the status of the data
 // object is not ok or the index is not found.
@@ -43,9 +47,11 @@ HRESULT BuildApp(const xml::UpdateResponse* update_response,
                  App* app);
 
 // Returns the result of the update response for an app. The string member of
-// the result is formatted in the specified language.
+// the result is formatted in the specified language and could include
+// the value of the |app_name| parameter in some cases.
 xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
                                     const CString& appid,
+                                    const CString& app_name,
                                     const CString& language);
 
 // Returns true if the update response contains an update for Omaha.

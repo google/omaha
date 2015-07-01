@@ -386,11 +386,16 @@ public:
   }
 
   ~TimingSample() {
-    // We discard samples with a zero count
-    if(count_ == 1)
-      timing_.AddSample(timer_.GetElapsedMs());
+    // We discard samples with a zero count and samples where the elapsed time
+    // is out of range.
+    const int64 time_ms(static_cast<int64>(timer_.GetElapsedMs()));
+    if (time_ms < 0) {
+      return;
+    }
+    if (count_ == 1)
+      timing_.AddSample(time_ms);
     else
-      timing_.AddSamples(count_, timer_.GetElapsedMs());
+      timing_.AddSamples(count_, time_ms);
   }
 
   /// @name Accessors

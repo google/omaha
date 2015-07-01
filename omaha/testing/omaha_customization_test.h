@@ -19,6 +19,7 @@
 #define OMAHA_TESTING_OMAHA_CUSTOMIZATION_TEST_H_
 
 #include "omaha/testing/unit_test.h"
+#include "omaha/base/app_util.h"
 
 #ifdef GOOGLE_UPDATE_BUILD
 // For Google Update builds, expect the values to be equal and for the
@@ -67,16 +68,55 @@ class OmahaCustomizationTypeLibComInterfaceTest : public testing::Test {
 
   virtual void SetUp() {
     CString omaha_dll_path;
-    omaha_dll_path.Format(_T("..\\staging\\%s"), dll_name_);
+
+    omaha_dll_path.Format(_T("%s\\..\\staging\\%s"),
+                          omaha::app_util::GetModuleDirectory(NULL),
+                          dll_name_);
     EXPECT_SUCCEEDED(::LoadTypeLib(omaha_dll_path, &type_lib_));
   }
 
-  HRESULT GetDocumentation(int type_description_index) {
-    return type_lib_->GetDocumentation(type_description_index,
-                                      &item_name_,
-                                      &item_doc_string_,
-                                      &help_context_,
-                                      &help_file_);
+  HRESULT GetTypeLibDocumentation() {
+    return type_lib_->GetDocumentation(-1,
+                                       &item_name_,
+                                       &item_doc_string_,
+                                       &help_context_,
+                                       &help_file_);
+  }
+
+  HRESULT GetDocumentation(const CString& type_name) {
+    ITypeInfo* type_info[] = {NULL, NULL};
+    MEMBERID member_id[] = {MEMBERID_NIL, MEMBERID_NIL};
+    USHORT found = 2;
+
+    CComBSTR type_name_bstr(type_name);
+    HRESULT hr = type_lib_->FindName(type_name_bstr,
+                                     0,
+                                     type_info,
+                                     member_id,
+                                     &found);
+
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    EXPECT_EQ(1, found);
+    EXPECT_EQ(MEMBERID_NIL, member_id[0]);
+
+    if (found != 1 || member_id[0] != MEMBERID_NIL) {
+      hr = TYPE_E_ELEMENTNOTFOUND;
+    } else {
+      hr = type_info[0]->GetDocumentation(member_id[0],
+                                          &item_name_,
+                                          &item_doc_string_,
+                                          &help_context_,
+                                          &help_file_);
+    }
+
+    for (int i = 0; i < found; ++i) {
+      type_info[i]->Release();
+    }
+
+    return hr;
   }
 
   CString dll_name_;

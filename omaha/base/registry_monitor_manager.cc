@@ -295,7 +295,8 @@ void ValueWatcher::DoCallback() {
   if (value_type_ == REG_SZ) {
     value = static_cast<const TCHAR*>(last_known_value_string_);
   } else if (value_type_ == REG_DWORD) {
-    value = reinterpret_cast<void*>(last_known_value_dword_);
+    value = reinterpret_cast<void*>(
+        static_cast<DWORD_PTR>(last_known_value_dword_));
   }
 
   callback_(key_watcher_->key_name(), value_name_, change_type_,
@@ -460,6 +461,9 @@ HRESULT RegistryMonitorImpl::MonitorKey(HKEY root_key,
       return S_OK;
     }
   }
+  if (watchers_.size() >= MAXIMUM_WAIT_OBJECTS) {
+    return GOOPDATE_E_TOO_MANY_WAITS;
+  }
   scoped_ptr<KeyWatcher> key_watcher(new KeyWatcher(key_id));
   key_watcher->set_callback(callback, user_data);
   Watcher watcher(key_id, key_watcher.release());
@@ -481,6 +485,9 @@ HRESULT RegistryMonitorImpl::MonitorValue(
       return watchers_[i].second->AddValue(value_name, value_type,
                                            callback, user_data);
     }
+  }
+  if (watchers_.size() >= MAXIMUM_WAIT_OBJECTS) {
+    return GOOPDATE_E_TOO_MANY_WAITS;
   }
   scoped_ptr<KeyWatcher> key_watcher(new KeyWatcher(key_id));
   HRESULT hr = key_watcher->AddValue(value_name, value_type,
@@ -529,8 +536,9 @@ void RegistryMonitorImpl::Run() {
   ASSERT1(start_monitoring_gate_.get());
   VERIFY1(start_monitoring_gate_->Open());
 
+  ASSERT1(kNumHandles <= MAXIMUM_WAIT_OBJECTS);
   for (;;) {
-    DWORD result = ::WaitForMultipleObjects(kNumHandles,
+    DWORD result = ::WaitForMultipleObjects(static_cast<DWORD>(kNumHandles),
                                             handles.get(),
                                             false,
                                             INFINITE);

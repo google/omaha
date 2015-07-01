@@ -19,7 +19,7 @@
 namespace omaha {
 
 NetworkRequest::NetworkRequest(const NetworkConfig::Session& network_session) {
-  impl_.reset(new detail::NetworkRequestImpl(network_session));
+  impl_.reset(new internal::NetworkRequestImpl(network_session));
 }
 
 NetworkRequest::~NetworkRequest() {
@@ -81,12 +81,12 @@ void NetworkRequest::set_time_between_retries(int time_between_retries_ms) {
   return impl_->set_time_between_retries(time_between_retries_ms);
 }
 
-void NetworkRequest::set_callback(NetworkRequestCallback* callback) {
-  return impl_->set_callback(callback);
+void NetworkRequest::set_retry_delay_jitter(int jitter_ms) {
+  return impl_->set_retry_delay_jitter(jitter_ms);
 }
 
-void NetworkRequest::set_preserve_protocol(bool preserve_protocol) {
-  return impl_->set_preserve_protocol(preserve_protocol);
+void NetworkRequest::set_callback(NetworkRequestCallback* callback) {
+  return impl_->set_callback(callback);
 }
 
 CString NetworkRequest::response_headers() const {
@@ -95,6 +95,10 @@ CString NetworkRequest::response_headers() const {
 
 CString NetworkRequest::trace() const {
   return impl_->trace();
+}
+
+std::vector<DownloadMetrics> NetworkRequest::download_metrics() const {
+  return impl_->download_metrics();
 }
 
 HRESULT NetworkRequest::QueryHeadersString(uint32 info_level,
@@ -112,23 +116,4 @@ void NetworkRequest::set_proxy_configuration(
   return impl_->set_proxy_configuration(proxy_configuration);
 }
 
-HRESULT PostRequest(NetworkRequest* network_request,
-                    bool fallback_to_https,
-                    const CString& url,
-                    const CString& request_string,
-                    std::vector<uint8>* response) {
-  return detail::PostRequest(network_request,
-                             fallback_to_https,
-                             url,
-                             request_string,
-                             response);
-}
-
-HRESULT GetRequest(NetworkRequest* network_request,
-                   const CString& url,
-                   std::vector<uint8>* response) {
-  return detail::GetRequest(network_request, url, response);
-}
-
 }  // namespace omaha
-

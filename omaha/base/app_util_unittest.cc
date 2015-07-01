@@ -17,6 +17,8 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/file.h"
+#include "omaha/base/path.h"
+#include "omaha/base/process.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
@@ -76,17 +78,6 @@ TEST(AppUtilTest, AppUtil) {
   module = GetModuleHandleFromAddress(::ReadFile);
   EXPECT_EQ(kernel32Module, module);
 
-  CString system_path;
-  EXPECT_SUCCEEDED(GetFolderPath(CSIDL_SYSTEMX86, &system_path));
-
-  // Test the dll module directory.
-  name = GetModuleDirectory(module);
-  EXPECT_EQ(0, name.CompareNoCase(system_path));
-
-  // Test the dll module path.
-  name = GetModulePath(module);
-  EXPECT_EQ(0, name.CompareNoCase(system_path + L"\\" + kKernel32Name));
-
   // Test the dll module name.
   name = GetModuleName(module);
   EXPECT_EQ(0, name.CompareNoCase(kKernel32Name));
@@ -132,6 +123,10 @@ TEST(AppUtilTest, GetVersionFromFile) {
 }
 
 TEST(AppUtilTest, GetTempDirForImpersonatedOrCurrentUser) {
+  // TODO(omaha3): Is there a way that we could define a user on the OS that
+  // can be expected to be used by the Omaha unit tests?  It'd be nice to have
+  // a more meaningful unit test for this function.
+
   // The behavior should be the same when the code is not running impersonated.
   EXPECT_STREQ(GetTempDir(), GetTempDirForImpersonatedOrCurrentUser());
 
@@ -140,6 +135,96 @@ TEST(AppUtilTest, GetTempDirForImpersonatedOrCurrentUser) {
   EXPECT_STREQ(GetTempDir(), GetTempDirForImpersonatedOrCurrentUser());
 
   EXPECT_TRUE(::RevertToSelf());
+}
+
+TEST(AppUtilTest, GetModuleHandleFromAddress) {
+  // Get the address of a function in the local module.
+  HMODULE module = GetModuleHandleFromAddress(
+      reinterpret_cast<void*>(GetModuleHandleFromAddress));
+  EXPECT_TRUE(module);
+  EXPECT_EQ(GetModuleHandle(NULL), module);
+
+  // Get the address of a function in kernel32.
+  HMODULE kernel32_module = ::LoadLibrary(_T("kernel32"));
+  ASSERT_TRUE(kernel32_module);
+
+  HMODULE readfile_module = GetModuleHandleFromAddress(
+      reinterpret_cast<void*>(::ReadFile));
+  EXPECT_TRUE(readfile_module);
+  EXPECT_EQ(kernel32_module, readfile_module);
+
+  ::FreeLibrary(kernel32_module);
+}
+
+TEST(AppUtilTest, GetModuleDirectory) {
+  // Check that NULL generates the same output as the current EXE's module.
+  HMODULE unittest_module = GetModuleHandleFromAddress(
+      reinterpret_cast<void*>(GetModuleHandleFromAddress));
+  ASSERT_TRUE(unittest_module);
+
+  CString unittest_directory = GetModuleDirectory(unittest_module);
+  CString thismodule_directory = GetModuleDirectory(NULL);
+  EXPECT_FALSE(unittest_directory.IsEmpty());
+  EXPECT_TRUE(File::IsDirectory(unittest_directory));
+  EXPECT_STREQ(unittest_directory, thismodule_directory);
+
+  // Test against a function in kernel32, which we assume to be in system32
+  // or syswow64. But do not test against functions, such as ::LoadLibrary, that
+  // AppVerifier has hooks to. Otherwise GetModuleHandleFromAddress() could
+  // return a module from AppVerifier when it is turned on.
+  HMODULE kernel32_module = GetModuleHandleFromAddress(
+      reinterpret_cast<void*>(::QueryMemoryResourceNotification));
+  ASSERT_TRUE(kernel32_module);
+
+  CString kernel32_directory = GetModuleDirectory(kernel32_module);
+  EXPECT_FALSE(kernel32_directory.IsEmpty());
+  EXPECT_TRUE(File::IsDirectory(kernel32_directory));
+
+  if (Process::IsWow64(::GetCurrentProcessId())) {
+    // Calling the underlying ::GetModuleFileName is unreliable under WoW. It
+    // can return system32 paths when it is supposed to return syswow64 paths.
+    EXPECT_TRUE(
+        GetSystemWow64Dir().CompareNoCase(kernel32_directory) == 0 ||
+        GetSystemDir().CompareNoCase(kernel32_directory) == 0);
+  } else {
+    EXPECT_STREQ(GetSystemDir().MakeLower(), kernel32_directory.MakeLower());
+  }
+}
+
+TEST(AppUtilTest, GetModulePath) {
+  // Check that the current EXE module matches the hardwired unit test EXE name.
+  HMODULE unittest_module = GetModuleHandleFromAddress(
+      reinterpret_cast<void*>(GetModuleHandleFromAddress));
+  ASSERT_TRUE(unittest_module);
+
+  CString unittest_path = GetModulePath(unittest_module);
+  EXPECT_FALSE(unittest_path.IsEmpty());
+  EXPECT_TRUE(File::Exists(unittest_path));
+  EXPECT_STREQ(kUnittestName, GetFileFromPath(unittest_path));
+
+  // Check that NULL generates the same output as the current EXE's module.
+  CString thismodule_path = GetModulePath(NULL);
+  EXPECT_STREQ(unittest_path, thismodule_path);
+
+  // Test against a function in kernel32, which we assume to be in system32.
+  HMODULE kernel32_module = GetModuleHandleFromAddress(
+      reinterpret_cast<void*>(::QueryMemoryResourceNotification));
+  ASSERT_TRUE(kernel32_module);
+
+  CString kernel32_path = GetModulePath(kernel32_module);
+  EXPECT_FALSE(kernel32_path.IsEmpty());
+  EXPECT_TRUE(File::Exists(kernel32_path));
+  EXPECT_STREQ(_T("kernel32.dll"), GetFileFromPath(kernel32_path).MakeLower());
+  if (Process::IsWow64(::GetCurrentProcessId())) {
+    EXPECT_TRUE(
+        GetSystemWow64Dir().
+            CompareNoCase(GetDirectoryFromPath(kernel32_path)) == 0 ||
+        GetSystemDir().
+            CompareNoCase(GetDirectoryFromPath(kernel32_path)) == 0);
+  } else {
+    EXPECT_STREQ(GetSystemDir().MakeLower(),
+                 GetDirectoryFromPath(kernel32_path).MakeLower());
+  }
 }
 
 }  // namespace app_util

@@ -193,5 +193,44 @@ CString BitsAuthSchemeToString(int auth_scheme) {
   return _T("");
 }
 
+HRESULT GetFirstFileInJob(IBackgroundCopyJob* job, CString* url_out) {
+  ASSERT1(job);
+  ASSERT1(url_out);
+
+  CComPtr<IEnumBackgroundCopyFiles> enum_files;
+  HRESULT hr = job->EnumFiles(&enum_files);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  ULONG num_files = 0;
+  hr = enum_files->GetCount(&num_files);
+  if (FAILED(hr)) {
+    NET_LOG(LE, (_T("[GetFirstFileInJob][GetCount failed][%#08x]"), hr));
+    return hr;
+  }
+  if (num_files != 1) {
+    NET_LOG(LE, (_T("[GetFirstFileInJob][Multiple files?][%lu]"), num_files));
+    return E_UNEXPECTED;
+  }
+
+  CComPtr<IBackgroundCopyFile> file;
+  hr = enum_files->Next(1, &file, NULL);
+  if (FAILED(hr)) {
+    NET_LOG(LE, (_T("[GetFirstFileInJob][Next failed][%#08x]"), hr));
+    return hr;
+  }
+
+  scoped_ptr_cotask<WCHAR> remote_name;
+  hr = file->GetRemoteName(address(remote_name));
+  if (FAILED(hr)) {
+    NET_LOG(LE, (_T("[GetFirstFileInJob][GetRemoteName failed][%#08x]"), hr));
+    return hr;
+  }
+
+  url_out->SetString(remote_name.get());
+  return S_OK;
+}
+
 }   // namespace omaha
 

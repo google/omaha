@@ -30,23 +30,33 @@
 
 #include "omaha/base/atlassert.h"   // Redefines ATLASSERT.
 
-// C4061: enumerate is not explicitly handled by a case label
 // C4265: class has virtual functions, but destructor is not virtual
-// C4510: default constructor could not be generated
+// C4302: 'reinterpret_cast' : truncation from 'type_1' to 'type_2'
+// C4350: behavior change: 'member1' called instead of 'member2'
+// C4365: conversion from 'type_1' to 'type_2', signed/unsigned mismatch
 // C4548: expression before comma has no effect
-// C4610: struct can never be instantiated - user defined constructor required
-// C4826: conversion from 'type1 ' to 'type_2' is sign-extended
-#pragma warning(disable : 4061 4265 4510 4610 4548 4826)
+// C4702: unreachable code
+// C4986: exception specification does not match previous declaration
+#pragma warning(disable : 4265 4302 4350 4365 4548 4702 4986)
 #include <atlbase.h>
-#include <atlstr.h>
+#include <atlstr.h>     // Needs to be in front of atlapp.h
+#include <atlapp.h>
 #include <atlcoll.h>
 #include <atlcom.h>
+#include <atlcomtime.h>
+#include <atlctl.h>
 #include <atlhost.h>
 #include <atlrx.h>
 #include <atlsecurity.h>
+#if (_MSC_VER < 1800)
+#include <atlsecurity.inl>
+#endif
+#include <atltime.h>
 #include <atltypes.h>
+#include <atluser.h>
 #include <atlwin.h>
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <list>
 #include <map>
@@ -66,6 +76,6 @@
 #include "base/basictypes.h"
 #pragma warning(pop)
 
-#include "omaha/third_party/gtest/include/gtest/gtest.h"
+#include "third_party/gtest/include/gtest/gtest_prod.h"
 
 #endif  // OMAHA_PRECOMPILE_PRECOMPILE_H__

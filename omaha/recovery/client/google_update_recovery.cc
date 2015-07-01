@@ -18,12 +18,18 @@
 // Google apps.
 
 #include "omaha/recovery/client/google_update_recovery.h"
+#include <lm.h>
 #include <shellapi.h>
 #include <wininet.h>
 #include <atlstr.h>
+#include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
+#include "omaha/base/error.h"
 #include "omaha/base/signaturevalidator.h"
+#include "omaha/base/utils.h"
 #include "omaha/common/const_group_policy.h"
+#include "omaha/common/goopdate_utils.h"
+#include "omaha/common/google_signaturevalidator.h"
 #include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
@@ -39,7 +45,7 @@ const TCHAR* const kUserRepairArgs = _T("/recover");
 // we check in the lib.
 const TCHAR* const kQueryStringFormat =
     _T("?appid=%s&appversion=%s&applang=%s&machine=%u")
-    _T("&version=%s&osversion=%s&servicepack=%s");
+    _T("&version=%s&userid=%s&osversion=%s&servicepack=%s");
 
 // Information about where to obtain Omaha info.
 // This must never change in Omaha.
@@ -148,29 +154,6 @@ HRESULT StringEscape(const CString& str_in,
   return hr;
 }
 
-// Gets the temporary files directory for the current user.
-// The directory returned may not exist.
-// The returned path ends with a '\'.
-// Fails if the path is longer than MAX_PATH.
-HRESULT GetTempDir(CString* temp_path) {
-  if (!temp_path) {
-    return E_INVALIDARG;
-  }
-
-  temp_path->Empty();
-
-  TCHAR buffer[MAX_PATH] = {0};
-  DWORD num_chars = ::GetTempPath(MAX_PATH, buffer);
-  if (!num_chars) {
-    return HRESULT_FROM_WIN32(::GetLastError());
-  } else if (num_chars >= MAX_PATH) {
-    return E_FAIL;
-  }
-
-  *temp_path = buffer;
-  return S_OK;
-}
-
 // Creates the specified directory.
 HRESULT CreateDir(const CString& dir) {
   if (!::CreateDirectory(dir, NULL)) {
@@ -187,12 +170,13 @@ HRESULT GetAndCreateTempDir(CString* temp_path) {
     return E_INVALIDARG;
   }
 
-  HRESULT hr = GetTempDir(temp_path);
-  if (FAILED(hr)) {
-    return hr;
-  }
+  *temp_path = app_util::GetTempDir();
   if (temp_path->IsEmpty()) {
-    return E_FAIL;
+    HRESULT hr = HRESULTFromLastError();
+    if (SUCCEEDED(hr)) {
+      hr = E_FAIL;
+    }
+    return hr;
   }
 
   // Create this dir if it doesn't already exist.
@@ -207,17 +191,9 @@ HRESULT CreateUniqueTempFile(const CString& user_temp_dir,
     return E_INVALIDARG;
   }
 
-  TCHAR unique_temp_filename[MAX_PATH] = {0};
-  if (!::GetTempFileName(user_temp_dir,
-                         _T("GUR"),  // prefix
-                         0,          // form a unique filename
-                         unique_temp_filename)) {
-    return HRESULT_FROM_WIN32(::GetLastError());
-  }
-
-  *unique_temp_file_path = unique_temp_filename;
+  *unique_temp_file_path = GetTempFilenameAt(user_temp_dir, _T("GUR"));
   if (unique_temp_file_path->IsEmpty()) {
-    return E_FAIL;
+    return HRESULTFromLastError();
   }
 
   return S_OK;
@@ -334,8 +310,9 @@ HRESULT GetRegDwordValue(bool is_machine_key,
 // Attempts to obtain as much information as possible even if errors occur.
 // Therefore, return values of GetRegStringValue are ignored.
 HRESULT GetOmahaInformation(bool is_machine_app,
-                            CString* omaha_version) {
-  if (!omaha_version) {
+                            CString* omaha_version,
+                            CString* user_id) {
+  if (!omaha_version || !user_id) {
     return E_INVALIDARG;
   }
 
@@ -346,6 +323,7 @@ HRESULT GetOmahaInformation(bool is_machine_app,
     *omaha_version = _T("0.0.0.0");
   }
 
+  *user_id = goopdate_utils::GetUserIdLazyInit(is_machine_app);
   return S_OK;
 }
 
@@ -363,7 +341,8 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
   }
 
   CString omaha_version;
-  GetOmahaInformation(is_machine_app, &omaha_version);
+  CString user_id;
+  GetOmahaInformation(is_machine_app, &omaha_version, &user_id);
 
   CString os_version;
   CString os_service_pack;
@@ -374,12 +353,14 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
   CString app_version_escaped;
   CString app_language_escaped;
   CString omaha_version_escaped;
+  CString user_id_escaped;
   CString os_version_escaped;
   CString os_service_pack_escaped;
   StringEscape(app_guid, true, &app_guid_escaped);
   StringEscape(app_version, true, &app_version_escaped);
   StringEscape(app_language, true, &app_language_escaped);
   StringEscape(omaha_version, true, &omaha_version_escaped);
+  StringEscape(user_id, true, &user_id_escaped);
   StringEscape(os_version, true, &os_version_escaped);
   StringEscape(os_service_pack, true, &os_service_pack_escaped);
 
@@ -389,6 +370,7 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
                 app_language_escaped,
                 is_machine_app ? 1 : 0,
                 omaha_version_escaped,
+                user_id_escaped,
                 os_version_escaped,
                 os_service_pack_escaped);
 
@@ -480,28 +462,47 @@ HRESULT RunRepairFile(const CString& file_path, bool is_machine_app) {
   return StartProcess(NULL, command_line.GetBuffer());
 }
 
+enum DomainEnrollementState {UNKNOWN = -1, NOT_ENROLLED, ENROLLED};
+static volatile LONG g_domain_state = UNKNOWN;
+
+bool IsEnrolledToDomain() {
+  DWORD is_enrolled(false);
+  if (SUCCEEDED(GetRegDwordValue(true,
+                                 REG_UPDATE_DEV,
+                                 kRegValueIsEnrolledToDomain,
+                                 &is_enrolled))) {
+    return !!is_enrolled;
+  }
+
+  if (g_domain_state == UNKNOWN) {
+    LPWSTR domain;
+    NETSETUP_JOIN_STATUS join_status;
+    if (::NetGetJoinInformation(NULL, &domain, &join_status) != NERR_Success) {
+      return false;
+    }
+
+    ::NetApiBufferFree(domain);
+    ::InterlockedCompareExchange(&g_domain_state,
+                                 join_status == ::NetSetupDomainName ?
+                                     ENROLLED : NOT_ENROLLED,
+                                 UNKNOWN);
+  }
+
+  return g_domain_state == ENROLLED;
+}
+
 }  // namespace
 
-// Verifies the file's integrity and that it is signed by Google.
-// We cannot prevent rollback attacks by using a version because the client
-// may not be able to determine the current version if the files and/or
-// registry entries have been deleted/corrupted.
-// Therefore, we check that the file was signed recently.
+// Verifies the integrity of the file, the file certificate, and the timestamp
+// of the digital signature. Since the program
+// files or the registry entries could be missing or corrupted, the version
+// check can not be use to prevent rollback attacks. Use the timestamp instead.
 HRESULT VerifyFileSignature(const CString& filename) {
-  // Use Authenticode/WinVerifyTrust to verify the file.
-  // Allow the revocation check to use the network.
-  HRESULT hr = VerifySignature(filename, true);
+  const bool allow_network_check = true;
+  HRESULT hr = VerifyGoogleAuthenticodeSignature(filename, allow_network_check);
   if (FAILED(hr)) {
     return hr;
   }
-
-  // Verify that there is a Google certificate.
-  if (!VerifySigneeIsGoogle(filename)) {
-    return CERT_E_CN_NO_MATCH;
-  }
-
-  // Check that the file was signed recently to limit the window for
-  // rollback attacks.
   return VerifyFileSignedWithinDays(filename, kRollbackWindowDays);
 }
 
@@ -579,18 +580,22 @@ HRESULT FixGoogleUpdate(const TCHAR* app_guid,
   }
 
   DWORD update_check_period_override_minutes(UINT_MAX);
-  HRESULT hr = omaha::GetRegDwordValue(
-                   true,
-                   GOOPDATE_POLICIES_RELATIVE,
-                   omaha::kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                   &update_check_period_override_minutes);
-  if (SUCCEEDED(hr) && (0 == update_check_period_override_minutes)) {
-    return HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY);
+
+  if (omaha::IsEnrolledToDomain()) {
+    HRESULT hr = omaha::GetRegDwordValue(
+                     true,
+                     GOOPDATE_POLICIES_RELATIVE,
+                     omaha::kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                     &update_check_period_override_minutes);
+    if (SUCCEEDED(hr) && (0 == update_check_period_override_minutes)) {
+      return HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY);
+    }
   }
 
   CString download_target_path;
   CString temp_file_path;
-  hr = omaha::GetDownloadTargetPath(&download_target_path, &temp_file_path);
+  HRESULT hr = omaha::GetDownloadTargetPath(&download_target_path,
+                                            &temp_file_path);
   if (FAILED(hr)) {
     return hr;
   }

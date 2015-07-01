@@ -29,6 +29,7 @@
 #include "omaha/recovery/repair_exe/mspexecutableelevator.h"
 #include <atlpath.h>
 #include <msi.h>
+#include "omaha/base/app_util.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
@@ -103,14 +104,10 @@ HRESULT ExecuteGoogleSignedExe(const TCHAR* exe,
                           exe,
                           args);
         // Generate path to patch using path to current module.
-        TCHAR module_name[MAX_PATH] = {0};
-        DWORD len = ::GetModuleFileName(_AtlBaseModule.GetModuleInstance(),
-                                        module_name,
-                                        ARRAYSIZE(module_name));
-        module_name[ARRAYSIZE(module_name) - 1] = '\0';
-        if (0 < len && len < ARRAYSIZE(module_name) &&
-            0 < command_line.GetLength()) {
-          CPath path = module_name;
+        CString module_name = app_util::GetModulePath(
+                                  _AtlBaseModule.GetModuleInstance());
+        if (!module_name.IsEmpty() && !command_line.IsEmpty()) {
+          CPath path = module_name.GetString();
           if (path.RemoveFileSpec() && path.Append(kPatchName)) {
             path.Canonicalize();
             // Set install level to none so that user does not see

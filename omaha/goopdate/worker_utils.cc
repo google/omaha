@@ -66,14 +66,17 @@ bool FormatMessageForNetworkError(HRESULT error,
 }
 
 void AddHttpRequestDataToEventLog(HRESULT hr,
+                                  HRESULT ssl_hr,
                                   int http_status_code,
                                   const CString& http_trace,
                                   bool is_machine) {
   CString msg;
   SafeCStringFormat(&msg,
                     _T("Http Request Error.\r\n")
-                    _T("Error: 0x%08x. Http status code: %d.\r\n%s"),
+                    _T("Error: 0x%08x.  SSL error: 0x%08x.")
+                    _T("Http status code: %d.\r\n%s"),
                     hr,
+                    ssl_hr,
                     http_status_code,
                     http_trace);
 

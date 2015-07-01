@@ -240,11 +240,10 @@ TEST_F(ResourceManagerResourcesProtectedTest, RussianResourcesValid) {
   CString lang(_T("ru"));
   EXPECT_HRESULT_SUCCEEDED(ResourceManager::Create(false, path_, lang));
 
-  CString install_success(FormatResourceMessage(
-      IDS_BUNDLE_INSTALLED_SUCCESSFULLY, _T("Google Gears")));
+  CString display_name(FormatResourceMessage(
+      IDS_DEFAULT_APP_DISPLAY_NAME, _T("Google Gears")));
 
-  EXPECT_STREQ("Благодарим за установку Google Gears.",
-               WideToUtf8(install_success));
+  EXPECT_STREQ("Приложение Google Gears", WideToUtf8(display_name));
 
   CString install_fail(FormatResourceMessage(IDS_INSTALLER_FAILED_WITH_MESSAGE,
                                              _T("12345"),

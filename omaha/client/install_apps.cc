@@ -63,52 +63,70 @@ class SilentProgressObserver : public InstallProgressObserver {
     CORE_LOG(L3, (_T("[SilentProgressObserver::OnCheckingForUpdate]")));
   }
 
-  virtual void OnUpdateAvailable(const CString& app_name,
+  virtual void OnUpdateAvailable(const CString& app_id,
+                                 const CString& app_name,
                                  const CString& version_string) {
     CORE_LOG(L3, (_T("[SilentProgressObserver::OnUpdateAvailable][%s][%s]"),
                   app_name, version_string));
+    UNREFERENCED_PARAMETER(app_id);
     UNREFERENCED_PARAMETER(app_name);
     UNREFERENCED_PARAMETER(version_string);
   }
 
-  virtual void OnWaitingToDownload(const CString& app_name) {
+  virtual void OnWaitingToDownload(const CString& app_id,
+                                   const CString& app_name) {
     CORE_LOG(L3, (_T("[SilentProgressObserver::OnWaitingToDownload][%s]"),
                   app_name));
+    UNREFERENCED_PARAMETER(app_id);
     UNREFERENCED_PARAMETER(app_name);
   }
 
-  virtual void OnDownloading(const CString& app_name,
+  virtual void OnDownloading(const CString& app_id,
+                             const CString& app_name,
                              int time_remaining_ms,
                              int pos) {
     CORE_LOG(L5, (_T("[SilentProgressObserver::OnDownloading]")
                   _T("[%s][remaining ms=%d][pos=%d]"),
                   app_name, time_remaining_ms, pos));
+    UNREFERENCED_PARAMETER(app_id);
     UNREFERENCED_PARAMETER(app_name);
     UNREFERENCED_PARAMETER(time_remaining_ms);
     UNREFERENCED_PARAMETER(pos);
   }
 
-  virtual void OnWaitingRetryDownload(const CString& app_name,
+  virtual void OnWaitingRetryDownload(const CString& app_id,
+                                      const CString& app_name,
                                       time64 next_retry_time) {
     CORE_LOG(L5, (_T("[SilentProgressObserver::OnWaitingRetryDownload]")
                   _T("[%s][next retry time=%llu]"),
                   app_name, next_retry_time));
+    UNREFERENCED_PARAMETER(app_id);
     UNREFERENCED_PARAMETER(app_name);
     UNREFERENCED_PARAMETER(next_retry_time);
   }
 
-  virtual void OnWaitingToInstall(const CString& app_name,
+  virtual void OnWaitingToInstall(const CString& app_id,
+                                  const CString& app_name,
                                   bool* can_start_install) {
     CORE_LOG(L3, (_T("[SilentProgressObserver::OnWaitingToInstall][%s]"),
                   app_name));
     ASSERT1(can_start_install);
+    UNREFERENCED_PARAMETER(app_id);
     UNREFERENCED_PARAMETER(app_name);
     UNREFERENCED_PARAMETER(can_start_install);
   }
 
-  virtual void OnInstalling(const CString& app_name) {
-    CORE_LOG(L5, (_T("[SilentProgressObserver::OnInstalling][%s]"), app_name));
+  virtual void OnInstalling(const CString& app_id,
+                            const CString& app_name,
+                            int time_remaining_ms,
+                            int pos) {
+    CORE_LOG(L5, (_T("[SilentProgressObserver::OnInstalling]")
+                  _T("[%s][remaining ms=%d][pos=%d]"),
+                  app_name, time_remaining_ms, pos));
+    UNREFERENCED_PARAMETER(app_id);
     UNREFERENCED_PARAMETER(app_name);
+    UNREFERENCED_PARAMETER(time_remaining_ms);
+    UNREFERENCED_PARAMETER(pos);
   }
 
   virtual void OnPause() {
@@ -157,14 +175,32 @@ class BundleAtlModule : public CAtlExeModuleT<BundleAtlModule> {
   }
   ~BundleAtlModule() {}
 
-  LONG Unlock() throw() {
-    LONG lRet = CComGlobalsThreadModel::Decrement(&m_nLockCnt);
+  // Constructor of this class calls InitializeCom() for COM initialization.
+  // Since goopdate already does that, we overrides InitializeCom() here to
+  // do nothing. Also overrides UninitializeCom() to do nothing to make them
+  // match.
+  static HRESULT InitializeCom() throw() {
+    return S_OK;
+  }
 
-    if (lRet == 0 && allow_post_quit_) {
+  static void UninitializeCom() throw() {
+  }
+
+  virtual LONG Lock() throw() {
+    LONG lock_count = CComGlobalsThreadModel::Increment(&m_nLockCnt);
+    CORE_LOG(L3, (_T("[BundleAtlModule::Lock][%d]"), lock_count));
+    return lock_count;
+  }
+
+  LONG Unlock() throw() {
+    LONG lock_count = CComGlobalsThreadModel::Decrement(&m_nLockCnt);
+    CORE_LOG(L3, (_T("[BundleAtlModule::Unlock][%d]"), lock_count));
+
+    if (lock_count == 0 && allow_post_quit_) {
       ::PostThreadMessage(m_dwMainThreadID, WM_QUIT, 0, 0);
     }
 
-    return lRet;
+    return lock_count;
   }
 
   // BundleAtlModule will only post WM_QUIT if enable_quit() is called, to avoid
@@ -399,6 +435,7 @@ void HandleInstallAppsError(HRESULT error,
                             bool is_interactive,
                             bool is_eula_accepted,
                             bool is_oem_install,
+                            bool is_enterprise_install,
                             const CString& install_source,
                             const CommandLineExtraArgs& extra_args,
                             const CString& session_id,
@@ -417,9 +454,7 @@ void HandleInstallAppsError(HRESULT error,
                                bundle_name);
       break;
     default: {
-      CString product_name;
-      VERIFY1(product_name.LoadString(IDS_PRODUCT_DISPLAY_NAME));
-      error_text.FormatMessage(IDS_SETUP_FAILED, product_name, error);
+      error_text.FormatMessage(IDS_SETUP_FAILED, error);
       break;
     }
   }
@@ -444,7 +479,7 @@ void HandleInstallAppsError(HRESULT error,
                                  extra_args.brand_code);
   }
 
-  if (!is_eula_accepted || is_oem_install) {
+  if (!is_eula_accepted || is_oem_install || is_enterprise_install) {
     return;
   }
 
@@ -477,38 +512,57 @@ HRESULT UpdateAppOnDemand(bool is_machine,
   CORE_LOG(L2, (_T("[UpdateAppOnDemand][%d][%s][%d]"),
                 is_machine, app_id, is_update_check_only));
 
-  const TCHAR* install_source = is_update_check_only ?
-                                kCmdLineInstallSource_OnDemandCheckForUpdate :
-                                kCmdLineInstallSource_OnDemandUpdate;
-  CComPtr<IAppBundle> app_bundle;
-  HRESULT hr = bundle_creator::CreateForOnDemand(is_machine,
-                                                 app_id,
-                                                 install_source,
-                                                 session_id,
-                                                 impersonation_token,
-                                                 primary_token,
-                                                 &app_bundle);
+  // Do a preemptive check for Group Policy restrictions, before we actually
+  // send anything over the wire.  (Many machine clients will start by doing
+  // an update-only check with OnDemand using a non-elevated COM, then do an
+  // elevated COM if an update is available.  This way, we short-circuit it.)
+  GUID app_guid;
+  HRESULT hr = StringToGuidSafe(app_id, &app_guid);
   if (SUCCEEDED(hr)) {
-    BundleInstaller installer(NULL,   // No help URL for on-demand.
-                              false,  // Is not update all apps.
-                              is_update_check_only,
-                              false);
-    hr = installer.Initialize();
-    if (SUCCEEDED(hr)) {
-      OnDemandEvents install_events(&installer);
-      observer->SetEventSink(&install_events);
-
-      // TODO(omaha3): Listen to shutdown event during installation?
-      return installer.InstallBundle(is_machine,
-                                     false,
-                                     app_bundle.Detach(),
-                                     observer);
+    if (!ConfigManager::Instance()->CanUpdateApp(app_guid, true)) {
+      CORE_LOG(L2, (_T("[Group policy prevents manual updates]")));
+      hr = GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY;
     }
   }
 
-  // The observer must be notified that the bundle has completed with an error
-  // since the bundle will not be processed.
-  observer->OnComplete(ObserverCompletionInfo(COMPLETION_CODE_ERROR));
+  if (SUCCEEDED(hr)) {
+    const TCHAR* install_source = is_update_check_only ?
+                                  kCmdLineInstallSource_OnDemandCheckForUpdate :
+                                  kCmdLineInstallSource_OnDemandUpdate;
+    CComPtr<IAppBundle> app_bundle;
+    HRESULT hr = bundle_creator::CreateForOnDemand(is_machine,
+                                                   app_id,
+                                                   install_source,
+                                                   session_id,
+                                                   impersonation_token,
+                                                   primary_token,
+                                                   &app_bundle);
+    if (SUCCEEDED(hr)) {
+      BundleInstaller installer(NULL,   // No help URL for on-demand.
+                                false,  // Is not update all apps.
+                                is_update_check_only,
+                                false);
+      hr = installer.Initialize();
+      if (SUCCEEDED(hr)) {
+        OnDemandEvents install_events(&installer);
+        observer->SetEventSink(&install_events);
+
+        // TODO(omaha3): Listen to shutdown event during installation?
+        return installer.InstallBundle(is_machine,
+                                       false,
+                                       app_bundle.Detach(),
+                                       observer);
+      }
+    }
+  }
+
+  // If we failed in any way prior to the call to InstallBundle(), the observer
+  // must be notified that the bundle has completed with an error, since it
+  // will not be processed.
+  ObserverCompletionInfo observer_info(COMPLETION_CODE_ERROR);
+  observer_info.completion_text.FormatMessage(
+      IDS_INSTALL_FAILED_WITH_ERROR_CODE, hr);
+  observer->OnComplete(observer_info);
   return hr;
 }
 
@@ -517,6 +571,7 @@ HRESULT InstallApps(bool is_machine,
                     bool is_eula_accepted,
                     bool is_oem_install,
                     bool is_offline,
+                    bool is_enterprise_install,
                     const CString& offline_directory,
                     const CommandLineExtraArgs& extra_args,
                     const CString& install_source,
@@ -524,11 +579,13 @@ HRESULT InstallApps(bool is_machine,
                     bool* has_ui_been_displayed) {
   CORE_LOG(L2, (_T("[InstallApps][is_machine: %u][is_interactive: %u]")
       _T("[is_eula_accepted: %u][is_oem_install: %u][is_offline: %u]")
-      _T("[offline_directory: %s]"), is_machine, is_interactive,
-      is_eula_accepted, is_oem_install, is_offline, offline_directory));
+      _T("[is_enterprise_install: %u][offline_directory: %s]"), is_machine,
+      is_interactive, is_eula_accepted, is_oem_install, is_offline,
+      is_enterprise_install, offline_directory));
   ASSERT1(has_ui_been_displayed);
 
   BundleAtlModule atl_module;
+  const bool send_pings = !is_enterprise_install;
 
   CComPtr<IAppBundle> app_bundle;
   HRESULT hr = bundle_creator::CreateFromCommandLine(is_machine,
@@ -539,6 +596,7 @@ HRESULT InstallApps(bool is_machine,
                                                      install_source,
                                                      session_id,
                                                      is_interactive,
+                                                     send_pings,
                                                      &app_bundle);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[bundle_creator::CreateFromCommandLine][0x%08x]"), hr));
@@ -548,6 +606,7 @@ HRESULT InstallApps(bool is_machine,
                                      is_interactive,
                                      is_eula_accepted,
                                      is_oem_install,
+                                     is_enterprise_install,
                                      install_source,
                                      extra_args,
                                      session_id,
@@ -588,6 +647,7 @@ HRESULT UpdateAllApps(bool is_machine,
   ASSERT1(has_ui_been_displayed);
 
   BundleAtlModule atl_module;
+  const bool send_pings = true;
 
   CComPtr<IAppBundle> app_bundle;
   HRESULT hr = bundle_creator::Create(is_machine,
@@ -595,6 +655,7 @@ HRESULT UpdateAllApps(bool is_machine,
                                       install_source,
                                       session_id,
                                       is_interactive,
+                                      send_pings,
                                       &app_bundle);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[bundle_creator::Create failed][0x%08x]"), hr));
@@ -614,6 +675,7 @@ HRESULT UpdateAllApps(bool is_machine,
   }
 
   atl_module.enable_quit();
+
   return internal::DoInstallApps(&installer,
                                  app_bundle.Detach(),
                                  is_machine,

@@ -54,8 +54,6 @@ void AppStateWaitingToDownload::Download(
   ASSERT1(app);
   ASSERT1(download_manager);
 
-  app->SetDownloadStartTime();
-
   // This is a blocking call on the network.
   HRESULT hr = download_manager->DownloadApp(app);
 

@@ -156,7 +156,8 @@ class LLock : public Lockable {
   virtual bool Unlock() const;
 
   // Returns the thread id of the owner or 0 if the lock is not owned.
-  DWORD GetOwner() const;
+  DWORD_PTR GetOwner() const;
+
  private:
   mutable CRITICAL_SECTION        critical_section_;
   DISALLOW_EVIL_CONSTRUCTORS(LLock);

@@ -224,7 +224,7 @@ class ObjectVector : public SerializableObject {
   }
 
   virtual bool DeserializeVectorNestedObject(byte** data,
-                                             int size,
+                                             size_t size,
                                              byte* ptr,
                                              uint32 version) {
     EXPECT_TRUE(data);

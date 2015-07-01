@@ -68,9 +68,7 @@ HKCR
 #include <atlconv.h>
 #include <atlstr.h>
 #include "omaha/base/app_util.h"
-#include "omaha/base/error.h"
 #include "omaha/base/path.h"
-#include "omaha/base/statregex.h"
 #include "omaha/base/utils.h"
 
 namespace omaha {
@@ -168,83 +166,6 @@ struct _ATL_REGMAP_ENTRYKeeper : public _ATL_REGMAP_ENTRY {
     delete [] szKey;
     delete [] szData;
   }
-
-  // This method is mostly the same as the atlmfc_vc80 version of
-  // ATL::CAtlModule::UpdateRegistryFromResourceS. The only functional change
-  // is that it uses omaha::RegObject instead of ATL::CRegObject.
-  static HRESULT UpdateRegistryFromResourceEx(
-      UINT nResID, BOOL bRegister, struct _ATL_REGMAP_ENTRY* pMapEntries) {
-    RegObject ro;
-    HRESULT hr = ro.FinalConstruct();
-    if (FAILED(hr)) {
-      return hr;
-    }
-
-    if (pMapEntries != NULL) {
-      while (pMapEntries->szKey != NULL) {
-        ASSERT1(NULL != pMapEntries->szData);
-        ro.AddReplacement(pMapEntries->szKey, pMapEntries->szData);
-        pMapEntries++;
-      }
-    }
-
-    hr = ATL::_pAtlModule->AddCommonRGSReplacements(&ro);
-    if (FAILED(hr)) {
-      return hr;
-    }
-
-    USES_CONVERSION_EX;
-    TCHAR szModule[MAX_PATH];
-    HINSTANCE hInst = _AtlBaseModule.GetModuleInstance();
-    DWORD dwFLen = ::GetModuleFileName(hInst, szModule, MAX_PATH);
-    if (dwFLen == 0) {
-      return HRESULTFromLastError();
-    } else if (dwFLen == MAX_PATH) {
-      return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
-    }
-
-    LPOLESTR pszModule = NULL;
-    pszModule = T2OLE_EX(szModule, _ATL_SAFE_ALLOCA_DEF_THRESHOLD);
-    OLECHAR pszModuleUnquoted[_MAX_PATH * 2];  // NOLINT
-    ATL::CAtlModule::EscapeSingleQuote(pszModuleUnquoted,
-                                       _countof(pszModuleUnquoted),
-                                       pszModule);
-
-    HRESULT hRes;
-    if ((hInst == NULL) || (hInst == GetModuleHandle(NULL))) {
-      // If Registering as an EXE, then we quote the resultant path.
-      // We don't do it for a DLL, because LoadLibrary fails if the path is
-      // quoted
-      OLECHAR pszModuleQuote[(_MAX_PATH + _ATL_QUOTES_SPACE) * 2];  // NOLINT
-      pszModuleQuote[0] = OLESTR('\"');
-      if (!ocscpy_s(pszModuleQuote + 1, (_MAX_PATH + _ATL_QUOTES_SPACE) * 2 - 1,
-                    pszModuleUnquoted)) {
-        return E_FAIL;
-      }
-
-      size_t nLen = ocslen(pszModuleQuote);
-      pszModuleQuote[nLen] = OLESTR('\"');
-      pszModuleQuote[nLen + 1] = 0;
-
-      hRes = ro.AddReplacement(OLESTR("Module"), pszModuleQuote);
-    } else {
-      hRes = ro.AddReplacement(OLESTR("Module"), pszModuleUnquoted);
-    }
-
-    if (FAILED(hRes)) {
-      return hRes;
-    }
-
-    hRes = ro.AddReplacement(OLESTR("Module_Raw"), pszModuleUnquoted);
-    if (FAILED(hRes)) {
-      return hRes;
-    }
-
-    LPCOLESTR szType = OLESTR("REGISTRY");
-    hr = bRegister ? ro.ResourceRegister(pszModule, nResID, szType) :
-                     ro.ResourceUnregister(pszModule, nResID, szType);
-    return hr;
-  }
 };
 
 // This now supports DECLARE_OLEMISC_STATUS()
@@ -301,8 +222,16 @@ struct _ATL_REGMAP_ENTRYKeeper : public _ATL_REGMAP_ENTRY {
 
 #define DECLARE_REGISTRY_RESOURCEID_EX(x)                                   \
   static HRESULT WINAPI UpdateRegistry(BOOL reg) {                          \
-    return _ATL_REGMAP_ENTRYKeeper::UpdateRegistryFromResourceEx(           \
-        (UINT)(x), (reg), _GetRegistryMap());                               \
+  __if_exists(_Module) {                                                    \
+    return _Module.UpdateRegistryFromResource((UINT)(x),                    \
+                                               (reg),                       \
+                                               _GetRegistryMap());          \
+  }                                                                         \
+  __if_not_exists(_Module) {                                                \
+    return ATL::_pAtlModule->UpdateRegistryFromResource((UINT)(x),          \
+                                                        (reg),              \
+                                                        _GetRegistryMap()); \
+  }                                                                         \
 }
 
 #define DECLARE_REGISTRY_APPID_RESOURCEID_EX(resid, appid)                  \
@@ -314,8 +243,9 @@ struct _ATL_REGMAP_ENTRYKeeper : public _ATL_REGMAP_ENTRY {
     return GetAppId();                                                      \
   }                                                                         \
   static HRESULT WINAPI UpdateRegistryAppId(BOOL reg) throw() {             \
-    return _ATL_REGMAP_ENTRYKeeper::UpdateRegistryFromResourceEx(           \
-        resid, (reg), _GetRegistryMap());                                   \
+    return ATL::_pAtlModule->UpdateRegistryFromResource(resid,              \
+                                                        (reg),              \
+                                                        _GetRegistryMap()); \
   }
 // END registry map
 

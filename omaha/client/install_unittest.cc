@@ -153,6 +153,15 @@ class RegistryProtectedInstallTest
 
     args_.extra.bundle_name = _T("bundle");  // Avoids assert in error cases.
     args_.install_source    = _T("unittest");
+
+    // mpr.dll requires that the HwOrder key is present to be able to
+    // initialize (http://support.microsoft.com/kb/329316). On Windows Vista and
+    // later, its absence causes IPersistFile.Save() in
+    // scheduled_task_utils::CreateScheduledTask() to fail with
+    // ERROR_DLL_INIT_FAILED.
+    EXPECT_SUCCEEDED(RegKey::CreateKey(
+        _T("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\")
+        _T("NetworkProvider\\HwOrder")));
   }
 
   CommandLineArgs args_;
@@ -180,15 +189,6 @@ class RegistryProtectedWithComInterfacesPrimedInstallTest
     ASSERT_SUCCEEDED(Shell::GetSpecialFolderKeywordsMapping(&folder_map));
 
     RegistryProtectedInstallTest::SetUp();
-
-    // mpr.dll requires that the HwOrder key is present to be able to
-    // initialize (http://support.microsoft.com/kb/329316). On Windows Vista and
-    // later, its absence causes IPersistFile.Save() in
-    // scheduled_task_utils::CreateScheduledTask() to fail with
-    // ERROR_DLL_INIT_FAILED.
-    EXPECT_SUCCEEDED(RegKey::CreateKey(
-        _T("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\")
-        _T("NetworkProvider\\HwOrder")));
   }
 };
 
@@ -239,7 +239,7 @@ TEST_F(InAuditModeTest, OemInstall_NotOffline) {
 
 TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
        Install_NotAppInstall_User_NoBrandSpecified_NoExistingBrand) {
-  if (vista_util::IsElevatedWithUACMaybeOn()) {
+  if (vista_util::IsElevatedWithEnableLUAOn()) {
     std::wcout << _T("\tSkipping test because user is elevated with UAC on.")
                << std::endl;
     return;
@@ -253,6 +253,7 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                           false,         // is_app_install
                           false,         // is_eula_required
                           false,         // is_oem_install
+                          false,         // is_enterprise_install
                           false,         // is_install_elevated_instance
                           _T("foo"),     // install_cmd_line
                           args_,
@@ -275,11 +276,15 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                                            kRegValueInstallTimeSec);
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install = GetDwordValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                       kRegValueDayOfInstall);
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
        Install_NotAppInstall_User_BrandSpecified_NoExistingBrand) {
-  if (vista_util::IsElevatedWithUACMaybeOn()) {
+  if (vista_util::IsElevatedWithEnableLUAOn()) {
     std::wcout << _T("\tSkipping test because user is elevated with UAC on.")
                << std::endl;
     return;
@@ -297,6 +302,7 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                           false,         // is_app_install
                           false,         // is_eula_required
                           false,         // is_oem_install
+                          false,         // is_enterprise_install
                           false,         // is_install_elevated_instance
                           _T("foo"),     // install_cmd_line
                           args_,
@@ -319,17 +325,82 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                                            kRegValueInstallTimeSec);
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install = GetDwordValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                       kRegValueDayOfInstall);
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 }
 
 TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
        Install_NotAppInstall_User_BrandSpecified_ExistingBrandAndInstallTime) {
-  if (vista_util::IsElevatedWithUACMaybeOn()) {
+  if (vista_util::IsElevatedWithEnableLUAOn()) {
     std::wcout << _T("\tSkipping test because user is elevated with UAC on.")
                << std::endl;
     return;
   }
 
   PreventSetupFromRunning(false);
+
+  const TCHAR* const kExistingBrand = _T("GOOG");
+  const DWORD kExistingInstallTime = 1234567;
+  const DWORD kExistingDayOfInstall = 6666;
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueBrandCode,
+                                    kExistingBrand));
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueInstallTimeSec,
+                                    kExistingInstallTime));
+  EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                    kRegValueDayOfInstall,
+                                    kExistingDayOfInstall));
+
+  args_.extra.installation_id = StringToGuid(kExpectedIid);
+  args_.extra.brand_code = kExpectedBrand;
+  args_.extra.client_id = kExpectedClientId;
+
+  bool is_machine = false;
+  bool has_ui_been_displayed = false;
+  EXPECT_EQ(S_OK, Install(false,         // is_interactive
+                          false,         // is_app_install
+                          false,         // is_eula_required
+                          false,         // is_oem_install
+                          false,         // is_enterprise_install
+                          false,         // is_install_elevated_instance
+                          _T("foo"),     // install_cmd_line
+                          args_,
+                          &is_machine,
+                          &has_ui_been_displayed));
+  EXPECT_FALSE(has_ui_been_displayed);
+
+  const uint32 now = Time64ToInt32(GetCurrent100NSTime());
+
+  EXPECT_STREQ(kExpectedIid, GetSzValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                        kRegValueInstallationId));
+  EXPECT_STREQ(kExistingBrand, GetSzValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                          kRegValueBrandCode));
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                kRegValueClientId));
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                kRegValueReferralId));
+
+  EXPECT_EQ(kExistingInstallTime, GetDwordValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                                kRegValueInstallTimeSec));
+  EXPECT_EQ(kExistingDayOfInstall, GetDwordValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                                 kRegValueDayOfInstall));
+}
+
+TEST_F(RegistryProtectedInstallTest,
+       Install_NotAppInstall_User_BrandSpecified_ExistingLegacyInstallTime) {
+  if (!vista_util::IsVistaOrLater()) {
+    std::wcout << _T("\tSkipping test on OS before Vista.") << std::endl;
+    return;
+  }
+  if (vista_util::IsElevatedWithEnableLUAOn()) {
+    std::wcout << _T("\tSkipping test because user is elevated with UAC on.")
+               << std::endl;
+    return;
+  }
 
   const TCHAR* const kExistingBrand = _T("GOOG");
   const DWORD kExistingInstallTime = 1234567;
@@ -351,6 +422,7 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                           false,         // is_app_install
                           false,         // is_eula_required
                           false,         // is_oem_install
+                          false,         // is_enterprise_install
                           false,         // is_install_elevated_instance
                           _T("foo"),     // install_cmd_line
                           args_,
@@ -371,6 +443,8 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
 
   EXPECT_EQ(kExistingInstallTime, GetDwordValue(USER_REG_CLIENT_STATE_GOOPDATE,
                                                 kRegValueInstallTimeSec));
+  EXPECT_FALSE(RegKey::HasValue(USER_REG_CLIENT_STATE_GOOPDATE,
+                                kRegValueDayOfInstall));
 }
 
 TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
@@ -387,6 +461,7 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                            false,         // is_app_install
                            false,         // is_eula_required
                            false,         // is_oem_install
+                           false,         // is_enterprise_install
                            false,         // is_install_elevated_instance
                            _T("foo"),     // install_cmd_line
                            args_,
@@ -417,10 +492,14 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
 
   DWORD install_time(0);
   EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
-                                    _T("InstallTime"),
+                                    kRegValueInstallTimeSec,
                                     &install_time));
   EXPECT_GE(now, install_time);
   EXPECT_GE(static_cast<uint32>(200), now - install_time);
+
+  DWORD day_of_install = GetDwordValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
+                                       kRegValueDayOfInstall);
+  EXPECT_EQ(static_cast<DWORD>(-1), day_of_install);
 
   EXPECT_SUCCEEDED(scheduled_task_utils::UninstallGoopdateTasks(true));
 }
@@ -428,7 +507,7 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
 
 TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
        Install_EulaRequiredNotOffline_User) {
-  if (vista_util::IsElevatedWithUACMaybeOn()) {
+  if (vista_util::IsElevatedWithEnableLUAOn()) {
     std::wcout << _T("\tSkipping test because user is elevated with UAC on.")
                << std::endl;
     return;
@@ -443,6 +522,7 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                     true,           // is_app_install
                     true,           // is_eula_required
                     false,          // is_oem_install
+                    false,          // is_enterprise_install
                     false,          // is_install_elevated_instance
                     _T("unused"),   // install_cmd_line
                     args_,
@@ -468,6 +548,7 @@ TEST_F(RegistryProtectedWithComInterfacesPrimedInstallTest,
                     true,           // is_app_install
                     true,           // is_eula_required
                     false,          // is_oem_install
+                    false,          // is_enterprise_install
                     false,          // is_install_elevated_instance
                     _T("unused"),   // install_cmd_line
                     args_,
@@ -492,6 +573,7 @@ TEST_F(RegistryProtectedInstallTest, Install_NeedsElevation_Silent) {
                     true,           // is_app_install
                     false,          // is_eula_required
                     false,          // is_oem_install
+                    false,          // is_enterprise_install
                     false,          // is_install_elevated_instance
                     _T("unused"),   // install_cmd_line
                     args_,
@@ -518,6 +600,7 @@ TEST_F(RegistryProtectedInstallTest, Install_NeedsElevation_NotAppInstall) {
                     false,          // is_app_install
                     false,          // is_eula_required
                     false,          // is_oem_install
+                    false,          // is_enterprise_install
                     false,          // is_install_elevated_instance
                     _T("unused"),   // install_cmd_line
                     args_,
@@ -542,6 +625,7 @@ TEST_F(RegistryProtectedInstallTest, Install_NeedsElevation_ElevatedInstance) {
                     true,           // is_app_install
                     false,          // is_eula_required
                     false,          // is_oem_install
+                    false,          // is_enterprise_install
                     true,           // is_install_elevated_instance
                     _T("unused"),   // install_cmd_line
                     args_,
@@ -573,6 +657,7 @@ TEST_F(RegistryProtectedInstallTest, Install_NeedsElevation_XpNonAdmin) {
                     true,           // is_app_install
                     false,          // is_eula_required
                     false,          // is_oem_install
+                    false,          // is_enterprise_install
                     false,          // is_install_elevated_instance
                     _T("unused"),   // install_cmd_line
                     args_,
@@ -741,8 +826,8 @@ TEST_F(InstallHandoffUserTest, InstallApplications_HandoffWithShellMissing) {
                                           args,
                                           kSessionId_,
                                           NULL,
-                                          &has_launched_handoff,
-                                          &ui_displayed));
+                                          &ui_displayed,
+                                          &has_launched_handoff));
 // TODO(omaha3): Verify the actual error when this is implemented.
 #if 0
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), extra_code1);
@@ -773,12 +858,6 @@ TEST_F(InstallHandoffUserTest,
 // TODO(omaha3): Verify the actual error when this is implemented.
 #if 0
   EXPECT_EQ(0, setup_->extra_code1());
-#endif
-// TODO(omaha3): ui_displayed is temporarily always set to true.
-#if 0
-  EXPECT_FALSE(ui_displayed);
-#else
-  EXPECT_TRUE(ui_displayed);
 #endif
 }
 

@@ -187,7 +187,7 @@ time64 GetCurrent100NSTime() {
   // return SystemTimeToTime64(&sys_time);
 
   // get the current time in 100-nanoseconds intervals
-  FILETIME file_time;
+  FILETIME file_time = {0};
   ::GetSystemTimeAsFileTime(&file_time);
 
   time64 time = FileTimeToTime64(file_time);

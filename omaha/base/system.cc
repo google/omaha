@@ -19,6 +19,7 @@
 #include <psapi.h>
 #include <winioctl.h>
 #include <wtsapi32.h>
+#include "omaha/base/app_util.h"
 #include "omaha/base/commands.h"
 #include "omaha/base/commontypes.h"
 #include "omaha/base/const_config.h"
@@ -28,7 +29,6 @@
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/module_utils.h"
 #include "omaha/base/path.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
@@ -185,9 +185,9 @@ HRESULT System::GetProcessMemoryStatistics(uint64 *current_working_set,
   HANDLE process_handle = GetCurrentProcess();
   HRESULT hr = S_OK;
 
-  DWORD min_size(0), max_size(0);
+  SIZE_T min_size(0), max_size(0);
   if (GetProcessWorkingSetSize(process_handle, &min_size, &max_size)) {
-    UTIL_LOG(L2, (_T("[working set][min: %lu][max: %lu]"), min_size, max_size));
+    UTIL_LOG(L2, (_T("[working set][min: %Iu][max: %Iu]"), min_size, max_size));
     if (min_working_set_size) {
       *min_working_set_size = min_size;
     }
@@ -284,10 +284,16 @@ HRESULT System::GetGlobalMemoryStatistics(uint32 *memory_load_percentage,
   return S_OK;
 }
 
-void System::FreeProcessWorkingSet() {
+HRESULT System::EmptyProcessWorkingSet() {
   // -1,-1 is a special signal to the OS to temporarily trim the working set
   // size to 0.  See MSDN for further information.
-  ::SetProcessWorkingSetSize(::GetCurrentProcess(), (SIZE_T)-1, (SIZE_T)-1);
+  if (0 == ::SetProcessWorkingSetSize(::GetCurrentProcess(),
+                                      static_cast<SIZE_T>(-1),
+                                      static_cast<SIZE_T>(-1))) {
+    return HRESULTFromLastError();
+  }
+
+  return S_OK;
 }
 
 HRESULT System::SetThreadPriority(enum Priority priority) {
@@ -336,14 +342,39 @@ HRESULT System::SetProcessPriority(enum Priority priority) {
   return S_OK;
 }
 
+// Adaptor for System::StartProcessWithEnvironment().
+HRESULT System::StartProcess(const TCHAR* process_name,
+                             TCHAR* command_line,
+                             PROCESS_INFORMATION* pi) {
+  return System::StartProcessWithEnvironment(process_name,
+                                             command_line,
+                                             NULL,
+                                             pi);
+}
+
+HRESULT System::StartProcessWithEnvironment(
+    const TCHAR* process_name,
+    TCHAR* command_line,
+    LPVOID env_block,
+    PROCESS_INFORMATION* pi) {
+  return System::StartProcessWithEnvironment(process_name,
+                                             command_line,
+                                             env_block,
+                                             FALSE,
+                                             pi);
+}
+
 // start another process painlessly via ::CreateProcess. Use the
 // ShellExecuteProcessXXX variants instead of these methods where possible,
 // since ::ShellExecuteEx has better behavior on Windows Vista.
 // When using this method, avoid using process_name - see
 // http://blogs.msdn.com/oldnewthing/archive/2006/05/15/597984.aspx.
-HRESULT System::StartProcess(const TCHAR* process_name,
-                             TCHAR* command_line,
-                             PROCESS_INFORMATION* pi) {
+HRESULT System::StartProcessWithEnvironment(
+    const TCHAR* process_name,
+    TCHAR* command_line,
+    LPVOID env_block,
+    BOOL inherit_handles,
+    PROCESS_INFORMATION* pi) {
   ASSERT1(pi);
   ASSERT1(command_line || process_name);
   ASSERT(!process_name, (_T("Avoid using process_name. See method comment.")));
@@ -353,20 +384,35 @@ HRESULT System::StartProcess(const TCHAR* process_name,
   // Feedback cursor is off while the process is starting.
   si.dwFlags = STARTF_FORCEOFFFEEDBACK;
 
-  UTIL_LOG(L3, (_T("[System::StartProcess][process %s][cmd %s]"),
+  UTIL_LOG(L3, (_T("[System::StartProcessWithEnvironment][process %s][cmd %s]"),
                 process_name, command_line));
 
-  BOOL success = ::CreateProcess(
-      process_name,     // Module name
-      command_line,     // Command line
-      NULL,             // Process handle not inheritable
-      NULL,             // Thread handle not inheritable
-      FALSE,            // Set handle inheritance to FALSE
-      0,                // No creation flags
-      NULL,             // Use parent's environment block
-      NULL,             // Use parent's starting directory
-      &si,              // Pointer to STARTUPINFO structure
-      pi);              // Pointer to PROCESS_INFORMATION structure
+  BOOL success = FALSE;
+  if (env_block == NULL) {
+    success = ::CreateProcess(
+        process_name,     // Module name
+        command_line,     // Command line
+        NULL,             // Process handle not inheritable
+        NULL,             // Thread handle not inheritable
+        inherit_handles,  // Set handle inheritance to FALSE
+        0,                // No creation flags
+        NULL,             // Use parent's environment block
+        NULL,             // Use parent's starting directory
+        &si,              // Pointer to STARTUPINFO structure
+        pi);              // Pointer to PROCESS_INFORMATION structure
+  } else {
+    success = ::CreateProcess(
+        process_name,     // Module name
+        command_line,     // Command line
+        NULL,             // Process handle not inheritable
+        NULL,             // Thread handle not inheritable
+        inherit_handles,  // Set handle inheritance to FALSE
+        CREATE_UNICODE_ENVIRONMENT,  // Creation flags
+        env_block,        // Environment block
+        NULL,             // Use parent's starting directory
+        &si,              // Pointer to STARTUPINFO structure
+        pi);              // Pointer to PROCESS_INFORMATION structure
+  }
 
   if (!success) {
     HRESULT hr = HRESULTFromLastError();
@@ -380,19 +426,34 @@ HRESULT System::StartProcess(const TCHAR* process_name,
   return S_OK;
 }
 
-// start another process painlessly via ::CreateProcess. Use the
-// ShellExecuteProcessXXX variants instead of these methods where possible,
-// since ::ShellExecuteEx has better behavior on Windows Vista.
+// Adaptor for System::StartProcessWithArgsAndInfoWithEnvironment().
 HRESULT System::StartProcessWithArgsAndInfo(const TCHAR *process_name,
                                             const TCHAR *cmd_line_arguments,
                                             PROCESS_INFORMATION *pi) {
+  return System::StartProcessWithArgsAndInfoWithEnvironment(process_name,
+                                                            cmd_line_arguments,
+                                                            NULL,
+                                                            pi);
+}
+
+// start another process painlessly via ::CreateProcess. Use the
+// ShellExecuteProcessXXX variants instead of these methods where possible,
+// since ::ShellExecuteEx has better behavior on Windows Vista.
+HRESULT System::StartProcessWithArgsAndInfoWithEnvironment(
+    const TCHAR* process_name,
+    const TCHAR* cmd_line_arguments,
+    LPVOID env_block,
+    PROCESS_INFORMATION* pi) {
   ASSERT1(process_name && cmd_line_arguments && pi);
 
   CString command_line(process_name);
   EnclosePath(&command_line);
   command_line.AppendChar(_T(' '));
   command_line.Append(cmd_line_arguments);
-  return System::StartProcess(NULL, CStrBuf(command_line), pi);
+  return System::StartProcessWithEnvironment(NULL,
+                                             CStrBuf(command_line),
+                                             env_block,
+                                             pi);
 }
 
 // start another process painlessly via ::CreateProcess. Use the
@@ -425,13 +486,37 @@ HRESULT System::StartCommandLine(const TCHAR* command_line_to_execute) {
   return hr;
 }
 
-// TODO(omaha3): Unit test this method.
+// Adaptor for System::StartProcessAsUserWithEnvironment().
 HRESULT System::StartProcessAsUser(HANDLE user_token,
                                    const CString& executable_path,
                                    const CString& parameters,
                                    LPWSTR desktop,
                                    PROCESS_INFORMATION* pi) {
-  UTIL_LOG(L3, (_T("[StartProcessAsUser][%s][%s][%s]"),
+  void* env_block(NULL);
+  if (!::CreateEnvironmentBlock(&env_block, user_token, TRUE)) {
+    HRESULT hr = HRESULTFromLastError();
+    ASSERT(false, (_T("[::CreateEnvironmentBlock failed][0x%x]"), hr));
+    return hr;
+  }
+  ON_SCOPE_EXIT(::DestroyEnvironmentBlock, env_block);
+  return System::StartProcessAsUserWithEnvironment(
+      user_token,
+      executable_path,
+      parameters,
+      desktop,
+      env_block,
+      pi);
+}
+
+// TODO(omaha3): Unit test this method.
+HRESULT System::StartProcessAsUserWithEnvironment(
+    HANDLE user_token,
+    const CString& executable_path,
+    const CString& parameters,
+    LPWSTR desktop,
+    LPVOID env_block,
+    PROCESS_INFORMATION* pi) {
+  UTIL_LOG(L3, (_T("[StartProcessAsUserWithEnvironment][%s][%s][%s]"),
                 executable_path, parameters, desktop));
   ASSERT1(pi);
 
@@ -444,15 +529,6 @@ HRESULT System::StartProcessAsUser(HANDLE user_token,
   startup_info.lpDesktop = desktop;
   DWORD creation_flags(0);
 
-  void* environment_block(NULL);
-  if (!::CreateEnvironmentBlock(&environment_block, user_token, TRUE)) {
-    HRESULT hr = HRESULTFromLastError();
-    ASSERT(false, (_T("[::CreateEnvironmentBlock failed][0x%x]"), hr));
-    return hr;
-  }
-
-  ON_SCOPE_EXIT(::DestroyEnvironmentBlock, environment_block);
-
   creation_flags |= CREATE_UNICODE_ENVIRONMENT;
   BOOL success = ::CreateProcessAsUser(user_token,
                                        0,
@@ -461,13 +537,12 @@ HRESULT System::StartProcessAsUser(HANDLE user_token,
                                        0,
                                        false,
                                        creation_flags,
-                                       environment_block,
+                                       env_block,
                                        0,
                                        &startup_info,
                                        pi);
-
   if (!success) {
-    HRESULT hr(HRESULTFromLastError());
+    HRESULT hr = HRESULTFromLastError();
     UTIL_LOG(LE, (_T("[::CreateProcessAsUser failed][%s][0x%x]"), cmd, hr));
     return hr;
   }
@@ -702,7 +777,10 @@ HRESULT System::GetRebootCheckDummyFileName(const TCHAR* base_file,
     ASSERT1(File::Exists(base_file));
     dummy_file->SetString(base_file);
   } else {
-    RET_IF_FAILED(GetModuleFileName(NULL, dummy_file));
+    *dummy_file = app_util::GetModulePath(NULL);
+    if (dummy_file->IsEmpty()) {
+      return HRESULTFromLastError();
+    }
   }
   dummy_file->Append(_T(".needreboot"));
   return S_OK;
@@ -1080,6 +1158,57 @@ bool System::IsRunningOnBatteries() {
     return ac_status_offline && has_battery;
   }
   return false;
+}
+
+HRESULT System::CreateChildOutputPipe(HANDLE* read, HANDLE* write) {
+  scoped_handle pipe_read;
+  scoped_handle pipe_write;
+
+  CAccessToken effective_token;
+  if (!effective_token.GetEffectiveToken(TOKEN_QUERY)) {
+    UTIL_LOG(LW, (_T("[CAccessToken::GetEffectiveToken failed]")));
+    return E_FAIL;
+  }
+  CSid user;
+  if (!effective_token.GetUser(&user)) {
+    UTIL_LOG(LW, (_T("[CSid::GetUser failed]")));
+    return E_FAIL;
+  }
+
+  CSecurityDesc security_descriptor;
+  CDacl dacl;
+  ACCESS_MASK access_mask = GENERIC_READ | GENERIC_WRITE | SYNCHRONIZE;
+  dacl.AddAllowedAce(Sids::System(), access_mask);
+  dacl.AddAllowedAce(Sids::Admins(), access_mask);
+  dacl.AddAllowedAce(user, access_mask);
+  security_descriptor.SetDacl(dacl);
+  security_descriptor.MakeAbsolute();
+
+  SECURITY_ATTRIBUTES pipe_security_attributes;
+  pipe_security_attributes.nLength = sizeof(pipe_security_attributes);
+  pipe_security_attributes.lpSecurityDescriptor =
+      const_cast<SECURITY_DESCRIPTOR*>(
+          security_descriptor.GetPSECURITY_DESCRIPTOR());
+
+  pipe_security_attributes.bInheritHandle = TRUE;
+
+  if (::CreatePipe(address(pipe_read), address(pipe_write),
+                   &pipe_security_attributes, 0) == 0) {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LW, (_T("[CreatePipe failed][0x%x]"), hr));
+    return hr;
+  }
+
+  if (::SetHandleInformation(get(pipe_read), HANDLE_FLAG_INHERIT, 0) == 0) {
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LW, (_T("[SetHandleInformation failed][0x%x]"), hr));
+    return hr;
+  }
+
+  *read = release(pipe_read);
+  *write = release(pipe_write);
+
+  return S_OK;
 }
 
 }  // namespace omaha

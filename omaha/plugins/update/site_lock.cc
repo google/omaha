@@ -14,8 +14,11 @@
 // ========================================================================
 
 #include "omaha/plugins/update/site_lock.h"
-#include <wininet.h>
+
+#include <mshtml.h>
 #include <shlobj.h>
+#include <wininet.h>
+
 #include "base/scoped_ptr.h"
 #include "omaha/base/atl_regexp.h"
 #include "omaha/base/constants.h"
@@ -60,6 +63,11 @@ bool SiteLock::InApprovedDomain(const WCHAR* url) {
   URL_COMPONENTS components = {sizeof(components)};
   components.dwHostNameLength = 1;
   if (!::InternetCrackUrl(url, 0, 0, &components)) {
+    return false;
+  }
+  // On some platforms, InternetCrackUrl() is unreliable and will return
+  // success but leave lpszHostName NULL.  Make sure it's valid.  (b/5532393)
+  if (!components.lpszHostName || components.dwHostNameLength == 0) {
     return false;
   }
   CString hostname(components.lpszHostName, components.dwHostNameLength);

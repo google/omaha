@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
       process_id = ::GetProcessId(process);
       ::CloseHandle(process);
     }
-    wprintf(_T("%s (process handle:%x process id: %u hresult:%x)"),
+    wprintf(_T("%s (process handle:%p process id: %u hresult:%x)"),
            (SUCCEEDED(hr) ? _T("Success") : _T("Failure")),
            process,
            process_id,

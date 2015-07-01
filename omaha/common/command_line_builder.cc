@@ -20,6 +20,7 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
+#include "omaha/base/utils.h"
 #include "omaha/common/command_line.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
@@ -31,7 +32,8 @@ CommandLineBuilder::CommandLineBuilder(CommandLineMode mode)
       is_interactive_set_(false),
       is_machine_set_(false),
       is_silent_set_(false),
-      is_eula_required_set_(false) {
+      is_eula_required_set_(false),
+      is_enterprise_set_(false) {
 }
 
 CommandLineBuilder::~CommandLineBuilder() {
@@ -43,7 +45,8 @@ void CommandLineBuilder::set_is_interactive_set(bool is_interactive_set) {
 }
 
 void CommandLineBuilder::set_is_machine_set(bool is_machine_set) {
-  ASSERT1(mode_ == COMMANDLINE_MODE_REPORTCRASH);
+  ASSERT1(mode_ == COMMANDLINE_MODE_REPORTCRASH ||
+          mode_ == COMMANDLINE_MODE_UA);
   is_machine_set_ = is_machine_set;
 }
 
@@ -57,6 +60,12 @@ void CommandLineBuilder::set_is_eula_required_set(bool is_eula_required_set) {
   ASSERT1(mode_ == COMMANDLINE_MODE_INSTALL ||
           mode_ == COMMANDLINE_MODE_HANDOFF_INSTALL);
   is_eula_required_set_ = is_eula_required_set;
+}
+
+void CommandLineBuilder::set_is_enterprise_set(bool is_enterprise_set) {
+  ASSERT1(mode_ == COMMANDLINE_MODE_INSTALL ||
+          mode_ == COMMANDLINE_MODE_HANDOFF_INSTALL);
+  is_enterprise_set_ = is_enterprise_set;
 }
 
 void CommandLineBuilder::set_extra_args(const CString& extra_args) {
@@ -121,10 +130,20 @@ void CommandLineBuilder::set_ping_string(const CString& ping_string) {
   ping_string_ = ping_string;
 }
 
-void CommandLineBuilder::SetOfflineDir(const CString& offline_dir) {
+HRESULT CommandLineBuilder::SetOfflineDirName(const CString& offline_dir) {
   ASSERT1(mode_ == COMMANDLINE_MODE_HANDOFF_INSTALL);
-  offline_dir_ = offline_dir;
-  ::PathRemoveBackslash(CStrBuf(offline_dir_, MAX_PATH));
+
+  CString offline_dir_name(GetFileFromPath(offline_dir));
+  GUID offline_dir_guid = {0};
+  HRESULT hr = StringToGuidSafe(offline_dir_name, &offline_dir_guid);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[invalid offline_dir_name. Needs to be a guid][%s][%#x]"),
+                  offline_dir, hr));
+    return E_INVALIDARG;
+  }
+
+  offline_dir_name_ = offline_dir_name;
+  return S_OK;
 }
 
 CString CommandLineBuilder::GetCommandLineArgs() const {
@@ -359,6 +378,9 @@ CString CommandLineBuilder::GetInstall() const {
   if (is_silent_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineSilent);
   }
+  if (is_enterprise_set_) {
+    SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineEnterprise);
+  }
   return cmd_line;
 }
 
@@ -395,10 +417,13 @@ CString CommandLineBuilder::GetHandoffInstall() const {
   if (is_eula_required_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineEulaRequired);
   }
-  if (!offline_dir_.IsEmpty()) {
+  if (is_enterprise_set_) {
+    SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineEnterprise);
+  }
+  if (!offline_dir_name_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s \"%s\""),
                             kCmdLineOfflineDir,
-                            offline_dir_);
+                            offline_dir_name_);
   }
   return cmd_line;
 }
@@ -410,6 +435,9 @@ CString CommandLineBuilder::GetUA() const {
   }
 
   CString cmd_line(GetSingleSwitch(kCmdLineUpdateApps));
+  if (is_machine_set()) {
+    SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineMachine);
+  }
   SafeCStringAppendFormat(&cmd_line, _T(" /%s %s"),
                           kCmdLineInstallSource,
                           install_source_);

@@ -363,11 +363,11 @@ HRESULT CreatePeriodicTrigger(ITask* task, bool create_hourly_trigger) {
   }
 
   // Start time set to 5 minutes from the current time.
-  time64 start_time = GetCurrent100NSTime() + (5 * kMinsTo100ns);
+  time64 start_time = GetCurrent100NSTime() + kScheduledTaskDelayStartNs;
   SYSTEMTIME sys_time = Time64ToSystemTime(start_time);
   SYSTEMTIME locale_time = {0};
-  hr = SystemTimeToTzSpecificLocalTime(NULL, &sys_time, &locale_time);
-  if (FAILED(hr)) {
+  if (!SystemTimeToTzSpecificLocalTime(NULL, &sys_time, &locale_time)) {
+    hr = HRESULTFromLastError();
     UTIL_LOG(LE, (_T("[SystemTimeToTzSpecificLocalTime failed][0x%x]"), hr));
     return hr;
   }
@@ -381,19 +381,18 @@ HRESULT CreatePeriodicTrigger(ITask* task, bool create_hourly_trigger) {
   trigger_config.wStartMinute = locale_time.wMinute;
 
   trigger_config.TriggerType = TASK_TIME_TRIGGER_DAILY;
-  trigger_config.Type.Daily.DaysInterval = 1;  // every 1 day
+  trigger_config.Type.Daily.DaysInterval = kScheduledTaskIntervalDays;
 
   if (create_hourly_trigger) {
-    // The task will be run daily at 24 hour intervals. And the task will be
-    // repeated every au_timer_interval_minutes within a single 24 hour
-    // interval.
-    const DWORD kTaskTrigger24HoursDuration = 24 * 60;
+    // The task will be run daily at kScheduledTaskDurationMinutes intervals.
+    // And the task will be repeated every au_timer_interval_minutes within a
+    // single kScheduledTaskDurationMinutes interval.
     int au_timer_interval_minutes =
         ConfigManager::Instance()->GetAutoUpdateTimerIntervalMs() / (60 * 1000);
     ASSERT1(au_timer_interval_minutes > 0 &&
-            au_timer_interval_minutes < kTaskTrigger24HoursDuration);
+            au_timer_interval_minutes < kScheduledTaskDurationMinutes);
 
-    trigger_config.MinutesDuration = kTaskTrigger24HoursDuration;
+    trigger_config.MinutesDuration = kScheduledTaskDurationMinutes;
     trigger_config.MinutesInterval = au_timer_interval_minutes;
   }
 
@@ -628,14 +627,7 @@ HRESULT InstallScheduledTask(const TCHAR* task_name,
                              bool create_daily_trigger,
                              bool create_hourly_trigger) {
   if (IsInstalledScheduledTask(task_name)) {
-    return UpgradeScheduledTask(task_name,
-                                task_path,
-                                task_parameters,
-                                task_comment,
-                                is_machine,
-                                create_logon_trigger,
-                                create_daily_trigger,
-                                create_hourly_trigger);
+    UninstallScheduledTask(task_name);
   }
 
   CComPtr<ITaskScheduler> scheduler;
@@ -951,35 +943,31 @@ HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
   CString task_name(mode == COMMANDLINE_MODE_CORE ?
                     internal::GetCurrentTaskNameCore(is_machine) :
                     internal::GetCurrentTaskNameUA(is_machine));
-  if (internal::IsInstalledScheduledTask(task_name)) {
-    HRESULT hr = internal::InstallScheduledTask(task_name,
-                                                task_path,
-                                                task_parameters,
-                                                task_description,
-                                                is_machine,
-                                                mode == COMMANDLINE_MODE_CORE &&
-                                                is_machine,
-                                                true,
-                                                mode == COMMANDLINE_MODE_UA);
+  HRESULT hr = internal::InstallScheduledTask(task_name,
+                                              task_path,
+                                              task_parameters,
+                                              task_description,
+                                              is_machine,
+                                              mode == COMMANDLINE_MODE_CORE &&
+                                              is_machine,
+                                              true,
+                                              mode == COMMANDLINE_MODE_UA);
 
-    if (SUCCEEDED(hr)) {
-      return hr;
-    }
-
-    // Try to uninstall the task that we failed to upgrade. Then create a new
-    // task name, and fall through to install that.
-    internal::UninstallScheduledTask(task_name);
-    if (mode == COMMANDLINE_MODE_CORE) {
-      VERIFY1(SUCCEEDED(
-      internal::CreateAndSetVersionedTaskNameCoreInRegistry(is_machine)));
-      task_name = internal::GetCurrentTaskNameCore(is_machine);
-    } else {
-      VERIFY1(SUCCEEDED(
-      internal::CreateAndSetVersionedTaskNameUAInRegistry(is_machine)));
-      task_name = internal::GetCurrentTaskNameUA(is_machine);
-    }
-    ASSERT1(!internal::IsInstalledScheduledTask(task_name));
+  if (SUCCEEDED(hr)) {
+    return hr;
   }
+
+  // Create a new task name and fall through to install that.
+  if (mode == COMMANDLINE_MODE_CORE) {
+    VERIFY1(SUCCEEDED(
+    internal::CreateAndSetVersionedTaskNameCoreInRegistry(is_machine)));
+    task_name = internal::GetCurrentTaskNameCore(is_machine);
+  } else {
+    VERIFY1(SUCCEEDED(
+    internal::CreateAndSetVersionedTaskNameUAInRegistry(is_machine)));
+    task_name = internal::GetCurrentTaskNameUA(is_machine);
+  }
+  ASSERT1(!internal::IsInstalledScheduledTask(task_name));
 
   return internal::InstallScheduledTask(task_name,
                                         task_path,

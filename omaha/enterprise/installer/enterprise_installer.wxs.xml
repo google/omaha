@@ -84,8 +84,8 @@
     <Binary Id='$(var.ProductNameLegalIdentifier)Installer'
             SourceFile='$(var.ProductInstallerPath)' />
 
-    <Binary Id='ShowInstallerResultUIStringDll'
-            SourceFile='$(var.ShowErrorCADll)' />
+    <Binary Id='MsiInstallerCustomActionDll'
+            SourceFile='$(var.MsiInstallerCADll)' />
 
     <Feature Id='Complete' Level='1'>
       <ComponentRef Id='ComponentGoogleUpdate' />
@@ -115,7 +115,7 @@
     <!-- A custom action to be executed on rollback to log and display the
          LastInstallerResultUIString. -->
     <CustomAction Id='ShowInstallerResultUIString'
-      BinaryKey='ShowInstallerResultUIStringDll'
+      BinaryKey='MsiInstallerCustomActionDll'
       DllEntry='ShowInstallerResultUIString'
       Execute='rollback'
       Impersonate='no' />

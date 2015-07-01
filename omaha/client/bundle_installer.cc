@@ -358,8 +358,11 @@ CString GetBundleCompletionMessage(
   // For mixed results, display the succeeded, failed and canceled app lists on
   // their own lines below the main message with a newline between the message
   // and lists.
-  const TCHAR* const kLayoutForTwoGroups = _T("%s\n\n%s\n%s");
-  const TCHAR* const kLayoutForThreeGroups = _T("%s\n\n%s\n%s\n%s");
+  // Added "<B> </B>" (or any different text format) to the end of the layout
+  // strings so that all string components on the left can be compacted together
+  // which make it look nicer on the completion dialog.
+  const TCHAR* const kLayoutForTwoGroups = _T("%s\n%s    %s<B> </B>");
+  const TCHAR* const kLayoutForThreeGroups = _T("%s\n%s    %s    %s<B> </B>");
 
   if (!failed_apps_str.IsEmpty()) {
     // At least one app fails to install, display a failure message.
@@ -416,8 +419,7 @@ CString GetBundleCompletionMessage(
       VERIFY1(
           bundle_message.LoadString(IDS_APPLICATION_INSTALLED_SUCCESSFULLY));
     } else {
-      bundle_message.FormatMessage(IDS_BUNDLE_INSTALLED_SUCCESSFULLY,
-                                   bundle_name);
+      VERIFY1(bundle_message.LoadString(IDS_BUNDLE_INSTALLED_SUCCESSFULLY));
     }
   }
 
@@ -437,6 +439,7 @@ BundleInstaller::BundleInstaller(HelpUrlBuilder* help_url_builder,
       state_(kInit),
       result_(E_UNEXPECTED),
       is_canceled_(false),
+      is_handling_message_(false),
       is_update_all_apps_(is_update_all_apps),
       is_update_check_only_(is_update_check_only),
       is_browser_type_supported_(is_browser_type_supported) {
@@ -450,20 +453,24 @@ LRESULT BundleInstaller::OnTimer(UINT msg,
                                  WPARAM wparam,
                                  LPARAM,
                                  BOOL& handled) {  // NOLINT
+  if (is_handling_message_) {
+    ASSERT(false, (_T("[Reentrancy detected]")));
+    return 0;
+  }
+  is_handling_message_ = true;
+
   VERIFY1(msg == WM_TIMER);
   VERIFY1(wparam == kPollingTimerId);
 
-  // set_observer() must be called before starting the message loop.
-  ASSERT1(observer_);
-
   if (!PollServer()) {
-    CORE_LOG(L1, (_T("[BundleInstaller::OnTimer][Stopping polling timer]")));
+    CORE_LOG(L6, (_T("[BundleInstaller::OnTimer][Stopping polling timer]")));
 
     // Ignore return value. KillTimer does not remove WM_TIMER messages already
     // posted to the message queue.
     KillTimer(kPollingTimerId);
   }
 
+  is_handling_message_ = false;
   handled = true;
   return 0;
 }
@@ -558,7 +565,15 @@ LRESULT BundleInstaller::OnClose(UINT,
                                  BOOL& handled) {         // NOLINT
   CORE_LOG(L3, (_T("[BundleInstaller::OnClose]")));
 
+  if (is_handling_message_) {
+    ASSERT(false, (_T("[Reentrancy detected]")));
+    return 0;
+  }
+  is_handling_message_ = true;
+
   DoClose();
+
+  is_handling_message_ = false;
   handled = true;
   return 0;
 }
@@ -641,8 +656,13 @@ HRESULT BundleInstaller::result() {
 // need to worry about multiple WM_TIMER events at the same time or does the
 // message loop ensure this doesn't happen?
 HRESULT BundleInstaller::DoPollServer() {
-  CORE_LOG(L3, (_T("[BundleInstaller::DoPollServer][%u]"), state_));
-  ASSERT1(observer_);
+  CORE_LOG(L6, (_T("[BundleInstaller::DoPollServer][%u]"), state_));
+
+  if (!observer_) {
+    CORE_LOG(LW, (_T("[BundleInstaller::DoPollServer][observer_ is NULL]")));
+    return S_FALSE;
+  }
+
   switch (state_) {
     case kInit:
       return HandleInitState();
@@ -749,11 +769,9 @@ HRESULT BundleInstaller::HandleInitState() {
 // server would need to return information for all previous AppStates
 // (i.e. download progress while in the install phase).
 HRESULT BundleInstaller::HandleProcessingState() {
-  CORE_LOG(L3, (_T("[BundleInstaller::HandleProcessingState]")));
+  CORE_LOG(L6, (_T("[BundleInstaller::HandleProcessingState]")));
   ASSERT1(observer_);
   ASSERT1(!apps_.empty());
-
-  const ComPtrIApp* app_to_process = NULL;
 
   for (size_t i = 0; i < apps_.size(); ++i) {
     CurrentState current_state = STATE_INIT;
@@ -778,18 +796,22 @@ HRESULT BundleInstaller::HandleProcessingState() {
         return S_OK;
       case STATE_UPDATE_AVAILABLE:
         return HandleUpdateAvailable();
-      case STATE_WAITING_TO_DOWNLOAD:
-        observer_->OnWaitingToDownload(internal::GetAppDisplayName(app));
+      case STATE_WAITING_TO_DOWNLOAD: {
+        CComBSTR app_id;
+        VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+        observer_->OnWaitingToDownload(app_id.m_str,
+                                       internal::GetAppDisplayName(app));
         return S_OK;
+      }
       case STATE_RETRYING_DOWNLOAD:
         ASSERT(false, (_T("Unsupported")));
         return S_OK;  // Keep checking in order to be forwards compatible.
       case STATE_DOWNLOADING:
       case STATE_DOWNLOAD_COMPLETE:
+        return NotifyDownloadProgress(app, icurrent_state);
       case STATE_EXTRACTING:
       case STATE_APPLYING_DIFFERENTIAL_PATCH:
       case STATE_READY_TO_INSTALL:
-        return NotifyDownloadProgress(app, icurrent_state);
       case STATE_WAITING_TO_INSTALL:
         return NotifyWaitingToInstall(app);
       case STATE_INSTALLING:
@@ -833,9 +855,14 @@ HRESULT BundleInstaller::NotifyUpdateAvailable(IApp* app) {
 
   CORE_LOG(L3, (_T("[Next Version Update Available][%s]"), CString(ver)));
 
+  CComBSTR app_id;
+  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+
   // TODO(omaha3): Until we force app teams to provide a version, the string
   // may be empty.
-  observer_->OnUpdateAvailable(internal::GetAppDisplayName(app), CString(ver));
+  observer_->OnUpdateAvailable(app_id.m_str,
+                               internal::GetAppDisplayName(app),
+                               CString(ver));
   return S_OK;
 }
 
@@ -852,11 +879,16 @@ HRESULT BundleInstaller::NotifyDownloadProgress(IApp* app,
                          &time_remaining_ms,
                          &percentage,
                          &next_retry_time);
+  CComBSTR app_id;
+  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+
   if (next_retry_time != 0) {
-    observer_->OnWaitingRetryDownload(internal::GetAppDisplayName(app),
+    observer_->OnWaitingRetryDownload(app_id.m_str,
+                                      internal::GetAppDisplayName(app),
                                       next_retry_time);
   } else {
-    observer_->OnDownloading(internal::GetAppDisplayName(app),
+    observer_->OnDownloading(app_id.m_str,
+                             internal::GetAppDisplayName(app),
                              time_remaining_ms,
                              percentage);
   }
@@ -870,10 +902,14 @@ HRESULT BundleInstaller::NotifyWaitingToInstall(IApp* app) {
   ASSERT1(app);
   ASSERT1(observer_);
 
+  CComBSTR app_id;
+  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+
   // can_start_install is ignored because download and install are no longer
   // discrete phases.
   bool can_start_install = false;
-  observer_->OnWaitingToInstall(internal::GetAppDisplayName(app),
+  observer_->OnWaitingToInstall(app_id.m_str,
+                                internal::GetAppDisplayName(app),
                                 &can_start_install);
 
   return S_OK;
@@ -886,12 +922,16 @@ HRESULT BundleInstaller::NotifyInstallProgress(IApp* app,
   ASSERT1(icurrent_state);
   ASSERT1(observer_);
 
-  // TODO(omaha3): Get the install progress and time for the current app.
-  // Handle kCurrentStateProgressUnknown appropriately.
-  UNREFERENCED_PARAMETER(icurrent_state);
+  int time_remaining_ms = kCurrentStateProgressUnknown;
+  int percentage = 0;
+  GetAppInstallProgress(icurrent_state, &time_remaining_ms, &percentage);
 
-  observer_->OnInstalling(internal::GetAppDisplayName(app));
-
+  CComBSTR app_id;
+  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+  observer_->OnInstalling(app_id.m_str,
+                          internal::GetAppDisplayName(app),
+                          time_remaining_ms,
+                          percentage);
   return S_OK;
 }
 
@@ -1066,6 +1106,27 @@ void BundleInstaller::GetAppDownloadProgress(ICurrentState* icurrent_state,
   CORE_LOG(L4, (_T("[AppDownloadProgress]")
                 _T("[bytes %u][bytes_total %u][percentage %d][ms %d]"),
                 bytes, bytes_total, *percentage, *time_remaining_ms));
+}
+
+void BundleInstaller::GetAppInstallProgress(ICurrentState* icurrent_state,
+                                            int* time_remaining_ms,
+                                            int* percentage) {
+  ASSERT1(icurrent_state);
+  ASSERT1(time_remaining_ms);
+  ASSERT1(percentage);
+
+  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
+  VERIFY1(SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms)));
+  LONG local_percentage = kCurrentStateProgressUnknown;
+  VERIFY1(SUCCEEDED(icurrent_state->get_installProgress(&local_percentage)));
+
+  ASSERT1(local_percentage <= 100);
+  *time_remaining_ms = local_time_remaining_ms;
+  *percentage = local_percentage;
+
+  CORE_LOG(L4, (_T("[AppInstallProgress][percentage %d][ms %d]"),
+                *percentage, *time_remaining_ms));
 }
 
 void BundleInstaller::CancelBundle() {

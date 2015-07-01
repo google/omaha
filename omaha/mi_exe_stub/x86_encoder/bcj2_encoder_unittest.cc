@@ -16,10 +16,11 @@
 #include "omaha/mi_exe_stub/x86_encoder/bcj2_encoder.h"
 #include <string>
 #include <vector>
+#include "omaha/base/app_util.h"
 #include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 extern "C" {
-#include "omaha/third_party/lzma/v4_65/files/C/Bcj2.h"
+#include "third_party/lzma/files/C/Bcj2.h"
 }
 
 namespace omaha {
@@ -40,10 +41,9 @@ TEST(Bcj2EncoderTest, EmptyBuffer) {
 // Test that the transform is reversible.
 TEST(Bcj2EncoderTest, Reversible) {
   // The victim program is the unit test itself.
-  WCHAR module_path[MAX_PATH];
-  ASSERT_LT(static_cast<DWORD>(0), ::GetModuleFileName(NULL,
-                                                       module_path,
-                                                       arraysize(module_path)));
+  CString module_path = app_util::GetModulePath(NULL);
+  ASSERT_FALSE(module_path.IsEmpty());
+
   std::vector<byte> raw_file;
   ASSERT_HRESULT_SUCCEEDED(
       ReadEntireFileShareMode(module_path, 0, FILE_SHARE_READ, &raw_file));

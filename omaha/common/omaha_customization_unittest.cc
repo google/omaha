@@ -19,6 +19,7 @@
 
 #include <tchar.h>
 #include "omaha/base/const_addresses.h"
+#include "omaha/base/const_code_signing.h"
 #include "omaha/base/const_config.h"
 #include "omaha/base/const_debug.h"
 #include "omaha/base/const_object_names.h"
@@ -123,12 +124,19 @@ TEST(OmahaCustomizationTest, Constants_Names) {
 TEST(OmahaCustomizationTest, Constants_Filenames) {
   EXPECT_STREQ(_T("GoogleUpdate.exe"), kOmahaShellFileName);
   EXPECT_STREQ(_T("GoogleCrashHandler.exe"), kCrashHandlerFileName);
+  EXPECT_STREQ(_T("GoogleCrashHandler64.exe"), kCrashHandler64FileName);
   EXPECT_STREQ(_T("goopdate.dll"), kOmahaDllName);
   EXPECT_STREQ(_T("goopdateres_%s.dll"), kOmahaResourceDllNameFormat);
   EXPECT_STREQ(_T("GoogleUpdateBroker.exe"), kOmahaBrokerFileName);
   EXPECT_STREQ(_T("GoogleUpdateOnDemand.exe"), kOmahaOnDemandFileName);
+  EXPECT_STREQ(_T("GoogleUpdateWebPlugin.exe"), kOmahaWebPluginFileName);
+  EXPECT_STREQ(_T("GoogleUpdateSetup.exe"), kOmahaMetainstallerFileName);
+  EXPECT_STREQ(_T("GoogleUpdateComRegisterShell64.exe"),
+               kOmahaCOMRegisterShell64);
   EXPECT_STREQ(_T("psmachine.dll"), kPSFileNameMachine);
+  EXPECT_STREQ(_T("psmachine_64.dll"), kPSFileNameMachine64);
   EXPECT_STREQ(_T("psuser.dll"), kPSFileNameUser);
+  EXPECT_STREQ(_T("psuser_64.dll"), kPSFileNameUser64);
 }
 
 TEST(OmahaCustomizationTest, Constants_Certificate) {
@@ -182,7 +190,7 @@ TEST(OmahaCustomizationTest, Constants_RegistryKeys) {
   EXPECT_GU_STREQ(_T("Software\\Google\\Update\\Clients\\"), GOOPDATE_REG_RELATIVE_CLIENTS);  // NOLINT
   EXPECT_GU_STREQ(_T("Software\\Google\\Update\\ClientState\\"), GOOPDATE_REG_RELATIVE_CLIENT_STATE);  // NOLINT
   EXPECT_GU_STREQ(_T("Software\\Google\\Update\\ClientStateMedium\\"), GOOPDATE_REG_RELATIVE_CLIENT_STATE_MEDIUM);  // NOLINT
-  EXPECT_GU_STREQ(_T("Software\\Policies\\Google\\"), COMPANY_POLICIES_MAIN_KEY);
+  EXPECT_GU_STREQ(_T("Software\\Policies\\Google\\"), COMPANY_POLICIES_MAIN_KEY);           // NOLINT
   EXPECT_GU_STREQ(_T("Software\\Policies\\Google\\Update\\"), GOOPDATE_POLICIES_RELATIVE);  // NOLINT
 
   EXPECT_GU_STREQ(_T("HKCU\\Software\\Google\\"), USER_REG_GOOGLE);
@@ -220,10 +228,8 @@ TEST(OmahaCustomizationTest, Constants_MsiMsp) {
   EXPECT_STREQ(_T("{E0D0D2C9-5836-4023-AB1D-54EC3B90AD03}"), kHelperPatchGuid);
 }
 
-TEST(OmahaCustomizationTest, Constants_CompatibleShellVersions) {
-  EXPECT_EQ(2, arraysize(kCompatibleOlderShellVersions));
-  EXPECT_EQ(0x0001000200830007, kCompatibleOlderShellVersions[0]);
-  EXPECT_EQ(0x0001000200B70009, kCompatibleOlderShellVersions[1]);
+TEST(OmahaCustomizationTest, Constants_CompatibleMinimumOlderShellVersion) {
+  EXPECT_EQ(0x0001000300150067, kCompatibleMinimumOlderShellVersion);
 }
 
 TEST(OmahaCustomizationTest, Constants_BrandCode) {
@@ -234,12 +240,12 @@ TEST(OmahaCustomizationTest, Constants_Addresses) {
   EXPECT_STREQ(_T("www.google.com"), kGoogleHttpServer);
   EXPECT_STREQ(_T("tools.google.com"), kGoopdateServer);
   EXPECT_STREQ(_T("https://tools.google.com/service/update2"), kUrlUpdateCheck);
-  EXPECT_STREQ(_T("http://tools.google.com/service/update2"), kUrlPing);
-  EXPECT_STREQ(_T("http://clients2.google.com/cr/report"), kUrlCrashReport);
-  EXPECT_STREQ(_T("http://www.google.com/support/installer/?"), kUrlMoreInfo);
-  EXPECT_STREQ(_T("http://cr-tools.clients.google.com/service/check2"),
+  EXPECT_STREQ(_T("https://tools.google.com/service/update2"), kUrlPing);
+  EXPECT_STREQ(_T("https://clients2.google.com/cr/report"), kUrlCrashReport);
+  EXPECT_STREQ(_T("https://www.google.com/support/installer/?"), kUrlMoreInfo);
+  EXPECT_STREQ(_T("https://clients2.google.com/service/check2"),
                kUrlCodeRedCheck);
-  EXPECT_STREQ(_T("http://clients5.google.com/tbproxy/usagestats"),
+  EXPECT_STREQ(_T("https://clients5.google.com/tbproxy/usagestats"),
                kUrlUsageStatsReport);
 }
 
@@ -280,8 +286,6 @@ TEST(OmahaCustomizationTest, Constants_ObjectNames_MutexesAndEvents) {
                kInstallManagerSerializer);
   EXPECT_STREQ(_T("{C68009EA-1163-4498-8E93-D5C4E317D8CE}"),
                kMetricsSerializer);
-  EXPECT_STREQ(_T("{0E900C7B-04B0-47f9-81B0-F8D94F2DF01B}"),
-               kNetworkConfigLock);
   EXPECT_STREQ(_T("{66CC0160-ABB3-4066-AE47-1CA6AD5065C8}"),
                kRegistryAccessMutex);
 }
@@ -307,7 +311,7 @@ TEST(OmahaCustomizationTest, Constants_Services) {
 
 TEST(OmahaCustomizationTest, Constants_ScheduledTasks) {
   EXPECT_GU_STREQ(_T("GoogleUpdateTaskUser"), kScheduledTaskNameUserPrefix);
-  EXPECT_GU_STREQ(_T("GoogleUpdateTaskMachine"), kScheduledTaskNameMachinePrefix);
+  EXPECT_GU_STREQ(_T("GoogleUpdateTaskMachine"), kScheduledTaskNameMachinePrefix);    // NOLINT
 }
 
 TEST(OmahaCustomizationTest, Constants_Plugins) {
@@ -319,11 +323,12 @@ TEST(OmahaCustomizationTest, Constants_Plugins) {
 }
 
 TEST(OmahaCustomizationTest, Constants_HostCheck) {
-  EXPECT_EQ(4, arraysize(kSiteLockPatternStrings));
-  EXPECT_STREQ(_T("^(gears)|(mail)|(tools)|(www)|(desktop)|(pack)\\.google\\.com$"), kSiteLockPatternStrings[0]);  // NOLINT
+  EXPECT_EQ(5, arraysize(kSiteLockPatternStrings));
+  EXPECT_STREQ(_T("^(gears)|(mail)|(tools)|(www)|(desktop)|(pack)|(chrome)|(drive)\\.google\\.com$"), kSiteLockPatternStrings[0]);  // NOLINT
   EXPECT_STREQ(_T("^www\\.google\\.(ad)|(bg)|(ca)|(cn)|(cz)|(de)|(es)|(fi)|(fr)|(gr)|(hr)|(hu)|(it)|(ki)|(kr)|(lt)|(lv)|(nl)|(no)|(pl)|(pt)|(ro)|(ru)|(sk)|(sg)|(sl)|(sr)|(vn)$"), kSiteLockPatternStrings[1]);  // NOLINT
   EXPECT_STREQ(_T("^www\\.google\\.co\\.(hu)|(id)|(il)|(it)|(jp)|(kr)|(th)|(uk)$"), kSiteLockPatternStrings[2]);  // NOLINT
   EXPECT_STREQ(_T("^www\\.google\\.com\\.(ar)|(au)|(br)|(cn)|(et)|(gr)|(hr)|(ki)|(lv)|(om)|(pl)|(pt)|(ru)|(sg)|(sv)|(tr)|(vn)$"), kSiteLockPatternStrings[3]);  // NOLINT
+  EXPECT_STREQ(_T("^(www\\.)?chrome\\.com$"), kSiteLockPatternStrings[4]);
 }
 
 //

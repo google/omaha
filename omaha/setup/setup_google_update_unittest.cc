@@ -19,12 +19,18 @@
 #include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/atlregmapex.h"
+#include "omaha/base/constants.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
+#include "omaha/base/scoped_any.h"
+#include "omaha/base/scoped_impersonation.h"
+#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
+#include "omaha/base/vista_utils.h"
 #include "omaha/base/vistautil.h"
+#include "omaha/common/command_line_builder.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
@@ -38,9 +44,9 @@ namespace omaha {
 namespace {
 
 const TCHAR kMsiInstallRegValue[] = _T("MsiStubRun");
-const TCHAR kMsiUninstallKey[] =
+const TCHAR kMsiUninstallParentKey[] =
     _T("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\")
-    _T("Uninstall\\{A92DAB39-4E2C-4304-9AB6-BC44E68B55E2}");
+    _T("Uninstall\\");
 const TCHAR kRunKey[] =
     _T("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run");
 
@@ -51,6 +57,11 @@ const TCHAR kRegistryHiveOverrideRootInHklm[] =
     _T("HKLM\\Software\\") _T(SHORT_COMPANY_NAME_ANSI)
     _T("\\") _T(PRODUCT_NAME_ANSI)
     _T("\\UnitTest\\");
+
+CString GetMsiUninstallKey() {
+  CString msi_uninstall_parent_key(kMsiUninstallParentKey);
+  return msi_uninstall_parent_key + kHelperInstallerProductGuid;
+}
 
 // Copies the shell and DLLs that FinishInstall needs.
 // Does not replace files if they already exist.
@@ -258,7 +269,8 @@ void VerifyHklmKeyHasDefaultIntegrity(const CString& key_full_name) {
 }
 
 void VerifyHklmKeyHasMediumIntegrity(const CString& key_full_name) {
-  VerifyHklmKeyHasIntegrity(key_full_name, KEY_READ | KEY_SET_VALUE);
+  VerifyHklmKeyHasIntegrity(key_full_name,
+                            KEY_READ | KEY_SET_VALUE | KEY_CREATE_SUB_KEY);
 }
 
 class SetupGoogleUpdateTest : public testing::Test {
@@ -268,7 +280,7 @@ class SetupGoogleUpdateTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    setup_google_update_.reset(new SetupGoogleUpdate(is_machine_));
+    setup_google_update_.reset(new SetupGoogleUpdate(is_machine_, false));
   }
 
   HRESULT InstallRegistryValues() {
@@ -518,6 +530,15 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
   EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_UPDATE, _T("path"), &shell_path));
   EXPECT_STREQ(expected_shell_path, shell_path);
 
+  CommandLineBuilder builder(COMMANDLINE_MODE_UNINSTALL);
+  CString expected_uninstall_cmd_line =
+      builder.GetCommandLine(expected_shell_path);
+  CString uninstall_cmd_line;
+  EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_UPDATE,
+                                    kRegValueUninstallCmdLine,
+                                    &uninstall_cmd_line));
+  EXPECT_STREQ(expected_uninstall_cmd_line, uninstall_cmd_line);
+
   CString product_version;
   EXPECT_SUCCEEDED(RegKey::GetValue(USER_REG_CLIENT_STATE_GOOPDATE,
                                     _T("pv"),
@@ -573,6 +594,15 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
   EXPECT_SUCCEEDED(
       RegKey::GetValue(MACHINE_REG_UPDATE, _T("path"), &shell_path));
   EXPECT_STREQ(expected_shell_path, shell_path);
+
+  CommandLineBuilder builder(COMMANDLINE_MODE_UNINSTALL);
+  CString expected_uninstall_cmd_line =
+      builder.GetCommandLine(expected_shell_path);
+  CString uninstall_cmd_line;
+  EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE,
+                                    kRegValueUninstallCmdLine,
+                                    &uninstall_cmd_line));
+  EXPECT_STREQ(expected_uninstall_cmd_line, uninstall_cmd_line);
 
   CString product_version;
   EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_CLIENT_STATE_GOOPDATE,
@@ -726,7 +756,7 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
     // Prepare for the test - make sure the helper isn't installed.
     EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
     EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-    EXPECT_FALSE(RegKey::HasKey(kMsiUninstallKey));
+    EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
 
     // Verify installation.
     DWORD reg_value = 0xffffffff;
@@ -736,7 +766,7 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
                                               kMsiInstallRegValue,
                                               &reg_value));
     EXPECT_EQ(0, reg_value);
-    EXPECT_TRUE(RegKey::HasKey(kMsiUninstallKey));
+    EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
 
     // Verify over-install.
     EXPECT_HRESULT_SUCCEEDED(InstallMsiHelper());
@@ -745,12 +775,12 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
                                               kMsiInstallRegValue,
                                               &reg_value));
     EXPECT_EQ(0, reg_value);
-    EXPECT_TRUE(RegKey::HasKey(kMsiUninstallKey));
+    EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
 
     // Verify uninstall.
     EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
     EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-    EXPECT_FALSE(RegKey::HasKey(kMsiUninstallKey));
+    EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
 
     // Verify uninstall when not currently installed.
     EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
@@ -808,7 +838,7 @@ TEST_F(SetupGoogleUpdateMachineTest,
   // Prepare for the test - make sure the helper is not installed.
   EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
   EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-  EXPECT_FALSE(RegKey::HasKey(kMsiUninstallKey));
+  EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
 
   // Install an older version of the MSI.
   DWORD reg_value = 0xffffffff;
@@ -818,7 +848,7 @@ TEST_F(SetupGoogleUpdateMachineTest,
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::GetValue(MsiInstallRegValueKey, kMsiInstallRegValue, &reg_value));
   EXPECT_EQ(9, reg_value);
-  EXPECT_TRUE(RegKey::HasKey(kMsiUninstallKey));
+  EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
 
   // Over-install.
   EXPECT_HRESULT_SUCCEEDED(InstallMsiHelper());
@@ -826,12 +856,51 @@ TEST_F(SetupGoogleUpdateMachineTest,
   EXPECT_HRESULT_SUCCEEDED(
       RegKey::GetValue(MsiInstallRegValueKey, kMsiInstallRegValue, &reg_value));
   EXPECT_EQ(0, reg_value);
-  EXPECT_TRUE(RegKey::HasKey(kMsiUninstallKey));
+  EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
 
   // Clean up.
   EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
   EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-  EXPECT_FALSE(RegKey::HasKey(kMsiUninstallKey));
+  EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
+}
+
+TEST_F(SetupGoogleUpdateMachineTest, WriteClientStateMedium) {
+  bool is_uac_on(false);
+  EXPECT_SUCCEEDED(vista_util::IsUACOn(&is_uac_on));
+
+  if (!is_uac_on || !vista_util::IsUserAdmin()) {
+    std::wcout << _T("\tThis test did not run. Run as admin with UAC on.")
+               << std::endl;
+    return;
+  }
+
+  EXPECT_SUCCEEDED(CreateClientStateMedium());
+
+  const CString app_client_state_medium_key_name(AppendRegKeyPath(
+      MACHINE_REG_CLIENT_STATE_MEDIUM,
+      kAppId1));
+  EXPECT_SUCCEEDED(RegKey::CreateKey(app_client_state_medium_key_name));
+
+  scoped_handle token;
+  ASSERT_SUCCEEDED(vista::GetLoggedOnUserToken(address(token)));
+  scoped_impersonation impersonate_user(get(token));
+  EXPECT_EQ(impersonate_user.result(), S_OK);
+
+  // Verify that we can write values and create subkeys with values when running
+  // with the medium integrity token (assuming UAC is turned on).
+  EXPECT_TRUE(!vista_util::IsUserAdmin());
+
+  const CString key_name(app_client_state_medium_key_name);
+  RegKey key;
+  EXPECT_SUCCEEDED(key.Open(key_name,
+                            KEY_READ | KEY_SET_VALUE | KEY_CREATE_SUB_KEY));
+
+  EXPECT_SUCCEEDED(key.SetValue(_T("Value1"), _T("11")));
+
+  const CString subkey_name(AppendRegKeyPath(key_name, _T("Subkey1")));
+  RegKey subkey;
+  EXPECT_SUCCEEDED(subkey.Create(subkey_name));
+  EXPECT_SUCCEEDED(subkey.SetValue(_T("Subkey1Value1"), _T("21")));
 }
 
 }  // namespace omaha

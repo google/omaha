@@ -72,16 +72,21 @@ bool IsVistaOrLater();
 // Is the user running on Vista or later with a split-token.
 HRESULT IsUserRunningSplitToken(bool* is_split_token);
 
-// Returns true if the user has a split token, or if the EnableLUA key is set
-// to 1. EnableLUA is only really effective after a reboot, and the value there
-// may not reflect the exact state of the running machine. So this function
-// needs to be used with care.
-bool IsUACMaybeOn();
+// Sets is_uac_on to true if the user has a split token, or the explorer process
+// for the logged on user or session is running at medium integrity.
+HRESULT IsUACOn(bool* is_uac_on);
 
-// Returns true if running at High integrity with UAC possibly enabled. As the
-// name indicates, UAC being on or off is not 100% accurate. So this function
-// needs to be used with care.
-bool IsElevatedWithUACMaybeOn();
+// Returns true if running at High integrity with UAC on.
+HRESULT IsElevatedWithUACOn(bool* is_elevated_with_uac_on);
+
+// Returns true if the EnableLUA key does not exist (defaults to 1) or is set to
+// 1. EnableLUA is only effective (in turning on/off UAC) after a reboot, so the
+// value there may not reflect the exact state of the running machine. So this
+// function needs to be used with care.
+bool IsEnableLUAOn();
+
+// Returns true if running at High integrity with the EnableLUA key set to 1.
+bool IsElevatedWithEnableLUAOn();
 
 // Returns true if the process is running under credentials of an user
 // belonging to the admin group in case of pre-Vista and in case Vista
@@ -156,6 +161,12 @@ CSecurityDesc* CreateMediumIntegritySecurityDesc(ACCESS_MASK mask);
 
 // For Vista or later, add the low integrity SACL to an existing CSecurityDesc.
 HRESULT AddLowIntegritySaclToExistingDesc(CSecurityDesc* sd);
+
+// On Vista or later, enables metadata protection in the heap manager.  This
+// causes a process to be terminated immediately when a buffer overflow or
+// certain illegal heap operations are detected.  This call enables protection
+// for the entire process and cannot be reversed.
+HRESULT EnableProcessHeapMetadataProtection();
 
 }  // namespace vista_util
 

@@ -13,8 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_SIGNATUREVALIDATOR_H__
-#define OMAHA_COMMON_SIGNATUREVALIDATOR_H__
+#ifndef OMAHA_BASE_SIGNATUREVALIDATOR_H_
+#define OMAHA_BASE_SIGNATUREVALIDATOR_H_
 
 #include <windows.h>
 #include <wincrypt.h>
@@ -25,19 +25,20 @@
 #include <vector>
 #pragma warning(pop)
 
-// VerifySignature() and VerifySigneeIsGoogle() should always be used together.
+// VerifyAuthenticodeSignature() and VerifySigneeIsGoogle() should
+// always be used together.
 //
-// VerifySignature() verifies that the signature is valid and has a trusted
-// chain. It also verifies that the signing certificate was valid at the time
-// it was used to sign. If all are true, it returns S_OK. Even if the
-// certificate has expired since it was used to sign, the signature is valid and
-// VerifySignature() returns S_OK.
+// VerifyAuthenticodeSignature() verifies that the signature is valid and has
+// a trusted chain. It also verifies that the signing certificate was valid
+// at the time it was used to sign. If all are true, it returns S_OK.
+// Even if the certificate has expired since it was used to sign, the signature
+// is valid and VerifyAuthenticodeSignature() returns S_OK.
 //
-// If allow_network_check is true, VerifySignature() will
+// If allow_network_check is true, VerifyAuthenticodeSignature() will
 // also check the Certificate Revocation List (CRL). If the certificate was
 // revoked after it was used to sign, it will return S_OK. Otherwise, it fails.
-// At no time does VerifySignature() check whether the certificate is currently
-// valid.
+// At no time does VerifyAuthenticodeSignature() check whether the certificate
+// is currently valid.
 //
 // VerifySigneeIsGoogle() verifies that Google signed the file. It does not
 // check the certificate chain, CRL, or anything related to the timestamp.
@@ -63,6 +64,13 @@ class CertInfo {
 
   // trust-authority (or trust-provider) name. e.g. "Verisign, Inc.".
   CString trust_authority_name_;
+
+  // SHA-1 hash of the certificate's raw bytes. This is the value that is
+  // displayed by the operating system in the certificate's details.
+  CString thumbprint_;
+
+  // SHA-256 hash of the certificate subject's public key.
+  CString public_key_hash_;
 
   // validity period start-date
   FILETIME not_valid_before_;
@@ -102,9 +110,15 @@ class CertInfo {
   // company name and its dept name(orgnanizational-unit-name, as they call it).
   // Optionally, you could also retrieve trust-authority name.
   static bool ExtractIssuerInfo(const CERT_CONTEXT* cert_context,
-                         CString* orgn_name,
-                         CString* orgn_dept_name,
-                         CString* trust_authority = NULL);
+                                CString* orgn_name,
+                                CString* orgn_dept_name,
+                                CString* trust_authority = NULL);
+
+  static bool ExtractThumbprint(const CERT_CONTEXT* cert_context,
+                                CString* thumbprint);
+
+  static bool ExtractPublicKeyHash(const CERT_CONTEXT* cert_context,
+                                   CString* public_key_hash);
 
  private:
   // Extracts the specified field from the certificate. Only the first value for
@@ -140,7 +154,7 @@ class CertList {
   }
 
   // size() returns the number of certificates in this CertList
-  size_t size() {
+  size_t size() const {
     return cert_list_.size();
   }
 
@@ -154,12 +168,12 @@ class CertList {
   // FindFirstCert() finds the first certificate that exactly matches the given
   // criteria. If allow_test_variant is true, the company name will also be
   // deemed valid if it equals company_name_to_match + " (TEST)".
-  void FindFirstCert(CertInfo** result_cert_info,
+  void FindFirstCert(const CertInfo** result_cert_info,
                      const CString &company_name_to_match,
                      const CString &orgn_unit_to_match,
                      const CString &trust_authority_to_match,
                      bool allow_test_variant,
-                     bool check_cert_is_valid_now);
+                     bool check_cert_is_valid_now) const;
 
   typedef std::vector<CertInfo*> CertInfoList;
 
@@ -174,21 +188,35 @@ class CertList {
 void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
                                          CertList* cert_list);
 
-// Returns true if the signee is Google by exactly matching the first CN name
-// against a well-defined string, currently "Google Inc".
-bool VerifySigneeIsGoogle(const wchar_t* signed_file);
+// Returns true if the subject of the certificate exactly matches the first CN
+// name. If the 'allow_test_variant' parameter is true, the function tries to
+// match the "subject (TEST)" string.
+//
+// The function enforces an additional check against the public key of the
+// certificate. Pinning to specific public keys mitigates the risk of accepting
+// certificates issued by weak CAs. The list of expected hashes to pin the
+// certificate to is provided by the optional 'expected_hashes' parameter.
+//
+// The function can verify that the certificate is valid at the time of the
+// call.
+HRESULT VerifyCertificate(const wchar_t* signed_file,
+                          const wchar_t* subject,
+                          bool allow_test_variant,
+                          bool check_cert_is_valid_now,
+                          const std::vector<CString>* expected_hashes);
 
 // Returns S_OK if a given signed file contains a signature
 // that could be successfully verified using one of the trust providers
 // IE relies on. This means that, whoever signed the file, they should've signed
 // using certificate issued by a well-known (to IE) trust provider like
 // Verisign, Inc.
-HRESULT VerifySignature(const wchar_t* signed_file, bool allow_network_check);
+HRESULT VerifyAuthenticodeSignature(const wchar_t* signed_file,
+                                    bool allow_network_check);
 
 // Returns true if a given signed file contains a valid signature.
 inline bool SignatureIsValid(const wchar_t* signed_file,
                              bool allow_network_check) {
-  return VerifySignature(signed_file, allow_network_check) == S_OK;
+  return VerifyAuthenticodeSignature(signed_file, allow_network_check) == S_OK;
 }
 
 // Gets the timestamp for the file's signature.
@@ -199,4 +227,4 @@ HRESULT VerifyFileSignedWithinDays(const wchar_t* signed_file, int days);
 
 }  // namespace omaha
 
-#endif  // OMAHA_COMMON_SIGNATUREVALIDATOR_H__
+#endif  // OMAHA_BASE_SIGNATUREVALIDATOR_H_

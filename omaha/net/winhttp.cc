@@ -146,6 +146,14 @@ class WinHttp : public HttpClient {
 WinHttpVTable WinHttp::winhttp_;
 LLock         WinHttp::lock_;
 
+namespace internal {
+
+HttpClient* WinHttpClientCreator() {
+  return WinHttp::Create();
+}
+
+}  // namespace internal
+
 // TODO(omaha): remove after the implementation is complete.
 // 4100: unreferenced formal parameter
 #pragma warning(disable : 4100)
@@ -192,6 +200,11 @@ HRESULT WinHttp::Connect(HINTERNET session_handle,
                          HINTERNET* connection_handle) {
   ASSERT1(server);
   ASSERT1(port <= INTERNET_MAX_PORT_NUMBER_VALUE);
+
+  // There has to be a valid session, otherwise it is possible that WinHTTP is
+  // not properly initialized and the behavior of the WinHttpConnect is
+  // undefined (it could crash in some cases).
+  ASSERT1(session_handle);
 
   *connection_handle = winhttp_.WinHttpConnect(session_handle,
                                                server,
@@ -419,7 +432,7 @@ HRESULT WinHttp::CrackUrl(const TCHAR* url,
                           CString* url_path,
                           CString* extra_info) {
   ASSERT1(url);
-  size_t url_length = _tcslen(url);
+  DWORD url_length = static_cast<DWORD>(_tcslen(url));
   URL_COMPONENTS url_comp = {0};
   url_comp.dwStructSize   = sizeof(url_comp);
   if (scheme) {
@@ -472,22 +485,22 @@ HRESULT WinHttp::CreateUrl(const TCHAR* scheme,
   url_comp.dwStructSize   = sizeof(url_comp);
   if (scheme) {
     url_comp.lpszScheme        = const_cast<TCHAR*>(scheme);
-    url_comp.dwSchemeLength    = _tcslen(scheme);
+    url_comp.dwSchemeLength    = static_cast<DWORD>(_tcslen(scheme));
   }
   if (server) {
     url_comp.lpszHostName      = const_cast<TCHAR*>(server);
-    url_comp.dwHostNameLength  = _tcslen(server);
+    url_comp.dwHostNameLength  = static_cast<DWORD>(_tcslen(server));
   }
   if (port) {
     url_comp.nPort             = static_cast<INTERNET_PORT>(port);
   }
   if (url_path) {
     url_comp.lpszUrlPath       = const_cast<TCHAR*>(url_path);
-    url_comp.dwUrlPathLength   = _tcslen(url_path);
+    url_comp.dwUrlPathLength   = static_cast<DWORD>(_tcslen(url_path));
   }
   if (extra_info) {
     url_comp.lpszExtraInfo     = const_cast<TCHAR*>(extra_info);
-    url_comp.dwExtraInfoLength = _tcslen(extra_info);
+    url_comp.dwExtraInfoLength = static_cast<DWORD>(_tcslen(extra_info));
   }
 
   DWORD url_length = 0;
@@ -558,9 +571,6 @@ HRESULT WinHttp::SetOption(HINTERNET handle,
                                          buffer_length);
   return res ? S_OK : HRESULTFromLastError();
 }
-
-extern "C" const bool kRegisterWinHttp =
-    HttpClient::GetFactory().Register(HttpClient::WINHTTP, &WinHttp::Create);
 
 }  // namespace omaha
 

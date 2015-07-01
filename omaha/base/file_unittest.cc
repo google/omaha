@@ -17,7 +17,9 @@
 
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/path.h"
 #include "omaha/base/string.h"
+#include "omaha/base/shell.h"
 #include "omaha/base/timer.h"
 #include "omaha/base/tr_rand.h"
 #include "omaha/base/utils.h"
@@ -234,7 +236,7 @@ TEST(FileTest, File) {
     }
   }
 
-  // Test File::Copy, File::Move, File::CopyWildcards
+  // Test File::Copy, File::Move
   {
     CString windows_dir;
     CString temp_dir;
@@ -291,42 +293,60 @@ TEST(FileTest, File) {
     ASSERT_SUCCEEDED(File::GetFileSizeUnopen(temp_file1, &temp_size1));
     ASSERT_EQ(temp_size1, known_size2);
     ASSERT_SUCCEEDED(File::Remove(temp_file1));
-
-    // Try copying a bunch of files
-    CString known_file3(windows_dir + L"\\twunk_32.exe");
-    CString known_file4(windows_dir + L"\\twunk_16.exe");
-    CString temp_file3(temp_dir + L"\\twunk_32.exe");
-    CString temp_file4(temp_dir + L"\\twunk_16.exe");
-    if (File::Exists(temp_file3))
-      File::Remove(temp_file3);
-    if (File::Exists(temp_file4))
-      File::Remove(temp_file4);
-    ASSERT_TRUE(File::Exists(known_file3));
-    ASSERT_TRUE(File::Exists(known_file4));
-    ASSERT_FALSE(File::Exists(temp_file3));
-    ASSERT_FALSE(File::Exists(temp_file4));
-    ASSERT_SUCCEEDED(File::CopyWildcards(windows_dir,
-                                         temp_dir,
-                                         L"twunk*.exe",
-                                         true));
-    ASSERT_TRUE(File::Exists(temp_file3));
-    ASSERT_TRUE(File::Exists(temp_file4));
-    ASSERT_SUCCEEDED(File::Remove(temp_file3));
-    ASSERT_SUCCEEDED(File::Remove(temp_file4));
-
-    std::vector<CString> matching_files;
-    ASSERT_SUCCEEDED(File::GetWildcards(windows_dir,
-                                        L"twunk*.exe",
-                                        &matching_files));
-    ASSERT_EQ(matching_files.size(), 2);
-    ASSERT_TRUE(matching_files[0] == known_file3 ||
-                matching_files[0] == known_file4);
-    ASSERT_TRUE(matching_files[1] == known_file3 ||
-                matching_files[1] == known_file4);
-    ASSERT_TRUE(matching_files[0] != matching_files[1]);
   }
 
   EXPECT_SUCCEEDED(File::Remove(kTestFileName));
+}
+
+// Tests CopyWildcards and GetWildcards. Creates a few temporary files in
+// temporary directories, copy the files around using wildcards, compare
+// with the list of files retrieved using wildcards, and clean up at the end.
+TEST(FileTest, CopyWildcards) {
+  const wchar_t kPrefix[] = L"tst";
+
+  const CString source_dir = GetUniqueTempDirectoryName();
+  const CString dest_dir = GetUniqueTempDirectoryName();
+
+  EXPECT_SUCCEEDED(CreateDir(source_dir, NULL));
+  EXPECT_SUCCEEDED(CreateDir(dest_dir, NULL));
+
+  const int kNumFiles = 3;
+  std::vector<CString> source_files;
+  std::vector<CString> expected_dest_files;
+  for (int i = 0; i != kNumFiles; ++i) {
+    const CString filename = GetTempFilenameAt(source_dir, kPrefix);
+    EXPECT_TRUE(File::Exists(filename));
+    source_files.push_back(filename);
+    expected_dest_files.push_back(ConcatenatePath(
+        dest_dir,
+        GetFileFromPath(filename)));
+  }
+
+  const CString pattern_to_match = CString(kPrefix) + L"*";
+  ASSERT_SUCCEEDED(File::CopyWildcards(source_dir,
+                                       dest_dir,
+                                       pattern_to_match,
+                                       false));
+  for (int i = 0; i != kNumFiles; ++i) {
+    EXPECT_TRUE(File::Exists(expected_dest_files[i]));
+  }
+
+  std::vector<CString> actual_dest_files;
+  ASSERT_SUCCEEDED(File::GetWildcards(dest_dir,
+                                      pattern_to_match,
+                                      &actual_dest_files));
+  ASSERT_EQ(static_cast<uint32>(expected_dest_files.size()),
+            static_cast<uint32>(actual_dest_files.size()));
+
+  for (int i = 0; i != kNumFiles; ++i) {
+    EXPECT_NE(actual_dest_files.end(),
+              std::find(actual_dest_files.begin(),
+                        actual_dest_files.end(),
+                        expected_dest_files[i]));
+  }
+
+  EXPECT_SUCCEEDED(DeleteDirectory(source_dir));
+  EXPECT_SUCCEEDED(DeleteDirectory(dest_dir));
 }
 
 

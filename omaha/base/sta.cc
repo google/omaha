@@ -317,7 +317,7 @@ HRESULT CallDispatcher::DoCrossApartmentCall(BaseFunctor* call,
   // Repost the WM_QUIT message to properly exit all message loops.
   if (msg.message == WM_QUIT) {
     ASSERT1(ret == 0);
-    ::PostQuitMessage(msg.wParam);
+    ::PostQuitMessage(static_cast<int>(msg.wParam));
   }
 
   CORE_LOG(L6, (_T("CallDispatcher::DoCrossApartmentCall returns")));
