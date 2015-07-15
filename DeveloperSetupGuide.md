@@ -112,7 +112,7 @@ When running unit tests:
 
 To run the unit test suite, run the following executable after a successful build:
 
-> `scons-out\dbg-win\staging\omaha_unittest.exe`
+`>scons-out\dbg-win\staging\omaha_unittest.exe`
 
 
 ## Testing Omaha Against Google Servers ##
