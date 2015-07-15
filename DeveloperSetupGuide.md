@@ -93,7 +93,7 @@ Once the above setup is complete:
  * Navigate to the 'omaha' directory in your source checkout, for example: `D:\src\omahaopensource\omaha\omaha>`
  * From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions](HammerOptions.md).  In particular, if you are building on a multi-core or multi-processor, consider passing the -j# flag to Hammer to enable parallel compilation.)
  * To build all targets in all modes, type `hammer --all --mode=all`. This builds both debug and opt versions of the binaries, including all unit tests, and standalone installers.
-  
+
 Hammer should build Omaha, and then run a very limited set of unit tests, which must pass in order to complete the build.
 A larger suite of unit tests is also included in the Omaha source.
 
@@ -102,13 +102,13 @@ A larger suite of unit tests is also included in the Omaha source.
 
 The Omaha build proces includes building an automated unit test suite, based on the [GTest](http://code.google.com/p/googletest/) framework.  In order to run it, there are two pieces of preparation you must do:
 
-  1. Create the following registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\Google\UpdateDev`. Then, add a string value named `TestSource` with the value `ossdev`.
-  1. Download the Windows Sysinternals PSTools suite (available [here](http://technet.microsoft.com/en-us/sysinternals/bb897553)) and save `psexec.exe` somewhere. Then, set an environment variable named `OMAHA_PSEXEC_DIR` to the directory containing `psexec.exe`.
+* Create the following registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\Google\UpdateDev`. Then, add a string value named `TestSource` with the value `ossdev`.
+* Download the Windows Sysinternals PSTools suite (available [here](http://technet.microsoft.com/en-us/sysinternals/bb897553)) and save `psexec.exe` somewhere. Then, set an environment variable named `OMAHA_PSEXEC_DIR` to the directory containing `psexec.exe`.
 
 When running unit tests:
-  * You must be connected to the Internet for some tests to pass.
-  * We recommend running them with administrator privileges, as some tests do not run otherwise.
-  * Some tests do not run by default, because they take a long time or are otherwise inconvenient to run all the time. To run these tests, define the `OMAHA_RUN_ALL_TESTS` environment variable. For example, `set OMAHA_RUN_ALL_TESTS=1`.
+* You must be connected to the Internet for some tests to pass.
+* We recommend running them with administrator privileges, as some tests do not run otherwise.
+* Some tests do not run by default, because they take a long time or are otherwise inconvenient to run all the time. To run these tests, define the `OMAHA_RUN_ALL_TESTS` environment variable. For example, `set OMAHA_RUN_ALL_TESTS=1`.
 
 To run the unit test suite, run the following executable after a successful build:
 
@@ -119,9 +119,9 @@ To run the unit test suite, run the following executable after a successful buil
 
 By default, the public version of Omaha continues to point to google.com for downloads and update checks.  You can test the operation of an unmodified client by attempting to download and install a Google product, using your build of Omaha against the official Google Update servers.  For example:
 
-  * Google Chrome (run as admin):
+* Google Chrome (run as admin):
 > > `scons-out\dbg-win\staging\GoogleUpdate.exe /install "bundlename=Google%20Chrome%20Bundle&appguid={8A69D345-D564-463C-AFF1-A69D9E530F96}&appname=Google%20Chrome&needsadmin=True&lang=en"`
-  * Google Talk Bundle (run as normal user):
+* Google Talk Bundle (run as normal user):
 > > `scons-out\dbg-win\staging\GoogleUpdate.exe /install "bundlename=Google%20Talk%20Bundle&appguid={D0AB2EBC-931B-4013-9FEB-C9C4C2225C8C}&appname=Google%20Talk%20Plugin&needsadmin=False&lang=en"`
 
 The client should contact google.com for a version query, then download and install the product.  (However, you can expect it to fail shortly after install with the error code `0x80040905`.  This is due to these products writing their registration information to the Google Update area of the registry, instead of your Omaha's location.)
