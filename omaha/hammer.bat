@@ -1,20 +1,20 @@
 @echo off
 
-set GOROOT=C:\PROGRA~2\go\files
+rem -- Set all environment variables used by Hammer and Omaha. --
+
+set GOROOT=%ProgramFiles(x86)%\go\files
 set OMAHA_ATL_SERVER_DIR=c:\atl_server\files
 set OMAHA_NET_DIR=%WINDIR%\Microsoft.NET\Framework\v2.0.50727
-set OMAHA_NETFX_TOOLS_DIR=C:\PROGRA~2\MIA713~1\Windows\v8.1A\bin\NETFX4~1.1TO
+set OMAHA_NETFX_TOOLS_DIR=%ProgramFiles(x86)%\Microsoft SDKs\Windows\v8.1A\bin\NETFX 4.5.1 Tools
 set OMAHA_PYTHON_DIR=C:\Python24
-set OMAHA_VISTASDK_DIR=C:\PROGRA~2\WI3CF2~1\8.1
-set OMAHA_WIX_DIR=C:\PROGRA~2\WIXTOO~1.8\bin
+set OMAHA_WIX_DIR=%ProgramFiles(x86)%\WiX Toolset v3.8\bin
 set OMAHA_WTL_DIR=C:\wtl\files
-set PLATFORM_SDK_DIR=C:\PROGRA~2\WI3CF2~1\8.1
+set PLATFORM_SDK_DIR=%ProgramFiles(x86)%\Windows Kits\8.1
 set PYTHONPATH=%OMAHA_PYTHON_DIR%
 set SCONS_DIR=C:\Python24\Lib\site-packages\scons-1.3.1
 set SCT_DIR=C:\swtoolkit
-set SIGNTOOL_SDK_DIR=C:\PROGRA~2\WI3CF2~1\8.1\bin\x86
-set VC12_0_DIR=C:\PROGRA~2\MICROS~4.0\
-set WINDOWS_SDK_8_1_DIR=C:\PROGRA~2\WI3CF2~1\8.1
+set SIGNTOOL_SDK_DIR=%ProgramFiles(x86)%\Windows Kits\8.1\bin\x86
+set VC12_0_DIR=%ProgramFiles(x86)%\Microsoft Visual Studio 12.0
 
 setlocal
 

@@ -18,12 +18,12 @@ BRANCH_OWNERS
 omaha/common/omaha_customization_proxy_clsid.h
 omaha/proxy_clsids.txt
 omaha/vc120.idb
-omaha/scons-out/
+omaha/scons-out/**
 
 #external dependencies
-third_party/breakpad/
-third_party/gmock/
-third_party/gtest/
+third_party/breakpad/**
+third_party/gmock/**
+third_party/gtest/**
 
 # Ignore compiled Python files.
 *.pyc

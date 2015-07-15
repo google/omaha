@@ -122,8 +122,8 @@ def OmahaCertificateTagExe(env, target, source):
     Output node list from env.Command().
   """
 
-  certificate_tag = (env['ENV']['GOROOT'] + '/bin/go.exe run ' +
-                     '$MAIN_DIR/../common/certificate_tag/certificate_tag.go')
+  certificate_tag = ('"' + env['ENV']['GOROOT'] + '/bin/go.exe' + '"' +
+      ' run $MAIN_DIR/../common/certificate_tag/certificate_tag.go')
   magic_bytes = 'Gact2.0Omaha'
   padded_length = len(magic_bytes) + 2 + 8192
   certificate_tag_cmd = env.Command(

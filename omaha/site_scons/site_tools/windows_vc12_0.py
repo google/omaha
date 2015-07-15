@@ -1,3 +1,20 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2015 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http:#www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
 """Tool-specific initialization for Visual Studio 2013.
 
 NOTE: This tool is order-dependent, and must be run before
@@ -34,10 +51,10 @@ def _SetMsvcCompiler(
   Raises:
     ValueError: An error if vc_flavor is not valid.
   """
-  vc_dir=os.environ.get('VC12_0_DIR')
   vc_version='12.0'
+
+  vc_dir=os.environ.get('VC12_0_DIR')
   platform_sdk_dir=os.environ.get('PLATFORM_SDK_DIR')
-  WINDOWS_SDK_8_1_DIR='$THIRD_PARTY/windows_sdk_8_1/files',
 
   env['GOOGLECLIENT'] = '$MAIN_DIR/..'
   env['THIRD_PARTY'] = '$GOOGLECLIENT/third_party/'
@@ -50,19 +67,6 @@ def _SetMsvcCompiler(
 
   env.Replace(
       PLATFORM_SDK_DIR=platform_sdk_dir,
-
-      # The msvc tool has a nasty habit of searching the registry for
-      # installed versions of MSVC and prepending them to the path.  Flag
-      # that it shouldn't be allowed to do that.
-      MSVC_BLOCK_ENVIRONMENT_CHANGES=True,
-      # Tell msvs/msvs/mslink tools to use defaults for VC 8.0
-      MSVS_VERSION=vc_version,
-      COVERAGE_VSPERFCMD=vc_dir + '/team_tools/performance_tools/VSPerfCmd.exe',
-      COVERAGE_VSINSTR=vc_dir + '/team_tools/performance_tools/vsinstr.exe',
-
-      # Be explicit about what flavor we want to use. When cross-compiling
-      # amd64 on x86, we want 'amd64' here, not 'x86_amd64'. Not using inline
-      # if here, since some projects (Omaha, etc.) are still on Python 2.4.
       MSVC_FLAVOR=('amd64', 'x86')[vc_flavor == 'x86'],
       VC12_0_DIR=vc_dir,
       WINDOWS_SDK_8_1_DIR=platform_sdk_dir,
@@ -112,8 +116,6 @@ def _SetMsvcCompiler(
     tools_paths.append(vc_dir + '/vc/bin')
     tools_paths.append(platform_sdk_dir + '/bin/x64')  # VC 12 only
 
-  # TODO(rspangler): AppendENVPath() should evaluate SCons variables in its
-  # inputs and convert them to absolute paths.
   for p in tools_paths:
     env.AppendENVPath('PATH', env.Dir(p).abspath)
   for p in include_paths:
