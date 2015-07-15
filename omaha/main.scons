@@ -103,7 +103,7 @@ _BUILD_SERVER_CERTIFICATE_HASH = 'cafd39335d6e76f0e26d81296e7cbbfbdf16a720'
 # Defaults to VC120 if the environment variable is not specified.
 _msc_ver = int(os.getenv('OMAHA_MSC_VER', "1800"))
 
-_sdk_dir = os.environ['OMAHA_VISTASDK_DIR']
+_sdk_dir = os.environ['PLATFORM_SDK_DIR']
 
 _atl_server_dir = os.getenv('OMAHA_ATL_SERVER_DIR',
                             '$THIRD_PARTY/atl_server/files')
