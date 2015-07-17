@@ -185,6 +185,10 @@ bool TagExtractor::ReadTag(const char* read_base,
   // unsigned char and uint16 get promoted to int.
   id_len = static_cast<uint16>(id_len + id_len_serialized[1]);
 
+  if (!id_len) {
+    return false;
+  }
+
   int buffer_size_required = id_len + 1;
   if (tag_buffer == NULL) {
     *tag_buffer_len = buffer_size_required;

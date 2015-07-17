@@ -47,8 +47,7 @@ TEST(ExtractorTest, EmbedExtract) {
 
   // Zero-length tag string in the original exe file.
   int tag_buffer_size = 0;
-  ASSERT_TRUE(extractor.ExtractTag(NULL, &tag_buffer_size));
-  ASSERT_EQ(tag_buffer_size, 1);
+  ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
   extractor.CloseFile();
 
   // Create a temp dir.
@@ -93,9 +92,7 @@ TEST(ExtractorTest, EmbedAppendExtract) {
 
   // Zero-length tag string in the original exe file.
   int tag_buffer_size = 0;
-  ASSERT_TRUE(extractor.ExtractTag(NULL, &tag_buffer_size));
-  ASSERT_GT(extractor.cert_dir_length(), 0);
-  ASSERT_EQ(tag_buffer_size, 1);
+  ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
   extractor.CloseFile();
 
   // Create a temp dir.
@@ -172,9 +169,7 @@ TEST(ExtractorTest, AlreadyTaggedError) {
 
   // Zero-length tag string in the original exe file.
   int tag_buffer_size = 0;
-  ASSERT_TRUE(extractor.ExtractTag(NULL, &tag_buffer_size));
-  ASSERT_GT(extractor.cert_dir_length(), 0);
-  ASSERT_EQ(tag_buffer_size, 1);
+  ASSERT_FALSE(extractor.ExtractTag(NULL, &tag_buffer_size));
   extractor.CloseFile();
 
   // Create a temp dir.
