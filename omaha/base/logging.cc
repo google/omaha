@@ -359,7 +359,7 @@ void Logging::ConfigureETWLogWriter() {
   // at runtime through Event Tracing for Windows.
   if (etw_log_writer_ == NULL) {
     etw_log_writer_ = EtwLogWriter::Create();
-    if (debug_out_writer_ == NULL) {
+    if (etw_log_writer_ == NULL) {
       OutputDebugString(SPRINTF(L"LOG_SYSTEM: [%s]: ERROR - "
                                 L"Cannot create ETW log writer",
                                 proc_name_));
