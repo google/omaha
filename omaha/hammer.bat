@@ -24,7 +24,7 @@ set CUSTOMIZATION_UT_TARGET=%~dp0common\omaha_customization_proxy_clsid.h
 rem Force Hammer to use Python 2.4.  (The default of Python 2.6 exposes some
 rem bugs in Scons 1.2, which we currently use.)
 set PYTHON_TO_USE=python_24
-call %SCT_DIR%\hammer.bat %*
+call "%SCT_DIR%\hammer.bat" %*
 
 if /i {%1} == {-c} (
   del /q /f "%PROXY_CLSID_TARGET%" 2> NUL
