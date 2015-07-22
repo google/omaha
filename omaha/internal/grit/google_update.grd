@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grit latest_public_release="0" current_release="1">
+  <outputs>
+    <output filename="../../google_update/google_update.grh" type="rc_header">
+      <emit/>
+    </output>
+    <output filename="../../google_update/generated_resources_userdefault.rc" type="rc_all" lang="userdefault" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_am.rc" type="rc_all" lang="am" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ar.rc" type="rc_all" lang="ar" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_bn.rc" type="rc_all" lang="bn" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_bg.rc" type="rc_all" lang="bg" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ca.rc" type="rc_all" lang="ca" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_cs.rc" type="rc_all" lang="cs" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_da.rc" type="rc_all" lang="da" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_de.rc" type="rc_all" lang="de" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_el.rc" type="rc_all" lang="el" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_en.rc" type="rc_all" lang="en" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_en-GB.rc" type="rc_all" lang="en-GB" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_es.rc" type="rc_all" lang="es" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_es-419.rc" type="rc_all" lang="es-419" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_et.rc" type="rc_all" lang="et" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_fi.rc" type="rc_all" lang="fi" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_fa.rc" type="rc_all" lang="fa" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_fil.rc" type="rc_all" lang="fil" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_fr.rc" type="rc_all" lang="fr" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_gu.rc" type="rc_all" lang="gu" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_hi.rc" type="rc_all" lang="hi" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_hr.rc" type="rc_all" lang="hr" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_hu.rc" type="rc_all" lang="hu" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_id.rc" type="rc_all" lang="id" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_is.rc" type="rc_all" lang="is" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_it.rc" type="rc_all" lang="it" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_iw.rc" type="rc_all" lang="iw" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ja.rc" type="rc_all" lang="ja" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_kn.rc" type="rc_all" lang="kn" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ko.rc" type="rc_all" lang="ko" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_lt.rc" type="rc_all" lang="lt" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_lv.rc" type="rc_all" lang="lv" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ml.rc" type="rc_all" lang="ml" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_mr.rc" type="rc_all" lang="mr" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ms.rc" type="rc_all" lang="ms" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_nl.rc" type="rc_all" lang="nl" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_no.rc" type="rc_all" lang="no" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_or.rc" type="rc_all" lang="or" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_pl.rc" type="rc_all" lang="pl" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_pt-BR.rc" type="rc_all" lang="pt-BR" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_pt-PT.rc" type="rc_all" lang="pt-PT" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ro.rc" type="rc_all" lang="ro" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ru.rc" type="rc_all" lang="ru" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_sk.rc" type="rc_all" lang="sk" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_sl.rc" type="rc_all" lang="sl" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_sr.rc" type="rc_all" lang="sr" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_sv.rc" type="rc_all" lang="sv" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_sw.rc" type="rc_all" lang="sw" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ta.rc" type="rc_all" lang="ta" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_te.rc" type="rc_all" lang="te" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_th.rc" type="rc_all" lang="th" language_section="lang"/>
+    <!-- tl - There is no LCID or LANG for this in Windows, so there is no point in adding it. -->
+    <output filename="../../google_update/generated_resources_tr.rc" type="rc_all" lang="tr" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_uk.rc" type="rc_all" lang="uk" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_ur.rc" type="rc_all" lang="ur" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_vi.rc" type="rc_all" lang="vi" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_zh-CN.rc" type="rc_all" lang="zh-CN" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_zh-HK.rc" type="rc_all" lang="zh-HK" language_section="lang"/>
+    <output filename="../../google_update/generated_resources_zh-TW.rc" type="rc_all" lang="zh-TW" language_section="lang"/>
+  </outputs>
+  <translations>
+    <!-- There is no "en.xtb", so use en-GB, which contains the same strings. -->
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/en-GB.xtb" lang="userdefault"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/am.xtb" lang="am"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ar.xtb" lang="ar"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/bg.xtb" lang="bg"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/bn.xtb" lang="bn"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ca.xtb" lang="ca"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/cs.xtb" lang="cs"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/da.xtb" lang="da"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/de.xtb" lang="de"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/el.xtb" lang="el"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/en-GB.xtb" lang="en-GB"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/es.xtb" lang="es"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/es-419.xtb" lang="es-419"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/et.xtb" lang="et"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fa.xtb" lang="fa"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fi.xtb" lang="fi"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fil.xtb" lang="fil"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fr.xtb" lang="fr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/gu.xtb" lang="gu"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/hi.xtb" lang="hi"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/hr.xtb" lang="hr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/hu.xtb" lang="hu"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/id.xtb" lang="id"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/is.xtb" lang="is"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/it.xtb" lang="it"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/iw.xtb" lang="iw"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ja.xtb" lang="ja"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/kn.xtb" lang="kn"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ko.xtb" lang="ko"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/lt.xtb" lang="lt"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/lv.xtb" lang="lv"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ml.xtb" lang="ml"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/mr.xtb" lang="mr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ms.xtb" lang="ms"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/nl.xtb" lang="nl"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/no.xtb" lang="no"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/or.xtb" lang="or"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/pl.xtb" lang="pl"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/pt-BR.xtb" lang="pt-BR"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/pt-PT.xtb" lang="pt-PT"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ro.xtb" lang="ro"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ru.xtb" lang="ru"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sk.xtb" lang="sk"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sl.xtb" lang="sl"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sr.xtb" lang="sr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sv.xtb" lang="sv"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sw.xtb" lang="sw"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ta.xtb" lang="ta"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/te.xtb" lang="te"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/th.xtb" lang="th"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/tr.xtb" lang="tr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/uk.xtb" lang="uk"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ur.xtb" lang="ur"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/vi.xtb" lang="vi"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/zh-CN.xtb" lang="zh-CN"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/zh-HK.xtb" lang="zh-HK"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/zh-TW.xtb" lang="zh-TW"/>
+  </translations>
+  <release seq="1" allow_pseudo="false">
+    <structures first_id="2000">
+      <structure name="VS_VERSION_INFO" file="google_update_version.rc" type="version"/>
+    </structures>
+  </release>
+</grit>

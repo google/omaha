@@ -1,0 +1,573 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grit latest_public_release="0" current_release="1">
+  <outputs>
+    <output filename="../../goopdate/resources/goopdateres/goopdate.grh" type="rc_header">
+      <emit/>
+    </output>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_am.rc" type="rc_all" lang="am" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ar.rc" type="rc_all" lang="ar" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_bg.rc" type="rc_all" lang="bg" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_bn.rc" type="rc_all" lang="bn" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ca.rc" type="rc_all" lang="ca" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_cs.rc" type="rc_all" lang="cs" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_da.rc" type="rc_all" lang="da" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_de.rc" type="rc_all" lang="de" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_el.rc" type="rc_all" lang="el" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_en.rc" type="rc_all" lang="en" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_en-GB.rc" type="rc_all" lang="en-GB" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_es.rc" type="rc_all" lang="es" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_es-419.rc" type="rc_all" lang="es-419" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_et.rc" type="rc_all" lang="et" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_fa.rc" type="rc_all" lang="fa" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_fi.rc" type="rc_all" lang="fi" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_fil.rc" type="rc_all" lang="fil" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_fr.rc" type="rc_all" lang="fr" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_gu.rc" type="rc_all" lang="gu" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_hi.rc" type="rc_all" lang="hi" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_hr.rc" type="rc_all" lang="hr" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_hu.rc" type="rc_all" lang="hu" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_id.rc" type="rc_all" lang="id" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_is.rc" type="rc_all" lang="is" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_it.rc" type="rc_all" lang="it" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_iw.rc" type="rc_all" lang="iw" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ja.rc" type="rc_all" lang="ja" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_kn.rc" type="rc_all" lang="kn" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ko.rc" type="rc_all" lang="ko" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_lt.rc" type="rc_all" lang="lt" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_lv.rc" type="rc_all" lang="lv" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ml.rc" type="rc_all" lang="ml" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_mr.rc" type="rc_all" lang="mr" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ms.rc" type="rc_all" lang="ms" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_nl.rc" type="rc_all" lang="nl" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_no.rc" type="rc_all" lang="no" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_pl.rc" type="rc_all" lang="pl" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_pt-BR.rc" type="rc_all" lang="pt-BR" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_pt-PT.rc" type="rc_all" lang="pt-PT" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ro.rc" type="rc_all" lang="ro" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ru.rc" type="rc_all" lang="ru" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_sk.rc" type="rc_all" lang="sk" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_sl.rc" type="rc_all" lang="sl" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_sr.rc" type="rc_all" lang="sr" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_sv.rc" type="rc_all" lang="sv" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_sw.rc" type="rc_all" lang="sw" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ta.rc" type="rc_all" lang="ta" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_te.rc" type="rc_all" lang="te" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_th.rc" type="rc_all" lang="th" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_tr.rc" type="rc_all" lang="tr" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_uk.rc" type="rc_all" lang="uk" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_ur.rc" type="rc_all" lang="ur" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_vi.rc" type="rc_all" lang="vi" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_zh-CN.rc" type="rc_all" lang="zh-CN" language_section="lang"/>
+    <output filename="../../goopdate/resources/goopdateres/generated_resources_zh-TW.rc" type="rc_all" lang="zh-TW" language_section="lang"/>
+  </outputs>
+  <translations>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/am.xtb" lang="am"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ar.xtb" lang="ar"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/bg.xtb" lang="bg"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/bn.xtb" lang="bn"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ca.xtb" lang="ca"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/cs.xtb" lang="cs"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/da.xtb" lang="da"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/de.xtb" lang="de"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/el.xtb" lang="el"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/en-GB.xtb" lang="en-GB"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/es.xtb" lang="es"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/es-419.xtb" lang="es-419"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/et.xtb" lang="et"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fa.xtb" lang="fa"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fi.xtb" lang="fi"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fil.xtb" lang="fil"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/fr.xtb" lang="fr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/gu.xtb" lang="gu"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/hi.xtb" lang="hi"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/hr.xtb" lang="hr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/hu.xtb" lang="hu"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/id.xtb" lang="id"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/is.xtb" lang="is"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/it.xtb" lang="it"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/iw.xtb" lang="iw"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ja.xtb" lang="ja"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/kn.xtb" lang="kn"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ko.xtb" lang="ko"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/lt.xtb" lang="lt"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/lv.xtb" lang="lv"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ml.xtb" lang="ml"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/mr.xtb" lang="mr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ms.xtb" lang="ms"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/nl.xtb" lang="nl"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/no.xtb" lang="no"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/pl.xtb" lang="pl"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/pt-BR.xtb" lang="pt-BR"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/pt-PT.xtb" lang="pt-PT"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ro.xtb" lang="ro"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ru.xtb" lang="ru"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sk.xtb" lang="sk"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sl.xtb" lang="sl"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sr.xtb" lang="sr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sv.xtb" lang="sv"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/sw.xtb" lang="sw"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ta.xtb" lang="ta"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/te.xtb" lang="te"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/th.xtb" lang="th"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/tr.xtb" lang="tr"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/uk.xtb" lang="uk"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/ur.xtb" lang="ur"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/vi.xtb" lang="vi"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/zh-CN.xtb" lang="zh-CN"/>
+    <file path="$GRIT_GOOGLE3/google3/googledata/transconsole/xtb/OmahaClientResources/zh-TW.xtb" lang="zh-TW"/>
+  </translations>
+  <release seq="1" allow_pseudo="false">
+    <messages first_id="3000">
+      <!--TODO(omaha3): If we ever productize interactive updates, we may want
+          to revisit some of these strings, particularly those that include
+          "install*".-->
+
+      <!--
+        Common and Generic Strings.
+        -->
+
+      <!--These strings must be changed when customizing open source Omaha.-->
+      <message name="IDS_FRIENDLY_COMPANY_NAME"
+               desc="The friendly name of the company. Used for the FRIENDLY_COMPANY_NAME field in other strings.">
+        Google
+      </message>
+      <message name="IDS_PRODUCT_DISPLAY_NAME"
+               desc="The friendly name of the Google Update product to display to the user in cases other than installation.
+                     Used independently as well as for the FULL_PRODUCT_NAME field in other strings.">
+        Google Update
+      </message>
+
+      <message name="IDS_DEFAULT_APP_DISPLAY_NAME"
+               desc="The default application name displayed when the actual name is not known. Displayed in APPLICATION_NAME fields when the actual application name cannot be obtained.">
+        <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> Application
+      </message>
+
+      <!--
+        Client & Server Strings.
+
+        These may not contain any formatting or links.
+        -->
+      <message name="IDS_APPLICATION_INSTALLED_SUCCESSFULLY"
+               desc="Success message displayed in the main dialog when the installation succeeds.">
+        Thanks for installing.
+      </message>
+      <message name="IDS_NO_UPDATE_RESPONSE"
+               desc="Success (during update) or error (during install) message displayed in the main dialog when the server returns 'noupdate'. This can occur during any update check, including initial installs if the server configuration causes the server to return 'noupdate'.">
+        No update is available.
+      </message>
+      <message name="IDS_INSTALLER_OLD"
+               desc="Error message displayed in the main dialog when a user initiates an installation using an old unsupported metainstaller. This string might also be used for time-bombed standalone installers. WEBSITE_NAME could be a URL, such as 'http://www.google.com/chrome', or just simply 'Google'">
+        This installer is no longer supported. Please download a new version from <ph name="WEBSITE_NAME">%1!s!<ex>google.com</ex></ph>.
+      </message>
+
+      <!--Service and Scheduled Task strings.
+          These should only be used by the client but some of the service
+          strings appear in code used by the server and client.-->
+      <message name="IDS_SERVICE_NAME"
+               translateable="false">
+        gupdate
+      </message>
+      <message name="IDS_SERVICE_DISPLAY_NAME"
+               desc="The name of the Windows service. Displayed in the Windows Services management console.">
+        <ph name="FULL_PRODUCT_NAME">%1!s!<ex>Google Update</ex></ph> Service
+      </message>
+      <message name="IDS_SERVICE_DESCRIPTION"
+               desc="The description of the Windows service. Displayed in the Windows Services management console.">
+        Keeps your <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> software up to date. If this service is disabled or stopped, your <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> software will not be kept up to date, meaning security vulnerabilities that may arise cannot be fixed and features may not work. This service uninstalls itself when there is no <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> software using it.
+      </message>
+      <message name="IDS_SCHEDULED_TASK_DESCRIPTION"
+               desc="The description of the scheduled task service. Displayed in the description of the scheduled task in Windows Task Scheduler.">
+        Keeps your <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> software up to date. If this task is disabled or stopped, your <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> software will not be kept up to date, meaning security vulnerabilities that may arise cannot be fixed and features may not work. This task uninstalls itself when there is no <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> software using it.
+      </message>
+
+      <!--
+        COM Server-only Error Strings.
+
+        These may not contain any formatting or links.
+        -->
+
+      <!--Network errors.-->
+      <message name="IDS_NO_NETWORK_PRESENT_ERROR"
+               desc="Error message displayed in the main dialog when Google Update is unable to connect to the network.">
+        Unable to connect to the Internet. If you use a firewall, please whitelist <ph name="PRODUCT_EXE_NAME">%1!s!<ex>GoogleUpdate.exe</ex></ph>.
+      </message>
+      <message name="IDS_ERROR_HTTPSTATUS_UNAUTHORIZED"
+               desc="Error message displayed in the main dialog when an update check or download fails due to unauthorized access, usually due to proxy problems.">
+        Unable to connect to the Internet. HTTP 401 Unauthorized. Please check your proxy configuration.
+      </message>
+      <message name="IDS_ERROR_HTTPSTATUS_FORBIDDEN"
+               desc="Error message displayed in the main dialog when an update check or download fails due to forbidden access, usually due to proxy problems.">
+        Unable to connect to the Internet. HTTP 403 Forbidden. Please check your proxy configuration.
+      </message>
+      <message name="IDS_ERROR_HTTPSTATUS_PROXY_AUTH_REQUIRED"
+               desc="Error message displayed in the main dialog when an update check or download fails due to a need for proxy authentication.">
+        Unable to connect to the Internet. Proxy server requires authentication.
+      </message>
+
+      <!--Update server response errors.-->
+      <!--TODO(omaha3): This is an inaccurate description and tells the user to
+          do something that may not solve the problem. Should we change it?
+          Also, consider renaming this error since it is now used for multiple
+          types of errors.-->
+      <message name="IDS_UNKNOWN_APPLICATION"
+               desc="Error message displayed in the main dialog when the server responds with an error.">
+        Installation failed due to a server side error. Please try again later.
+      </message>
+      <message name="IDS_RESTRICTED_RESPONSE_FROM_SERVER"
+               desc="Error message displayed in the main dialog when the user is in a export-restricted country.">
+        Installation failed because access is restricted in this country.
+      </message>
+      <!--TODO(omaha3): Should we be telling the user to try again later or is
+          that giving them false hope?-->
+      <message name="IDS_NON_OK_RESPONSE_FROM_SERVER"
+               desc="Error message displayed in the main dialog when the server returns an error.">
+        The server returned the following error: <ph name="UPDATE_SERVER_ERROR">%1!s!<ex>error-internal</ex></ph>. Please try again later.
+      </message>
+      <message name="IDS_OS_NOT_SUPPORTED"
+               desc="Error message displayed in the main dialog when the OS does not meet the application's requirements.">
+        Installation failed because your version of Windows is not supported.
+      </message>
+      <message name="IDS_HW_NOT_SUPPORTED"
+               desc="Error message displayed in the main dialog when the computer does not meet the application's minimum hardware requirements.">
+        Installation failed because your computer does not meet minimum hardware requirements for <ph name="APPLICATION_NAME">%1!s!<ex>Google Chrome</ex></ph>.
+      </message>
+
+      <!--Download errors.-->
+      <message name="IDS_DOWNLOAD_HASH_MISMATCH"
+               desc="Error message displayed in the main dialog when the SHA1 hash of the downloaded file is not correct.">
+        The downloaded file failed verification.
+      </message>
+      <message name="IDS_DOWNLOAD_ERROR"
+               desc="Error message displayed in the main dialog when the application installer download fails.">
+        The download failed.
+      </message>
+      <message name="IDS_CACHING_ERROR"
+               desc="Error message displayed in the main dialog when fail to cache the application installer.">
+        Failed to cache the downloaded installer. Error: <ph name="CACHING_ERROR_CODE">0x%1!08x!<ex>0x80070005</ex></ph>.
+      </message>
+
+      <!--Install errors.-->
+      <message name="IDS_INSTALLER_FAILED_FILE_NOT_TRUSTED"
+               desc="Error message displayed in the main dialog when the installer file is not trusted because it does not have the correct digital signature or it has been tampered with.">
+        The installer file failed verification. Please try downloading the installer again.
+      </message>
+      <message name="IDS_INVALID_INSTALLER_FILENAME"
+               desc="Error message displayed in the main dialog when the application installer's filename extension is not recognized.">
+        The installer filename <ph name="FILE_NAME">%1!s!<ex>c:\\temp\\test.mo</ex></ph> is invalid or unsupported.
+      </message>
+      <message name="IDS_INSTALLER_FAILED_TO_START"
+               desc="Error message displayed in the main dialog when the application installer process fails to start.">
+        The installer failed to start.
+      </message>
+      <message name="IDS_INSTALLER_TIMED_OUT"
+               desc="Error message displayed in the main dialog when the application installer does not complete in the allowed amount of time.">
+        The installer did not complete. Installation has been aborted.
+      </message>
+      <message name="IDS_INSTALLER_FAILED_WITH_MESSAGE"
+               desc="Error message displayed in the main dialog when the application installer fails and provides an error message.">
+        The installer encountered error <ph name="APPLICATION_INSTALLER_ERROR_CODE">%1!s!<ex>0x80071234</ex></ph>: <ph name="APPLICATION_INSTALLER_ERROR_MESSAGE">%2!s!<ex>The file is in use.</ex></ph>
+      </message>
+      <message name="IDS_INSTALLER_FAILED_NO_MESSAGE"
+               desc="Error message displayed in the main dialog when the application installer fails but does not provide an error message.">
+        The installer encountered error <ph name="APPLICATION_INSTALLER_ERROR_CODE">%1!s!<ex>0x80071234</ex></ph>.
+      </message>
+      <message name="IDS_MSI_INSTALL_ALREADY_RUNNING"
+               desc="Error message displayed in the main dialog when msiexec (Windows Installer) returns ERROR_INSTALL_ALREADY_RUNNING. 'Windows Installer' is the name of an OS component.">
+        Installation failed. Please wait for other Windows installers to finish and try installing again.
+      </message>
+
+      <!--Other COM server errors.-->
+      <message name="IDS_INSTALL_FAILED"
+               desc="Error message displayed in the main dialog when the install fails for reasons not covered by the other error messages.">
+        Installation failed. Please try again.
+      </message>
+      <message name="IDS_CANCELED"
+               desc="Message displayed in alternative UIs when the users choosses to cancel download, installation, etc.">
+        Canceled.
+      </message>
+      <message name="IDS_APP_INSTALL_DISABLED_BY_GROUP_POLICY"
+               desc="Error message displayed in the main dialog when an IT admin has disabled installation or update of this application using Windows Group Policy.">
+        Your network administrator has applied a Group Policy that prevents installation.
+      </message>
+
+      <!--
+        Client-only Strings.
+
+        These may contain formatting or links as long as they are displayed in
+        a control that uses StaticEx. Using a placeholder for the formatting
+        allows us to change the formatting in the code instead of requesting
+        TC updates.
+        -->
+
+      <!--Generic UI strings.-->
+      <message name="IDS_INSTALLER_DISPLAY_NAME"
+               desc="An application-specific name for the installer. Displayed in the title bar of windows and message boxes. FRIENDLY_COMPANY_NAME may be used in place of BUNDLE_NAME when the application name is unknown or unavailable.">
+        <ph name="BUNDLE_NAME">%1!s!<ex>Google Chrome</ex></ph> Installer
+      </message>
+      <message name="IDS_CLOSE_BUTTON"
+               desc="The Tooltip text for the Close Caption button.">
+        Close
+      </message>
+      <message name="IDS_MINIMIZE_BUTTON"
+               desc="The Tooltip text for the Minimize Caption button.">
+        Minimize
+      </message>
+      <message name="IDS_MAXIMIZE_BUTTON"
+               desc="The Tooltip text for the Maximize Caption button.">
+        Maximize
+      </message>
+
+      <!--ProgressWnd strings.-->
+      <!--TODO(omaha3): Is this obsolete with new Setup and splash screen?-->
+      <message name="IDS_INITIALIZING"
+               desc="Progress message displayed in the main dialog when it is first created.">
+        Initializing...
+      </message>
+      <message name="IDS_WAITING_TO_CONNECT"
+               desc="Progress message displayed in the main dialog when trying to connect to Google servers">
+        Connecting to the Internet...
+      </message>
+      <message name="IDS_DOWNLOAD_RETRY"
+               desc="Message displayed in the main dialog before the download begins.">
+        Egads! Download failed. Retrying... <ph name="DOWNLOAD_RETRY_TIME">%1!d!<ex>5</ex></ph> second(s)
+      </message>
+      <message name="IDS_WAITING_TO_DOWNLOAD"
+               desc="Progress message displayed in the main dialog before the download begins.">
+        Waiting to download...
+      </message>
+      <message name="IDS_DOWNLOADING_SHORT"
+               desc="Progress message displayed in the main dialog when downloading is expected to finish soon.">
+        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_SEC">%1!d!<ex>56</ex></ph> second(s)
+      </message>
+      <message name="IDS_DOWNLOADING_LONG"
+               desc="Progress message displayed in the main dialog when downloading is expected to take some time.">
+        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_MIN">%1!d!<ex>13</ex></ph> minute(s)
+      </message>
+      <message name="IDS_DOWNLOADING_VERY_LONG"
+               desc="Progress message displayed in the main dialog when downloading is expected to take very long.">
+        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_HOUR">%1!d!<ex>2</ex></ph> hour(s)
+      </message>
+      <message name="IDS_DOWNLOADING_COMPLETED"
+               desc="Progress message displayed in the main dialog when downloading is just finished.">
+        Download complete.
+      </message>
+      <message name="IDS_DOWNLOADING"
+               desc="Progress message displayed in the main dialog while downloading. A progress bar shows the progress.">
+        Downloading...
+      </message>
+      <message name="IDS_WAITING_TO_INSTALL"
+               desc="Progress message displayed in the main dialog after the download has completed and before the install starts..">
+        Waiting to install...
+      </message>
+      <message name="IDS_INSTALLING"
+               desc="Progress message displayed in the main dialog while application is being installed (after download is complete).">
+        Installing...
+      </message>
+      <if expr="False"> <!--Do not include in the .rc files until used.-->
+      <message name="IDS_DOWNLOAD_PAUSED"
+               desc="Progress message displayed in the main dialog after the user clicks on the Pause button."
+               internal_comment="Not used.">
+        Download paused.
+      </message>
+      </if>
+      <message name="IDS_CANCELING"
+               desc="Progress message displayed in the main dialog after the user chooses to cancel installation while all operations are stopped.">
+        Canceling...
+      </message>
+
+      <!--ProgressWnd completion strings.-->
+      <!--TODO(omaha3): Does it make sense for these three to come from the
+          server like IDS_APPLICATION_INSTALLED_SUCCESSFULLY? If not, we may
+          want to change APPLICATION_NAME to BUNDLE_NAME.-->
+      <message name="IDS_TEXT_RESTART_BROWSER"
+               desc="Displayed after the application install has completed successfully and a restart of the browser is needed before the application can be used.">
+        Thanks for installing. You must restart your browser before using <ph name="APPLICATION_NAME">%1!s!<ex>Google Chrome</ex></ph>.
+      </message>
+      <message name="IDS_TEXT_RESTART_ALL_BROWSERS"
+               desc="Displayed after the application install has completed successfully and a restart of all browsers is needed before the application can be used.">
+        Thanks for installing. You must restart all your browsers before using <ph name="APPLICATION_NAME">%1!s!<ex>Google Chrome</ex></ph>.
+      </message>
+      <message name="IDS_TEXT_RESTART_COMPUTER"
+               desc="Displayed after the application install has completed successfully and a reboot of the computer is needed.">
+        Thanks for installing. You must restart your computer before using <ph name="APPLICATION_NAME">%1!s!<ex>Google Chrome</ex></ph>.
+      </message>
+      <message name="IDS_CLOSE"
+               desc="Text on a button in the main dialog to close the window. The button is displayed when the entire installation process has completed, either successfully or with an error.">
+        Close
+      </message>
+      <if expr="False"> <!--Do not include in the .rc files until used.-->
+      <message name="IDS_PAUSE"
+               desc="Text on a button in the main dialog to pause the download."
+               internal_comment="Not used.">
+        Pause
+      </message>
+      <message name="IDS_RESUME"
+               desc="Text on a button in the main dialog to resume the download after it has been paused."
+               internal_comment="Not used.">
+        Resume
+      </message>
+      </if>
+      <message name="IDS_RESTART_NOW"
+               desc="Text on a button in the main dialog when an application is successfully installed and requires browser or computer restart. Clicking on the button will cause the dialog to close and take the action described in the dialog.">
+        Restart Now
+      </message>
+      <message name="IDS_RESTART_LATER"
+               desc="Text on a button in the main dialog when an application is successfully installed and requires browser or computer restart. Clicking on the button will cause the dialog to close.">
+        Restart Later
+      </message>
+      <message name="IDS_GET_HELP_TEXT"
+               desc="Text on a button in the main dialog when an error occurs during installation. Clicking this button will open a web browser to a page with information on how to fix or workaround the error if available.">
+        Help
+      </message>
+
+      <!--InstallStoppedWnd strings.-->
+      <message name="IDS_INSTALLATION_STOPPED_WINDOW_TITLE"
+               desc="Title of the modal Installation Stopped dialog, which is displayed when the user chooses to cancel the current install.">
+        Installation Stopped.
+      </message>
+      <message name="IDS_INSTALL_STOPPED"
+               desc="Text displayed in the modal Installation Stopped dialog, which is displayed when the user chooses to cancel the current install.">
+        Installation not complete. Are you sure you want to cancel?
+      </message>
+      <message name="IDS_RESUME_INSTALLATION"
+               desc="Shown on a button inside the modal Installation Stopped dialog. Clicking it causes the modal dialog to close and installation to resume.">
+        Resume Installation
+      </message>
+      <message name="IDS_CANCEL_INSTALLATION"
+               desc="Shown on a button inside the modal Installation Stopped dialog. Clicking it causes the modal dialog to close and installation to be canceled.">
+        Cancel Installation
+      </message>
+
+      <!--SplashScreen strings.-->
+      <message name="IDS_SPLASH_SCREEN_MESSAGE"
+               desc="Text shown on the splash screen, which is displayed by the /install process before the normal UI appears in the /handoff process. The INSTALLER_DISPLAY_NAME field is populated with IDS_INSTALLER_DISPLAY_NAME.">
+        On your marks...
+      </message>
+
+      <!--YesNoDialog strings.-->
+      <message name="IDS_CONTINUE_AS_NONADMIN"
+               desc="Message displayed in the YesNo dialog when the user has cancelled the UAC prompt for a PrefersAdmin application that allows installing either per-machine, or per-user if per-machine fails.">
+        <ph name="BUNDLE_NAME">%1!s!<ex>Google ChromeFrame</ex></ph> can be installed without administrator privileges. Continue?
+      </message>
+      <message name="IDS_YES"
+               desc="Text on a button in the YesNo dialog to continue with installing on a per-user basis. The &amp; precedes the hotkey for the button. The hotkey can be any character, in english we use Y as the hotkey.">
+        &amp;Yes
+      </message>
+      <message name="IDS_NO"
+               desc="Text on a button in the YesNo dialog to not continue with installing on a per-user basis. The &amp; precedes the hotkey for the button. The hotkey can be any character, in english we use N as the hotkey.">
+        &amp;No
+      </message>
+
+      <!--Install and self-install strings.-->
+      <message name="IDS_WINDOWS_IS_NOT_UP_TO_DATE"
+               desc="Error message displayed in the main dialog when an important OS component is older than required by Google Update.">
+        Installation failed. The <ph name="BUNDLE_NAME">%1!s!<ex>Google Chrome</ex></ph> installer requires an update to Windows. Please install all required updates via Windows Update.
+      </message>
+      <message name="IDS_NEED_ADMIN_TO_INSTALL"
+               desc="Error message displayed in the main dialog when a non-admin tries to install a machine application on pre-Vista versions of Windows.">
+        Installation failed. <ph name="BUNDLE_NAME">%1!s!<ex>Google Chrome</ex></ph> needs administrator privileges to install. Please log in as an administrator and try again.
+      </message>
+      <message name="IDS_SETUP_FAILED"
+               desc="Error message displayed in the main dialog when Google Update fails to install itself (before installing the application).">
+        Egads! Installation failed. Error code: <ph name="ERROR_CODE">0x%1!08x!<ex>0x80072ee2</ex></ph>.
+      </message>
+      <message name="IDS_ELEVATION_FAILED"
+               desc="Error message displayed in the main dialog when the User Access Control (UAC) dialog is canceled.">
+        Installation failed. <ph name="BUNDLE_NAME">%1!s!<ex>Google Chrome</ex></ph> needs administrator privileges to install.
+      </message>
+      <message name="IDS_APPLICATION_INSTALLING_GOOGLE_UPDATE"
+               desc="Error message displayed in the main dialog when Google Update is already being installed.">
+        Installation failed. Another installation of a <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> application is in progress.
+      </message>
+      <message name="IDS_INSTANCES_RUNNING_AFTER_SHUTDOWN"
+               desc="Error message displayed in the main dialog when Google Update setup is unable to shutdown other running instances of Google Update. The other instances may be visible installers or invisible.">
+        Installation failed. Another <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> application is being installed or updated. Please wait for all <ph name="FRIENDLY_COMPANY_NAME">%1!s!<ex>Google</ex></ph> application installers to finish, close all installer windows, and try installing <ph name="BUNDLE_NAME">%2!s!<ex>Google Chrome</ex></ph> again. If this problem persists, you may need to reboot your computer.
+      </message>
+      <!--TODO(omaha3): Depending on how we decide to treat the ProgramInstance
+          for installation, change "application" to "bundle" and APPLICATION_NAME
+          to BUNDLE_NAME-->
+      <message name="IDS_APPLICATION_ALREADY_INSTALLING"
+               desc="Error message displayed in the main dialog when two GoogleUpdate.exe are run simultaneously to install the same application.">
+        Installation failed. Another installation of <ph name="APPLICATION_NAME">%1!s!<ex>Google Chrome</ex></ph> is already in progress.
+      </message>
+      <message name="IDS_HANDOFF_FAILED"
+               desc="Error message displayed in the main dialog when Google Update is unable to start the the already installed GoogleUpdate.exe to continue installation of the application. This occurs during a hand-off install, when setup determines that it does not need to install or upgrade Google Update.">
+        Installation failed. The <ph name="BUNDLE_NAME">%1!s!<ex>Google Chrome</ex></ph> installer failed to start.
+      </message>
+      <message name="IDS_USER_SHOULD_NOT_RUN_ELEVATED_WITH_UAC_ON"
+               desc="Error message displayed in the main dialog when per-user GoogleUpdate is being run in an unsupported way, that is, at High integrity in the specific case when UAC is enabled.">
+        Installation failed. The <ph name="BUNDLE_NAME">%1!s!<ex>Google Chrome</ex></ph> installer does not support installing with administrator privileges.
+      </message>
+
+      <!--Generic client error string.-->
+      <message name="IDS_INSTALL_FAILED_WITH_ERROR_CODE"
+               desc="Error message displayed in the main dialog when the install fails for reasons not covered by the other error messages.">
+        Egads! Installation failed. Please try again. Error code = <ph name="ERROR_CODE">0x%1!08x!<ex>0x80072ee2</ex></ph>.
+      </message>
+
+      <!--Completion UI strings.-->
+      <message name="IDS_BUNDLE_INSTALLED_SUCCESSFULLY"
+               desc="Success message displayed in the main dialog when the installation succeeds.">
+        Installation complete.
+      </message>
+      <message name="IDS_BUNDLE_INSTALLED_SUCCESSFULLY_AFTER_CANCEL"
+               desc="Success message displayed in the main dialog when the installation succeeds even though the user had tried to cancel. This can happen because cancel is asynchronous and there is a point at which installs can no longer be canceled.">
+        Installation completed before it could be canceled.
+      </message>
+      <message name="IDS_BUNDLE_MIXED_RESULTS_MESSAGE_ONE_FAILURE"
+               desc="Error message displayed in the main dialog when ONE application fails and some application(s) succeed. IDS_BUNDLE_MIXED_RESULTS_SUCCEEDED_APPS and IDS_BUNDLE_MIXED_RESULTS_FAILED_APPS each appear after this message on separate lines. This is the singular version of IDS_BUNDLE_MIXED_RESULTS_MESSAGE_MULTIPLE_FAILURES.">
+        An application failed to install.
+      </message>
+      <message name="IDS_BUNDLE_MIXED_RESULTS_MESSAGE_MULTIPLE_FAILURES"
+               desc="Error message displayed in the main dialog when more than one applications fail and some application(s) succeed. IDS_BUNDLE_MIXED_RESULTS_SUCCEEDED_APPS and IDS_BUNDLE_MIXED_RESULTS_FAILED_APPS each appear after this message on separate lines. This is the plural version of IDS_BUNDLE_MIXED_RESULTS_MESSAGE_ONE_FAILURE.">
+        Some applications failed to install.
+      </message>
+      <message name="IDS_BUNDLE_MIXED_RESULTS_SUCCEEDED_APPS"
+               desc="'Header' and list of the successful applications. Used with IDS_BUNDLE_MIXED_RESULTS_MESSAGE*.">
+        <ph name="HEADER_FORMATTING_OPEN">%1!s!<ex>&lt;b&gt;</ex></ph>Succeeded:<ph name="HEADER_FORMATTING_CLOSE">%2!s!<ex>&lt;/b&gt;</ex></ph> <ph name="APPLICATION_LIST">%3!s!<ex>Google Chrome, Google Earth</ex></ph>
+      </message>
+      <message name="IDS_BUNDLE_MIXED_RESULTS_FAILED_APPS"
+               desc="'Header' and list of the failed applications. Used with IDS_BUNDLE_MIXED_RESULTS_MESSAGE*.">
+        <ph name="HEADER_FORMATTING_OPEN">%1!s!<ex>&lt;b&gt;</ex></ph>Failed:<ph name="HEADER_FORMATTING_CLOSE">%2!s!<ex>&lt;/b&gt;</ex></ph> <ph name="APPLICATION_LIST">%3!s!<ex>Google Chrome, Google Earth</ex></ph>
+      </message>
+      <message name="IDS_BUNDLE_MIXED_RESULTS_CANCELED_APPS"
+               desc="'Header' and list of the canceled applications. Used with IDS_BUNDLE_MIXED_RESULTS_MESSAGE*.">
+        <ph name="HEADER_FORMATTING_OPEN">%1!s!<ex>&lt;b&gt;</ex></ph>Canceled:<ph name="HEADER_FORMATTING_CLOSE">%2!s!<ex>&lt;/b&gt;</ex></ph> <ph name="APPLICATION_LIST">%3!s!<ex>Google Chrome, Google Earth</ex></ph>
+      </message>
+      <message name="IDS_APPLICATION_NAME_CONCATENATION"
+               desc="Concatenates two application names, separating them with a comma. Can be used repeatedly to build a list of applications. Used for APPLICATION_LIST placeholders.">
+        <!--Placeholders must be named differently or GRIT will use the same
+            field number.-->
+        <ph name="APPLICATION_NAME1">%1!s!<ex>Google Chrome</ex></ph>, <ph name="APPLICATION_NAME2">%2!s!<ex>Google Earth</ex></ph>
+      </message>
+
+      <!--TODO(omaha3): Move this to the appropriate area once we've decided how
+          to implement this.
+          We may also want to add a period to the end.-->
+      <message name="IDS_PROXY_PROMPT_MESSAGE"
+               desc="Displayed in a dialog requesting proxy login information when Omaha needs to connect through a proxy server that requires authentication. The message prompts the user to type in a username and password to authenticate against the proxy server.">
+        Enter username and password for proxy server <ph name="PROXY_SERVER">%1!s!<ex>proxy.example.com:3128</ex></ph>
+      </message>
+    </messages>
+
+    <!--
+      Visual Elements - Client Only.
+      -->
+    <includes first_id="1000">
+      <include name="IDB_ERROR_ILLUSTRATION" file="../../goopdate/resources/error_illustration.bmp" type="BITMAP" relativepath="true" translateable="false" />
+    </includes>
+    <structures first_id="2000">
+      <structure name="IDD_PROGRESS" file="goopdateres_ui.rc" type="dialog">
+        <skeleton expr="lang == 'ar' or lang == 'fa' or lang == 'iw' or lang == 'ur'" file="goopdateres_ui_bidi.rc" variant_of_revision="2" />
+      </structure>
+      <structure name="IDD_INSTALL_STOPPED" file="goopdateres_ui.rc" type="dialog">
+        <skeleton expr="lang == 'ar' or lang == 'fa' or lang == 'iw' or lang == 'ur'" file="goopdateres_ui_bidi.rc" variant_of_revision="2" />
+      </structure>
+      <structure name="IDD_YES_NO" file="goopdateres_ui.rc" type="dialog">
+        <skeleton expr="lang == 'ar' or lang == 'fa' or lang == 'iw' or lang == 'ur'" file="goopdateres_ui_bidi.rc" variant_of_revision="2" />
+      </structure>
+      <structure name="VS_VERSION_INFO" file="goopdateres_version.rc" type="version"/>
+    </structures>
+
+  </release>
+</grit>
