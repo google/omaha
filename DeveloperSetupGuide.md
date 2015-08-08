@@ -7,12 +7,13 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
-  * Microsoft Visual C++ 2013
+  * Microsoft Visual Studio 2013 or 2015
    * The Express Editions are not sufficient - they do not include ATL/MFC headers or libraries, which Omaha requires.
   * ATL Server headers 
    * Download [here](http://atlserver.codeplex.com). Omaha needs this library for regular expression support.
-  * Microsoft Windows 8.1 SDK 
-   * Download [here](https://msdn.microsoft.com/en-us/windows/desktop/bg162891.aspx).
+  * Microsoft Windows 8.1 SDK if building with VS 2013, or Windows 10 SDK if building with VS2015, respectively.
+   * Download Windows 8.1 SDK [here](https://msdn.microsoft.com/en-us/windows/desktop/bg162891.aspx).
+   * Download Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
   * Microsoft .NET Framework 2.0
    * This should be pre-installed on Windows Vista and Windows 7. This old version of SDK is needed for click-once compatibility with Windows XP systems.
    * To verify, see if the file %WINDIR%\Microsoft.NET\Framework\v2.0.50727\csc.exe exists on your system.
@@ -74,23 +75,19 @@ Create the following environment variables:
   * Otherwise, set it to the directory where the .NET framework is installed.
 * OMAHA_NETFX_TOOLS_DIR - this directory is needed to find `mage.exe` tool, which is the .Net manifest generating tool. This tool ships as part of the Windows SDK. However, newer versions of mage.exe can't targer older versions of .Net framework. If there is a need for the click-once application to run on older versions of the .Net framework, then an older version of the Windows SDK needs to be installed and this environment variable point to that directory.
 * OMAHA_PYTHON_DIR - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`).
-* OMAHA_WIX_DIR - set to the directory in WiX where `candle.exe` and `light.exe` are installed.
+* OMAHA_WIX_DIR - set to the directory in WiX where `candle.exe` and `light.exe` are installed. This may be something like  `%ProgramFiles(x86)%\WiX Toolset v3.8\bin`
 * OMAHA_WTL_DIR - set to the root directory of the WTL installation.
-* PLATFORM_SDK_DIR - set to the root directory of the Windows SDK installation.
+* OMAHA_PLATFORM_SDK_DIR - set to the root directory of the Windows SDK installation.
+* OMAHA_SIGNTOOL_SDK_DIR - set to the directory which includes the `sign.exe` tool for Authenticode signing.
 * SCONS_DIR - set to the directory of Scons, (eg. `C:\Python24\Lib\site-packages\scons-1.3.1`).
 * SCT_DIR - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
-* SIGNTOOL_SDK_DIR - set to the directory which includes the `sign.exe` tool for Authenticode signing.
-* OMAHA_WTL_DIR - set to the include directory in the WTL installation (eg. `C:\Program Files\WTL\include`)
-* OMAHA\_WIX\_DIR - set to the directory in WiX where 'candle.exe' and 'light.exe' are installed. This may be something like (eg. `C:\Program Files\Windows Installer XML v3\bin`)
-* OMAHA\_VISTASDK\_DIR - set to the directory where the Vista SDK was installed (e.g. `C:\Program Files\Microsoft SDKs\Windows\v6.0`)
-* OMAHA\_PYTHON\_DIR - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`)
-* VC12_0_DIR - set to the root directory of Visual Studio.
 
 ## Build ##
 
 Once the above setup is complete:
- * Open a fresh cmd.exe window (if you're running under Vista, make sure cmd.exe is running as Administrator)
+ * Open a fresh cmd.exe window as Administrator.
  * Navigate to the 'omaha' directory in your source checkout, for example: `D:\src\omahaopensource\omaha\omaha>`
+ * Run the vsvars.bat file correspionding to the Visual C++ instance you want to use to build. For example: `%ProgramFiles(x86)%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat`. This step sets up the environment variables that the build scripts use.
  * From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions](HammerOptions.md).  In particular, if you are building on a multi-core or multi-processor, consider passing the -j# flag to Hammer to enable parallel compilation.)
  * To build all targets in all modes, type `hammer --all --mode=all`. This builds both debug and opt versions of the binaries, including all unit tests, and standalone installers.
 
