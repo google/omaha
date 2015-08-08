@@ -150,8 +150,7 @@ for (major, minor, build, patch) in [(1,0,101,0), (1,0,102,0)]:
   ver_env = env.Clone()
   ver_env.Append(
       LIBS = [
-          ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
+          ver_env['crt_libs'][ver_env.Bit('debug')],
           'version.lib',
           ],
       RCFLAGS = [
@@ -203,8 +202,7 @@ for (major, minor, build, patch) in [(1,0,101,0), (1,0,102,0)]:
 bar_env = env.Clone()
 bar_env.Append(
     LIBS = [
-        ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
+        bar_env['crt_libs'][bar_env.Bit('debug')],
         ],
 )
 bar_env.ComponentTestProgram(prog_name='test_bar',
@@ -224,8 +222,7 @@ omaha_system_env.Append(
     LIBS = [
         '$LIB_PATH/common.lib',
         omaha_system_env['atls_libs'][env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
+        omaha_system_env['crt_libs'][omaha_system_env.Bit('debug')],,
         ],
 )
 

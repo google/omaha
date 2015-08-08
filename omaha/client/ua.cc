@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "omaha/base/const_object_names.h"
+#include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -176,7 +177,6 @@ bool ShouldCheckForUpdates(bool is_machine) {
 
   const int time_since_last_check = cm->GetTimeSinceLastCheckedSec(is_machine);
 
-  const int kSecondsPerHour = 60 * 60;
   bool should_check_for_updates = false;
   if (time_since_last_check < update_interval) {
     // Too soon.

@@ -826,13 +826,11 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
   // Clean up existing machine ID and user ID since they are no longer used.
   // Ignore failures as they may not be present and we may not have permission
   // to HKLM.
-  const TCHAR* const kRegValueMachineId = _T("mi");
-  const TCHAR* const kRegValueUserId = _T("ui");
   RegKey::DeleteValue(ConfigManager::Instance()->machine_registry_update(),
-                      kRegValueMachineId);
+                      kRegValueLegacyMachineId);
   RegKey::DeleteValue(
       ConfigManager::Instance()->registry_update(is_machine_),
-      kRegValueUserId);
+      kRegValueLegacyUserId);
 
   return S_OK;
 }

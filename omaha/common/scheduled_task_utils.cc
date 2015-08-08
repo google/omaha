@@ -14,7 +14,6 @@
 
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/common/scheduled_task_utils_internal.h"
-#include <corerror.h>
 #include <lmcons.h>
 #include <lmsname.h>
 #include <mstask.h>
@@ -106,7 +105,7 @@ bool IsInstalledScheduledTask(const TCHAR* task_name) {
                            reinterpret_cast<IUnknown**>(&task));
 
   UTIL_LOG(L3, (_T("[IsInstalledScheduledTask returned][0x%x]"), hr));
-  return COR_E_FILENOTFOUND == hr ? false : true;
+  return hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 }
 
 DWORD GetScheduledTaskPriority(const TCHAR* task_name) {
@@ -677,7 +676,7 @@ HRESULT UninstallScheduledTask(const TCHAR* task_name) {
 
   // delete the task.
   hr = scheduler->Delete(task_name);
-  if (FAILED(hr) && COR_E_FILENOTFOUND != hr) {
+  if (FAILED(hr) && hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) {
     UTIL_LOG(LE, (_T("[GetScheduledTaskStatus][Delete failed][0x%x]"), hr));
     return hr;
   }

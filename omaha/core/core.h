@@ -106,6 +106,7 @@ class Core
   HRESULT UpdateLastCodeRedCheckTime() const;
 
   bool HasOSUpgraded() const;
+  CString GetOSUpgradeVersionsString() const;
   void LaunchAppCommandsOnOSUpgrade() const;
 
   // Collects ambient core metrics.

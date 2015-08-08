@@ -36,8 +36,9 @@
 // C4365: conversion from 'type_1' to 'type_2', signed/unsigned mismatch
 // C4548: expression before comma has no effect
 // C4702: unreachable code
+// C4838: conversion requires a narrowing conversion
 // C4986: exception specification does not match previous declaration
-#pragma warning(disable : 4265 4302 4350 4365 4548 4702 4986)
+#pragma warning(disable : 4265 4302 4350 4365 4548 4702 4838 4986)
 #include <atlbase.h>
 #include <atlstr.h>     // Needs to be in front of atlapp.h
 #include <atlapp.h>
@@ -45,6 +46,7 @@
 #include <atlcom.h>
 #include <atlcomtime.h>
 #include <atlctl.h>
+#include <atlgdi.h>
 #include <atlhost.h>
 #include <atlrx.h>
 #include <atlsecurity.h>

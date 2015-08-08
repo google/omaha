@@ -223,7 +223,7 @@ int CleanupWhitespace(TCHAR *str) {
 
   TCHAR *src      = str;
   TCHAR *dest     = str;
-  int    spaces   = 0;
+  int    num_spaces   = 0;
   bool   at_start = true;
   while (true) {
     // At end of string?
@@ -233,16 +233,16 @@ int CleanupWhitespace(TCHAR *str) {
 
     // Look for whitespace; copy it over if not whitespace
     if (IsSpace(c)) {
-      ++spaces;
+      ++num_spaces;
     }
     else {
       *dest++ = c;
       at_start = false;
-      spaces = 0;
+      num_spaces = 0;
     }
 
     // Write only first consecutive space (but skip space at start)
-    if (1 == spaces && !at_start)
+    if (1 == num_spaces && !at_start)
       *dest++ = ' ';
 
     ++src;

@@ -326,7 +326,7 @@ HRESULT PackageCache::PurgeAppLowerVersions(const CString& app_id,
   WIN32_FIND_DATA find_data = {0};
   scoped_hfind hfind(::FindFirstFile(app_id_path + _T("\\*"), &find_data));
   if (!hfind) {
-    HRESULT hr = HRESULTFromLastError();
+    hr = HRESULTFromLastError();
     CORE_LOG(L4, (_T("[FindFirstFile failed][%s][0x%x]"), app_id_path, hr));
     return hr;
   }

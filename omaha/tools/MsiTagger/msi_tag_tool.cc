@@ -110,7 +110,8 @@ int _tmain(int argc, _TCHAR* argv[]) {
   if (!File::Exists(path)) {
     HRESULT hr = CreateDir(path, NULL);
     if (FAILED(hr)) {
-      _tprintf(_T("Could not create dir %s\n"), path);
+      _tprintf(_T("Could not create dir %s\n"),
+          static_cast<const TCHAR*>(path));
       return hr;
     }
   }

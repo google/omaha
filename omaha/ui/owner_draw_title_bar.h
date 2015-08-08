@@ -225,7 +225,7 @@ class OwnerDrawTitleBarWindow : public CWindowImpl<OwnerDrawTitleBarWindow> {
                          CRect* button_rect);
   void MoveWindowToDragPosition(HWND hwnd, int dx, int dy);
 
-  static enum ButtonIds {
+  enum ButtonIds {
     kButtonClose = 1,
     kButtonMaximize,
     kButtonMinimize,

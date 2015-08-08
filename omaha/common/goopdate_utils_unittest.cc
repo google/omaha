@@ -1857,8 +1857,7 @@ TEST_P(GoopdateUtilsRegistryProtectedBooleanTest,
     expected_uid_history.Format(_T("%s; age=-1; cnt=%d"),
                                 first_uid,
                                 num_rotations + 1);
-    CString uid_history = goopdate_utils::GetUserIdHistory(is_machine);
-    EXPECT_STREQ(expected_uid_history, uid_history);
+    EXPECT_STREQ(expected_uid_history, GetUserIdHistory(is_machine));
   }
 }
 
@@ -1876,8 +1875,8 @@ TEST(GoopdateUtilsTest, GetMacHashesViaNDIS) {
     EXPECT_SUCCEEDED(Base64::Decode(mac_hash, &mac));
 
     CString mac_string;
-    for (size_t i = 0; i < mac.size(); ++i) {
-      mac_string.AppendFormat(_T("%s%02X"), i == 0 ? _T("") : _T(":"), mac[i]);
+    for (size_t j = 0; j < mac.size(); ++j) {
+      mac_string.AppendFormat(_T("%s%02X"), j == 0 ? _T("") : _T(":"), mac[j]);
     }
 
     ExpectMacMatchViaWMI(mac_string);
@@ -2003,32 +2002,32 @@ TEST(GoopdateUtilsTest, ResetUserIdIfMacMismatch) {
 }
 
 TEST(GoopdateUtilsTest, CreateExternalUpdaterActiveEvent_User) {
-  const CString kAppId("unittest_app_id");
+  const CString kAppId1("unittest_app_id");
   const bool kIsMachine = false;
 
   scoped_event event;
   EXPECT_HRESULT_SUCCEEDED(goopdate_utils::CreateExternalUpdaterActiveEvent(
-      kAppId, kIsMachine, &event));
+      kAppId1, kIsMachine, &event));
 
   scoped_event event2;
   EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
       goopdate_utils::CreateExternalUpdaterActiveEvent(
-          kAppId, kIsMachine, &event2));
+          kAppId1, kIsMachine, &event2));
   EXPECT_EQ(NULL, get(event2));
 }
 
 TEST(GoopdateUtilsTest, CreateExternalUpdaterActiveEvent_Machine) {
-  const CString kAppId("unittest_app_id");
+  const CString kAppId1("unittest_app_id");
   const bool kIsMachine = true;
 
   scoped_event event;
   EXPECT_HRESULT_SUCCEEDED(goopdate_utils::CreateExternalUpdaterActiveEvent(
-      kAppId, kIsMachine, &event));
+      kAppId1, kIsMachine, &event));
 
   scoped_event event2;
   EXPECT_EQ(GOOPDATE_E_APP_USING_EXTERNAL_UPDATER,
       goopdate_utils::CreateExternalUpdaterActiveEvent(
-          kAppId, kIsMachine, &event2));
+          kAppId1, kIsMachine, &event2));
   EXPECT_EQ(NULL, get(event2));
 }
 

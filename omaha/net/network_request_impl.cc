@@ -433,7 +433,6 @@ HRESULT NetworkRequestImpl::DoSendWithConfig(
   for (size_t i = 0; i != http_request_chain_.size(); ++i) {
     cur_http_request_ = http_request_chain_[i];
 
-    CString msg;
     SafeCStringFormat(&msg, _T("trying %s"), cur_http_request_->ToString());
     NET_LOG(L3, (_T("[%s]"), msg));
     SafeCStringAppendFormat(&trace_, _T("%s.\r\n"), msg);

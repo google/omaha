@@ -47,8 +47,7 @@ def BuildCrashHandler(local_env):
           'version.lib',
           'wtsapi32.lib',
           lib_env['atls_libs'][lib_env.Bit('debug')],
-          ('libcmt.lib', 'libcmtd.lib')[lib_env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[lib_env.Bit('debug')],
+          lib_env['crt_libs'][lib_env.Bit('debug')],
           lib_env.GetMultiarchLibName('base'),
           lib_env.GetMultiarchLibName('breakpad'),
           lib_env.GetMultiarchLibName('common'),
@@ -82,8 +81,7 @@ def BuildCrashHandler(local_env):
           'version.lib',
           'wtsapi32.lib',
           gch_env['atls_libs'][gch_env.Bit('debug')],
-          ('libcmt.lib', 'libcmtd.lib')[gch_env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[gch_env.Bit('debug')],
+          gch_env['crt_libs'][gch_env.Bit('debug')],
           gch_env.GetMultiarchLibName('base'),
           gch_env.GetMultiarchLibName('breakpad'),
           gch_env.GetMultiarchLibName('common'),
@@ -144,17 +142,16 @@ def BuildCrashAnalysisTest(local_env):
   td_env.Append(
       CPPPATH = [],
       LIBS = [
-          ('libcmt.lib', 'libcmtd.lib')[td_env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[td_env.Bit('debug')]
+          td_env['crt_libs'][td_env.Bit('debug')],
           ],
-    RCFLAGS = [
-        '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
-        '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
-        '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
-        '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
-        '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
-            omaha_version_info.GetVersionString()),
-        ],
+      RCFLAGS = [
+          '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+          '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+          '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+          '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+          '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+              omaha_version_info.GetVersionString()),
+          ],
   )
 
   td_inputs = ['crash_analyzer_debugee_test.cc']

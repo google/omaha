@@ -55,8 +55,7 @@ dll_env = env.Clone(
 dll_env.Append(
     LIBS = [
         dll_env['atls_libs'][dll_env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[dll_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[dll_env.Bit('debug')],
+        dll_env['crt_libs'][dll_env.Bit('debug')],
         '$LIB_DIR/base.lib',
         '$LIB_DIR/common.lib',
         '$LIB_DIR/google_update_recovery.lib',
@@ -102,8 +101,7 @@ test_env = env.Clone()
 
 test_env['LIBS'] += [
     test_env['atls_libs'][test_env.Bit('debug')],
-    ('libcmt.lib', 'libcmtd.lib')[test_env.Bit('debug')],
-    ('libcpmt.lib', 'libcpmtd.lib')[test_env.Bit('debug')],
+    test_env['crt_libs'][test_env.Bit('debug')],
     '$LIB_DIR/base.lib',
     '$LIB_DIR/repair_goopdate.lib',
     'crypt32.lib',

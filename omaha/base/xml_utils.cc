@@ -605,8 +605,8 @@ HRESULT InterpretXMLParseError(IXMLDOMParseError* parse_error,
   _snwprintf_s(&s.front(), size_estimate, _TRUNCATE,
                L"%d(%d) : error 0x%08lx: %s\n  %s",
                line, char_pos, *error_code,
-               reason ? reason : L"",
-               src_text ? src_text : L"<no source text>");
+               reason ? static_cast<BSTR>(reason) : L"<no reason>",
+               src_text ? static_cast<BSTR>(src_text) : L"<no source text>");
   // _snwprintf doesn't terminate the string with a null if
   // the formatted string fills the entire buffer.
   s[s.size()- 1] = L'\0';

@@ -180,8 +180,13 @@ TEST(TimeTest, FileTimeToInt64) {
   }
 
   {
+  FILETIME file_time = {ULONG_MAX, LONG_MAX};
+  EXPECT_EQ(kint64max, FileTimeToInt64(file_time));
+  }
+
+  {
   FILETIME file_time = {ULONG_MAX, ULONG_MAX};
-  EXPECT_EQ(kuint64max, FileTimeToInt64(file_time));
+  EXPECT_EQ(0, FileTimeToInt64(file_time));
   }
 }
 

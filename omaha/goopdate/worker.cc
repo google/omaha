@@ -99,8 +99,8 @@ void RecordUpdateAvailableUsageStats() {
       continue;
     }
 
-    DWORD update_responses(0);
-    DWORD64 time_since_first_response_ms(0);
+    update_responses = 0;
+    time_since_first_response_ms = 0;
     app_manager.ReadUpdateAvailableStats(app_guid,
                                          &update_responses,
                                          &time_since_first_response_ms);
@@ -843,8 +843,8 @@ HRESULT Worker::CacheOfflinePackages(AppBundle* app_bundle) {
     AppVersion* app_version = app->working_version();
     const size_t num_packages = app_version->GetNumberOfPackages();
 
-    for (size_t i = 0; i < num_packages; ++i) {
-      Package* package(app_version->GetPackage(i));
+    for (size_t j = 0; j < num_packages; ++j) {
+      Package* package(app_version->GetPackage(j));
       if (download_manager_->IsPackageAvailable(package)) {
         continue;
       }
@@ -866,7 +866,7 @@ HRESULT Worker::CacheOfflinePackages(AppBundle* app_bundle) {
                                                    &offline_package_path);
       if (FAILED(hr)) {
         CORE_LOG(LE, (_T("[CachePackage failed][%s][%s][0x%x][%Iu]"),
-                      app->app_guid_string(), offline_package_path, hr, i));
+                      app->app_guid_string(), offline_package_path, hr, j));
         return hr;
       }
     }

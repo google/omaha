@@ -32,7 +32,7 @@ base_env = env.Clone()
 
 base_env.Append(
     LIBS = [
-        ('libcmt.lib', 'libcmtd.lib')[base_env.Bit('debug')],
+        base_env['crt_libs'][base_env.Bit('debug')],
         ],
     CPPDEFINES = [
         'UNICODE',

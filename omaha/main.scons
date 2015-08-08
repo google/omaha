@@ -57,7 +57,7 @@ import omaha_version_utils
 
 # Build the "Google Update", the Google-specific version of Omaha.
 # TODO(omaha): Set based on an environment variable and/or Hammer arg.
-is_google_update_build = False
+_is_google_update_build = False
 
 #
 # Begin vendor-specific constants.
@@ -103,14 +103,14 @@ _BUILD_SERVER_CERTIFICATE_HASH = 'cafd39335d6e76f0e26d81296e7cbbfbdf16a720'
 # Defaults to VC120 if the environment variable is not specified.
 _msc_ver = int(os.getenv('OMAHA_MSC_VER', "1800"))
 
-_sdk_dir = os.environ['PLATFORM_SDK_DIR']
+_sdk_dir = os.environ['OMAHA_PLATFORM_SDK_DIR']
 
 _atl_server_dir = os.getenv('OMAHA_ATL_SERVER_DIR',
                             '$THIRD_PARTY/atl_server/files')
 _wtl_dir = os.getenv('OMAHA_WTL_DIR', '$THIRD_PARTY/wtl/files')
 
-_signtool_path = ('python $MAIN_DIR/tools/retry.py 10 5 %s/%s' %
-                  (os.getenv('SIGNTOOL_SDK_DIR'), 'signtool.exe'))
+_signtool_path = ('python $MAIN_DIR/tools/retry.py 10 5 \"%s/%s\"' %
+                  (os.getenv('OMAHA_SIGNTOOL_SDK_DIR'), 'signtool.exe'))
 
 # Windows is the only environment we bulid for, so create a specialized base
 # environment for Windows.
@@ -122,12 +122,14 @@ win_env = Environment(
     tools=[
         'component_setup',
         'target_platform_windows',
-        { omaha_version_utils.VC120:'windows_vc12_0',
+        { omaha_version_utils.VC140:'windows_vc14_0',
+          omaha_version_utils.VC120:'windows_vc12_0',
           omaha_version_utils.VC100:'windows_vc10_0',
           omaha_version_utils.VC80:'target_platform_windows' }[_msc_ver],
         'masm',         # Use 'masm' to override the 'as' tool currently
                         # used by default in 'target_platform_windows'
-        { omaha_version_utils.VC120:'atlmfc_vc12_0',
+        { omaha_version_utils.VC140:'atlmfc_vc14_0',
+          omaha_version_utils.VC120:'atlmfc_vc12_0',
           omaha_version_utils.VC100:'atlmfc_vc10_0',
           omaha_version_utils.VC80:'atlmfc_vc80' }[_msc_ver],
         'code_signing',
@@ -353,7 +355,7 @@ if build_number:
 
 win_env['omaha_versions_info'] = omaha_versions_info
 
-if is_google_update_build:
+if _is_google_update_build:
     win_env.Append(
         CPPDEFINES = ['GOOGLE_UPDATE_BUILD'],
         RCFLAGS = ['/DGOOGLE_UPDATE_BUILD=1'],
@@ -364,10 +366,15 @@ win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])
 
 # VS2013 does not ship a debug version of the ATL static library. Therefore,
 # only one version of the library is required.
-win_env['atls_libs'] = (
-    ('atls', 'atlsd'),
-    ('atls', 'atls'),
-)[_msc_ver >= omaha_version_utils.VC120]
+win_env['atls_libs'] = (['atls'], ['atlsd'])
+if _msc_ver >= omaha_version_utils.VC120:
+    win_env['atls_libs'] = (['atls'], ['atls'])
+
+# VS2015 has a set of new libraries as part of the universal CRT.
+win_env['crt_libs'] = (['libcmt', 'libcpmt'], ['libcmtd', 'libcpmtd'])
+if _msc_ver >= omaha_version_utils.VC140:
+    win_env['crt_libs'] = (['libcmt', 'libcpmt', 'libvcruntime', 'libucrt'],
+                           ['libcmtd', 'libcpmtd', 'libvcruntimed', 'libucrtd'])
 
 win_env.AppendUnique(
     # Add windows specific compiler flags.
@@ -422,6 +429,7 @@ win_env.AppendUnique(
         '/wd4755',  # Conversion rules for arithmetic operations in the
                     # comparison at mean that one branch cannot be executed
                     # in an inlined function.
+        '/wd4777',  # format string 'requires an argument of type...
         '/wd4820',  # bytes padding added after construct 'member_name'
         '/wd4987',  # nonstandard extension used: 'throw (...)
         '/wd4995',  # name was marked as #pragma deprecated
@@ -546,12 +554,7 @@ win_env.AppendUnique(
         '/DYNAMICBASE',   # Enable ASLR. See http://goo.gl/k2IE.
         '/NXCOMPAT',      # Enable NX support. See http://goo.gl/k2IE.
         '/SAFESEH',
-        ],
-
-    # Shared library specific linker flags.
-    SHLINKFLAGS = [
-        '/nologo',
-        '/SUBSYSTEM:WINDOWS,5.01',
+        # '/VERBOSE:LIB', # Uncomment to get verbose link info for debugging.
         ],
 
     # Resource compiler flags.
@@ -562,6 +565,18 @@ win_env.AppendUnique(
         '/DOMAHA_COPYRIGHT_STRING_ENGLISH=\\"%s\\"' % (
             _OMAHA_COPYRIGHT_STRING_ENGLISH),
         ],
+)
+
+if _msc_ver >= omaha_version_utils.VC140:
+  win_env.AppendUnique(
+      CCFLAGS = [
+          '/wd5026',  # move constructor was implicitly defined as deleted
+                      # because a base class move constructor is inaccessible or
+                      # deleted.
+          '/wd5027',  # move move assignment operator was implicitly defined
+                      # as deleted because a base class move assignment operator
+                      # is inaccessible or deleted.
+      ]
 )
 
 # VC2010 has a different way to record the location of the pdb file. The
@@ -683,8 +698,9 @@ elif not win_env.Bit('bin'):
     _dirs_to_build_set.update(_extra_dirs)
 
 # Build Google application-specific metainstallers.
-if os.path.exists(win_env.Dir('$MAIN_DIR/internal').abspath):
-  _dirs_to_build_set.update(['internal'])
+if _is_google_update_build and \
+   os.path.exists(win_env.Dir('$MAIN_DIR/internal').abspath):
+      _dirs_to_build_set.update(['internal'])
 
 _dirs_to_build = list(_dirs_to_build_set)
 

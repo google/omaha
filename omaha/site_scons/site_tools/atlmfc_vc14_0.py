@@ -13,10 +13,10 @@
 # limitations under the License.
 # ========================================================================
 
-"""Windows ATL MFC for VC12 (Visual Studio 2013) tool for SCons.
+"""Windows ATL MFC for VC14 (Visual Studio 2015) tool for SCons.
 
 Note that ATL MFC requires the commercial (non-free) version of Visual Studio
-2013.
+2015.
 """
 
 import os
@@ -39,8 +39,8 @@ def generate(env):
   # NOTE: SCons requires the use of this name, which fails gpylint.
   """SCons entry point for this tool."""
 
-  if not env.get('ATLMFC_VC12_0_DIR'):
-    env['ATLMFC_VC12_0_DIR'] = _FindLocalInstall()
+  if not env.get('ATLMFC_VC14_0_DIR'):
+    env['ATLMFC_VC14_0_DIR'] = _FindLocalInstall()
 
-  env.AppendENVPath('INCLUDE', env.Dir('$ATLMFC_VC12_0_DIR/include').abspath)
-  env.AppendENVPath('LIB', env.Dir('$ATLMFC_VC12_0_DIR/lib').abspath)
+  env.AppendENVPath('INCLUDE', env.Dir('$ATLMFC_VC14_0_DIR/include').abspath)
+  env.AppendENVPath('LIB', env.Dir('$ATLMFC_VC14_0_DIR/lib').abspath)

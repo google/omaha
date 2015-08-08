@@ -88,6 +88,14 @@ TEST(AppCommandFormatterTest, SimpleParameters) {
       parameters, &process_name, &arguments));
 }
 
+TEST(AppCommandFormatterTest, SimpleParametersNoFormatParameters) {
+  CString process_name;
+  CString arguments;
+
+  EXPECT_FAILED(AppCommandFormatter(_T("process abc=%1")).Format(
+      std::vector<CString>(), &process_name, &arguments));
+}
+
 TEST(AppCommandFormatterTest, Interpolation) {
   std::vector<CString> parameters;
   parameters.push_back(_T("p1"));

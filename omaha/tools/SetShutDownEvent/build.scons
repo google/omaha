@@ -35,8 +35,7 @@ local_env.Append(
         'version.lib',
         'wtsapi32.lib',
         local_env['atls_libs'][local_env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[local_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[local_env.Bit('debug')],
+        local_env['crt_libs'][local_env.Bit('debug')],
         '$LIB_DIR/base.lib',
         ],
     CPPDEFINES = [

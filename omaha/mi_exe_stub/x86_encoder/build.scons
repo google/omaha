@@ -32,8 +32,7 @@ bin_env.Append(
     LINKFLAGS=['/SUBSYSTEM:CONSOLE,5.01'],
     LIBS=[
         bin_env['atls_libs'][bin_env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[bin_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[bin_env.Bit('debug')],
+        bin_env['crt_libs'][bin_env.Bit('debug')],
         'kernel32.lib',
         'netapi32.lib',
         'psapi.lib',

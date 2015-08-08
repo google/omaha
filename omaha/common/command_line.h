@@ -53,7 +53,7 @@ struct CommandLineAppArgs {
 };
 
 // Values may be sent in pings or stats. Do not remove or reuse existing values.
-typedef enum CommandLineMode {
+enum CommandLineMode {
   COMMANDLINE_MODE_UNKNOWN = 0,
   COMMANDLINE_MODE_NOARGS = 1,
   COMMANDLINE_MODE_CORE = 2,

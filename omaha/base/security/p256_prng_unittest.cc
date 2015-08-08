@@ -18,7 +18,7 @@
 #include "p256_prng.h"
 #include "omaha/testing/unit_test.h"
 
-static const uint8_t expected[P256_PRNG_SIZE] = {
+static const uint8_t expected_buffer[P256_PRNG_SIZE] = {
   0x3c,0x0a,0x3f,0xdc,0x53,0x13,0xde,0x17,
   0x5f,0xad,0xc5,0x53,0xd7,0x6b,0xc6,0x28,
   0x40,0x37,0x23,0x3c,0x26,0x80,0xe0,0xcd,
@@ -46,6 +46,6 @@ TEST(P256_PRNG, P256_PRNG_Test) {
 
   // Compare prng output against known good output.
   // This catches endianess issues and algorigthm changes.
-  EXPECT_EQ(0, memcmp(rnd, expected, P256_PRNG_SIZE));
+  EXPECT_EQ(0, memcmp(rnd, expected_buffer, P256_PRNG_SIZE));
 }
 

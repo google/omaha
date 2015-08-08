@@ -48,7 +48,7 @@ class BreakpadConnection {
     if (FAILED(hr)) {
       return hr;
     }
-    _tprintf(_T("- Breakpad pipe name: \"%s\"\n"), pipe_name);
+    _tprintf(_T("- Breakpad pipe name: \"%s\"\n"), pipe_name.GetString());
 
     // Note: Since we bail out if the EH tries to run in-process, it doesn't
     // matter if we can write to this directory.  It just needs to be valid.

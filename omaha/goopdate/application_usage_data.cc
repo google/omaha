@@ -137,12 +137,12 @@ HRESULT ApplicationUsageData::ProcessMachineDidRun(const CString& app_guid) {
         // integrity IE key where IE can write to. Note that we cannot
         // use the IEGetWriteableHKCU function since this function assumes
         // that we are running with the user's credentials.
-        CString temp_key = AppendRegKeyPath(USERS_KEY,
+        CString li_temp_key = AppendRegKeyPath(USERS_KEY,
                                             sub_key_name,
                                             USER_REG_VISTA_LOW_INTEGRITY_HKCU);
         CString li_hkcu_name = AppendRegKeyPath(
                                    AppendRegKeyPath(
-                                       temp_key,
+                                       li_temp_key,
                                        sub_key_name,
                                        GOOPDATE_REG_RELATIVE_CLIENT_STATE),
                                    app_guid);

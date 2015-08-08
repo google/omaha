@@ -35,8 +35,7 @@ def BuildShowErrorActionDll(omaha_version_info):
 
   dll_env.Append(
       LIBS = [
-          ('libcmt.lib', 'libcmtd.lib')[dll_env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[dll_env.Bit('debug')],
+          dll_env['crt_libs'][dll_env.Bit('debug')],
           'msi.lib',
           ],
       RCFLAGS = [

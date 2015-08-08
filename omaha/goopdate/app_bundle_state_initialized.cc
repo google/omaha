@@ -185,7 +185,7 @@ HRESULT AppBundleStateInitialized::CreateAllInstalledApps(
            (_T("[Clients key without matching ClientState][%s]"), app_id));
 
     App* app = NULL;
-    HRESULT hr = AddInstalledApp(app_bundle, app_id, &app);
+    hr = AddInstalledApp(app_bundle, app_id, &app);
     if (FAILED(hr)) {
       CORE_LOG(LW, (_T("[AddInstalledApp failed processing app][%s]"), app_id));
     }

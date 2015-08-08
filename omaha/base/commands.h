@@ -47,8 +47,8 @@ enum CommandOptionType {
 #define COMMAND_OPTION_FLAGS_MASK   0x0FFF
 
 struct CommandOption {
-  void Init(const TCHAR* name, CommandOptionType type,
-            void* value, int max_value_len);
+  void Init(const TCHAR* name_param, CommandOptionType type_param,
+            void* value_param, int max_value_len_param);
   void Copy(const CommandOption& option);
 
   CString name;

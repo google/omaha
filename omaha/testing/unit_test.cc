@@ -179,12 +179,12 @@ CString GetPsexecDir() {
 // Must be called after SetPsexecDir().
 // Does not wait for the EULA accepting process to complete.
 bool AcceptPsexecEula() {
-  CString psexec_dir = GetPsexecDir();
-  if (psexec_dir.IsEmpty()) {
+  CString psexec_directory = GetPsexecDir();
+  if (psexec_directory.IsEmpty()) {
     return false;
   }
 
-  CString psexec_path = ConcatenatePath(psexec_dir, _T("psexec.exe"));
+  CString psexec_path = ConcatenatePath(psexec_directory, _T("psexec.exe"));
   return SUCCEEDED(System::StartProcessWithArgs(psexec_path,
                                                 _T("/accepteula")));
 }

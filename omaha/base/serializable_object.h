@@ -325,7 +325,7 @@ class SerializableObject {
 
     for (size_t i = 0; i < count; ++i) {
       T obj;
-      bool res = obj.DeserializeHelper(data, tail - *data, version);
+      res = obj.DeserializeHelper(data, tail - *data, version);
       if (!res)
         return false;
       list->push_back(obj);

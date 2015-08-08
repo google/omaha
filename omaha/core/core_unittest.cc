@@ -17,6 +17,7 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/error.h"
+#include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/thread.h"
@@ -127,9 +128,12 @@ TEST_F(CoreTest, Shutdown) {
 
 TEST_F(CoreTest, HasOSUpgraded) {
   const TCHAR* const kAppGuid1 = _T("{3B1A3CCA-0525-4418-93E6-A0DB3398EC9B}");
-  const TCHAR* const kCmdId1 = _T("command one");
-  const TCHAR* const kCmdLineExit0 =
-      _T("cmd.exe /c \"ping localhost && exit 0\"");
+  const TCHAR* const kCmdId1 = _T("CreateOSVersionsFileOnOSUpgrade");
+  const TCHAR* const kCmdLineCreateOSVersionsFile =
+      _T("cmd.exe /c \"echo %1 > %1 && exit 0\"");
+  const TCHAR* const kCmdId2 = _T("CreateHardcodedFileOnOSUpgrade");
+  const TCHAR* const kCmdLineCreateHardcodedFile =
+      _T("cmd.exe /c \"echo HardcodedFile > HardcodedFile && exit 0\"");
 
   // Signal existing core instances to shutdown, otherwise new instances
   // can't start.
@@ -149,12 +153,12 @@ TEST_F(CoreTest, HasOSUpgraded) {
   EXPECT_SUCCEEDED(app_registry_utils::SetLastOSVersion(is_machine_,
                                                         &oldmajor));
 
-  // Add in an App with a registered OSUpgrade command.
+  // Add in an App with OSUpgrade commands.
   omaha::AppCommandTestBase::CreateAppClientKey(kAppGuid1, is_machine_);
-  omaha::AppCommandTestBase::CreateAutoRunOnOSUpgradeCommand(kAppGuid1,
-                                                             is_machine_,
-                                                             kCmdId1,
-                                                             kCmdLineExit0);
+  omaha::AppCommandTestBase::CreateAutoRunOnOSUpgradeCommand(
+      kAppGuid1, is_machine_, kCmdId1, kCmdLineCreateOSVersionsFile);
+  omaha::AppCommandTestBase::CreateAutoRunOnOSUpgradeCommand(
+      kAppGuid1, is_machine_, kCmdId2, kCmdLineCreateHardcodedFile);
 
   // Start a thread to run the core, signal the core to exit, and wait a while
   // for the thread to exit. Terminate the thread if it is still running.
@@ -170,7 +174,27 @@ TEST_F(CoreTest, HasOSUpgraded) {
     thread.Terminate(-1);
   }
 
+  CString os_upgrade_string;
+  for (int i = 0; i < 2; ++i) {
+    SafeCStringAppendFormat(&os_upgrade_string, _T("%u.%u.%u.%u.%u%s"),
+                            oldmajor.dwMajorVersion + i,
+                            oldmajor.dwMinorVersion,
+                            oldmajor.dwBuildNumber,
+                            oldmajor.wServicePackMajor,
+                            oldmajor.wServicePackMinor,
+                            i < 1 ? _T("-") : _T(""));
+  }
+
+  CString os_upgrade_file = ConcatenatePath(GetCurrentDir(), os_upgrade_string);
+  EXPECT_TRUE(File::Exists(os_upgrade_file));
+
+  CString hardcoded_file =
+      ConcatenatePath(GetCurrentDir(), _T("HardcodedFile"));
+  EXPECT_TRUE(File::Exists(hardcoded_file));
+
   // Cleanup.
+  EXPECT_SUCCEEDED(File::Remove(os_upgrade_file));
+  EXPECT_SUCCEEDED(File::Remove(hardcoded_file));
   EXPECT_HRESULT_SUCCEEDED(ResetShutdownEvent());
   omaha::AppCommandTestBase::DeleteAppClientKey(kAppGuid1, is_machine_);
   EXPECT_SUCCEEDED(RegKey::DeleteValue(

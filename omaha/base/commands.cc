@@ -129,12 +129,14 @@ HRESULT ConvertValue(const TCHAR* str_value, CString* value, bool to_unescape) {
 //
 // Struct CommandOption
 //
-void CommandOption::Init(const TCHAR* name, CommandOptionType type,
-                         void* value, int max_value_len) {
-  this->name = name;
-  this->type = type;
-  this->value = value;
-  this->max_value_len = max_value_len;
+void CommandOption::Init(const TCHAR* name_param,
+                         CommandOptionType type_param,
+                         void* value_param,
+                         int max_value_len_param) {
+  name = name_param;
+  type = type_param;
+  value = value_param;
+  max_value_len = max_value_len_param;
 }
 
 void CommandOption::Copy(const CommandOption& option) {

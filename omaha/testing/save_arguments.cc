@@ -37,7 +37,7 @@ void HandleWin32ErrorAndExit(const TCHAR* method) {
   error_message.Format(_T("%s failed with error %i."), method, res);
 
 
-  _tprintf(_T("%s\n"), error_message);
+  _tprintf(_T("%s\n"), error_message.GetString());
 
   CString debug_message;
   debug_message.Format(_T("[SaveArguments.exe][%s]"), error_message);

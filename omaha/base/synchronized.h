@@ -35,6 +35,7 @@ namespace omaha {
 #define MAKE_NAME2(x, y) x##y
 #define MAKE_NAME1(x, y) MAKE_NAME2(x, y)
 #define MAKE_NAME(x) MAKE_NAME1(x, __COUNTER__)
+#define MAKE_NAME_LINE(x) MAKE_NAME1(x, __LINE__)
 
 // Declare the interface in implement mutual
 // exclusion. For in process mutual exclusion
@@ -92,8 +93,13 @@ class AutoSync {
 
 //
 #define __mutexScope(lock) AutoSync MAKE_NAME(hiddenLock)(lock)
+
+// Avoids the compiler warning C4456: declaration of 'hiddenBlockLock' hides
+// previous local declaration, which occurs in the case of nested __mutexBlock
+// statements.
 #define __mutexBlock(lock) \
-    for (AutoSync hiddenLock(lock); hiddenLock.FirstTime(); )
+    for (AutoSync MAKE_NAME_LINE(hiddenBlockLock)(lock); \
+                  MAKE_NAME_LINE(hiddenBlockLock).FirstTime(); )
 
 // GLock stands for global lock.
 // Implementaion of Lockable to allow mutual exclusion

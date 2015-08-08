@@ -123,7 +123,7 @@ HRESULT CancelBitsJob(IBackgroundCopyJob* job) {
     if (SUCCEEDED(hr) &&
         job_state != BG_JOB_STATE_CANCELLED &&
         job_state != BG_JOB_STATE_ACKNOWLEDGED) {
-      HRESULT hr = job->Cancel();
+      hr = job->Cancel();
       if (FAILED(hr)) {
         NET_LOG(LW, (_T("[CancelBitsJob failed][0x%08x]"), hr));
       }
@@ -141,7 +141,7 @@ HRESULT PauseBitsJob(IBackgroundCopyJob* job) {
         job_state != BG_JOB_STATE_TRANSFERRED &&
         job_state != BG_JOB_STATE_ACKNOWLEDGED &&
         job_state != BG_JOB_STATE_CANCELLED) {
-      HRESULT hr = job->Suspend();
+      hr = job->Suspend();
       if (FAILED(hr)) {
         NET_LOG(LW, (_T("[PauseBitsJob failed][0x%08x]"), hr));
       }
@@ -156,7 +156,7 @@ HRESULT ResumeBitsJob(IBackgroundCopyJob* job) {
     BG_JOB_STATE job_state = BG_JOB_STATE_ERROR;
     HRESULT hr = job->GetState(&job_state);
     if (SUCCEEDED(hr) && job_state == BG_JOB_STATE_SUSPENDED) {
-      HRESULT hr = job->Suspend();
+      hr = job->Suspend();
       if (FAILED(hr)) {
         NET_LOG(LW, (_T("[ResumeBitsJob failed][0x%08x]"), hr));
       }

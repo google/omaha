@@ -52,7 +52,8 @@ int _tmain(int argc, TCHAR* argv[]) {
   if (!File::Exists(path)) {
     HRESULT hr = CreateDir(path, NULL);
     if (FAILED(hr)) {
-      _tprintf(_T("Could not create dir %s\n"), path);
+      _tprintf(_T("Could not create dir %s\n"),
+               static_cast<const TCHAR*>(path));
       return hr;
     }
   }
@@ -69,7 +70,8 @@ int _tmain(int argc, TCHAR* argv[]) {
                         append);
   if (hr == E_INVALIDARG) {
     _tprintf(_T("The tag_string %s contains invalid characters."), argv[3]);
-    _tprintf(_T("  We accept the following ATL RegEx '[-%{}/\a&=._]*'\n"));
+    _tprintf(_T("%s"),
+             _T("  We accept the following ATL RegEx '[-%{}/\a&=._]*'\n"));
     return hr;
   }
 

@@ -19,7 +19,11 @@
 #include <atlconv.h>
 #include <atlsecurity.h>
 #include <algorithm>
+#if _MSC_VER >= 1900
+#include <unordered_set>
+#else
 #include <hash_set>
+#endif
 #include <vector>
 #include "base/error.h"
 #include "base/scoped_ptr.h"
@@ -48,6 +52,12 @@ using omaha::encrypt::EncryptData;
 using omaha::encrypt::DecryptData;
 
 namespace omaha {
+
+#if _MSC_VER >= 1900
+using std::unordered_set;
+#else
+template <typename T> using unordered_set = stdext::hash_set<T>;
+#endif
 
 // Computes the hash value of a ProxyConfig object. Names in the stdext
 // namespace are not currently part of the ISO C++ standard.
@@ -466,7 +476,7 @@ void NetworkConfig::RemoveDuplicates(std::vector<ProxyConfig>* config) {
   std::vector<ProxyConfig> input(*config);
   config->clear();
 
-  typedef stdext::hash_set<size_t> Keys;
+  typedef unordered_set<size_t> Keys;
   Keys keys;
   for (size_t i = 0; i != input.size(); ++i) {
     const size_t hash = hash_value(input[i]);

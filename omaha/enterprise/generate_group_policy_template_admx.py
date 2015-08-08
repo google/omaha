@@ -1,0 +1,685 @@
+#!/usr/bin/python2.4
+#
+# Copyright 2015 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+"""Generates a Group Policy admx/adml template file for Google Update policies.
+
+The resulting strings and files use CRLF as required by gpedit.msc.
+
+To unit test this module, just run the file from the command line.
+"""
+
+import codecs
+import filecmp
+import os
+import re
+import sys
+
+
+MAIN_POLICY_KEY = r'Software\Policies\Google\Update'
+
+ADMX_HEADER = '<policyDefinitions revision="1.0" schemaVersion="1.0">'
+
+ADMX_ENVIRONMENT = '''
+  <policyNamespaces>
+    <target namespace="Google.Policies.Update" prefix="update"/>
+    <using prefix="windows" namespace="Microsoft.Policies.Windows" />
+  </policyNamespaces>
+  <supersededAdm fileName="GoogleUpdate.adm" />
+  <resources minRequiredRevision="1.0" />
+  <supportedOn>
+    <definitions>
+      <definition name="Sup_GoogleUpdate1_2_145_5"
+          displayName="$(string.Sup_GoogleUpdate1_2_145_5)" />
+      <definition name="Sup_GoogleUpdate1_3_21_81"
+          displayName="$(string.Sup_GoogleUpdate1_3_21_81)" />
+      <definition name="Sup_GoogleUpdate1_3_26_0"
+          displayName="$(string.Sup_GoogleUpdate1_3_26_0)" />
+    </definitions>
+  </supportedOn>
+'''
+
+
+ADMX_CATEGORIES = '''
+  <categories>
+    <category name="Cat_Google" displayName="$(string.Cat_Google)" />
+    <category name="Cat_GoogleUpdate" displayName="$(string.Cat_GoogleUpdate)"
+        explainText="$(string.Explain_GoogleUpdate)">
+      <parentCategory ref="Cat_Google" />
+    </category>
+    <category name="Cat_Preferences" displayName="$(string.Cat_Preferences)"
+        explainText="$(string.Explain_Preferences)">
+      <parentCategory ref="Cat_GoogleUpdate" />
+    </category>
+    <category name="Cat_ProxyServer" displayName="$(string.Cat_ProxyServer)">
+      <parentCategory ref="Cat_GoogleUpdate" />
+    </category>
+    <category name="Cat_Applications" displayName="$(string.Cat_Applications)"
+        explainText="$(string.Explain_Applications)">
+      <parentCategory ref="Cat_GoogleUpdate" />
+    </category>
+%(AppCategorList)s
+  </categories>
+'''
+
+
+ADMX_POLICIES = '''
+  <policies>
+    <policy name="Pol_AutoUpdateCheckPeriod" class="Machine"
+        displayName="$(string.Pol_AutoUpdateCheckPeriod)"
+        explainText="$(string.Explain_AutoUpdateCheckPeriod)"
+        presentation="$(presentation.Pol_AutoUpdateCheckPeriod)"
+        key="%(RootPolicyKey)s"
+        valueName="AutoUpdateCheckPeriodMinutes">
+      <parentCategory ref="Cat_Preferences" />
+      <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
+      <elements>
+        <decimal id="Part_AutoUpdateCheckPeriod"
+            key="%(RootPolicyKey)s"
+            valueName="AutoUpdateCheckPeriodMinutes"
+            required="true" minValue="0" maxValue="43200" />
+      </elements>
+    </policy>
+    <policy name="Pol_PayloadType" class="Machine"
+        displayName="$(string.Pol_PayloadType)"
+        explainText="$(string.Explain_PayloadType)"
+        presentation="$(presentation.Pol_PayloadType)"
+        key="%(RootPolicyKey)s">
+      <parentCategory ref="Cat_Preferences" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_26_0" />
+      <elements>
+        <enum id="Part_PayloadType" key="%(RootPolicyKey)s"
+            valueName="PayloadType">
+          <item displayName="$(string.PayloadType_DropDown)">
+            <value>
+              <string>cacheable</string>
+            </value>
+          </item>
+        </enum>
+      </elements>
+    </policy>
+    <policy name="Pol_ProxyMode" class="Machine"
+        displayName="$(string.Pol_ProxyMode)"
+        explainText="$(string.Explain_ProxyMode)"
+        presentation="$(presentation.Pol_ProxyMode)"
+        key="%(RootPolicyKey)s" valueName="ProxyMode">
+      <parentCategory ref="Cat_ProxyServer" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_21_81" />
+      <elements>
+        <enum id="Part_ProxyMode" key="%(RootPolicyKey)s"
+            valueName="ProxyMode">
+          <item displayName="$(string.ProxyDisabled_DropDown)">
+            <value>
+              <string>direct</string>
+            </value>
+          </item>
+          <item displayName="$(string.ProxyAutoDetect_DropDown)">
+            <value>
+              <string>auto_detect</string>
+            </value>
+          </item>
+          <item displayName="$(string.ProxyPacScript_DropDown)">
+            <value>
+              <string>pac_script</string>
+            </value>
+          </item>
+          <item displayName="$(string.ProxyFixedServers_DropDown)">
+            <value>
+              <string>fixed_servers</string>
+            </value>
+          </item>
+          <item displayName="$(string.ProxyUseSystem_DropDown)">
+            <value>
+              <string>system</string>
+            </value>
+          </item>
+        </enum>
+      </elements>
+    </policy>
+    <policy name="Pol_ProxyServer" class="Machine"
+        displayName="$(string.Pol_ProxyServer)"
+        explainText="$(string.Explain_ProxyServer)"
+        presentation="$(presentation.Pol_ProxyServer)"
+        key="%(RootPolicyKey)s">
+      <parentCategory ref="Cat_ProxyServer" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_21_81" />
+      <elements>
+        <text id="Part_ProxyServer" valueName="ProxyServer" />
+      </elements>
+    </policy>
+    <policy name="Pol_ProxyPacUrl" class="Machine"
+        displayName="$(string.Pol_ProxyPacUrl)"
+        explainText="$(string.Explain_ProxyPacUrl)"
+        presentation="$(presentation.Pol_ProxyPacUrl)"
+        key="%(RootPolicyKey)s">
+      <parentCategory ref="Cat_ProxyServer" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_21_81" />
+      <elements>
+        <text id="Part_ProxyPacUrl" valueName="ProxyPacUrl" />
+      </elements>
+    </policy>
+
+    <policy name="Pol_DefaultAllowInstallation" class="Machine"
+        displayName="$(string.Pol_DefaultAllowInstallation)"
+        explainText="$(string.Explain_DefaultAllowInstallation)"
+        presentation="$(presentation.Pol_DefaultAllowInstallation)"
+        key="%(RootPolicyKey)s" valueName="InstallDefault">
+      <parentCategory ref="Cat_Applications" />
+      <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
+    <policy name="Pol_DefaultUpdatePolicy" class="Machine"
+        displayName="$(string.Pol_DefaultUpdatePolicy)"
+        explainText="$(string.Explain_DefaultUpdatePolicy)"
+        presentation="$(presentation.Pol_DefaultUpdatePolicy)"
+        key="%(RootPolicyKey)s" valueName="UpdateDefault">
+      <parentCategory ref="Cat_Applications" />
+      <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
+      <elements>
+        <enum id="Part_UpdatePolicy" key="%(RootPolicyKey)s"
+            valueName="UpdateDefault" required="true">
+          <item displayName="$(string.Name_UpdatesEnabled)">
+            <value>
+              <decimal value="1" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_ManualUpdatesOnly)">
+            <value>
+              <decimal value="2" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_AutomaticUpdatesOnly)">
+            <value>
+              <decimal value="3" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_UpdatesDisabled)">
+            <value>
+              <decimal value="0" />
+            </value>
+          </item>
+        </enum>
+      </elements>
+    </policy>
+%(AppPolicyList)s
+  </policies>
+'''
+
+
+ADMX_APP_POLICY_TEMPLATE = '''\
+    <policy name="Pol_AllowInstallation%(AppLegalId)s" class="Machine"
+        displayName="$(string.Pol_AllowInstallation)"
+        explainText="$(string.Explain_Install%(AppLegalId)s)"
+        presentation="$(presentation.Pol_AllowInstallation)"
+        key="%(RootPolicyKey)s"
+        valueName="Install%(AppGuid)s">
+      <parentCategory ref="Cat_%(AppLegalId)s" />
+      <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
+    <policy name="Pol_UpdatePolicy%(AppLegalId)s" class="Machine"
+        displayName="$(string.Pol_UpdatePolicy)"
+        explainText="$(string.Explain_AutoUpdate%(AppLegalId)s)"
+        presentation="$(presentation.Pol_UpdatePolicy)"
+        key="%(RootPolicyKey)s">
+      <parentCategory ref="Cat_%(AppLegalId)s" />
+      <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
+      <elements>
+        <enum id="Part_UpdatePolicy"
+             valueName="Update%(AppGuid)s" required="true">
+          <item displayName="$(string.Name_UpdatesEnabled)">
+            <value>
+              <decimal value="1" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_ManualUpdatesOnly)">
+            <value>
+              <decimal value="2" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_AutomaticUpdatesOnly)">
+            <value>
+              <decimal value="3" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_UpdatesDisabled)">
+            <value>
+              <decimal value="0" />
+            </value>
+          </item>
+        </enum>
+      </elements>
+    </policy>'''
+
+
+ADMX_FOOTER = '</policyDefinitions>'
+
+
+def _CreateLegalIdentifier(input_string):
+  """Converts input_string to a legal identifier for ADMX/ADML files.
+
+  Changes some characters that do not necessarily cause problems and may not
+  handle all cases.
+
+  Args:
+    input_string: Text to convert to a legal identifier.
+
+  Returns:
+    String containing a legal identifier based on input_string.
+  """
+  return re.sub(r'[\W_]', '', input_string)
+
+
+def GenerateGroupPolicyTemplateAdmx(apps):
+  """Generates a Group Policy template (ADMX format)for the specified apps.
+
+  Replaces LF in strings above with CRLF as required by gpedit.msc.
+  When writing the resulting contents to a file, use binary mode to ensure the
+  CRLFs are preserved.
+
+  Args:
+    apps: A list of tuples containing information about each app.
+        Each element of the list is a tuple of:
+          * app name
+          * app ID
+          * optional string to append to the auto-update explanation
+            - Should start with a space or double new line.
+
+  Returns:
+    String containing the contents of the .ADMX file.
+  """
+
+  def _GenerateCategories(apps):
+    """Generates category string for each of the specified apps.
+
+    Args:
+      apps: list of tuples containing information about the apps.
+
+    Returns:
+      String containing concatenated copies of the category string for each app
+      in apps, each populated with the appropriate app-specific strings.
+    """
+
+    admx_app_category_template = (
+        '    <category name="Cat_%(AppLegalId)s"\n'
+        '        displayName="$(string.Cat_%(AppLegalId)s)">\n'
+        '      <parentCategory ref="Cat_Applications" />\n'
+        '    </category>')
+
+    app_category_list = []
+    for app in apps:
+      app_name = app[0]
+      app_category_list.append(admx_app_category_template % {
+          'AppLegalId': _CreateLegalIdentifier(app_name)
+          })
+
+    return ADMX_CATEGORIES % {'AppCategorList': '\n'.join(app_category_list)}
+
+  def _GeneratePolicies(apps):
+    """Generates policy string for each of the specified apps.
+
+    Args:
+      apps: list of tuples containing information about the apps.
+
+    Returns:
+      String containing concatenated copies of the policy template for each app
+      in apps, each populated with the appropriate app-specific strings.
+    """
+
+    app_policy_list = []
+    for app in apps:
+      app_name, app_guid, _ = app
+      app_policy_list.append(ADMX_APP_POLICY_TEMPLATE % {
+          'AppLegalId': _CreateLegalIdentifier(app_name),
+          'AppGuid': app_guid,
+          'RootPolicyKey': MAIN_POLICY_KEY,
+          })
+
+    return ADMX_POLICIES % {
+        'AppPolicyList': '\n'.join(app_policy_list),
+        'RootPolicyKey': MAIN_POLICY_KEY,
+        }
+
+  target_contents = [
+      ADMX_HEADER,
+      ADMX_ENVIRONMENT,
+      _GenerateCategories(apps),
+      _GeneratePolicies(apps),
+      ADMX_FOOTER,
+      ]
+
+  return ''.join(target_contents)
+
+
+ADML_HEADER = '''\
+<policyDefinitionResources revision="1.0" schemaVersion="1.0">
+'''
+
+
+ADML_ENVIRONMENT = '''\
+  <displayName>
+  </displayName>
+  <description>
+  </description>
+'''
+
+
+ADML_PREDEFINED_STRINGS_TABLE_EN = [
+    ('Sup_GoogleUpdate1_2_145_5', 'At least Google Update 1.2.145.5'),
+    ('Sup_GoogleUpdate1_3_21_81', 'At least Google Update 1.3.21.81'),
+    ('Sup_GoogleUpdate1_3_26_0', 'At least Google Update 1.3.26.0'),
+    ('Cat_Google', 'Google'),
+    ('Cat_GoogleUpdate', 'Google Update'),
+    ('Cat_Preferences', 'Preferences'),
+    ('Cat_ProxyServer', 'Proxy Server'),
+    ('Cat_Applications', 'Applications'),
+    ('Pol_AutoUpdateCheckPeriod', 'Auto-update check period override'),
+    ('Pol_PayloadType', 'Download URL class override'),
+    ('PayloadType_DropDown', 'Cacheable download URLs'),
+    ('Pol_ProxyMode', 'Choose how to specify proxy server settings'),
+    ('Pol_ProxyServer', 'Address or URL of proxy server'),
+    ('Pol_ProxyPacUrl', 'URL to a proxy .pac file'),
+    ('Pol_DefaultAllowInstallation', 'Allow installation default'),
+    ('Pol_AllowInstallation', 'Allow installation'),
+    ('Pol_DefaultUpdatePolicy', 'Update policy override default'),
+    ('Pol_UpdatePolicy', 'Update policy override'),
+    ('Part_AutoUpdateCheckPeriod', 'Minutes between update checks'),
+    ('Part_ProxyMode', 'Choose how to specify proxy server settings'),
+    ('Part_ProxyServer', 'Address or URL of proxy server'),
+    ('Part_ProxyPacUrl', 'URL to a proxy .pac file'),
+    ('Part_UpdatePolicy', 'Policy'),
+    ('Name_UpdatesEnabled', 'Always allow updates (recommended)'),
+    ('Name_ManualUpdatesOnly', 'Manual updates only'),
+    ('Name_AutomaticUpdatesOnly', 'Automatic silent updates only'),
+    ('Name_UpdatesDisabled', 'Updates disabled'),
+    ('ProxyDisabled_DropDown', 'Never use a proxy'),
+    ('ProxyAutoDetect_DropDown', 'Auto detect proxy settings'),
+    ('ProxyPacScript_DropDown', 'Use a .pac proxy script'),
+    ('ProxyFixedServers_DropDown', 'Use fixed proxy servers'),
+    ('ProxyUseSystem_DropDown', 'Use system proxy settings'),
+    ('Explain_GoogleUpdate',
+     'Policies to control the installation and updating of Google applications '
+     'that use Google Update/Google Installer.'),
+    ('Explain_Preferences', 'General policies for Google Update.'),
+    ('Explain_AutoUpdateCheckPeriod',
+     'Minimum number of minutes between automatic update checks.\n\n'
+     'Set the value to 0 if you want to disable all auto-update checks '
+     '(not recommended).'),
+    ('Explain_PayloadType',
+     'If enabled, the Google Update server will attempt to provide '
+     'cache-friendly URLs for update payloads in its responses.'),
+    ('Explain_ProxyMode',
+     'Allows you to specify the proxy server used by Google Update.\n\n'
+     'If you choose to never use a proxy server and always connect directly, '
+     'all other options are ignored.\n\n'
+     'If you choose to use system proxy settings or auto detect the proxy '
+     'server, all other options are ignored.\n\n'
+     'If you choose fixed server proxy mode, you can specify further options '
+     'in \'Address or URL of proxy server\'.\n\n'
+     'If you choose to use a .pac proxy script, you must specify the URL to '
+     'the script in \'URL to a proxy .pac file\'.'),
+    ('Explain_ProxyServer',
+     'You can specify the URL of the proxy server here.\n\n'
+     'This policy only takes effect if you have selected manual proxy settings '
+     'at \'Choose how to specify proxy server settings\'.'),
+    ('Explain_ProxyPacUrl',
+     'You can specify a URL to a proxy .pac file here.\n\n'
+     'This policy only takes effect if you have selected manual proxy settings '
+     'at \'Choose how to specify proxy server settings\'.'),
+    ('Explain_Applications',
+     'Policies for individual applications.\n\n'
+     'An updated ADMX/ADML template will be required to support '
+     'Google applications released in the future.'),
+    ('Explain_DefaultAllowInstallation',
+     'Specifies the default behavior for whether Google software can be '
+     'installed using Google Update/Google Installer.\n\n'
+     'Can be overridden by the "Allow installation" for individual '
+     'applications.\n\n'
+     'Only affects installation of Google software using Google Update/Google '
+     'Installer. Cannot prevent running the application installer directly or '
+     'installation of Google software that does not use Google Update/Google '
+     'Installer for installation.'),
+    ('Explain_DefaultUpdatePolicy',
+     'Specifies the default policy for software updates from Google.\n\n'
+     'Can be overridden by the "Update policy override" for individual '
+     'applications.\n\n'
+     'Options:\n'
+     ' - Always allow updates: Updates are always applied when found, either '
+     'by periodic update check or by a manual update check.\n'
+     ' - Manual updates only: Updates are only applied when the user does a '
+     'manual update check. (Not all apps provide an interface for this.)\n'
+     ' - Automatic silent updates only: Updates are only applied when they are '
+     'found via the periodic update check.\n'
+     ' - Updates disabled: Never apply updates.\n\n'
+     'If you select manual updates, you should periodically check for updates '
+     'using each application\'s manual update mechanism if available. If you '
+     'disable updates, you should periodically check for updates and '
+     'distribute them to users.\n\n'
+     'Only affects updates for Google software that uses Google Update for '
+     'updates. Does not prevent auto-updates of Google software that does not '
+     'use Google Update for updates.\n\n'
+     'Updates for Google Update are not affected by this setting; Google '
+     'Update will continue to update itself while it is installed.\n\n'
+     'WARNING: Disabing updates will also prevent updates of any new Google '
+     'applications released in the future, possibly including dependencies for '
+     'future versions of installed applications.'),
+]
+
+
+ADML_PRESENTATIONS  = '''\
+      <presentation id="Pol_AutoUpdateCheckPeriod">
+        <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="1400"
+            spinStep="60">Minutes between update checks</decimalTextBox>
+      </presentation>
+      <presentation id="Pol_PayloadType">
+        <dropdownList refId="Part_PayloadType"
+            defaultItem="0">Type of download URL to request</dropdownList>
+      </presentation>
+      <presentation id="Pol_ProxyMode">
+        <dropdownList refId="Part_ProxyMode"
+            defaultItem="0">Choose how to specify proxy server settings
+        </dropdownList>
+      </presentation>
+      <presentation id="Pol_ProxyServer">
+        <textBox refId="Part_ProxyServer">
+          <label>Address or URL of proxy server</label>
+          <defaultValue></defaultValue>
+        </textBox>
+      </presentation>
+      <presentation id="Pol_ProxyPacUrl">
+        <textBox refId="Part_ProxyPacUrl">
+          <label>URL to a proxy .pac file</label>
+          <defaultValue></defaultValue>
+        </textBox>
+      </presentation>
+      <presentation id="Pol_DefaultAllowInstallation" />
+      <presentation id="Pol_DefaultUpdatePolicy">
+        <dropdownList refId="Part_UpdatePolicy"
+            defaultItem="0">Policy</dropdownList>
+      </presentation>
+      <presentation id="Pol_AllowInstallation" />
+      <presentation id="Pol_UpdatePolicy">
+        <dropdownList refId="Part_UpdatePolicy"
+            defaultItem="0">Policy</dropdownList>
+      </presentation>\
+'''
+
+
+ADML_RESOURCE_TABLE_TEMPLATE = '''
+  <resources>
+    <stringTable>
+%s
+    </stringTable>
+    <presentationTable>
+%s
+    </presentationTable>
+  </resources>
+'''
+
+
+ADML_FOOTER = '</policyDefinitionResources>'
+
+
+def GenerateGroupPolicyTemplateAdml(apps):
+  """Generates a Group Policy template (ADML format)for the specified apps.
+
+  Replaces LF in strings above with CRLF as required by gpedit.msc.
+  When writing the resulting contents to a file, use binary mode to ensure the
+  CRLFs are preserved.
+
+  Args:
+    apps: A list of tuples containing information about each app.
+        Each element of the list is a tuple of:
+          * app name
+          * app ID
+          * optional string to append to the auto-update explanation
+            - Should start with a space or double new line.
+
+  Returns:
+    String containing the contents of the .ADML file.
+  """
+
+  string_definition_list = ADML_PREDEFINED_STRINGS_TABLE_EN[:]
+  for app in apps:
+    app_name = app[0]
+    app_legal_id = _CreateLegalIdentifier(app_name)
+    app_additional_help_msg = app[2]
+
+    app_category = ('Cat_' + app_legal_id, app_name)
+    string_definition_list.append(app_category)
+
+    app_install_policy_explanation = (
+        'Explain_Install' + app_legal_id,
+        'Specifies whether %s can be installed using Google Update/Google '
+        'Installer.\n\n'
+        'If this policy is not configured, %s can be installed as specified '
+        'by "Allow installation default".' % (app_name, app_name))
+    string_definition_list.append(app_install_policy_explanation)
+
+    app_auto_update_policy_explanation = (
+        'Explain_AutoUpdate' + app_legal_id,
+        'Specifies how Google Update handles available %s updates '
+        'from Google.\n\n'
+        'If this policy is not configured, Google Update handles available '
+        'updates as specified by "Update policy override default".\n\n'
+        'Options:\n'
+        ' - Always allow updates: Updates are always applied when found, '
+        'either by periodic update check or by a manual update check.\n'
+        ' - Manual updates only: Updates are only applied when the user '
+        'does a manual update check. (Not all apps provide an interface '
+        ' for this.)\n'
+        ' - Automatic silent updates only: Updates are only applied when '
+        'they are found via the periodic update check.\n'
+        ' - Updates disabled: Never apply updates.\n\n'
+        'If you select manual updates, you should periodically check for '
+        'updates using the application\'s manual update mechanism if '
+        'available. If you disable updates, you should periodically check '
+        'for updates and distribute them to users.%s'
+        % (app_name, app_additional_help_msg))
+    string_definition_list.append(app_auto_update_policy_explanation)
+
+  app_resource_strings = []
+  for entry in string_definition_list:
+    app_resource_strings.append(
+        '      <string id="%s">%s</string>' % (entry[0], entry[1]))
+
+  app_resource_tables = (ADML_RESOURCE_TABLE_TEMPLATE %
+      ('\n'.join(app_resource_strings), ADML_PRESENTATIONS))
+
+  target_contents = [
+      ADML_HEADER,
+      ADML_ENVIRONMENT,
+      app_resource_tables,
+      ADML_FOOTER,
+      ]
+
+  return ''.join(target_contents)
+
+
+def WriteGroupPolicyTemplateAdmx(target_path, apps):
+  """Writes a Group Policy template (ADM format)for the specified apps.
+
+  The file is UTF-16 and contains CRLF on all platforms.
+
+  Args:
+    target_path: Output path of the .ADM template file.
+    apps: A list of tuples containing information about each app.
+        Each element of the list is a tuple of:
+          * app name
+          * app ID
+          * optional string to append to the auto-update explanation
+            - Should start with a space or double new line.
+  """
+
+  contents = GenerateGroupPolicyTemplateAdmx(apps)
+  f = codecs.open(target_path, 'wb', 'utf-16')
+  f.write(contents)
+  f.close()
+
+
+def WriteGroupPolicyTemplateAdml(target_path, apps):
+  """Writes a Group Policy template (ADM format)for the specified apps.
+
+  The file is UTF-16 and contains CRLF on all platforms.
+
+  Args:
+    target_path: Output path of the .ADM template file.
+    apps: A list of tuples containing information about each app.
+        Each element of the list is a tuple of:
+          * app name
+          * app ID
+          * optional string to append to the auto-update explanation
+            - Should start with a space or double new line.
+  """
+
+  contents = GenerateGroupPolicyTemplateAdml(apps)
+  f = codecs.open(target_path, 'wb', 'utf-16')
+  f.write(contents)
+  f.close()
+
+
+# Run a unit test when the module is run directly.
+if __name__ == '__main__':
+  TEST_APPS = [
+      ('Google Test Foo',
+       '{D6B08267-B440-4c85-9F79-E195E80D9937}',
+       ' Check http://www.google.com/test_foo/.'),
+      (u'Google User Test Foo\u00a9\u00ae\u2122',
+       '{104844D6-7DDA-460b-89F0-FBF8AFDD0A67}',
+       ' Check http://www.google.com/user_test_foo/.'),
+      ]
+  module_dir = os.path.abspath(os.path.dirname(__file__))
+  gold_path = os.path.join(module_dir, 'test_gold.admx')
+  output_path = os.path.join(module_dir, 'test_out.admx')
+
+  WriteGroupPolicyTemplateAdmx(output_path, TEST_APPS)
+  admx_files_equal = filecmp.cmp(gold_path, output_path, shallow=False)
+  if not admx_files_equal:
+    print 'FAIL: ADMX files are not equal.'
+
+  gold_path = os.path.join(module_dir, 'test_gold.adml')
+  output_path = os.path.join(module_dir, 'test_out.adml')
+  WriteGroupPolicyTemplateAdml(output_path, TEST_APPS)
+  adml_files_equal = filecmp.cmp(gold_path, output_path, shallow=False)
+  if not adml_files_equal:
+    print 'FAIL: ADML files are not equal.'
+
+  if admx_files_equal and adml_files_equal:
+    print 'SUCCESS. contents are equal'
+  else:
+    sys.exit(-1)

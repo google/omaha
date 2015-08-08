@@ -1550,7 +1550,7 @@ HRESULT GetMacHashesViaNDIS(std::vector<CString>* mac_hashes) {
                  arraysize(device_name),
                  arraysize(device_name) - 1,
                  _T("\\\\.\\%s"),
-                 adapter_name);
+                 adapter_name.GetString());
 
     scoped_hfile file_handle(::CreateFile(device_name,
                                           GENERIC_READ,

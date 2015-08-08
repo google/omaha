@@ -366,7 +366,7 @@ HRESULT Setup::DoProtectedInstall(bool set_keepalive) {
     //  2) Fail the self-update. Leave the user on this version. Would need to
     //     figure out a way to avoid updating the user every 5 hours.
 
-    HRESULT hr = DoProtectedGoogleUpdateInstall(&setup_files);
+    hr = DoProtectedGoogleUpdateInstall(&setup_files);
     if (FAILED(hr)) {
       SETUP_LOG(LE, (_T("[DoProtectedGoogleUpdateInstall fail][0x%08x]"), hr));
       // Do not return until rolling back and releasing the events.
@@ -912,7 +912,7 @@ HRESULT Setup::WaitForOtherInstancesToExit(const Pids& pids) {
   // Close the handles.
   for (size_t i = 0; i < handles.size(); ++i) {
     if (!::CloseHandle(handles[i])) {
-      HRESULT hr = HRESULTFromLastError();
+      hr = HRESULTFromLastError();
       SETUP_LOG(LEVEL_WARNING, (_T("[CloseHandle failed][0x%08x]"), hr));
     }
   }
@@ -1002,12 +1002,12 @@ HRESULT Setup::GetPidsToWaitForUsingCommandLine(Pids* pids) const {
   };
   for (size_t i = 0; i < arraysize(kCrashHandlerFileNames); ++i) {
     std::vector<uint32> matching_pids;
-    HRESULT hr = Process::FindProcesses(0,
-                                        kCrashHandlerFileNames[i],
-                                        true,
-                                        user_sid,
-                                        std::vector<CString>(),
-                                        &matching_pids);
+    hr = Process::FindProcesses(0,
+                                kCrashHandlerFileNames[i],
+                                true,
+                                user_sid,
+                                std::vector<CString>(),
+                                &matching_pids);
     if (SUCCEEDED(hr)) {
       crash_handler_process_ids.insert(crash_handler_process_ids.end(),
                                        matching_pids.begin(),
@@ -1394,7 +1394,7 @@ HRESULT Setup::SendUninstallPing() {
   hr = omaha_uninstall_ping.Send(false);
   if (SUCCEEDED(hr)) {
     // Clears the registry after ping is sent successfully.
-    std::vector<CString> uninstalled_apps;
+    uninstalled_apps.clear();
     app_registry_utils::GetUninstalledApps(is_machine_, &uninstalled_apps);
     app_registry_utils::RemoveClientStateForApps(is_machine_, uninstalled_apps);
   } else {

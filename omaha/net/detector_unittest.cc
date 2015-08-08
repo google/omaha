@@ -106,22 +106,22 @@ bool FirefoxProxyDetectorTest::BuildPrefsFile(const CString& type,
 
   fprintf(prefs_file,
           "user_pref(\"network.proxy.type\", %s);\n",
-          CStringA(type));
+          CStringA(type).GetString());
   fprintf(prefs_file,
           "user_pref(\"network.proxy.autoconfig_url\", \"%s\");\n",
-          CStringA(config_url));
+          CStringA(config_url).GetString());
   fprintf(prefs_file,
           "user_pref(\"network.proxy.http\", \"%s\");\n",
-          CStringA(http_host));
+          CStringA(http_host).GetString());
   fprintf(prefs_file,
           "user_pref(\"network.proxy.http_port\", %s);\n",
-          CStringA(http_port));
+          CStringA(http_port).GetString());
   fprintf(prefs_file,
           "user_pref(\"network.proxy.ssl\", \"%s\");\n",
-          CStringA(ssl_host));
+          CStringA(ssl_host).GetString());
   fprintf(prefs_file,
           "user_pref(\"network.proxy.ssl_port\", %s);\n",
-          CStringA(ssl_port));
+          CStringA(ssl_port).GetString());
 
   fclose(prefs_file);
 

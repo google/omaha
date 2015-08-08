@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
       _T("code-signing certificate that has a certain subject and ")
       _T("organization unit name.")
       _T("\n\nAn optional parameter to that executable may be passed as well.");
-    wprintf(explain_test);
+    wprintf(_T("%s"), explain_test);
   }
   return process_id;
 }

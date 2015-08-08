@@ -53,6 +53,10 @@ def _SetMsvcCompiler(
 
   vc_dir = os.environ.get('VSINSTALLDIR')
   platform_sdk_dir = os.environ.get('OMAHA_PLATFORM_SDK_DIR')
+  platform_sdk_version = os.environ.get('WindowsSDKVersion')
+  platform_sdk_include_dir = platform_sdk_dir + 'include/' + \
+      platform_sdk_version
+  platform_sdk_lib_dir = platform_sdk_dir + 'lib/' + platform_sdk_version
 
   env['GOOGLECLIENT'] = '$MAIN_DIR/..'
   env['THIRD_PARTY'] = '$GOOGLECLIENT/third_party/'
@@ -60,8 +64,10 @@ def _SetMsvcCompiler(
   env.Replace(
       PLATFORM_SDK_DIR=platform_sdk_dir,
       MSVC_FLAVOR=('amd64', 'x86')[vc_flavor == 'x86'],
-      VC12_0_DIR=vc_dir,
-      WINDOWS_SDK_8_1_DIR=platform_sdk_dir,
+      VC14_0_DIR=vc_dir,
+      WINDOWS_SDK_10_DIR=platform_sdk_dir,
+      WINDOWS_SDK_10_INCLUDE_DIR=platform_sdk_include_dir,
+      WINDOWS_SDK_10_LIB_DIR=platform_sdk_lib_dir,
   )
 
   # Clear any existing paths.
@@ -89,24 +95,21 @@ def _SetMsvcCompiler(
   # Add explicit location of platform SDK to tools path
   tools_paths.append(platform_sdk_dir + '/bin')
   include_paths += [
-      platform_sdk_dir + '/include',         # Platform SDKs up to Vista (incl.)
-      platform_sdk_dir + '/include/um',      # Windows SDKs
-      platform_sdk_dir + '/include/shared',  # Windows SDKs
+      platform_sdk_include_dir + 'um',      # Windows SDKs
+      platform_sdk_include_dir + 'shared',  # Windows SDKs
+      platform_sdk_include_dir + 'ucrt',    # Windows CRT
   ]
   if vc_flavor == 'x86':
     lib_paths += [
-        platform_sdk_dir + '/lib',  # Platform SDKs up to Vista (incl.)
-        platform_sdk_dir + '/lib/winv6.3/um/x86',  # Windows SDK 8.1
+        platform_sdk_lib_dir + 'um/x86',    # Windows SDK
+        platform_sdk_lib_dir + 'ucrt/x86',  # Windows CRT
     ]
     tools_paths.append(platform_sdk_dir + '/bin/x86')  # VC 12 only
   else:
     lib_paths += [
-        platform_sdk_dir + '/lib/x64',  # Platform SDKs up to Vista (incl.)
-        platform_sdk_dir + '/lib/winv6.3/um/x64',  # Windows SDK 8.1
+        platform_sdk_lib_dir + 'um/x64',    # Windows SDK
+        platform_sdk_lib_dir + 'ucrt/x64',  # Windows CRT
     ]
-    # VC 12 needs this, otherwise mspdb120.dll will not be found.
-    tools_paths.append(vc_dir + '/vc/bin')
-    tools_paths.append(platform_sdk_dir + '/bin/x64')  # VC 12 only
 
   for p in tools_paths:
     env.AppendENVPath('PATH', env.Dir(p).abspath)

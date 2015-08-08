@@ -611,7 +611,7 @@ HRESULT Update3WebBase::FinalConstruct() {
   }
 
   if (!impersonation_token_.CreatePrimaryToken(&primary_token_)) {
-    HRESULT hr = HRESULTFromLastError();
+    hr = HRESULTFromLastError();
     CORE_LOG(LE, (_T("[CreatePrimaryToken failed][0x%x]"), hr));
     return hr;
   }

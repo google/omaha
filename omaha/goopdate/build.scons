@@ -45,7 +45,7 @@ def BuildCOMForwarder(cmd_line_switch,
           '/ENTRY:wWinMainCRTStartup',
       ],
       LIBS=[
-          'libcmt.lib',
+          com_forwarder_env['crt_libs'][com_forwarder_env.Bit('debug')],
           'shlwapi.lib',
       ],
   )
@@ -100,8 +100,8 @@ def BuildCOMRegisterShell64():
           com_register_shell_env['atls_libs'][
               com_register_shell_env.Bit('debug')
           ],
-          ('libcmt.lib', 'libcmtd.lib')[com_register_shell_env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[com_register_shell_env.Bit('debug')],
+          com_register_shell_env['crt_libs'][
+              com_register_shell_env.Bit('debug')],
           'crypt32.lib',
           'delayimp.lib',
           'netapi32.lib',
@@ -202,8 +202,7 @@ def BuildGoogleUpdateHandlerDll(handler_env,
           handler_env.GetMultiarchLibName('goopdate_lib'),
           handler_env.GetMultiarchLibName('security'),
           handler_env['atls_libs'][env.Bit('debug')],
-          ('libcmt.lib', 'libcmtd.lib')[env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[env.Bit('debug')],
+          handler_env['crt_libs'][handler_env.Bit('debug')],
           'psapi.lib',
           'netapi32.lib',
           'rasapi32.lib',
@@ -413,8 +412,7 @@ for omaha_version_info in env['omaha_versions_info']:
           '$LIB_DIR/statsreport.lib',
           '$LIB_DIR/ui.lib',
           temp_env['atls_libs'][temp_env.Bit('debug')],
-          ('libcmt.lib', 'libcmtd.lib')[temp_env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[temp_env.Bit('debug')],
+          temp_env['crt_libs'][temp_env.Bit('debug')],
           # TODO(omaha3): This must be linked in because we have UI in the DLL.
           'bits.lib',
           'comctl32.lib',
@@ -564,8 +562,7 @@ test_installer_env.Append(
       'wintrust.lib',
       'wtsapi32.lib',
       test_installer_env['atls_libs'][test_installer_env.Bit('debug')],
-      ('libcmt.lib', 'libcmtd.lib')[test_installer_env.Bit('debug')],
-      ('libcpmt.lib', 'libcpmtd.lib')[test_installer_env.Bit('debug')],
+      test_installer_env['crt_libs'][test_installer_env.Bit('debug')],
       '$LIB_DIR/base.lib',
       ],
   LINKFLAGS = [

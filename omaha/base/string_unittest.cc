@@ -845,7 +845,7 @@ void TestIsSpace (char *s) {
         t1.Stop();
         // this cache clearing code gets optimized out in release mode
         size_t d2 = 0;
-        for (size_t i = 0; i < dlen; i++) { d2 += dummy[i]; }
+        for (size_t j = 0; j < dlen; j++) { d2 += dummy[j]; }
     }
 
     num_spaces = 0;
@@ -856,7 +856,7 @@ void TestIsSpace (char *s) {
         }
         t2.Stop();
         size_t d2 = 0;
-        for (size_t i = 0; i < dlen; i++) { d2 += dummy[i]; }
+        for (size_t j = 0; j < dlen; j++) { d2 += dummy[j]; }
     }
 
     num_spaces = 0;
@@ -867,7 +867,7 @@ void TestIsSpace (char *s) {
         }
         t3.Stop();
         size_t d2 = 0;
-        for (size_t i = 0; i < dlen; i++) { d2 += dummy[i]; }
+        for (size_t j = 0; j < dlen; j++) { d2 += dummy[j]; }
     }
 }
 

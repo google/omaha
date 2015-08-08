@@ -373,8 +373,7 @@ def OmahaUnittest(env,  # pylint: disable-msg=C6409
             '$LIB_DIR/gmock',
             '$LIB_DIR/gtest',
             test_env['atls_libs'][test_env.Bit('debug')],
-            ('libcmt.lib', 'libcmtd.lib')[test_env.Bit('debug')],
-            ('libcpmt.lib', 'libcpmtd.lib')[test_env.Bit('debug')],
+            test_env['crt_libs'][test_env.Bit('debug')],
             'comctl32',
 
             # Required by base/process.h, which is used by unit_test.cc.
@@ -516,15 +515,20 @@ def ConfigureEnvFor64Bit(env):
       omaha_version_utils.VC120: [ '$VC12_0_DIR/vc/lib/amd64',
                                    '$ATLMFC_VC12_0_DIR/lib/amd64',
                                    '$WINDOWS_SDK_8_1_DIR/lib/winv6.3/um/x64' ],
+      omaha_version_utils.VC140: [ '$VC14_0_DIR/vc/lib/amd64',
+                                   '$ATLMFC_VC14_0_DIR/lib/amd64',
+                                   '$WINDOWS_SDK_10_LIB_DIR/um/x64',
+                                   '$WINDOWS_SDK_10_LIB_DIR/ucrt/x64',],
       }[env['msc_ver']]
 
   env.Prepend(LIBPATH=_lib_paths)
 
   # Override the build tools to be the x86-64 version.
   env.PrependENVPath('PATH', env.Dir(
-      { omaha_version_utils.VC80  : '$VC80_DIR/vc/bin/x86_amd64',
-        omaha_version_utils.VC100 : '$VC10_0_DIR/vc/bin/x86_amd64',
-        omaha_version_utils.VC120 : '$VC12_0_DIR/vc/bin/x86_amd64'}
+      {omaha_version_utils.VC80  : '$VC80_DIR/vc/bin/x86_amd64',
+       omaha_version_utils.VC100 : '$VC10_0_DIR/vc/bin/x86_amd64',
+       omaha_version_utils.VC120 : '$VC12_0_DIR/vc/bin/x86_amd64',
+       omaha_version_utils.VC140 : '$VC14_0_DIR/vc/bin/x86_amd64'}
       [env['msc_ver']]))
 
   env.FilterOut(ARFLAGS=['/MACHINE:X86'],
@@ -533,6 +537,10 @@ def ConfigureEnvFor64Bit(env):
 
   # x86-64 does not support SAFESEH option at link time.
   env.FilterOut(LINKFLAGS=['/SAFESEH'])
+
+  # x86-64 has a different minimum requirements for the Windows subsystem.
+  env.FilterOut(LINKFLAGS=['/SUBSYSTEM:WINDOWS,5.01'])
+  env.AppendUnique(LINKFLAGS=['/SUBSYSTEM:WINDOWS,5.02'])
 
   # Modify output filenames such that .obj becomes .obj64.  (We can't modify
   # LIBPREFIX in the same way, unfortunately, because the 64-bit compilers

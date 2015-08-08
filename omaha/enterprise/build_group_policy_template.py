@@ -18,6 +18,7 @@
 """A Hammer-specific wrapper for generate_group_policy_template."""
 
 from omaha.enterprise import generate_group_policy_template
+from omaha.enterprise import generate_group_policy_template_admx
 
 
 def BuildGroupPolicyTemplate(env, target, apps, apps_file_path=None):
@@ -55,3 +56,57 @@ def BuildGroupPolicyTemplate(env, target, apps, apps_file_path=None):
   if apps_file_path:
     dependencies.append(apps_file_path)
   env.Depends(adm_output, dependencies)
+
+
+def BuildGroupPolicyTemplateAdmx(
+    env, target_admx, target_adml, apps, apps_file_path=None):
+  """Builds Group Policy ADMX/ADML template files, handling dependencies.
+
+  Causes WriteGroupPolicyTemplateAdmx() and WriteGroupPolicyTemplateAdml() to be
+  called at build time instead of as part of the processing stage.
+
+  Args:
+    env: The environment.
+    target_admx: ADMX output path.
+    target_adml: ADML output path.
+    apps: A list of tuples containing information about each app. See
+        generate_group_policy_template_admx for details.
+    apps_file_path: Optional path to the file that defines apps. Used to enforce
+        dependencies.
+  """
+
+  def _WriteAdmxFile(target, source, env):
+    """Called during the build phase to generate and write the ADMX file."""
+    source = source  # Avoid PyLint warning.
+    generate_group_policy_template_admx.WriteGroupPolicyTemplateAdmx(
+        env.File(target[0]).abspath,
+        env['public_apps'])
+
+  def _WriteAdmlFile(target, source, env):
+    """Called during the build phase to generate and write the ADML file."""
+    source = source  # Avoid PyLint warning.
+    generate_group_policy_template_admx.WriteGroupPolicyTemplateAdml(
+        env.File(target[0]).abspath,
+        env['public_apps'])
+    return 0
+
+  admx_output = env.Command(
+      target=target_admx,
+      source=[],
+      action=_WriteAdmxFile,
+      public_apps=apps
+  )
+
+  adml_output = env.Command(
+      target=target_adml,
+      source=[],
+      action=_WriteAdmlFile,
+      public_apps=apps
+  )
+
+  # Force ADMX/ADML files to rebuild whenever the script or apps data change.
+  dependencies = ['$MAIN_DIR/enterprise/generate_group_policy_template_admx.py']
+  if apps_file_path:
+    dependencies.append(apps_file_path)
+  env.Depends(admx_output, dependencies)
+  env.Depends(adml_output, dependencies)

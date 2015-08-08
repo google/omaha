@@ -69,8 +69,7 @@ test_env.Append(
         '$LIB_DIR/google_update_recovery.lib',
         '$LIB_DIR/security.lib',
         test_env['atls_libs'][test_env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[test_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[test_env.Bit('debug')],
+        test_env['crt_libs'][test_env.Bit('debug')],
         'crypt32.lib',
         'wintrust.lib',
 

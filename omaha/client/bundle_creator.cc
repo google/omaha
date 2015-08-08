@@ -248,9 +248,8 @@ HRESULT PopulateAppSpecificData(const CommandLineAppArgs& app_args,
 
   if (!app_args.encoded_installer_data.IsEmpty()) {
     CString decoded_installer_data;
-    HRESULT hr = Utf8UrlEncodedStringToWideString(
-                     app_args.encoded_installer_data,
-                     &decoded_installer_data);
+    hr = Utf8UrlEncodedStringToWideString(app_args.encoded_installer_data,
+                                          &decoded_installer_data);
     ASSERT(SUCCEEDED(hr), (_T("[Utf8UrlEncodedStringToWideString][0x%x]"), hr));
     if (FAILED(hr) || CString(decoded_installer_data).Trim().IsEmpty()) {
       return GOOPDATE_E_INVALID_INSTALLER_DATA_IN_APPARGS;

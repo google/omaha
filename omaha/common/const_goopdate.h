@@ -250,6 +250,9 @@ const TCHAR* const kRegValueOldUserId             = _T("old-uid");
 const TCHAR* const kRegSubkeyUserId               = _T("uid");
 const TCHAR* const kRegValueUserIdCreateTime      = _T("uid-create-time");
 const TCHAR* const kRegValueUserIdNumRotations    = _T("uid-num-rotations");
+const TCHAR* const kRegValueLegacyMachineId       = _T("mi");
+const TCHAR* const kRegValueLegacyUserId          = _T("ui");
+
 
 // This value is appended to the X-Old-UID header if no subkey "uid" existed.
 const TCHAR* const kRegValueDataLegacyUserId      = _T("; legacy");
@@ -305,8 +308,8 @@ const int kMaxTimeSinceMidnightSec   = ((24 + 1) * 60 * 60);
 // Value range the server can respond for elapsed_days attribute in
 // <daystart ...> element. The value is number of days has passed since
 // Jan. 1, 2007.
-const int kMinDaysSinceDatum   = 2400;  // Maps to Jul 28, 2013.
-const int kMaxDaysSinceDatum   = 50000;  // This will break on Nov 24, 2143.
+const int kMinDaysSinceDatum = 2400;   // Maps to Jul 28, 2013.
+const int kMaxDaysSinceDatum = 50000;  // This will break on Nov 24, 2143.
 
 // Maximum time to keep the Installation ID. If the app was installed longer
 // than this time ago, the Installation ID will be deleted regardless of

@@ -328,7 +328,7 @@ bool CopyOfflineFiles(bool is_machine,
 
   for (size_t i = 0; i < apps.size(); ++i) {
     const GUID& app_id = apps[i].app_guid;
-    HRESULT hr = CopyOfflineFilesForApp(GuidToString(app_id), offline_path);
+    hr = CopyOfflineFilesForApp(GuidToString(app_id), offline_path);
     if (FAILED(hr)) {
       ASSERT(false, (_T("[CopyOfflineFilesForApp failed][0x%08x]"), hr));
       return false;

@@ -542,8 +542,7 @@ if env.Bit('all'):
           ],
       LIBS = [
           save_args_env['atls_libs'][save_args_env.Bit('debug')],
-          ('libcmt.lib', 'libcmtd.lib')[save_args_env.Bit('debug')],
-          ('libcpmt.lib', 'libcpmtd.lib')[save_args_env.Bit('debug')],
+          save_args_env['crt_libs'][save_args_env.Bit('debug')],
           '$LIB_DIR/base.lib',
 
           # These are required by common_lib

@@ -57,8 +57,7 @@ exe_env.Append(
         'user32.lib',
         'wintrust.lib',
         exe_env['atls_libs'][exe_env.Bit('debug')],
-        ('libcmt.lib', 'libcmtd.lib')[exe_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[exe_env.Bit('debug')],
+        exe_env['crt_libs'][exe_env.Bit('debug')],
         ],
     LINKFLAGS = [
         '/NODEFAULTLIB',

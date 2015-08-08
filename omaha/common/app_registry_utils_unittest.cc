@@ -70,55 +70,55 @@ int GetFirstDayOfWeek(int day) {
 namespace app_registry_utils {
 
 TEST(AppRegistryUtilsTest, GetAppClientsKey) {
-  const TCHAR kAppGuid[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
+  const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
 
   EXPECT_STREQ(_T("HKCU\\Software\\") SHORT_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\Clients\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
-               GetAppClientsKey(false, kAppGuid));
+               GetAppClientsKey(false, kAppGuid1));
   EXPECT_STREQ(_T("HKLM\\Software\\") SHORT_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\Clients\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
-               GetAppClientsKey(true, kAppGuid));
+               GetAppClientsKey(true, kAppGuid1));
 }
 
 TEST(AppRegistryUtilsTest, GetAppClientStateKey) {
-  const TCHAR kAppGuid[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
+  const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
 
   EXPECT_STREQ(_T("HKCU\\Software\\") SHORT_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientState\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
-               GetAppClientStateKey(false, kAppGuid));
+               GetAppClientStateKey(false, kAppGuid1));
   EXPECT_STREQ(_T("HKLM\\Software\\") SHORT_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientState\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
-               GetAppClientStateKey(true, kAppGuid));
+               GetAppClientStateKey(true, kAppGuid1));
 }
 
 // This is an invalid case and causes an assert. Always returns HKLM path.
 TEST(AppRegistryUtilsTest, GetAppClientStateMediumKey_User) {
-  const TCHAR kAppGuid[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
+  const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
   ExpectAsserts expect_asserts;
   EXPECT_STREQ(_T("HKLM\\Software\\") SHORT_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientStateMedium\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
-               GetAppClientStateMediumKey(false, kAppGuid));
+               GetAppClientStateMediumKey(false, kAppGuid1));
 }
 
 TEST(AppRegistryUtilsTest, GetAppClientStateMediumKey_Machine) {
-  const TCHAR kAppGuid[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
+  const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
   EXPECT_STREQ(_T("HKLM\\Software\\") SHORT_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientStateMedium\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
-               GetAppClientStateMediumKey(true, kAppGuid));
+               GetAppClientStateMediumKey(true, kAppGuid1));
 }
 
 // This is an invalid case and causes an assert.
 TEST(AppRegistryUtilsTest, GetAppClientStateMediumKey_UserAndMachineAreSame) {
-  const TCHAR kAppGuid[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
+  const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
   ExpectAsserts expect_asserts;
-  EXPECT_STREQ(GetAppClientStateMediumKey(true, kAppGuid),
-               GetAppClientStateMediumKey(false, kAppGuid));
+  EXPECT_STREQ(GetAppClientStateMediumKey(true, kAppGuid1),
+               GetAppClientStateMediumKey(false, kAppGuid1));
 }
 
 class AppRegistryUtilsRegistryProtectedTest : public testing::Test {

@@ -141,11 +141,13 @@ class RuntimeTest : public Runnable {
 
 void RuntimeTest::Run() {
   Test test;
+  {
   ASSERT_EQ(CallMethod(&test, &Test::Add, 10, 20), 30);
 
   int sum(0);
   CallMethod(&test, &Test::Add, -10, 20, &sum);
   ASSERT_EQ(sum, 10);
+  }
 
   {
   ASSERT_EQ(CallFunction(Add, long(10), long(20)), 30);

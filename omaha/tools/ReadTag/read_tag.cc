@@ -52,6 +52,6 @@ int _tmain(int argc, TCHAR* argv[]) {
     return -1;
   }
 
-  printf("Tag = '%s'", buffer);
+  printf("Tag = '%s'", buffer.get());
   return 0;
 }

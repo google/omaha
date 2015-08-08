@@ -25,6 +25,7 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/third_party/smartany/scoped_any.h"
@@ -219,21 +220,7 @@ bool IsUserAdmin() {
 }
 
 bool IsVistaOrLater() {
-  static bool known = false;
-  static bool is_vista = false;
-  if (!known) {
-    OSVERSIONINFOEX osvi = { 0 };
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-    osvi.dwMajorVersion = 6;
-    DWORDLONG conditional = 0;
-    VER_SET_CONDITION(conditional, VER_MAJORVERSION, VER_GREATER_EQUAL);
-    is_vista = !!VerifyVersionInfo(&osvi, VER_MAJORVERSION, conditional);
-    // If the Win32 API failed for some other reason, callers may incorrectly
-    // perform non-Vista operations. Assert we don't see any other failures.
-    ASSERT1(is_vista || ERROR_OLD_WIN_VERSION == ::GetLastError());
-    known = true;
-  }
-  return is_vista;
+  return SystemInfo::IsRunningOnVistaOrLater();
 }
 
 HRESULT IsUserRunningSplitToken(bool* is_split_token) {

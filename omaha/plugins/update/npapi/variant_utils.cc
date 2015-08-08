@@ -17,6 +17,9 @@
 // pointer exploits.
 
 #include "omaha/plugins/update/npapi/variant_utils.h"
+
+#include <stdint.h>
+
 #include <atlstr.h>
 #include "base/debug.h"
 #include "base/string.h"
@@ -107,11 +110,16 @@ void VariantToNPVariant(NPP npp,
         int buffer_length = ::WideCharToMultiByte(CP_UTF8, 0, V_BSTR(&source),
                                                   source_length, NULL, 0, NULL,
                                                   NULL);
+        if (buffer_length == 0) {
+          break;
+        }
         char* buffer = static_cast<char*>(NPN_MemAlloc(buffer_length));
         VERIFY1(::WideCharToMultiByte(CP_UTF8, 0, V_BSTR(&source),
                                       source_length, buffer, buffer_length,
                                       NULL, NULL) > 0);
-        STRINGN_TO_NPVARIANT(buffer, buffer_length - 1, *destination);
+        STRINGN_TO_NPVARIANT(buffer,
+                             static_cast<uint32_t>(buffer_length - 1),
+                             *destination);
       } else {
         char* buffer = static_cast<char*>(NPN_MemAlloc(1));
         buffer[0] = '\0';

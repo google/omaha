@@ -609,7 +609,7 @@ HRESULT BitsRequest::DoSend() {
 
             NetworkConfig* network_config = NULL;
             NetworkConfigManager& nm = NetworkConfigManager::Instance();
-            HRESULT hr = nm.GetUserNetworkConfig(&network_config);
+            hr = nm.GetUserNetworkConfig(&network_config);
             if (FAILED(hr)) {
               return hr;
             }

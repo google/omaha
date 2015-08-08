@@ -106,7 +106,7 @@ HRESULT RegisterHKCUPSClsid(IID iid,
                         &proxy_clsid32_value);
   if (FAILED(hr)) {
     wprintf(_T("RegKey::GetValue failed [%s][0x%x]\n"),
-            interface_proxy_clsid_key, hr);
+            interface_proxy_clsid_key.GetString(), hr);
     return hr;
   }
 
@@ -120,7 +120,7 @@ HRESULT RegisterHKCUPSClsid(IID iid,
                         &hkcu_proxy_dll_path);
   if (FAILED(hr)) {
     wprintf(_T("RegKey::GetValue failed [%s][0x%x]\n"),
-            proxy_server32_entry, hr);
+            proxy_server32_entry.GetString(), hr);
     return hr;
   }
 
@@ -312,7 +312,7 @@ int DoMain(int argc, TCHAR* argv[]) {
             _T("[is_update_check_only=0] [timeout=60]\n"));
     return -1;
   }
-  wprintf(_T("GUID: %s\n"), guid);
+  wprintf(_T("GUID: %s\n"), guid.GetString());
 
   CComModule module;
   scoped_co_init com_apt;

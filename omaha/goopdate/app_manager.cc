@@ -573,10 +573,10 @@ HRESULT AppManager::ReadAppDefinedAttributeSubkeys(
     const int num_values = attribute_subkey.GetValueCount();
     DWORD attribute_sum = 0;
 
-    for (int i = 0; i < num_values; ++i) {
+    for (int j = 0; j < num_values; ++j) {
       CString value_name;
       DWORD type(REG_DWORD);
-      hr = attribute_subkey.GetValueNameAt(i, &value_name, &type);
+      hr = attribute_subkey.GetValueNameAt(j, &value_name, &type);
       if (FAILED(hr)) {
         continue;
       }
@@ -587,13 +587,13 @@ HRESULT AppManager::ReadAppDefinedAttributeSubkeys(
         continue;
       }
 
-      DWORD value = 0;
-      hr = attribute_subkey.GetValue(value_name, &value);
+      DWORD val = 0;
+      hr = attribute_subkey.GetValue(value_name, &val);
       if (FAILED(hr)) {
         continue;
       }
 
-      attribute_sum += value;
+      attribute_sum += val;
     }
 
 

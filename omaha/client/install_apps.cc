@@ -530,13 +530,13 @@ HRESULT UpdateAppOnDemand(bool is_machine,
                                   kCmdLineInstallSource_OnDemandCheckForUpdate :
                                   kCmdLineInstallSource_OnDemandUpdate;
     CComPtr<IAppBundle> app_bundle;
-    HRESULT hr = bundle_creator::CreateForOnDemand(is_machine,
-                                                   app_id,
-                                                   install_source,
-                                                   session_id,
-                                                   impersonation_token,
-                                                   primary_token,
-                                                   &app_bundle);
+    hr = bundle_creator::CreateForOnDemand(is_machine,
+                                           app_id,
+                                           install_source,
+                                           session_id,
+                                           impersonation_token,
+                                           primary_token,
+                                           &app_bundle);
     if (SUCCEEDED(hr)) {
       BundleInstaller installer(NULL,   // No help URL for on-demand.
                                 false,  // Is not update all apps.

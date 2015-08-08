@@ -17,7 +17,7 @@
 BRANCH_OWNERS
 omaha/common/omaha_customization_proxy_clsid.h
 omaha/proxy_clsids.txt
-omaha/vc120.idb
+omaha/*.idb
 omaha/scons-out/**
 
 #external dependencies

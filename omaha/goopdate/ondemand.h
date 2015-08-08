@@ -122,7 +122,7 @@ class ATL_NO_VTABLE OnDemand
     }
 
     if (!impersonation_token_.CreatePrimaryToken(&primary_token_)) {
-      HRESULT hr = HRESULTFromLastError();
+      hr = HRESULTFromLastError();
       CORE_LOG(LE, (_T("[CreatePrimaryToken failed][%d]"), hr));
       return hr;
     }

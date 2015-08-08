@@ -397,6 +397,35 @@ bool Core::HasOSUpgraded() const {
   return SystemInfo::CompareOSVersions(&last_os, VER_GREATER);
 }
 
+CString Core::GetOSUpgradeVersionsString() const {
+  OSVERSIONINFOEX versions[2] = {0};
+  HRESULT hr = app_registry_utils::GetLastOSVersion(is_system_, &versions[0]);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[GetLastOSVersion failed][%#08x]"), hr));
+    return CString();
+  }
+
+  hr = SystemInfo::GetOSVersion(&versions[1]);
+  if (FAILED(hr)) {
+    CORE_LOG(L3, (_T("[GetOSVersion failed][%#08x]"), hr));
+    return CString();
+  }
+
+  CString versions_string;
+  for (int i = 0; i < arraysize(versions); ++i) {
+    SafeCStringAppendFormat(&versions_string, _T("%u.%u.%u.%u.%u%s"),
+                            versions[i].dwMajorVersion,
+                            versions[i].dwMinorVersion,
+                            versions[i].dwBuildNumber,
+                            versions[i].wServicePackMajor,
+                            versions[i].wServicePackMinor,
+                            i < arraysize(versions) - 1 ? _T("-") : _T(""));
+  }
+
+  CORE_LOG(L3, (_T("[GetOSUpgradeVersionsString][%s]"), versions_string));
+  return versions_string;
+}
+
 void Core::LaunchAppCommandsOnOSUpgrade() const {
   CORE_LOG(L2, (_T("[Core::LaunchAppCommandsOnOSUpgrade]")));
   ++metric_core_osupgrade_started;
@@ -447,9 +476,11 @@ void Core::LaunchAppCommandsOnOSUpgrade() const {
         scoped_ptr<AppCommand> app_command(
             configuration->Instantiate(session_id));
 
+        std::vector<CString> parameters;
+        parameters.push_back(GetOSUpgradeVersionsString());
+
         scoped_process process;
-        hr = app_command->Execute(
-            NULL, std::vector<CString>(), address(process));
+        hr = app_command->Execute(NULL, parameters, address(process));
         if (FAILED(hr)) {
           CORE_LOG(LE, (_T("[AppCommand::Execute failed][%s][%d][%s][%#08x]"),
                         app_guid, is_system_, command_id, hr));

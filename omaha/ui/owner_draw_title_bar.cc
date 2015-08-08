@@ -601,17 +601,17 @@ void CustomProgressBarCtrl::GradientFill(HDC dc,
     {
       rect.left,
       rect.top,
-      GetRValue(top_color) << 8,
-      GetGValue(top_color) << 8,
-      GetBValue(top_color) << 8,
+      static_cast<COLOR16>(GetRValue(top_color) << 8),
+      static_cast<COLOR16>(GetGValue(top_color) << 8),
+      static_cast<COLOR16>(GetBValue(top_color) << 8),
       0
     },
     {  // NOLINT
       rect.right,
       rect.bottom,
-      GetRValue(bottom_color) << 8,
-      GetGValue(bottom_color) << 8,
-      GetBValue(bottom_color) << 8,
+      static_cast<COLOR16>(GetRValue(bottom_color) << 8),
+      static_cast<COLOR16>(GetGValue(bottom_color) << 8),
+      static_cast<COLOR16>(GetBValue(bottom_color) << 8),
       0
     },
   };

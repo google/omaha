@@ -144,8 +144,15 @@ bool RFC822DateToSystemTime(const TCHAR* str_RFC822_date,
 
 // TODO(omaha): overlap in functionality with FileTimeToTime64. Consider
 // removing this one.
+// Returns 0 in the case of errors.
 inline int64 FileTimeToInt64(const FILETIME& filetime) {
-  LARGE_INTEGER large_int = {filetime.dwLowDateTime, filetime.dwHighDateTime};
+  if (filetime.dwHighDateTime > LONG_MAX) {
+    return 0;
+  }
+  const LARGE_INTEGER large_int = {
+      filetime.dwLowDateTime,
+      static_cast<LONG>(filetime.dwHighDateTime)
+  };
   return large_int.QuadPart;
 }
 

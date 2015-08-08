@@ -718,8 +718,6 @@ HRESULT Process::FindProcesses(uint32 exclude_mask,
   ASSERT1(!((exclude_mask & EXCLUDE_PROCESS_COMMAND_LINE_CONTAINING_STRING) &&
             (exclude_mask & INCLUDE_PROCESS_COMMAND_LINE_CONTAINING_STRING)));
 
-  const TCHAR* const kLocalSystemSid = _T("S-1-5-18");
-
   // Clear the output queue
   process_ids_found->clear();
 
@@ -817,8 +815,7 @@ HRESULT Process::FindProcesses(uint32 exclude_mask,
     if (exclude_mask & EXCLUDE_PROCESS_COMMAND_LINE_CONTAINING_STRING ||
         exclude_mask & INCLUDE_PROCESS_COMMAND_LINE_CONTAINING_STRING) {
       CString process_command_line;
-      HRESULT hr = GetCommandLine(process_ids[i], &process_command_line);
-      if (FAILED(hr)) {
+      if (FAILED(GetCommandLine(process_ids[i], &process_command_line))) {
         UTIL_LOG(L4,
           (_T("[Excluding process could not get command line][%d]"),
            process_ids[i]));
@@ -1520,7 +1517,7 @@ HRESULT Process::GetImagePath(const CString& process_name,
                                               FALSE,
                                               process_id));
   if (!process_handle) {
-    HRESULT hr = HRESULTFromLastError();
+    hr = HRESULTFromLastError();
     UTIL_LOG(L4, (_T("[OpenProcess failed][0x%08x]"), hr));
     return hr;
   }
@@ -1531,7 +1528,7 @@ HRESULT Process::GetImagePath(const CString& process_name,
                             &module_handle,
                             sizeof(HMODULE),
                             &bytes_needed)) {
-    HRESULT hr = HRESULTFromLastError();
+    hr = HRESULTFromLastError();
     UTIL_LOG(LEVEL_WARNING, (_T("[EnumProcessModules failed][0x%08x]"), hr));
     // ::EnumProcessModules from a WoW64 process fails for x64 processes. We try
     // ::GetProcessImageFileName as a workaround here.
@@ -1539,7 +1536,7 @@ HRESULT Process::GetImagePath(const CString& process_name,
     if (!GetProcessImageFileName(get(process_handle),
                                  image_name,
                                  arraysize(image_name))) {
-      HRESULT hr = HRESULTFromLastError();
+      hr = HRESULTFromLastError();
       UTIL_LOG(LE, (_T("[GetProcessImageFileName failed][0x%08x]"), hr));
       return hr;
     } else {
@@ -1553,7 +1550,7 @@ HRESULT Process::GetImagePath(const CString& process_name,
                              module_handle,
                              module_name,
                              arraysize(module_name))) {
-    HRESULT hr = HRESULTFromLastError();
+    hr = HRESULTFromLastError();
     UTIL_LOG(LEVEL_ERROR, (_T("[GetModuleFileNameEx failed][0x%08x]"), hr));
     return hr;
   }
@@ -1574,7 +1571,7 @@ bool Process::IsWow64(uint32 pid) {
   HINSTANCE kernel_instance = ::GetModuleHandle(_T("kernel32.dll"));
   if (kernel_instance == NULL) {
     ASSERT1(false);
-    HRESULT hr = HRESULTFromLastError();
+    const HRESULT hr = HRESULTFromLastError();
     UTIL_LOG(LW, (_T("[::GetModuleHandle  kernel32.dll failed][0x%08x]"), hr));
     return false;
   }

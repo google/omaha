@@ -311,8 +311,8 @@ TEST_F(MetricsEnumTest, Iterator) {
   }
 
   // and that all metrics can be found
-  for (int i = 0; i < sizeof(metrics) / sizeof(metrics[0]); ++i) {
-    MetricBase *stat = metrics[i];
+  for (int j = 0; j < sizeof(metrics) / sizeof(metrics[0]); ++j) {
+    MetricBase *stat = metrics[j];
 
     EXPECT_EQ(stat, *std::find(MetricIterator(coll_), end, stat));
   }

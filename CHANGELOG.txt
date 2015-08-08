@@ -1,3 +1,34 @@
+## 2015-08-15 @96143043,100157431
+
+### Changes
+--------------------------------------------------------------------------------
+  Build script changes to build with VS2015.
+--------------------------------------------------------------------------------
+  Omaha build sets the wrong minimum version for the x64 Windows subsystem.
+--------------------------------------------------------------------------------
+  On any OS upgrade, major or minor, all AutoRunOnOSUpgrade commands will be called. If the "CommandLine" in the registry includes a "%1", %1 will be replaced with "OLDdwMajorVersion.OLDdwMinorVersion.OLDdwBuildNumber.OLDwServicePackMajor.OLDwServicePackMinor-NEWdwMajorVersion.NEWdwMinorVersion.NEWdwBuildNumber.NEWwServicePackMajor.NEWwServicePackMinor".
+          For example:
+          "C:\Program Files (x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe" --on-os-upgrade=%1 --multi-install --chrome --system-level --verbose-logging
+          will be replaced with something like this:
+          "C:\Program Files (x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe" --on-os-upgrade=5.3.9600.0.0-5.4.0001.0.0 --multi-install --chrome --system-level --verbose-logging
+          where 5.3.9600.0.0 corresponds to the previous Windows OS version being upgraded from, and 5.4.0001.0.0 is the new OS being upgraded to.
+
+          If the CommandLine parameter does not contain a %1, then the CommandLine will be used unchanged.
+          For example:
+          "C:\Program Files (x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe" --on-os-upgrade --multi-install --chrome --system-level --verbose-logging
+          will be executed as-is on os upgrades.
+--------------------------------------------------------------------------------
+  Add script to generate ADMX files.
+--------------------------------------------------------------------------------
+  Test to verify that AutoRunOnOSUpgrade commands run whether or not they have a %1 format parameter.
+--------------------------------------------------------------------------------
+  Source code changes to build with VS2015.
+  More changes will be needed, including changes in the build scripts.
+  This is just the first batch of changes to C/C++ files.
+--------------------------------------------------------------------------------
+  Replace IsVistaOrLater() with SystemInfo::IsRunningOnVistaOrLater().
+----------------------------------------
+
 ## v1.3.28.1 - 2015-07-21 @54943000,96143042
 
 ### Changes
@@ -135,7 +166,7 @@
   This is another mechanical change in preparation for
   introducing hourly jitter for update checks.
 --------------------------------------------------------------------------------
-  AutoRunOnOSUpgradeCommands AppCommands now run as fire-and-forget. 
+  AutoRunOnOSUpgradeCommands AppCommands now run as fire-and-forget.
 --------------------------------------------------------------------------------
   Implement ping 14 component-updater style for Omaha.
 --------------------------------------------------------------------------------
@@ -170,7 +201,7 @@
 --------------------------------------------------------------------------------
   Do not allow test cert in authenticode check.
 --------------------------------------------------------------------------------
-  Disabling ScheduledTaskUtilsTest.ScheduledTasksV2 test because we are seeing random failures with 0x80070005 on the UninstallScheduledTask call. 
+  Disabling ScheduledTaskUtilsTest.ScheduledTasksV2 test because we are seeing random failures with 0x80070005 on the UninstallScheduledTask call.
 --------------------------------------------------------------------------------
   Remove uilib since StaticEx and helpers are not needed anymore.
 --------------------------------------------------------------------------------
@@ -300,7 +331,7 @@
 --------------------------------------------------------------------------------
   Add support for detecting processor features.
 --------------------------------------------------------------------------------
-  Reuse Chromium CPU class for processor features including SSE2 support. 
+  Reuse Chromium CPU class for processor features including SSE2 support.
   These are the original files from Chromium.
 --------------------------------------------------------------------------------
   Resolved UT VerifyFileSignature_NonGoogleSignature failure.
@@ -439,7 +470,7 @@
 --------------------------------------------------------------------------------
   Adjusting the dimensions of the Cancel and the YesNo dialog buttons to look more like the spec.
 --------------------------------------------------------------------------------
-  Changes to allow the UI to work consistently in XP. Without these changes, the XP UI scaled incorrectly. 
+  Changes to allow the UI to work consistently in XP. Without these changes, the XP UI scaled incorrectly.
 --------------------------------------------------------------------------------
   Marquee progress bar for showing indeterminate progress during all phases other than download. Removing throbber and showing the Chrome icon during most installation phases. Color correction for the caption button highlight.
 --------------------------------------------------------------------------------

@@ -186,7 +186,7 @@ bool ParseUnitTestArgs(int argc, TCHAR** argv) {
     return true;
   }
 
-  _tprintf(_T("ERROR: Invalid Command line!\n"), argv[1]);
+  _tprintf(_T("ERROR: Invalid Command line: %s\n"), argv[1]);
   _tprintf(_T("  First invalid command option: %s\n\n"), argv[1]);
   _tprintf(_T("Use --help command line to see what flags can be used to ")
            _T("control test selection, execution, output, and assertion ")
@@ -242,7 +242,9 @@ int RunTests(bool is_medium_or_large_test,
     if (File::Exists(source_path)) {
       CPath target_path(app_util::GetSystemDir());
       target_path.Append(kDllRequiredForCoverageRuns);
-      _tprintf(_T("\nCopying '%s' to '%s'.\n"), source_path, target_path);
+      _tprintf(_T("\nCopying '%s' to '%s'.\n"),
+               static_cast<const TCHAR*>(source_path),
+               static_cast<const TCHAR*>(target_path));
       VERIFY1(SUCCEEDED(File::Copy(source_path, target_path, false)));
     }
   }
