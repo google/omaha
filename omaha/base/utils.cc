@@ -1966,40 +1966,6 @@ bool ShellExecuteExEnsureParent(LPSHELLEXECUTEINFO shell_exec_info) {
   return shell_exec_succeeded;
 }
 
-// Loads and unloads advapi32.dll for every call. If performance is an issue
-// consider keeping the dll always loaded and holding the pointer to the
-// RtlGenRandom in a static variable.
-// Use the function with care. While the function is documented, it may be
-// altered or made unavailable in future versions of the operating system.
-bool GenRandom(void* buffer, size_t buffer_length) {
-  ASSERT1(buffer);
-  if (buffer_length > ULONG_MAX) {
-    return false;
-  }
-  scoped_library lib(::LoadLibrary(_T("ADVAPI32.DLL")));
-  if (lib) {
-    typedef BOOLEAN (APIENTRY *RtlGenRandomType)(void*, ULONG);
-    RtlGenRandomType rtl_gen_random = reinterpret_cast<RtlGenRandomType>(
-        ::GetProcAddress(get(lib), "SystemFunction036"));
-    return rtl_gen_random &&
-           rtl_gen_random(buffer, static_cast<ULONG>(buffer_length));
-  }
-
-  // Use CAPI to generate randomness for systems which do not support
-  // RtlGenRandomType, for instance Windows 2000.
-  const uint32 kCspFlags = CRYPT_VERIFYCONTEXT | CRYPT_SILENT;
-  HCRYPTPROV csp = NULL;
-  if (::CryptAcquireContext(&csp, NULL, NULL, PROV_RSA_FULL, kCspFlags)) {
-    if (::CryptGenRandom(csp,
-                         static_cast<ULONG>(buffer_length),
-                         static_cast<BYTE*>(buffer))) {
-      return true;
-    }
-  }
-  VERIFY1(::CryptReleaseContext(csp, 0));
-  return false;
-}
-
 // Assumes the path in command is properly enclosed if necessary.
 HRESULT ConfigureRunAtStartup(const CString& root_key_name,
                               const CString& run_value_name,
@@ -2202,7 +2168,7 @@ DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout) {
                                     timeout);
   }
 
-  UTIL_LOG(L3, (_T("[WaitForAllObjects][%Iu][%Lu ms]"), count, timeout));
+  UTIL_LOG(L3, (_T("[WaitForAllObjects][%Iu][%lu ms]"), count, timeout));
 
   // Spin in a loop, calling ::WFMO() on blocks of handles at a time. If it
   // returns WAIT_TIMEOUT or WAIT_FAILED, we can immediately exit without

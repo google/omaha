@@ -47,32 +47,6 @@ ui_test_env.Append(
         ],
 )
 
-ui_test = ui_test_env.OmahaUnittest(
-    name='omaha_ui_unittest',
-    source=[
-        'splash_screen_test.cc',
-        'progress_wnd_unittest.cc',
-        'yes_no_dialog_unittest.cc',
-    ],
-    LIBS=[
-        '$LIB_DIR/client.lib',
-        '$LIB_DIR/common.lib',       # Required by client.
-        '$LIB_DIR/goopdate_lib.lib', # Required by splashscreen UT.
-        '$LIB_DIR/logging.lib',      # Required by statsreport.
-        '$LIB_DIR/omaha3_idl.lib',
-        '$LIB_DIR/security.lib',
-        '$LIB_DIR/statsreport.lib',  # Required by client.
-        '$LIB_DIR/ui.lib',
-        'crypt32.lib',
-        'uxtheme.lib',
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-    is_small_tests_using_resources=True,
-)
-
-ui_test_env.Depends(ui_test, '$TESTS_DIR/goopdate.dll')
-
 omaha_dll = '$STAGING_DIR/goopdate.dll'
 if ui_test_env.IsCoverageBuild():
   ui_test_env.CopyFileToDirectory('$TESTS_DIR', omaha_dll)

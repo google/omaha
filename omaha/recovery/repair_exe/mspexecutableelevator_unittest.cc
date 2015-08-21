@@ -159,8 +159,8 @@ TEST_F(RepairGoopdateWithMsiInstalledTest,
               _T("unittest_support\\SaveArguments.exe")));
   CString program_files_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files_path));
-  CString saved_arguments_file_path =
-      program_files_path + _T("\\Google\\Update\\saved_arguments.txt");
+  CString saved_arguments_file_path = program_files_path +
+      + _T("\\") OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\saved_arguments.txt");
 
   ::DeleteFile(saved_arguments_file_path);
 

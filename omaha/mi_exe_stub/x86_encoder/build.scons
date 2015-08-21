@@ -63,17 +63,3 @@ bjc2_env.ComponentTool(
         'bcj2.cc',
     ],
 )
-
-local_env.OmahaUnittest(
-    name='bcj2_encoder_unittest',
-    source='bcj2_encoder_unittest.cc',
-    LIBS=[
-        bcj2_lib,
-        '$LIB_DIR/common.lib',
-        '$LIB_DIR/lzma.lib',
-        '$LIB_DIR/security.lib',
-        'crypt32.lib',
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-)

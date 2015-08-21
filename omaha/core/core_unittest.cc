@@ -118,11 +118,6 @@ TEST_F(CoreTest, Shutdown) {
   ::Sleep(100);
   EXPECT_HRESULT_SUCCEEDED(SignalShutdownEvent());
   EXPECT_TRUE(thread.WaitTillExit(2000));
-  if (thread.Running()) {
-    // If you see a crash here, it was likely caused by Application Verifier.
-    // TODO(omaha): Is there a better way to exit? Should we wait longer?
-    thread.Terminate(-1);
-  }
   EXPECT_HRESULT_SUCCEEDED(ResetShutdownEvent());
 }
 
@@ -170,9 +165,6 @@ TEST_F(CoreTest, HasOSUpgraded) {
   ::Sleep(100);
   EXPECT_HRESULT_SUCCEEDED(SignalShutdownEvent());
   EXPECT_TRUE(thread.WaitTillExit(2000));
-  if (thread.Running()) {
-    thread.Terminate(-1);
-  }
 
   CString os_upgrade_string;
   for (int i = 0; i < 2; ++i) {

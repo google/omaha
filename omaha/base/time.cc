@@ -128,7 +128,7 @@ CString ConvertTimeToGMTString(const FILETIME *ft) {
   }
 
   // same as FormatGmt(_T("%a, %d %b %Y %H:%M:%S GMT"));
-  s.Format(NOTRANSL(L"%s, %02d %s %d %02d:%02d:%02d GMT"), days[st.wDayOfWeek],
+  s.Format(NOTRANSL(L"%s, %02u %s %u %02u:%02u:%02u GMT"), days[st.wDayOfWeek],
     st.wDay, months[st.wMonth-1], st.wYear, st.wHour, st.wMinute, st.wSecond);
   return s;
 }

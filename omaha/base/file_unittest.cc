@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
-// File unittest
 
+#include "base/rand_util.h"
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
 #include "omaha/base/string.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/timer.h"
-#include "omaha/base/tr_rand.h"
 #include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 
@@ -142,32 +140,6 @@ void SimpleTest(bool async) {
   ASSERT_FALSE(File::Exists(testfile));
 }
 
-void FileWriteCreate(uint32 file_size) {
-  Timer time(true);
-  CString testfile;
-  testfile.Format(L"testfile%u", file_size);
-
-  File f;
-  ASSERT_SUCCEEDED(f.Open(testfile, true, false));
-  ASSERT_SUCCEEDED(f.SetLength(file_size, false));
-
-  uint32 write_size = 512;
-
-  byte *buf2 = new byte[write_size];
-
-  for (uint32 j = 0; j < file_size - write_size; j += write_size) {
-      for (uint32 i = 0; i < write_size; i++) {
-        buf2[i] = static_cast<byte>(tr_rand() % 255);
-      }
-      ASSERT_SUCCEEDED(f.WriteAt(j, buf2, write_size, 0, NULL));
-  }
-
-  f.Sync();
-  f.Close();
-
-  EXPECT_SUCCEEDED(File::Remove(testfile));
-}
-
 void FileWriteTimeTest(uint32 file_size,
                        uint32 number_writes,
                        uint32 write_size) {
@@ -178,13 +150,13 @@ void FileWriteTimeTest(uint32 file_size,
   File f;
   ASSERT_SUCCEEDED(f.Open(testfile, true, false));
 
-  byte *buf = new byte[write_size];
+  uint8* buf = new byte[write_size];
 
   for (uint32 i = 0; i < number_writes; i++) {
-    for (uint32 j = 0; j < write_size; j++) {
-      buf[j] = static_cast<byte>(tr_rand() % 255);
-    }
-    uint32 pos = (tr_rand() * 65536 + tr_rand()) % (file_size - write_size);
+    ASSERT_TRUE(RandBytes(buf, sizeof(*buf * write_size)));
+    uint32 random_value = 0;
+    ASSERT_TRUE(RandBytes(&random_value, sizeof(random_value)));
+    const uint32 pos = random_value % (file_size - write_size);
     ASSERT_SUCCEEDED(f.WriteAt(pos, buf, write_size, 0, NULL));
   }
 
@@ -357,7 +329,9 @@ TEST(FileTest, FileChangeWatcher) {
                                        MAX_PATH) != 0);
   temp_dir.ReleaseBuffer();
   temp_dir = String_MakeEndWith(temp_dir, _T("\\"), false /* ignore_case */);
-  temp_dir = temp_dir + _T("omaha_unittest") + itostr(tr_rand() % 255);
+  int random_value= 0;
+  EXPECT_TRUE(RandBytes(&random_value, sizeof(random_value)));
+  temp_dir = temp_dir + _T("omaha_unittest") + itostr(random_value % 255);
   EXPECT_SUCCEEDED(CreateDir(temp_dir, 0));
 
   // watch the directory for changes

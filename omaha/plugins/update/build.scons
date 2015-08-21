@@ -219,15 +219,15 @@ for omaha_version_info in env['omaha_versions_info']:
 
 # NPAPI unit test helper library
 npapi_testing_midl_env.TypeLibrary('npapi/testing/dispatch_host_test_idl.idl')
-inputs = [
-    'npapi/testing/dispatch_host_test_interface.cc',
-    'npapi/testing/stubs.cc',
-    ]
-update_test_helpers_lib = update_env.ComponentStaticLibrary(
-    lib_name='update_test_helpers',
-    source=inputs,
+update_env.ComponentStaticLibrary(
+    lib_name = 'update_test_helpers',
+    source = [
+        'npapi/testing/dispatch_host_test_interface.cc',
+        'npapi/testing/stubs.cc',
+        ]
 )
 
+# NPAPI unit test resource
 npapi_test_lib_resources = update_env.RES(
     target='npapi/testing/dispatch_host_test.res',
     source='npapi/testing/dispatch_host_test.rc'),
@@ -235,56 +235,3 @@ npapi_test_lib_resources = update_env.RES(
 update_env.Depends(
     npapi_test_lib_resources,
     '$OBJ_ROOT/plugins/update/npapi/testing/dispatch_host_test_idl.tlb')
-
-# TODO(omaha): Fix OmahaUnittest() so that MODE=all does not break.
-update_env.OmahaUnittest(
-    name='update_plugin_unittest',
-    source=[
-        'activex/update3web_control_unittest.cc',
-        'npapi/dispatch_host_unittest.cc',
-        'npapi/npfunction_host_unittest.cc',
-        'npapi/variant_utils_unittest.cc',
-        'site_lock_unittest.cc',
-        npapi_test_lib_resources,
-    ],
-    LIBS=[
-        '$LIB_DIR/common.lib',
-        'wininet',
-        update_control_idl_guids_lib,
-        update_lib,
-        update_test_helpers_lib,
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-)
-
-
-customization_test_env = env.Clone()
-customization_test_env.Append(
-    LIBS = [
-        '$LIB_DIR/common.lib',
-        '$LIB_DIR/security.lib',
-        'crypt32.lib',
-    ]
-)
-customization_test_env['CPPPATH'] += [
-    '$OBJ_ROOT',  # Needed for generated files.
-    ]
-customization_test = customization_test_env.OmahaUnittest(
-    name='omaha_customization_update_apis_unittest',
-    source=[
-        'omaha_customization_update_apis_unittest.cc',
-        'omaha_customization_update_unittest.cc',
-    ],
-    LIBS=[
-        update_control_idl_guids_lib,  # Needed for LIBID_*.
-        update_lib,
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-)
-
-# The test uses the DLL for its TypeLib.
-customization_test_env.Depends(
-    customization_test,
-    '$STAGING_DIR/%s' % env['omaha_versions_info'][0].update_plugin_filename)

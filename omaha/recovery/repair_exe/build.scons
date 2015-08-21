@@ -28,13 +28,6 @@ inputs = [
 
 repair_goopdate_lib = local_env.ComponentStaticLibrary('repair_goopdate',
                                                        inputs)
-
-local_env.OmahaUnittest(
-    name='repair_exe_custom_action_unittest',
-    source=['mspexecutableelevator_unittest.cc', 'repair_goopdate_unittest.cc'],
-    LIBS=[repair_goopdate_lib, '$LIB_DIR/security.lib'],
-)
-
 subdirs = [
     'custom_action',
     'msp',

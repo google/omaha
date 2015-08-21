@@ -96,6 +96,14 @@ class ConfigManagerNoOverrideTest : public testing::Test {
     return cm_->CanUpdateApp(StringToGuid(guid), is_manual);
   }
 
+  static DWORD GetEffectivePolicyForAppInstalls(const TCHAR* guid) {
+    return ConfigManager::GetEffectivePolicyForAppInstalls(StringToGuid(guid));
+  }
+
+  static DWORD GetEffectivePolicyForAppUpdates(const TCHAR* guid) {
+    return ConfigManager::GetEffectivePolicyForAppUpdates(StringToGuid(guid));
+  }
+
   ConfigManager* cm_;
 };
 
@@ -1104,43 +1112,54 @@ TEST_P(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DifferentAppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, 0));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) == 2);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 // Invalid value defaulting to true overrides the InstallDefault disable.
@@ -1148,29 +1167,35 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) == 2);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
   EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) == 2);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoGroupPolicy) {
@@ -1195,50 +1220,66 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DifferentAppAutoOnly) {
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppUpdates(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyManualUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoDefaultValue_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppUpdates(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyManualUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 // Invalid value defaulting to true overrides the UpdateDefault disable.
@@ -1246,116 +1287,151 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultDisabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) == 4);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppUpdates(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppUpdates(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyManualUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultEnabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         4);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyManualUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppUpdates(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyManualUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultManualOnly_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         4);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 1));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppUpdates(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyManualUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultAutoOnly_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         4);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_DefaultInvalid_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 4));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         4);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_Omaha_DefaultDisabled) {
@@ -1400,6 +1476,8 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DifferentAppAutoOnly) {
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppEnabled) {
@@ -1415,17 +1493,23 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppManualOnly) {
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_NoDefaultValue_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppEnabled) {
@@ -1444,6 +1528,8 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultDisabled_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 // Invalid value defaulting to true overrides the UpdateDefault disable.
@@ -1462,6 +1548,8 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppEnabled) {
@@ -1474,12 +1562,16 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppManualOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 2));
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyManualUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultEnabled_AppInvalid) {
@@ -1497,6 +1589,8 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppEnabled) {
@@ -1515,6 +1609,8 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 2));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppInvalid) {
@@ -1526,12 +1622,16 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultManualOnly_AppInvalid) {
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 0));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppEnabled) {
@@ -1550,6 +1650,8 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppAutoOnly) {
   EXPECT_SUCCEEDED(SetPolicy(_T("UpdateDefault"), 3));
   EXPECT_SUCCEEDED(SetPolicy(kUpdatePolicyApp1, 3));
   ExpectFalseOnlyIfDomain(CanUpdateApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppUpdates(kAppGuid1) ==
+                         kPolicyAutomaticUpdatesOnly);
 }
 
 TEST_P(ConfigManagerTest, CanUpdateApp_Manual_DefaultAutoOnly_AppInvalid) {

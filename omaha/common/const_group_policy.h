@@ -54,20 +54,20 @@ const TCHAR* const kProxyModePacScript    = _T("pac_script");
 const TCHAR* const kProxyModeFixedServers = _T("fixed_servers");
 const TCHAR* const kProxyModeSystem       = _T("system");
 
-// Applications Categroy.
+// Applications Category.
 // The prefix strings have the app's GUID appended to them.
 const TCHAR* const kRegValueInstallAppsDefault  = _T("InstallDefault");
 const TCHAR* const kRegValueInstallAppPrefix    = _T("Install");
 const TCHAR* const kRegValueUpdateAppsDefault   = _T("UpdateDefault");
 const TCHAR* const kRegValueUpdateAppPrefix     = _T("Update");
 
-const bool kInstallPolicyDefault    = true;
-const bool kUpdatePolicyDefault     = true;
-
 const int kPolicyDisabled              = 0;
 const int kPolicyEnabled               = 1;
 const int kPolicyManualUpdatesOnly     = 2;
 const int kPolicyAutomaticUpdatesOnly  = 3;
+
+const bool kInstallPolicyDefault    = kPolicyEnabled;
+const bool kUpdatePolicyDefault     = kPolicyEnabled;
 
 }  // namespace omaha
 

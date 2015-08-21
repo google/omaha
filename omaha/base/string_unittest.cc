@@ -14,12 +14,12 @@
 // ========================================================================
 
 #include "base/basictypes.h"
+#include "base/rand_util.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/localization.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 #include "omaha/base/timer.h"
-#include "omaha/base/tr_rand.h"
 #include "omaha/testing/resource.h"
 #include "omaha/testing/unit_test.h"
 
@@ -398,76 +398,6 @@ TEST(StringTest, International) {
   }
 }
 
-void TestReplaceString (TCHAR *src, TCHAR *from, TCHAR *to, TCHAR *expected) {
-  ASSERT_TRUE(expected);
-  ASSERT_TRUE(to);
-  ASSERT_TRUE(from);
-  ASSERT_TRUE(src);
-
-  size_t new_src_size = _tcslen(src) + 1;
-  TCHAR* new_src = new TCHAR[new_src_size];
-
-  _tcscpy_s(new_src, new_src_size, src);
-
-  Timer tchar (false);
-  Timer tchar2 (false);
-  Timer cstring (false);
-  Timer orig_cstring (false);
-
-  // int iterations = 10000;
-  int iterations = 10;
-
-  int out_len;
-  TCHAR *out;
-
-  for (int i = 0; i < iterations; i++) {
-      _tcscpy_s(new_src, new_src_size, src);
-      bool created_new_string = false;
-
-      tchar.Start();
-      ReplaceString (new_src, from, to, &out, &out_len);
-      tchar.Stop();
-
-      ASSERT_STREQ(out, expected);
-      delete [] out;
-  }
-
-  for (int i = 0; i < iterations; i++) {
-      _tcscpy_s(new_src, new_src_size, src);
-      bool created_new_string = false;
-
-      tchar2.Start();
-      ReplaceStringMaybeInPlace (new_src, from, to, &out,
-                                 &out_len, &created_new_string);
-      tchar2.Stop();
-
-      ASSERT_STREQ(out, expected);
-      if (out != new_src) { delete [] out; }
-  }
-
-  for (int i = 0; i < iterations; i++) {
-      CString src_string(src);
-
-      orig_cstring.Start();
-      src_string.Replace (from, to);
-      orig_cstring.Stop();
-
-      ASSERT_STREQ(src_string, CString(expected));
-  }
-
-  for (int i = 0; i < iterations; i++) {
-      CString src_string(src);
-
-      cstring.Start();
-      ReplaceCString (src_string, from, to);
-      cstring.Stop();
-
-      ASSERT_STREQ(src_string, CString(expected));
-  }
-
-  delete [] new_src;
-}
-
 TEST(StringTest, ReplaceCString) {
   CString t;
   t = _T("a a a b ");
@@ -686,48 +616,6 @@ TEST(StringTest, ReplaceWholeWord) {
   ASSERT_STREQ(str, L"a nice cream cheese..");
 }
 
-
-TEST(StringTest, TestReplaceString) {
-  // timing for replace string, for the specific tests below shows:
-  //
-  // the TCHAR version is always faster than CRT CString::Replace
-  //
-  // the CString version is faster than CRT CString::Replace:
-  // - always if the replacement is shorter
-  // - if the source string is longer than ~60 characters if the replacement is
-  //   longer
-  //
-  // based on our current usage of CString::Replace, I expect the new CString
-  // version is faster on average than CRT CString::Replace
-  //
-  // non-CRT CString::Replace is much slower, so all of these should be much
-  // faster than that
-
-  TestReplaceString(L"that's what i changed -it was propagating the error code but i ..", L" .. ", L"<b> .. </b>", L"that's what i changed -it was propagating the error code but i ..");
-  TestReplaceString(L"news.com.url", L".url", L"", L"news.com");
-  TestReplaceString(L"news.com..url", L".url", L"", L"news.com.");
-  TestReplaceString(L"news.com.u.url", L".url", L"", L"news.com.u");
-  TestReplaceString(L"abanana pie banana", L"banana", L"c", L"ac pie c");
-  TestReplaceString(L"bananabananabanana", L"banana", L"c", L"ccc");
-  TestReplaceString(L"abanana pie banana", L"banana", L"cabanapie", L"acabanapie pie cabanapie");
-  TestReplaceString(L"bananabananabanana", L"banana", L"cabanapie", L"cabanapiecabanapiecabanapie");
-  TestReplaceString(L"banana pie banana pie", L"banana", L"c", L"c pie c pie");
-  TestReplaceString(L"banana pie banana pie", L"pie", L"z", L"banana z banana z");
-  TestReplaceString(L"banana pie banana pie", L"banana", L"bananacabana", L"bananacabana pie bananacabana pie");
-  TestReplaceString(L"banana pie banana pie", L"pie", L"pietie", L"banana pietie banana pietie");
-  TestReplaceString(L"banana pie banana pie", L"tie", L"pietie", L"banana pie banana pie");
-  TestReplaceString(L"banana pie banana pie banana pie banana pie banana pie", L"banana", L"bananacab", L"bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie");
-  TestReplaceString(L"banana pie banana pie banana pie banana pie banana pie banana pie banana pie", L"banana", L"bananacab", L"bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie");
-  TestReplaceString(L"banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie", L"banana", L"bananacab", L"bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie");
-  TestReplaceString(L"banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie", L"banana", L"bananacab", L"bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie bananacab pie");
-  TestReplaceString(L"banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie", L"banana", L"cab", L"cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie cab pie");
-  TestReplaceString(L"news", L"news", L"", L"");
-  TestReplaceString(L"&nbsp;", L"&nbsp;", L"", L"");
-  TestReplaceString(L"&nbsp;&nbsp;&nbsp;", L"&nbsp;", L"", L"");
-  TestReplaceString(L"&nbsp; &nbsp;&nbsp;", L"&nbsp;", L"", L" ");
-}
-
-
 TEST(StringTest, GetAbsoluteUri) {
   ASSERT_STREQ(GetAbsoluteUri(L"http://www.google.com"),
                L"http://www.google.com/");
@@ -829,11 +717,9 @@ void TestIsSpace (char *s) {
     size_t len = strlen (s);
 
     // used to try to clear the processor cache
-    size_t dlen = 100000;
-    char *dummy = new char [dlen];
-    for (size_t i = 0; i < dlen; i++) {
-      dummy[i] = static_cast<char>(tr_rand() % 256);
-    }
+    const size_t dlen = 100000;
+    char* dummy = new char [dlen];
+    RandBytes(dummy, sizeof(*dummy) * dlen);
 
     size_t num_spaces = 0;
     size_t n = iterations * len;
@@ -869,6 +755,8 @@ void TestIsSpace (char *s) {
         size_t d2 = 0;
         for (size_t j = 0; j < dlen; j++) { d2 += dummy[j]; }
     }
+
+    delete[] dummy;
 }
 
 TEST(StringTest, IsSpace) {
@@ -905,29 +793,6 @@ TEST(StringTest, CleanupWhitespace) {
                         L"thisisaverylongstringwithsometext");
   TestCleanupWhitespace(L"thisisavery   longstringwithsometext",
                         L"thisisavery longstringwithsometext");
-}
-
-void TestWcstoul (TCHAR *string, int radix, unsigned long expected) {
-    ASSERT_TRUE(string);
-
-    wchar_t *ptr;
-    int v = Wcstoul (string, &ptr, radix);
-    ASSERT_EQ(v, expected);
-
-#ifdef DEBUG
-    int v2 = wcstoul (string, &ptr, radix);
-    ASSERT_EQ(v, v2);
-#endif
-}
-
-TEST(StringTest, Wcstoul) {
-  TestWcstoul(L"625", 16, 1573);
-  TestWcstoul(L" 625", 16, 1573);
-  TestWcstoul(L"a3", 16, 163);
-  TestWcstoul(L"A3", 16, 163);
-  TestWcstoul(L"  A3", 16, 163);
-  TestWcstoul(L" 12445", 10, 12445);
-  TestWcstoul(L"12445778", 10, 12445778);
 }
 
 TEST(StringTest, IsDigit) {

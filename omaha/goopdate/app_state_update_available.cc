@@ -52,23 +52,6 @@ void AppStateUpdateAvailable::QueueDownloadOrInstall(App* app) {
   QueueDownload(app);
 }
 
-void AppStateUpdateAvailable::HandleGroupPolicyError(App* app, HRESULT code) {
-  ASSERT1(app);
-  ASSERT1(code == GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY ||
-          code == GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY);
-  OPT_LOG(LW, (_T("[Update available for disabled app][%s]"),
-                app->app_guid_string()));
-  app->LogTextAppendFormat(_T("Status=%s-disabled"),
-                           app->is_update() ? _T("update") : _T("install"));
-
-  StringFormatter formatter(app->app_bundle()->display_language());
-  CString error_message;
-  VERIFY1(SUCCEEDED(formatter.LoadString(
-                        IDS_APP_INSTALL_DISABLED_BY_GROUP_POLICY,
-                        &error_message)));
-  Error(app, ErrorContext(code), error_message);
-}
-
 }  // namespace fsm
 
 }  // namespace omaha

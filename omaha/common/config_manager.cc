@@ -23,6 +23,7 @@
 #include <atlstr.h>
 #include <atlsecurity.h>
 #include <math.h>
+#include "base/rand_util.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/const_addresses.h"
@@ -686,7 +687,7 @@ int ConfigManager::GetUpdateWorkerStartUpDelayMs() const {
   }
 
   uint32 random_value = 0;
-  if (rand_s(&random_value)) {
+  if (!RandUint32(&random_value)) {
     return au_timer_interval_ms;
   }
 
@@ -711,7 +712,7 @@ int ConfigManager::GetAutoUpdateJitterMs() const {
   }
 
   uint32 random_delay = 0;
-  if (rand_s(&random_delay)) {
+  if (!RandUint32(&random_delay)) {
     random_delay = 0;
   }
 
@@ -903,11 +904,8 @@ bool ConfigManager::IsInternalUser() const {
   return false;
 }
 
-bool ConfigManager::CanInstallApp(const GUID& app_guid) const {
-  // Google Update should never be checking whether it can install itself.
-  ASSERT1(!::IsEqualGUID(kGoopdateGuid, app_guid));
-
-  DWORD effective_policy = 0;
+DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid) {
+  DWORD effective_policy = kPolicyDisabled;
   if (!GetEffectivePolicyForApp(kRegValueInstallAppsDefault,
                                 kRegValueInstallAppPrefix,
                                 app_guid,
@@ -915,23 +913,35 @@ bool ConfigManager::CanInstallApp(const GUID& app_guid) const {
     return kInstallPolicyDefault;
   }
 
-  return kPolicyDisabled != effective_policy;
+  return effective_policy;
 }
 
-// Self-updates cannot be disabled.
-bool ConfigManager::CanUpdateApp(const GUID& app_guid,
-                                 bool is_manual) const {
-  if (::IsEqualGUID(kGoopdateGuid, app_guid)) {
-    return true;
-  }
-
-  DWORD effective_policy = 0;
+DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid) {
+  DWORD effective_policy = kPolicyDisabled;
   if (!GetEffectivePolicyForApp(kRegValueUpdateAppsDefault,
                                 kRegValueUpdateAppPrefix,
                                 app_guid,
                                 &effective_policy)) {
     return kUpdatePolicyDefault;
   }
+
+  return effective_policy;
+}
+
+bool ConfigManager::CanInstallApp(const GUID& app_guid) const {
+  // Google Update should never be checking whether it can install itself.
+  ASSERT1(!::IsEqualGUID(kGoopdateGuid, app_guid));
+
+  return kPolicyDisabled != GetEffectivePolicyForAppInstalls(app_guid);
+}
+
+// Self-updates cannot be disabled.
+bool ConfigManager::CanUpdateApp(const GUID& app_guid, bool is_manual) const {
+  if (::IsEqualGUID(kGoopdateGuid, app_guid)) {
+    return true;
+  }
+
+  const DWORD effective_policy = GetEffectivePolicyForAppUpdates(app_guid);
 
   if (kPolicyDisabled == effective_policy) {
     return false;
@@ -943,7 +953,7 @@ bool ConfigManager::CanUpdateApp(const GUID& app_guid,
     return false;
   }
 
-  return kUpdatePolicyDefault;
+  return true;
 }
 
 bool ConfigManager::AlwaysAllowCrashUploads() const {

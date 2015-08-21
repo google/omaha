@@ -234,7 +234,8 @@ HRESULT RegisterOrUnregisterProxies64(bool is_machine, bool is_register) {
     return hr;
   }
   const DWORD kWaitForRegistrationTimeoutMs = 30 * 1000;   // 30 seconds
-  return register_process.WaitUntilDead(kWaitForRegistrationTimeoutMs);
+  return register_process.WaitUntilDead(kWaitForRegistrationTimeoutMs) ?
+      S_OK : HRESULT_FROM_WIN32(ERROR_TIMEOUT);
 }
 
 HRESULT RegisterOrUnregisterProxies(void* data, bool is_register) {

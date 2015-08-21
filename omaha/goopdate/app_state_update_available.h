@@ -34,9 +34,6 @@ class AppStateUpdateAvailable : public AppState {
   virtual void QueueDownloadOrInstall(App* app);
 
  private:
-  // Moves the app to the Error state with an appropriate message.
-  void HandleGroupPolicyError(App* app, HRESULT code);
-
   DISALLOW_COPY_AND_ASSIGN(AppStateUpdateAvailable);
 };
 

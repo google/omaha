@@ -23,6 +23,7 @@
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 #include "omaha/common/config_manager.h"
+#include "omaha/common/const_group_policy.h"
 #include "omaha/common/experiment_labels.h"
 #include "omaha/goopdate/app_command_model.h"
 #include "omaha/goopdate/app_manager.h"
@@ -941,16 +942,22 @@ void App::AddPingEvent(const PingEventPtr& ping_event) {
 HRESULT App::CheckGroupPolicy() const {
   __mutexScope(model()->lock());
 
-  bool is_auto_update = false;
-
   if (is_update_) {
     if (!ConfigManager::Instance()->CanUpdateApp(
              app_guid_,
              !app_bundle_->is_auto_update())) {
+      if (ConfigManager::GetEffectivePolicyForAppUpdates(app_guid_) ==
+          kPolicyAutomaticUpdatesOnly) {
+        // This return code allows Omaha clients to show a message indicating
+        // Manual Updates are disabled, but Automatic Updates are enabled. This
+        // is to reassure end-users that administrators have enabled automatic
+        // updates.
+        return GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY_MANUAL;
+      }
+
       return GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY;
     }
   } else {
-    ASSERT1(!is_auto_update);
     if (!ConfigManager::Instance()->CanInstallApp(app_guid_)) {
       return GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY;
     }

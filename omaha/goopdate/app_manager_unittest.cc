@@ -85,7 +85,7 @@ void InitializeAppManagerRegistryLock(bool is_machine, GLock* lock) {
   ASSERT1(lock);
   NamedObjectAttributes lock_attr;
   GetNamedObjectAttributes(kRegistryAccessMutex, is_machine, &lock_attr);
-  EXPECT_SUCCEEDED(lock->InitializeWithSecAttr(lock_attr.name, &lock_attr.sa));
+  EXPECT_TRUE(lock->InitializeWithSecAttr(lock_attr.name, &lock_attr.sa));
 }
 
 }  // namespace
@@ -1135,7 +1135,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
       }
 
       CString sum_string;
-      sum_string.Format(_T("%d"), sum);
+      sum_string.Format(_T("%u"), sum);
       attributes.push_back(
           std::make_pair(subkey_pairs[i].attribute_name.MakeLower(),
                          sum_string));

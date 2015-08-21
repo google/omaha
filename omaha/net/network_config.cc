@@ -282,7 +282,7 @@ void NetworkConfig::SetConfigurationOverride(
 // Serializes configurations for debugging purposes.
 CString NetworkConfig::ToString(const ProxyConfig& config) {
   CString result;
-  result.AppendFormat(_T("priority=%u, source=%s, "),
+  result.AppendFormat(_T("priority=%d, source=%s, "),
                       config.priority, config.source);
 
   switch (GetAccessType(config)) {

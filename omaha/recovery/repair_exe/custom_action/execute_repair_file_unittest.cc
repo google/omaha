@@ -23,6 +23,10 @@
 #include "omaha/recovery/repair_exe/custom_action/execute_repair_file.h"
 #include "omaha/testing/unit_test.h"
 
+#undef MSP_TEST_EXPECTED_DIR
+#define MSP_TEST_EXPECTED_DIR \
+    _T("%PROGRAMFILES%\\") OMAHA_REL_GOOPDATE_INSTALL_DIR
+
 namespace omaha {
 
 namespace {
@@ -30,10 +34,10 @@ namespace {
 // The valid repair file saves the arguments passed to it to a file.
 void RunAndVerifySavedArgs(const CString& args) {
   CString expected_copy_path =
-      _T("%PROGRAMFILES%\\Google\\Update\\SaveArguments.exe");
+      MSP_TEST_EXPECTED_DIR _T("\\SaveArguments.exe");
   EXPECT_SUCCEEDED(ExpandStringWithSpecialFolders(&expected_copy_path));
   CString saved_arguments_file_path =
-      _T("%PROGRAMFILES%\\Google\\Update\\saved_arguments.txt");
+      MSP_TEST_EXPECTED_DIR _T("\\saved_arguments.txt");
   EXPECT_SUCCEEDED(ExpandStringWithSpecialFolders(&saved_arguments_file_path));
 
   CString repair_file(app_util::GetCurrentModuleDirectory());
@@ -113,7 +117,7 @@ TEST(ExecuteRepairFileTest, VerifyFileAndExecute_FilenameIsDirectory) {
 
 TEST(ExecuteRepairFileTest, VerifyFileAndExecute_UnsignedFile) {
   CString expected_copy_path =
-      _T("%PROGRAMFILES%\\Google\\Update\\GoogleUpdate_unsigned.exe");
+      MSP_TEST_EXPECTED_DIR _T("\\GoogleUpdate_unsigned.exe");
   EXPECT_SUCCEEDED(ExpandStringWithSpecialFolders(&expected_copy_path));
   CString repair_file(app_util::GetCurrentModuleDirectory());
   EXPECT_TRUE(::PathAppend(CStrBuf(repair_file, MAX_PATH),

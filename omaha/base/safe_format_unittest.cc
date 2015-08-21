@@ -20,28 +20,6 @@
 
 namespace omaha {
 
-TEST(SafeFormatTest, BrokenCStringFormatTruncates) {
-  // TODO(omaha): See http://b/1016121 for details.  As of Sept 2010,
-  // CString::Format() is implemented using ::wvsprintf(), which has
-  // an internal 1024-byte buffer limit.  A bug has been filed with
-  // Microsoft.  If this test breaks, it means that we have gotten a
-  // new version of ATL/MFC with a fixed CString and can use that
-  // instead of SafeCStrFormat/AppendFormat.
-
-  TCHAR largestr[4000] = { 0 };
-
-  for (int i = 0; i < ARRAYSIZE(largestr); ++i) {
-    largestr[i] = _T('a') + static_cast<TCHAR>(i % 26);
-  }
-  largestr[ARRAYSIZE(largestr) - 1] = _T('\0');
-
-  CString test_string;
-  test_string.Format(_T("%s"), largestr);
-  EXPECT_EQ(1024, test_string.GetLength());
-  test_string.AppendFormat(_T("%s"), largestr);
-  EXPECT_EQ(2048, test_string.GetLength());
-}
-
 TEST(SafeFormatTest, SafeFormatDoesNotTruncate) {
   TCHAR largestr[4000] = { 0 };
 

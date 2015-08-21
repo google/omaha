@@ -84,7 +84,6 @@ inputs = [
     'thread_pool.cc',
     'time.cc',
     'timer.cc',
-    'tr_rand.cc',
     'user_info.cc',
     'user_rights.cc',
     'utils.cc',
@@ -95,6 +94,7 @@ inputs = [
     'xml_utils.cc',
 
     '../third_party/chrome/files/src/base/cpu.cc',
+    '../third_party/chrome/files/src/base/rand_util.cc',
     '../third_party/chrome/files/src/crypto/rsa_private_key.cc',
     '../third_party/chrome/files/src/crypto/rsa_private_key_win.cc',
     '../third_party/chrome/files/src/crypto/signature_creator_win.cc',

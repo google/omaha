@@ -556,7 +556,7 @@ uint32 Process::GetDescendantProcess(HANDLE job,
       debug_info_.AppendFormat(_T("%u %u %s\n"),
                                it->process_id,
                                it->parent_id,
-                               it->exe_file);
+                               it->exe_file.GetString());
     }
   }
 #else
@@ -762,7 +762,6 @@ HRESULT Process::FindProcesses(uint32 exclude_mask,
     return hr;
   }
 
-  UTIL_LOG(L4, (_T("[Process::FindProcesses][processes=%d]"), num_processes));
   for (int i = 0; i < num_processes; ++i) {
     // Skip the system idle process.
     if (process_ids[i] == 0) {
@@ -938,16 +937,16 @@ bool Process::IsProcImageMatch(HANDLE proc_handle,
   if (!GetProcessImageFileName(proc_handle,
                                image_name,
                                arraysize(image_name))) {
-    UTIL_LOG(L4, (_T("[GetProcessImageFileName fail[0x%x]"),
+    UTIL_LOG(L4, (_T("[GetProcessImageFileName fail][0x%x]"),
                   HRESULTFromLastError()));
     return false;
   }
 
-  UTIL_LOG(L4, (_T("[GetProcessImageFileName][%s]"), image_name));
   CString dos_name;
   HRESULT hr(DevicePathToDosPath(image_name, &dos_name));
   if (FAILED(hr)) {
-    UTIL_LOG(L4, (_T("[DevicePathToDosPath fail[0x%x]"), hr));
+    UTIL_LOG(L4, (_T("[DevicePathToDosPath failed][%s][0x%x]"),
+        image_name, hr));
     return false;
   }
 
@@ -968,7 +967,6 @@ bool Process::IsProcessUsingExeOrDll(uint32 process_id,
                                     FALSE,
                                     process_id));
   if (!process_handle) {
-    UTIL_LOG(L4, (_T("[::OpenProcess failed][0x%x]"), HRESULTFromLastError()));
     return false;
   }
 
@@ -995,9 +993,6 @@ bool Process::IsProcessUsingExeOrDll(uint32 process_id,
                             module_handles,
                             num_modules_to_fetch * sizeof(HMODULE),
                             reinterpret_cast<DWORD*>(&bytes_needed))) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LEVEL_ERROR, (_T("[EnumProcessModules failed][0x%x]"), hr));
-
     if (IsWow64(::GetCurrentProcessId())) {
       // ::EnumProcessModules from a WoW64 process fails for x64 processes.
       // We try ::GetProcessImageFileName as a workaround here.
@@ -1536,9 +1531,7 @@ HRESULT Process::GetImagePath(const CString& process_name,
     if (!GetProcessImageFileName(get(process_handle),
                                  image_name,
                                  arraysize(image_name))) {
-      hr = HRESULTFromLastError();
-      UTIL_LOG(LE, (_T("[GetProcessImageFileName failed][0x%08x]"), hr));
-      return hr;
+      return HRESULTFromLastError();
     } else {
       *path = image_name;
       return S_OK;

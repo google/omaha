@@ -379,6 +379,7 @@ if _msc_ver >= omaha_version_utils.VC140:
 win_env.AppendUnique(
     # Add windows specific compiler flags.
     CCFLAGS = [
+        '/arch:IA32',
         ('', '/analyze:WX-')[win_env.Bit('analysis')],
         '/nologo',
         '/c',
@@ -390,7 +391,6 @@ win_env.AppendUnique(
         '/D_CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1',
-        '/D_CRT_RAND_S',
         '/WX',      # warnings as errors
         '/d2Zi+',   # better debugging support for optimized code
 
@@ -474,7 +474,6 @@ win_env.AppendUnique(
         '_ATL_NO_UUIDOF',
         '_ATL_STATIC_REGISTRY',
         '_ATL_XP_TARGETING',
-        '_CRT_RAND_S',      # rand_s support available in Windows XP only.
         '_SECURE_ATL=1',
         '_WTL_NO_CSTRING',  # WTL uses ATL CString instead.
 
@@ -595,7 +594,7 @@ if _msc_ver >= omaha_version_utils.VC120 and not win_env.Bit('build_server'):
   win_env.AppendUnique(
       # Forces writes to the program database (PDB) file to allow otherwise,
       # for some reason, optimized builds fail when run with -j option.
-      CCFLAGS = ['/FS', ]
+      CCFLAGS = ['/FS', '/MP']
   )
 
 # Allow verification of these settings in the build log.

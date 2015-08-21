@@ -593,7 +593,8 @@ HRESULT BitsRequest::DoSend() {
       case BG_JOB_STATE_TRANSFERRED:
         NotifyProgress();
         hr = request_state_->bits_job->Complete();
-        if (SUCCEEDED(hr) || BG_S_UNABLE_TO_DELETE_FILES == hr) {
+        if (SUCCEEDED(hr) ||
+            static_cast<HRESULT>(BG_S_UNABLE_TO_DELETE_FILES) == hr) {
           // Assume the status code is 200 if the transfer completed. BITS does
           // not provide access to the status code.
           request_state_->http_status_code = HTTP_STATUS_OK;

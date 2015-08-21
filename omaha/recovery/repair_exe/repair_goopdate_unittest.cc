@@ -71,8 +71,8 @@ TEST_F(RepairGoopdateTest,
   }
 
   const TCHAR kArgs[] = _T("/update");
-  CString saved_arguments_file_path =
-      _T("%PROGRAMFILES%\\Google\\Update\\saved_arguments.txt");
+  CString saved_arguments_file_path = _T("%PROGRAMFILES%\\") \
+      OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\saved_arguments.txt");
   EXPECT_SUCCEEDED(ExpandStringWithSpecialFolders(&saved_arguments_file_path));
 
   ::DeleteFile(saved_arguments_file_path);

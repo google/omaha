@@ -38,13 +38,6 @@ lib_output = lib_env.ComponentLibrary(
     source=lib_inputs,
 )
 
-lib_env.OmahaUnittest(
-    name='repair_exe_custom_action_unittest',
-    source='execute_repair_file_unittest.cc',
-    LIBS=lib_target_name + '.lib',
-)
-
-
 dll_target_name = 'executecustomaction'
 
 dll_env = env.Clone(

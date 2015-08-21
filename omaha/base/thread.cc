@@ -96,10 +96,6 @@ bool Thread::Resume() {
   return (static_cast<DWORD>(-1) != ResumeThread(thread_));
 }
 
-bool Thread::Terminate(int exit_code) {
-  return TRUE == TerminateThread(thread_, exit_code);
-}
-
 bool Thread::SetPriority(int priority) {
   return TRUE == SetThreadPriority(thread_, priority);
 }

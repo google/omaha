@@ -1460,18 +1460,19 @@ HRESULT GoopdateImpl::CaptureOSMetrics() {
   int service_pack_major(0);
   int service_pack_minor(0);
 
-  HRESULT hr = SystemInfo::GetSystemVersion(&major_version,
-                                            &minor_version,
-                                            &service_pack_major,
-                                            &service_pack_minor);
-  if (SUCCEEDED(hr)) {
-    metric_windows_major_version    = major_version;
-    metric_windows_minor_version    = minor_version;
-    metric_windows_sp_major_version = service_pack_major;
-    metric_windows_sp_minor_version = service_pack_minor;
+  if (!SystemInfo::GetSystemVersion(&major_version,
+                                    &minor_version,
+                                    &service_pack_major,
+                                    &service_pack_minor)) {
+    return E_FAIL;
   }
 
-  return hr;
+  metric_windows_major_version    = major_version;
+  metric_windows_minor_version    = minor_version;
+  metric_windows_sp_major_version = service_pack_major;
+  metric_windows_sp_minor_version = service_pack_minor;
+
+  return S_OK;
 }
 
 }  // namespace detail

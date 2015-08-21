@@ -211,7 +211,7 @@ HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
     HRESULT hr = HRESULT_FROM_WIN32(::GetLastError());
     return hr;
   } else {
-    os_version->Format(_T("%d.%d"),
+    os_version->Format(_T("%u.%u"),
                        os_version_info.dwMajorVersion,
                        os_version_info.dwMinorVersion);
     *service_pack = os_version_info.szCSDVersion;

@@ -107,6 +107,8 @@ class AppState {
 
   static PingEvent::Results GetCompletionResult(const App& app);
 
+  void HandleGroupPolicyError(App* app, HRESULT code);
+
  private:
   // TODO(omaha): rename to CurrentStateId or similar.
   const CurrentState state_;

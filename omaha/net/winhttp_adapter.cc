@@ -515,7 +515,7 @@ void __stdcall WinHttpAdapter::WinHttpStatusCallback(HINTERNET handle,
   }
 
   CString log_line;
-  log_line.AppendFormat(_T("[WinHttp status callback][%p][handle=0x%08x]"),
+  log_line.AppendFormat(_T("[WinHttp status callback][%p][handle=%p]"),
                         http_adapter, handle);
   if (!status_string.IsEmpty()) {
     log_line.AppendFormat(_T("[%s]"), status_string);

@@ -840,9 +840,6 @@ inline bool IsLocalSystemSid(const TCHAR* sid) {
   return _tcsicmp(sid, kLocalSystemSid) == 0;
 }
 
-// Fills a buffer with cryptographically random bytes.
-bool GenRandom(void* buffer, size_t buffer_length);
-
 // Deletes an object. The functor is useful in for_each algorithms.
 struct DeleteFun {
   template <class T> void operator()(T ptr) { delete ptr; }

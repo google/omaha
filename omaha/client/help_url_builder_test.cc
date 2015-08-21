@@ -52,16 +52,17 @@ int VerifyOSInUrl(const CString& url, int* length) {
   // substring of the version we are looking for.
   // TODO(omaha): This is a maintenance problem. Consider eliminating the
   // "&sp=" at the very least.
-  const TCHAR* kExpectedOsStrings[] = {_T("6.3&sp=9600.17031"),
-                                       _T("6.1&sp=Service%20Pack%201"),
-                                       _T("6.1&sp="),
-                                       _T("6.0&sp=Service%20Pack%201"),
-                                       _T("6.0&sp="),
-                                       _T("5.2&sp=Service%20Pack%202"),
-                                       _T("5.2&sp=Service%20Pack%201"),
-                                       _T("5.1&sp=Service%20Pack%203"),
-                                       _T("5.1&sp=Service%20Pack%202"),
-                                      };
+  const TCHAR* kExpectedOsStrings[] = {
+      _T("10.0&sp="),
+      _T("6.3&sp="),
+      _T("6.1&sp=Service%20Pack%201"),
+      _T("6.1&sp="),
+      _T("6.0&sp=Service%20Pack%201"),
+      _T("6.0&sp="),
+      _T("5.2&sp=Service%20Pack%202"),
+      _T("5.2&sp=Service%20Pack%201"),
+      _T("5.1&sp=Service%20Pack%203"),
+      _T("5.1&sp=Service%20Pack%202")};
 
   bool found = false;
   int this_pos = 0;

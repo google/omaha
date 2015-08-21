@@ -236,7 +236,7 @@ HRESULT PackageCache::Put(const Key& key,
     CORE_LOG(LE,
         (_T("[failed to verify hash for file '%s'][expected hash %s]"),
         destination_file, internal::GetHashString(hash)));
-    VERIFY1(SUCCEEDED(::DeleteFile(destination_file)));
+    VERIFY1(::DeleteFile(destination_file));
     return hr;
   }
 

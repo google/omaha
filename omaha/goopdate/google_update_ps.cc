@@ -12,6 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
+//
+// This module registers the proxy/stubs for the interfaces in kIIDsToRegister,
+// including the marshal-by-value proxy/stub for the ICurrentState
+// implementation.
+// Most coclasses in omaha3_idl.idl inject code into clients by using
+// IStdMarshalInfo and redirect proxy lookups so that machine and user
+// Omaha installations are isolated from each other.
+//
 
 #include <atlbase.h>
 #include "base/basictypes.h"
@@ -50,9 +58,8 @@ class GoogleUpdatePSModule
 }  // namespace omaha
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
-  HRESULT hr = omaha::_AtlModule.DllMain(reason, reserved);
-  if (FAILED(hr)) {
-    return hr;
+  if (!omaha::_AtlModule.DllMain(reason, reserved)) {
+    return FALSE;
   }
 
   return PrxDllMain(instance, reason, reserved);

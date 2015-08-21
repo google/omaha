@@ -235,7 +235,9 @@ class ConfigManager {
   // Returns true if installation of the specified app is allowed.
   bool CanInstallApp(const GUID& app_guid) const;
 
-  // Returns true if updates are allowed for the specified app.
+  // Returns true if updates are allowed for the specified app. The 'is_manual'
+  // parameter is needed for context, because the update policy can be one of
+  // kPolicyDisabled, kPolicyManualUpdatesOnly, or kPolicyAutomaticUpdatesOnly.
   bool CanUpdateApp(const GUID& app_guid, bool is_manual) const;
 
   // Returns true if crash uploading is allowed all the time, no matter the
@@ -259,6 +261,15 @@ class ConfigManager {
   // Returns true if it has been more than 24 hours since Goopdate was updated
   // or installed.
   static bool Is24HoursSinceLastUpdate(bool is_machine);
+
+  // Returns kPolicyEnabled if installation of the specified app is allowed.
+  // Otherwise, returns kPolicyDisabled.
+  static DWORD GetEffectivePolicyForAppInstalls(const GUID& app_guid);
+
+  // Returns kPolicyEnabled if updates of the specified app is allowed.
+  // Otherwise, returns one of kPolicyDisabled, kPolicyManualUpdatesOnly, or
+  // kPolicyAutomaticUpdatesOnly.
+  static DWORD GetEffectivePolicyForAppUpdates(const GUID& app_guid);
 
   static ConfigManager* Instance();
   static void DeleteInstance();

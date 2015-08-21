@@ -150,10 +150,10 @@ CString Timer::DebugString() const {
   double seconds = GetSeconds();
   if (iterations_) {
     s.Format(_T("%s sec %d iterations %s sec/iteration"),
-             String_DoubleToString(seconds, 3), iterations_,
-             String_DoubleToString(seconds/iterations_, 3));
+             String_DoubleToString(seconds, 3).GetString(), iterations_,
+             String_DoubleToString(seconds/iterations_, 3).GetString());
   } else {
-    s.Format(_T("%s sec"), String_DoubleToString(seconds, 3));
+    s.Format(_T("%s sec"), String_DoubleToString(seconds, 3).GetString());
   }
   return s;
 }

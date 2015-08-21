@@ -22,6 +22,7 @@
 #ifndef OMAHA_COMMON_ATL_REGEXP_H__
 #define OMAHA_COMMON_ATL_REGEXP_H__
 
+#include <stdlib.h>
 #pragma warning(push)
 // enumerator 'identifier' in switch of enum 'enumeration' is not explicitly
 // handled by a case label
@@ -85,7 +86,7 @@ public:
   static long Strtol(const RECHARTYPE *sz,
                      RECHARTYPE **szEnd, int nBase) throw()
   {
-    return Wcstol(sz, szEnd, nBase);
+    return wcstol(sz, szEnd, nBase);
   }
 
   static int Isdigit(RECHARTYPE ch) throw()

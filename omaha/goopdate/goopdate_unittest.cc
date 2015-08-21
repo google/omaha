@@ -712,7 +712,7 @@ class GoopdateIsMachineProcessTest : public testing::Test {
 // enumerator 'identifier' in switch of enum 'enumeration' is not handled.
 #pragma warning(1: 4061 4062)
 static void EnsureUnitTestUpdatedWithNewModes() {
-  CommandLineMode unused_mode;
+  CommandLineMode unused_mode(COMMANDLINE_MODE_UNKNOWN);
   switch (unused_mode) {
     case COMMANDLINE_MODE_UNKNOWN:
     case COMMANDLINE_MODE_NOARGS:

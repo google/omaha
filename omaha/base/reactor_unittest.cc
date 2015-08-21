@@ -15,6 +15,7 @@
 
 
 #include <stdlib.h>
+#include "base/rand_util.h"
 #include "base/scoped_ptr.h"
 #include "omaha/base/event_handler.h"
 #include "omaha/base/reactor.h"
@@ -63,7 +64,7 @@ class ReactorTest
   // Returns an integer value in the [0, 10) range.
   static int GetSmallInt() {
     unsigned int val = 0;
-    rand_s(&val);
+    RandUint32(&val);
     return val % 10;
   }
 
@@ -95,7 +96,7 @@ void ReactorTest::HandleEvent(HANDLE h) {
       ASSERT_HRESULT_SUCCEEDED(reactor_.RegisterHandle(h));
 
       unsigned int val = 0;
-      ASSERT_EQ(rand_s(&val), 0);
+      ASSERT_TRUE(RandUint32(&val));
       val %= 10;
 
       // Set the timer to fire; negative values indicate relative time.

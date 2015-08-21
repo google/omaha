@@ -21,6 +21,7 @@
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scoped_any.h"
+#include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/user_info.h"
@@ -183,6 +184,8 @@ bool AcceptPsexecEula() {
   if (psexec_directory.IsEmpty()) {
     return false;
   }
+
+  psexec_directory = String_MakeEndWith(psexec_directory, _T("\\"), true);
 
   CString psexec_path = ConcatenatePath(psexec_directory, _T("psexec.exe"));
   return SUCCEEDED(System::StartProcessWithArgs(psexec_path,

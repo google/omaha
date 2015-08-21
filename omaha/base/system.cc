@@ -214,15 +214,15 @@ HRESULT System::GetProcessMemoryStatistics(uint64 *current_working_set,
   if (GetProcessMemoryInfo(process_handle,
                            &counters,
                            sizeof(PROCESS_MEMORY_COUNTERS))) {
+    UTIL_LOG(L2, (_T("[working set][current: %s][peak: %s]"),
+                  String_Uint64ToString(counters.WorkingSetSize, 10),
+                  String_Uint64ToString(counters.PeakWorkingSetSize, 10)));
     if (current_working_set) {
       *current_working_set = counters.WorkingSetSize;
     }
     if (peak_working_set) {
       *peak_working_set = counters.PeakWorkingSetSize;
     }
-    UTIL_LOG(L2, (_T("[working set][current: %s][peak: %s]"),
-                  String_Int64ToString(*current_working_set, 10),
-                  String_Int64ToString(*peak_working_set, 10)));
   } else {
     if (current_working_set) {
       *current_working_set = 0;

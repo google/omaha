@@ -1,3 +1,33 @@
+## 2015-08-18 @100157432,100957192 1.3.28.11
+
+### Changes
+
+--------------------------------------------------------------------------------
+  Fix unit test to include Windows 10 and fix the string for Window 8.
+--------------------------------------------------------------------------------
+  Improves on the version detection by using RtlGetVersion().
+--------------------------------------------------------------------------------
+  Merge separate unit test binaries into omaha_unittests.exe.
+--------------------------------------------------------------------------------
+  Set the minimum shell version to be 1.3.26.1, which has the manifest changes to correctly identify the shell as being compatible with Windows 10.
+  Updating users to shell 1.3.26.1 will allow Omaha to also report the correct Windows version in the update checks.
+  In addition, there will be another forthcoming change to improve on the version detection by using RtlGetVersion().
+--------------------------------------------------------------------------------
+  Fix some static analysis warnings from VS2015.
+--------------------------------------------------------------------------------
+  Update SaveArguments.exe with version 1.3.28.9
+--------------------------------------------------------------------------------
+  Fix bug 23121021 rand_s crashes with EINVAL _invalid_parameter_noinfo.
+  Using code from https://src.chromium.org/svn/trunk/src/base/rand_util_win.cc instead of rand_s for now.
+--------------------------------------------------------------------------------
+  Update product ID in RepairGoopdate* unit tests.
+--------------------------------------------------------------------------------
+  Omaha must build without SSE instruction.
+--------------------------------------------------------------------------------
+  Omaha returns UPGRADE_DISABLED_BY_POLICY_MANUAL for manual/on-demand update checks when updates are disabled.
+  If installs and updates are disabled, Manual installs and Manual update checks do not check for updates with the Omaha server and return right away with GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY and GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY_MANUAL respectively.
+  Automatic update checks continue to work as before. They do an update check with the server, and only in the download phase will the client get a GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY error.
+
 ## 2015-08-15 @96143043,100157431
 
 ### Changes
@@ -714,3 +744,4 @@
   Use the HTTPS url to upload crash reports.
 --------------------------------------------------------------------------------
   When experiment labels are specified via a tag for either an app or Omaha, merge them with existing labels in the Registry instead of overwriting entirely.  (If the Registry labels appear to be corrupt, discard them and overwrite.)
+

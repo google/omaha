@@ -25,16 +25,8 @@
 // Overriding HKLM causes HasXmlParser() to fail on Vista.
 // These tests must be run independently because other tests may use the XML
 // parser, making it available despite the HKLM overriding.
-
-// This test links against code that requires the following symbols but the test
-// does not use them. See the TODO in the build.scons. Rather than link against
-// more libs, define these symbols here.
-//
-// From bits.lib.
-EXTERN_C const GUID IID_IBackgroundCopyCallback = GUID_NULL;
-// From iphlpapi.lib.
-#include <iphlpapi.h>  // NOLINT
-DWORD WINAPI GetIfTable(PMIB_IFTABLE, PULONG, BOOL) { return 0; }
+// TODO(omaha): Figure out a way so the test can run together with other tests
+// and then reenable.
 
 namespace omaha {
 
@@ -57,7 +49,7 @@ namespace {
   }
 }  // namespace
 
-TEST_F(RegistryProtectedTest, InstallOmaha_XmlParserNotPresent) {
+TEST_F(RegistryProtectedTest, DISABLED_InstallOmaha_XmlParserNotPresent) {
   if (!ShouldRunRegistryProtectedTests()) {
     return;
   }
@@ -74,7 +66,8 @@ TEST_F(RegistryProtectedTest, InstallOmaha_XmlParserNotPresent) {
 }
 
 // Overriding HKLM causes HasXmlParser() to fail on Vista.
-TEST_F(RegistryProtectedTest, CheckSystemRequirements_XmlParserNotPresent) {
+TEST_F(RegistryProtectedTest,
+       DISABLED_CheckSystemRequirements_XmlParserNotPresent) {
   if (!ShouldRunRegistryProtectedTests()) {
     return;
   }
@@ -84,7 +77,7 @@ TEST_F(RegistryProtectedTest, CheckSystemRequirements_XmlParserNotPresent) {
 }
 
 // Overriding HKLM causes HasXmlParser() to fail on Vista.
-TEST_F(RegistryProtectedTest, HasXmlParser_NotPresent) {
+TEST_F(RegistryProtectedTest, DISABLED_HasXmlParser_NotPresent) {
   if (!ShouldRunRegistryProtectedTests()) {
     return;
   }

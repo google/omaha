@@ -153,7 +153,7 @@ bool VerifyLogFileHandle() {
 // Windows programs, it's possible that the message loop is messed up on
 // a fatal error, and creating a MessageBox will cause that message loop
 // to be run. Instead, we try to spawn another process that displays its
-// command line. We look for "Debug Message.exe" in the same directory as
+// command line. We look for "DebugMessage.exe" in the same directory as
 // the application. If it exists, we use it, otherwise, we use a regular
 // message box.
 void DisplayDebugMessage(const std::string& str) {
@@ -169,7 +169,8 @@ void DisplayDebugMessage(const std::string& str) {
   wchar_t* backslash = wcsrchr(prog_name, '\\');
   if (backslash)
     backslash[1] = 0;
-  wcsncat(prog_name, L"DebugMessage.exe", MAX_PATH);
+  const size_t num = MAX_PATH - wcslen(prog_name) - 1;
+  wcsncat(prog_name, L"DebugMessage.exe", num);
   prog_name[MAX_PATH - 1] = L'\0';
 
   // stupid CreateProcess requires a non-const command line and may modify it.

@@ -401,22 +401,9 @@ int ReplaceCString (CString & src, const TCHAR *from, unsigned int from_len,
                                    const TCHAR *to, unsigned int to_len,
                                    unsigned int max_matches);
 
-// replace from with to in src
-// on memory allocation error, returns the original string
-int ReplaceString (TCHAR *src, const TCHAR *from, const TCHAR *to, TCHAR **out, int *out_len);
-
-// replace from with to in src
-// will replace in place if length(to) <= length(from) and return *out == src
-// WILL CREATE NEW OUTPUT BUFFER OTHERWISE and set created_new_string to true
-// on memory allocation error, returns the original string
-int ReplaceStringMaybeInPlace (TCHAR *src, const TCHAR *from, const TCHAR *to, TCHAR **out, int *out_len, bool *created_new_string);
-
 // you really want to use the straight TCHAR version above. you know it
 // on memory allocation error, returns the original string
 int ReplaceCString (CString & src, const TCHAR *from, const TCHAR *to);
-
-long __cdecl Wcstol (const wchar_t *nptr, wchar_t **endptr, int ibase);
-unsigned long __cdecl Wcstoul (const wchar_t *nptr, wchar_t **endptr, int ibase);
 
 // Functions on arrays of strings
 

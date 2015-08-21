@@ -885,7 +885,7 @@ TEST(GoopdateUtilsTest, RedirectHKCRTest) {
 TEST(GoopdateUtilsTest, GetKernel32OSInfo) {
   CString os_version;
   CString sp_qfe;
-  EXPECT_SUCCEEDED(GetKernel32OSInfo(&os_version, &sp_qfe));
+  EXPECT_TRUE(GetKernel32OSInfo(&os_version, &sp_qfe));
   EXPECT_TRUE(!os_version.IsEmpty());
 
   CString os_version_getosinfo;
@@ -954,7 +954,7 @@ class GoopdateUtilsRegistryProtectedBooleanTest
     ASSERT_FALSE(network_adapter_service_names_.empty());
     for (size_t i = 0; i < network_adapter_service_names_.size(); ++i) {
       CString network_card_reg_key;
-      network_card_reg_key.Format(_T("%s\\%d"), kRegKeyNetworkCards, i + 1);
+      network_card_reg_key.Format(_T("%s\\%Iu"), kRegKeyNetworkCards, i + 1);
       ASSERT_SUCCEEDED(RegKey::SetValue(network_card_reg_key,
                                         kRegValueAdapterServiceName,
                                         network_adapter_service_names_[i]));

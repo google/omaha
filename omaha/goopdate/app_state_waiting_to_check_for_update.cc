@@ -45,6 +45,17 @@ void AppStateWaitingToCheckForUpdate::PreUpdateCheck(
 
   ASSERT1(app->model()->IsLockedByCaller());
 
+  // We check policies in the case of manual updates and installs and bail out
+  // early. We allow automatic updates to go forward here because it helps with
+  // aggregate user counts, and block them if needed at the download stage.
+  if (!app->app_bundle()->is_auto_update()) {
+    HRESULT policy_hr = app->CheckGroupPolicy();
+    if (FAILED(policy_hr)) {
+      HandleGroupPolicyError(app, policy_hr);
+      return;
+    }
+  }
+
   const CString& current_version(app->current_version()->version());
   if (!current_version.IsEmpty()) {
     app->model()->PurgeAppLowerVersions(app->app_guid_string(),

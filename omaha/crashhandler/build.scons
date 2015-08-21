@@ -176,22 +176,3 @@ BuildCrashHandler(env)
 BuildCrashHandler(env.CloneAndMake64Bit())
 
 BuildCrashAnalysisTest(env)
-crash_analyzer_test_env = env.Clone()
-crash_analyzer_test_env.OmahaUnittest(
-    name='crash_analyzer_unittest',
-    source=[
-        'crash_analyzer_unittest.cc'
-    ],
-    LIBS=[
-        'crypt32.lib',
-        crash_analyzer_test_env.GetMultiarchLibName('common'),
-        crash_analyzer_test_env.GetMultiarchLibName('crash_handler'),
-        crash_analyzer_test_env.GetMultiarchLibName('breakpad'),
-        crash_analyzer_test_env.GetMultiarchLibName('security'),
-        ('libcmt.lib', 'libcmtd.lib')[crash_analyzer_test_env.Bit('debug')],
-        ('libcpmt.lib', 'libcpmtd.lib')[crash_analyzer_test_env.Bit('debug')]
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-    is_small_tests_using_resources=True,
-)

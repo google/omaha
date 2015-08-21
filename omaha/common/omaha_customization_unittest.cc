@@ -229,7 +229,7 @@ TEST(OmahaCustomizationTest, Constants_MsiMsp) {
 }
 
 TEST(OmahaCustomizationTest, Constants_CompatibleMinimumOlderShellVersion) {
-  EXPECT_EQ(0x0001000300150067, kCompatibleMinimumOlderShellVersion);
+  EXPECT_EQ(0x00010003001A0001, kCompatibleMinimumOlderShellVersion);
 }
 
 TEST(OmahaCustomizationTest, Constants_BrandCode) {

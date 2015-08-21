@@ -1,4 +1,9 @@
 @echo off
+
+:: Hammer does not need this variable but the unit
+:: tests do.
+set OMAHA_PSEXEC_DIR=%ProgramFiles(x86)%
+
 setlocal
 
 rem -- Set all environment variables used by Hammer and Omaha. --

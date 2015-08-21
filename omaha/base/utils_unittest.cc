@@ -109,7 +109,7 @@ TEST(UtilsTest, GetFolderPath_ProgramFiles_RegistryRedirection) {
   CString path;
   EXPECT_EQ(S_FALSE, GetFolderPath(CSIDL_PROGRAM_FILES, &path));
   BOOL isWow64 = FALSE;
-  EXPECT_SUCCEEDED(Kernel32::IsWow64Process(GetCurrentProcess(), &isWow64));
+  EXPECT_TRUE(Kernel32::IsWow64Process(GetCurrentProcess(), &isWow64));
   CString expected_path = isWow64 ?
       _T("C:\\Program Files (x86)") : _T("C:\\Program Files");
   EXPECT_STREQ(expected_path, path);
@@ -352,19 +352,6 @@ TEST(UtilsTest, IsLocalSystemSid) {
 
   EXPECT_FALSE(IsLocalSystemSid(_T("")));
   EXPECT_FALSE(IsLocalSystemSid(_T("S-1-5-17")));
-}
-
-// There is a very small probability the test could fail.
-TEST(UtilsTest, GenRandom) {
-  int random_int = 0;
-  EXPECT_TRUE(GenRandom(&random_int, sizeof(random_int)));
-  EXPECT_NE(random_int, 0);
-
-  int another_random_int = 0;
-  EXPECT_TRUE(GenRandom(&another_random_int, sizeof(another_random_int)));
-  EXPECT_NE(another_random_int, 0);
-
-  EXPECT_NE(random_int, another_random_int);
 }
 
 // Counts instances of the class.

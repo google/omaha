@@ -66,7 +66,6 @@ class Thread {
   bool Start(Runnable* runner);
   bool Suspend();
   bool Resume();
-  bool Terminate(int exit_code);
   bool SetPriority(int priority);
   bool GetPriority(int* priority) const;
   DWORD GetThreadId() const;

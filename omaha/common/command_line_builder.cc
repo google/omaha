@@ -236,7 +236,8 @@ CString CommandLineBuilder::GetCommandLineArgs() const {
 
 #ifdef _DEBUG
   CString full_command_line;
-  SafeCStringFormat(&full_command_line, _T("gu.exe %s"), cmd_line_args);
+  SafeCStringFormat(&full_command_line, _T("gu.exe %s"),
+      cmd_line_args.GetString());
   CommandLineArgs args;
   ASSERT1(SUCCEEDED(ParseCommandLine(full_command_line, &args)));
 #endif
@@ -256,14 +257,14 @@ CString CommandLineBuilder::GetCommandLine(const CString& program_name) const {
   EnclosePath(&enclosed_program_name);
   CString cmd_line;
   SafeCStringFormat(&cmd_line, _T("%s %s"),
-                    enclosed_program_name,
-                    GetCommandLineArgs());
+                    enclosed_program_name.GetString(),
+                    GetCommandLineArgs().GetString());
   return cmd_line;
 }
 
 CString CommandLineBuilder::GetSingleSwitch(const CString& switch_name) const {
   CString cmd_line;
-  cmd_line.Format(_T("/%s"), switch_name);
+  cmd_line.Format(_T("/%s"), switch_name.GetString());
   return cmd_line;
 }
 
@@ -325,7 +326,7 @@ CString CommandLineBuilder::GetReportCrash() const {
     EnclosePath(&enclosed_custom_info_filename_);
     SafeCStringAppendFormat(&cmd_line, _T(" /%s %s"),
                             kCmdLineCustomInfoFileName,
-                            enclosed_custom_info_filename_);
+                            enclosed_custom_info_filename_.GetString());
   }
 
   return cmd_line;
@@ -344,14 +345,14 @@ CString CommandLineBuilder::GetExtraAndAppArgs(
   EnclosePath(&enclosed_extra_args_);
   SafeCStringFormat(&cmd_line, _T("/%s %s"),
                     extra_switch_name,
-                    enclosed_extra_args_);
+                    enclosed_extra_args_.GetString());
 
   if (!app_args_.IsEmpty()) {
     CString enclosed_app_args = app_args_;
     EnclosePath(&enclosed_app_args);
     SafeCStringAppendFormat(&cmd_line, _T(" /%s %s"),
                             kCmdLineAppArgs,
-                            enclosed_app_args);
+                            enclosed_app_args.GetString());
   }
 
   return cmd_line;
@@ -368,12 +369,12 @@ CString CommandLineBuilder::GetInstall() const {
   if (!install_source_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s %s"),
                             kCmdLineInstallSource,
-                            install_source_);
+                            install_source_.GetString());
   }
   if (!session_id_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s \"%s\""),
                             kCmdLineSessionId,
-                            session_id_);
+                            session_id_.GetString());
   }
   if (is_silent_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineSilent);
@@ -390,7 +391,7 @@ CString CommandLineBuilder::GetUpdate() const {
   if (!session_id_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s \"%s\""),
                             kCmdLineSessionId,
-                            session_id_);
+                            session_id_.GetString());
   }
   return cmd_line;
 }
@@ -404,12 +405,12 @@ CString CommandLineBuilder::GetHandoffInstall() const {
   if (!install_source_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s %s"),
                             kCmdLineInstallSource,
-                            install_source_);
+                            install_source_.GetString());
   }
   if (!session_id_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s \"%s\""),
                             kCmdLineSessionId,
-                            session_id_);
+                            session_id_.GetString());
   }
   if (is_silent_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineSilent);
@@ -423,7 +424,7 @@ CString CommandLineBuilder::GetHandoffInstall() const {
   if (!offline_dir_name_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s \"%s\""),
                             kCmdLineOfflineDir,
-                            offline_dir_name_);
+                            offline_dir_name_.GetString());
   }
   return cmd_line;
 }
@@ -440,7 +441,7 @@ CString CommandLineBuilder::GetUA() const {
   }
   SafeCStringAppendFormat(&cmd_line, _T(" /%s %s"),
                           kCmdLineInstallSource,
-                          install_source_);
+                          install_source_.GetString());
 
   return cmd_line;
 }
@@ -453,7 +454,7 @@ CString CommandLineBuilder::GetRecover() const {
   CString cmd_line;
   SafeCStringFormat(&cmd_line, _T("/%s %s"),
                     kCmdLineRecover,
-                    code_red_metainstaller_path_);
+                    code_red_metainstaller_path_.GetString());
   return cmd_line;
 }
 
@@ -474,10 +475,10 @@ CString CommandLineBuilder::GetWebPlugin() const {
   // TODO(omaha): Do we want this to handle the urlencoding for us?
   SafeCStringFormat(&cmd_line, _T("/%s %s %s /%s %s"),
                     kCmdLineWebPlugin,
-                    enclosed_webplugin_url_domain_,
-                    enclosed_webplugin_args_,
+                    enclosed_webplugin_url_domain_.GetString(),
+                    enclosed_webplugin_args_.GetString(),
                     kCmdLineInstallSource,
-                    install_source_);
+                    install_source_.GetString());
   return cmd_line;
 }
 
@@ -517,7 +518,8 @@ CString CommandLineBuilder::GetUnregisterProduct() const {
 
 CString CommandLineBuilder::GetPing() const {
   CString cmd_line;
-  SafeCStringFormat(&cmd_line, _T("/%s %s"), kCmdLinePing, ping_string_);
+  SafeCStringFormat(&cmd_line, _T("/%s %s"), kCmdLinePing,
+      ping_string_.GetString());
   return cmd_line;
 }
 

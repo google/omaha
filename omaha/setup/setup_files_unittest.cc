@@ -473,12 +473,12 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsSame) {
 }
 
 TEST_F(SetupFilesUserTest, IsOlderShellVersionCompatible_Compatible) {
-  EXPECT_TRUE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 21, 103)));
+  EXPECT_TRUE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 26, 1)));
   EXPECT_TRUE(IsOlderShellVersionCompatible(_UI64_MAX));
 }
 
 TEST_F(SetupFilesUserTest, IsOlderShellVersionCompatible_Incompatible) {
-  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 21, 101)));
+  EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 3, 21, 103)));
   EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 21)));
   EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 183, 9)));
   EXPECT_FALSE(IsOlderShellVersionCompatible(MAKEDLLVERULL(1, 2, 131, 7)));

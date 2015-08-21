@@ -522,20 +522,6 @@ customization_test_env['CPPPATH'] += [
     '$OBJ_ROOT',  # Needed for generated files.
     ]
 
-customization_test = customization_test_env.OmahaUnittest(
-    name='omaha_customization_goopdate_apis_unittest',
-    source=[
-          'omaha_customization_goopdate_apis_unittest.cc',
-          'omaha3_idl_i.obj',
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-)
-
-# The test uses the DLL for its TypeLib.
-customization_test_env.Depends(customization_test, '$STAGING_DIR/goopdate.dll')
-
-
 # Build all the resource dlls.
 env.BuildSConscript('resources')
 

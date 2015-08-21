@@ -221,6 +221,22 @@ TEST_P(AppAutoUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
             app_->CheckGroupPolicy());
 }
 
+TEST_P(AppInstallTest, CheckGroupPolicy_ManualUpdatesDisabled) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
+  EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
+}
+
+TEST_P(AppManualUpdateTest, CheckGroupPolicy_ManualUpdatesDisabled) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY_MANUAL : S_OK,
+            app_->CheckGroupPolicy());
+}
+
+TEST_P(AppAutoUpdateTest, CheckGroupPolicy_ManualUpdatesDisabled) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
+  EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
+}
+
 //
 // PostUpdateCheck Tests.
 //
@@ -551,6 +567,244 @@ TEST_F(AppAutoUpdateTest, PreUpdateCheck_EulaNotAccepted) {
   EXPECT_EQ(GOOPDATE_E_APP_UPDATE_DISABLED_EULA_NOT_ACCEPTED,
             app_->error_code());
   EXPECT_TRUE(update_request->IsEmpty()) << _T("Should not add request.");
+}
+
+TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabled) {
+  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(IsDomain() ? STATE_ERROR : STATE_CHECKING_FOR_UPDATE,
+            app_->state());
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY : S_OK,
+            app_->error_code());
+  EXPECT_EQ(IsDomain(), update_request->IsEmpty());
+}
+
+TEST_P(AppManualUpdateTest, PreUpdateCheck_InstallDisabled) {
+  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppAutoUpdateTest, PreUpdateCheck_InstallDisabled) {
+  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabledForDifferentApp) {
+  SetPolicy(kInstallPolicyApp2, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppInstallTest, PreUpdateCheck_UpdateDisabled) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabled) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  if (!IsDomain()) {
+    EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+  }
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(IsDomain() ? STATE_ERROR : STATE_CHECKING_FOR_UPDATE,
+            app_->state());
+  EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
+            app_->error_code());
+  EXPECT_EQ(IsDomain(), update_request->IsEmpty());
+}
+
+TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabled) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
+  SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
+  SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppInstallTest, PreUpdateCheck_ManualUpdatesOnly) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppManualUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
+}
+
+TEST_P(AppAutoUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
+  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  scoped_ptr<xml::UpdateRequest> update_request;
+  update_request.reset(xml::UpdateRequest::Create(is_machine_,
+                                                  _T("unittest_sessionid"),
+                                                  _T("unittest_instsource"),
+                                                  CString()));
+  EXPECT_TRUE(update_request->IsEmpty());
+
+  EXPECT_CALL(*mock_worker_, PurgeAppLowerVersions(_, _)).Times(1);
+
+  app_->PreUpdateCheck(update_request.get());
+  EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+  EXPECT_FALSE(update_request->IsEmpty());
 }
 
 TEST_F(AppInstallTest, InstallProgress_NonChrome_MissingInstallerProgress) {

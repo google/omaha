@@ -36,13 +36,15 @@ TEST(ShellTest, ShellLink) {
   CString desktop;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_DESKTOP, &desktop));
   CString link(desktop + _T("\\Shell Unittest.lnk"));
+  Shell::RemoveLink(link);
+  ASSERT_FALSE(File::Exists(link));
+
   CString install_dir;
   ASSERT_SUCCEEDED(Shell::GetSpecialFolder(CSIDL_PROGRAM_FILES,
                                            true,
                                            &install_dir));
   install_dir += _T("\\Shell Unittest");
   CString exe = install_dir + _T("\\foo.bar.exe");
-  ASSERT_FALSE(File::Exists(link));
   ASSERT_SUCCEEDED(Shell::CreateLink(exe,
                                      link,
                                      install_dir,
@@ -78,7 +80,7 @@ TEST(ShellTest, GetSpecialFolder) {
   // Override the program files location, which changes for 32-bit processes
   // running on 64-bit systems.
   BOOL isWow64 = FALSE;
-  EXPECT_SUCCEEDED(Kernel32::IsWow64Process(GetCurrentProcess(), &isWow64));
+  EXPECT_TRUE(Kernel32::IsWow64Process(GetCurrentProcess(), &isWow64));
   if (isWow64) {
     folders[2].name += _T(" (x86)");
   }

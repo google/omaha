@@ -23,6 +23,7 @@
 #include <functional>
 #include <vector>
 #include "base/basictypes.h"
+#include "base/rand_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
@@ -751,8 +752,8 @@ void NetworkRequestImpl::ComputeNextRetryDelay(
       cur_retry_delay_ms_ >= retry_delay_jitter_ms_) {
     // Generate a random int containing 2x the jitter amount, add it, then
     // subtract the jitter amount to produce +/- jitter.
-    unsigned int jitter_amount;
-    if (0 != ::rand_s(&jitter_amount)) {
+    unsigned int jitter_amount = 0;
+    if (!RandUint32(&jitter_amount)) {
       jitter_amount = retry_delay_jitter_ms_;
     }
     cur_retry_delay_ms_ += jitter_amount % (2 * retry_delay_jitter_ms_);

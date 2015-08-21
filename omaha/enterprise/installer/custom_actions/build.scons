@@ -87,20 +87,11 @@ def BuildShowErrorActionDll(omaha_version_info):
 for omaha_version_info in env['omaha_versions_info']:
   BuildShowErrorActionDll(omaha_version_info)
 
-test_env = env.Clone()
-test_env.OmahaUnittest(
-    name='msi_custom_action_unittest',
+# Build lib for unit tests.
+test_lib_env = env.Clone()
+test_lib_env.ComponentLibrary(
+    lib_name='custom_actions_test_lib',
     source=[
         'msi_tag_extractor.obj',
-        'msi_tag_extractor_test.cc',
     ],
-    LIBS=[
-        '$LIB_DIR/common.lib',
-        '$LIB_DIR/omaha3_idl.lib',  # Required by common
-        '$LIB_DIR/security.lib',
-        'crypt32.lib',
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-    is_small_tests_using_resources=True,
 )

@@ -240,9 +240,8 @@ const TCHAR* const kSiteLockPatternStrings[] = {
 // Minimum compatible shell version.
 // Shell versions equal to or newer than the following version are compatible
 // with the current version of goopdate.dll and do not need be replaced:
-// 1.3.21.103.
-//
-const ULONGLONG kCompatibleMinimumOlderShellVersion = 0x0001000300150067;
+// 1.3.26.1.
+const ULONGLONG kCompatibleMinimumOlderShellVersion = 0x00010003001A0001;
 
 //
 // End vendor-specific constants.

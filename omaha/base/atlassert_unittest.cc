@@ -26,7 +26,7 @@ TEST(AtlAssertTest, AtlAssert) {
   CComPtr<IMalloc> p;
   EXPECT_HRESULT_SUCCEEDED(::CoGetMalloc(1, &p));
   EXPECT_TRUE(p != NULL);
-  ::CoGetMalloc(1, &p);     // This line is expected to asserts.
+  ::CoGetMalloc(1, &p);     // This line is expected to assert.
 }
 
 }  // namespace omaha

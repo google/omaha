@@ -95,23 +95,22 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous_instance,
 #endif
 
   STARTUPINFO si = { sizeof(si) };
-  // XXX: Normally, you should close the handles returned in
-  // PROCESS_INFORMATION. That step is skipped here since we are exiting
-  // immediately once the new process is created.
   PROCESS_INFORMATION pi = {};
-  if (!::CreateProcess(
-          NULL,
-          command_line_quoted,
-          NULL,
-          NULL,
-          FALSE,
-          0,
-          NULL,
-          NULL,
-          &si,
-          &pi)) {
+  if (!::CreateProcess(NULL,
+                       command_line_quoted,
+                       NULL,
+                       NULL,
+                       FALSE,
+                       0,
+                       NULL,
+                       NULL,
+                       &si,
+                       &pi)) {
     return HRESULTFromLastError();
   }
+
+  ::CloseHandle(pi.hProcess);
+  ::CloseHandle(pi.hThread);
 
   return 0;
 }

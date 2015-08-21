@@ -22,6 +22,7 @@
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/omaha_version.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/testing/unit_test.h"
@@ -76,7 +77,7 @@ void LogCommandLineAndEnvironment(int argc, TCHAR** argv) {
 
   CString command_line = argv[0];
   for (int i = 1; i < argc; ++i) {
-    command_line.AppendFormat(_T(" %s"), argv[i]);
+    SafeCStringAppendFormat(&command_line, _T(" %s"), argv[i]);
   }
   OPT_LOG(L1, (_T("[Omaha unit test command line][%s]"), command_line));
 
@@ -94,7 +95,7 @@ void LogCommandLineAndEnvironment(int argc, TCHAR** argv) {
   while (*current) {
     size_t sub_length = _tcslen(current) + 1;
     if (!_tcsstr(current, kPartialMatchToIgnore)) {
-      environment_variables.AppendFormat(_T("\t%s\r\n"), current);
+      SafeCStringAppendFormat(&environment_variables, _T("\t%s\r\n"), current);
     }
     current += sub_length;
   }

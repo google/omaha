@@ -1074,11 +1074,6 @@ HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
   ASSERT1(os_version);
   ASSERT1(service_pack);
 
-  if (SystemInfo::IsRunningOnW81OrLater() &&
-      GetKernel32OSInfo(os_version, service_pack)) {
-    return S_OK;
-  }
-
   OSVERSIONINFOEX os_version_info = {};
   HRESULT hr = SystemInfo::GetOSVersion(&os_version_info);
   if (FAILED(hr)) {
@@ -1086,7 +1081,7 @@ HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
     return hr;
   }
 
-  os_version->Format(_T("%d.%d"),
+  os_version->Format(_T("%u.%u"),
                      os_version_info.dwMajorVersion,
                      os_version_info.dwMinorVersion);
   *service_pack = os_version_info.szCSDVersion;
@@ -1855,7 +1850,7 @@ CString GetUserIdHistory(bool is_machine) {
   DWORD num_rotations(0);
   update_key.GetValue(kRegValueUserIdNumRotations, &num_rotations);
   CString uid_num_rotations;
-  uid_num_rotations.Format(_T("%s%s=%d"),
+  uid_num_rotations.Format(_T("%s%s=%u"),
                            old_uid.IsEmpty() ? _T("") : _T("; "),
                            kHeaderValueNumUidRotation,
                            num_rotations);

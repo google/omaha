@@ -170,7 +170,7 @@ class GoogleUpdateRecoveryTest : public testing::Test {
                                           &escaped_service_pack));
 
     CString expected_os_fragment;
-    expected_os_fragment.Format(_T("%d.%d&servicepack="),
+    expected_os_fragment.Format(_T("%u.%u&servicepack="),
                                 os_version_info.dwMajorVersion,
                                 os_version_info.dwMinorVersion);
     expected_os_fragment += escaped_service_pack;

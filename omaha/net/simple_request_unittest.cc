@@ -67,7 +67,7 @@ DWORD WINAPI CancelRequestThreadProc(void* parameter) {
 
   // Wait a short period of time so the download can start. Assumes the file
   // is large enough so that download will not complete within the sleep time.
-  ::Sleep(500);
+  ::Sleep(100);
 
   simple_request->Cancel();
   return 0;

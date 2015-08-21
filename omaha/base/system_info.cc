@@ -149,11 +149,24 @@ bool SystemInfo::Is64BitWindows() {
 HRESULT SystemInfo::GetOSVersion(OSVERSIONINFOEX* os_out) {
   ASSERT1(os_out);
 
+  scoped_library ntdll(::LoadLibrary(_T("ntdll.dll")));
+  if (!ntdll) {
+    return HRESULTFromLastError();
+  }
+
+  typedef LONG (WINAPI *RtlGetVersion_type)(OSVERSIONINFOEX*);
+  RtlGetVersion_type RtlGetVersion_fn = reinterpret_cast<RtlGetVersion_type>(
+      ::GetProcAddress(get(ntdll), "RtlGetVersion"));
+  if (!RtlGetVersion_fn) {
+    return HRESULTFromLastError();
+  }
+
   ::ZeroMemory(os_out, sizeof(OSVERSIONINFOEX));
   os_out->dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-  if (0 == ::GetVersionEx(reinterpret_cast<OSVERSIONINFO*>(os_out))) {
-    return HRESULTFromLastError();
+  LONG result = RtlGetVersion_fn(os_out);
+  if (!result) {
+    return HRESULT_FROM_NT(result);
   }
 
   return S_OK;

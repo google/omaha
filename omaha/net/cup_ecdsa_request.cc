@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include "base/rand_util.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -181,7 +182,7 @@ void CupEcdsaRequestImpl::set_proxy_auth_config(const ProxyAuthConfig& config) {
 
 HRESULT CupEcdsaRequestImpl::BuildRequest() {
   // Generate a random nonce.
-  if (!GenRandom(&cup_->nonce, sizeof(cup_->nonce))) {
+  if (!RandUint32(&cup_->nonce)) {
     metric_cup_ecdsa_other_errors++;
     return OMAHA_NET_E_CUP_NO_ENTROPY;
   }

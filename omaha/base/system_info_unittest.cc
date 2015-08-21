@@ -171,7 +171,7 @@ TEST(SystemInfoTest, GetKernel32OSVersion) {
   OSVERSIONINFOEX os_version_info = {};
   EXPECT_SUCCEEDED(SystemInfo::GetOSVersion(&os_version_info));
   CString os_version;
-  os_version.Format(_T("%d.%d"),
+  os_version.Format(_T("%u.%u"),
                     os_version_info.dwMajorVersion,
                     os_version_info.dwMinorVersion);
   EXPECT_TRUE(

@@ -61,18 +61,3 @@ def BuildCommonLib(env):
 
 BuildCommonLib(env)
 BuildCommonLib(env.CloneAndMake64Bit())
-
-customization_test_env = env.Clone()
-customization_test_env.OmahaUnittest(
-    name='omaha_customization_unittest',
-    source=[
-        'omaha_customization_unittest.cc',
-    ],
-    LIBS=[
-        '$LIB_DIR/common',
-        '$LIB_DIR/security',
-        'crypt32.lib',
-    ],
-    all_in_one=False,
-    COMPONENT_TEST_SIZE='small',
-)

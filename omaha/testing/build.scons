@@ -156,11 +156,13 @@ omaha_unittest_libs = [
     '$LIB_DIR/client.lib',  # TODO(omaha): Might be able to make separate exe.
     '$LIB_DIR/common.lib',
     '$LIB_DIR/core.lib',
+    '$LIB_DIR/crash_handler.lib',
     '$LIB_DIR/gmock.lib',
     '$LIB_DIR/google_update_recovery.lib',
     '$LIB_DIR/goopdate_lib.lib',
     '$LIB_DIR/gtest.lib',
     '$LIB_DIR/logging.lib',
+    '$LIB_DIR/lzma.lib',
     '$LIB_DIR/net.lib',
     '$LIB_DIR/omaha3_idl.lib',
     '$LIB_DIR/security.lib',
@@ -199,6 +201,27 @@ omaha_unittest_libs = [
     'ws2_32.lib',
     'wtsapi32.lib',
 ]
+
+# Add conditional lib dependencies.
+if omaha_unittest_env.IsBuildingModule('mi_exe_stub'):
+  omaha_unittest_libs.append('$LIB_DIR/bcj2_lib.lib')
+
+if omaha_unittest_env.IsBuildingModule('plugins'):
+  omaha_unittest_libs += [
+      '$LIB_DIR/update.lib',
+      '$LIB_DIR/update_control_idl_guids_lib.lib',
+      '$LIB_DIR/update_test_helpers.lib',
+  ]
+
+if omaha_unittest_env.IsBuildingModule('recovery'):
+  omaha_unittest_libs += [
+      '$LIB_DIR/executecustomaction_lib',
+      '$LIB_DIR/repair_goopdate.lib',
+  ]
+
+if omaha_unittest_env.IsBuildingModule('enterprise'):
+  omaha_unittest_libs.append('$LIB_DIR/custom_actions_test_lib.lib')
+
 omaha_unittest_libs += omaha_unittest_env.GetAllInOneUnittestLibs()
 
 omaha_unittest_env.Append(
@@ -335,7 +358,6 @@ omaha_unittest_inputs = [
     '../base/thread_pool_unittest.cc',
     '../base/time_unittest.cc',
     '../base/timer_unittest.cc',
-    '../base/tr_rand_unittest.cc',
     '../base/user_info_unittest.cc',
     '../base/user_rights_unittest.cc',
     '../base/utils_unittest.cc',
@@ -354,8 +376,11 @@ omaha_unittest_inputs = [
     # Client unit tests
     '../client/bundle_creator_test.cc',
     '../client/bundle_installer_unittest.cc',
+    '../client/client_utils_unittest.cc',
+    '../client/help_url_builder_test.cc',
     '../client/install_apps_unittest.cc',
     '../client/install_self_unittest.cc',
+    '../client/install_self_unittest_no_xml_parser.cc',
     '../client/install_unittest.cc',
     '../client/ua_unittest.cc',
 
@@ -373,6 +398,7 @@ omaha_unittest_inputs = [
     '../common/goopdate_utils_unittest.cc',
     '../common/lang_unittest.cc',
     '../common/oem_install_utils_test.cc',
+    '../common/omaha_customization_unittest.cc',
     '../common/ping_event_unittest.cc',
     '../common/ping_event_download_metrics_unittest.cc',
     '../common/ping_test.cc',
@@ -383,6 +409,9 @@ omaha_unittest_inputs = [
     '../common/webplugin_utils_unittest.cc',
     '../common/web_services_client_unittest.cc',
     '../common/xml_parser_unittest.cc',
+
+    # Crash handler unit tests
+    '../crashhandler/crash_analyzer_unittest.cc',
 
     # Core unit tests
     '../core/core_unittest.cc',
@@ -412,6 +441,7 @@ omaha_unittest_inputs = [
     '../goopdate/main_unittest.cc',
     '../goopdate/model_unittest.cc',
     '../goopdate/offline_utils_unittest.cc',
+    '../goopdate/omaha_customization_goopdate_apis_unittest.cc',
     '../goopdate/string_formatter_unittest.cc',
     '../goopdate/package_cache_unittest.cc',
     '../goopdate/ping_event_cancel_test.cc',
@@ -435,8 +465,6 @@ omaha_unittest_inputs = [
     '../net/winhttp_adapter_unittest.cc',
     '../net/winhttp_vtable_unittest.cc',
 
-    # Plugin unit tests are specified in the individual build.scons files.
-
     # Code Red-related unit tests.
     # Others are specified in the individual build.scons files.
     '../recovery/client/google_update_recovery_unittest.cc',
@@ -455,6 +483,11 @@ omaha_unittest_inputs = [
     '../statsreport/metrics_unittest.cc',
     '../statsreport/persistent_iterator-win32_unittest.cc',
 
+    # UI unit tests.
+    '../ui/splash_screen_test.cc',
+    '../ui/progress_wnd_unittest.cc',
+    '../ui/yes_no_dialog_unittest.cc',
+
     # Resource files.
     omaha_unittest_env.RES('omaha_unittest.rc'),
     omaha_unittest_env.RES('omaha_unittest_version.rc'),
@@ -466,11 +499,46 @@ omaha_unittest_inputs = [
 
     # Third party unit tests.
     '../third_party/chrome/files/src/base/cpu_unittest.cc',
+    '../third_party/chrome/files/src/base/rand_util_unittest.cc',
     '../third_party/chrome/files/src/crypto/rsa_private_key_unittest.cc',
     '../third_party/chrome/files/src/crypto/signature_creator_unittest.cc',
     '../third_party/chrome/files/src/crypto/signature_verifier_unittest.cc',
-
 ]
+
+# Conditionally built unit tests.
+if omaha_unittest_env.IsBuildingModule('mi_exe_stub'):
+  omaha_unittest_inputs += [
+      # Bcj2 encoder unitests.
+      '../mi_exe_stub/x86_encoder/bcj2_encoder_unittest.cc',
+  ]
+
+if omaha_unittest_env.IsBuildingModule('plugins'):
+  omaha_unittest_inputs += [
+      # Plugin unit tests.
+      '../plugins/update/omaha_customization_update_apis_unittest.cc',
+      '../plugins/update/omaha_customization_update_unittest.cc',
+      '../plugins/update/activex/update3web_control_unittest.cc',
+      '../plugins/update/npapi/dispatch_host_unittest.cc',
+      '../plugins/update/npapi/npfunction_host_unittest.cc',
+      '../plugins/update/npapi/variant_utils_unittest.cc',
+      '../plugins/update/site_lock_unittest.cc',
+      '$OBJ_ROOT/plugins/update/npapi/testing/dispatch_host_test.res',
+  ]
+
+if omaha_unittest_env.IsBuildingModule('recovery'):
+  omaha_unittest_inputs += [
+      # Recovery unit tests.
+      '../recovery/repair_exe/custom_action/execute_repair_file_unittest.cc',
+      '../recovery/repair_exe/mspexecutableelevator_unittest.cc',
+      '../recovery/repair_exe/repair_goopdate_unittest.cc',
+  ]
+
+if omaha_unittest_env.IsBuildingModule('enterprise'):
+  omaha_unittest_inputs += [
+      # Custom action unit tests.
+      '../enterprise/installer/custom_actions/msi_tag_extractor_test.cc',
+  ]
+
 omaha_unittest_inputs += omaha_unittest_env.GetAllInOneUnittestSources()
 
 # Force a rebuild when the version changes and when the header changes since
@@ -533,6 +601,14 @@ omaha_unittest_env.Depends(test, unittest_support)
 # extractor_unittest.cc uses GoogleUpdateSetup_repair.exe as a zero-length tag
 # cert-tagged exe.
 omaha_unittest_env.Depends(test, '$STAGING_DIR/GoogleUpdateSetup_repair.exe')
+
+# Customization/UI tests depend on goopdate.dll (for TypeLib/resources)
+omaha_unittest_env.Depends(test, '$TESTS_DIR/goopdate.dll')
+
+# Customization test uses update plugin DLL (npGoogleUpdate3.dll) for TypeLib.
+omaha_unittest_env.Depends(
+    test,
+    '$STAGING_DIR/%s' % env['omaha_versions_info'][0].update_plugin_filename)
 
 if env.Bit('all'):
   save_args_env = env.Clone()

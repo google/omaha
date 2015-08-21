@@ -294,134 +294,17 @@ def ComponentTool(env, prog_name, *args, **kwargs):
 # Unit Test Builders
 #
 
-
-def OmahaUnittest(env,  # pylint: disable-msg=C6409
-                  name,
-                  source,
-                  LIBS=None,
-                  all_in_one=True,
-                  COMPONENT_TEST_SIZE='large',
-                  is_small_tests_using_resources=False):
-  """Declares a new unit test.
+def IsBuildingModule(env, module_name):
+  """Returns true if the module will be built with current build process.
 
   Args:
     env: The environment.
-    name: Name of the unit test.
-    source: Sources for the unittest.
-    LIBS: Any libs required for the unit test.
-    all_in_one: If true, the test will be added to an executable containing
-        all tests.
-    COMPONENT_TEST_SIZE: small, medium, or large.
-    is_small_tests_using_resources: True if COMPONENT_TEST_SIZE='small' and
-        the test requires resources, such as strings.
-
-  If !all_in_one and COMPONENT_TEST_SIZE is 'small', a main is automatically
-  provided. Otherwise, one must be provided in source or LIBS. The small main
-  is selected based on is_small_tests_using_resources.
+    module_name: module name.
 
   Returns:
-    Output node list from env.ComponentTestProgram().
-
-  Raises:
-      Exception: Invalid combination of arguments.
+    Whether the given module will be built.
   """
-  test_env = env.Clone()
-
-  source = test_env.Flatten(source)
-
-  if COMPONENT_TEST_SIZE != 'small' and is_small_tests_using_resources:
-    raise Exception('is_small_tests_using_resources set for non-small test.')
-
-  if all_in_one:
-    test_env['all_in_one_unittest_sources'].extend(test_env.File(source))
-    if LIBS:
-      test_env['all_in_one_unittest_libs'].update(
-          test_env.File(test_env.Flatten(LIBS)))
-    # TODO(omaha): Get the node list automatically.
-    if 'HAMMER_RUNS_TESTS' in os.environ.keys():
-      test_program_dir = '$TESTS_DIR'
-    else:
-      test_program_dir = '$STAGING_DIR'
-    output = [os.path.join(test_program_dir, 'omaha_unittest.exe'),
-              os.path.join(test_program_dir, 'omaha_unittest.pdb')]
-  else:
-    test_env.FilterOut(LINKFLAGS=['/NODEFAULTLIB', '/SUBSYSTEM:WINDOWS,5.01'])
-    if LIBS:
-      test_env.Append(
-          LIBS=test_env.Flatten(LIBS),
-      )
-    # TODO(omaha): Let's try to eliminate this giant list of Win32 .libs here.
-    # They are generally dependencies of Omaha base, common, or net; it makes
-    # more sense for unit test authors to stay aware of dependencies and pass
-    # them in as part of the LIBS argument.
-    test_env.Append(
-        CPPPATH=[
-            '$THIRD_PARTY/gmock/include',
-            '$THIRD_PARTY/gtest/include',
-        ],
-        CCFLAGS=[
-            '/wd4389',  # signed/unsigned mismatch
-            '/wd4826',  # Conversion from 'type_1' to 'type_2' is sign-extended.
-
-            # Disable static analysis warnings.
-            '/wd6326',  # Potential comparison of a constant with
-                        # another constant.
-        ],
-
-        LIBS=[
-            '$LIB_DIR/base',
-            '$LIB_DIR/gmock',
-            '$LIB_DIR/gtest',
-            test_env['atls_libs'][test_env.Bit('debug')],
-            test_env['crt_libs'][test_env.Bit('debug')],
-            'comctl32',
-
-            # Required by base/process.h, which is used by unit_test.cc.
-            'psapi',
-
-            # Required by omaha_version.h, which is used by omaha_unittest.cc.
-            'version',
-
-            # Required by base/utils.h, which is used by omaha_unittest.cc.
-            'netapi32',
-            'rasapi32',
-            'shlwapi',
-            'userenv',
-            'wtsapi32',
-        ],
-
-        LINKFLAGS=[
-            '/SUBSYSTEM:CONSOLE,5.01',
-        ],
-    )
-
-    if COMPONENT_TEST_SIZE == 'small':
-      if is_small_tests_using_resources:
-        test_env.Append(LIBS=['$LIB_DIR/unittest_base_small_with_resources'])
-      else:
-        test_env.Append(LIBS=['$LIB_DIR/unittest_base_small'])
-
-    if env.Bit('use_precompiled_headers'):
-      source += test_env.EnablePrecompile(name)
-
-    # Set environment variables specific to the tests.
-    for env_var in os.environ:
-      if (not env_var in test_env['ENV'] and
-          (env_var.startswith('GTEST_') or env_var.startswith('OMAHA_TEST_'))):
-        test_env['ENV'][env_var] = os.environ[env_var]
-
-    output = test_env.ComponentTestProgram(
-        name,
-        source + ['$OBJ_ROOT/testing/run_as_invoker.res'],
-        COMPONENT_TEST_SIZE=COMPONENT_TEST_SIZE,
-    )
-
-  # Add a manual dependency on the resource file used by omaha_unittest.cc to
-  # ensure it is always available before the test runs, which could be during
-  # the build.
-  test_env.Depends(output, '$TESTS_DIR/goopdateres_en.dll')
-
-  return output
+  return module_name in env['BUILD_SCONSCRIPTS']
 
 
 def GetAllInOneUnittestSources(env):
@@ -531,7 +414,9 @@ def ConfigureEnvFor64Bit(env):
        omaha_version_utils.VC140 : '$VC14_0_DIR/vc/bin/x86_amd64'}
       [env['msc_ver']]))
 
+  # Filter x86 options that are not supported or conflict with x86-x64 options.
   env.FilterOut(ARFLAGS=['/MACHINE:X86'],
+                CCFLAGS=['/arch:IA32'],
                 LIBFLAGS=['/MACHINE:X86'],
                 LINKFLAGS=['/MACHINE:X86'])
 
@@ -624,7 +509,7 @@ def generate(env):  # pylint: disable-msg=C6409
   env.AddMethod(ComponentDll)
   env.AddMethod(ComponentSignedProgram)
   env.AddMethod(ComponentTool)
-  env.AddMethod(OmahaUnittest)
+  env.AddMethod(IsBuildingModule)
   env.AddMethod(GetAllInOneUnittestSources)
   env.AddMethod(GetAllInOneUnittestLibs)
   env.AddMethod(IsCoverageBuild)

@@ -19,6 +19,7 @@
 #include <atlstr.h>
 #include <stdlib.h>
 
+#include "base/rand_util.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
@@ -188,7 +189,9 @@ bool ShouldCheckForUpdates(bool is_machine) {
     if (!is_period_overridden && !IsUpdateAppsHourlyJitterDisabled()) {
       const int kPercentageToSkip = 10;    // skip 10% of the checks.
       unsigned int random_value = 0;
-      rand_s(&random_value);    // On errors, random_value is set to 0.
+      if (!RandUint32(&random_value)) {
+        random_value = 0;
+      }
       should_check_for_updates = random_value % 100 < 100 - kPercentageToSkip;
     } else {
       should_check_for_updates = true;

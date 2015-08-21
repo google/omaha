@@ -354,7 +354,6 @@ bool IsLargeDrive(const TCHAR* drive) {
 HRESULT DevicePathToDosPath(const TCHAR* device_path, CString* dos_path) {
   ASSERT1(device_path);
   ASSERT1(dos_path);
-  UTIL_LOG(L4, (_T("[DevicePathToDosPath][device_path=%s]"), device_path));
 
   dos_path->Empty();
 
@@ -382,15 +381,10 @@ HRESULT DevicePathToDosPath(const TCHAR* device_path, CString* dos_path) {
       continue;
     }
 
-    UTIL_LOG(L4, (_T("[DevicePathToDosPath found drive]")
-                  _T("[logical drive %s][device name %s]"),
-                  drive_colon, device_name));
-
     size_t name_length = _tcslen(device_name);
     if (_tcsnicmp(device_path, device_name, name_length) == 0) {
       // Construct DOS path.
       dos_path->Format(_T("%s%s"), drive_colon, device_path + name_length);
-      UTIL_LOG(L4, (_T("[DevicePathToDosPath][dos_path=%s]"), *dos_path));
       return S_OK;
     }
   }
