@@ -526,11 +526,6 @@ HRESULT App::GetInstallProgress(LONG* install_progress_percentage,
                                 kRegValueInstallerProgress,
                                 &progress_percent);
   if (FAILED(hr)) {
-    if (app_guid_string().CompareNoCase(kChromeAppId)) {
-      return S_FALSE;
-    }
-
-    // Legacy Install progress written by the Chrome Installer.
     return GetInstallProgressChrome(install_progress_percentage,
                                     install_time_remaining_ms);
   }
@@ -544,15 +539,20 @@ HRESULT App::GetInstallProgress(LONG* install_progress_percentage,
   return S_OK;
 }
 
+// Legacy Install progress written by the Chrome Installer.
 HRESULT App::GetInstallProgressChrome(LONG* install_progress_percentage,
                                       LONG* install_time_remaining_ms) {
   ASSERT1(model()->IsLockedByCaller());
-  ASSERT1(!app_guid_string().CompareNoCase(kChromeAppId));
   ASSERT1(install_progress_percentage);
   ASSERT1(install_time_remaining_ms);
 
   *install_progress_percentage = kCurrentStateProgressUnknown;
   *install_time_remaining_ms = kCurrentStateProgressUnknown;
+
+  if (app_guid_string().CompareNoCase(kChromeAppId) &&
+      app_guid_string().CompareNoCase(kChromeBinariesAppId)) {
+    return S_FALSE;
+  }
 
   // Installation progress is reported in "InstallerExtraCode1" under
   // Google\\Update\\ClientState\\{ChromeAppID}.

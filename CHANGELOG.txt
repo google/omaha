@@ -1,3 +1,23 @@
+## 2015-08-25 @101487056 1.3.28.13
+
+### Changes
+
+--------------------------------------------------------------------------------
+Change for bug 22854711 Return UPGRADE_DISABLED_BY_POLICY or UPGRADE_DISABLED_BY_POLICY_MANUAL
+when updates are disabled. With the prior change 100435441, Omaha started sending an empty
+update check. This change fixes this undesired side-effect.
+--------------------------------------------------------------------------------
+Fix bug chrome://chrome does not show Install Progress. Adding in an exception for
+the "Google Chrome binaries" {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D} AppID in Omaha code.
+The reason for this bug: For first installs, Chrome uses AppID {8A69D345-D564-463C-AFF1-A69D9E530F96}
+for installing. We have code within Omaha that reads Install Progress from InstallerExtraCode1
+only for that AppId. For updates, Chrome uses {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}, so Omaha
+checks only {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}\ClientState\InstallerProgress (REG_DWORD)
+and does not find it. Eventually Chrome Setup will start writing to
+{4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}\ClientState\InstallerProgress as per
+https://code.google.com/p/chromium/issues/detail?id=458558, and this code will not be needed.
+--------------------------------------------------------------------------------
+
 ## 2015-08-18 @100157432,100957192 1.3.28.11
 
 ### Changes
