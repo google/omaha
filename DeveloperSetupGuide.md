@@ -33,9 +33,8 @@ The following packages are required to build Omaha:
    * Download [here](https://golang.org/dl/) 
   * Third-party dependecies:
    * breakpad. Source code [here](https://code.google.com/p/google-breakpad/source/checkout)
-   * gtest. Source code [here](https://code.google.com/p/googletest/source/checkout)
-   * gmock. Source code [here](https://code.google.com/p/googlemock/source/checkout)
-   * Use git svn clone or other way to get the source code for these projects into the third_party directory in the root of this repository.
+   * googletest. Source code [here](https://github.com/google/googletest). This includes both gtest and gmock frameworks.
+   * Use git clone, git svn clone, or other way to get the source code for these projects into the third_party directory in the root of this repository.
 
 To run the unit tests, one more package is needed. Download the Windows Sysinternals PSTools suite [here](https://technet.microsoft.com/en-us/sysinternals/bb897553) and save psexec.exe somewhere. Then, set an environment variable named OMAHA_PSEXEC_DIR to the directory containing psexec.exe.
 
@@ -56,12 +55,11 @@ To run the unit tests, one more package is needed. Download the Windows Sysinter
       d---rwx---+ 1 sorin Domain Users   0 Jul 15 11:34 omaha
       d---rwx---+ 1 sorin Domain Users   0 Jun 30 17:58 third_party
       
-      D:\src\omahaopensource\omaha> ls -l third_party
-      total 20
-      d---rwx---+ 1 sorin Domain Users 0 Jul 14 12:52 breakpad
-      d---rwx---+ 1 sorin Domain Users 0 Jul 14 12:52 gmock
-      d---rwx---+ 1 sorin Domain Users 0 Jul 14 12:52 gtest
-      d---rwx---+ 1 sorin Domain Users 0 Jul 15 10:58 lzma
+      d:\src\omahaopensource\omaha>ls -l third_party
+      total 16
+      d---rwx---+ 1 sorin          Domain Users 0 Jul 14 12:52 breakpad
+      drwxrwx---+ 1 Administrators Domain Users 0 Sep  1 11:52 googletest
+      d---rwx---+ 1 sorin          Domain Users 0 Aug  7 18:58 lzma
 ```
 
 ## Environment Variables ##
@@ -99,7 +97,7 @@ A larger suite of unit tests is also included in the Omaha source.
 
 ## Running Unit Tests ##
 
-The Omaha build proces includes building an automated unit test suite, based on the [GTest](http://code.google.com/p/googletest/) framework.  In order to run it, there are two pieces of preparation you must do:
+The Omaha build proces includes building an automated unit test suite, based on the [GTest](https://github.com/google/googletest) framework.  In order to run it, there are two pieces of preparation you must do:
 
 * Create the following registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\Google\UpdateDev`. Then, add a string value named `TestSource` with the value `ossdev`.
 * Download the Windows Sysinternals PSTools suite (available [here](http://technet.microsoft.com/en-us/sysinternals/bb897553)) and save `psexec.exe` somewhere. Then, set an environment variable named `OMAHA_PSEXEC_DIR` to the directory containing `psexec.exe`.
