@@ -22,10 +22,10 @@
 #include <atlstr.h>
 #include <map>
 #include "base/basictypes.h"
+#include "gtest/gtest_prod.h"
 #include "omaha/common/const_goopdate.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/crash_generation_server.h"
-#include "third_party/gtest/include/gtest/gtest_prod.h"
 
 namespace omaha {
 

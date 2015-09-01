@@ -78,6 +78,6 @@
 #include "base/basictypes.h"
 #pragma warning(pop)
 
-#include "third_party/gtest/include/gtest/gtest_prod.h"
+#include "gtest/gtest_prod.h"
 
 #endif  // OMAHA_PRECOMPILE_PRECOMPILE_H__

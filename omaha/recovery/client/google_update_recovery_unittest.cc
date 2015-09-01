@@ -22,6 +22,7 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include "gtest/gtest.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/error.h"
@@ -38,7 +39,6 @@
 #include "omaha/net/network_request.h"
 #include "omaha/net/simple_request.h"
 #include "omaha/recovery/client/google_update_recovery.h"
-#include "third_party/gtest/include/gtest/gtest.h"
 
 // TODO(omaha): Replicate some of these tests in signaturevalidator_unittest.cc.
 

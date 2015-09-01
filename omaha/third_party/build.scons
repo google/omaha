@@ -53,12 +53,15 @@ breakpad_env.ComponentStaticLibraryMultiarch(target_name, breakpad_inputs)
 # Build gtest library.
 #
 gtest_env = env.Clone()
-gtest_env.Dir('gtest').addRepository(env.Dir('$THIRD_PARTY/gtest'))
+
+if gtest_env.Bit('is_google_update_build'):
+  _gtest_repository = '$THIRD_PARTY/gtest'
+else:
+  _gtest_repository ='$THIRD_PARTY/googletest/googletest'
+
+gtest_env.Dir('gtest').addRepository(env.Dir(_gtest_repository))
+
 gtest_env.Append(
-    CPPPATH = [
-        '$THIRD_PARTY/gtest',
-        '$THIRD_PARTY/gtest/include',
-        ],
     CCFLAGS = [
         '/wd4061',  # enumerator in switch is not handled by a case label
         '/wd4100',  # unreferenced formal parameter
@@ -70,10 +73,12 @@ gtest_env.Append(
     CPPDEFINES = [
         '_CRT_NONSTDC_NO_DEPRECATE',
         ],
+    CPPPATH = [
+        _gtest_repository,
+        ],
 )
 
 target_name = 'gtest'
-
 gtest_inputs = [ 'gtest/src/gtest-all.cc' ]
 if env.Bit('use_precompiled_headers'):
   gtest_inputs += gtest_env.EnablePrecompile(target_name)
@@ -87,13 +92,15 @@ gtest_env.ComponentLibrary(
 # Build gmock library.
 #
 gmock_env = env.Clone()
-gmock_env.Dir('gmock').addRepository(env.Dir('$THIRD_PARTY/gmock'))
+
+if gmock_env.Bit('is_google_update_build'):
+  _gmock_repository = '$THIRD_PARTY/gmock'
+else:
+  _gmock_repository ='$THIRD_PARTY/googletest/googlemock'
+
+gmock_env.Dir('gmock').addRepository(env.Dir(_gmock_repository))
+
 gmock_env.Append(
-    CPPPATH = [
-        '$THIRD_PARTY/gmock',
-        '$THIRD_PARTY/gmock/include',
-        '$THIRD_PARTY/gtest/include',
-        ],
     CCFLAGS = [
         '/wd4061',  # enumerator is not explicitly handled by a case label
         '/wd4242',  # conversion from type1 to type2, possible loss of data
@@ -102,10 +109,12 @@ gmock_env.Append(
         '/wd4640',  # construction of local static object is not thread-safe
         '/wd4826',  # conversion from 'type1 ' to 'type_2' is sign-extended.
         ],
+    CPPPATH = [
+        _gmock_repository,
+        ],
 )
 
 target_name = 'gmock'
-
 gmock_inputs = [ 'gmock/src/gmock-all.cc' ]
 
 if env.Bit('use_precompiled_headers'):

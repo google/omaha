@@ -13,8 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
+#include "gtest/gtest.h"
 #include "omaha/statsreport/formatter.h"
-#include "third_party/gtest/include/gtest/gtest.h"
 
 using stats_report::Formatter;
 

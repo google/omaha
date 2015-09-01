@@ -24,6 +24,7 @@ omaha/scons-out/**
 third_party/breakpad/**
 third_party/gmock/**
 third_party/gtest/**
+third_party/googletest/**
 
 # Ignore compiled Python files.
 *.pyc

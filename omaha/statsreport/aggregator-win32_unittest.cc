@@ -13,10 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
+#include "gtest/gtest.h"
 #include "omaha/statsreport/aggregator-win32.h"
 #include "omaha/statsreport/aggregator_unittest.h"
 #include "omaha/statsreport/aggregator-win32_unittest.h"
-#include "third_party/gtest/include/gtest/gtest.h"
 
 using namespace stats_report;
 

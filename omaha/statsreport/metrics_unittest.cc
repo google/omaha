@@ -16,8 +16,8 @@
 #include <algorithm>
 #include <new>
 
+#include "gtest/gtest.h"
 #include "omaha/statsreport/metrics.h"
-#include "third_party/gtest/include/gtest/gtest.h"
 
 DECLARE_METRIC_count(count);
 DEFINE_METRIC_count(count);

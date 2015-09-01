@@ -18,11 +18,10 @@
 #include <iterator>
 #include <map>
 
+#include "gtest/gtest.h"
 #include "omaha/statsreport/aggregator-win32_unittest.h"
 #include "omaha/statsreport/const-win32.h"
 #include "omaha/statsreport/persistent_iterator-win32.h"
-
-#include "third_party/gtest/include/gtest/gtest.h"
 
 using namespace stats_report;
 

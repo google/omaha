@@ -241,6 +241,7 @@ AddOption(
 )
 
 # Declare various boolean states.
+DeclareBit('is_google_update_build', 'True if building Google Update')
 DeclareBit('use_precompiled_headers', 'Use precompiled headers in build')
 DeclareBit('official_installers', 'Building using checked-in binaries')
 DeclareBit('build_server', 'Running on the build server')
@@ -278,6 +279,10 @@ win_env.SetBitFromOption('msvs', False)
 
 # Do not build the unit tests if the bit is set.
 win_env.SetBitFromOption('no-tests', False)
+
+# Set if this is a Google build, otherwise, it is an open source build.
+if _is_google_update_build:
+  win_env.SetBits('is_google_update_build')
 
 # Build all directories and two versions if this is the build server.
 if win_env.Bit('build_server'):
@@ -565,6 +570,17 @@ win_env.AppendUnique(
             _OMAHA_COPYRIGHT_STRING_ENGLISH),
         ],
 )
+
+if _is_google_update_build:
+    win_env.AppendUnique(CPPPATH = [
+        '$THIRD_PARTY/gmock/include',
+        '$THIRD_PARTY/gtest/include',
+    ])
+else:
+    win_env.AppendUnique(CPPPATH = [
+        '$THIRD_PARTY/googletest/googlemock/include',
+        '$THIRD_PARTY/googletest/googletest/include',
+    ])
 
 if _msc_ver >= omaha_version_utils.VC140:
   win_env.AppendUnique(

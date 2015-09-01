@@ -66,10 +66,10 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "gtest/gtest_prod.h"
 #include "omaha/common/ping_event.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/web_services_client.h"
-#include "third_party/gtest/include/gtest/gtest_prod.h"
 
 namespace omaha {
 

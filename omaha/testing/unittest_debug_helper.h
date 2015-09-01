@@ -21,8 +21,8 @@
 #define OMAHA_TESTING_UNITTEST_DEBUG_HELPER_H__
 
 #include "base/basictypes.h"
+#include "gtest/gtest.h"
 #include "omaha/base/debug.h"
-#include "third_party/gtest/include/gtest/gtest.h"
 
 namespace omaha {
 
