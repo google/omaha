@@ -102,44 +102,46 @@ static HRESULT GetAclIntegrityLevel(PACL acl, MANDATORY_LEVEL* level,
       SidStart), level);
 }
 
-// If successful, the caller needs to free the ACL using LocalFree()
-// on failure, returns NULL
+
+// If successful, the caller needs to free the ACL using free().
+// On failure, returns NULL.
 static ACL* CreateMandatoryLabelAcl(MANDATORY_LEVEL level, bool and_children) {
-  int ace_size = sizeof(SYSTEM_MANDATORY_LABEL_ACE)
-      - sizeof(DWORD) + GetSidLengthRequired(1);
-  int acl_size = sizeof(ACL) + ace_size;
+  const WORD ace_size = offsetof(SYSTEM_MANDATORY_LABEL_ACE, SidStart)
+      + static_cast<WORD>(::GetSidLengthRequired(1));
+  const WORD acl_size = sizeof(ACL) + ace_size;
 
-  ACL* acl = reinterpret_cast<ACL*>(LocalAlloc(LPTR, acl_size));
-  if (!acl)
+  scoped_ptr_malloc<ACL> acl(static_cast<ACL*>(malloc(acl_size)));
+  if (!acl.get()) {
     return NULL;
-
-  bool failed = true;
-  if (InitializeAcl(acl, acl_size, ACL_REVISION)) {
-    if (level > 0) {
-      SYSTEM_MANDATORY_LABEL_ACE* ace = reinterpret_cast<
-          SYSTEM_MANDATORY_LABEL_ACE*>(LocalAlloc(LPTR, ace_size));
-      if (ace) {
-        ace->Header.AceType = SYSTEM_MANDATORY_LABEL_ACE_TYPE;
-        ace->Header.AceFlags = and_children ?
-            (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE) : 0;
-        ace->Header.AceSize = static_cast<WORD>(ace_size);
-        ace->Mask = SYSTEM_MANDATORY_LABEL_NO_WRITE_UP;
-
-        SID* sid = reinterpret_cast<SID*>(&ace->SidStart);
-
-        if (InitializeSid(sid, &mandatory_label_auth, 1)) {
-          *GetSidSubAuthority(sid, 0) = static_cast<DWORD>(level) << 12;
-          failed = !AddAce(acl, ACL_REVISION, 0, ace, ace_size);
-        }
-        LocalFree(ace);
-      }
-    }
   }
-  if (failed) {
-    LocalFree(acl);
-    acl = NULL;
+
+  if (!::InitializeAcl(acl.get(), acl_size, ACL_REVISION)) {
+    return NULL;
   }
-  return acl;
+
+  scoped_ptr_malloc<SYSTEM_MANDATORY_LABEL_ACE> ace(static_cast<
+      SYSTEM_MANDATORY_LABEL_ACE*>(malloc(ace_size)));
+  if (!ace.get()) {
+    return NULL;
+  }
+
+  ace->Header.AceType = SYSTEM_MANDATORY_LABEL_ACE_TYPE;
+  ace->Header.AceFlags = and_children ?
+      (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE) : 0;
+  ace->Header.AceSize = ace_size;
+  ace->Mask = SYSTEM_MANDATORY_LABEL_NO_WRITE_UP;
+
+  SID* sid = reinterpret_cast<SID*>(&ace->SidStart);
+  if (!::InitializeSid(sid, &mandatory_label_auth, 1)) {
+    return NULL;
+  }
+
+  *::GetSidSubAuthority(sid, 0) = MANDATORY_LEVEL_TO_MANDATORY_RID(level);
+  if (!::AddAce(acl.get(), ACL_REVISION, 0, ace.get(), ace_size)) {
+    return NULL;
+  }
+
+  return acl.release();
 }
 
 
@@ -423,13 +425,13 @@ HRESULT SetFileOrFolderIntegrityLevel(const TCHAR* file,
   if (!IsVistaOrLater())
     return E_NOTIMPL;
 
-  ACL* acl = CreateMandatoryLabelAcl(level, and_children);
-  if (!acl)
-    return E_FAIL;
+  scoped_ptr_malloc<ACL> acl(CreateMandatoryLabelAcl(level, and_children));
+  if (!acl.get()) {
+    return HRESULTFromLastError();
+  }
 
   DWORD result = SetNamedSecurityInfo(const_cast<TCHAR*>(file), SE_FILE_OBJECT,
-      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, acl);
-  LocalFree(acl);
+      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, acl.get());
   return HRESULT_FROM_WIN32(result);
 }
 
@@ -469,28 +471,32 @@ HRESULT SetRegKeyIntegrityLevel(HKEY root, const TCHAR* subkey,
   if (!reg_path)
     return E_FAIL;
 
-  ACL* acl = CreateMandatoryLabelAcl(level, and_children);
-  if (!acl) {
+  scoped_ptr_malloc<ACL> acl(CreateMandatoryLabelAcl(level, and_children));
+  if (!acl.get()) {
+    HRESULT hr = HRESULTFromLastError();
     LocalFree(reg_path);
-    return E_FAIL;
+    return hr;
   }
 
   DWORD result = SetNamedSecurityInfo(reg_path, SE_REGISTRY_KEY,
-      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, acl);
-  LocalFree(acl);
+      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, acl.get());
   LocalFree(reg_path);
   return HRESULT_FROM_WIN32(result);
 }
 
 
-CSecurityDesc* BuildSecurityDescriptor(const TCHAR* sddl_sacl,
+CSecurityDesc* BuildSecurityDescriptor(MANDATORY_LEVEL level,
                                        ACCESS_MASK mask) {
   if (!IsVistaOrLater()) {
     return NULL;
   }
 
   scoped_ptr<CSecurityDesc> security_descriptor(new CSecurityDesc);
-  security_descriptor->FromString(sddl_sacl);
+  HRESULT hr = vista_util::SetMandatorySacl(level, security_descriptor.get());
+  if (FAILED(hr)) {
+    return NULL;
+  }
+
 
   // Fill out the rest of the security descriptor from the process token.
   CAccessToken token;
@@ -532,74 +538,46 @@ CSecurityDesc* BuildSecurityDescriptor(const TCHAR* sddl_sacl,
   // Lastly, save the dacl to this descriptor.
   security_descriptor->SetDacl(dacl);
   return security_descriptor.release();
-};
+}
 
 CSecurityDesc* CreateLowIntegritySecurityDesc(ACCESS_MASK mask) {
-  return BuildSecurityDescriptor(LOW_INTEGRITY_SDDL_SACL, mask);
+  return BuildSecurityDescriptor(MandatoryLevelLow, mask);
 }
 
 CSecurityDesc* CreateMediumIntegritySecurityDesc(ACCESS_MASK mask) {
-  return BuildSecurityDescriptor(MEDIUM_INTEGRITY_SDDL_SACL, mask);
+  return BuildSecurityDescriptor(MandatoryLevelMedium, mask);
 }
 
-HRESULT AddLowIntegritySaclToExistingDesc(CSecurityDesc* sd) {
+HRESULT SetMandatorySacl(MANDATORY_LEVEL level, CSecurityDesc* sd) {
   ASSERT1(sd);
-  ASSERT1(sd->GetPSECURITY_DESCRIPTOR());
 
   if (!IsVistaOrLater()) {
     return S_FALSE;
   }
 
-  CSecurityDesc sd_low;
-  if (!sd_low.FromString(LOW_INTEGRITY_SDDL_SACL)) {
+  scoped_ptr_malloc<ACL> acl(CreateMandatoryLabelAcl(level, false));
+  if (!acl.get()) {
     HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[Failed to parse LOW_INTEGRITY_SDDL_SACL][0x%x]"), hr));
+    UTIL_LOG(LE, (_T("[Failed to create the mandatory SACL][%#x]"), hr));
     return hr;
   }
 
-  // Atl::CSacl does not support SYSTEM_MANDATORY_LABEL_ACE_TYPE.
-  BOOL sacl_present = FALSE;
-  BOOL sacl_defaulted = FALSE;
-  PACL sacl = NULL;
-  if (!::GetSecurityDescriptorSacl(
-             const_cast<SECURITY_DESCRIPTOR*>(sd_low.GetPSECURITY_DESCRIPTOR()),
-             &sacl_present,
-             &sacl,
-             &sacl_defaulted) ||
-      !sacl) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[Failed to get the low integrity SACL][0x%x]"), hr));
-    return hr;
-  }
-
-  ACL_SIZE_INFORMATION acl_size = {0};
-  if (!::GetAclInformation(sacl,
-                           &acl_size,
-                           sizeof(acl_size),
-                           AclSizeInformation)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[Failed to get AclSizeInformation][0x%x]"), hr));
-    return hr;
-  }
-
-  // The CSecurityDesc destructor expects the memory to have been malloced.
-  PACL new_sacl = static_cast<PACL>(malloc(acl_size.AclBytesInUse));
-  ::CopyMemory(new_sacl, sacl, acl_size.AclBytesInUse);
-
+  // Atl::CSacl does not support SYSTEM_MANDATORY_LABEL_ACE_TYPE, so we use
+  // ::SetSecurityDescriptorSacl() to set the SACL.
   CSacl sacl_empty;
   sd->SetSacl(sacl_empty);
 
   if (!::SetSecurityDescriptorSacl(
              const_cast<SECURITY_DESCRIPTOR*>(sd->GetPSECURITY_DESCRIPTOR()),
-             sacl_present,
-             new_sacl,
-             sacl_defaulted))  {
+             TRUE,
+             acl.get(),
+             FALSE))  {
     HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[Failed to set the low integrity SACL][0x%x]"), hr));
-    free(new_sacl);
+    UTIL_LOG(LE, (_T("[Failed to set the mandatory SACL][%#x]"), hr));
     return hr;
   }
 
+  acl.release();
   return S_OK;
 }
 

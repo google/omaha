@@ -36,7 +36,6 @@
 #include "omaha/base/user_rights.h"
 #include "omaha/base/utils.h"
 
-#define LOW_INTEGRITY_SDDL_SACL_A     NOTRANSL("S:(ML;;NW;;;LW)")
 #define LOW_INTEGRITY_SID_W           NOTRANSL(L"S-1-16-4096")
 
 namespace omaha {
@@ -168,41 +167,6 @@ bool IsProcessProtected() {
   ::LocalFree(sid_str);
 
   return ret;
-}
-
-HRESULT AllowProtectedProcessAccessToSharedObject(const TCHAR* name) {
-  if (!SystemInfo::IsRunningOnVistaOrLater()) {
-    return S_FALSE;
-  }
-
-  ASSERT1(name != NULL);
-
-  PSECURITY_DESCRIPTOR psd = NULL;
-  VERIFY1(::ConvertStringSecurityDescriptorToSecurityDescriptorA(
-              LOW_INTEGRITY_SDDL_SACL_A,
-              SDDL_REVISION_1,
-              &psd,
-              NULL));
-
-  BOOL sacl_present = FALSE;
-  BOOL sacl_defaulted = FALSE;
-  PACL sacl = NULL;
-  VERIFY1(::GetSecurityDescriptorSacl(psd,
-                                      &sacl_present,
-                                      &sacl,
-                                      &sacl_defaulted));
-
-  DWORD ret = ::SetNamedSecurityInfoW(const_cast<TCHAR*>(name),
-                                      SE_KERNEL_OBJECT,
-                                      LABEL_SECURITY_INFORMATION,
-                                      NULL,
-                                      NULL,
-                                      NULL,
-                                      sacl);
-
-  ::LocalFree(psd);
-
-  return HRESULT_FROM_WIN32(ret);
 }
 
 HRESULT RunAsCurrentUser(const CString& command_line,

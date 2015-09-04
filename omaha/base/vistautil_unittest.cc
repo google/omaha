@@ -77,6 +77,20 @@ TEST(VistaUtilTest, IsElevatedWithEnableLUAOn) {
             IsElevatedWithEnableLUAOn());
 }
 
+TEST(VistaUtilTest, SetMandatorySacl) {
+  CSecurityDesc sd1;
+  EXPECT_SUCCEEDED(SetMandatorySacl(MandatoryLevelLow, &sd1));
+  CString sddl1;
+  sd1.ToString(&sddl1, LABEL_SECURITY_INFORMATION);
+  EXPECT_STREQ(LOW_INTEGRITY_SDDL_SACL, sddl1);
+
+  CSecurityDesc sd2;
+  EXPECT_SUCCEEDED(SetMandatorySacl(MandatoryLevelMedium, &sd2));
+  CString sddl2;
+  sd2.ToString(&sddl2, LABEL_SECURITY_INFORMATION);
+  EXPECT_STREQ(MEDIUM_INTEGRITY_SDDL_SACL, sddl2);
+}
+
 }  // namespace vista_util
 
 }  // namespace omaha
