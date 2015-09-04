@@ -1,3 +1,11 @@
+## 2015-09-04 @102301006,102301006 1.3.28.15
+
+### Changes
+--------------------------------------------------------------------------------
+::ConvertStringSecurityDescriptorToSecurityDescriptor fails with 0x80070539
+ERROR_INVALID_SID and throws an exception in atlsecurity.h
+--------------------------------------------------------------------------------
+
 ## 2015-08-25 @101487056 1.3.28.13
 
 ### Changes

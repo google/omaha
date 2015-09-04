@@ -42,11 +42,11 @@ namespace omaha {
 
 class CrashUtilsTest : public testing::Test {
  protected:
-   virtual void SetUp() {
-     module_dir_ = app_util::GetModuleDirectory(NULL);
-   }
+  virtual void SetUp() {
+    module_dir_ = app_util::GetModuleDirectory(NULL);
+  }
 
-   static void BuildPipeSecurityAttributesTest(bool is_machine) {
+  static void BuildPipeSecurityAttributesTest(bool is_machine) {
     CSecurityDesc sd1;
     EXPECT_SUCCEEDED(crash_utils::BuildPipeSecurityAttributes(is_machine,
                                                               &sd1));
@@ -58,9 +58,11 @@ class CrashUtilsTest : public testing::Test {
                          LABEL_SECURITY_INFORMATION);
 
     CSecurityDesc sd2;
+    if (vista_util::IsVistaOrLater()) {
+      EXPECT_TRUE(sd2.FromString(LOW_INTEGRITY_SDDL_SACL));
+    }
     EXPECT_SUCCEEDED(crash_utils::AddPipeSecurityDaclToDesc(is_machine,
                                                             &sd2));
-    EXPECT_SUCCEEDED(vista_util::AddLowIntegritySaclToExistingDesc(&sd2));
     CString sddl2;
     sd2.ToString(&sddl2, OWNER_SECURITY_INFORMATION |
                          GROUP_SECURITY_INFORMATION |
@@ -111,13 +113,10 @@ TEST_F(CrashUtilsTest, CreateCustomInfoFile) {
 }
 
 // Makes sure that the security descriptor that BuildPipeSecurityAttributes
-// creates matches the security descriptor built by adding the DACL first, and
-// then using AddLowIntegritySaclToExistingDesc(). The latter method uses an
-// approach similar to what is documented in MSDN:
+// creates matches the security descriptor built by using
+// CSecurityDesc::FromString and AddPipeSecurityDaclToDesc. The latter method
+// uses an approach similar to what is documented in MSDN:
 // http://msdn.microsoft.com/en-us/library/bb625960.aspx
-//
-// Also, makes sure that the security descriptor that
-// BuildPipeSecurityAttributes creates has the low integrity SACL within it.
 TEST_F(CrashUtilsTest, BuildPipeSecurityAttributes) {
   BuildPipeSecurityAttributesTest(true);
   BuildPipeSecurityAttributesTest(false);

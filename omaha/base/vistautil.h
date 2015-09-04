@@ -159,8 +159,8 @@ HRESULT SetRegKeyIntegrityLevel(HKEY root, const TCHAR* subkey,
 CSecurityDesc* CreateLowIntegritySecurityDesc(ACCESS_MASK mask);
 CSecurityDesc* CreateMediumIntegritySecurityDesc(ACCESS_MASK mask);
 
-// For Vista or later, add the low integrity SACL to an existing CSecurityDesc.
-HRESULT AddLowIntegritySaclToExistingDesc(CSecurityDesc* sd);
+// For Vista or later, add the mandatory SACL to an existing CSecurityDesc.
+HRESULT SetMandatorySacl(MANDATORY_LEVEL level, CSecurityDesc* sd);
 
 // On Vista or later, enables metadata protection in the heap manager.  This
 // causes a process to be terminated immediately when a buffer overflow or

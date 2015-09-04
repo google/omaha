@@ -13,8 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
-#ifndef OMAHA_COMMON_VISTA_UTILS_H__
-#define OMAHA_COMMON_VISTA_UTILS_H__
+#ifndef OMAHA_BASE_VISTA_UTILS_H__
+#define OMAHA_BASE_VISTA_UTILS_H__
 
 #include <windows.h>
 #include <aclapi.h>
@@ -104,5 +104,5 @@ HRESULT RunAsCurrentUser(const CString& command_line,
 
 }  // namespace omaha
 
-#endif  // OMAHA_COMMON_VISTA_UTILS_H__
+#endif  // OMAHA_BASE_VISTA_UTILS_H__
 

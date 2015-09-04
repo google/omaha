@@ -192,22 +192,17 @@ HRESULT BuildPipeSecurityAttributes(bool is_machine, CSecurityDesc* sd) {
   ASSERT1(sd);
   ASSERT1(!sd->GetPSECURITY_DESCRIPTOR());
 
-  HRESULT hr = E_UNEXPECTED;
-
   // If we're on Vista or later, start with the low integrity SACL, so that we
   // can accept connections from browser plugins.
-
-  if (vista_util::IsVistaOrLater()) {
-    if (!sd->FromString(LOW_INTEGRITY_SDDL_SACL)) {
-      hr = HRESULTFromLastError();
-      OPT_LOG(LE, (_T("[Failed to convert low integrity SACL][0x%08x]"), hr));
-      return FAILED(hr) ? hr : E_FAIL;
-    }
+  HRESULT hr = vista_util::SetMandatorySacl(MandatoryLevelLow, sd);
+  if (FAILED(hr)) {
+    OPT_LOG(LE, (_T("[Failed to set low integrity SACL][%#x]"), hr));
+    return hr;
   }
 
   hr = AddPipeSecurityDaclToDesc(is_machine, sd);
   if (FAILED(hr)) {
-    OPT_LOG(LE, (_T("[Failed to build pipe security DACL][0x%08x]"), hr));
+    OPT_LOG(LE, (_T("[Failed to add pipe security DACL][%#x]"), hr));
     return hr;
   }
 
