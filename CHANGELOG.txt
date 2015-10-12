@@ -1,3 +1,29 @@
+## 2015-10-12 @102301006,105240952
+
+### Changes
+--------------------------------------------------------------------------------
+Fix unitests:
+* SetupRegistryProtectedUserTest tests are flaky.
+* CoreTest.HasOSUpgraded has a race condition.
+--------------------------------------------------------------------------------
+Integrate the makefile for eckeytool.c
+
+This could be useful for people who want to build this using
+a GNU toolchain, even if Omaha's build script is not
+calling this makefile.
+--------------------------------------------------------------------------------
+Remove unused cup_ecdsa_pubkey.4
+--------------------------------------------------------------------------------
+Branch eckeytool.c
+--------------------------------------------------------------------------------
+Recover if Handoff from an older metainstaller to a newer-but-broken
+installation of Omaha fails. This change introduces a new command line switch,
+'/healthcheck'. Running the installed 'GoogleUpdate.exe /healthcheck' returns
+S_OK if the installation is healthy. An older metainstaller runs /healthcheck on
+the installed Omaha, and if that fails, it will overinstall itself over the
+newer version.
+--------------------------------------------------------------------------------
+
 ## 2015-09-04 @102301006,102301006 1.3.28.15
 
 ### Changes

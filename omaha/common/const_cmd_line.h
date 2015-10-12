@@ -139,6 +139,10 @@ const TCHAR* const kCmdLineOnDemand = _T("/ondemand");
 // The "uninstall" switch indicates that Omaha should uninstall if appropriate.
 const TCHAR* const kCmdLineUninstall = _T("uninstall");
 
+// The "healthcheck" switch allows the installed version of Omaha to indicate
+// whether it is installed and functioning correctly by returning S_OK.
+const TCHAR* const kCmdLineHealthCheck = _T("healthcheck");
+
 // The "ping" switch makes Omaha send a ping with the specified string. The
 // string is expected to be web safe base64 encoded and it will be decoded
 // before sending it to the server.

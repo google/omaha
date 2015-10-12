@@ -81,10 +81,11 @@ class Setup {
   HRESULT DoProtectedUninstall(bool send_uninstall_ping);
 
   // Returns whether Google Update should be installed.
-  bool ShouldInstall(SetupFiles* setup_files);
+  bool ShouldInstall();
 
-  // Returns whether the same version of Google Update should be over-installed.
-  bool ShouldOverinstallSameVersion(SetupFiles* setup_files);
+  // Returns whether the currently installed version of Google Update should be
+  // over-installed.
+  bool ShouldOverinstall();
 
   HRESULT DoProtectedGoogleUpdateInstall(SetupFiles* setup_files);
 
@@ -95,8 +96,11 @@ class Setup {
   // Tells other instances to stop.
   HRESULT StopGoogleUpdate();
 
+  // Returns how long to wait before terminating GoogleUpdate.exe forcefully.
+  int GetForceKillWaitTimeMs() const;
+
   // Tells other instances to stop then waits for them to exit.
-  HRESULT StopGoogleUpdateAndWait();
+  HRESULT StopGoogleUpdateAndWait(int wait_time_before_kill_ms);
 
   // Sets the shutdown event to signal other instances for this user or machine
   // to exit.
@@ -106,7 +110,8 @@ class Setup {
   void ReleaseShutdownEvents();
 
   // Waits for other instances of GoogleUpdate.exe to exit.
-  HRESULT WaitForOtherInstancesToExit(const Pids& pids);
+  HRESULT WaitForOtherInstancesToExit(const Pids& pids,
+                                      int wait_time_before_kill_ms);
 
   // Gets the list of all the GoogleUpdate.exe processes to wait for.
   HRESULT GetPidsToWaitFor(Pids* pids) const;

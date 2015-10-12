@@ -115,10 +115,6 @@ TEST_F(SplashScreenTest, RenderResourceStrings_en) {
 }
 
 TEST_F(SplashScreenTest, RenderResourceStrings) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
-
   const TCHAR * const langs[] = {
     _T("am"),
     _T("ar"),

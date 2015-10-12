@@ -381,9 +381,7 @@ TEST(FileTest, Exists_UnQuoted) {
   EXPECT_TRUE(File::Exists(kIEBrowserExe));
   EXPECT_FALSE(File::Exists(_T("C:\\foo\\does not exist.exe")));
   EXPECT_FALSE(File::Exists(_T("Z:\\foo\\does not exist.exe")));
-  if (ShouldRunLargeTest()) {
-    EXPECT_FALSE(File::Exists(_T("\\\\foo\\does not exist.exe")));
-  }
+  EXPECT_FALSE(File::Exists(_T("\\\\foo\\does not exist.exe")));
 }
 
 // File::Exists() expects unquoted paths.
@@ -391,9 +389,7 @@ TEST(FileTest, Exists_Quoted) {
   EXPECT_FALSE(File::Exists(kIEBrowserQuotedExe));
   EXPECT_FALSE(File::Exists(_T("\"C:\\foo\\does not exist.exe\"")));
   EXPECT_FALSE(File::Exists(_T("\"Z:\\foo\\does not exist.exe\"")));
-  if (ShouldRunLargeTest()) {
-    EXPECT_FALSE(File::Exists(_T("\"\\\\foo\\does not exist.exe\"")));
-  }
+  EXPECT_FALSE(File::Exists(_T("\"\\\\foo\\does not exist.exe\"")));
 }
 
 // File::Exists() handles trailing spaces but not leading whitespace, tabs, or

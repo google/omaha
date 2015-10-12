@@ -228,6 +228,9 @@ CString CommandLineBuilder::GetCommandLineArgs() const {
     case COMMANDLINE_MODE_PING:
       cmd_line_args = GetPing();
       break;
+    case COMMANDLINE_MODE_HEALTH_CHECK:
+      cmd_line_args = GetHealthCheck();
+      break;
     case COMMANDLINE_MODE_UNKNOWN:
     default:
       ASSERT1(false);
@@ -521,6 +524,10 @@ CString CommandLineBuilder::GetPing() const {
   SafeCStringFormat(&cmd_line, _T("/%s %s"), kCmdLinePing,
       ping_string_.GetString());
   return cmd_line;
+}
+
+CString CommandLineBuilder::GetHealthCheck() const {
+  return GetSingleSwitch(kCmdLineHealthCheck);
 }
 
 }  // namespace omaha

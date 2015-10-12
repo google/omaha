@@ -354,10 +354,6 @@ TEST_F(SimpleRequestTest, HttpDownloadDirect) {
 // Download same file twice with and without pause/resume. The downloaded
 // files should be same.
 TEST_F(SimpleRequestTest, DISABLED_HttpDownloadDirectPauseAndResume) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
-
   // Download the same URL with and without pause/resume.
   CString temp_file1 = GetTempFilenameAt(app_util::GetModuleDirectory(NULL),
                                          _T("SRT"));
@@ -520,12 +516,10 @@ TEST_F(SimpleRequestTest, Cancel_ShouldDeleteTempFile) {
   EXPECT_EQ(INVALID_FILE_ATTRIBUTES, ::GetFileAttributes(temp_file));
   EXPECT_EQ(ERROR_FILE_NOT_FOUND, ::GetLastError());
 
-  if (ShouldRunLargeTest()) {
-    // Verify that target file is preserved if download is not cancelled.
-    do_cancel = false;
-    SimpleDownloadFileCancellation(temp_file, do_cancel);
-    EXPECT_NE(INVALID_FILE_ATTRIBUTES, ::GetFileAttributes(temp_file));
-  }
+  // Verify that target file is preserved if download is not cancelled.
+  do_cancel = false;
+  SimpleDownloadFileCancellation(temp_file, do_cancel);
+  EXPECT_NE(INVALID_FILE_ATTRIBUTES, ::GetFileAttributes(temp_file));
 }
 
 TEST_F(SimpleRequestTest, HttpGet_Redirect) {

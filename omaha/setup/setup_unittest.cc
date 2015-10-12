@@ -112,7 +112,6 @@ void CopyGoopdateFiles(const CString& omaha_path, const CString& version);
 
 class SetupTest : public testing::Test {
  protected:
-
   typedef std::vector<uint32> Pids;
 
   // Returns the path to the long-running GoogleUpdate.exe.
@@ -165,11 +164,12 @@ class SetupTest : public testing::Test {
   bool ShouldInstall() {
     SetupFiles setup_files(is_machine_);
     setup_files.Init();
-    return setup_->ShouldInstall(&setup_files);
+    return setup_->ShouldInstall();
   }
 
   HRESULT StopGoogleUpdateAndWait() {
-    return setup_->StopGoogleUpdateAndWait();
+    const int wait_time_before_kill_ms = 2000;
+    return setup_->StopGoogleUpdateAndWait(wait_time_before_kill_ms);
   }
 
   HRESULT TerminateCoreProcesses() const {
@@ -197,9 +197,6 @@ class SetupTest : public testing::Test {
       return;
     }
 
-    if (!ShouldRunLargeTest()) {
-      return;
-    }
     if (IsBuildSystem()) {
       std::wcout << _T("\tTest not run because it is flaky on build system.")
                  << std::endl;
@@ -478,9 +475,6 @@ class SetupTest : public testing::Test {
       return;
     }
 
-    if (!ShouldRunLargeTest()) {
-      return;
-    }
     scoped_process process;
     LaunchProcess(not_listening_exe_path_,
                   args,
@@ -766,48 +760,17 @@ const TCHAR* const SetupFutureVersionInstalledUserTest::kAppGuid_ =
 
 class SetupRegistryProtectedUserTest : public SetupUserTest {
  protected:
-  SetupRegistryProtectedUserTest()
-      : SetupUserTest(),
-        hive_override_key_name_(kRegistryHiveOverrideRoot) {
+  SetupRegistryProtectedUserTest() : SetupUserTest() {
   }
 
   static void SetUpTestCase() {
     this_version_ = GetVersionString();
-    expected_is_overinstall_ = !OFFICIAL_BUILD;
-#ifdef DEBUG
-    if (RegKey::HasValue(MACHINE_REG_UPDATE_DEV, kRegValueNameOverInstall)) {
-      DWORD value = 0;
-      EXPECT_SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
-                                        kRegValueNameOverInstall,
-                                        &value));
-      expected_is_overinstall_ = value != 0;
-    }
-#endif
   }
-
-  virtual void SetUp() {
-    SetupUserTest::SetUp();
-
-    RegKey::DeleteKey(hive_override_key_name_, true);
-    // Do not override HKLM because it contains the CSIDL_* definitions.
-    OverrideSpecifiedRegistryHives(hive_override_key_name_, false, true);
-  }
-
-  virtual void TearDown() {
-    RestoreRegistryHives();
-    ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
-
-    SetupUserTest::TearDown();
-  }
-
-  const CString hive_override_key_name_;
 
   static CString this_version_;
-  static bool expected_is_overinstall_;
 };
 
 CString SetupRegistryProtectedUserTest::this_version_;
-bool SetupRegistryProtectedUserTest::expected_is_overinstall_;
 
 class SetupRegistryProtectedMachineTest : public SetupMachineTest {
  protected:
@@ -904,22 +867,83 @@ TEST_F(SetupMachineTest, Install_LockTimedOut) {
 // ShouldInstall tests.
 //
 
-TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_NewerVersion) {
+TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_OlderVersion) {
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
                                     kRegValueProductVersion,
                                     _T("1.0.3.4")));
   EXPECT_TRUE(ShouldInstall());
 }
 
-TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_OlderVersion) {
+TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_NewerVersion) {
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    kRegValueInstalledVersion,
+                                    kFutureVersionString));
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    kRegValueInstalledPath,
+                                    kFutureVersionString));
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
                                     kRegValueProductVersion,
-                                    _T("9.8.7.6")));
+                                    kFutureVersionString));
+  ASSERT_SUCCEEDED(RegKey::CreateKey(USER_REG_CLIENT_STATE_GOOPDATE));
+
+  CopyGoopdateFiles(omaha_path_, kFutureVersionString);
   EXPECT_FALSE(ShouldInstall());
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       ShouldInstall_SameVersionFilesMissingSameLanguage) {
+       ShouldInstall_NewerVersionMissingInstalledVersion) {
+  ASSERT_SUCCEEDED(RegKey::DeleteValue(USER_REG_UPDATE,
+                                       kRegValueInstalledVersion));
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
+                                    kRegValueProductVersion,
+                                    kFutureVersionString));
+
+  CopyGoopdateFiles(omaha_path_, kFutureVersionString);
+  EXPECT_TRUE(ShouldInstall());
+}
+
+TEST_F(SetupRegistryProtectedUserTest,
+       ShouldInstall_NewerVersionMissingProductVersion) {
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    kRegValueInstalledVersion,
+                                    kFutureVersionString));
+  ASSERT_SUCCEEDED(RegKey::DeleteValue(USER_REG_CLIENTS_GOOPDATE,
+                                       kRegValueProductVersion));
+
+  CopyGoopdateFiles(omaha_path_, kFutureVersionString);
+  EXPECT_TRUE(ShouldInstall());
+}
+
+TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_NewerVersionFilesMissing) {
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    kRegValueInstalledVersion,
+                                    kFutureVersionString));
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
+                                    kRegValueProductVersion,
+                                    kFutureVersionString));
+  ASSERT_SUCCEEDED(
+      DeleteDirectory(ConcatenatePath(omaha_path_, kFutureVersionString)));
+  EXPECT_TRUE(ShouldInstall());
+}
+
+TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_NewerVersionShellMissing) {
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
+                                    kRegValueInstalledVersion,
+                                    kFutureVersionString));
+  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
+                                    kRegValueProductVersion,
+                                    kFutureVersionString));
+
+  CopyGoopdateFiles(omaha_path_, kFutureVersionString);
+  CString shell_path = ConcatenatePath(omaha_path_, kOmahaShellFileName);
+  ASSERT_TRUE(SUCCEEDED(File::DeleteAfterReboot(shell_path)) ||
+              !vista_util::IsUserAdmin());
+  ASSERT_FALSE(File::Exists(shell_path));
+
+  EXPECT_TRUE(ShouldInstall());
+}
+
+TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_SameVersionFilesMissing) {
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     kRegValueInstalledVersion,
                                     this_version_));
@@ -936,12 +960,7 @@ TEST_F(SetupRegistryProtectedUserTest,
   EXPECT_TRUE(ShouldInstall());
 }
 
-TEST_F(SetupRegistryProtectedUserTest,
-       ShouldInstall_SameVersionFilesPresentSameLanguage) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
-
+TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_SameVersionFilesPresent) {
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     kRegValueInstalledVersion,
                                     this_version_));
@@ -951,38 +970,13 @@ TEST_F(SetupRegistryProtectedUserTest,
 
   CopyGoopdateFiles(omaha_path_, this_version_);
 
-  EXPECT_EQ(expected_is_overinstall_, ShouldInstall());
-
-  // Override OverInstall to test official behavior on non-official builds.
-
-  DWORD existing_overinstall(0);
-  bool had_existing_overinstall = SUCCEEDED(RegKey::GetValue(
-                                                MACHINE_REG_UPDATE_DEV,
-                                                kRegValueNameOverInstall,
-                                                &existing_overinstall));
-
-  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                    kRegValueNameOverInstall,
-                                    static_cast<DWORD>(0)));
-#ifdef DEBUG
   EXPECT_FALSE(ShouldInstall());
-#else
-  EXPECT_EQ(expected_is_overinstall_, ShouldInstall());
-#endif
-
-  // Restore "overinstall"
-  if (had_existing_overinstall) {
-    EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                      kRegValueNameOverInstall,
-                                      existing_overinstall));
-  } else {
-    EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                                         kRegValueNameOverInstall));
-  }
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       ShouldInstall_SameVersionFilesPresentSameLanguageMissingInstalledVer) {
+       ShouldInstall_SameVersionFilesPresentMissingInstalledVer) {
+  ASSERT_SUCCEEDED(RegKey::DeleteValue(USER_REG_UPDATE,
+                                       kRegValueInstalledVersion));
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
                                     kRegValueProductVersion,
                                     this_version_));
@@ -993,13 +987,12 @@ TEST_F(SetupRegistryProtectedUserTest,
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       ShouldInstall_SameVersionFilesPresentSameLanguageNewerInstalledVer) {
+       ShouldInstall_SameVersionFilesPresentMissingProductVersion) {
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     kRegValueInstalledVersion,
-                                    kRegValueInstalledVersion));
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
                                     this_version_));
+  ASSERT_SUCCEEDED(RegKey::DeleteValue(USER_REG_CLIENTS_GOOPDATE,
+                                       kRegValueProductVersion));
 
   CopyGoopdateFiles(omaha_path_, this_version_);
 
@@ -1007,31 +1000,17 @@ TEST_F(SetupRegistryProtectedUserTest,
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
-       ShouldInstall_SameVersionFilesPresentDifferentLanguage) {
+       ShouldInstall_SameVersionFilesPresentNewerInstalledVer) {
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     kRegValueInstalledVersion,
-                                    this_version_));
+                                    kFutureVersionString));
   ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
                                     kRegValueProductVersion,
                                     this_version_));
 
   CopyGoopdateFiles(omaha_path_, this_version_);
 
-  EXPECT_EQ(expected_is_overinstall_, ShouldInstall());
-}
-
-TEST_F(SetupRegistryProtectedUserTest,
-       ShouldInstall_SameVersionFilesPresentNoLanguage) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
-                                    kRegValueInstalledVersion,
-                                    this_version_));
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    this_version_));
-
-  CopyGoopdateFiles(omaha_path_, this_version_);
-
-  EXPECT_EQ(expected_is_overinstall_, ShouldInstall());
+  EXPECT_TRUE(ShouldInstall());
 }
 
 TEST_F(SetupRegistryProtectedUserTest,
@@ -1067,24 +1046,7 @@ TEST_F(SetupRegistryProtectedUserTest,
   ASSERT_SUCCEEDED(File::Remove(path));
   ASSERT_FALSE(File::Exists(path));
 
-  DWORD existing_overinstall(0);
-  bool had_existing_overinstall = SUCCEEDED(RegKey::GetValue(
-                                                MACHINE_REG_UPDATE_DEV,
-                                                kRegValueNameOverInstall,
-                                                &existing_overinstall));
-  if (had_existing_overinstall) {
-    EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                                         kRegValueNameOverInstall));
-  }
-
-  EXPECT_TRUE(ShouldInstall());
-
-  // Restore "overinstall"
-  if (had_existing_overinstall) {
-    EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                      kRegValueNameOverInstall,
-                                      existing_overinstall));
-  }
+  EXPECT_FALSE(ShouldInstall());
 }
 
 TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_SameVersionShellMissing) {
@@ -1102,26 +1064,6 @@ TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_SameVersionShellMissing) {
   ASSERT_FALSE(File::Exists(shell_path));
 
   EXPECT_TRUE(ShouldInstall());
-}
-
-TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_NewerVersionShellMissing) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
-                                    kRegValueInstalledVersion,
-                                    this_version_));
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    kFutureVersionString));
-
-  CopyGoopdateFiles(omaha_path_, kFutureVersionString);
-  CString shell_path = ConcatenatePath(omaha_path_, kOmahaShellFileName);
-  ASSERT_TRUE(SUCCEEDED(File::DeleteAfterReboot(shell_path)) ||
-              !vista_util::IsUserAdmin());
-  ASSERT_FALSE(File::Exists(shell_path));
-
-  EXPECT_FALSE(ShouldInstall());
-
-  EXPECT_SUCCEEDED(
-      DeleteDirectory(ConcatenatePath(omaha_path_, kFutureVersionString)));
 }
 
 //

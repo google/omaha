@@ -34,11 +34,9 @@ DEFINE_METRIC_timing(setup_handoff_ui_ms);
 DEFINE_METRIC_count(setup_should_install_total);
 DEFINE_METRIC_count(setup_should_install_false_oc);
 DEFINE_METRIC_count(setup_should_install_true_fresh_install);
-DEFINE_METRIC_count(setup_should_install_false_older);
+DEFINE_METRIC_count(setup_should_overinstall_true);
+DEFINE_METRIC_count(setup_should_overinstall_false);
 DEFINE_METRIC_count(setup_should_install_true_newer);
-DEFINE_METRIC_count(setup_should_install_false_same);
-DEFINE_METRIC_count(setup_should_install_true_same);
-DEFINE_METRIC_count(setup_should_install_true_same_completion_missing);
 DEFINE_METRIC_count(setup_subsequent_install_total);
 DEFINE_METRIC_count(setup_subsequent_install_should_install_true);
 

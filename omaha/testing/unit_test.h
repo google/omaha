@@ -154,17 +154,6 @@ bool IsBuildSystem();
 // Sets TestSource=buildsystem.
 void SetBuildSystemTestSource();
 
-// Returns whether large tests should be run. Large tests are always run on the
-// build system and if the "OMAHA_TEST_RUN_LARGE" or "OMAHA_TEST_RUN_ALL"
-// environment variable is set.
-bool ShouldRunLargeTest();
-
-// Returns whether enourmous tests should be run. Enormous tests are always run
-// on the build system and if the "OMAHA_TEST_RUN_ALL" environment variable is
-// set. This method should be used sparingly and only by tests that take a
-// really long time to complete.
-bool ShouldRunEnormousTest();
-
 // Terminates all processes named GoogleUpdate.exe or GoogleCrashHandler.exe.
 void TerminateAllGoogleUpdateProcesses();
 

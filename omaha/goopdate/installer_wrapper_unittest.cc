@@ -1208,12 +1208,7 @@ TEST_F(InstallerWrapperUserTest, InstallApp_MsiIsBusy_NoRetries) {
   EXPECT_EQ(POST_INSTALL_ACTION_DEFAULT, result_info_.post_install_action);
 }
 
-// This test takes at least 5 seconds, so it is not run all the time.
 TEST_F(InstallerWrapperUserTest, InstallApp_MsiIsBusy_TwoTries) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
-
   CString commands;
   commands.Format(kExecuteTwoCommandsFormat,
                   set_installer_result_type_msi_error_cmd_,

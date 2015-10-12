@@ -1251,4 +1251,13 @@ TEST_F(CommandLineTest, ParseCommandLine_NeedsAdmin_Prefers) {
   VerifyCommandLineArgs(expected_, args_);
 }
 
+// Parse: <path> /healthcheck
+TEST_F(CommandLineTest, ParseCommandLine_HealthCheck) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /healthcheck");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_HEALTH_CHECK;
+  VerifyCommandLineArgs(expected_, args_);
+}
+
 }  // namespace omaha

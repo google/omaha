@@ -103,7 +103,13 @@ _BUILD_SERVER_CERTIFICATE_HASH = 'cafd39335d6e76f0e26d81296e7cbbfbdf16a720'
 # Defaults to VC120 if the environment variable is not specified.
 _msc_ver = int(os.getenv('OMAHA_MSC_VER', "1800"))
 
-_sdk_dir = os.environ['OMAHA_PLATFORM_SDK_DIR']
+_default_sdk_dir = ('$THIRD_PARTY/%s/files' %
+    {omaha_version_utils.VC140:'windows_sdk_8_1',
+     omaha_version_utils.VC120:'windows_sdk_8_1',
+     omaha_version_utils.VC100:'platformsdk_vc_10_0',
+     omaha_version_utils.VC80:'platformsdk/v6_1' }[_msc_ver])
+
+_sdk_dir = os.getenv('OMAHA_PLATFORM_SDK_DIR', _default_sdk_dir)
 
 _atl_server_dir = os.getenv('OMAHA_ATL_SERVER_DIR',
                             '$THIRD_PARTY/atl_server/files')

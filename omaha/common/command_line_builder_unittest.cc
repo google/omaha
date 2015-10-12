@@ -507,5 +507,11 @@ TEST(CommandLineBuilder, BuildPing) {
   EXPECT_STREQ(_T("/ping foo"), cmd_line);
 }
 
+TEST(CommandLineBuilder, BuildHealthCheck) {
+  CommandLineBuilder builder(COMMANDLINE_MODE_HEALTH_CHECK);
+  CString cmd_line = builder.GetCommandLineArgs();
+  EXPECT_STREQ(_T("/healthcheck"), cmd_line);
+}
+
 }  // namespace omaha
 

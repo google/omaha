@@ -75,9 +75,6 @@ class GetLegacyDefaultBrowserInfoTest : public testing::Test {
 };
 
 TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_IE) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
   EXPECT_SUCCEEDED(
       RegKey::SetValue(kRegKeyUserDefaultBrowser, NULL, _T("IeXpLoRe.ExE")));
   BrowserType type = BROWSER_UNKNOWN;
@@ -86,9 +83,6 @@ TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_IE) {
 }
 
 TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_Firefox) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
   EXPECT_SUCCEEDED(
       RegKey::SetValue(kRegKeyUserDefaultBrowser, NULL, _T("FiReFoX.ExE")));
   BrowserType type = BROWSER_UNKNOWN;
@@ -97,9 +91,6 @@ TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_Firefox) {
 }
 
 TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_Chrome) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
   EXPECT_SUCCEEDED(
       RegKey::SetValue(kRegKeyUserDefaultBrowser, NULL, _T("ChRoMe.ExE")));
   BrowserType type = BROWSER_UNKNOWN;
@@ -108,9 +99,6 @@ TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_Chrome) {
 }
 
 TEST_F(BrowserUtilsDefaultBrowserSavedTest, GetDefaultBrowserType_Unsupported) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
   EXPECT_SUCCEEDED(
       RegKey::SetValue(kRegKeyUserDefaultBrowser, NULL, _T("FoO.ExE")));
   BrowserType type = BROWSER_UNKNOWN;
@@ -133,9 +121,6 @@ TEST(BrowserUtilsTest, BrowserTypeToProcessName_Unknown) {
 
 // Writes the default browser to ensure consistent results.
 TEST_F(BrowserUtilsDefaultBrowserSavedTest, BrowserTypeToProcessName_Default) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
   EXPECT_SUCCEEDED(
       RegKey::SetValue(kRegKeyUserDefaultBrowser, NULL, _T("IeXpLoRe.ExE")));
 

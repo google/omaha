@@ -37,18 +37,6 @@ namespace {
 static bool is_buildsystem = false;
 static TCHAR psexec_dir[MAX_PATH] = {0};
 
-// Returns whether all unit tests should be run.
-bool ShouldRunAllTests() {
-  if (is_buildsystem) {
-    return true;
-  }
-
-  EXPECT_FALSE(IsEnvironmentVariableSet(_T("OMAHA_RUN_ALL_TESTS")))
-      << _T("Use OMAHA_TEST_RUN_ALL instead of OMAHA_RUN_ALL_TESTS.");
-
-  return IsEnvironmentVariableSet(_T("OMAHA_TEST_RUN_ALL"));
-}
-
 }  // namespace
 
 bool IsEnvironmentVariableSet(const TCHAR* name) {
@@ -204,32 +192,6 @@ void SetBuildSystemTestSource() {
   EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                     kRegValueTestSource,
                                     _T("buildsystem")));
-}
-
-bool ShouldRunLargeTest() {
-  if (ShouldRunAllTests()) {
-    return true;
-  }
-
-  if (IsEnvironmentVariableSet(_T("OMAHA_TEST_RUN_LARGE"))) {
-    return true;
-  } else {
-    std::wcout << _T("\tThis large test did not run because neither ")
-                  _T("'OMAHA_TEST_RUN_LARGE' or 'OMAHA_TEST_RUN_ALL' is set ")
-                  _T("in the environment.") << std::endl;
-    return false;
-  }
-}
-
-bool ShouldRunEnormousTest() {
-  if (ShouldRunAllTests()) {
-    return true;
-  }
-
-  std::wcout << _T("\tThis large test did not run because ")
-              _T("'OMAHA_TEST_RUN_ALL' is not set in the environment.")
-           << std::endl;
-  return false;
 }
 
 void TerminateAllProcessesByName(const TCHAR* process_name) {

@@ -60,19 +60,16 @@ DECLARE_METRIC_count(setup_should_install_false_oc);
 // Times ShouldInstall() returned true because not already installed.
 DECLARE_METRIC_count(setup_should_install_true_fresh_install);
 
-// Times ShouldInstall() returned false because older version than installed.
-DECLARE_METRIC_count(setup_should_install_false_older);
+// Times ShouldInstall() returned true because the installed version is not
+// working correctly.
+DECLARE_METRIC_count(setup_should_overinstall_true);
+
+// Times ShouldInstall() returned false because the installed version is working
+// correctly.
+DECLARE_METRIC_count(setup_should_overinstall_false);
 
 // Times ShouldInstall() returned true because newer version than installed.
 DECLARE_METRIC_count(setup_should_install_true_newer);
-
-// Times ShouldInstall() returned false because same version fully installed.
-DECLARE_METRIC_count(setup_should_install_false_same);
-// Times ShouldInstall() returned true because same version not fully installed.
-DECLARE_METRIC_count(setup_should_install_true_same);
-// Times ShouldOverinstallSameVersion() returned true because the successful
-// install completion indicator was not present.
-DECLARE_METRIC_count(setup_should_install_true_same_completion_missing);
 
 // Times ShouldInstall() was called during a metainstaller installation when
 // some Omaha version was already installed.

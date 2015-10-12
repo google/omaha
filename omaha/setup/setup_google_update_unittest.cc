@@ -180,11 +180,6 @@ void VerifyHklmKeyHasIntegrity(
     const CString& key_name,
     ACCESS_MASK expected_non_admin_interactive_access) {
 
-  // These checks can take a long time, so avoid them by default.
-  if (!ShouldRunEnormousTest()) {
-    return;
-  }
-
   const ACCESS_MASK kExpectedPowerUsersAccess = vista_util::IsVistaOrLater() ?
       0 : DELETE | READ_CONTROL | KEY_READ | KEY_WRITE;
 
@@ -399,10 +394,6 @@ class SetupGoogleUpdateMachineRegistryProtectedInHklmTest
 // This test uninstalls all other versions of Omaha.
 TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
        FinishInstall_RunKeyDoesNotExist) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
-
   // The version in the real registry must be set because it is used by
   // GoogleUpdate.exe during registrations.
   RestoreRegistryHives();
@@ -636,11 +627,6 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
 // CreateClientStateMedium does not replace permissions on existing keys.
 TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
        CreateClientStateMedium_KeysAlreadyExistWithDifferentPermissions) {
-  // The checks in this test can take a long time, so avoid them by default.
-  if (!ShouldRunEnormousTest()) {
-    return;
-  }
-
   const CString app1_client_state_medium_key_name = AppendRegKeyPath(
       MACHINE_REG_CLIENT_STATE_MEDIUM,
       kAppId1);
@@ -744,9 +730,6 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
 // The helper can be installed when the test begins.
 // It will not be installed when the test successfully completes.
 TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
   const TCHAR* MsiInstallRegValueKey =
       ConfigManager::Instance()->machine_registry_update();
 
@@ -815,9 +798,6 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
 // It will not be installed when the test successfully completes.
 TEST_F(SetupGoogleUpdateMachineTest,
        InstallMsiHelper_OverinstallDifferentMsiBuild) {
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
   if (!vista_util::IsUserAdmin()) {
     std::wcout << _T("\tThis test did not run because it must be run as admin.")
                << std::endl;

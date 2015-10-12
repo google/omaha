@@ -125,6 +125,7 @@ class CommandLineBuilder {
   CString GetRegisterProduct() const;
   CString GetUnregisterProduct() const;
   CString GetPing() const;
+  CString GetHealthCheck() const;
 
   const CommandLineMode mode_;
   bool is_interactive_set_;

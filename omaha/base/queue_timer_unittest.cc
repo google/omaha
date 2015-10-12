@@ -99,19 +99,15 @@ TEST_F(QueueTimerTest, QuickAlarm) {
 
 // The test takes about 50 seconds to run.
 TEST_F(QueueTimerTest, Alarm) {
-  if (!ShouldRunEnormousTest()) {
-    return;
-  }
-
   queue_timer_.reset(new QueueTimer(timer_queue_,
                                     &QueueTimerTest::AlarmCallback,
                                     this));
-  const int kWaitTimeMaxMs = 60 * 1000;     // 60 seconds.
+  const int kWaitTimeMaxMs = 15 * 1000;     // 15 seconds.
 
-  // Set the timer to fire once after 5 sec, 10 sec, 15 sec, 20 sec and wait.
+  // Set the timer to fire once after 1 sec, 2 sec, 3 sec, 4 sec and wait.
   LowResTimer timer(false);
   for (int i = 1; i <= 4; ++i) {
-    const int time_interval_ms = 5 * 1000 * i;
+    const int time_interval_ms = 1000 * i;
     SCOPED_TRACE(testing::Message() << "time_interval_ms=" << time_interval_ms);
 
     timer.Start();
@@ -140,28 +136,24 @@ TEST_F(QueueTimerTest, Alarm) {
 
 // The test takes about 35 seconds to run.
 TEST_F(QueueTimerTest, Timer) {
-  if (!ShouldRunEnormousTest()) {
-    return;
-  }
-
   queue_timer_.reset(new QueueTimer(timer_queue_,
                                     &QueueTimerTest::TimerCallback,
                                     this));
-  const int kWaitTimeMaxMs = 60 * 1000;       // 60 seconds.
+  const int kWaitTimeMaxMs = 10 * 1000;       // 10 seconds.
 
   max_cnt_ = 4;
 
-  // Set the timer to fire at 10 seconds intervals with an initial delay of
-  // 5 seconds.
+  // Set the timer to fire at 2 seconds intervals with an initial delay of
+  // 1 seconds.
   LowResTimer timer(true);
-  ASSERT_HRESULT_SUCCEEDED(queue_timer_->Start(5000, 10000, WT_EXECUTEDEFAULT));
+  ASSERT_HRESULT_SUCCEEDED(queue_timer_->Start(1000, 2000, WT_EXECUTEDEFAULT));
   EXPECT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(get(ev_), kWaitTimeMaxMs));
 
   int actual_time_ms = timer.GetMilliseconds();
 
   EXPECT_EQ(4, cnt_);
-  EXPECT_LE(35 * 1000 - 50, actual_time_ms);
-  EXPECT_GE(35 * 1000 + 350, actual_time_ms);
+  EXPECT_LE(7 * 1000 - 50, actual_time_ms);
+  EXPECT_GE(7 * 1000 + 350, actual_time_ms);
 
   // Tests it can't start periodic timers more than one time.
   ASSERT_EQ(E_UNEXPECTED, queue_timer_->Start(25, 50, WT_EXECUTEDEFAULT));

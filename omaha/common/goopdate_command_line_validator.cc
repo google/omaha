@@ -188,6 +188,10 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   cmd_line.Format(_T("/%s pingstring"), kCmdLinePing);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnPing);
 
+  // gu.exe /healthcheck
+  cmd_line.Format(_T("/%s"), kCmdLineHealthCheck);
+  CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnHealthCheck);
+
   return S_OK;
 }
 
@@ -490,6 +494,11 @@ HRESULT GoopdateCommandLineValidator::OnPing() {
   return parser_->GetSwitchArgumentValue(kCmdLinePing,
                                          0,
                                          &args_->ping_string);
+}
+
+HRESULT GoopdateCommandLineValidator::OnHealthCheck() {
+  args_->mode = COMMANDLINE_MODE_HEALTH_CHECK;
+  return S_OK;
 }
 
 }  // namespace omaha

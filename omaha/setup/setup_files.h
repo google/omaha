@@ -34,9 +34,6 @@ class SetupFiles {
 
   HRESULT Init();
 
-  // Returns whether the same version of Google Update should be over-installed.
-  bool ShouldOverinstallSameVersion();
-
   // Installs Google Update files but does not register or install any other
   // applications. Returns whether Google Update was installed.
   HRESULT Install();

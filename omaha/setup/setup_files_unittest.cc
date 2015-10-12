@@ -293,96 +293,6 @@ class SetupFilesUserTest : public SetupFilesTest {
   }
 };
 
-TEST_F(SetupFilesUserTest,
-       ShouldOverinstallSameVersion_SameVersionFilesMissing) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    this_version_));
-  ASSERT_SUCCEEDED(
-      DeleteDirectory(ConcatenatePath(omaha_path_, this_version_)));
-  CString file_path = ConcatenatePath(
-                          ConcatenatePath(omaha_path_, this_version_),
-                          kOmahaDllName);
-  ASSERT_FALSE(File::Exists(file_path));
-
-  EXPECT_TRUE(setup_files_->ShouldOverinstallSameVersion());
-}
-
-TEST_F(SetupFilesUserTest,
-       ShouldOverinstallSameVersion_SameVersionFilesPresent) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    this_version_));
-
-  CopyGoopdateFiles(omaha_path_, this_version_);
-
-  EXPECT_FALSE(setup_files_->ShouldOverinstallSameVersion());
-}
-
-TEST_F(SetupFilesUserTest,
-       ShouldOverinstallSameVersion_SameVersionRequiredFileMissing) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    this_version_));
-
-  CopyGoopdateFiles(omaha_path_, this_version_);
-  CString path = ConcatenatePath(ConcatenatePath(omaha_path_, this_version_),
-                                 kOmahaDllName);
-  ASSERT_SUCCEEDED(File::Remove(path));
-  ASSERT_FALSE(File::Exists(path));
-
-  EXPECT_TRUE(setup_files_->ShouldOverinstallSameVersion());
-}
-
-TEST_F(SetupFilesUserTest,
-       ShouldOverinstallSameVersion_SameVersionOptionalFileMissing) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    this_version_));
-
-  CopyGoopdateFiles(omaha_path_, this_version_);
-  CString path = ConcatenatePath(ConcatenatePath(omaha_path_, this_version_),
-                                 UPDATE_PLUGIN_FILENAME);
-  ASSERT_SUCCEEDED(File::Remove(path));
-  ASSERT_FALSE(File::Exists(path));
-
-  EXPECT_TRUE(setup_files_->ShouldOverinstallSameVersion());
-}
-
-TEST_F(SetupFilesUserTest,
-       ShouldOverinstallSameVersion_SameVersionShellMissing) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    this_version_));
-
-  CopyGoopdateFiles(omaha_path_, this_version_);
-  CString shell_path = ConcatenatePath(omaha_path_, kOmahaShellFileName);
-  ASSERT_TRUE(SUCCEEDED(File::DeleteAfterReboot(shell_path)) ||
-              !vista_util::IsUserAdmin());
-  ASSERT_FALSE(File::Exists(shell_path));
-
-  EXPECT_TRUE(setup_files_->ShouldOverinstallSameVersion());
-}
-
-TEST_F(SetupFilesUserTest,
-       ShouldOverinstallSameVersion_NewerVersionShellMissing) {
-  ASSERT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
-                                    kRegValueProductVersion,
-                                    kFutureVersionString));
-
-  CopyGoopdateFiles(omaha_path_, kFutureVersionString);
-  CString shell_path = ConcatenatePath(omaha_path_, kOmahaShellFileName);
-  ASSERT_TRUE(SUCCEEDED(File::DeleteAfterReboot(shell_path)) ||
-              !vista_util::IsUserAdmin());
-  ASSERT_FALSE(File::Exists(shell_path));
-
-  // Does not check the version.
-  EXPECT_TRUE(setup_files_->ShouldOverinstallSameVersion());
-
-  EXPECT_SUCCEEDED(
-      DeleteDirectory(ConcatenatePath(omaha_path_, kFutureVersionString)));
-}
-
 // "NotOverInstall" refers to there not being files in the directory.
 // should_over_install/overwrite will be true for unofficial builds.
 TEST_F(SetupFilesMachineTest, Install_NotOverInstall) {
@@ -435,10 +345,6 @@ TEST_F(SetupFilesUserTest, ShouldCopyShell_ExistingIsSame) {
   EXPECT_SUCCEEDED(ShouldCopyShell(target_path, &should_copy, &already_exists));
   EXPECT_EQ(expected_is_overinstall_, should_copy);
   EXPECT_TRUE(already_exists);
-
-  if (!ShouldRunLargeTest()) {
-    return;
-  }
 
   // Override OverInstall to test official behavior on non-official builds.
 

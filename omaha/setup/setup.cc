@@ -137,6 +137,7 @@ void IncrementProcessWaitFailCount(CommandLineMode mode) {
     case COMMANDLINE_MODE_MEDIUM_SERVICE:
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
+    case COMMANDLINE_MODE_HEALTH_CHECK:
     default:
       ++metric_setup_process_wait_failed_other;
       break;
@@ -356,7 +357,7 @@ HRESULT Setup::DoProtectedInstall(bool set_keepalive) {
     return hr;
   }
 
-  if (ShouldInstall(&setup_files)) {
+  if (ShouldInstall()) {
     ++metric_setup_do_self_install_total;
 
     // TODO(omaha3): IMPORTANT: Try to avoid losing users due to firewall
@@ -401,9 +402,8 @@ HRESULT Setup::DoProtectedInstall(bool set_keepalive) {
 }
 
 // Assumes that the shell is the correct version for the existing Omaha version.
-bool Setup::ShouldInstall(SetupFiles* setup_files) {
+bool Setup::ShouldInstall() {
   SETUP_LOG(L2, (_T("[Setup::ShouldInstall]")));
-  ASSERT1(setup_files);
 
   // TODO(omaha3): Figure out a different way to record these stats.
   bool is_install = true;
@@ -440,22 +440,16 @@ bool Setup::ShouldInstall(SetupFiles* setup_files) {
   bool should_install(false);
 
   ULONGLONG cv = VersionFromString(existing_version);
-  if (cv > my_version) {
-    SETUP_LOG(L2, (_T("[not installing, newer version exists]")));
-    ++metric_setup_should_install_false_older;
-    should_install = false;
-  } else if (cv < my_version) {
-    SETUP_LOG(L2, (_T("[installing with local build]")));
+  if (cv >= my_version) {
+    should_install = ShouldOverinstall();
+    if (should_install) {
+      ++metric_setup_should_overinstall_true;
+    } else {
+      ++metric_setup_should_overinstall_false;
+    }
+  } else {
     ++metric_setup_should_install_true_newer;
     should_install = true;
-  } else {
-    // Same version.
-    should_install = ShouldOverinstallSameVersion(setup_files);
-    if (should_install) {
-      ++metric_setup_should_install_true_same;
-    } else {
-      ++metric_setup_should_install_false_same;
-    }
   }
 
   if (is_install && should_install) {
@@ -468,53 +462,38 @@ bool Setup::ShouldInstall(SetupFiles* setup_files) {
   return should_install;
 }
 
-// Checks the following:
-//  * OverInstall override.
-//  * The "installed" version in the registry equals this version.
-//    If not, this version was not fully installed even though "pv" says it is.
-//  * Files are properly installed.
-bool Setup::ShouldOverinstallSameVersion(SetupFiles* setup_files) {
-  SETUP_LOG(L2, (_T("[Setup::ShouldOverinstallSameVersion]")));
-  ASSERT1(setup_files);
+bool Setup::ShouldOverinstall() {
+  SETUP_LOG(L2, (_T("[Setup::ShouldOverinstall]")));
 
-  const ConfigManager* cm = ConfigManager::Instance();
-
-  bool should_over_install = cm->CanOverInstall();
-  SETUP_LOG(L1, (_T("[should over install = %d]"), should_over_install));
-  if (should_over_install) {
-    SETUP_LOG(L2, (_T("[overinstalling with local build]")));
+  CommandLineBuilder builder(COMMANDLINE_MODE_HEALTH_CHECK);
+  CString cmd_line = builder.GetCommandLineArgs();
+  scoped_process process;
+  HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_machine_,
+                                                         cmd_line,
+                                                         address(process));
+  if (FAILED(hr)) {
+    SETUP_LOG(LE, (_T("[HealthCheck failed to start][%#x]"), hr));
     return true;
   }
 
-  CString installed_version;
-  HRESULT hr = RegKey::GetValue(cm->registry_update(is_machine_),
-                                kRegValueInstalledVersion,
-                                &installed_version);
-  if (FAILED(hr) || GetVersionString() != installed_version) {
-    SETUP_LOG(L1, (_T("[installed version missing or did not match][%s]"),
-                   installed_version));
-    ++metric_setup_should_install_true_same_completion_missing;
-    return true;
+  const DWORD result(::WaitForSingleObject(get(process), INFINITE));
+  DWORD exit_code(0);
+  const bool should_overinstall =
+      result != WAIT_OBJECT_0 ||
+      !::GetExitCodeProcess(get(process), &exit_code) ||
+      FAILED(exit_code);
+  if (should_overinstall) {
+    SETUP_LOG(LE, (_T("[HealthCheck failed][%d][%#x]"), result, exit_code));
   }
 
-  if (setup_files->ShouldOverinstallSameVersion()) {
-    SETUP_LOG(L1, (_T("[files need over-install]")));
-    return true;
-  }
-
-  // TODO(omaha): Verify the current installation is complete and correct.
-  // For example, in Omaha 1, we would always set the run key to the version
-  // being installed. Now that code is in SetupGoogleUpdate, and it does not get
-  // called.
-
-  return false;
+  return should_overinstall;
 }
 
 HRESULT Setup::DoProtectedGoogleUpdateInstall(SetupFiles* setup_files) {
   ASSERT1(setup_files);
   SETUP_LOG(L2, (_T("[Setup::DoProtectedGoogleUpdateInstall]")));
 
-  HRESULT hr = StopGoogleUpdateAndWait();
+  HRESULT hr = StopGoogleUpdateAndWait(GetForceKillWaitTimeMs());
   if (FAILED(hr)) {
     SETUP_LOG(LE, (_T("[StopGoogleUpdateAndWait failed][0x%08x]"), hr));
     if (E_ACCESSDENIED == hr) {
@@ -652,7 +631,7 @@ HRESULT Setup::DoProtectedUninstall(bool send_uninstall_ping) {
   if (!can_uninstall) {
     hr = GOOPDATE_E_CANT_UNINSTALL;
   } else {
-    hr = StopGoogleUpdateAndWait();
+    hr = StopGoogleUpdateAndWait(GetForceKillWaitTimeMs());
     if (FAILED(hr)) {
       // If there are any clients that don't listen to the shutdown event,
       // such as the current Update3Web workers, we'll need to wait until
@@ -760,7 +739,12 @@ HRESULT Setup::StopGoogleUpdate() {
   return S_OK;
 }
 
-HRESULT Setup::StopGoogleUpdateAndWait() {
+int Setup::GetForceKillWaitTimeMs() const {
+  return is_self_update_ ? kSetupUpdateShutdownWaitMs :
+                           kSetupInstallShutdownWaitMs;
+}
+
+HRESULT Setup::StopGoogleUpdateAndWait(int wait_time_before_kill_ms) {
   HRESULT hr = StopGoogleUpdate();
   if (FAILED(hr)) {
     SETUP_LOG(LE, (_T("[StopGoogleUpdate failed][0x%08x]"), hr));
@@ -774,7 +758,7 @@ HRESULT Setup::StopGoogleUpdateAndWait() {
     return hr;
   }
 
-  hr = WaitForOtherInstancesToExit(pids);
+  hr = WaitForOtherInstancesToExit(pids, wait_time_before_kill_ms);
   if (FAILED(hr)) {
     SETUP_LOG(LE, (_T("[WaitForOtherInstancesToExit failed][0x%08x]"), hr));
     return hr;
@@ -818,7 +802,8 @@ void Setup::ReleaseShutdownEvents() {
 // Does not return until all opened handles have been closed.
 // TODO(omaha): Add a parameter to specify the amount of time to wait to this
 // method and StopGoogleUpdateAndWait after we unify Setup and always have a UI.
-HRESULT Setup::WaitForOtherInstancesToExit(const Pids& pids) {
+HRESULT Setup::WaitForOtherInstancesToExit(const Pids& pids,
+                                           int wait_time_before_kill_ms) {
   OPT_LOG(L1, (_T("[Waiting for other instances to exit]")));
 
   // Wait for all the processes to exit.
@@ -845,9 +830,9 @@ HRESULT Setup::WaitForOtherInstancesToExit(const Pids& pids) {
     SETUP_LOG(L2, (_T("[Calling ::WaitForMultipleObjects]")));
 
     HighresTimer metrics_timer;
-    const int wait_ms = is_self_update_ ? kSetupUpdateShutdownWaitMs :
-                                          kSetupInstallShutdownWaitMs;
-    DWORD res = WaitForAllObjects(handles.size(), &handles.front(), wait_ms);
+    DWORD res = WaitForAllObjects(handles.size(),
+                                  &handles.front(),
+                                  wait_time_before_kill_ms);
     metric_setup_process_wait_ms.AddSample(metrics_timer.GetElapsedMs());
 
     SETUP_LOG(L2, (_T("[::WaitForMultipleObjects returned]")));

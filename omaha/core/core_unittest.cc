@@ -155,6 +155,14 @@ TEST_F(CoreTest, HasOSUpgraded) {
   omaha::AppCommandTestBase::CreateAutoRunOnOSUpgradeCommand(
       kAppGuid1, is_machine_, kCmdId2, kCmdLineCreateHardcodedFile);
 
+  ConfigManager* cm = ConfigManager::Instance();
+  const CString update_key = cm->registry_update(is_machine_);
+
+  // Setting "LastCheckedTime" to current time prevents the core from
+  // starting a "UA" process.
+  const uint32 now_sec = Time64ToInt32(GetCurrent100NSTime());
+  EXPECT_HRESULT_SUCCEEDED(cm->SetLastCheckedTime(is_machine_, now_sec));
+
   // Start a thread to run the core, signal the core to exit, and wait a while
   // for the thread to exit. Terminate the thread if it is still running.
   Thread thread;
@@ -178,6 +186,13 @@ TEST_F(CoreTest, HasOSUpgraded) {
   }
 
   CString os_upgrade_file = ConcatenatePath(GetCurrentDir(), os_upgrade_string);
+
+  // The app command runs concurrently, therefore, spin here for 10 seconds,
+  // and wait for the file to appear.
+  for (int i = 0; i != 100 && !File::Exists(os_upgrade_file); ++i) {
+    Sleep(100);
+  }
+
   EXPECT_TRUE(File::Exists(os_upgrade_file));
 
   CString hardcoded_file =

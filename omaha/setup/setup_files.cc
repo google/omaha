@@ -73,62 +73,6 @@ HRESULT SetupFiles::Init() {
   return S_OK;
 }
 
-// We only do these checks for the same exact version. This is especially true
-// when doing file comparisons, because the filenames as well as the number of
-// files can change from version to version. An earlier version should not
-// overinstall a newer version by mistake because it is checking for files that
-// no longer exist in the new version.
-bool SetupFiles::ShouldOverinstallSameVersion() {
-  SETUP_LOG(L2, (_T("[SetupFiles::ShouldOverinstallSameVersion]")));
-
-  CPath install_dir = goopdate_utils::BuildInstallDirectory(is_machine_,
-                                                            GetVersionString());
-  for (size_t i = 0 ; i < core_program_files_.size(); ++i) {
-    CString full_path = ConcatenatePath(install_dir, core_program_files_[i]);
-    if (full_path.IsEmpty()) {
-      ASSERT1(false);
-      return true;
-    }
-    if (!File::Exists(full_path)) {
-      SETUP_LOG(L2, (_T("[core file missing - overinstall][%s]]"), full_path));
-      return true;
-    }
-  }
-
-  for (size_t i = 0 ; i < metainstaller_files_.size(); ++i) {
-    CString full_path = ConcatenatePath(install_dir, metainstaller_files_[i]);
-    if (full_path.IsEmpty()) {
-      ASSERT1(false);
-      return true;
-    }
-    if (!File::Exists(full_path)) {
-      SETUP_LOG(L2, (_T("[MI file missing - overinstall][%s]]"), full_path));
-      return true;
-    }
-  }
-
-  for (size_t i = 0 ; i < optional_files_.size(); ++i) {
-    CString full_path = ConcatenatePath(install_dir, optional_files_[i]);
-    if (full_path.IsEmpty()) {
-      ASSERT1(false);
-      return true;
-    }
-    if (!File::Exists(full_path)) {
-      SETUP_LOG(L2, (_T("[optional file missing - overinstall][%s]]"),
-                     full_path));
-      return true;
-    }
-  }
-
-  CString shell_path = goopdate_utils::BuildGoogleUpdateExePath(is_machine_);
-  if (!File::Exists(shell_path)) {
-    SETUP_LOG(L2, (_T("[shell missing - overinstall][%s]]"), shell_path));
-    return true;
-  }
-
-  return false;
-}
-
 // Install the required and optional files.
 // Assumes that the user already has the appropriate permissions
 // (e.g. is elevated for a machine install).

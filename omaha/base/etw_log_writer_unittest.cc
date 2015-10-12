@@ -295,7 +295,7 @@ TEST_F(EtwLogWriterTest, ProviderEnableFlags) {
 // One way to fix this issue is to disable the trace when trace_level is 0 since
 // this seems to be logically equivalent. We need to be careful in this case
 // though: make sure ETW provider callback is called correctly.
-TEST_F(EtwLogWriterTest, DISABLED_ProviderLevel) {
+TEST_F(EtwLogWriterTest, ProviderLevel) {
   // Test that various trace levels have the expected effect on
   // IsCatLevelEnabled.
 
@@ -312,11 +312,6 @@ TEST_F(EtwLogWriterTest, DISABLED_ProviderLevel) {
   ExpectLogLevelDisabled(TRACE_LEVEL_NONE, L5);
   ExpectLogLevelDisabled(TRACE_LEVEL_NONE, L6);
   ConsumeAndRestartLog();
-
-  if (!ShouldRunLargeTest()) {
-    // This test takes about 6 seconds, so only run part of it by default.
-    return;
-  }
 
   // TRACE_LEVEL_FATAL
   ExpectLogLevelEnabled(TRACE_LEVEL_FATAL, LEVEL_FATALERROR);
@@ -481,11 +476,6 @@ TEST_F(EtwLogWriterTest, DISABLED_OutputMessageOnlyLevelsEnabled) {
   EXPECT_NO_LOG(TRACE_LEVEL_NONE, 0x3, L6, LC_LOGGING);
   ConsumeAndRestartLog();
 
-  if (!ShouldRunLargeTest()) {
-    // This test takes about 7 seconds, so only run part of it by default.
-    return;
-  }
-
   EXPECT_LOG(TRACE_LEVEL_FATAL, 0x3, LEVEL_FATALERROR, LC_LOGGING);
   EXPECT_NO_LOG(TRACE_LEVEL_FATAL, 0x3, LEVEL_ERROR, LC_LOGGING);
   EXPECT_NO_LOG(TRACE_LEVEL_FATAL, 0x3, LE, LC_LOGGING);
@@ -554,10 +544,6 @@ TEST_F(EtwLogWriterTest, DISABLED_OutputMessageOnlyLevelsEnabled) {
 
 TEST_F(EtwLogWriterTest, OutputMessageOnlyCategoriesEnabled) {
   int max_cat = LC_MAX_CAT;
-  if (!ShouldRunLargeTest()) {
-    // This test takes about 12 seconds, so only run part of it by default.
-    max_cat = LC_LOGGING + 2;  // Test combinations of the first two categories.
-  }
 
   // Loop through categories.
   for (int log_cat = LC_LOGGING; log_cat < max_cat; ++log_cat) {

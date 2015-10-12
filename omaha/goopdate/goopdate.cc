@@ -139,6 +139,7 @@ bool CheckRegisteredVersion(const CString& version,
     case COMMANDLINE_MODE_SERVICE_REGISTER:
     case COMMANDLINE_MODE_SERVICE_UNREGISTER:
     case COMMANDLINE_MODE_PING:
+    case COMMANDLINE_MODE_HEALTH_CHECK:
       return true;
 
     // COM servers and services that should only run after installation.
@@ -250,6 +251,10 @@ class GoopdateImpl {
 
   // Pings the Omaha server with a string.
   HRESULT HandlePing();
+
+  // The "healthcheck" switch allows the installed version of Omaha to indicate
+  // whether it is installed and functioning correctly by returning S_OK.
+  HRESULT HandleHealthCheck();
 
   // TODO(omaha): Reconcile the two uninstall functions and paths.
   void MaybeUninstallGoogleUpdate();
@@ -499,6 +504,7 @@ HRESULT GoopdateImpl::Main(HINSTANCE instance,
       COMMANDLINE_MODE_CODE_RED_CHECK != args_.mode &&
       COMMANDLINE_MODE_SERVICE_REGISTER != args_.mode &&
       COMMANDLINE_MODE_SERVICE_UNREGISTER != args_.mode &&
+      COMMANDLINE_MODE_HEALTH_CHECK != args_.mode &&
       COMMANDLINE_MODE_UNKNOWN != args_.mode &&
       !(COMMANDLINE_MODE_INSTALL == args_.mode &&
         is_machine_ &&
@@ -850,6 +856,9 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
             case COMMANDLINE_MODE_PING:
               return HandlePing();
 
+            case COMMANDLINE_MODE_HEALTH_CHECK:
+              return HandleHealthCheck();
+
             default:
               // We have a COMMANDLINE_MODE_ that isn't being handled.
               ASSERT1(false);
@@ -923,6 +932,7 @@ bool GoopdateImpl::ShouldCheckShutdownEvent(CommandLineMode mode) {
     case COMMANDLINE_MODE_REGISTER_PRODUCT:
     case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
     case COMMANDLINE_MODE_PING:
+    case COMMANDLINE_MODE_HEALTH_CHECK:
       return false;
 
     // Modes that should honor shutdown.
@@ -998,6 +1008,7 @@ HRESULT GoopdateImpl::LoadResourceDllIfNecessary(CommandLineMode mode,
     case COMMANDLINE_MODE_COMBROKER:
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
+    case COMMANDLINE_MODE_HEALTH_CHECK:
     default:
       // These modes do not need the resource DLL.
       ASSERT1(!internal::CanDisplayUi(mode, false));
@@ -1302,6 +1313,48 @@ HRESULT GoopdateImpl::HandlePing() {
   return Ping::HandlePing(is_machine_, args_.ping_string);
 }
 
+HRESULT GoopdateImpl::HandleHealthCheck() {
+  // We got this far. This indicates that goopdate and the resource DLLs exist
+  // and are operational. Now we check the registry:
+  // * Check that Update/Client/ClientState keys are present.
+  // * Check that "pv" for the Omaha AppID and Update\"version" match.
+  const CString update_key_name =
+      ConfigManager::Instance()->registry_update(is_machine_);
+  RegKey update_key;
+  HRESULT hr = update_key.Open(update_key_name, KEY_READ);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (!update_key.GetValueCount() ||
+      !update_key.HasSubkey(_T("Clients")) ||
+      !update_key.HasSubkey(_T("ClientState")) ||
+      !update_key.HasValue(kRegValueInstalledVersion) ||
+      !update_key.HasValue(kRegValueInstalledPath)) {
+    return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+  }
+
+  CString installed_version;
+  hr = update_key.GetValue(kRegValueInstalledVersion, &installed_version);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  const CString app_id_key_name =
+    ConfigManager::Instance()->registry_clients_goopdate(is_machine_);
+  CString pv;
+  hr = RegKey::GetValue(app_id_key_name, kRegValueProductVersion, &pv);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  if (installed_version != pv) {
+    return GOOPDATEINSTALL_E_INSTALLER_VERSION_MISMATCH;
+  }
+
+  return S_OK;
+}
+
 // TODO(omaha3): In Omaha 2, this was also called when /ig failed. There is a
 // separate call to UninstallSelf for /install in goopdate.cc. Should we call
 // this instead to ensure we ping? Should we try to only call from one location?
@@ -1391,6 +1444,7 @@ bool GoopdateImpl::ShouldSetBackgroundPriority(CommandLineMode mode) {
     case COMMANDLINE_MODE_ONDEMAND:
     case COMMANDLINE_MODE_MEDIUM_SERVICE:
     case COMMANDLINE_MODE_HANDOFF_INSTALL:
+    case COMMANDLINE_MODE_HEALTH_CHECK:
       return false;
 
     default:
@@ -1638,6 +1692,7 @@ bool IsMachineProcess(CommandLineMode mode,
     // The following may run as user or Local System. Thus, use the directory.
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
+    case COMMANDLINE_MODE_HEALTH_CHECK:
       ASSERT1(goopdate_utils::IsRunningFromOfficialGoopdateDir(false) ||
               goopdate_utils::IsRunningFromOfficialGoopdateDir(true) ||
               _T("omaha_unittest.exe") == app_util::GetCurrentModuleName());
@@ -1691,6 +1746,7 @@ bool CanDisplayUi(CommandLineMode mode, bool is_silent) {
     case COMMANDLINE_MODE_MEDIUM_SERVICE:
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
+    case COMMANDLINE_MODE_HEALTH_CHECK:
     default:
       // These modes are always silent.
       return false;
