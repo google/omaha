@@ -240,7 +240,7 @@ Throughout and at the end of an update flow, the client MAY send event reports b
     * `2`: install complete (for the initial installation of the app)
     * `3`: update complete (for an upgrade in the version of the app)
     * `4`: uninstall complete
-    * `5`: download started
+    * `5`: download started (for the initial installation of the app)
     * `6`: install started
     * `9`: new application install started
     * `10`: setup started
@@ -256,6 +256,11 @@ Throughout and at the end of an update flow, the client MAY send event reports b
     * `40`: app-specific command started
     * `41`: app-specific command ended
     * `50`: update-check failure (to avoid doubling server load during an outage, this event should only be transmitted a small fraction of the time the client encounters a failure on the update check)
+    * `51`: reserved. Different implementors of the protocol may define a custom meaning.
+    * `52`: reserved. Different implementors of the protocol may define a custom meaning.
+    * `53`: reserved. Different implementors of the protocol may define a custom meaning. (Only known use is by the Chrome Recovery Component.)
+    * `54`: reserved. Different implementors of the protocol may define a custom meaning. (Only known use is by ChromiumOS.)
+    * `55`: reserved. Different implementors of the protocol may define a custom meaning.
     * `100`: setup failure
     * `102`: COM server failure
     * `103`: setup update failure
