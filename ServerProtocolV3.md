@@ -118,7 +118,6 @@ Contains information about the capabilities of the client's hardware.
   * `avx`: "1" if the client's hardware supports the AVX instruction set. "0" if the client's hardware does not. "-1" if unknown. Default: "-1".
   * `physmemory`: The physical memory the client has available to it, measured in bytes, or "-1" if unknown. This value is intended to reflect the maximum theoretical storage capacity of the client, not including any hard drive or paging to a hard drive or peripheral. Omaha Client truncates the available physical memory down to the nearest gibibyte. Default: "-1".
 
-
 ##### Legal Child Elements #####
 None.
 
@@ -138,6 +137,7 @@ Contains information about the operating system that the client is running under
     * On Windows, the service pack (e.g. "Service Pack 2").
     * On Mac OSX, the OS version and processor architecture (e.g. "10.5.6\_i486").
   * `arch`: The architecture of the operating system (e.g. "x86", "x64", "arm"), or "" if unknown. Default: "".
+
 ##### Legal Child Elements #####
 None.
 
@@ -153,10 +153,10 @@ Each product that is contained in the request is represented by exactly one `<ap
   * `brand`: The brand code that the product was installed under, if any. A brand code is a short (4-character) string used to identify installations that took place as a result of partner deals or website promotions. Default: "".
   * `client`: A generalized form of brand code that can accept a wider range of values but is used for similar purposes to `brand`. Default: "".
   * `enabled`: Tracks whether the app is enabled on the client. Apps may be disabled for a variety of reasons. A value of "-1" indicates that the enabled status is unknown. "0" indicates that the app is disabled. "1" indicates that the app is enabled. Default: "-1"
-  * `experiments`: A key/value list of experiment identifiers. Experiment labels are used to track membership in different experimental groups, and may be set at install or update time. The experiments string is formatted as a semicolon-delimited concatenation of experiment label strings. An experiment label string is an experiment name, followed by a '=' character, followed by an experimental label value. For example: "crdiff=got\_bsdiff;optimized=O3". Default: "".
+  * `experiments`: A key/value list of experiment identifiers. Experiment labels are used to track membership in different experimental groups, and may be set at install or update time. The experiments string is formatted as a semicolon-delimited concatenation of experiment label strings. An experiment label string is an experiment name, followed by a '=' character, followed by an experimental label value. For example: "crdiff=got\_bsdiff;optimized=O3". The client SHOULD NOT transmit the expiration date of any experiments it has, even if the server previously specified a specific expiration date. Default: "".
   * `iid`: A GUID that identifies an installation flow. For example, each download of a product installer is tagged with a unique GUID. Attempts to install using that installer can then be grouped. A client SHOULD NOT persist the iid GUID after the installation flow of a product is complete.
   * `installage`: The number of PST8PDT calendar days since the app was first installed. The first communication to the server should use a special value of "-1". Compatible clients MAY fuzz this value to the week granularity (e.g. send "0" for 0 through 6, "7" for 7 through 13, etc). Default: "0"
-  * `installdate`: The date-based counting equivalent of installage: this is a numeric calendar day that the app was installed on. (This value is provided by the server in the response to the first request in the installation flow. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md)) The first communication to the server should use a special value of "-1". A value of "-2" indicates that this value is not known. Default: "-2".
+  * `installdate`: The date-based counting equivalent of installage: this is a numeric calendar day that the app was installed on. (This value is provided by the server in the response to the first request in the installation flow. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md)). The client MAY fuzz this value to the week granularity (e.g. send "0" for 0 through 6, "7" for 7 through 13, etc). The first communication to the server should use a special value of "-1". A value of "-2" indicates that this value is not known. Default: "-2".
   * `installsource`: A string indicating the cause of this install or update flow. As examples:  "organic" indicating an organic web download, "scheduler" indicating a scheduled update, "ondemand" indicating a user-prompted update. Default: "".
   * `tag`: An field for a client to transmit arbitrary update parameters in string form. Compatible clients and servers MAY use this attribute to negotiate special update rules. Alternatively, they MAY extend the protocol to represent the information more clearly in another parameter. As an example, Omaha Client uses this field to transmit whether a Google Chrome installation is on the "stable", "dev", or "beta" channel, which affects how the server issues update responses for that installation. Default: "".
   * `fingerprint`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md).  Default: "".
@@ -181,6 +181,7 @@ Each `<data>` tag in the request represents either a request for additional text
 ##### Attributes #####
   * `name`: Indicates the type of data request this is. Legal values are "install", "untrusted", or "". Additions to the protocol must be alphanumeric (that is, they must match [a-zA-Z0-9]+). Default: "".
   * `index`: If `name` is "install", the numeric index of the requested installation data blob. Otherwise, undefined. Default: "0".
+
 ##### Legal Child Elements #####
   * May contain arbitrary textual information. Compatible clients and compatible servers SHOULD perform sanitization of this data both when it is sent and received. In practice, this data is frequently supplied by untrusted third parties.
 
@@ -190,6 +191,7 @@ Each `<data>` tag in the request represents either a request for additional text
 #### `<disabled>` (Request) ####
 ##### Attributes #####
   * `reason`: an integral reason that the app is disabled. This protocol does not require or suggest a meaning for the values, except for "0", which indicates the lack of a reason. Default: "0".
+
 ##### Legal Child Elements #####
 None.
 
@@ -210,6 +212,7 @@ None.
 A `<package>` tag gives information about an installed package.
 ##### Attributes #####
   * `fingerprint`: The fingerprint identifying the installed package. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md). Default: "".
+
 ##### Legal Child Elements #####
 None.
 
@@ -229,6 +232,7 @@ New clients are recommended to use the `ad` and `rd` attributes of the `<ping>`,
   * `r`: The number of integral 24-hour periods that have elapsed sine the start of the America/Los\_Angeles calendar day that the previous ping was sent on. See [#Client-Regulated\_Counting\_(Days-Based)](#Client-Regulated_Counting_(Days-Based).md). A value of "-1" signifies that there was no previous active ping. Default: "0".
   * `ad`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous active ping. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
   * `rd`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous ping. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
+
 ##### Legal Child Elements #####
 None.
 
@@ -262,11 +266,11 @@ Throughout and at the end of an update flow, the client MAY send event reports b
     * `40`: app-specific command started
     * `41`: app-specific command ended
     * `50`: update-check failure (to avoid doubling server load during an outage, this event should only be transmitted a small fraction of the time the client encounters a failure on the update check)
-    * `51`: reserved. Different implementors of the protocol may define a custom meaning.
-    * `52`: reserved. Different implementors of the protocol may define a custom meaning.
-    * `53`: reserved. Different implementors of the protocol may define a custom meaning. (Only known use is by the Chrome Recovery Component.)
-    * `54`: reserved. Different implementors of the protocol may define a custom meaning. (Only known use is by ChromiumOS.)
-    * `55`: reserved. Different implementors of the protocol may define a custom meaning.
+    * `51`: free. Different implementors of the protocol may define a custom meaning.
+    * `52`: free. Different implementors of the protocol may define a custom meaning.
+    * `53`: free. Different implementors of the protocol may define a custom meaning. (Only known use is by the Chrome Recovery Component.)
+    * `54`: free. Different implementors of the protocol may define a custom meaning. (Only known use is by ChromiumOS.)
+    * `55`: free. Different implementors of the protocol may define a custom meaning.
     * `100`: setup failure
     * `102`: COM server failure
     * `103`: setup update failure
@@ -291,13 +295,32 @@ Throughout and at the end of an update flow, the client MAY send event reports b
   * `update_check_time_ms`: For events representing an entire update flow, the time elapsed between the start of the update check and the end of the update check, in milliseconds. Default: "0".
   * `install_time_ms`: For events representing an install, the time elapsed between the start of the install and the end of the install, in milliseconds. For events representing an entire update flow, the sum of all such durations. Default: "0".
   * `source_url_index`: For events representing a download, the position of the download URL in the list of URLs supplied by the server in a `<urls>` tag.
-  * `state_cancelled`:
-  * `time_since_update_available_ms`:
-  * `time_since_download_start_ms`:
-  * `nextversion`:
-  * `previousversion`:
-  * `nextfp`:
-  * `previousfp`:
+  * `state_cancelled`: The state of the system at the time that a user cancels the update/install. The following values are defined, all others are reserved. Default: "0".
+    * `0`: unknown or not-cancelled
+    * `1`: initializing
+    * `2`: waiting to check for update
+    * `3`: checking for update
+    * `4`: update available
+    * `5`: waiting to download
+    * `6`: retrying download
+    * `7`: downloading
+    * `8`: download complete
+    * `9`: extracting
+    * `10`: applying differential patch
+    * `11`: ready to install
+    * `12`: waiting to install
+    * `13`: installing
+    * `14`: install complete
+    * `15`: paused
+    * `16`: no update
+    * `17`: error
+  * `time_since_update_available_ms`: The number of milliseconds that elapsed from when the update was known to be available to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
+  * `time_since_download_start_ms`: The number of milliseconds that elapsed from when the download was begun to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
+  * `nextversion`: The version of the app that the update flow to which this event belongs attempted to reach, regardless of success or failure of the update operation. See [#Version\_Numbers](#Version_Numbers.md). Default: "0.0.0.0".
+  * `previousversion`: The version of the app that was present on the machine at the time of the update-check of this update flow, regardless of success or failure of the update operation. See [#Version\_Numbers](#Version_Numbers.md). Default: "0.0.0.0".
+  * `nextfp`: If the update flow containing this event contained only a single package, the fingerprint that package attempted to reach, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md). Default: "".
+  * `previousfp`: If the update flow containing this event contained only a single package, the fingerprint that package had at the time of the update check, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md). Default: "".
+
 ##### Legal Child Elements #####
 None.
 
@@ -306,9 +329,10 @@ None.
 
 #### `<updatecheck>` (Request) ####
 ##### Attributes #####
-  * `tttoken`:
-  * `updatedisabled`:
-  * `targetversionprefix`:
+  * `tttoken`: An opaque access token that can be used to identify the requesting client as a member of a trusted-tester group. If non-empty, the request SHOULD be sent over SSL or another. Default: "".
+  * `updatedisabled`: An indication of whether the client will honor an update response, if it recieves one. Legal values are "true" (indicating that the client will ignore any update instruction) and "false" (indicating that the client will attempt an update if one is instructed). Default: "false".
+  * `targetversionprefix`: A component-wise prefix of a version number, or a complete version number suffixed with the `$` character. The server SHOULD NOT return an update instruction to a version number that does not match the prefix or complete version number. The prefix is interpreted a dotted-tuple that specifies the exactly-matching elements; it is not a lexical prefix. (For example, "1.2.3" MUST match "1.2.3.4" but MUST NOT match "1.2.34".) Default: "".
+
 ##### Legal Child Elements #####
 None.
 
@@ -321,8 +345,9 @@ None.
 
 #### `<response>` ####
 ##### Attributes #####
-  * `protocol`:
-  * `server`:
+  * `protocol`: The version of the Omaha protocol. Compatible clients MUST provide a value of "3.0". Default: Undefined - compatible servers MUST always transmit this attribute.
+  * `server`: A string identifying the server or server family for diagnostic purposes. As examples, "production", "test". Default: "".
+
 ##### Legal Child Elements #####
   * At most one `<daystart>`.
   * Any number of `<app>`.
@@ -332,8 +357,9 @@ None.
 
 #### `<daystart>` ####
 ##### Attributes #####
-  * `elapsed_seconds`:
-  * `elapsed_days`:
+  * `elapsed_seconds`: The number of seconds since the most recent midnight of the server's locale, at the time the request was received. Default: Undefined - compatible servers MUST always transmit this attribute.
+  * `elapsed_days`: The number of calendar days that have elapsed since January 1st, 2007 in the server's locale, at the time the request was received.
+
 ##### Legal Child Elements #####
 None.
 
@@ -341,13 +367,23 @@ None.
 ---
 
 #### `<app>` (Response) ####
+Each product that is contained in the response is represented by exactly one `<app>` tag. If a product appears in the request, it MUST be contained in the response. The response MAY contain additional products. If it does, the client MAY install or update these products in addition to the requested ones. This mechanism supports the installation of dependencies that are distributed as separate physical products.
 ##### Attributes #####
-  * `appid`:
-  * `status`:
-  * `experiments`:
-  * `cohort`: See cohort in the request. If this attribute is transmitted in the response (even if the value is empty-string), the client should overwrite the current cohort of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
-  * `cohorthint`: See cohorthint in the request. If sent (even if the value is empty-string), the client should overwrite the current cohorthint of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
-  * `cohortname`: See cohortname in the request. If sent (even if the value is empty-string), the client should overwrite the current cohortname of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
+  * `appid`: The GUID that identifies the product. See [#GUIDs](#GUIDs.md). Default: Undefined - Compatible clients MUST transmit this attribute.
+  * `status`: The state of the product on the server. The following values are defined, all others are reserved. Default: "0".
+    * `ok`: The product is recognized.
+    * `restricted`: The product is recognized, but due to policy restrictions (such as export law compliance) the server must refuse to give a meaningful response.
+    * `error-unknownApplication`: The server is not aware of this product.
+    * `error-invalidAppId`: The server could not parse the product's GUID.
+    * `error-internal`: The server encountered an unspecified internal error.
+    * `error-hash`: The server attempted to serve an update, but could not provide a valid hash for the download.
+    * `error-osnotsupported`: The server recognized the product, but the product is not available for the client's operating system.
+    * `error-hwnotsupported`: The server recognized the product, but the product is not available for the client's hardware configuration.
+    * `error-unsupportedProtocol`: The server recognized the product, but is incapable of delivering a response in this version of the protocol.
+  * `experiments`: A key/value list of experiment identifiers that the client should store its membership in and report to the server in future requests. Experiment labels are used to track membership in different experimental groups, and may be set at install or update time. The experiments string is formatted as a semicolon-delimited concatenation of experiment label strings. An experiment label string is an experiment name, followed by a '=' character, followed by an experimental label value, followed by a '|' character, followed by a full date-time of the format "Thu, 19 Nov 2015 15:46:57 -0700" (RFC 2822 compatible). Past the given date-time, the client SHOULD cease reporting membership in the experiment group. The client SHOULD NOT report the date-time in future requests to the server. For example: "crdiff=got\_bsdiff|Thu, 19 Nov 2015 15:46:57 -0700;optimized=O3|Wed, 18 Nov 2015 02:00:00 -0300". Default: "".
+  * `cohort`: See cohort in the `<request>`. If this attribute is transmitted in the response (even if the value is empty-string), the client should overwrite the current cohort of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
+  * `cohorthint`: See cohorthint in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohorthint of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
+  * `cohortname`: See cohortname in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohortname of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
 ##### Legal Child Elements #####
   * At most one `<ping>`.
   * Any number of `<data>`.
@@ -362,6 +398,7 @@ None.
 #### `<ping>` (Response) ####
 ##### Attributes #####
   * `status`:
+
 ##### Legal Child Elements #####
 None.
 
@@ -373,6 +410,7 @@ None.
   * `status`:
   * `name`:
   * `index`:
+
 ##### Legal Child Elements #####
   * May contain arbitrary non-XML textual information.
 
@@ -382,6 +420,7 @@ None.
 #### `<event>` (Response) ####
 ##### Attributes #####
   * `status`:
+
 ##### Legal Child Elements #####
 None.
 
@@ -409,6 +448,7 @@ None.
 ##### Attributes #####
   * `codebase`:
   * `codebasediff`:
+
 ##### Legal Child Elements #####
   * None.
 
@@ -417,6 +457,7 @@ None.
 
 #### `<manfiest>` (Response) ####
   * `version`:
+
 ##### Attributes #####
 ##### Legal Child Elements #####
   * Exactly one `<packages>`.
@@ -446,6 +487,7 @@ None.
   * `hash_sha256`:
   * `hashdiff_sha256`:
   * `fp`:
+
 ##### Legal Child Elements #####
 None.
 
@@ -469,6 +511,7 @@ None.
   * `successurl`:
   * `terminateallbrowsers`:
   * `successaction`:
+
 ##### Legal Child Elements #####
 None.
 
@@ -478,6 +521,7 @@ None.
 #### `<unknown>` (Response) ####
 ##### Attributes #####
   * `status`:
+
 ##### Legal Child Elements #####
 None.
 
