@@ -375,15 +375,10 @@ Each product that is contained in the response is represented by exactly one `<a
     * `restricted`: The product is recognized, but due to policy restrictions (such as export law compliance) the server must refuse to give a meaningful response.
     * `error-unknownApplication`: The server is not aware of this product.
     * `error-invalidAppId`: The server could not parse the product's GUID.
-    * `error-internal`: The server encountered an unspecified internal error.
-    * `error-hash`: The server attempted to serve an update, but could not provide a valid hash for the download.
-    * `error-osnotsupported`: The server recognized the product, but the product is not available for the client's operating system.
-    * `error-hwnotsupported`: The server recognized the product, but the product is not available for the client's hardware configuration.
-    * `error-unsupportedProtocol`: The server recognized the product, but is incapable of delivering a response in this version of the protocol.
   * `experiments`: A key/value list of experiment identifiers that the client should store its membership in and report to the server in future requests. Experiment labels are used to track membership in different experimental groups, and may be set at install or update time. The experiments string is formatted as a semicolon-delimited concatenation of experiment label strings. An experiment label string is an experiment name, followed by a '=' character, followed by an experimental label value, followed by a '|' character, followed by a full date-time of the format "Thu, 19 Nov 2015 15:46:57 -0700" (RFC 2822 compatible). Past the given date-time, the client SHOULD cease reporting membership in the experiment group. The client SHOULD NOT report the date-time in future requests to the server. For example: "crdiff=got\_bsdiff|Thu, 19 Nov 2015 15:46:57 -0700;optimized=O3|Wed, 18 Nov 2015 02:00:00 -0300". Default: "".
-  * `cohort`: See cohort in the `<request>`. If this attribute is transmitted in the response (even if the value is empty-string), the client should overwrite the current cohort of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
-  * `cohorthint`: See cohorthint in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohorthint of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
-  * `cohortname`: See cohortname in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohortname of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value.
+  * `cohort`: See cohort in the `<request>`. If this attribute is transmitted in the response (even if the value is empty-string), the client should overwrite the current cohort of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value: the lack of a transmitted value has a different meaning than any transmitted value.
+  * `cohorthint`: See cohorthint in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohorthint of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value: the lack of a transmitted value has a different meaning than any transmitted value.
+  * `cohortname`: See cohortname in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohortname of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value: the lack of a transmitted value has a different meaning than any transmitted value.
 ##### Legal Child Elements #####
   * At most one `<ping>`.
   * Any number of `<data>`.
@@ -397,7 +392,7 @@ Each product that is contained in the response is represented by exactly one `<a
 
 #### `<ping>` (Response) ####
 ##### Attributes #####
-  * `status`:
+  * `status`: Indicates whether the ping was recognized by the server. Legal values: "ok". No default value: compatible servers MUST always transmit this attribute.
 
 ##### Legal Child Elements #####
 None.
@@ -406,10 +401,14 @@ None.
 ---
 
 #### `<data>` (Response) ####
+Each `<data>` tag in the response represents an answer to a data request from the client. The textual contents of this item MUST be sanitized by the server to prevent the injection of arbitrary XML.
 ##### Attributes #####
-  * `status`:
-  * `name`:
-  * `index`:
+  * `name`: A repeat of the value of the `<data name>` from the request to which this tag is responding. Default: "".
+  * `index`: A repeat of the value of `<data index>` from the request, if present, to which this tag is responding. Default: "0".
+  * `status`: The type of the data response. The following values are defined, all others are reserved. Default: "0".
+    * `ok`: This tag contains the appropriate data response, even if such a response is the empty string.
+    * `error-invalidargs`: The data request could not be parsed or understood.
+    * `error-nodata`: The data request was understood, but the server does not know the data for the requested entry. This is a distinct state from knowing that the correct response is zero-length data.
 
 ##### Legal Child Elements #####
   * May contain arbitrary non-XML textual information.
@@ -419,7 +418,7 @@ None.
 
 #### `<event>` (Response) ####
 ##### Attributes #####
-  * `status`:
+  * `status`: Indicates whether the event was recognized by the server. Legal values: "ok". No default value: compatible servers MUST always transmit this attribute.
 
 ##### Legal Child Elements #####
 None.
@@ -429,6 +428,14 @@ None.
 
 #### `<updatecheck>` (Response) ####
 ##### Attributes #####
+  * `status`: Indicates the outcome of the updatecheck. No default value: compatible servers MUST always transmit this attribute.
+    * `ok`: An update is available and should be applied. In this case, this tag will contain children that further detail the update.
+    * `noupdate`: No update is available for this client at this time.
+    * `error-internal`: The server encountered an unspecified internal error.
+    * `error-hash`: The server attempted to serve an update, but could not provide a valid hash for the download.
+    * `error-osnotsupported`: The server recognized the product, but the product is not available for the client's operating system.
+    * `error-hwnotsupported`: The server recognized the product, but the product is not available for the client's hardware configuration.
+    * `error-unsupportedProtocol`: The server recognized the product, but is incapable of delivering a response in this version of the protocol.
 ##### Legal Child Elements #####
   * At most one `<urls>`.
   * At most one `<manifest>`.
