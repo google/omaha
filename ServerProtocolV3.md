@@ -381,6 +381,7 @@ Each product that is contained in the response is represented by exactly one `<a
   * `cohort`: See cohort in the `<request>`. If this attribute is transmitted in the response (even if the value is empty-string), the client should overwrite the current cohort of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value: the lack of a transmitted value has a different meaning than any transmitted value.
   * `cohorthint`: See cohorthint in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohorthint of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value: the lack of a transmitted value has a different meaning than any transmitted value.
   * `cohortname`: See cohortname in the `<request>`. If sent (even if the value is empty-string), the client should overwrite the current cohortname of this app with the sent value. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. No default value: the lack of a transmitted value has a different meaning than any transmitted value.
+
 ##### Legal Child Elements #####
   * At most one `<ping>`.
   * Any number of `<data>`.
