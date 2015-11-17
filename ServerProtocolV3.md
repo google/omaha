@@ -1,7 +1,5 @@
 # Omaha Client-Server Protocol V3 #
 
-This document is a work-in-progress rewrite of [ServerProtocol](ServerProtocol.md). Please consult that page instead of this one for the time being.
-
 This document describes version 3 of the Omaha client-server protocol.  Omaha launched on Windows with this version of the protocol in May 2011.  (Version 2 of the protocol launched in May 2007 on Windows and May 2008 on Mac; Version 1 of the protocol was never deployed publicly.)
 
 Version 2 is documented [here](ServerProtocolV2.md). An older description of the V3 protocol is [here](ServerProtocol.md).
@@ -66,8 +64,11 @@ However, as user IDs can be used to track users across days, Omaha Client only s
 ### Client-Regulated Counting (Days-Based) ###
 In client-regulated counting, the client transmits with each request the number of days since the previous time it sent a message. If the timestamp of the request minus the number of days since the previous message is within the server's counting window, the request can be discarded as a duplicate.
 
+#### Unreliable Client Storage ####
+A major drawback to client-regulated counting is that it depends upon the client's ability to reliably track information about what transactions the client has made with the server. This ability is significantly degraded in environments where the client is frequently re-imaged to some known state. For the server to detect such re-imagings, the client should store a random value alongside the client-regulated counting data and transmit this to the server. To protect the privacy of the client, the random value should be rotated on every successfully-parsed update check response (even if the response indicates no update or an error). The server interprets duplicate values as indicative of the machine's state being reset.
+
 ### Client-Regulated Counting (Date-Based) ###
-In date-based client-regulated counting, the server transmits with each response an authoritative date, representing the date it received the request. The client stores this date, and then with the next request echoes it back to the server. If the date transmitted with a request is within the server's counting window, the request can be discarded as a duplicate.
+In date-based client-regulated counting, the server transmits with each response an authoritative date, representing the date it received the request. The client stores this date, and then with the next request echoes it back to the server. If the date transmitted with a request is within the server's counting window, the request can be discarded as a duplicate. Like days-based client-regulated counting, this algorithm depends upon the client to track data across machine restarts, and therefore also requires a pingfresh value.
 
 ## Packages & Fingerprints ##
 An individual version of an app may have multiple files (some of which may be optional). Such files are called "Packages". Every app has at least one package: that package is the file that is downloaded (and run by Omaha Client) to conduct the update. Product installation versions are identified by a version number, but individual package binary versions are identified by a "fingerprint". A fingerprint is a string of the form A.B, where A is a fingerprint type, and B is fingerprint data. The two currently supported fingerprint types are:
@@ -232,6 +233,7 @@ New clients are recommended to use the `ad` and `rd` attributes of the `<ping>`,
   * `r`: The number of integral 24-hour periods that have elapsed sine the start of the America/Los\_Angeles calendar day that the previous ping was sent on. See [#Client-Regulated\_Counting\_(Days-Based)](#Client-Regulated_Counting_(Days-Based).md). A value of "-1" signifies that there was no previous active ping. Default: "0".
   * `ad`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous active ping. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
   * `rd`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous ping. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
+  * `pingfresh`: A random 128-bit number. See [#Unreliable\_Client\_Storage](#Unreliable_Client_Storage.md) The client SHOULD store the per-product value alongside whatever data it uses to track `ad`, `rd`, `a`, and `r`. The client MUST rotate the value to a new random 128-bit number whenever the data used to track `ad`, `rd`, `a`, or `r` is updated. The server MAY interpret duplicate `pingfresh` values as indicating that the client has been re-imaged to a previous state. A value of "" signifies that no value was available. Default: "".
 
 ##### Legal Child Elements #####
 None.
