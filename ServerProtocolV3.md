@@ -20,7 +20,7 @@ The following terms also have specific meaning in this document:
   * **Client**: A host with updateable software, seeking knowledge about updates. The client sends **requests** to the server.
   * **Server**: A host reachable over the Internet that has knowledge about updates. The server sends **responses** to requests.
   * **Omaha Client**: A specific instantiation of a compatible client - this project's client.
-  * **Update Flow**: A sequence of update check, update attempt, and event ping (if an update was available), or simply an update check (if no update was available). See [Update Flow](ServerProtocolV3#Update_Flow.md) for more details.
+  * **Update Flow**: A sequence of update check, update attempt, and event ping (if an update was available), or simply an update check (if no update was available). See [#Update Flow](#update-flow) for more details.
   * **Product**: A piece of software that the client is responsible for keeping up to date. The client itself may be a product.
 
 ## Update Flow ##
@@ -148,8 +148,8 @@ None.
 #### `<app>` (Request) ####
 Each product that is contained in the request is represented by exactly one `<app>` tag.
 ##### Attributes #####
-  * `appid`: The GUID that identifies the product. See [#GUIDs](#GUIDs.md). Default: Undefined - Compatible clients MUST transmit this attribute.
-  * `version`: The version of the product install. See [#Version\_Numbers](#Version_Numbers.md). Default: "0.0.0.0".
+  * `appid`: The GUID that identifies the product. See [#GUIDs](#guids). Default: Undefined - Compatible clients MUST transmit this attribute.
+  * `version`: The version of the product install. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
   * `lang`: The language of the product install, in BCP 47 representation. Default: "".
   * `brand`: The brand code that the product was installed under, if any. A brand code is a short (4-character) string used to identify installations that took place as a result of partner deals or website promotions. Default: "".
   * `client`: A generalized form of brand code that can accept a wider range of values but is used for similar purposes to `brand`. Default: "".
@@ -157,10 +157,10 @@ Each product that is contained in the request is represented by exactly one `<ap
   * `experiments`: A key/value list of experiment identifiers. Experiment labels are used to track membership in different experimental groups, and may be set at install or update time. The experiments string is formatted as a semicolon-delimited concatenation of experiment label strings. An experiment label string is an experiment name, followed by a '=' character, followed by an experimental label value. For example: "crdiff=got\_bsdiff;optimized=O3". The client SHOULD NOT transmit the expiration date of any experiments it has, even if the server previously specified a specific expiration date. Default: "".
   * `iid`: A GUID that identifies an installation flow. For example, each download of a product installer is tagged with a unique GUID. Attempts to install using that installer can then be grouped. A client SHOULD NOT persist the iid GUID after the installation flow of a product is complete.
   * `installage`: The number of PST8PDT calendar days since the app was first installed. The first communication to the server should use a special value of "-1". Compatible clients MAY fuzz this value to the week granularity (e.g. send "0" for 0 through 6, "7" for 7 through 13, etc). Default: "0"
-  * `installdate`: The date-based counting equivalent of installage: this is a numeric calendar day that the app was installed on. (This value is provided by the server in the response to the first request in the installation flow. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md)). The client MAY fuzz this value to the week granularity (e.g. send "0" for 0 through 6, "7" for 7 through 13, etc). The first communication to the server should use a special value of "-1". A value of "-2" indicates that this value is not known. Default: "-2".
+  * `installdate`: The date-based counting equivalent of installage: this is a numeric calendar day that the app was installed on. (This value is provided by the server in the response to the first request in the installation flow. See [#Client-Regulated\_Counting\_(Date-Based)](#client-regulated-counting-date-based)). The client MAY fuzz this value to the week granularity (e.g. send "0" for 0 through 6, "7" for 7 through 13, etc). The first communication to the server should use a special value of "-1". A value of "-2" indicates that this value is not known. Default: "-2".
   * `installsource`: A string indicating the cause of this install or update flow. As examples:  "organic" indicating an organic web download, "scheduler" indicating a scheduled update, "ondemand" indicating a user-prompted update. Default: "".
   * `tag`: An field for a client to transmit arbitrary update parameters in string form. Compatible clients and servers MAY use this attribute to negotiate special update rules. Alternatively, they MAY extend the protocol to represent the information more clearly in another parameter. As an example, Omaha Client uses this field to transmit whether a Google Chrome installation is on the "stable", "dev", or "beta" channel, which affects how the server issues update responses for that installation. Default: "".
-  * `fingerprint`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md).  Default: "".
+  * `fingerprint`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages\_&\_Fingerprints](#packages--fingerprints).  Default: "".
     * `cohort`: A machine-readable string identifying the release cohort (channel) that the app belongs to. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
     * `cohorthint`: An machine-readable enum indicating that the client has a desire to switch to a different release cohort. The exact legal values are app-specific and should be shared between the server and app implementations. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
     * `cohortname`: A stable machine-readable enum indicating which (if any) set of messages the app should display to the user. For example, an app with a cohortname of "beta" might display beta-specific branding to the user. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
@@ -212,7 +212,7 @@ None.
 #### `<package>` (Request) ####
 A `<package>` tag gives information about an installed package.
 ##### Attributes #####
-  * `fingerprint`: The fingerprint identifying the installed package. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md). Default: "".
+  * `fingerprint`: The fingerprint identifying the installed package. See [#Packages\_&\_Fingerprints](#pacakges--fingerprints). Default: "".
 
 ##### Legal Child Elements #####
 None.
@@ -221,7 +221,7 @@ None.
 ---
 
 #### `<ping>` (Request) ####
-Any `<ping>`s contained in a request are used to count active users and potentially deduplicate requests from the same client. See [#Counting\_Algorithms](#Counting_Algorithms.md).
+Any `<ping>`s contained in a request are used to count active users and potentially deduplicate requests from the same client. See [#Counting\_Algorithms](#counting-algorithms).
 
 A request containing any `<ping>` is called a "ping". Typically, pings are combined with update checks into a single request.
 A request containing a `<ping>` with the `active="1"`, `a`, or `ad` attributes explicitly transmitted is further called an "active ping".
@@ -229,11 +229,11 @@ A request containing a `<ping>` with the `active="1"`, `a`, or `ad` attributes e
 New clients are recommended to use the `ad` and `rd` attributes of the `<ping>`, and ignore the others. Existing clients should consider transitioning, as date-based counting does not rely on unreliable client clocks.
 ##### Attributes #####
   * `active`: "1" if the app was active since the previous request that contained a `<ping>`. Otherwise, "0". If `a` or `ad` is explicitly transmitted, `active` may be omitted. Default: "0".
-  * `a`: If transmitted, the app was active since the request that contained a `<ping>`. In this case, the value is the number of integral 24-hour periods that have elapsed since the start of the America/Los\_Angeles calendar day that the previous active ping was sent on. See [#Client-Regulated\_Counting\_(Days-Based)](#Client-Regulated_Counting_(Days-Based).md). A value of "-1" signifies that there was no previous active ping.
-  * `r`: The number of integral 24-hour periods that have elapsed sine the start of the America/Los\_Angeles calendar day that the previous ping was sent on. See [#Client-Regulated\_Counting\_(Days-Based)](#Client-Regulated_Counting_(Days-Based).md). A value of "-1" signifies that there was no previous active ping. Default: "0".
-  * `ad`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous active ping. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
-  * `rd`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous ping. See [#Client-Regulated\_Counting\_(Date-Based)](#Client-Regulated_Counting_(Date-Based).md). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
-  * `pingfresh`: A random 128-bit number. See [#Unreliable\_Client\_Storage](#Unreliable_Client_Storage.md) The client SHOULD store the per-product value alongside whatever data it uses to track `ad`, `rd`, `a`, and `r`. The client MUST rotate the value to a new random 128-bit number whenever the data used to track `ad`, `rd`, `a`, or `r` is updated. The server MAY interpret duplicate `pingfresh` values as indicating that the client has been re-imaged to a previous state. A value of "" signifies that no value was available. Default: "".
+  * `a`: If transmitted, the app was active since the request that contained a `<ping>`. In this case, the value is the number of integral 24-hour periods that have elapsed since the start of the America/Los\_Angeles calendar day that the previous active ping was sent on. See [#Client-Regulated\_Counting\_(Days-Based)](#client-regulated-Counting-days-based). A value of "-1" signifies that there was no previous active ping.
+  * `r`: The number of integral 24-hour periods that have elapsed sine the start of the America/Los\_Angeles calendar day that the previous ping was sent on. See [#Client-Regulated\_Counting\_(Days-Based)](#client-regulated-counting-days-based). A value of "-1" signifies that there was no previous active ping. Default: "0".
+  * `ad`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous active ping. See [#Client-Regulated\_Counting\_(Date-Based)](#client-regulated-counting-date-based). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
+  * `rd`: The value of the `elapsed_days` attribute of the `<daystart>` element in the server's reply to the previous ping. See [#Client-Regulated\_Counting\_(Date-Based)](#client-regulated-counting-date-based). A value of "-1" signifies that there was no such previous request. A value of "-2" signifies that the value is not known. Default: "-2".
+  * `pingfresh`: A random 128-bit number. See [#Unreliable\_Client\_Storage](#unreliable-client-storage) The client SHOULD store the per-product value alongside whatever data it uses to track `ad`, `rd`, `a`, and `r`. The client MUST rotate the value to a new random 128-bit number whenever the data used to track `ad`, `rd`, `a`, or `r` is updated. The server MAY interpret duplicate `pingfresh` values as indicating that the client has been re-imaged to a previous state. A value of "" signifies that no value was available. Default: "".
 
 ##### Legal Child Elements #####
 None.
@@ -318,10 +318,10 @@ Throughout and at the end of an update flow, the client MAY send event reports b
     * `17`: error
   * `time_since_update_available_ms`: The number of milliseconds that elapsed from when the update was known to be available to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
   * `time_since_download_start_ms`: The number of milliseconds that elapsed from when the download was begun to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
-  * `nextversion`: The version of the app that the update flow to which this event belongs attempted to reach, regardless of success or failure of the update operation. See [#Version\_Numbers](#Version_Numbers.md). Default: "0.0.0.0".
-  * `previousversion`: The version of the app that was present on the machine at the time of the update-check of this update flow, regardless of success or failure of the update operation. See [#Version\_Numbers](#Version_Numbers.md). Default: "0.0.0.0".
-  * `nextfp`: If the update flow containing this event contained only a single package, the fingerprint that package attempted to reach, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md). Default: "".
-  * `previousfp`: If the update flow containing this event contained only a single package, the fingerprint that package had at the time of the update check, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#Packages_&_Fingerprints.md). Default: "".
+  * `nextversion`: The version of the app that the update flow to which this event belongs attempted to reach, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
+  * `previousversion`: The version of the app that was present on the machine at the time of the update-check of this update flow, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
+  * `nextfp`: If the update flow containing this event contained only a single package, the fingerprint that package attempted to reach, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#packages--fingerprints). Default: "".
+  * `previousfp`: If the update flow containing this event contained only a single package, the fingerprint that package had at the time of the update check, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#packages--fingerprints). Default: "".
 
 ##### Legal Child Elements #####
 None.
@@ -371,7 +371,7 @@ None.
 #### `<app>` (Response) ####
 Each product that is contained in the response is represented by exactly one `<app>` tag. If a product appears in the request, it MUST be contained in the response. The response MAY contain additional products. If it does, the client MAY install or update these products in addition to the requested ones. This mechanism supports the installation of dependencies that are distributed as separate physical products.
 ##### Attributes #####
-  * `appid`: The GUID that identifies the product. See [#GUIDs](#GUIDs.md). Default: Undefined - Compatible clients MUST transmit this attribute.
+  * `appid`: The GUID that identifies the product. See [#GUIDs](#guids). Default: Undefined - Compatible clients MUST transmit this attribute.
   * `status`: The state of the product on the server. The following values are defined, all others are reserved. Default: "0".
     * `ok`: The product is recognized.
     * `restricted`: The product is recognized, but due to policy restrictions (such as export law compliance) the server must refuse to give a meaningful response.
