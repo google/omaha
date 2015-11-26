@@ -696,7 +696,7 @@ HRESULT RegisterTypeLibForUser(ITypeLib* lib,
   if (!fp) {
     HRESULT hr = HRESULTFromLastError();
     CORE_LOG(LEVEL_ERROR,
-             (_T("[GetProcAddress failed][%s][0x%08x]"),
+             (_T("[GetProcAddress failed][%s][%s][0x%08x]"),
               function_name, library_name, hr));
     return hr;
   }
@@ -735,7 +735,7 @@ HRESULT UnRegisterTypeLibForUser(REFGUID lib_id,
   if (!fp) {
     HRESULT hr = HRESULTFromLastError();
     CORE_LOG(LEVEL_ERROR,
-             (_T("[GetProcAddress failed][%s][0x%08x]"),
+             (_T("[GetProcAddress failed][%s][%s][0x%08x]"),
               function_name, library_name, hr));
     return hr;
   }
