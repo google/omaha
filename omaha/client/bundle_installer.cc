@@ -183,7 +183,7 @@ HRESULT GetCompletionInformation(IApp* app,
   completion_info->post_install_launch_command_line =
       post_install_launch_command_line;
 
-  CORE_LOG(L5, (_T("[GetCompletionInformation][%s][state: u][code: 0x%08x]")
+  CORE_LOG(L5, (_T("[GetCompletionInformation][%s][state: %u][code: 0x%08x]")
                 _T("[extra code: %d][message: '%s'][installer: %u]"),
                 app_id, *current_state,
                 completion_info->error_code,
