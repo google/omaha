@@ -1,4 +1,39 @@
-## 2015-10-12 @102301006,105240952
+## 2015-12-09 @105241542,109823442 1.3.29.1
+
+### Changes
+--------------------------------------------------------------------------------
+Fix Internal compiler error when building with VS2015U1.
+--------------------------------------------------------------------------------
+Install directory is not cleaned up. Add unit tests for the install manager.
+--------------------------------------------------------------------------------
+Fixed wrong printf arguments
+--------------------------------------------------------------------------------
+Create a unit test for ExperimentLabels::SerializeOptions::DEFAULT.
+--------------------------------------------------------------------------------
+Mechanical change to rename a local variable in UpdateRequestUtilsTest.PingFreshness
+--------------------------------------------------------------------------------
+Don't send expiration for experiment labels.
+--------------------------------------------------------------------------------
+Indicate registry freshness in updatecheck.
+
+A registry freshness value is saved in the app ClientState
+when user counts are updated, as part of a successfully
+transmitted update request.
+
+Then, this value is picked up when the app is added to an app bundle,
+and serialized by a subsequent update check as an attribute of the
+<ping> element, along with the user counts. When this update check
+completes successfully, and the user counts are updated, the
+freshness value for this app is updated to another 128-bit value.
+--------------------------------------------------------------------------------
+Update SaveArguments.exe with version 1.3.28.17
+--------------------------------------------------------------------------------
+Fix bug 25669835 Machine OnDemand updates should not show elevation prompt.
+--------------------------------------------------------------------------------
+Fix bug 25426710: Install directory is not cleaned up.
+--------------------------------------------------------------------------------
+
+## 2015-10-12 @102301006,105241541
 
 ### Changes
 --------------------------------------------------------------------------------
