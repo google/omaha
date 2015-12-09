@@ -129,6 +129,8 @@ class App : public ModelObject {
 
   CString GetExperimentLabels() const;
 
+  CString GetExperimentLabelsNoTimestamps() const;
+
   CString referral_id() const;
 
   BrowserType browser_type() const;
@@ -162,6 +164,8 @@ class App : public ModelObject {
 
   int day_of_last_response() const;
   void set_day_of_last_response(int day_num);
+
+  CString ping_freshness() const;
 
   CString ap() const;
 
@@ -407,6 +411,8 @@ class App : public ModelObject {
   int GetTimeDifferenceMs(TimeMetricType time_start_metric_type,
                           TimeMetricType time_end_metric_type) const;
 
+  CString GetExperimentLabelsHelper(bool include_timestamps) const;
+
   scoped_ptr<fsm::AppState> app_state_;
 
   scoped_ptr<AppVersion> current_version_;
@@ -451,6 +457,7 @@ class App : public ModelObject {
   BrowserType browser_type_;
   int days_since_last_active_ping_;
   int days_since_last_roll_call_;
+  CString ping_freshness_;
 
   // The values are number of days since a particular datum when the event
   // happened. The datum is chosen by server side. They are from server's

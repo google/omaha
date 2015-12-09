@@ -341,4 +341,29 @@ void RegisterOrUnregisterGoopdateService(bool reg) {
   RunAsAdmin(service_path, cmd_line);
 }
 
+void CreateDirs(const TCHAR* parent_dir,
+                const TCHAR* const directories[],
+                size_t number_of_directories) {
+  for (size_t i = 0; i != number_of_directories; ++i) {
+    const CString dir(ConcatenatePath(parent_dir, directories[i]));
+    EXPECT_SUCCEEDED(CreateDir(dir, NULL));
+  }
+}
+
+void CreateFiles(const TCHAR* parent_dir,
+                 const FileStruct files[],
+                 size_t number_of_files) {
+  for (size_t i = 0; i != number_of_files; ++i) {
+    const CString filename(ConcatenatePath(parent_dir, files[i].filename));
+    scoped_handle file_handle(::CreateFile(filename,
+                                           GENERIC_WRITE,
+                                           0,
+                                           NULL,
+                                           CREATE_ALWAYS,
+                                           files[i].file_attributes,
+                                           NULL));
+    EXPECT_NE(INVALID_HANDLE_VALUE, get(file_handle));
+  }
+}
+
 }  // namespace omaha

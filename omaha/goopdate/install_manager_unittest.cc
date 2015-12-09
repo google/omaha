@@ -29,6 +29,7 @@
 #include "omaha/base/timer.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/install_manifest.h"
@@ -116,9 +117,20 @@ void UninstallTestMsi(const CString& installer_path);
 void AdjustMsiTries(InstallerWrapper* installer_wrapper);
 
 // TODO(omaha3): Test the rest of InstallManager.
-class InstallManagerTest : public testing::Test {
+class InstallManagerTest : public testing::TestWithParam<bool> {
+ protected:
   virtual void SetUp() {}
   virtual void TearDown() {}
+
+  const bool IsMachine() const {
+    return GetParam();
+  }
+
+  CString GetInstallWorkingDir() const {
+    return IsMachine() ?
+        ConfigManager::Instance()->GetMachineInstallWorkingDir() :
+        ConfigManager::Instance()->GetUserInstallWorkingDir();
+  }
 };
 
 class InstallManagerInstallAppTest : public AppTestBase {
@@ -1176,5 +1188,156 @@ TEST_F(InstallManagerInstallAppUserTest,
     EXPECT_EQ(POST_INSTALL_ACTION_REBOOT, result_info.post_install_action);
   }
 }
+
+INSTANTIATE_TEST_CASE_P(IsMachine, InstallManagerTest, ::testing::Bool());
+
+TEST_P(InstallManagerTest, InstallDir_NoFiles) {
+  const CString install_dir = GetInstallWorkingDir();
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+
+  EXPECT_SUCCEEDED(CreateDir(install_dir, NULL));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(install_dir));
+
+  FakeGLock fake_glock;
+  InstallManager install_manager(&fake_glock, IsMachine());
+
+  EXPECT_TRUE(File::Exists(install_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(install_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+}
+
+TEST_P(InstallManagerTest, InstallDir_OnlyFilesNoDirs) {
+  const CString install_dir = GetInstallWorkingDir();
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+
+  EXPECT_SUCCEEDED(CreateDir(install_dir, NULL));
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8876.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_NORMAL, },
+  };
+
+  CreateFiles(install_dir, kFiles, arraysize(kFiles));
+  EXPECT_FALSE(::PathIsDirectoryEmpty(install_dir));
+
+  FakeGLock fake_glock;
+  InstallManager install_manager(&fake_glock, IsMachine());
+
+  EXPECT_TRUE(File::Exists(install_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(install_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+}
+
+TEST_P(InstallManagerTest, InstallDir_MixedAttributeFiles) {
+  const CString install_dir = GetInstallWorkingDir();
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+
+  EXPECT_SUCCEEDED(CreateDir(install_dir, NULL));
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_SYSTEM, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_HIDDEN, },
+  };
+
+  CreateFiles(install_dir, kFiles, arraysize(kFiles));
+  EXPECT_FALSE(::PathIsDirectoryEmpty(install_dir));
+
+  FakeGLock fake_glock;
+  InstallManager install_manager(&fake_glock, IsMachine());
+
+  EXPECT_TRUE(File::Exists(install_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(install_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+}
+
+TEST_P(InstallManagerTest, InstallDir_ReadOnlyFiles) {
+  const CString install_dir = GetInstallWorkingDir();
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+
+  EXPECT_SUCCEEDED(CreateDir(install_dir, NULL));
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_SYSTEM, },
+    { _T("tst8876.tmp"), FILE_ATTRIBUTE_READONLY, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_HIDDEN, },
+  };
+
+  CreateFiles(install_dir, kFiles, arraysize(kFiles));
+  EXPECT_FALSE(::PathIsDirectoryEmpty(install_dir));
+
+  FakeGLock fake_glock;
+  InstallManager install_manager(&fake_glock, IsMachine());
+
+  EXPECT_TRUE(File::Exists(install_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(install_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+}
+
+TEST_P(InstallManagerTest, InstallDir_FilesAndDirs) {
+  const CString install_dir = GetInstallWorkingDir();
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+
+  EXPECT_SUCCEEDED(CreateDir(install_dir, NULL));
+
+  const TCHAR* const kDirectories[] = {
+    _T("DirB"),
+    _T("DirB\\DirC"),
+    _T("DirB\\DirC\\DirD"),
+    _T("DirB\\DirC\\DirE"),
+    _T("DirB\\DirF"),
+    _T("DirB\\DirF\\DirG"),
+    _T("DirB\\DirF\\DirH"),
+    _T("DirI"),
+    _T("DirI\\DirJ"),
+    _T("DirI\\DirJ\\DirK"),
+    _T("DirI\\DirJ\\DirL"),
+    _T("DirI\\DirM"),
+    _T("DirI\\DirM\\DirN"),
+    _T("DirI\\DirM\\DirO"),
+  };
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8876.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\tst8888.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\tst8898.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\tst88A9.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirC\\tst88C9.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirC\\tst88DA.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirC\\tst88FA.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirF\\tst8959.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirF\\tst8969.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirF\\tst898A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\tst89E8.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\tst89F9.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\tst8A0A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirJ\\tst8A2A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirJ\\tst8A3A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirJ\\tst8A5B.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirM\\tst8A8B.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirM\\tst8A9B.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirM\\tst8A9C.tmp"), FILE_ATTRIBUTE_NORMAL, },
+  };
+
+  CreateDirs(install_dir, kDirectories, arraysize(kDirectories));
+  CreateFiles(install_dir, kFiles, arraysize(kFiles));
+
+  EXPECT_FALSE(::PathIsDirectoryEmpty(install_dir));
+
+  FakeGLock fake_glock;
+  InstallManager install_manager(&fake_glock, IsMachine());
+
+  EXPECT_TRUE(File::Exists(install_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(install_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(install_dir));
+}
+
 
 }  // namespace omaha

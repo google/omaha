@@ -72,7 +72,7 @@ InstallManager::InstallManager(const Lockable* model_lock, bool is_machine)
   CORE_LOG(L3, (_T("[install_working_dir][%s]"), install_working_dir()));
 
   VERIFY1(SUCCEEDED(CreateDir(install_working_dir_, NULL)));
-  VERIFY1(SUCCEEDED(DeleteDirectoryFiles(install_working_dir_)));
+  VERIFY1(SUCCEEDED(DeleteDirectoryContents(install_working_dir_)));
 
   installer_wrapper_.reset(new InstallerWrapper(is_machine_));
 }

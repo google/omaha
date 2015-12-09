@@ -49,15 +49,15 @@ const TCHAR* const GOOPDATE_E_HW_NOT_SUPPORTEDString =
     _T("hardware requirements for Google Chrome.");
 
 const UpdateResponseResult kUpdateAvailableResult =
-    std::make_pair(S_OK, _T(""));
+    std::make_pair(S_OK, CString());
 
 const UpdateResponseResult kAppNotFoundResult = std::make_pair(
       GOOPDATE_E_NO_SERVER_RESPONSE,
-      kGOOPDATE_E_NO_SERVER_RESPONSEString);
+      CString(kGOOPDATE_E_NO_SERVER_RESPONSEString));
 
 const UpdateResponseResult kHwNotSupported = std::make_pair(
       GOOPDATE_E_HW_NOT_SUPPORTED,
-      GOOPDATE_E_HW_NOT_SUPPORTEDString);
+      CString(GOOPDATE_E_HW_NOT_SUPPORTEDString));
 
 }  // namespace
 

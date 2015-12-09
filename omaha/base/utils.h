@@ -247,6 +247,12 @@ bool SafeDirectoryNameForDeletion(const TCHAR* dir_name);
 // Deletes a directory and its files.
 HRESULT DeleteDirectory(const TCHAR* ir_name);
 
+// Deletes all contents of the provided directory. Schedules deletion at next
+// reboot if immediate deletion fails. Immediate deletion works for Normal,
+// System and Hidden files. For ReadOnly files, immediate delete fails, but
+// File::DeleteAfterReboot succeeds.
+HRESULT DeleteDirectoryContents(const TCHAR* dir_name);
+
 // Deletes all files in a directory.
 HRESULT DeleteDirectoryFiles(const TCHAR* dir_name);
 

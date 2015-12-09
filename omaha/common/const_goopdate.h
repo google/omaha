@@ -161,6 +161,7 @@ const TCHAR* const kRegValueDidRun           = _T("dr");
 const TCHAR* const kRegValueExperimentLabels = _T("experiment_labels");
 const TCHAR* const kRegValueInstallationId   = _T("iid");
 const TCHAR* const kRegValueOemInstall       = _T("oeminstall");
+const TCHAR* const kRegValuePingFreshness    = _T("ping_freshness");
 const TCHAR* const kRegValueReferralId       = _T("referral");
 
 // Prefix for App-Defined attribute values stored in the ClientState key.

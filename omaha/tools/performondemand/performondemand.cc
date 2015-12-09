@@ -327,17 +327,9 @@ int DoMain(int argc, TCHAR* argv[]) {
   CComPtr<IJobObserver> job_holder(job_observer);
 
   CComPtr<IGoogleUpdate> on_demand;
-  if (is_machine && !is_update_check_only) {
-    hr = System::CoCreateInstanceAsAdmin(NULL,
-                                         __uuidof(OnDemandMachineAppsClass),
-                                         __uuidof(on_demand),
-                                         reinterpret_cast<void**>(&on_demand));
-  } else {
-    hr = on_demand.CoCreateInstance(is_machine ?
-                                    __uuidof(OnDemandMachineAppsClass) :
-                                    __uuidof(OnDemandUserAppsClass));
-  }
-
+  hr = on_demand.CoCreateInstance(is_machine ?
+                                  __uuidof(OnDemandMachineAppsClass) :
+                                  __uuidof(OnDemandUserAppsClass));
   if (!SUCCEEDED(hr)) {
     wprintf(_T("Could not create COM instance [0x%x]\n"), hr);
     return -1;

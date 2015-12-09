@@ -560,6 +560,47 @@ TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
   RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
 }
 
+TEST_F(XmlParserTest, PingFreshness) {
+  scoped_ptr<UpdateRequest> update_request(
+         UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
+  request::Request& xml_request = get_xml_request(update_request.get());
+
+  xml_request.omaha_version = _T("1.3.24.1");
+  xml_request.omaha_shell_version = _T("1.2.1.1");
+  xml_request.test_source = _T("dev");
+  xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.hw.physmemory = 0;
+  xml_request.hw.has_sse = false;
+  xml_request.hw.has_sse2 = false;
+  xml_request.hw.has_sse3 = false;
+  xml_request.hw.has_ssse3 = false;
+  xml_request.hw.has_sse41 = false;
+  xml_request.hw.has_sse42 = false;
+  xml_request.hw.has_avx = false;
+  xml_request.os.platform = _T("win");
+  xml_request.os.version = _T("9.0");
+  xml_request.os.service_pack = _T("Service Pack 3");
+  xml_request.os.arch = _T("unknown");
+  xml_request.check_period_sec = 120000;
+  xml_request.uid.Empty();
+
+  request::App app;
+  xml_request.apps.push_back(app);
+
+  xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.apps[0].app_id = _T("{8A69D345-D564-463C-AFF1-A69D9E530F96}");
+  xml_request.apps[0].update_check.is_valid = true;
+  xml_request.apps[0].ping.ping_freshness =
+      _T("{d0d8cb57-ca4a-4e82-8196-84f47c0ca085}");
+
+  const CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" lang=\"\" brand=\"\" client=\"\"><updatecheck/><ping ping_freshness=\"{d0d8cb57-ca4a-4e82-8196-84f47c0ca085}\"/></app></request>");  // NOLINT
+  CString actual_buffer;
+  EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
+                                                       &actual_buffer));
+
+  EXPECT_STREQ(expected_buffer, actual_buffer);
+}
+
 }  // namespace xml
 
 }  // namespace omaha

@@ -24,6 +24,7 @@
 #include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
+#include "base/rand_util.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
@@ -836,6 +837,149 @@ TEST(UtilsTest, IsEnrolledToDomain_FALSE) {
 
   EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
                                        kRegValueIsEnrolledToDomain));
+}
+
+TEST(UtilsTest, DeleteDirectoryContents_DirDoesNotExist) {
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND),
+            DeleteDirectoryContents(_T("##")));
+}
+
+TEST(UtilsTest, DeleteDirectoryContents_InvalidDirName) {
+  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_INVALID_NAME),
+            DeleteDirectoryContents(_T("*")));
+}
+
+TEST(UtilsTest, DeleteDirectoryContents_NoFiles) {
+  const CString source_dir = GetUniqueTempDirectoryName();
+  EXPECT_SUCCEEDED(CreateDir(source_dir, NULL));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectoryContents(source_dir));
+
+  EXPECT_TRUE(File::Exists(source_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(source_dir));
+}
+
+TEST(UtilsTest, DeleteDirectoryContents_OnlyFilesNoDirs) {
+  const CString source_dir = GetUniqueTempDirectoryName();
+  EXPECT_SUCCEEDED(CreateDir(source_dir, NULL));
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8876.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_NORMAL, },
+  };
+
+  CreateFiles(source_dir, kFiles, arraysize(kFiles));
+  EXPECT_FALSE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectoryContents(source_dir));
+
+  EXPECT_TRUE(File::Exists(source_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(source_dir));
+}
+
+TEST(UtilsTest, DeleteDirectoryContents_MixedAttributeFiles) {
+  const CString source_dir = GetUniqueTempDirectoryName();
+  EXPECT_SUCCEEDED(CreateDir(source_dir, NULL));
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_SYSTEM, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_HIDDEN, },
+  };
+
+  CreateFiles(source_dir, kFiles, arraysize(kFiles));
+  EXPECT_FALSE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectoryContents(source_dir));
+
+  EXPECT_TRUE(File::Exists(source_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(source_dir));
+}
+
+TEST(UtilsTest, DeleteDirectoryContents_ReadOnlyFiles) {
+  const CString source_dir = GetUniqueTempDirectoryName();
+  EXPECT_SUCCEEDED(CreateDir(source_dir, NULL));
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_SYSTEM, },
+    { _T("tst8876.tmp"), FILE_ATTRIBUTE_READONLY, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_HIDDEN, },
+  };
+
+  CreateFiles(source_dir, kFiles, arraysize(kFiles));
+  EXPECT_FALSE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectoryContents(source_dir));
+
+  EXPECT_TRUE(File::Exists(source_dir));
+  EXPECT_FALSE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(source_dir));
+}
+
+TEST(UtilsTest, DeleteDirectoryContents_FilesAndDirs) {
+  const CString source_dir = GetUniqueTempDirectoryName();
+  EXPECT_SUCCEEDED(CreateDir(source_dir, NULL));
+
+  const TCHAR* const kDirectories[] = {
+    _T("DirB"),
+    _T("DirB\\DirC"),
+    _T("DirB\\DirC\\DirD"),
+    _T("DirB\\DirC\\DirE"),
+    _T("DirB\\DirF"),
+    _T("DirB\\DirF\\DirG"),
+    _T("DirB\\DirF\\DirH"),
+    _T("DirI"),
+    _T("DirI\\DirJ"),
+    _T("DirI\\DirJ\\DirK"),
+    _T("DirI\\DirJ\\DirL"),
+    _T("DirI\\DirM"),
+    _T("DirI\\DirM\\DirN"),
+    _T("DirI\\DirM\\DirO"),
+  };
+
+  const FileStruct kFiles[] = {
+    { _T("tst8875"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8876.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("tst8887.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\tst8888.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\tst8898.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\tst88A9.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirC\\tst88C9.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirC\\tst88DA.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirC\\tst88FA.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirF\\tst8959.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirF\\tst8969.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirB\\DirF\\tst898A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\tst89E8.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\tst89F9.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\tst8A0A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirJ\\tst8A2A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirJ\\tst8A3A.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirJ\\tst8A5B.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirM\\tst8A8B.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirM\\tst8A9B.tmp"), FILE_ATTRIBUTE_NORMAL, },
+    { _T("DirI\\DirM\\tst8A9C.tmp"), FILE_ATTRIBUTE_NORMAL, },
+  };
+
+  CreateDirs(source_dir, kDirectories, arraysize(kDirectories));
+  CreateFiles(source_dir, kFiles, arraysize(kFiles));
+
+  EXPECT_FALSE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectoryContents(source_dir));
+
+  EXPECT_TRUE(File::Exists(source_dir));
+  EXPECT_TRUE(::PathIsDirectoryEmpty(source_dir));
+
+  EXPECT_SUCCEEDED(DeleteDirectory(source_dir));
 }
 
 }  // namespace omaha

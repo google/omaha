@@ -120,9 +120,9 @@ void ExperimentLabels::ClearAllLabels() {
   labels_.clear();
 }
 
-CString ExperimentLabels::Serialize() const {
+CString ExperimentLabels::Serialize(SerializeOptions options) const {
   CString serialized;
-  time64 current_time = GetCurrent100NSTime();
+  const time64 current_time = GetCurrent100NSTime();
   for (LabelMap::const_iterator cit = labels_.begin();
        cit != labels_.end();
        ++cit) {
@@ -130,12 +130,14 @@ CString ExperimentLabels::Serialize() const {
       if (!serialized.IsEmpty()) {
         serialized.Append(L";");
       }
-      FILETIME ft = {};
-      Time64ToFileTime(cit->second.second, &ft);
-      SafeCStringAppendFormat(&serialized, L"%s=%s|%s",
-                              cit->first,
-                              cit->second.first,
-                              ConvertTimeToGMTString(&ft));
+      SafeCStringAppendFormat(&serialized, L"%s=%s",
+                              cit->first, cit->second.first);
+      if (options & INCLUDE_TIMESTAMPS) {
+        FILETIME ft = {};
+        Time64ToFileTime(cit->second.second, &ft);
+        SafeCStringAppendFormat(&serialized, L"|%s",
+                                ConvertTimeToGMTString(&ft));
+      }
     }
   }
   return serialized;
@@ -165,8 +167,8 @@ void ExperimentLabels::SetPreserveExpiredLabels(bool preserve) {
 
 HRESULT ExperimentLabels::WriteToRegistry(bool is_machine,
                                           const CString& app_id) {
-  return app_registry_utils::SetExperimentLabels(is_machine, app_id,
-                                                 Serialize());
+  return app_registry_utils::SetExperimentLabels(
+      is_machine, app_id, Serialize(SerializeOptions::INCLUDE_TIMESTAMPS));
 }
 
 HRESULT ExperimentLabels::ReadFromRegistry(bool is_machine,
@@ -312,7 +314,7 @@ bool ExperimentLabels::MergeLabelSets(const CString& old_label_list,
   if (!labels.DeserializeAndApplyDelta(new_label_list)) {
     return false;
   }
-  *merged_list = labels.Serialize();
+  *merged_list = labels.Serialize(SerializeOptions::INCLUDE_TIMESTAMPS);
   return true;
 }
 

@@ -694,10 +694,12 @@ CString App::client_id() const {
 
 CString App::GetExperimentLabels() const {
   __mutexScope(model()->lock());
-  ExperimentLabels stored_labels;
-  VERIFY1(SUCCEEDED(stored_labels.ReadFromRegistry(app_bundle_->is_machine(),
-                                                   app_guid_string())));
-  return stored_labels.Serialize();
+  return App::GetExperimentLabelsHelper(true);
+}
+
+CString App::GetExperimentLabelsNoTimestamps() const {
+  __mutexScope(model()->lock());
+  return App::GetExperimentLabelsHelper(false);
 }
 
 CString App::referral_id() const {
@@ -798,6 +800,11 @@ int App::day_of_last_roll_call() const {
 void App::set_day_of_last_roll_call(int day_num) {
   __mutexScope(model()->lock());
   day_of_last_roll_call_ = day_num;
+}
+
+CString App::ping_freshness() const {
+  __mutexScope(model()->lock());
+  return ping_freshness_;
 }
 
 CString App::ap() const {
@@ -1246,6 +1253,16 @@ CString App::GetInstallData() const {
   }
 
   return server_install_data_;
+}
+
+CString App::GetExperimentLabelsHelper(bool include_timestamps) const {
+  ExperimentLabels stored_labels;
+  VERIFY1(SUCCEEDED(stored_labels.ReadFromRegistry(app_bundle_->is_machine(),
+                                                   app_guid_string())));
+  return stored_labels.Serialize(
+      include_timestamps ?
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
+      ExperimentLabels::SerializeOptions::DEFAULT);
 }
 
 // IApp.

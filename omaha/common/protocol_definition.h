@@ -103,6 +103,7 @@ struct Ping {
   int days_since_last_roll_call;
   int day_of_last_activity;
   int day_of_last_roll_call;
+  CString ping_freshness;
 };
 
 struct App {

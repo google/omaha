@@ -98,13 +98,6 @@ class ATL_NO_VTABLE OnDemand
 
   // IGoogleUpdate::Update().
   STDMETHOD(Update)(const WCHAR* guid, IJobObserver* observer) {
-    // Verify that the caller is an administrator for the machine case.
-    if (T::is_machine() &&
-        !UserRights::TokenIsAdmin(impersonation_token_.GetHandle())) {
-      CORE_LOG(LE, (_T("[User is not an admin]")));
-      return E_ACCESSDENIED;
-    }
-
     return DoOnDemandInternalAsync(guid, observer, false);
   }
 
@@ -121,9 +114,9 @@ class ATL_NO_VTABLE OnDemand
       return hr;
     }
 
-    if (!impersonation_token_.CreatePrimaryToken(&primary_token_)) {
+    if (!primary_token_.GetProcessToken(TOKEN_ALL_ACCESS)) {
       hr = HRESULTFromLastError();
-      CORE_LOG(LE, (_T("[CreatePrimaryToken failed][%d]"), hr));
+      CORE_LOG(LE, (_T("[OnDemand::FC][GetProcessToken failed][%#x]"), hr));
       return hr;
     }
 

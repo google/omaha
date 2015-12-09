@@ -535,6 +535,47 @@ HRESULT GetFolderPath(int csidl, CString* path) {
   return S_OK;
 }
 
+HRESULT DeleteDirectoryContents(const TCHAR* dir_name) {
+  ASSERT1(dir_name);
+
+  WIN32_FIND_DATA find_data = {0};
+  CPath find_file_pattern(dir_name);
+  VERIFY1(find_file_pattern.Append(_T("*.*")));
+
+  scoped_hfind hfind(::FindFirstFile(find_file_pattern, &find_data));
+  if (!hfind) {
+    const HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(LE, (_T("::FindFirstFile failed][%s][%#x]"), dir_name, hr));
+    return hr;
+  }
+
+  HRESULT hr_delete = S_OK;
+  do {
+    CPath file_or_directory(dir_name);
+    VERIFY1(file_or_directory.Append(find_data.cFileName));
+
+    if (!_tcscmp(find_data.cFileName, _T("..")) ||
+        !_tcscmp(find_data.cFileName, _T("."))) {
+      continue;
+    }
+
+    // This code continues on if the following delete fails. It is a best-effort
+    // delete-and-continue.
+    const HRESULT hr = DeleteBeforeOrAfterReboot(file_or_directory);
+    if (FAILED(hr)) {
+      hr_delete = hr;
+    }
+  } while (::FindNextFile(get(hfind), &find_data));
+
+  const DWORD err = ::GetLastError();
+  if (err != ERROR_NO_MORE_FILES) {
+    UTIL_LOG(LE, (_T("[::FindNextFile() failed][%s][%d]"), dir_name, err));
+    return HRESULT_FROM_WIN32(err);
+  }
+
+  return hr_delete;
+}
+
 // Delete directory files. If failed, try to schedule deletion at next reboot
 HRESULT DeleteDirectoryFiles(const TCHAR* dir_name) {
   ASSERT1(dir_name);

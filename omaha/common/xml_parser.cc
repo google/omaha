@@ -1526,9 +1526,11 @@ HRESULT XmlParser::BuildDidRunElement(const request::App& app,
   const bool need_r = app.ping.days_since_last_roll_call != 0;
   const bool need_ad = was_active && app.ping.day_of_last_activity != 0;
   const bool need_rd = app.ping.day_of_last_roll_call != 0;
+  const bool has_freshness = !app.ping.ping_freshness.IsEmpty();
 
   // Create a DOM element only if the didrun object has actual state.
-  if (!need_active && !need_a && !need_r && !need_ad && !need_rd) {
+  if (!need_active && !need_a && !need_r && !need_ad && !need_rd &&
+      !has_freshness) {
     return S_OK;
   }
 
@@ -1591,6 +1593,17 @@ HRESULT XmlParser::BuildDidRunElement(const request::App& app,
       return hr;
     }
   }
+
+  if (has_freshness) {
+    hr = AddXMLAttributeNode(element,
+                             kXmlNamespace,
+                             xml::attribute::kPingFreshness,
+                             app.ping.ping_freshness);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
 
   hr = parent_node->appendChild(element, NULL);
   if (FAILED(hr)) {

@@ -84,6 +84,7 @@ class ATL_NO_VTABLE AppBundleWeb
  private:
   Update3WebBase* update3web_;
   CComPtr<IAppBundle> app_bundle_;
+  bool has_installed_app_;
 
   DISALLOW_COPY_AND_ASSIGN(AppBundleWeb);
 };
@@ -300,7 +301,7 @@ STDMETHODIMP AppBundleWeb::get_appWeb(int index, IDispatch** app_web) {
   return ComInitHelper<AppWeb>(app.p, app_web);
 }
 
-AppBundleWeb::AppBundleWeb() : update3web_(NULL) {
+AppBundleWeb::AppBundleWeb() : update3web_(NULL), has_installed_app_(false) {
 }
 
 STDMETHODIMP AppBundleWeb::createApp(BSTR app_id,
@@ -313,6 +314,8 @@ STDMETHODIMP AppBundleWeb::createApp(BSTR app_id,
     CORE_LOG(LE, (_T("[CreateApp failed][0x%x]"), hr));
     return hr;
   }
+
+  has_installed_app_ = false;
 
   hr = app->put_brandCode(brand_code);
   if (FAILED(hr)) {
@@ -351,6 +354,8 @@ STDMETHODIMP AppBundleWeb::createInstalledApp(BSTR app_id) {
     return hr;
   }
 
+  has_installed_app_ = true;
+
   hr = app_bundle_->put_installSource(
       CComBSTR(kCmdLineInstallSource_Update3Web_OnDemand));
   if (FAILED(hr)) {
@@ -366,6 +371,8 @@ HRESULT AppBundleWeb::createAllInstalledApps() {
     CORE_LOG(LE, (_T("[CreateAllInstalledApps failed][0x%x]"), hr));
     return hr;
   }
+
+  has_installed_app_ = true;
 
   return S_OK;
 }
@@ -387,7 +394,8 @@ STDMETHODIMP AppBundleWeb::download() {
 }
 
 STDMETHODIMP AppBundleWeb::install() {
-  if (update3web_->is_machine_install() &&
+  if (!has_installed_app_ &&
+      update3web_->is_machine_install() &&
       !UserRights::TokenIsAdmin(update3web_->impersonation_token())) {
     CORE_LOG(LE, (_T("[Need to be an admin to call this method]")));
     return E_ACCESSDENIED;
@@ -405,7 +413,8 @@ STDMETHODIMP AppBundleWeb::resume() {
 }
 
 STDMETHODIMP AppBundleWeb::cancel() {
-  if (update3web_->is_machine_install() &&
+  if (!has_installed_app_ &&
+      update3web_->is_machine_install() &&
       !UserRights::TokenIsAdmin(update3web_->impersonation_token())) {
     CORE_LOG(LE, (_T("[Need to be an admin to cancel]")));
     return E_ACCESSDENIED;
@@ -610,9 +619,9 @@ HRESULT Update3WebBase::FinalConstruct() {
     return hr;
   }
 
-  if (!impersonation_token_.CreatePrimaryToken(&primary_token_)) {
+  if (!primary_token_.GetProcessToken(TOKEN_ALL_ACCESS)) {
     hr = HRESULTFromLastError();
-    CORE_LOG(LE, (_T("[CreatePrimaryToken failed][0x%x]"), hr));
+    CORE_LOG(LE, (_T("[Update3WebBase::FC][GetProcessToken failed][%#x]"), hr));
     return hr;
   }
 

@@ -106,6 +106,7 @@ const TCHAR* const kOriginURL = _T("originurl");
 const TCHAR* const kParameter = _T("parameter");
 const TCHAR* const kPeriodOverrideSec = _T("periodoverridesec");
 const TCHAR* const kPhysMemory = _T("physmemory");
+const TCHAR* const kPingFreshness = _T("ping_freshness");
 const TCHAR* const kPlatform = _T("platform");
 const TCHAR* const kProtocol = _T("protocol");
 const TCHAR* const kRequestId = _T("requestid");

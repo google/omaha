@@ -15,6 +15,7 @@
 
 #include "omaha/base/reg_key.h"
 #include "omaha/common/const_group_policy.h"
+#include "omaha/common/experiment_labels.h"
 #include "omaha/common/update_response.h"
 #include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/app_unittest_base.h"
@@ -269,6 +270,43 @@ TEST_F(UpdateRequestUtilsTest,
     EXPECT_STREQ(cohorts[i].hint, request.apps[i].cohort_hint);
     EXPECT_STREQ(cohorts[i].name, request.apps[i].cohort_name);
   }
+}
+
+TEST_F(UpdateRequestUtilsTest, PingFreshness) {
+  const CString ping_freshness(_T("{e23bd96a-b6df-4cfe-89bc-70d1e71afca2}"));
+  EXPECT_SUCCEEDED(RegKey::SetValue(kAppId1ClientStateKeyPathUser,
+                                    kRegValuePingFreshness,
+                                    ping_freshness));
+
+  __mutexScope(app_->model()->lock());
+  AppManager::Instance()->ReadAppPersistentData(app_);
+  EXPECT_STREQ(ping_freshness, app_->ping_freshness());
+
+  BuildRequest(app_, true, update_request_.get());
+
+  const xml::request::Request& request = update_request_->request();
+  EXPECT_EQ(1, request.apps.size());
+  EXPECT_STREQ(ping_freshness, request.apps[0].ping.ping_freshness);
+}
+
+// Tests that the experiment label is picked up when the request is built and
+// the experiment label does not contain a timestamp.
+TEST_F(UpdateRequestUtilsTest, ExperimentLabels) {
+  const TCHAR expiration_date[] = _T("Sun, 09 Mar 2025 16:13:03 GMT");
+  const time64 expiration = 133860103830000000uI64;
+  ExperimentLabels experiment_labels;
+  EXPECT_TRUE(experiment_labels.SetLabel(_T("label key"),
+                                         _T("label value"),
+                                         expiration));
+  EXPECT_SUCCEEDED(experiment_labels.WriteToRegistry(false,
+                                                     app_->app_guid_string()));
+
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+  BuildRequest(app_, true, update_request_.get());
+
+  const xml::request::Request& request = update_request_->request();
+  EXPECT_EQ(1, request.apps.size());
+  EXPECT_STREQ(_T("label key=label value"), request.apps[0].experiments);
 }
 
 }  // namespace update_request_utils

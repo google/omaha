@@ -81,6 +81,14 @@ const TCHAR* const kLabelOldCombined = LABELOLD_COMBINED;
 const TCHAR* const kLabelNewCombined = LABELONE_COMBINED
                                        LABEL_DELIMITER_LA
                                        LABELTWO_COMBINED;
+const TCHAR* const kLabelNewCombinedNoTimeStamps =
+                                       LABELONE_KEY
+                                       LABEL_DELIMITER_KV
+                                       LABELONE_VALUE
+                                       LABEL_DELIMITER_LA
+                                       LABELTWO_KEY
+                                       LABEL_DELIMITER_KV
+                                       LABELTWO_VALUE;
 
 const TCHAR* const kLabelAllCombined = LABELONE_COMBINED
                                        LABEL_DELIMITER_LA
@@ -270,7 +278,8 @@ TEST(ExperimentLabelsTest, FindLabelByKey) {
 TEST(ExperimentLabelsTest, Serialize_Empty) {
   ExperimentLabels el;
 
-  CString serialized = el.Serialize();
+  CString serialized = el.Serialize(
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, _T(""));
 }
 
@@ -280,7 +289,8 @@ TEST(ExperimentLabelsTest, Serialize_Single_Valid) {
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOneValue, kLabelOneExpInt));
   EXPECT_EQ(1, el.NumLabels());
 
-  CString serialized = el.Serialize();
+  CString serialized = el.Serialize(
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, kLabelOneCombined);
 }
 
@@ -292,11 +302,13 @@ TEST(ExperimentLabelsTest, Serialize_Single_Expired) {
   EXPECT_EQ(1, el.NumLabels());
 
   el.SetPreserveExpiredLabels(false);
-  CString serialized = el.Serialize();
+  CString serialized = el.Serialize(
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, _T(""));
 
   el.SetPreserveExpiredLabels(true);
-  serialized = el.Serialize();
+  serialized = el.Serialize(
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, kLabelOldCombined);
 }
 
@@ -307,9 +319,23 @@ TEST(ExperimentLabelsTest, Serialize_Multi_Valid) {
   EXPECT_TRUE(el.SetLabel(kLabelTwoKey, kLabelTwoValue, kLabelTwoExpInt));
   EXPECT_EQ(2, el.NumLabels());
 
-  CString serialized = el.Serialize();
+  CString serialized = el.Serialize(
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, kLabelNewCombined);
 }
+
+TEST(ExperimentLabelsTest, Serialize_Multi_Valid_NoTimeStamps) {
+  ExperimentLabels el;
+
+  EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOneValue, kLabelOneExpInt));
+  EXPECT_TRUE(el.SetLabel(kLabelTwoKey, kLabelTwoValue, kLabelTwoExpInt));
+  EXPECT_EQ(2, el.NumLabels());
+
+  CString serialized = el.Serialize(
+      ExperimentLabels::SerializeOptions::DEFAULT);
+  EXPECT_STREQ(serialized, kLabelNewCombinedNoTimeStamps);
+}
+
 
 TEST(ExperimentLabelsTest, Serialize_Multi_Valid_Expired) {
   ExperimentLabels el;
@@ -321,11 +347,13 @@ TEST(ExperimentLabelsTest, Serialize_Multi_Valid_Expired) {
   EXPECT_EQ(3, el.NumLabels());
 
   el.SetPreserveExpiredLabels(false);
-  CString serialized = el.Serialize();
+  CString serialized = el.Serialize(
+      ExperimentLabels::INCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, kLabelNewCombined);
 
   el.SetPreserveExpiredLabels(true);
-  serialized = el.Serialize();
+  serialized = el.Serialize(
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, kLabelAllCombined);
 }
 

@@ -264,7 +264,7 @@ class AppManager {
   HRESULT ClearInstallationId(const App& app) const;
 
   // Writes the elapsed days since datum and day start time when last active
-  // ping/roll call happened to registry.
+  // ping/roll call happened to registry. Updates the ping freshness.
   void SetLastPingTimeMetrics(const App& app,
                               int elpased_days_since_datum,
                               int elapsed_seconds_since_day_start) const;

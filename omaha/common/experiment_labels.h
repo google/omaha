@@ -42,6 +42,14 @@ namespace omaha {
 
 class ExperimentLabels {
  public:
+  // Controls the format of the label serialization.
+  enum SerializeOptions {
+    // The privacy-safe behavior is to not serialize time stamps.
+    DEFAULT = 0x0,
+    // Outputs the time stamps of the experiment labels.
+    INCLUDE_TIMESTAMPS = 0x1,
+  };
+
   ExperimentLabels();
   ~ExperimentLabels();
 
@@ -86,7 +94,7 @@ class ExperimentLabels {
   void ClearAllLabels();
 
   // Concatenates and emits all labels in the store in an XML-friendly format.
-  CString Serialize() const;
+  CString Serialize(SerializeOptions options) const;
 
   // Replaces the current contents of the store with new labels from an
   // XML-friendly string.  On success, returns true; the store reflects the

@@ -193,6 +193,18 @@ void RegisterOrUnregisterGoopdateLocalServer(bool reg);
 
 void RegisterOrUnregisterGoopdateService(bool reg);
 
+struct FileStruct {
+  const TCHAR* const filename;
+  const DWORD file_attributes;
+};
+
+void CreateDirs(const TCHAR* parent_dir,
+                const TCHAR* const directories[],
+                size_t number_of_directories);
+void CreateFiles(const TCHAR* parent_dir,
+                 const FileStruct files[],
+                 size_t number_of_files);
+
 }  // namespace omaha
 
 // TODO(omaha): Replace custom predicates with EXPECT_HRESULT_SUCCEEDED/FAILED.

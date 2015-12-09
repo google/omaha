@@ -31,6 +31,7 @@
 #include "omaha/common/const_goopdate.h"
 #include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/app_unittest_base.h"
+#include "omaha/goopdate/worker.h"
 #include "omaha/setup/setup_google_update.h"
 #include "omaha/testing/unit_test.h"
 
@@ -1392,6 +1393,52 @@ void SetDisplayName(const CString& name, App* app) {
   AppManagerTestBase::SetDisplayName(name, app);
 }
 
+// Tests the ping freshness feature.
+void PingFreshnessTest(bool is_machine) {
+  const TCHAR* key_name = is_machine ?
+      kGuid1ClientStateKeyPathMachine : kGuid1ClientStateKeyPathUser;
+  EXPECT_FALSE(RegKey::HasValue(key_name, kRegValuePingFreshness));
+
+  // The worker initialization creates its own instance of the AppManager.
+  // Therefore, delete the singleton instance created by the unit test.
+  AppManager::DeleteInstance();
+  EXPECT_HRESULT_SUCCEEDED(Worker::Instance().Initialize(is_machine));
+  AppManager* app_manager = AppManager::Instance();
+
+  GUID app_guid = GUID_NULL;
+  EXPECT_HRESULT_SUCCEEDED(StringToGuidSafe(
+      _T("{21CD0965-0B0E-47cf-B421-2D191C16C0E2}"), &app_guid));
+
+  scoped_ptr<AppBundle> app_bundle;
+  {
+    // AppBundle code expects the model to be locked.
+    __mutexScope(Worker::Instance().model()->lock());
+
+    // Create an app bundle and an app. Test that every call of the function
+    // PersistUpdateCheckSuccessfullySent results in a new ping freshness
+    // value, which can be deserialized and read as a member of the app.
+    app_bundle.reset(new AppBundle(is_machine, Worker::Instance().model()));
+    App app(app_guid, true, app_bundle.get());
+    EXPECT_HRESULT_SUCCEEDED(
+        app_manager->PersistUpdateCheckSuccessfullySent(app,
+                                                        kMinDaysSinceDatum,
+                                                        0));
+    EXPECT_HRESULT_SUCCEEDED(app_manager->ReadAppPersistentData(&app));
+    CString ping_freshness1 = app.ping_freshness();
+    EXPECT_FALSE(ping_freshness1.IsEmpty());
+
+    EXPECT_HRESULT_SUCCEEDED(
+        app_manager->PersistUpdateCheckSuccessfullySent(app,
+                                                        kMinDaysSinceDatum,
+                                                        0));
+    EXPECT_HRESULT_SUCCEEDED(app_manager->ReadAppPersistentData(&app));
+    CString ping_freshness2 = app.ping_freshness();
+    EXPECT_FALSE(ping_freshness2.IsEmpty());
+
+    EXPECT_STRNE(ping_freshness1, ping_freshness2);
+  }
+}
+
 // TODO(omaha3): Maybe use this to test the similar code in install_apps.cc.
 #if 0
 TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
@@ -2499,6 +2546,15 @@ TEST_F(AppManagerMachineTest,
 TEST_F(AppManagerMachineTest,
        PersistUpdateCheckSuccessfullySent_NoPreviousPing_NotActive) {
   PersistUpdateCheckSuccessfullySent_NoPreviousPing(false);
+}
+
+TEST_F(AppManagerUserTest, PersistUpdateCheckSuccessfullySent_PingFreshness) {
+  PingFreshnessTest(false);
+}
+
+TEST_F(AppManagerMachineTest,
+       PersistUpdateCheckSuccessfullySent_PingFreshness) {
+  PingFreshnessTest(true);
 }
 
 TEST_F(AppManagerUserTest, SynchronizeClientStateTest) {

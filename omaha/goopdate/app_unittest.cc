@@ -16,8 +16,10 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include "omaha/base/error.h"
+#include "omaha/base/time.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/const_group_policy.h"
+#include "omaha/common/experiment_labels.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/update_response.h"
 #include "omaha/goopdate/app_state_checking_for_update.h"
@@ -986,6 +988,29 @@ TEST_F(AppInstallTest, InstallProgress_Chrome_ValidInstallerProgress) {
   LONG local_percentage = kCurrentStateProgressUnknown;
   EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
   EXPECT_EQ(progress_percent, local_percentage);
+}
+
+// Tests the interface for accessing experiments labels.
+TEST_F(AppInstallTest, ExperimentLabels) {
+  // Create a bundle of one app, set an experiment label for that app, and
+  // verify that the experiment labels are retrieved with and without
+  // timestamps, respectively.
+  App* app = NULL;   // The app object is owned by the bundle.
+  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &app));
+  ASSERT_TRUE(app);
+
+  const TCHAR expiration_date[] = _T("Sun, 09 Mar 2025 16:13:03 GMT");
+  const time64 expiration = 133860103830000000uI64;
+  ExperimentLabels experiment_labels;
+  EXPECT_TRUE(experiment_labels.SetLabel(_T("label key"),
+                                         _T("label value"),
+                                         expiration));
+  EXPECT_SUCCEEDED(experiment_labels.WriteToRegistry(false, kChromeAppId));
+
+  EXPECT_STREQ(_T("label key=label value|Sun, 09 Mar 2025 16:13:03 GMT"),
+               app->GetExperimentLabels());
+  EXPECT_STREQ(_T("label key=label value"),
+               app->GetExperimentLabelsNoTimestamps());
 }
 
 }  // namespace omaha

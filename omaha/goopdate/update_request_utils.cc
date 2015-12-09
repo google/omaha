@@ -49,7 +49,7 @@ void BuildRequest(const App* app,
   request_app.iid            = GuidToString(app->iid());
   request_app.brand_code     = app->brand_code();
   request_app.client_id      = app->client_id();
-  request_app.experiments    = app->GetExperimentLabels();
+  request_app.experiments    = app->GetExperimentLabelsNoTimestamps();
   request_app.ap             = app->ap();
 
   // referral_id is not sent.
@@ -84,6 +84,7 @@ void BuildRequest(const App* app,
         app->days_since_last_roll_call();
     request_app.ping.day_of_last_activity = app->day_of_last_activity();
     request_app.ping.day_of_last_roll_call = app->day_of_last_roll_call();
+    request_app.ping.ping_freshness = app->ping_freshness();
 
     request_app.update_check.is_valid = true;
     request_app.update_check.is_update_disabled =

@@ -625,6 +625,7 @@ HRESULT AppManager::ReadAppDefinedAttributeSubkeys(
 //    (referral is intentionally not read)
 //    InstallTime (converted to diff)
 //    oeminstall
+//    ping_freshness
 //  ClientState and ClientStateMedium key
 //    eulaaccepted
 //  ClientState key in HKCU/HKLM/Low integrity
@@ -800,6 +801,12 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
   }
 
   app->day_of_install_ = GetDayOfInstall(app_guid);
+
+  CString ping_freshness;
+  if (SUCCEEDED(client_state_key.GetValue(kRegValuePingFreshness,
+                                          &ping_freshness))) {
+    app->ping_freshness_ = ping_freshness;
+  }
 
   return S_OK;
 }
@@ -1616,6 +1623,16 @@ void AppManager::SetLastPingTimeMetrics(
         kRegValueDayOfLastRollCall,
         static_cast<DWORD>(elapsed_days_since_datum))));
   }
+
+  // Update the ping freshness value for this ping data. The purpose of the
+  // ping freshness is to avoid counting duplicate ping data in the case of
+  // reimaged machines. Every time the program updates the user counts, it
+  // generates a new freshness value, which remains constant until the
+  // user counts are sent to the server.
+  GUID ping_freshness = GUID_NULL;
+  VERIFY1(SUCCEEDED(::CoCreateGuid(&ping_freshness)));
+  VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValuePingFreshness,
+                                              GuidToString(ping_freshness))));
 }
 
 void AppManager::UpdateDayOfInstallIfNecessary(
@@ -1647,6 +1664,7 @@ void AppManager::UpdateDayOfInstallIfNecessary(
 // registry if the corresponding ping has been sent.
 // Removes installation id, if did run = true or if goopdate.
 // Clears did run.
+// Updates ping_freshness, as a side effect of calling SetLastPingTimeMetrics.
 HRESULT AppManager::PersistUpdateCheckSuccessfullySent(
     const App& app,
     int elapsed_days_since_datum,
