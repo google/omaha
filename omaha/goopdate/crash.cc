@@ -257,9 +257,11 @@ HRESULT CrashReporter::UploadCrash(bool is_out_of_process,
     CORE_LOG(L2, (_T("[Uploading crash report]")
                   _T("[%s][%s]"), crash_report_url_, crash_filename));
     ASSERT1(!crash_report_url_.IsEmpty());
+    std::map<std::wstring, std::wstring> crash_files;
+    crash_files[L"upload_file_minidump"] = crash_filename.GetString();
     ReportResult res = sender.SendCrashReport(crash_report_url_.GetString(),
                                               parameters,
-                                              crash_filename.GetString(),
+                                              crash_files,
                                               &report_code);
     switch (res) {
       case google_breakpad::RESULT_SUCCEEDED:
