@@ -86,6 +86,7 @@ An Omaha V3 request MUST contain exactly one `<request>` element at the root lev
 
 ##### Attributes #####
   * `dedup`: Specifies the preferred de-duplication algorithm for this request. Either "" (unknown or no-preference), "cr" (client-regulated) or "uid" (user-id). Default: "". Omaha Client sends "cr" in all cases.
+  * `dlpref`: Specifies the preferred download URL behavior. Either "" (unknown or no-preference) or "cacheable" (the server should prioritize sending URLs that are easily cacheable). Default: "".
   * `installsource`: A string specifying the cause of the update flow. For example: "ondemand", or "scheduledtask". Default: "".
   * `ismachine`: "1" if the client is known to be installed with system-level or administrator privileges. "0" otherwise. Default: "0".
   * `originurl`: If the update flow is invoked from a web page, contains the URL of that page. Otherwise, "". Default: "".
