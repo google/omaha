@@ -440,6 +440,7 @@ None.
     * `error-osnotsupported`: The server recognized the product, but the product is not available for the client's operating system.
     * `error-hwnotsupported`: The server recognized the product, but the product is not available for the client's hardware configuration.
     * `error-unsupportedProtocol`: The server recognized the product, but is incapable of delivering a response in this version of the protocol.
+
 ##### Legal Child Elements #####
   * At most one `<urls>`.
   * At most one `<manifest>`.
@@ -449,6 +450,8 @@ None.
 
 #### `<urls>` (Response) ####
 ##### Attributes #####
+
+
 ##### Legal Child Elements #####
   * At least one `<url>`.
 
@@ -470,6 +473,8 @@ None.
   * `version`:
 
 ##### Attributes #####
+
+
 ##### Legal Child Elements #####
   * Exactly one `<packages>`.
   * Exactly one `<actions>`.
@@ -480,6 +485,7 @@ None.
 #### `<packages>` (Response) ####
 ##### Attributes #####
 None.
+
 ##### Legal Child Elements #####
   * At least one `<package>`.
 
@@ -508,6 +514,7 @@ None.
 #### `<actions>` (Response) ####
 ##### Attributes #####
 None.
+
 ##### Legal Child Elements #####
   * At least one `<action>`.
 
