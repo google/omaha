@@ -49,7 +49,7 @@ exe_output_unsigned = env.Command(
 # Inform Hammer that the .res file must be built before the executeable
 env.Requires(exe_output_unsigned, clickonce_res)
 
-exe_output = env.SignedBinary(
+exe_output = env.DualSignedBinary(
     target=clickonce_binary,
     source=exe_output_unsigned,
 )

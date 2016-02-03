@@ -44,6 +44,7 @@
 
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
+#include "omaha/base/utils.h"
 #include "omaha/common/const_goopdate.h"
 
 // TODO(omaha3): move to common.
@@ -187,6 +188,8 @@ int WINAPI _tWinMain(HINSTANCE instance,
                      HINSTANCE,
                      LPTSTR,
                      int cmd_show) {
+  omaha::EnableSecureDllLoading();
+
   // We assume here that running from program files means we should check
   // the machine install version and otherwise we should check the user
   // version. This should be true in all end user cases except for initial

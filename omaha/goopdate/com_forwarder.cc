@@ -32,6 +32,24 @@ HRESULT HRESULTFromLastError() {
   return (error_code != NO_ERROR) ? HRESULT_FROM_WIN32(error_code) : E_FAIL;
 }
 
+// This is defined in utils.h, but that pulls in additional dependencies we do
+// not want.
+// This function calls ::SetDefaultDllDirectories to retrict DLL loads to either
+// full paths or %SYSTEM32%. ::SetDefaultDllDirectories is available on Windows
+// 8.1 and above, and on Windows Vista and above when KB2533623 is applied.
+bool EnableSecureDllLoading() {
+  typedef BOOL (WINAPI *SetDefaultDllDirectoriesFunction)(DWORD flags);
+  SetDefaultDllDirectoriesFunction set_default_dll_directories =
+      reinterpret_cast<SetDefaultDllDirectoriesFunction>(
+          ::GetProcAddress(::GetModuleHandle(_T("kernel32.dll")),
+                           "SetDefaultDllDirectories"));
+  if (set_default_dll_directories) {
+    return !!set_default_dll_directories(LOAD_LIBRARY_SEARCH_SYSTEM32);
+  }
+
+  return false;
+}
+
 // TODO(omaha): Use a registry override instead.
 #if !OFFICIAL_BUILD
 bool IsRunningFromStaging(const WCHAR* const command_line) {
@@ -42,6 +60,8 @@ bool IsRunningFromStaging(const WCHAR* const command_line) {
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous_instance,
                     LPTSTR cmd_line, int show) {
+  EnableSecureDllLoading();
+
   UNREFERENCED_PARAMETER(instance);
   UNREFERENCED_PARAMETER(previous_instance);
   UNREFERENCED_PARAMETER(cmd_line);

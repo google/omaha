@@ -85,7 +85,7 @@ for omaha_version_info in local_env['omaha_versions_info']:
         source=lang_inputs
     )
 
-    signed_dll = lang_env.SignedBinary(
+    signed_dll = lang_env.DualSignedBinary(
         target='%s/%sgoopdateres_%s.dll' % (lang, prefix, lang),
         source=unsigned_dll,
     )

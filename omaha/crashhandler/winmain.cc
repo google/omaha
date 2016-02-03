@@ -25,6 +25,8 @@
 #include "omaha/crashhandler/crash_handler.h"
 
 int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int) {
+  omaha::EnableSecureDllLoading();
+
   bool is_system_process = false;
 
   omaha::InitializeVersionFromModule(NULL);

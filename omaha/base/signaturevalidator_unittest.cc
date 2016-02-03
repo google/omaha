@@ -68,6 +68,34 @@ TEST(CertInfoTest, CertInfo) {
   EXPECT_STREQ(kCertificatePublicKeyHash, cert_info->public_key_hash_);
 }
 
+TEST(CertInfoTest, CertInfo_Sha256) {
+  const TCHAR kRelativePath[] =
+      _T("unittest_support\\sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe");
+
+  CString executable_full_path(app_util::GetCurrentModuleDirectory());
+  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  ASSERT_TRUE(File::Exists(executable_full_path));
+
+  CertList cert_list;
+  ExtractAllCertificatesFromSignature(executable_full_path, &cert_list);
+
+  EXPECT_EQ(4, cert_list.size());
+
+  const CertInfo* cert_info = NULL;
+  cert_list.FindFirstCert(&cert_info,
+                          kSha256CertificateSubjectName,
+                          CString(),
+                          CString(),
+                          false,      // Do not allow test variant.
+                          true);      // Check if the certificate is valid now.
+  ASSERT_TRUE(cert_info);
+
+  EXPECT_STREQ(kSha256CertificateSubjectName, cert_info->issuing_company_name_);
+  EXPECT_STREQ(kSha256CertificateThumbprint, cert_info->thumbprint_);
+  EXPECT_STREQ(kSha256CertificatePublicKeyHash, cert_info->public_key_hash_);
+}
+
 TEST(SignatureValidatorTest, VerifySigneeIsGoogle_OfficiallySigned) {
   const TCHAR kRelativePath[] = _T("unittest_support\\SaveArguments.exe");
 
@@ -107,6 +135,27 @@ TEST(SignatureValidatorTest,
 TEST(SignatureValidatorTest, VerifySigneeIsGoogle_OmahaTestSigned) {
   const TCHAR kRelativePath[] =
       _T("unittest_support\\SaveArguments_OmahaTestSigned.exe");
+
+  CString executable_full_path(app_util::GetCurrentModuleDirectory());
+  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
+}
+
+TEST(SignatureValidatorTest, VerifySigneeIsGoogle_Sha256) {
+  const TCHAR kRelativePath[] =
+      _T("unittest_support\\sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe");
+
+  CString executable_full_path(app_util::GetCurrentModuleDirectory());
+  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           kRelativePath));
+  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
+}
+
+TEST(SignatureValidatorTest, VerifySigneeIsGoogle_DualSigned_Sha1AndSha256) {
+  const TCHAR kRelativePath[] = _T("unittest_support\\Sha1_4c40dba5f988fae57a57d6457495f98b_and_sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe");  // NOLINT
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
   ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
@@ -156,6 +205,7 @@ TEST(SignatureValidatorTest, VerifyAuthenticodeSignature) {
     _T("GoogleUpdate_old_signature.exe"),
     _T("SaveArguments.exe"),
     _T("SaveArguments_OmahaTestSigned.exe"),
+    _T("Sha1_4c40dba5f988fae57a57d6457495f98b_and_sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe"),  // NOLINT
     _T("SaveArguments_unsigned_wrong_markup_value.exe"),
     _T("SaveArguments_wrong_cn.exe"),
   };
@@ -164,6 +214,7 @@ TEST(SignatureValidatorTest, VerifyAuthenticodeSignature) {
     S_OK,
     S_OK,
     CERT_E_UNTRUSTEDROOT,
+    S_OK,
     TRUST_E_NOSIGNATURE,
     CERT_E_UNTRUSTEDROOT,
   };

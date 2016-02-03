@@ -90,8 +90,8 @@ _OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2007-2010 Google Inc.'
 
 # The hash comes from the Thumbprint item in the Details tab of the file
 # properties for the public key .cer file.
-# TODO(omaha): Can we automate reading this and/or pass it on the command line?
-_BUILD_SERVER_CERTIFICATE_HASH = 'cafd39335d6e76f0e26d81296e7cbbfbdf16a720'
+# Omaha and Chrome certificate: sha1 (12/13/2015 to 12/14/2016).
+_BUILD_SERVER_CERTIFICATE_HASH = '264e38570f882e5a0272423757741233a661b553'
 
 #
 # End vendor-specific constants.
@@ -203,6 +203,40 @@ AddOption(
 )
 
 AddOption(
+    '--sha1_authenticode_file',
+    action='store',
+    nargs=1,
+    type='string',
+    default='$MAIN_DIR/data/Sha1OmahaTestCert.pfx'
+)
+
+default_sha1_cert_password = '888'
+AddOption(
+    '--sha1_authenticode_password',
+    action='store',
+    nargs=1,
+    type='string',
+    default=default_sha1_cert_password
+)
+
+AddOption(
+    '--sha2_authenticode_file',
+    action='store',
+    nargs=1,
+    type='string',
+    default='$MAIN_DIR/data/Sha2OmahaTestCert.pfx'
+)
+
+default_sha2_cert_password = '888'
+AddOption(
+    '--sha2_authenticode_password',
+    action='store',
+    nargs=1,
+    type='string',
+    default=default_sha2_cert_password
+)
+
+AddOption(
     '--patching_certificate',
     action='store',
     nargs=1,
@@ -303,8 +337,17 @@ if win_env.Bit('all'):
 # only if we're not on the build server.
 if not win_env.Bit('build_server'):
   win_env.Replace(
-    CERTIFICATE_PATH=GetOption('authenticode_file'),
+    CERTIFICATE_HASH='',
     CERTIFICATE_PASSWORD=GetOption('authenticode_password'),
+    CERTIFICATE_PATH=GetOption('authenticode_file'),
+    SHA1_CERTIFICATE_HASH='',
+    SHA2_CERTIFICATE_HASH='',
+    SHA1_CERTIFICATE_ISSUER='',
+    SHA2_CERTIFICATE_ISSUER='',
+    SHA1_CERTIFICATE_PASSWORD=GetOption('sha1_authenticode_password'),
+    SHA2_CERTIFICATE_PASSWORD=GetOption('sha2_authenticode_password'),
+    SHA1_CERTIFICATE_PATH=GetOption('sha1_authenticode_file'),
+    SHA2_CERTIFICATE_PATH=GetOption('sha2_authenticode_file'),
   )
 
   # Store whether we're using the default test cert separately, because

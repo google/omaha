@@ -128,7 +128,7 @@ def BuildMSI(version, namespace, exe_name, wxs_template, msi_base_name,
 
   wix_env.Depends(unsigned_msi, additional_dependencies)
 
-  signed_output = env.SignedBinary(
+  signed_output = env.DualSignedBinary(
       target=msi_base_name + '.msi',
       source=unsigned_msi,
   )
@@ -177,7 +177,7 @@ for (major, minor, build, patch) in [(1,0,101,0), (1,0,102,0)]:
       COMPONENT_TEST_RUNNABLE=False
   )
 
-  signed_output = ver_env.SignedBinary(
+  signed_output = ver_env.DualSignedBinary(
       target=signed_target_name,
       source=unsigned_exe,
   )

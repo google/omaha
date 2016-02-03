@@ -93,17 +93,17 @@ ADMX_POLICIES = '''
             required="true" minValue="0" maxValue="43200" />
       </elements>
     </policy>
-    <policy name="Pol_PayloadType" class="Machine"
-        displayName="$(string.Pol_PayloadType)"
-        explainText="$(string.Explain_PayloadType)"
-        presentation="$(presentation.Pol_PayloadType)"
+    <policy name="Pol_DownloadPreference" class="Machine"
+        displayName="$(string.Pol_DownloadPreference)"
+        explainText="$(string.Explain_DownloadPreference)"
+        presentation="$(presentation.Pol_DownloadPreference)"
         key="%(RootPolicyKey)s">
       <parentCategory ref="Cat_Preferences" />
       <supportedOn ref="Sup_GoogleUpdate1_3_26_0" />
       <elements>
-        <enum id="Part_PayloadType" key="%(RootPolicyKey)s"
-            valueName="PayloadType">
-          <item displayName="$(string.PayloadType_DropDown)">
+        <enum id="Part_DownloadPreference" key="%(RootPolicyKey)s"
+            valueName="DownloadPreference">
+          <item displayName="$(string.DownloadPreference_DropDown)">
             <value>
               <string>cacheable</string>
             </value>
@@ -389,8 +389,8 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Cat_ProxyServer', 'Proxy Server'),
     ('Cat_Applications', 'Applications'),
     ('Pol_AutoUpdateCheckPeriod', 'Auto-update check period override'),
-    ('Pol_PayloadType', 'Download URL class override'),
-    ('PayloadType_DropDown', 'Cacheable download URLs'),
+    ('Pol_DownloadPreference', 'Download URL class override'),
+    ('DownloadPreference_DropDown', 'Cacheable download URLs'),
     ('Pol_ProxyMode', 'Choose how to specify proxy server settings'),
     ('Pol_ProxyServer', 'Address or URL of proxy server'),
     ('Pol_ProxyPacUrl', 'URL to a proxy .pac file'),
@@ -420,7 +420,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
      'Minimum number of minutes between automatic update checks.\n\n'
      'Set the value to 0 if you want to disable all auto-update checks '
      '(not recommended).'),
-    ('Explain_PayloadType',
+    ('Explain_DownloadPreference',
      'If enabled, the Google Update server will attempt to provide '
      'cache-friendly URLs for update payloads in its responses.'),
     ('Explain_ProxyMode',
@@ -486,8 +486,8 @@ ADML_PRESENTATIONS  = '''\
         <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="1400"
             spinStep="60">Minutes between update checks</decimalTextBox>
       </presentation>
-      <presentation id="Pol_PayloadType">
-        <dropdownList refId="Part_PayloadType"
+      <presentation id="Pol_DownloadPreference">
+        <dropdownList refId="Part_DownloadPreference"
             defaultItem="0">Type of download URL to request</dropdownList>
       </presentation>
       <presentation id="Pol_ProxyMode">

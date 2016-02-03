@@ -71,15 +71,15 @@ PREFERENCES = """
           END PART
         END POLICY
 
-        POLICY !!Pol_PayloadType
+        POLICY !!Pol_DownloadPreference
           #if version >= 4
             SUPPORTED !!Sup_GoogleUpdate1_3_26_0
           #endif
-          EXPLAIN !!Explain_PayloadType
-          PART !!Part_PayloadType DROPDOWNLIST
-            VALUENAME "PayloadType"
+          EXPLAIN !!Explain_DownloadPreference
+          PART !!Part_DownloadPreference DROPDOWNLIST
+            VALUENAME "DownloadPreference"
             ITEMLIST
-              NAME !!PayloadType_Cacheable VALUE "cacheable"
+              NAME !!DownloadPreference_Cacheable VALUE "cacheable"
             END ITEMLIST
           END PART
         END POLICY
@@ -246,7 +246,7 @@ Cat_ProxyServer=""" + PROXYSERVER_CATEGORY + """
 Cat_Applications=""" + APPLICATIONS_CATEGORY + """
 
 Pol_AutoUpdateCheckPeriod=Auto-update check period override
-Pol_PayloadType=Download URL class override
+Pol_DownloadPreference=Download URL class override
 Pol_ProxyMode=Choose how to specify proxy server settings
 Pol_ProxyServer=Address or URL of proxy server
 Pol_ProxyPacUrl=URL to a proxy .pac file
@@ -256,7 +256,7 @@ Pol_DefaultUpdatePolicy=""" + DEFAULT_UPDATE_POLICY + """
 Pol_UpdatePolicy=""" + UPDATE_POLICY + """
 
 Part_AutoUpdateCheckPeriod=Minutes between update checks
-Part_PayloadType=Type of download URL to request
+Part_DownloadPreference=Type of download URL to request
 Part_DisableAllAutoUpdateChecks=Disable all auto-update checks (not recommended)
 Part_ProxyMode=Choose how to specify proxy server settings
 Part_ProxyServer=Address or URL of proxy server
@@ -274,7 +274,7 @@ ProxyPacScript_DropDown=Use a .pac proxy script
 ProxyFixedServers_DropDown=Use fixed proxy servers
 ProxyUseSystem_DropDown=Use system proxy settings
 
-PayloadType_Cacheable=Cacheable download URLs
+DownloadPreference_Cacheable=Cacheable download URLs
 
 """)
 
@@ -305,7 +305,7 @@ HORIZONTAL_RULE + """
 Explain_Preferences=General policies for Google Update.
 
 Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.
-Explain_PayloadType=If enabled, the Google Update server will attempt to provide cache-friendly URLs for update payloads in its responses.
+Explain_DownloadPreference=If enabled, the Google Update server will attempt to provide cache-friendly URLs for update payloads in its responses.
 
 Explain_ProxyMode=Allows you to specify the proxy server used by Google Update.\\n\\nIf you choose to never use a proxy server and always connect directly, all other options are ignored.\\n\\nIf you choose to use system proxy settings or auto detect the proxy server, all other options are ignored.\\n\\nIf you choose fixed server proxy mode, you can specify further options in 'Address or URL of proxy server'.\\n\\nIf you choose to use a .pac proxy script, you must specify the URL to the script in 'URL to a proxy .pac file'.
 Explain_ProxyServer=You can specify the URL of the proxy server here.\\n\\nThis policy only takes effect if you have selected manual proxy settings at 'Choose how to specify proxy server settings'.

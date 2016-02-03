@@ -66,6 +66,13 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
     'unittest_support/SaveArguments_unsigned_wrong_markup_value.exe',
     'unittest_support/SaveArguments_unsigned_wrong_resource_name.exe',
     'unittest_support/SaveArguments_wrong_cn.exe',
+    # Omaha and Chrome certificate: sha1 (12/13/2015 to 12/14/2016).
+    # serial=4c40dba5f988fae57a57d6457495f98b
+    'unittest_support/Sha1_4c40dba5f988fae57a57d6457495f98b.exe',
+    'unittest_support/Sha1_4c40dba5f988fae57a57d6457495f98b_and_sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe',
+    # Omaha and Chrome certificate: sha256 (12/15/2015 to 12/16/2018).
+    # serial=2a9c21acaaa63a3c58a7b9322bee948d
+    'unittest_support/sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe',
 
     # Minidump file for the crash unit test.
     'unittest_support/minidump.dmp',
@@ -125,12 +132,14 @@ unittest_support += env.Replicate(
 # assumes they are in the same directory as the tests.
 # For coverage builds, use a custom command instead of Replicate() because
 # Replicate() will cause the DLL to be re-instrumented.
+omaha_dll = '$STAGING_DIR/goopdate.dll'
 resource_dll = '$STAGING_DIR/goopdateres_en.dll'
 if env.IsCoverageBuild():
+  env.CopyFileToDirectory('$TESTS_DIR', omaha_dll)
   env.CopyFileToDirectory('$TESTS_DIR', resource_dll)
 else:
+  env.Replicate('$TESTS_DIR', omaha_dll)
   env.Replicate('$TESTS_DIR', resource_dll)
-
 #=============UnitTests========================================================
 
 
@@ -668,7 +677,7 @@ if env.Bit('all'):
       COMPONENT_TEST_RUNNABLE=False
   )
 
-  signed_output = save_args_env.SignedBinary(
+  signed_output = save_args_env.DualSignedBinary(
       target='SaveArguments.exe',
       source=unsigned_output,
   )

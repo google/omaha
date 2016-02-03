@@ -96,6 +96,8 @@ HRESULT RegisterOrUnregisterProxies64(bool is_machine, bool is_register) {
 }  // namespace omaha
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+  omaha::EnableSecureDllLoading();
+
   TCHAR* cmd_line = GetCommandLine();
   omaha::CommandLineParser parser;
   HRESULT hr = parser.ParseFromString(cmd_line);

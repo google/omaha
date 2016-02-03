@@ -96,7 +96,7 @@ unsigned_exe_output = exe_env.ComponentProgram(
     source=exe_inputs,
 )
 
-sign_output = env.SignedBinary(
+sign_output = env.DualSignedBinary(
     target='GoogleUpdate_signed.exe',
     source=unsigned_exe_output,
 )

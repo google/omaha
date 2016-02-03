@@ -635,6 +635,22 @@ class MessageLoopWithWait : public MessageLoopInterface,
   DISALLOW_EVIL_CONSTRUCTORS(MessageLoopWithWait);
 };
 
+// This function calls ::SetDefaultDllDirectories to retrict DLL loads to either
+// full paths or %SYSTEM32%. ::SetDefaultDllDirectories is available on Windows
+// 8.1 and above, and on Windows Vista and above when KB2533623 is applied.
+inline bool EnableSecureDllLoading() {
+  typedef BOOL (WINAPI *SetDefaultDllDirectoriesFunction)(DWORD flags);
+  SetDefaultDllDirectoriesFunction set_default_dll_directories =
+      reinterpret_cast<SetDefaultDllDirectoriesFunction>(
+          ::GetProcAddress(::GetModuleHandle(_T("kernel32.dll")),
+                           "SetDefaultDllDirectories"));
+  if (set_default_dll_directories) {
+    return !!set_default_dll_directories(LOAD_LIBRARY_SEARCH_SYSTEM32);
+  }
+
+  return false;
+}
+
 // Calls an entry point that may be exposed from a DLL
 //   It is an error if the DLL is missing or can't be loaded
 //   If the entry point is missing the error returned is

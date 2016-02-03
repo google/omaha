@@ -160,12 +160,14 @@ HRESULT SplashScreen::Initialize() {
 
   (EnableFlatButtons(m_hWnd));
 
-  omaha_dll_.Attach(::LoadLibraryEx(kOmahaDllName,
-                                    NULL,
-                                    LOAD_LIBRARY_AS_DATAFILE));
-  ASSERT1(omaha_dll_.IsValid());
+  // ::GetModuleHandle(kOmahaDllName) is needed to allow the Splash Screen unit
+  // test to work, since it runs under omaha_unittest.exe. In production, since
+  // this code runs from goopdate.dll, the ::GetModuleHandle(kOmahaDllName) is
+  // unnecessary, and even if ::GetModuleHandle(kOmahaDllName) returns NULL, the
+  // code will work as expected since Animate_OpenEx will get the resource from
+  // the current module.
   VERIFY1(Animate_OpenEx(GetDlgItem(IDC_MARQUEE),
-                         omaha_dll_.handle(),
+                         ::GetModuleHandle(kOmahaDllName),
                          MAKEINTRESOURCE(IDR_MARQUEE)));
   VERIFY1(Animate_Play(GetDlgItem(IDC_MARQUEE), 0, -1, -1));
 

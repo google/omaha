@@ -199,7 +199,7 @@ def BuildNpGoogleUpdateDll(omaha_version_info):
       use_pch_default=False,
   )
 
-  signed_dll = plugin_env.SignedBinary(
+  signed_dll = plugin_env.DualSignedBinary(
       target='%s%s' % (prefix,
                        omaha_version_info.plugin_signed_file_info.filename),
       source=unsigned_dll,

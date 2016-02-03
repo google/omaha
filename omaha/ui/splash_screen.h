@@ -117,7 +117,6 @@ class SplashScreen
 
   // Handle to large icon to show when ALT-TAB
   scoped_hicon hicon_;
-  AutoLibrary omaha_dll_;
   CustomProgressBarCtrl progress_bar_;
 
   DISALLOW_COPY_AND_ASSIGN(SplashScreen);

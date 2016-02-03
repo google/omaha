@@ -74,7 +74,7 @@ def BuildShowErrorActionDll(omaha_version_info):
       source=dll_inputs,
   )
 
-  signed_dll = dll_env.SignedBinary(
+  signed_dll = dll_env.DualSignedBinary(
       target='%s%s.dll' % (prefix, signed_target_name),
       source=unsigned_dll,
   )

@@ -119,6 +119,15 @@ TEST(UtilsTest, GetFolderPath_ProgramFiles_RegistryRedirection) {
   EXPECT_SUCCEEDED(RegKey::DeleteKey(kRegistryHiveOverrideRoot, true));
 }
 
+TEST(UtilsTest, EnableSecureDllLoading) {
+  if (!EnableSecureDllLoading()) {
+    std::wcout << _T("\tThis test did not run because ")
+                  _T("'::SetDefaultDllDirectories' is not supported on this ")
+                  _T("system.") << std::endl;
+    return;
+  }
+}
+
 TEST(UtilsTest, CallEntryPoint0) {
   HRESULT hr(E_FAIL);
   ASSERT_FAILED(CallEntryPoint0(L"random-nonsense.dll", "foobar", &hr));

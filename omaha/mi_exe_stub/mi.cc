@@ -55,6 +55,7 @@
 #pragma warning(pop)
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/system_info.h"
+#include "omaha/base/utils.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/mi_exe_stub/process.h"
 #include "omaha/mi_exe_stub/mi.grh"
@@ -637,6 +638,8 @@ HRESULT HandleError(HRESULT result) {
 }  // namespace omaha
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int) {
+  omaha::EnableSecureDllLoading();
+
   scoped_co_init init_com_apt;
   HRESULT hr(init_com_apt.hresult());
   if (FAILED(hr)) {
