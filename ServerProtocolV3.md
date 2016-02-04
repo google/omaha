@@ -118,7 +118,7 @@ Contains information about the capabilities of the client's hardware.
   * `sse42`: "1" if the client's hardware supports the SSE4.2 instruction set. "0" if the client's hardware does not. "-1" if unknown. Default: "-1".
   * `ssse3`: "1" if the client's hardware supports the SSSE3 instruction set. "0" if the client's hardware does not. "-1" if unknown. Default: "-1".
   * `avx`: "1" if the client's hardware supports the AVX instruction set. "0" if the client's hardware does not. "-1" if unknown. Default: "-1".
-  * `physmemory`: The physical memory the client has available to it, measured in bytes, or "-1" if unknown. This value is intended to reflect the maximum theoretical storage capacity of the client, not including any hard drive or paging to a hard drive or peripheral. Omaha Client truncates the available physical memory down to the nearest gibibyte. Default: "-1".
+  * `physmemory`: The physical memory the client has available to it, measured in gibibytes, truncated down to the nearest gibibyte, or "-1" if unknown. This value is intended to reflect the maximum theoretical storage capacity of the client, not including any hard drive or paging to a hard drive or peripheral. Default: "-1".
 
 ##### Legal Child Elements #####
 None.
