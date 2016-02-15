@@ -116,9 +116,9 @@ static void Add(felem out, const felem a, const felem b) {
   }
 }
 
-#define kTwo31p3  (1u<<31) + (1u<<3)
-#define kTwo31m3  (1u<<31) - (1u<<3)
-#define kTwo31m15m3  (1u<<31) - (1u<<15) - (1u<<3)
+#define kTwo31p3  (((u32)1)<<31) + (((u32)1)<<3)
+#define kTwo31m3  (((u32)1)<<31) - (((u32)1)<<3)
+#define kTwo31m15m3  (((u32)1)<<31) - (((u32)1)<<15) - (1u<<3)
 // kZero31ModP is 0 mod p where bit 31 is set in all limbs so that we can
 // subtract smaller amounts without underflow. See the section "Subtraction" in
 // [1] for why.
@@ -275,9 +275,9 @@ static void Reduce(felem a) {
   // have added something to a[3], thus it's > 2**12. Therefore we can
   // carry down to a[0].
   a[3] -= 1 & mask;
-  a[2] += mask & ((1<<28) - 1);
-  a[1] += mask & ((1<<28) - 1);
-  a[0] += mask & (1<<28);
+  a[2] += mask & ((((u32)1)<<28) - 1);
+  a[1] += mask & ((((u32)1)<<28) - 1);
+  a[0] += mask & (((u32)1)<<28);
 }
 
 // Invert calcuates *out = in**-1 by computing in**(2**224 - 2**96 - 1), i.e.
@@ -355,7 +355,7 @@ static void Contract(felem out) {
   // because we just added to it.
   for (i = 0; i < 3; i++) {
     u32 mask = (u32)((s32)(out[i]) >> 31);
-    out[i] += (1 << 28) & mask;
+    out[i] += (((u32)1) << 28) & mask;
     out[i+1] -= 1 & mask;
   }
 
@@ -388,7 +388,7 @@ static void Contract(felem out) {
   // sufficiently positive.
   for (i = 0; i < 3; i++) {
     u32 mask = (u32)((s32)(out[i]) >> 31);
-    out[i] += (1 << 28) & mask;
+    out[i] += (((u32)1) << 28) & mask;
     out[i+1] -= 1 & mask;
   }
 
@@ -714,8 +714,8 @@ static void ScalarMult(p224_point* out,
 }
 
 static u32 u32_from_bin(const u8* v) {
-  return (v[0] << 24) |
-         (v[1] << 16) |
+  return (((u32)v[0]) << 24) |
+         (((u32)v[1]) << 16) |
          (v[2] << 8) |
          v[3];
 }
