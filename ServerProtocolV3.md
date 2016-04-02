@@ -319,6 +319,7 @@ Throughout and at the end of an update flow, the client MAY send event reports b
     * `17`: error
   * `time_since_update_available_ms`: The number of milliseconds that elapsed from when the update was known to be available to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
   * `time_since_download_start_ms`: The number of milliseconds that elapsed from when the download was begun to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
+  * `url`: The URL from which the download was attempted. Default: ""
   * `nextversion`: The version of the app that the update flow to which this event belongs attempted to reach, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
   * `previousversion`: The version of the app that was present on the machine at the time of the update-check of this update flow, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
   * `nextfp`: If the update flow containing this event contained only a single package, the fingerprint that package attempted to reach, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#packages--fingerprints). Default: "".
