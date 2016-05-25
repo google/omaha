@@ -292,11 +292,11 @@ Throughout and at the end of an update flow, the client MAY send event reports b
   * `errorcode`: The error code (if any) of the operation, encoded as a signed base-10 integer. Default: "0".
   * `extracode1`: Additional numeric information about the operation's result, encoded as a signed base-10 integer. Default: "0".
   * `errorcat`: An error category, for use in distinguishing between different classes of error codes, encoded as a signed base-10 integer. Default: "0".
-  * `download_time_ms`: For events representing a download, the time elapsed between the start of the download and the end of the download, in milliseconds. For events representing an entire update flow, the sum of all such download times over the course of the update flow. Default: "0".
-  * `downloaded`: For events representing a download, the number of bytes successfully downloaded. For events representing an entire update flow, the sum of all such successfully downloaded bytes over the course of the update flow. Default: "0".
+  * `download_time_ms`: For events representing a download, the time elapsed between the start of the download and the end of the download, in milliseconds. For events representing an entire update flow, the sum of all such download times over the course of the update flow. Default: "0". Sent in `<event>`s that have an `eventtype` of "1", "2", "3", and "14" only.
+  * `downloaded`: For events representing a download, the number of bytes successfully downloaded. For events representing an entire update flow, the sum of all such successfully downloaded bytes over the course of the update flow. Default: "0". Sent in `<event>`s that have an `eventtype` of "1", "2", "3", and "14" only.
   * `total`: For events representing a download, the number of bytes expected to be downloaded. For events representing an entire update flow, the sum of all such expeccted bytes over the course of the update flow. Default: "0".
-  * `update_check_time_ms`: For events representing an entire update flow, the time elapsed between the start of the update check and the end of the update check, in milliseconds. Default: "0".
-  * `install_time_ms`: For events representing an install, the time elapsed between the start of the install and the end of the install, in milliseconds. For events representing an entire update flow, the sum of all such durations. Default: "0".
+  * `update_check_time_ms`: For events representing an entire update flow, the time elapsed between the start of the update check and the end of the update check, in milliseconds. Default: "0". Sent in `<event>`s that have an `eventtype` of "2" and "3" only.
+  * `install_time_ms`: For events representing an install, the time elapsed between the start of the install and the end of the install, in milliseconds. For events representing an entire update flow, the sum of all such durations. Default: "0". Sent in `<event>`s that have an `eventtype` of "2" and "3" only.
   * `source_url_index`: For events representing a download, the position of the download URL in the list of URLs supplied by the server in a `<urls>` tag.
   * `state_cancelled`: The state of the system at the time that a user cancels the update/install. The following values are defined, all others are reserved. Default: "0".
     * `0`: unknown or not-cancelled
@@ -317,8 +317,8 @@ Throughout and at the end of an update flow, the client MAY send event reports b
     * `15`: paused
     * `16`: no update
     * `17`: error
-  * `time_since_update_available_ms`: The number of milliseconds that elapsed from when the update was known to be available to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
-  * `time_since_download_start_ms`: The number of milliseconds that elapsed from when the download was begun to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2"
+  * `time_since_update_available_ms`: The number of milliseconds that elapsed from when the update was known to be available to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2" Sent in `<event>`s that have an `eventtype` of "2" and "3" only.
+  * `time_since_download_start_ms`: The number of milliseconds that elapsed from when the download was begun to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2" Sent in `<event>` that have an `eventtype`s of "2" and "3" only.
   * `url`: The URL from which the download was attempted. Default: ""
   * `nextversion`: The version of the app that the update flow to which this event belongs attempted to reach, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
   * `previousversion`: The version of the app that was present on the machine at the time of the update-check of this update flow, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
