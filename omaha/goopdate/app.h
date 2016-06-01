@@ -30,6 +30,7 @@
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/constants.h"
+#include "omaha/common/app_registry_utils.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/ping_event.h"
 #include "omaha/common/protocol_definition.h"
@@ -54,12 +55,6 @@ struct ErrorContext {
   int     extra_code1;
 
   // Add more extra codes here as needed.
-};
-
-struct Cohort {
-  CString cohort;  // Opaque string.
-  CString hint;    // Server may use to move the app to a new cohort.
-  CString name;    // Human-readable interpretation of the cohort.
 };
 
 class DownloadManagerInterface;

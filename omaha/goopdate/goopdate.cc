@@ -539,6 +539,8 @@ HRESULT GoopdateImpl::DoMain(HINSTANCE instance,
   CString module_path = app_util::GetModulePath(module_instance_);
   ASSERT1(!module_path.IsEmpty());
 
+  metric_omaha_version = GetVersion();
+
   OPT_LOG(L1, (_T("[%s][version %s][%s][%s]"),
                module_path, GetVersionString(), kBuildType, kOfficialBuild));
 
@@ -634,6 +636,8 @@ HRESULT GoopdateImpl::InitializeGoopdateAndLoadResources() {
   // IsMachineProcess requires the command line be parsed first.
   is_machine_ = IsMachineProcess();
   OPT_LOG(L1, (_T("[is machine: %d]"), is_machine_));
+
+  metric_is_system_install.Set(is_machine_);
 
   // After parsing the command line, reinstall the crash handler to match the
   // state of the process.

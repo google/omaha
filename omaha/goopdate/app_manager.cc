@@ -738,7 +738,7 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
   client_state_key.GetValue(kRegValueAdditionalParams, &app->ap_);
   client_state_key.GetValue(kRegValueTTToken, &app->tt_token_);
 
-  VERIFY1(SUCCEEDED(ReadCohort(app_guid, &app->cohort_)));
+  ReadCohort(app_guid, &app->cohort_);
 
   CString iid;
   client_state_key.GetValue(kRegValueInstallationId, &iid);
@@ -1346,13 +1346,9 @@ HRESULT AppManager::SetTTToken(const App& app) const {
   }
 }
 
-CString AppManager::GetCohortKeyName(const GUID& app_guid) const {
-  const CString app_id_key_name(GetClientStateKeyName(app_guid));
-  return AppendRegKeyPath(app_id_key_name, kRegSubkeyCohort);
-}
-
 HRESULT AppManager::DeleteCohortKey(const GUID& app_guid) const {
-  return RegKey::DeleteKey(GetCohortKeyName(app_guid));
+  return app_registry_utils::DeleteCohortKey(is_machine_,
+                                             GuidToString(app_guid));
 }
 
 HRESULT AppManager::ReadCohort(const GUID& app_guid, Cohort * cohort) const {
@@ -1360,26 +1356,9 @@ HRESULT AppManager::ReadCohort(const GUID& app_guid, Cohort * cohort) const {
 
   ASSERT1(cohort);
 
-  RegKey cohort_key;
-  HRESULT hr = cohort_key.Open(GetCohortKeyName(app_guid), KEY_READ);
-  if (FAILED(hr)) {
-    return S_FALSE;
-  }
-
-  hr = cohort_key.GetValue(NULL, &cohort->cohort);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  // Optional values.
-  cohort_key.GetValue(kRegValueCohortHint, &cohort->hint);
-  cohort_key.GetValue(kRegValueCohortName, &cohort->name);
-
-  CORE_LOG(L3, (_T("[AppManager::ReadCohort][%s][%s][%s]"),
-                cohort->cohort,
-                cohort->hint,
-                cohort->name));
-  return S_OK;
+  return app_registry_utils::ReadCohort(is_machine_,
+                                        GuidToString(app_guid),
+                                        cohort);
 }
 
 HRESULT AppManager::WriteCohort(const App& app) const {
@@ -1387,27 +1366,9 @@ HRESULT AppManager::WriteCohort(const App& app) const {
 
   __mutexScope(registry_access_lock_);
 
-  if (app.cohort().cohort.IsEmpty()) {
-    return DeleteCohortKey(app.app_guid());
-  }
-
-  RegKey cohort_key;
-  HRESULT hr = cohort_key.Create(GetCohortKeyName(app.app_guid()));
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  hr = cohort_key.SetValue(NULL, app.cohort().cohort);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  VERIFY1(SUCCEEDED(cohort_key.SetValue(kRegValueCohortHint,
-                                        app.cohort().hint)));
-  VERIFY1(SUCCEEDED(cohort_key.SetValue(kRegValueCohortName,
-                                        app.cohort().name)));
-
-  return S_OK;
+  return app_registry_utils::WriteCohort(is_machine_,
+                                         app.app_guid_string(),
+                                         app.cohort());
 }
 
 void AppManager::ClearOemInstalled(const AppIdVector& app_ids) {

@@ -552,10 +552,11 @@ HRESULT NetworkRequestImpl::DoSendHttpRequest(
   cur_http_request_->GetResponse().swap(*response);
 
   CString retry_after_header;
-  HRESULT hr = QueryHeadersString(WINHTTP_QUERY_CUSTOM,
-                                  kHeaderXRetryAfter,
-                                  &retry_after_header);
-  if (SUCCEEDED(hr) && !retry_after_header.IsEmpty()) {
+  if (IsHttpsUrl(url_) &&
+      SUCCEEDED(QueryHeadersString(WINHTTP_QUERY_CUSTOM,
+                                   kHeaderXRetryAfter,
+                                   &retry_after_header)) &&
+      !retry_after_header.IsEmpty()) {
     retry_after_seconds_ = String_StringToInt(retry_after_header);
   }
 

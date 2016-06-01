@@ -166,8 +166,9 @@ HRESULT SplashScreen::Initialize() {
   // unnecessary, and even if ::GetModuleHandle(kOmahaDllName) returns NULL, the
   // code will work as expected since Animate_OpenEx will get the resource from
   // the current module.
+  const HMODULE module_omaha_dll(::GetModuleHandle(kOmahaDllName));
   VERIFY1(Animate_OpenEx(GetDlgItem(IDC_MARQUEE),
-                         ::GetModuleHandle(kOmahaDllName),
+                         module_omaha_dll,
                          MAKEINTRESOURCE(IDR_MARQUEE)));
   VERIFY1(Animate_Play(GetDlgItem(IDC_MARQUEE), 0, -1, -1));
 

@@ -625,6 +625,7 @@ void HandleInstallError(HRESULT error,
   if (is_eula_required || is_oem_install || is_enterprise_install) {
     return;
   }
+
   Ping ping(is_machine, session_id, install_source);
   ping.LoadAppDataFromExtraArgs(extra_args);
   if (!has_setup_succeeded) {
@@ -646,9 +647,10 @@ void HandleInstallError(HRESULT error,
                       extra_code1));
     ping.BuildAppsPing(install_complete_ping_event);
   }
+
   HRESULT hr = ping.Send(false);
   if (FAILED(hr)) {
-    CORE_LOG(LW, (_T("[Ping::Send failed][0x%x]"), hr));
+    CORE_LOG(LW, (_T("[ping.Send failed][0x%x]"), hr));
   }
 }
 

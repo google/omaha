@@ -51,4 +51,7 @@ DEFINE_METRIC_count(goopdate_constructor);
 DEFINE_METRIC_count(goopdate_destructor);
 DEFINE_METRIC_count(goopdate_main);
 
+DEFINE_METRIC_bool(is_system_install);
+DEFINE_METRIC_integer(omaha_version);
+
 }  // namespace omaha

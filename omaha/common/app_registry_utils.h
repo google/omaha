@@ -28,6 +28,12 @@
 
 namespace omaha {
 
+struct Cohort {
+  CString cohort;  // Opaque string.
+  CString hint;    // Server may use to move the app to a new cohort.
+  CString name;    // Human-readable interpretation of the cohort.
+};
+
 namespace app_registry_utils {
 
 // Returns the application registration path for the specified app.
@@ -118,6 +124,7 @@ void GetClientStateData(bool is_machine,
                         CString* client_id,
                         CString* iid,
                         CString* experiment_labels,
+                        Cohort* cohort,
                         int* install_time_diff_sec,
                         int* day_of_install);
 
@@ -128,6 +135,13 @@ int GetInstallTimeDiffSec(bool is_machine, const CString& app_id);
 HRESULT GetDayOfInstall(bool is_machine,
                         const CString& app_id,
                         DWORD* day_of_install);
+
+CString GetCohortKeyName(bool is_machine, const CString& app_id);
+HRESULT DeleteCohortKey(bool is_machine, const CString& app_id);
+HRESULT ReadCohort(bool is_machine, const CString& app_id, Cohort* cohort);
+HRESULT WriteCohort(bool is_machine,
+                    const CString& app_id,
+                    const Cohort& cohort);
 
 // Reads all uninstalled apps from the registry.
 HRESULT GetUninstalledApps(bool is_machine, std::vector<CString>* app_ids);

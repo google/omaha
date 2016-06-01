@@ -29,19 +29,13 @@ security_env.Append(
         ],
 )
 
-
 security_inputs = [
-    'aes.c',
-    'b64.c',
-    'challenger.cc',
     'hmac.c',
     'md5.c',
     'p256.c',
     'p256_ec.c',
     'p256_ecdsa.c',
     'p256_prng.c',
-    'rc4.c',
-    'rsa.cc',
     'sha.c',
     'sha256.c',
     ]
@@ -50,4 +44,3 @@ security_inputs = [
 security_env.ComponentStaticLibraryMultiarch('security',
                                              security_inputs,
                                              use_pch_default=False)
-

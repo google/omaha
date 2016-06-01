@@ -151,7 +151,7 @@ class SHA256Hash : public HashInterface {
   }
 
  private:
-  SHA256_CTX ctx2_;
+  LITE_SHA256_CTX ctx2_;
 
   DISALLOW_COPY_AND_ASSIGN(SHA256Hash);
 };

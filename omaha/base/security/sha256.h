@@ -23,11 +23,11 @@
 extern "C" {
 #endif // __cplusplus
 
-typedef HASH_CTX SHA256_CTX;
+typedef HASH_CTX LITE_SHA256_CTX;
 
-void SHA256_init(SHA256_CTX* ctx);
-void SHA256_update(SHA256_CTX* ctx, const void* data, unsigned int len);
-const uint8_t* SHA256_final(SHA256_CTX* ctx);
+void SHA256_init(LITE_SHA256_CTX* ctx);
+void SHA256_update(LITE_SHA256_CTX* ctx, const void* data, unsigned int len);
+const uint8_t* SHA256_final(LITE_SHA256_CTX* ctx);
 
 // Convenience method. Returns digest address.
 const uint8_t* SHA256_hash(const void* data, unsigned int len, uint8_t* digest);

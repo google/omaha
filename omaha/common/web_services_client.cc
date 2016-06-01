@@ -40,7 +40,7 @@ WebServicesClient::WebServicesClient(bool is_machine)
       use_cup_(false),
       http_xdaystart_header_value_(-1),
       http_xdaynum_header_value_(-1),
-      http_xretryafter_header_value_(-1) {
+      retry_after_sec_(-1) {
 }
 
 WebServicesClient::~WebServicesClient() {
@@ -59,7 +59,7 @@ HRESULT WebServicesClient::Initialize(const CString& url,
                                       static_cast<Lockable*>(new LLock));
   __mutexScope(lock_);
 
-  url_ = url;
+  original_url_ = url;
   headers_ = headers;
   use_cup_ = use_cup;
 
@@ -146,8 +146,10 @@ HRESULT WebServicesClient::SendStringWithFallback(
   CORE_LOG(L3, (_T("[sending web services request as UTF-8][%S]"),
       utf8_request_string));
 
-  HRESULT hr = SendStringInternal(url_, utf8_request_string, update_response);
-  if (IsHttpsUrl(url_)) {
+  HRESULT hr = SendStringInternal(original_url_,
+                                  utf8_request_string,
+                                  update_response);
+  if (IsHttpsUrl(original_url_)) {
     used_ssl_ = true;
     ssl_result_ = hr;
   }
@@ -157,11 +159,16 @@ HRESULT WebServicesClient::SendStringWithFallback(
   if (SUCCEEDED(hr)) {
     return hr;
   }
+
+  if (retry_after_sec_ > 0) {
+    CORE_LOG(L3, (_T("[retry after was received, don't fallback to http]")));
+    return hr;
+  }
   if (hr == GOOPDATE_E_CANCELLED) {
     CORE_LOG(L3, (_T("[the request was canceled, don't fallback to http]")));
     return hr;
   }
-  if (IsHttpUrl(url_)) {
+  if (IsHttpUrl(original_url_)) {
     CORE_LOG(L3, (_T("[http request already failed, don't fallback to http]")));
     return hr;
   }
@@ -171,7 +178,7 @@ HRESULT WebServicesClient::SendStringWithFallback(
   }
 
   CORE_LOG(L3, (_T("[fallback to the http url]")));
-  HRESULT hr_fallback = SendStringInternal(MakeHttpUrl(url_),
+  HRESULT hr_fallback = SendStringInternal(MakeHttpUrl(original_url_),
                                            utf8_request_string,
                                            update_response);
   if (SUCCEEDED(hr_fallback)) {
@@ -184,10 +191,10 @@ HRESULT WebServicesClient::SendStringWithFallback(
 }
 
 HRESULT WebServicesClient::SendStringInternal(
-    const CString& url,
+    const CString& actual_url,
     const CStringA& utf8_request_string,
     xml::UpdateResponse* update_response) {
-  CORE_LOG(L3, (_T("[url is %s]"), url));
+  CORE_LOG(L3, (_T("[actual_url is %s]"), actual_url));
 
   // Each attempt to send a request is using its own network client.
   HRESULT hr = CreateRequest();
@@ -196,7 +203,7 @@ HRESULT WebServicesClient::SendStringInternal(
   }
 
   std::vector<uint8> response_buffer;
-  hr = network_request_->PostUtf8String(url,
+  hr = network_request_->PostUtf8String(actual_url,
                                         utf8_request_string,
                                         &response_buffer);
   CORE_LOG(L3, (_T("[the request returned 0x%x]"), hr));
@@ -208,8 +215,10 @@ HRESULT WebServicesClient::SendStringInternal(
 
   // The value of the X-Retry-After header is only trusted when the response is
   // over https.
-  if (IsHttpsUrl(url_)) {
-    http_xretryafter_header_value_ = FindHttpHeaderValueInt(kHeaderXRetryAfter);
+  if (IsHttpsUrl(actual_url)) {
+    retry_after_sec_ =
+        std::min(FindHttpHeaderValueInt(kHeaderXRetryAfter), kSecondsPerDay);
+    CORE_LOG(L3, (_T("[retry_after_sec_][%d]"), retry_after_sec_));
   }
 
   if (FAILED(hr)) {
@@ -316,9 +325,9 @@ int WebServicesClient::http_xdaynum_header_value() const {
   return http_xdaynum_header_value_;
 }
 
-int WebServicesClient::http_xretryafter_header_value() const {
+int WebServicesClient::retry_after_sec() const {
   __mutexScope(lock_);
-  return http_xretryafter_header_value_;
+  return retry_after_sec_;
 }
 
 // static

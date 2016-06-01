@@ -41,7 +41,7 @@ static const uint32_t K[64] = {
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2 };
 
-static void SHA256_Transform(SHA256_CTX* ctx) {
+static void SHA256_Transform(LITE_SHA256_CTX* ctx) {
   uint32_t W[64];
   uint32_t A, B, C, D, E, F, G, H;
   uint8_t* p = ctx->buf;
@@ -106,7 +106,7 @@ static const HASH_VTAB SHA256_VTAB = {
   SHA256_DIGEST_SIZE
 };
 
-void SHA256_init(SHA256_CTX* ctx) {
+void SHA256_init(LITE_SHA256_CTX* ctx) {
   ctx->f = &SHA256_VTAB;
   ctx->state[0] = 0x6a09e667;
   ctx->state[1] = 0xbb67ae85;
@@ -120,7 +120,7 @@ void SHA256_init(SHA256_CTX* ctx) {
 }
 
 
-void SHA256_update(SHA256_CTX* ctx, const void* data, unsigned int len) {
+void SHA256_update(LITE_SHA256_CTX* ctx, const void* data, unsigned int len) {
   int i = (int) (ctx->count & 63);
   const uint8_t* p = (const uint8_t*)data;
 
@@ -136,7 +136,7 @@ void SHA256_update(SHA256_CTX* ctx, const void* data, unsigned int len) {
 }
 
 
-const uint8_t* SHA256_final(SHA256_CTX* ctx) {
+const uint8_t* SHA256_final(LITE_SHA256_CTX* ctx) {
   uint8_t *p = ctx->buf;
   uint64_t cnt = ctx->count * 8;
   int i;
@@ -164,7 +164,7 @@ const uint8_t* SHA256_final(SHA256_CTX* ctx) {
 /* Convenience function */
 const uint8_t* SHA256_hash(const void* data, unsigned int len,
                            uint8_t* digest) {
-  SHA256_CTX ctx;
+  LITE_SHA256_CTX ctx;
   SHA256_init(&ctx);
   SHA256_update(&ctx, data, len);
   memcpy(digest, SHA256_final(&ctx), SHA256_DIGEST_SIZE);

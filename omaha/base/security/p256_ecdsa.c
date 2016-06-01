@@ -26,7 +26,7 @@ static void determine_k(const p256_int* key,
   do {
     p256_int p1, p2;
 
-    HMAC_CTX hmac;
+    LITE_HMAC_CTX hmac;
 
     // Note: taking the p256_int in-memory representation is not
     // endian neutral. Signatures with an identical key on identical

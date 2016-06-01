@@ -943,7 +943,10 @@ void App::LogTextAppendFormat(const TCHAR* format, ...) {
 void App::AddPingEvent(const PingEventPtr& ping_event) {
   __mutexScope(model()->lock());
   ping_events_.push_back(ping_event);
+
   CORE_LOG(L3, (_T("[ping event added][%s]"), ping_event->ToString()));
+
+  VERIFY1(SUCCEEDED(app_bundle()->BuildAndPersistPing()));
 }
 
 HRESULT App::CheckGroupPolicy() const {

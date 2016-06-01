@@ -17,6 +17,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/vistautil.h"
 #include "omaha/common/lang.h"
 #include "omaha/common/update_response.h"
 #include "omaha/goopdate/app_manager.h"
@@ -43,6 +44,12 @@ xml::UpdateResponseResult GetUpdateResponseResult(
   const CString language = app->app_bundle()->display_language();
 
   xml::UpdateResponseResult update_response_result =
+      update_response_utils::CheckSystemRequirements(update_response, language);
+  if (FAILED(update_response_result.first)) {
+    return update_response_result;
+  }
+
+  update_response_result =
       update_response_utils::GetResult(update_response,
                                        app->app_guid_string(),
                                        app_name,
@@ -91,6 +98,8 @@ void AppStateCheckingForUpdate::PostUpdateCheck(
   const CString language = app->app_bundle()->display_language();
 
   if (FAILED(update_check_result)) {
+    PersistUpdateCheckValuesOnFailure(app);
+
     // TODO(omaha3): There is no guarantee that this is a actually network
     // error. In Omaha 2, this was called much closer to the send. Making most
     // errors, such as processing errors, app errors helps, but it could still
@@ -234,6 +243,36 @@ void AppStateCheckingForUpdate::HandleErrorResponse(App* app,
   app->LogTextAppendFormat(_T("Status=%s, Code=0x%08x"), log_status, code);
 
   Error(app, ErrorContext(code), message);
+}
+
+// This function will be called when the update check fails. In this case,
+// Omaha looks into the response headers for relevant values. |daynum| or
+// |daystart|will be -1 if the corresponding header value is absent. Client
+// should not persist if either value is -1.
+void AppStateCheckingForUpdate::PersistUpdateCheckValuesOnFailure(App* app) {
+  ASSERT1(app);
+
+  const int daynum =
+      app->app_bundle()->update_check_client()->http_xdaynum_header_value();
+  const int daystart =
+      app->app_bundle()->update_check_client()->http_xdaystart_header_value();
+
+  if (daystart == -1 || daynum == -1) {
+    return;
+  }
+
+  // Registry writes to HKLM need admin.
+  ASSERT1(!app->app_bundle()->is_machine() || vista_util::IsUserAdmin());
+  ASSERT1(daystart >= 0);
+  ASSERT1(daynum >= kMinDaysSinceDatum);
+  ASSERT1(daynum <= kMaxDaysSinceDatum);
+
+  CORE_LOG(LE, (_T("[PersistHeadersOnFailure][%d][%d]"), daynum, daystart));
+
+  AppManager& app_manager = *AppManager::Instance();
+  app->set_day_of_last_response(daynum);
+  VERIFY1(SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
+      *app, daynum, daystart)));
 }
 
 void AppStateCheckingForUpdate::PersistUpdateCheckSuccessfullySent(

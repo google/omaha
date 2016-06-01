@@ -76,7 +76,7 @@ void AppCommandPingDelegate::SendPing(PingEvent::Types type,
   apps.push_back(app_guid_);
   ping.LoadAppDataFromRegistry(apps);
   ping.BuildAppsPing(ping_event);
-  ping.Send(true);  // true == is_fire_and_forget
+  SendReliablePing(&ping, true);  // true == is_fire_and_forget
 }
 
 }  // namespace omaha

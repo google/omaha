@@ -100,7 +100,9 @@ class SimpleRequestTest : public testing::Test {
   void SimpleDownloadFilePauseAndResume(const CString& url,
                                         const CString& filename,
                                         const ProxyConfig& config);
-  void SimpleDownloadFileCancellation(const CString& filename, bool do_cancel);
+  // Returns the result of the Send call.
+  HRESULT SimpleDownloadFileCancellation(const CString& filename,
+                                         bool do_cancel);
   void SimpleGetHostNotFound(const CString& url, const ProxyConfig& config);
 
   void SimpleGetFileNotFound(const CString& url, const ProxyConfig& config);
@@ -237,7 +239,7 @@ void SimpleRequestTest::SimpleDownloadFilePauseAndResume(
   }
 }
 
-void SimpleRequestTest::SimpleDownloadFileCancellation(
+HRESULT SimpleRequestTest::SimpleDownloadFileCancellation(
     const CString& filename, bool do_cancel) {
   SimpleRequest simple_request;
   PrepareRequest(kBigFileUrl, ProxyConfig(), &simple_request);
@@ -259,6 +261,8 @@ void SimpleRequestTest::SimpleDownloadFileCancellation(
   } else {
     EXPECT_HRESULT_SUCCEEDED(hr);
   }
+
+  return hr;
 }
 
 void SimpleRequestTest::SimpleGetHostNotFound(const CString& url,
@@ -512,9 +516,11 @@ TEST_F(SimpleRequestTest, Cancel_ShouldDeleteTempFile) {
 
   // Verify that cancellation should remove partially downloaded file.
   bool do_cancel = true;
-  SimpleDownloadFileCancellation(temp_file, do_cancel);
-  EXPECT_EQ(INVALID_FILE_ATTRIBUTES, ::GetFileAttributes(temp_file));
-  EXPECT_EQ(ERROR_FILE_NOT_FOUND, ::GetLastError());
+  HRESULT hr = SimpleDownloadFileCancellation(temp_file, do_cancel);
+  if (FAILED(hr)) {
+    EXPECT_EQ(INVALID_FILE_ATTRIBUTES, ::GetFileAttributes(temp_file));
+    EXPECT_EQ(ERROR_FILE_NOT_FOUND, ::GetLastError());
+  }
 
   // Verify that target file is preserved if download is not cancelled.
   do_cancel = false;

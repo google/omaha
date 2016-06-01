@@ -81,13 +81,14 @@ class WebServicesClientInterface {
   virtual int http_xdaynum_header_value() const = 0;
 
   // Returns the last valid value of the optional X-Retry-After header or -1 if
-  // the header was not present in the request.
+  // the header was not present in the request. Only HTTPS X-Retry-After header
+  // header values are respected. Also, the header value is clamped to 24 hours.
   // The server uses the optional X-Retry-After header to indicate that the
   // current request should not be attempted again. Any response received along
   // with the X-Retry-After header should be interpreted as it would have been
   // without the X-Retry-After header. The value of the header is the number of
   // seconds to wait before trying to connect to the server again.
-  virtual int http_xretryafter_header_value() const = 0;
+  virtual int retry_after_sec() const = 0;
 };
 
 // Defines a class to send and receive protocol requests, with a fall back
@@ -125,7 +126,7 @@ class WebServicesClient : public WebServicesClientInterface {
 
   virtual int http_xdaynum_header_value() const;
 
-  virtual int http_xretryafter_header_value() const;
+  virtual int retry_after_sec() const;
 
  private:
   HRESULT CreateRequest();
@@ -165,7 +166,7 @@ class WebServicesClient : public WebServicesClientInterface {
   // testing purposes. Since the class allow falling back on an HTTP url in
   // certain cases, the actual request can go to a different url than what
   // this member contains.
-  CString url_;
+  CString original_url_;
 
   // True if an HTTPS request has been made.
   bool used_ssl_;
@@ -188,11 +189,10 @@ class WebServicesClient : public WebServicesClientInterface {
   int http_xdaystart_header_value_;
   int http_xdaynum_header_value_;
 
-  // This member stores the value of the optional X-Retry-After header. If the
-  // server sends a positive value in seconds for this header, the request will
-  // return from the WebServicesClient::Send() call immediately.
-  // The default value is -1 when the header is not found.
-  int http_xretryafter_header_value_;
+  // Stores the last valid value of the optional X-Retry-After header or -1 if
+  // the header was not present in the request. Only HTTPS X-Retry-After header
+  // header values are respected. Also, the header value is clamped to 24 hours.
+  int retry_after_sec_;
 
   // Set by the client of this class, may be used by the network request if
   // proxy authentication is required later on.

@@ -329,7 +329,7 @@
       </message>
       <message name="IDS_DOWNLOAD_RETRY"
                desc="Message displayed in the main dialog before the download begins.">
-        Egads! Download failed. Retrying... <ph name="DOWNLOAD_RETRY_TIME">%1!d!<ex>5</ex></ph> second(s)
+        Egads! Download failed. Retrying... <ph name="DOWNLOAD_RETRY_TIME">%1!d!<ex>5</ex></ph> second(s) remaining
       </message>
       <message name="IDS_WAITING_TO_DOWNLOAD"
                desc="Progress message displayed in the main dialog before the download begins.">
@@ -337,15 +337,15 @@
       </message>
       <message name="IDS_DOWNLOADING_SHORT"
                desc="Progress message displayed in the main dialog when downloading is expected to finish soon.">
-        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_SEC">%1!d!<ex>56</ex></ph> second(s)
+        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_SEC">%1!d!<ex>56</ex></ph> second(s) remaining
       </message>
       <message name="IDS_DOWNLOADING_LONG"
                desc="Progress message displayed in the main dialog when downloading is expected to take some time.">
-        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_MIN">%1!d!<ex>13</ex></ph> minute(s)
+        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_MIN">%1!d!<ex>13</ex></ph> minute(s) remaining
       </message>
       <message name="IDS_DOWNLOADING_VERY_LONG"
                desc="Progress message displayed in the main dialog when downloading is expected to take very long.">
-        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_HOUR">%1!d!<ex>2</ex></ph> hour(s)
+        Downloading... <ph name="APPLICATION_REMAINING_DOWNLOAD_TIME_HOUR">%1!d!<ex>2</ex></ph> hour(s) remaining
       </message>
       <message name="IDS_DOWNLOADING_COMPLETED"
                desc="Progress message displayed in the main dialog when downloading is just finished.">

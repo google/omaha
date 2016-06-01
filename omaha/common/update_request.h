@@ -35,6 +35,11 @@ class UpdateRequest {
   static UpdateRequest* Create(bool is_machine,
                                const CString& session_id,
                                const CString& install_source,
+                               const CString& origin_url,
+                               const CString& request_id);
+  static UpdateRequest* Create(bool is_machine,
+                               const CString& session_id,
+                               const CString& install_source,
                                const CString& origin_url);
 
   // Adds an 'app' element to the request.

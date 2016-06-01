@@ -1753,6 +1753,13 @@ TEST_P(ConfigManagerTest, CanRetryNow) {
 
   EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(false, now + kSecondsPerHour));
   EXPECT_FALSE(cm_->CanRetryNow(false));
+
+  EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(false, now + 2 * kSecondsPerDay));
+  EXPECT_TRUE(cm_->CanRetryNow(false));
+
+  EXPECT_SUCCEEDED(cm_->SetRetryAfterTime(false,
+                                          std::numeric_limits<uint32>::max()));
+  EXPECT_TRUE(cm_->CanRetryNow(false));
 }
 
 // Tests GetDir indirectly.

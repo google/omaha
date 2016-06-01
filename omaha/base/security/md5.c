@@ -51,7 +51,7 @@ static const uint32_t KK[64] =
   0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 };
 
-static void MD5_Transform(MD5_CTX* ctx) {
+static void MD5_Transform(LITE_MD5_CTX* ctx) {
   uint32_t W[64];
   uint32_t A, B, C, D;
   uint8_t* p = ctx->buf;
@@ -59,9 +59,9 @@ static void MD5_Transform(MD5_CTX* ctx) {
 
   for(t = 0; t < 16; ++t) {
     uint32_t tmp =  *p++;
-    tmp |= *p++ << 8;
-    tmp |= *p++ << 16;
-    tmp |= *p++ << 24;
+    tmp |= (uint32_t)*p++ << 8u;
+    tmp |= (uint32_t)*p++ << 16u;
+    tmp |= (uint32_t)*p++ << 24u;
     W[t] = tmp;
   }
 
@@ -109,7 +109,7 @@ static const HASH_VTAB MD5_VTAB = {
   MD5_DIGEST_SIZE
 };
 
-void MD5_init(MD5_CTX* ctx) {
+void MD5_init(LITE_MD5_CTX* ctx) {
   ctx->f = &MD5_VTAB;
   ctx->state[0] = 0x67452301;
   ctx->state[1] = 0xEFCDAB89;
@@ -119,7 +119,7 @@ void MD5_init(MD5_CTX* ctx) {
 }
 
 
-void MD5_update(MD5_CTX* ctx, const void* data, unsigned int len) {
+void MD5_update(LITE_MD5_CTX* ctx, const void* data, unsigned int len) {
   unsigned int i = (unsigned int)(ctx->count & 63);
   const uint8_t* p = (const uint8_t*)data;
 
@@ -135,7 +135,7 @@ void MD5_update(MD5_CTX* ctx, const void* data, unsigned int len) {
 }
 
 
-const uint8_t* MD5_final(MD5_CTX* ctx) {
+const uint8_t* MD5_final(LITE_MD5_CTX* ctx) {
   uint8_t* p = ctx->buf;
   uint64_t cnt = ctx->count * 8;
   int i;
@@ -163,7 +163,7 @@ const uint8_t* MD5_final(MD5_CTX* ctx) {
 
 /* Convenience function */
 const uint8_t* MD5_hash(const void* data, unsigned int len, uint8_t* digest) {
-  MD5_CTX ctx;
+  LITE_MD5_CTX ctx;
   MD5_init(&ctx);
   MD5_update(&ctx, data, len);
   memcpy(digest, MD5_final(&ctx), MD5_DIGEST_SIZE);

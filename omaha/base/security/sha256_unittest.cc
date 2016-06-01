@@ -57,7 +57,7 @@ TEST(Security, Sha256) {
   for (size_t i = 0; i != arraysize(test_hash256); ++i) {
     const int len = static_cast<int>(strlen(test_hash256[i].binary));
 
-    SHA256_CTX context = {0};
+    LITE_SHA256_CTX context = {0};
     SHA256_init(&context);
     SHA256_update(&context, test_hash256[i].binary, len);
     const uint8_t* result = SHA256_final(&context);

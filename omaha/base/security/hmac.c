@@ -18,11 +18,12 @@
 #include "hmac.h"
 
 #include <memory.h>
+#include <string.h>
 #include "sha.h"
 #include "md5.h"
 #include "sha256.h"
 
-static void HMAC_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
+static void HMAC_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
   unsigned int i;
   memset(&ctx->opad[0], 0, sizeof(ctx->opad));
 
@@ -46,22 +47,22 @@ static void HMAC_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
   }
 }
 
-void HMAC_MD5_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
+void HMAC_MD5_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
   MD5_init(&ctx->hash);
   HMAC_init(ctx, key, len);
 }
 
-void HMAC_SHA_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
+void HMAC_SHA_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
   SHA_init(&ctx->hash);
   HMAC_init(ctx, key, len);
 }
 
-void HMAC_SHA256_init(HMAC_CTX* ctx, const void* key, unsigned int len) {
+void HMAC_SHA256_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
   SHA256_init(&ctx->hash);
   HMAC_init(ctx, key, len);
 }
 
-const uint8_t* HMAC_final(HMAC_CTX* ctx) {
+const uint8_t* HMAC_final(LITE_HMAC_CTX* ctx) {
   uint8_t digest[32];  // upto SHA2
   memcpy(digest, HASH_final(&ctx->hash),
          (HASH_size(&ctx->hash) <= sizeof(digest) ?

@@ -395,6 +395,8 @@ int p256_is_valid_point(const p256_int* x, const p256_int* y) {
   if (p256_sub(&x3, x, &x3)) p256_add(&x3, &SECP256r1_p, &x3);  // x^3 - 3x
   if (p256_add(&x3, &SECP256r1_b, &x3))  // x^3 - 3x + b
     p256_sub(&x3, &SECP256r1_p, &x3);
+  if (p256_sub(&x3, &SECP256r1_p, &x3))  // make sure 0 <= x3 < p
+    p256_add(&x3, &SECP256r1_p, &x3);
 
   return p256_cmp(&y2, &x3) == 0;
 }

@@ -36,7 +36,6 @@ using ::testing::Return;
 
 namespace omaha {
 
-// Overrides the registry.
 class AppTestBase : public testing::Test {
  protected:
   AppTestBase(bool is_machine, bool use_strict_mock)
@@ -127,6 +126,7 @@ class AppTestBase : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(AppTestBase);
 };
 
+// Overrides the registry.
 class AppTestBaseWithRegistryOverride
     : public AppTestBase,
       public ::testing::WithParamInterface<bool> {

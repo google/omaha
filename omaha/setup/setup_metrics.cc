@@ -106,5 +106,8 @@ DEFINE_METRIC_count(setup_uac_succeeded);
 DEFINE_METRIC_count(setup_user_app_admin);
 DEFINE_METRIC_count(setup_machine_app_non_admin);
 
+DEFINE_METRIC_integer(omaha_last_error_code);
+DEFINE_METRIC_integer(omaha_last_extra_code);
+
 }  // namespace omaha
 

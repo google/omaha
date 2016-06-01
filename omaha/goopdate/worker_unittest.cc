@@ -143,7 +143,7 @@ class MockWebServicesClient : public WebServicesClientInterface {
       int());
   MOCK_CONST_METHOD0(http_xdaynum_header_value,
       int());
-  MOCK_CONST_METHOD0(http_xretryafter_header_value,
+  MOCK_CONST_METHOD0(retry_after_sec,
       int());
 };
 
@@ -393,7 +393,7 @@ TEST_F(WorkerMockedManagersTest, CheckForUpdateAsync) {
       .WillByDefault(Return(_T("")));
   EXPECT_CALL(*mock_web_services_client_, http_trace())
       .Times(AnyNumber());
-  EXPECT_CALL(*mock_web_services_client_, http_xretryafter_header_value())
+  EXPECT_CALL(*mock_web_services_client_, retry_after_sec())
       .Times(1);
 
   __mutexBlock(worker_->model()->lock()) {
@@ -571,7 +571,7 @@ TEST_F(WorkerMockedManagersTest, UpdateAllAppsAsync) {
       .WillByDefault(Return(_T("")));
   EXPECT_CALL(*mock_web_services_client_, http_trace())
       .Times(AnyNumber());
-  EXPECT_CALL(*mock_web_services_client_, http_xretryafter_header_value())
+  EXPECT_CALL(*mock_web_services_client_, retry_after_sec())
       .Times(1);
 
   __mutexBlock(worker_->model()->lock()) {

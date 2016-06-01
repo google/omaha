@@ -23,15 +23,15 @@
 extern "C" {
 #endif
 
-typedef struct HMAC_CTX {
+typedef struct LITE_HMAC_CTX {
   HASH_CTX hash;
   uint8_t opad[64];
-} HMAC_CTX;
+} LITE_HMAC_CTX;
 
-void HMAC_MD5_init(HMAC_CTX* ctx, const void* key, unsigned int len);
-void HMAC_SHA_init(HMAC_CTX* ctx, const void* key, unsigned int len);
-void HMAC_SHA256_init(HMAC_CTX* ctx, const void* key, unsigned int len);
-const uint8_t* HMAC_final(HMAC_CTX* ctx);
+void HMAC_MD5_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len);
+void HMAC_SHA_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len);
+void HMAC_SHA256_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len);
+const uint8_t* HMAC_final(LITE_HMAC_CTX* ctx);
 
 #define HMAC_update(ctx, data, len) HASH_update(&(ctx)->hash, data, len)
 #define HMAC_size(ctx) HASH_size(&(ctx)->hash)

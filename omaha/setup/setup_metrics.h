@@ -203,6 +203,9 @@ DECLARE_METRIC_count(setup_user_app_admin);
 // How many times Setup attempted to install machine app as non-admin on <Vista.
 DECLARE_METRIC_count(setup_machine_app_non_admin);
 
+DECLARE_METRIC_integer(omaha_last_error_code);
+DECLARE_METRIC_integer(omaha_last_extra_code);
+
 }  // namespace omaha
 
 #endif  // OMAHA_SETUP_SETUP_METRICS_H_

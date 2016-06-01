@@ -67,6 +67,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "gtest/gtest_prod.h"
+#include "omaha/common/app_registry_utils.h"
 #include "omaha/common/ping_event.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/web_services_client.h"
@@ -89,6 +90,10 @@ class App;
 // sent from the setup, before any model object could be created.
 class Ping {
  public:
+  Ping(bool is_machine,
+       const CString& session_id,
+       const CString& install_source,
+       const CString& request_id);
   Ping(bool is_machine,
        const CString& session_id,
        const CString& install_source);
@@ -119,12 +124,6 @@ class Ping {
 
   void BuildAppsPing(const PingEventPtr& ping_event);
 
-  void BuildAppPing(const CString& app_id,
-                    const CString& version,
-                    const CString& next_version,
-                    const CString& client_id,
-                    const PingEventPtr& ping_event);
-
   // Serializes a ping request as a string.
   HRESULT BuildRequestString(CString* request_string) const;
 
@@ -149,6 +148,9 @@ class Ping {
   // mechanism.
   HRESULT Send(bool is_fire_and_forget);
 
+  // Persists the current Ping object to the registry.
+  HRESULT PersistPing();
+
   // Sends all persisted pings. Deletes successful or expired pings.
   static HRESULT SendPersistedPings(bool is_machine);
 
@@ -167,16 +169,25 @@ class Ping {
   FRIEND_TEST(PingTest, IsPingExpired_CurrentTime);
   FRIEND_TEST(PingTest, IsPingExpired_FutureTime);
   FRIEND_TEST(PingTest, LoadPersistedPings_NoPersistedPings);
-  FRIEND_TEST(PingTest, LoadPersistedPings);
+  FRIEND_TEST(PingTest, LoadAndDeletePersistedPings);
   FRIEND_TEST(PingTest, PersistPing);
-  FRIEND_TEST(PingTest, DeletePersistedPing);
   FRIEND_TEST(PingTest, PersistPing_Load_Delete);
-  FRIEND_TEST(PingTest, SendPersistedPings);
+  FRIEND_TEST(PingTest, PersistAndSendPersistedPings);
   FRIEND_TEST(PingTest, DISABLED_SendUsingGoogleUpdate);
+  FRIEND_TEST(PersistedPingsTest, AddPingEvents);
 
-  typedef std::vector<std::pair<time64, CString> > PingsVector;
-  static const TCHAR* const kRegKeyPing;
-  static const time64 kPingExpiry100ns;
+  // pair<unique_id, pair<ping_time, ping_string>>.
+  typedef
+      std::vector<std::pair<CString, std::pair<time64, CString> > > PingsVector;
+  static const TCHAR* const kRegKeyPersistedPings;
+  static const TCHAR* const kRegValuePersistedPingTime;
+  static const TCHAR* const kRegValuePersistedPingString;
+  static const time64 kPersistedPingExpiry100ns;
+
+  void Initialize(bool is_machine,
+                  const CString& session_id,
+                  const CString& install_source,
+                  const CString& request_id);
 
   // Sends pings using the installed GoogleUpdate, which runs in the
   // ping mode. the function waits for the pings to be sent if wait_timeout_ms
@@ -192,11 +203,14 @@ class Ping {
                                   const CString& next_version) const;
 
   // Persistent Ping utility functions.
-  static CString GetPingRegPath(bool is_machine);
-  static HRESULT LoadPersistedPings(bool is_machine, PingsVector* pings);
+  static CString GetPersistedPingsRegPath(bool is_machine);
+  static HRESULT LoadPersistedPings(bool is_machine,
+                                    PingsVector* persisted_pings);
   static bool IsPingExpired(time64 persisted_time);
-  static HRESULT DeletePersistedPing(bool is_machine, time64 persisted_time);
-  static HRESULT PersistPing(bool is_machine, const CString& ping_string);
+  static HRESULT DeletePersistedPing(bool is_machine,
+                                     const CString& persisted_subkey_name);
+  void DeletePersistedPingOnSuccess(const HRESULT& hr);
+  CString GetPersistedPingRegPath();
 
   // Sends a string to the server.
   static HRESULT SendString(bool is_machine,
@@ -204,6 +218,11 @@ class Ping {
                             const CString& request_string);
 
   bool is_machine_;
+
+  // The request id is the unique key that is sent out in Ping requests to the
+  // Omaha server. Persisted Pings are also stored in the registry under this
+  // unique key.
+  CString request_id_;
 
   // Information about apps.
   struct AppData {
@@ -216,6 +235,7 @@ class Ping {
     CString installation_id;
     CString pv;
     CString experiment_labels;
+    Cohort cohort;
     int install_time_diff_sec;
     int day_of_install;
   };
@@ -226,6 +246,10 @@ class Ping {
 
   DISALLOW_COPY_AND_ASSIGN(Ping);
 };
+
+// Helper function that calls Ping::PersistPing() followed by Ping::Send().
+// Returns the HRESULT that Send() returns.
+HRESULT SendReliablePing(Ping* ping, bool is_fire_and_forget);
 
 }  // namespace omaha
 

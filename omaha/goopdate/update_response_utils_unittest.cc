@@ -17,6 +17,7 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
+#include "omaha/base/system_info.h"
 #include "omaha/goopdate/app_unittest_base.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/goopdate/update_response_utils.h"
@@ -48,6 +49,9 @@ const TCHAR* const GOOPDATE_E_HW_NOT_SUPPORTEDString =
     _T("Installation failed because your computer does not meet minimum ")
     _T("hardware requirements for Google Chrome.");
 
+const TCHAR* const GOOPDATE_E_OS_NOT_SUPPORTEDString =
+    _T("Installation failed because your version of Windows is not supported.");
+
 const UpdateResponseResult kUpdateAvailableResult =
     std::make_pair(S_OK, CString());
 
@@ -58,6 +62,12 @@ const UpdateResponseResult kAppNotFoundResult = std::make_pair(
 const UpdateResponseResult kHwNotSupported = std::make_pair(
       GOOPDATE_E_HW_NOT_SUPPORTED,
       CString(GOOPDATE_E_HW_NOT_SUPPORTEDString));
+
+const UpdateResponseResult kOk = std::make_pair(S_OK, CString());
+
+const UpdateResponseResult kOsNotSupported = std::make_pair(
+      GOOPDATE_E_OS_NOT_SUPPORTED,
+      CString(GOOPDATE_E_OS_NOT_SUPPORTEDString));
 
 }  // namespace
 
@@ -279,6 +289,100 @@ TEST_F(UpdateResponseUtilsGetResultTest, HwNotSupported) {
                                            kAppId1,
                                            _T("Google Chrome"),
                                            _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_Compatible) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("x86");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(kOk == CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest,
+       SystemRequirementsElement_PlatformMismatch) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("mac");
+  sys_req.arch = _T("x86");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(kOsNotSupported ==
+              CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest,
+       SystemRequirementsElement_ArchUnknown) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("unknown");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(kOsNotSupported ==
+              CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_Archx86) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("x86");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(kOk == CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_Archx64) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("x64");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(
+      (SystemInfo::GetProcessorArchitecture() == PROCESSOR_ARCHITECTURE_AMD64 ?
+                                                 kOk : kOsNotSupported)
+      == CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest,
+       SystemRequirementsElement_ReallyHighSystemRequirementsVersion) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("x86");
+  sys_req.min_os_version = _T("60.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(kOsNotSupported ==
+              CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest,
+       SystemRequirementsElement_ReallyLowSystemRequirementsVersion) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("x86");
+  sys_req.min_os_version = _T("0.01");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(kOk == CheckSystemRequirements(update_response_.get(), _T("en")));
 }
 
 INSTANTIATE_TEST_CASE_P(IsMachine, UpdateResponseUtilsTest, ::testing::Bool());

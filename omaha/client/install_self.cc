@@ -369,9 +369,9 @@ HRESULT InstallSelf(bool is_machine,
   install_ping.BuildOmahaPing(current_version,
                               next_version,
                               setup_install_complete_ping_event);
-  HRESULT send_result = install_ping.Send(true);
+  HRESULT send_result = SendReliablePing(&install_ping, true);
   if (FAILED(send_result)) {
-    CORE_LOG(LW, (_T("[InstallPing::Send failed][0x%x]"), send_result));
+    CORE_LOG(LW, (_T("[SendReliablePing failed][%#x]"), send_result));
   }
 
   return S_OK;
@@ -395,6 +395,9 @@ HRESULT UpdateSelf(bool is_machine, const CString& session_id) {
   } else {
     CORE_LOG(LE, (_T("[DoSelfUpdate failed][0x%08x]"), hr));
   }
+
+  metric_omaha_last_error_code = hr;
+  metric_omaha_last_extra_code = extra_code1;
 
   // If a self-update failed because an uninstall of that Omaha is in progress,
   // don't bother with an update failure ping; the uninstall ping will suffice.
@@ -421,7 +424,7 @@ HRESULT UpdateSelf(bool is_machine, const CString& session_id) {
   ping.BuildOmahaPing(current_version,
                       next_version,
                       update_complete_ping_event);
-  ping.Send(false);
+  SendReliablePing(&ping, false);
 
   return hr;
 }

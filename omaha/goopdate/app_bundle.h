@@ -177,10 +177,17 @@ class AppBundle
   // log buffer in each app.
   CString FetchAndResetLogText();
 
+  // Builds a new Ping with all the Apps in the AppBundle and persists the Ping
+  // in the registry.
+  HRESULT BuildAndPersistPing();
+
  private:
   // Sets the state for unit testing.
   friend void SetAppBundleStateForUnitTest(AppBundle* app_bundle,
                                            fsm::AppBundleState* state);
+
+  // Builds a new Ping object with all the Apps in the AppBundle.
+  void BuildPing(Ping** ping);
 
   // TODO(omaha): missing unit test.
   // Sends the ping if the applications in the bundle have accumulated
@@ -219,6 +226,11 @@ class AppBundle
   // Clients are expected to set this on a bundle before calling initialize();
   // if they don't, we will randomly generate one.
   CString session_id_;
+
+  // The request id is unique for the Ping requests sent to the Omaha server for
+  // this AppBundle. Persisted Pings for this AppBundle are also stored in the
+  // registry under this unique key.
+  CString request_id_;
 
   // The current non-blocking command object if any of them is executing.
   // The class only checks whether the pointer is NULL to determine if a
@@ -261,6 +273,7 @@ class AppBundle
   friend class fsm::AppBundleStateInit;
 
   friend class AppBundleTest;
+  friend class PersistedPingsTest;
   friend class WorkerTest;
 
   DISALLOW_COPY_AND_ASSIGN(AppBundle);

@@ -38,12 +38,14 @@ class SplashScreenTest : public testing::Test {
   SplashScreenTest() {}
 
   static void SetUpTestCase() {
-    CString resource_dir = app_util::GetModuleDirectory(NULL);
+    const CString resource_dir = app_util::GetModuleDirectory(NULL);
     EXPECT_HRESULT_SUCCEEDED(
         ResourceManager::Create(false, resource_dir, _T("en")));
 
-    omaha_dll.Attach(::LoadLibraryEx(
-        kOmahaDllName, NULL, LOAD_LIBRARY_AS_DATAFILE));
+    CString dll_path(resource_dir);
+    EXPECT_TRUE(::PathAppend(CStrBuf(dll_path, MAX_PATH), kOmahaDllName));
+
+    omaha_dll.Attach(::LoadLibraryEx(dll_path, NULL, 0));
     EXPECT_TRUE(omaha_dll.IsValid());
   }
   static void TearDownTestCase() {

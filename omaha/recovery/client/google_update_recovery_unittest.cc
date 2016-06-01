@@ -127,6 +127,16 @@ CString GetTmp() {
   return temp_dir;
 }
 
+CString MakeTestFilepath(const CString& relpath) {
+  // This function assumes that the Omaha unit test program runs from
+  // a staging directory, which contains a unittest_support sub-directory
+  // for test files.
+  const CString staging_dir(app_util::GetCurrentModuleDirectory());
+  CString filepath(staging_dir);
+  EXPECT_TRUE(::PathAppend(CStrBuf(filepath, MAX_PATH), relpath));
+  return filepath;
+}
+
 }  // namespace
 
 HRESULT VerifyFileSignature(const CString& filename);
@@ -831,54 +841,38 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
 // VerifyFileSignature Tests
 //
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedValid) {
-  CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kArgumentSavingExecutableRelativePath));
+  const CString executable_full_path(MakeTestFilepath(
+      kArgumentSavingExecutableRelativePath));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_HRESULT_SUCCEEDED(VerifyFileSignature(executable_full_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotSigned) {
-  const TCHAR kUnsignedExecutable[] = _T("GoogleUpdate_unsigned.exe");
-
-  CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kUnsignedExecutable));
+  const CString executable_full_path(MakeTestFilepath(
+      _T("GoogleUpdate_unsigned.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_NOSIGNATURE, VerifyFileSignature(executable_full_path));
 }
 
 // The file is signed with an old cerificate not present in the pin list.
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotTrusted) {
-  const TCHAR kRelativePath[] =
-      _T("unittest_support\\GoogleUpdate_old_signature.exe");
-
-  CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kRelativePath));
+  const CString executable_full_path(MakeTestFilepath(
+      _T("unittest_support\\GoogleUpdate_old_signature.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(GOOPDATE_E_SIGNATURE_NOT_TRUSTED_PIN,
             VerifyFileSignature(executable_full_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_UntrustedChain) {
-  const TCHAR kUntrustedChainExecutable[] =
-      _T("unittest_support\\SaveArguments_OmahaTestSigned.exe");
-
-  CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kUntrustedChainExecutable));
+  const CString executable_full_path(MakeTestFilepath(
+      _T("unittest_support\\SaveArguments_OmahaTestSigned.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(CERT_E_UNTRUSTEDROOT, VerifyFileSignature(executable_full_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_HashFails) {
-  const TCHAR kCorruptedExecutable[] =
-      _T("unittest_support\\GoogleUpdate_corrupted.exe");
-
-  CString executable_full_path(app_util::GetCurrentModuleDirectory());
-  EXPECT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                           kCorruptedExecutable));
+  const CString executable_full_path(MakeTestFilepath(
+      _T("unittest_support\\GoogleUpdate_corrupted.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_BAD_DIGEST, VerifyFileSignature(executable_full_path));
 }
@@ -912,41 +906,47 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_BadFilenames) {
 // VerifyRepairFileMarkup Tests
 //
 TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_ValidMarkup) {
-  const TCHAR kExecutableWithMarkup[] =
-      _T("unittest_support\\SaveArguments.exe");
-  EXPECT_HRESULT_SUCCEEDED(VerifyRepairFileMarkup(kExecutableWithMarkup));
+  EXPECT_HRESULT_SUCCEEDED(VerifyRepairFileMarkup(MakeTestFilepath(
+      _T("unittest_support\\SaveArguments.exe"))));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_InvalidMarkups) {
   const TCHAR kNoResourcesExecutable[] =
       _T("unittest_support\\SaveArguments_unsigned_no_resources.exe");
+
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_DATA_NOT_FOUND),
-            VerifyRepairFileMarkup(kNoResourcesExecutable));
+            VerifyRepairFileMarkup(MakeTestFilepath(kNoResourcesExecutable)));
 
   const TCHAR kResourcesButNoMarkupExecutable[] = _T("GoogleUpdate.exe");
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_TYPE_NOT_FOUND),
-            VerifyRepairFileMarkup(kResourcesButNoMarkupExecutable));
+            VerifyRepairFileMarkup(MakeTestFilepath(
+                kResourcesButNoMarkupExecutable)));
 
   const TCHAR kWrongMarkupResourceNameExecutable[] =
       _T("unittest_support\\SaveArguments_unsigned_wrong_resource_name.exe");
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_NAME_NOT_FOUND),
-            VerifyRepairFileMarkup(kWrongMarkupResourceNameExecutable));
+            VerifyRepairFileMarkup(MakeTestFilepath(
+                kWrongMarkupResourceNameExecutable)));
 
   const TCHAR kWrongMarkupSizeExecutable[] =
       _T("unittest_support\\SaveArguments_unsigned_wrong_markup_size.exe");
-  EXPECT_EQ(E_UNEXPECTED, VerifyRepairFileMarkup(kWrongMarkupSizeExecutable));
+  EXPECT_EQ(E_UNEXPECTED,
+            VerifyRepairFileMarkup(MakeTestFilepath(
+                kWrongMarkupSizeExecutable)));
 
   const TCHAR kWrongMarkupValueExecutable[] =
       _T("unittest_support\\SaveArguments_unsigned_wrong_markup_value.exe");
-  EXPECT_EQ(E_UNEXPECTED, VerifyRepairFileMarkup(kWrongMarkupValueExecutable));
+  EXPECT_EQ(E_UNEXPECTED,
+            VerifyRepairFileMarkup(MakeTestFilepath(
+                kWrongMarkupValueExecutable)));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_BadFilenames) {
   const TCHAR kMissingFile[] = _T("NoSuchFile.exe");
-  EXPECT_EQ(FALSE, ::PathFileExists(kMissingFile));
+  EXPECT_EQ(FALSE, ::PathFileExists(MakeTestFilepath(kMissingFile)));
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
-            VerifyRepairFileMarkup(kMissingFile));
-  EXPECT_HRESULT_FAILED(VerifyRepairFileMarkup(_T("")));
+            VerifyRepairFileMarkup(MakeTestFilepath(kMissingFile)));
+  EXPECT_HRESULT_FAILED(VerifyRepairFileMarkup(MakeTestFilepath(_T(""))));
 }
 
 //

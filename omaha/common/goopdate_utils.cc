@@ -1442,10 +1442,13 @@ HRESULT WriteInstallerDataToTempFile(const CString& installer_data,
   return S_OK;
 }
 
+DEFINE_METRIC_integer(last_checked);
 HRESULT UpdateLastChecked(bool is_machine) {
   // Set the last check value to the current value.
   DWORD now = Time64ToInt32(GetCurrent100NSTime());
   CORE_LOG(L3, (_T("[UpdateLastChecked][now %d]"), now));
+
+  metric_last_checked = now;
   HRESULT hr = ConfigManager::Instance()->SetLastCheckedTime(is_machine, now);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[SetLastCheckedTime failed][0x%08x]"), hr));

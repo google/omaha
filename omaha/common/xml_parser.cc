@@ -581,6 +581,37 @@ class DayStartElementHandler : public ElementHandler {
   }
 };
 
+// Parses 'systemrequirements'.
+class SystemRequirementsElementHandler : public ElementHandler {
+ public:
+  static ElementHandler* Create() {
+    return new SystemRequirementsElementHandler;
+  }
+
+ private:
+  virtual HRESULT Parse(IXMLDOMNode* node, response::Response* response) {
+    response::SystemRequirements& sys_req = response->sys_req;
+
+    HRESULT hr = ReadStringAttribute(node,
+                                     xml::attribute::kPlatform,
+                                     &sys_req.platform);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    hr = ReadStringAttribute(node,
+                             xml::attribute::kArch,
+                             &sys_req.arch);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    return ReadStringAttribute(node,
+                               xml::attribute::kMinOSVersion,
+                               &sys_req.min_os_version);
+  }
+};
+
 namespace v2 {
 
 namespace element {
@@ -743,6 +774,8 @@ void XmlParser::InitializeElementHandlers() {
     {xml::element::kApp, &AppElementHandler::Create},
     {xml::element::kData, &DataElementHandler::Create},
     {xml::element::kDayStart, &DayStartElementHandler::Create},
+    {xml::element::kSystemRequirements,
+        &SystemRequirementsElementHandler::Create},
     {xml::element::kEvent, &EventElementHandler::Create},
     {xml::element::kManifest, &ManifestElementHandler::Create},
     {xml::element::kPackage, &PackageElementHandler::Create},

@@ -195,11 +195,12 @@ class NetworkRequestImpl {
   HRESULT  last_hr_;
   int      last_http_status_code_;
 
-  // This member stores the value of the optional X-Retry-After header. If the
-  // server sends a positive value in seconds for this header, the request will
-  // stop processing fallbacks and will return from the
+  // Stores the last valid value of the optional X-Retry-After header or -1 if
+  // the header was not present in the request. Only HTTPS X-Retry-After header
+  // values are respected.
+  // If the server sends a positive value in seconds for this header, the
+  // request will stop processing fallbacks and will return from the
   // NetworkRequestImpl::DoSendWithRetries() call immediately.
-  // The default value is -1 when the header is not found.
   int retry_after_seconds_;
 
   // The current retry count and delay between retries, defined by the outermost

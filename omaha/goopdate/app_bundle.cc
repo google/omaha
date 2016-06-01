@@ -55,6 +55,8 @@ AppBundle::AppBundle(bool is_machine, Model* model)
       display_language_(lang::GetDefaultLanguage(is_machine)) {
   CORE_LOG(L3, (_T("[AppBundle::AppBundle][0x%p]"), this));
   app_bundle_state_.reset(new fsm::AppBundleStateInit);
+
+  VERIFY1(SUCCEEDED(GetGuid(&request_id_)));
 }
 
 AppBundle::~AppBundle() {
@@ -193,6 +195,37 @@ CString AppBundle::FetchAndResetLogText() {
   return event_log_text;
 }
 
+void AppBundle::BuildPing(Ping** my_ping) {
+  CORE_LOG(L3, (_T("[AppBundle::BuildPing]")));
+  ASSERT1(model()->IsLockedByCaller());
+  ASSERT1(my_ping);
+
+  scoped_ptr<Ping> ping(
+      new Ping(is_machine_, session_id_, install_source_, request_id_));
+
+  for (size_t i = 0; i != apps_.size(); ++i) {
+    if (apps_[i]->is_eula_accepted()) {
+      ping->BuildRequest(apps_[i], false);
+    }
+  }
+
+  for (size_t i = 0; i != uninstalled_apps_.size(); ++i) {
+    if (uninstalled_apps_[i]->is_eula_accepted()) {
+      ping->BuildRequest(uninstalled_apps_[i], false);
+    }
+  }
+
+  *my_ping = ping.release();
+}
+
+HRESULT AppBundle::BuildAndPersistPing() {
+  CORE_LOG(L3, (_T("[AppBundle::BuildAndPersistPing]")));
+
+  scoped_ptr<Ping> ping;
+  BuildPing(address(ping));
+  return ping->PersistPing();
+}
+
 HRESULT AppBundle::SendPingEventsAsync() {
   CORE_LOG(L3, (_T("[AppBundle::SendPingEventsAsync]")));
 
@@ -203,20 +236,10 @@ HRESULT AppBundle::SendPingEventsAsync() {
     return S_OK;
   }
 
-  scoped_ptr<Ping> ping(new Ping(is_machine_, session_id_, install_source_));
+  scoped_ptr<Ping> ping;
 
   __mutexBlock(model()->lock()) {
-    for (size_t i = 0; i != apps_.size(); ++i) {
-      if (apps_[i]->is_eula_accepted()) {
-        ping->BuildRequest(apps_[i], false);
-      }
-    }
-
-    for (size_t i = 0; i != uninstalled_apps_.size(); ++i) {
-      if (uninstalled_apps_[i]->is_eula_accepted()) {
-        ping->BuildRequest(uninstalled_apps_[i], false);
-      }
-    }
+    BuildPing(address(ping));
   }
 
   CORE_LOG(L3, (_T("[AppBundle::SendPingEventsAsync][sending ping events]")

@@ -87,7 +87,7 @@ def SignDotNetManifest(env, target, unsigned_manifest):
                     (os.getenv('OMAHA_NETFX_TOOLS_DIR'), 'mage.exe -Sign'))
   sign_manifest_cmd = (mage_sign_path +
                        ' $SOURCE -ToFile $TARGET -TimestampUri ' +
-                       'http://timestamp.verisign.com/scripts/timstamp.dll ')
+                       '$TIMESTAMP_SERVER ')
 
   if env.Bit('build_server'):
     # If signing fails with the following error, the hash may not match any

@@ -38,6 +38,7 @@ class AppStateCheckingForUpdate : public AppState {
   void HandleNoUpdate(App* app, HRESULT code, const CString& message);
   void HandleErrorResponse(App* app, HRESULT code, const CString& message);
 
+  void PersistUpdateCheckValuesOnFailure(App* app);
   void PersistUpdateCheckSuccessfullySent(const App& app);
 
   xml::UpdateResponse* update_response_;

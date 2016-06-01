@@ -23,11 +23,11 @@
 extern "C" {
 #endif // __cplusplus
 
-typedef HASH_CTX MD5_CTX;
+typedef HASH_CTX LITE_MD5_CTX;
 
-void MD5_init(MD5_CTX* ctx);
-void MD5_update(MD5_CTX* ctx, const void* data, unsigned int len);
-const uint8_t* MD5_final(MD5_CTX* ctx);
+void MD5_init(LITE_MD5_CTX* ctx);
+void MD5_update(LITE_MD5_CTX* ctx, const void* data, unsigned int len);
+const uint8_t* MD5_final(LITE_MD5_CTX* ctx);
 
 // Convenience method. Returns digest address.
 // NOTE: *digest needs to hold MD5_DIGEST_SIZE bytes.

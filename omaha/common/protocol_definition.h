@@ -217,6 +217,7 @@ const TCHAR* const kStatusInvalidArgs = _T("error-invalidargs");
 // Defines an Omaha protocol update response. The structure of the response is:
 //
 // Response | --- DayStart
+//          | --- SystemRequirements
 //          | -<- App | --- UpdateCheck | --- Urls
 //                                      | --- InstallManifest | --- Packages
 //                                                            | --- Actions
@@ -285,9 +286,16 @@ struct DayStart {
   int elapsed_days;     // Number of days elapsed since a chosen datum.
 };
 
+struct SystemRequirements {
+  CString platform;        // "win".
+  CString arch;            // "x86", "x64", or "unknown".
+  CString min_os_version;  // major.minor.
+};
+
 struct Response {
   CString protocol;
   DayStart day_start;
+  SystemRequirements sys_req;
   std::vector<App> apps;
 };
 

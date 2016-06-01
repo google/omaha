@@ -39,6 +39,7 @@
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/crash_utils.h"
 #include "omaha/common/oem_install_utils.h"
+#include "omaha/statsreport/metrics.h"
 
 namespace omaha {
 
@@ -561,13 +562,17 @@ HRESULT ConfigManager::SetRetryAfterTime(bool is_machine, DWORD time) const {
 bool ConfigManager::CanRetryNow(bool is_machine) const {
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
   const uint32 retry_after = GetRetryAfterTime(is_machine);
-  return now >= retry_after;
+
+  const int kMaxRetryAfterSeconds = kSecondsPerDay;
+  return now >= retry_after || retry_after > now + kMaxRetryAfterSeconds;
 }
 
+DEFINE_METRIC_integer(last_started_au);
 HRESULT ConfigManager::SetLastStartedAU(bool is_machine) const {
   const TCHAR* reg_update_key = is_machine ? MACHINE_REG_UPDATE:
                                              USER_REG_UPDATE;
   DWORD now = Time64ToInt32(GetCurrent100NSTime());
+  metric_last_started_au = now;
   return RegKey::SetValue(reg_update_key, kRegValueLastStartedAU, now);
 }
 

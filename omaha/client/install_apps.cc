@@ -494,9 +494,9 @@ void HandleInstallAppsError(HRESULT error,
                     error,
                     extra_code1));
   ping.BuildAppsPing(ping_event);
-  HRESULT send_result = ping.Send(true);
+  HRESULT send_result = SendReliablePing(&ping, true);
   if (FAILED(send_result)) {
-    CORE_LOG(LW, (_T("[Ping::Send failed][0x%x]"), send_result));
+    CORE_LOG(LW, (_T("[SendReliablePing failed][0x%x]"), send_result));
   }
 }
 

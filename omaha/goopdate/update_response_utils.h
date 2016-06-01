@@ -62,6 +62,14 @@ bool IsOmahaUpdateAvailable(const xml::UpdateResponse* update_response);
 HRESULT ApplyExperimentLabelDeltas(bool is_machine,
                                    const xml::UpdateResponse* update_response);
 
+// If a <systemrequirements> element exists in the response, this function
+// checks compatibility with the currently running system. Returns
+// S_OK or GOOPDATE_E_OS_NOT_SUPPORTED for the HRESULT in UpdateResponseResult.
+// The absence of the <systemrequirements> element indicates that the
+// UpdateResponse is valid for the current system.
+xml::UpdateResponseResult CheckSystemRequirements(
+    const xml::UpdateResponse* update_response, const CString& language);
+
 }  // namespace update_response_utils
 
 }  // namespace omaha

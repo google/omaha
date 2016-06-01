@@ -120,7 +120,7 @@ NULL,
 
 TEST_F(HmacTest, RFC2202andRFC4131) {
   // This tests against the RFC2202 & RFC4131 test vectors
-  HMAC_CTX hmac;
+  LITE_HMAC_CTX hmac;
 
   for (const struct KAT* katp = KATS; katp->key; ++katp) {
     string key = katp->key[0] ==

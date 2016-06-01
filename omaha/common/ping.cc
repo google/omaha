@@ -18,10 +18,12 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
+#include "omaha/base/vistautil.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/command_line.h"
@@ -38,8 +40,11 @@
 
 namespace omaha {
 
-const TCHAR* const Ping::kRegKeyPing = _T("Pings");
-const time64 Ping::kPingExpiry100ns  = 10 * kDaysTo100ns;  // 10 days.
+const TCHAR* const Ping::kRegKeyPersistedPings = _T("PersistedPings");
+const TCHAR* const Ping::kRegValuePersistedPingTime = _T("PersistedPingTime");
+const TCHAR* const Ping::kRegValuePersistedPingString =
+    _T("PersistedPingString");
+const time64 Ping::kPersistedPingExpiry100ns  = 10 * kDaysTo100ns;  // 10 days.
 
 // Minimum compatible Omaha version that understands the /ping command line.
 // 1.3.0.0.
@@ -47,12 +52,31 @@ const ULONGLONG kMinOmahaVersionForPingOOP = 0x0001000300000000;
 
 Ping::Ping(bool is_machine,
            const CString& session_id,
-           const CString& install_source)
-    : is_machine_(is_machine),
-      ping_request_(xml::UpdateRequest::Create(is_machine,
-                                               session_id,
-                                               install_source,
-                                               CString())) {
+           const CString& install_source,
+           const CString& request_id) {
+  Initialize(is_machine, session_id, install_source, request_id);
+}
+
+Ping::Ping(bool is_machine,
+           const CString& session_id,
+           const CString& install_source) {
+  CString request_id;
+  VERIFY1(SUCCEEDED(GetGuid(&request_id)));
+  Initialize(is_machine, session_id, install_source, request_id);
+}
+
+void Ping::Initialize(bool is_machine,
+                      const CString& session_id,
+                      const CString& install_source,
+                      const CString& request_id) {
+  is_machine_ = is_machine;
+  request_id_ = request_id;
+
+  ping_request_.reset(xml::UpdateRequest::Create(is_machine,
+                                                 session_id,
+                                                 install_source,
+                                                 CString(),
+                                                 request_id));
   CString shell_version_string =
       goopdate_utils::GetInstalledShellVersion(is_machine);
   if (!shell_version_string.IsEmpty()) {
@@ -100,6 +124,7 @@ void Ping::LoadOmahaDataFromRegistry() {
       &omaha_data_.client_id,
       &omaha_data_.installation_id,
       &omaha_data_.experiment_labels,
+      &omaha_data_.cohort,
       &omaha_data_.install_time_diff_sec,
       &omaha_data_.day_of_install);
 }
@@ -118,6 +143,7 @@ void Ping::LoadAppDataFromRegistry(const std::vector<CString>& app_ids) {
         &app_data.client_id,
         &app_data.installation_id,
         &app_data.experiment_labels,
+        &app_data.cohort,
         &app_data.install_time_diff_sec,
         &app_data.day_of_install);
     apps_data_.push_back(app_data);
@@ -145,13 +171,22 @@ HRESULT Ping::Send(bool is_fire_and_forget) {
 
   ASSERT1(ConfigManager::Instance()->CanUseNetwork(is_machine_));
 
+  // When the ping is sent successfully, the ScopeGuard ensures that the
+  // corresponding persisted ping is deleted. In failure cases, the persisted
+  // ping is retained to be sent in a subsequent UA run.
+  HRESULT hr = E_FAIL;
+  ON_SCOPE_EXIT_OBJ(*this,
+                    &Ping::DeletePersistedPingOnSuccess,
+                    ByRef(hr));
+
   if (ping_request_->IsEmpty()) {
     CORE_LOG(L3, (_T("[Ping::Send did not send empty ping]")));
-    return S_FALSE;
+    hr = S_FALSE;
+    return hr;
   }
 
   CString request_string;
-  HRESULT hr = BuildRequestString(&request_string);
+  hr = BuildRequestString(&request_string);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[BuildRequestString failed][0x%08x]"), hr));
     return hr;
@@ -172,7 +207,7 @@ HRESULT Ping::Send(bool is_fire_and_forget) {
 
   CORE_LOG(LE, (_T("[Ping::SendInProcess failed][0x%x]"), hr));
 
-  return PersistPing(is_machine_, request_string);
+  return hr;
 }
 
 void Ping::BuildOmahaPing(const CString& version,
@@ -205,27 +240,14 @@ xml::request::App Ping::BuildOmahaApp(const CString& version,
   app.iid                   = omaha_data_.installation_id;
   app.install_time_diff_sec = omaha_data_.install_time_diff_sec;
   app.day_of_install        = omaha_data_.day_of_install;
+  app.cohort                = omaha_data_.cohort.cohort;
+  app.cohort_hint           = omaha_data_.cohort.hint;
+  app.cohort_name           = omaha_data_.cohort.name;
 
   app.version               = version;
   app.next_version          = next_version;
 
   return app;
-}
-
-void Ping::BuildAppPing(const CString& app_id,
-                        const CString& version,
-                        const CString& next_version,
-                        const CString& client_id,
-                        const PingEventPtr& ping_event) {
-  xml::request::App app;
-
-  app.app_id                = app_id;
-  app.version               = version;
-  app.next_version          = next_version;
-  app.client_id             = client_id;
-
-  app.ping_events.push_back(ping_event);
-  ping_request_->AddApp(app);
 }
 
 void Ping::BuildAppsPing(const PingEventPtr& ping_event) {
@@ -241,6 +263,9 @@ void Ping::BuildAppsPing(const PingEventPtr& ping_event) {
     app.iid                   = apps_data_[i].installation_id;
     app.install_time_diff_sec = apps_data_[i].install_time_diff_sec;
     app.day_of_install        = apps_data_[i].day_of_install;
+    app.cohort                = apps_data_[i].cohort.cohort;
+    app.cohort_hint           = apps_data_[i].cohort.hint;
+    app.cohort_name           = apps_data_[i].cohort.name;
 
     app.ping_events.push_back(ping_event);
     ping_request_->AddApp(app);
@@ -309,27 +334,49 @@ HRESULT Ping::BuildRequestString(CString* request_string) const {
   return ping_request_->Serialize(request_string);
 }
 
-CString Ping::GetPingRegPath(bool is_machine) {
-  CString ping_reg_path = is_machine ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  return AppendRegKeyPath(ping_reg_path, kRegKeyPing);
+CString Ping::GetPersistedPingsRegPath(bool is_machine) {
+  CString persisted_pings_reg_path = is_machine ? MACHINE_REG_UPDATE :
+                                                  USER_REG_UPDATE;
+  return AppendRegKeyPath(persisted_pings_reg_path, kRegKeyPersistedPings);
 }
 
-HRESULT Ping::LoadPersistedPings(bool is_machine, PingsVector* pings) {
-  ASSERT1(pings);
+HRESULT Ping::LoadPersistedPings(bool is_machine,
+                                 PingsVector* persisted_pings) {
+  ASSERT1(persisted_pings);
 
-  RegKey ping_reg_key;
-  HRESULT hr = ping_reg_key.Open(GetPingRegPath(is_machine), KEY_READ);
+  RegKey persisted_pings_reg_key;
+  CString persisted_pings_reg_path(GetPersistedPingsRegPath(is_machine));
+  HRESULT hr = persisted_pings_reg_key.Open(persisted_pings_reg_path, KEY_READ);
   if (FAILED(hr)) {
-    CORE_LOG(LW, (_T("[Unable to open Ping regkey][0x%x]"), hr));
+    CORE_LOG(LW, (_T("[Unable to open Persisted pings regkey][%#x]"), hr));
     return hr;
   }
 
-  int num_pings = ping_reg_key.GetValueCount();
+  int num_pings = persisted_pings_reg_key.GetSubkeyCount();
   for (int i = 0; i < num_pings; ++i) {
-    CString persisted_time_string;
-    hr = ping_reg_key.GetValueNameAt(i, &persisted_time_string, NULL);
+    CString persisted_subkey_name;
+    hr = persisted_pings_reg_key.GetSubkeyNameAt(i, &persisted_subkey_name);
     if (FAILED(hr)) {
-      CORE_LOG(LW, (_T("[GetValueNameAt failed][%d]"), i));
+      CORE_LOG(LW, (_T("[GetSubkeyNameAt failed][%d]"), i));
+      continue;
+    }
+
+    RegKey persisted_ping_reg_key;
+    CString persisted_ping_reg_path(
+        AppendRegKeyPath(persisted_pings_reg_path, persisted_subkey_name));
+    hr = persisted_ping_reg_key.Open(persisted_ping_reg_path, KEY_READ);
+    if (FAILED(hr)) {
+      CORE_LOG(LW, (_T("[Unable to open Persisted Ping subkey][%s][%#x]"),
+                    persisted_subkey_name, hr));
+      continue;
+    }
+
+    CString persisted_time_string;
+    hr = persisted_ping_reg_key.GetValue(kRegValuePersistedPingTime,
+                                         &persisted_time_string);
+    if (FAILED(hr)) {
+      CORE_LOG(LW, (_T("[GetValue kRegValuePersistedPingTime failed][%#x]"),
+                    hr));
       continue;
     }
 
@@ -339,14 +386,22 @@ HRESULT Ping::LoadPersistedPings(bool is_machine, PingsVector* pings) {
       continue;
     }
 
-    CString ping_string;
-    hr = ping_reg_key.GetValue(persisted_time_string, &ping_string);
+    CString persisted_ping_string;
+    hr = persisted_ping_reg_key.GetValue(kRegValuePersistedPingString,
+                                         &persisted_ping_string);
     if (FAILED(hr)) {
-      CORE_LOG(LW, (_T("[GetValue failed][%s]"), persisted_time_string));
+      CORE_LOG(LW, (_T("[GetValue kRegValuePersistedPingString failed][%#x]"),
+                    hr));
       continue;
     }
 
-    pings->push_back(std::make_pair(persisted_time, ping_string));
+    persisted_pings->push_back(std::make_pair(
+        persisted_subkey_name,
+        std::make_pair(persisted_time, persisted_ping_string)));
+    CORE_LOG(L6, (_T("[Persisted ping][%s][%s][%s]"),
+                  persisted_subkey_name,
+                  persisted_time_string,
+                  persisted_ping_string));
   }
 
   return S_OK;
@@ -365,62 +420,116 @@ bool Ping::IsPingExpired(time64 persisted_time) {
   CORE_LOG(L3, (_T("[%I64u][%I64u][%I64u]"),
                 now, persisted_time, time_difference));
 
-  const bool result = time_difference >= kPingExpiry100ns;
+  const bool result = time_difference >= kPersistedPingExpiry100ns;
   CORE_LOG(L3, (_T("[IsPingExpired][%d]"), result));
   return result;
 }
 
-HRESULT Ping::DeletePersistedPing(bool is_machine, time64 persisted_time) {
-  CString persisted_time_string;
-  persisted_time_string.Format(_T("%I64u"), persisted_time);
-  CORE_LOG(L3, (_T("[Ping::DeletePersistedPing][%s]"), persisted_time_string));
+HRESULT Ping::DeletePersistedPing(bool is_machine,
+                                  const CString& persisted_subkey_name) {
+  CORE_LOG(L3, (_T("[Ping::DeletePersistedPing][%s]"), persisted_subkey_name));
 
-  CString ping_reg_path(GetPingRegPath(is_machine));
-  HRESULT hr = RegKey::DeleteValue(ping_reg_path, persisted_time_string);
+  CString persisted_pings_reg_path(GetPersistedPingsRegPath(is_machine));
+  CString persisted_ping_reg_path = AppendRegKeyPath(persisted_pings_reg_path,
+                                                     persisted_subkey_name);
 
-  if (RegKey::IsKeyEmpty(ping_reg_path)) {
-    VERIFY1(SUCCEEDED(RegKey::DeleteKey(ping_reg_path)));
+  if (!RegKey::HasKey(persisted_ping_reg_path)) {
+    return S_OK;
   }
 
-  return hr;
+  // Registry writes to HKLM need admin.
+  scoped_revert_to_self revert_to_self;
+
+  return RegKey::DeleteKey(persisted_ping_reg_path);
 }
 
-HRESULT Ping::PersistPing(bool is_machine, const CString& ping_string) {
+void Ping::DeletePersistedPingOnSuccess(const HRESULT& hr) {
+  if (SUCCEEDED(hr)) {
+    VERIFY1(SUCCEEDED(DeletePersistedPing(is_machine_, request_id_)));
+  }
+}
+
+CString Ping::GetPersistedPingRegPath() {
+  return AppendRegKeyPath(GetPersistedPingsRegPath(is_machine_), request_id_);
+}
+
+HRESULT Ping::PersistPing() {
+  CString ping_string;
+  HRESULT hr = BuildRequestString(&ping_string);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[PersistPing][BuildRequestString failed][%#x]"), hr));
+    return hr;
+  }
+
   CString time_now_str;
   time_now_str.Format(_T("%I64u"), GetCurrent100NSTime());
-  CORE_LOG(L3, (_T("[Ping::PersistPing][%s][%s]"), time_now_str, ping_string));
+  CORE_LOG(L3, (_T("[Ping::PersistPing][%s][%s][%s]"),
+                request_id_, time_now_str, ping_string));
 
-  return RegKey::SetValue(GetPingRegPath(is_machine),
-                          time_now_str,
-                          ping_string);
+  CString ping_reg_path(GetPersistedPingRegPath());
+
+  // Registry writes to HKLM need admin.
+  scoped_revert_to_self revert_to_self;
+  ASSERT1(!is_machine_ || vista_util::IsUserAdmin());
+
+  hr = RegKey::SetValue(ping_reg_path,
+                        kRegValuePersistedPingString,
+                        ping_string);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  return RegKey::SetValue(ping_reg_path,
+                          kRegValuePersistedPingTime,
+                          time_now_str);
 }
 
 HRESULT Ping::SendPersistedPings(bool is_machine) {
-  PingsVector pings;
-  HRESULT hr = LoadPersistedPings(is_machine, &pings);
+  PingsVector persisted_pings;
+  HRESULT hr = LoadPersistedPings(is_machine, &persisted_pings);
   if (FAILED(hr) && (hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))) {
     return hr;
   }
 
-  for (size_t i = 0; i != pings.size(); ++i) {
-    time64 persisted_time = pings[i].first;
+  scoped_handle impersonation_token;
+  hr = vista::GetLoggedOnUserToken(address(impersonation_token));
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[SendPersistedPings][GetLoggedOnUserToken failed][%#x]"),
+                  hr));
+    // Continue anyway.
+  }
+
+  scoped_impersonation impersonate_user(get(impersonation_token));
+  hr = HRESULT_FROM_WIN32(impersonate_user.result());
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[SendPersistedPings][impersonation failed][%#x]"), hr));
+    // Continue anyway.
+  }
+
+  for (size_t i = 0; i != persisted_pings.size(); ++i) {
+    const CString& persisted_subkey_name(persisted_pings[i].first);
+    time64 persisted_time = persisted_pings[i].second.first;
     int32 request_age = Time64ToInt32(GetCurrent100NSTime()) -
                         Time64ToInt32(persisted_time);
-    const CString& ping_string(pings[i].second);
+    const CString& persisted_ping_string(persisted_pings[i].second.second);
 
-    CORE_LOG(L3, (_T("[Resending ping][%I64u][%d][%s]"),
-                  persisted_time, request_age, ping_string));
+    CORE_LOG(L3, (_T("[Resending persisted ping][%s][%I64u][%d][%s]"),
+                  persisted_subkey_name,
+                  persisted_time,
+                  request_age,
+                  persisted_ping_string));
 
     CString request_age_string;
     request_age_string.Format(_T("%d"), request_age);
     HeadersVector headers;
     headers.push_back(std::make_pair(kHeaderXRequestAge, request_age_string));
 
-    hr = SendString(is_machine, headers, ping_string);
+    hr = SendString(is_machine, headers, persisted_ping_string);
 
     if (SUCCEEDED(hr) || IsPingExpired(persisted_time)) {
-      CORE_LOG(L3, (_T("[Deleting ping][0x%x]"), hr));
-      VERIFY1(SUCCEEDED(DeletePersistedPing(is_machine, persisted_time)));
+      CORE_LOG(L3, (_T("[Deleting persisted ping][0x%x]"), hr));
+      VERIFY1(SUCCEEDED(DeletePersistedPing(is_machine,
+                                            persisted_subkey_name)));
     }
   }
 
@@ -493,6 +602,14 @@ HRESULT Ping::HandlePing(bool is_machine, const CString& ping_string) {
       is_machine,
       HeadersVector(),
       Utf8ToWideChar(request_string_utf8, request_string_utf8.GetLength()));
+}
+
+HRESULT SendReliablePing(Ping* ping, bool is_fire_and_forget) {
+  CORE_LOG(L6, (_T("[Ping::SendReliablePing]")));
+  ASSERT1(ping);
+
+  VERIFY1(SUCCEEDED(ping->PersistPing()));
+  return ping->Send(is_fire_and_forget);
 }
 
 }  // namespace omaha

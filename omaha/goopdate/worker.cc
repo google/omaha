@@ -199,7 +199,7 @@ HRESULT SendOemInstalledPing(bool is_machine, const CString& session_id) {
   Ping ping(is_machine, session_id, CString());
   ping.LoadAppDataFromRegistry(oem_installed_apps);
   ping.BuildAppsPing(oem_ping_event);
-  hr = ping.Send(false);
+  hr = SendReliablePing(&ping, false);
   if (FAILED(hr)) {
     CORE_LOG(L3, (_T("[SendOemInstalledPing failed][0x%08x]"), hr));
     return hr;
@@ -222,7 +222,7 @@ void SendCupFailurePing(bool is_machine,
   ping.LoadOmahaDataFromRegistry();
   ping.BuildOmahaPing(NULL, NULL, ping_event);
 
-  HRESULT hr = ping.Send(false);
+  HRESULT hr = SendReliablePing(&ping, false);
   if (FAILED(hr)) {
     CORE_LOG(LW, (_T("[SendCupFailurePing failed][0x%x]"), hr));
   }
@@ -491,17 +491,16 @@ void Worker::CheckForUpdateHelper(AppBundle* app_bundle,
                             app_bundle,
                             hr,
                             update_response.get());
-
-  // If we used HTTPS at any time during this update check, and the HTTPS
-  // attempt failed due to a CUP authentication failure, send a debug ping.
-  if (FAILED(hr) && app_bundle->update_check_client()->http_used_ssl()) {
-    const HRESULT ssl_hr = app_bundle->update_check_client()->http_ssl_result();
-    if (IsCupError(ssl_hr)) {
-      CORE_LOG(L3, (_T("[CUP-via-HTTPS failed.][%#08x][%#08x]"), hr, ssl_hr));
+  if (IsCupError(hr)) {
+    CORE_LOG(L3, (_T("[CUP failed][%#08x]"), hr));
+    // Only send the CUP debug ping when there is no "retry after" in effect.
+    const int retry_after_sec(
+        app_bundle->update_check_client()->retry_after_sec());
+    if (retry_after_sec <= 0) {
       internal::SendCupFailurePing(is_machine_,
                                    app_bundle->session_id(),
                                    app_bundle->install_source(),
-                                   ssl_hr);
+                                   hr);
     }
   }
 
@@ -963,9 +962,6 @@ HRESULT Worker::DoUpdateCheck(AppBundle* app_bundle,
   CORE_LOG(L3, (_T("[Update check HTTP trace][%s]"),
       app_bundle->update_check_client()->http_trace()));
 
-  PersistRetryAfter(
-    app_bundle->update_check_client()->http_xretryafter_header_value());
-
   if (FAILED(hr)) {
     metric_updatecheck_failed_ms.AddSample(update_check_timer.GetElapsedMs());
 
@@ -976,17 +972,6 @@ HRESULT Worker::DoUpdateCheck(AppBundle* app_bundle,
         app_bundle->update_check_client()->http_status_code(),
         app_bundle->update_check_client()->http_trace(),
         is_machine_);
-
-    // If we got a response that appears to be from the official Omaha server,
-    // but doesn't validate for some reason, it might have a X-DayStart or
-    // X-Daynum header. If so, assume that we delivered the last-active and
-    // roll-call reports correctly, and roll the counters on our end.  (On a
-    // successful network call, the App objects will do it themselves when they
-    // transition out of the CheckingForUpdate state.)
-    PersistUpdateCheckSuccessfullySent(
-      app_bundle,
-      app_bundle->update_check_client()->http_xdaynum_header_value(),
-      app_bundle->update_check_client()->http_xdaystart_header_value());
 
     // TODO(omaha3): Omaha 2 would launch a web browser here for installs by
     // calling goopdate_utils::LaunchBrowser(). Browser launch needs to be in
@@ -1014,6 +999,8 @@ void Worker::DoPostUpdateCheck(AppBundle* app_bundle,
       is_machine_,
       update_response)));
 
+  PersistRetryAfter(app_bundle->update_check_client()->retry_after_sec());
+
   for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
     App* app = app_bundle->GetApp(i);
     app->PostUpdateCheck(update_check_result, update_response);
@@ -1033,50 +1020,18 @@ void Worker::DoPostUpdateCheck(AppBundle* app_bundle,
 void Worker::PersistRetryAfter(int retry_after_sec) const {
   CORE_LOG(L6, (_T("[Worker::PersistRetryAfter][%d]"), retry_after_sec));
 
+  // Registry writes to HKLM need admin.
+  ASSERT1(!is_machine_ || vista_util::IsUserAdmin());
+
   if (retry_after_sec <= 0) {
-    ConfigManager::Instance()->SetRetryAfterTime(is_machine_, 0);
     return;
   }
 
-  const int kMaxRetryAfterSeconds = 5 * kSecondsPerHour;
-  if (retry_after_sec > kMaxRetryAfterSeconds) {
-    retry_after_sec = kSecondsPerDay;
-  }
-
+  ASSERT1(retry_after_sec <= kSecondsPerDay);
   const uint32 now_sec = Time64ToInt32(GetCurrent100NSTime());
   DWORD retry_after_time_sec = now_sec + retry_after_sec;
   ConfigManager::Instance()->SetRetryAfterTime(is_machine_,
                                                retry_after_time_sec);
-}
-
-void Worker::PersistUpdateCheckSuccessfullySent(AppBundle* app_bundle,
-                                                int daynum,
-                                                int daystart) {
-  ASSERT1(app_bundle);
-
-  // This function will be called even when network request fails. In this case,
-  // Omaha looks into response headers for relevant values. |daynum| or
-  // |daystart|will be -1 if the corresponding header value is absent. Client
-  // should not persist if either value is -1.
-  if (daystart == -1 || daynum == -1) {
-    return;
-  }
-
-  ASSERT1(daystart >= 0);
-  ASSERT1(daynum >= kMinDaysSinceDatum);
-  ASSERT1(daynum <= kMaxDaysSinceDatum);
-
-  CORE_LOG(LE, (_T("[Worker::PersistUpdateCheckSuccessfullySent][%d]"),
-                daystart));
-
-  AppManager& app_manager = *AppManager::Instance();
-
-  for (size_t i = 0; i != app_bundle->GetNumberOfApps(); ++i) {
-    App* app = app_bundle->GetApp(i);
-    app->set_day_of_last_response(daynum);
-    VERIFY1(SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
-        *app, daynum, daystart)));
-  }
 }
 
 // Creates a thread pool work item for deferred execution of deferred_function.

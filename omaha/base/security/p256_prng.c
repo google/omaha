@@ -32,7 +32,7 @@ static void uint64tobin(uint64_t v, uint8_t* t) {
 
 // V = HMAC(K, V)
 static void update_V(P256_PRNG_CTX* ctx) {
-  HMAC_CTX hmac;
+  LITE_HMAC_CTX hmac;
   HMAC_SHA256_init(&hmac, ctx->Key, P256_PRNG_SIZE);
   HMAC_update(&hmac, ctx->V, P256_PRNG_SIZE);
   memcpy(ctx->V, HMAC_final(&hmac), P256_PRNG_SIZE);
@@ -41,7 +41,7 @@ static void update_V(P256_PRNG_CTX* ctx) {
 // K = HMAC(K, V || [0,1] || count || seed)
 static void update_Key(P256_PRNG_CTX* ctx, int which,
                      const void* seed, size_t seed_size) {
-  HMAC_CTX hmac;
+  LITE_HMAC_CTX hmac;
   uint8_t tmp[16 + 1];
 
   HMAC_SHA256_init(&hmac, ctx->Key, P256_PRNG_SIZE);

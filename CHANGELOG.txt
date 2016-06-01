@@ -1,18 +1,74 @@
+## 2016-05-31 @113564071,120560961 1.3.30.3
+
+### Changes
+--------------------------------------------------------------------------------
+Allow persisting pings in background cases where the user token is a medium
+integrity token. We now persist pings at high integrity in the machine case.
+--------------------------------------------------------------------------------
+Add CUP key 6.
+--------------------------------------------------------------------------------
+Add Google Update configuration and statistics metrics. This change unifies
+the added metrics under a single key that also includes other Omaha metrics.
+--------------------------------------------------------------------------------
+Omaha Client Doesn't Stop Fallbacks on X-Retry-After. The client was trying
+(and failing) to save the RetryAfter value from medium integrity in the Machine
+Omaha case. Now we save it from high integrity.
+--------------------------------------------------------------------------------
+x-retry-after is obeyed even on http. The original HTTPS URL was being used
+instead of the actual HTTP URL. Changed variable names to better reflect what
+they represent.
+--------------------------------------------------------------------------------
+Add a <systemrequirements> element for the update <response>. The <systemrequirements>
+element is expected to be added only to offline update response files that ship
+with the standalone and msi installers.
+
+The <systemrequirements> element specifies the minimum requirements in terms of
+platform, arch, and version. For systems that do not meet the <systemrequirements>
+specifications, Omaha will error out with GOOPDATE_E_OS_NOT_SUPPORTED.
+The service pack is ignored at the moment.
+
+An example <systemrequirements> element is shown below:
+<response protocol="3.0"><systemrequirements platform="win" arch="x86" min_os_version="6.0"/>
+
+This sets the system requirements as Windows, x86 (or x64, since x64 systems support
+x86 applications), and a minimum OS version of 6.0.
+--------------------------------------------------------------------------------
+Retry-After should account for incorrect clock times. To account for clocks that
+get reset to the past, Omaha will retry now if the retry time is more than
+24 hours in the future.
+--------------------------------------------------------------------------------
+Omaha UI: Downloading text needs changes.
+--------------------------------------------------------------------------------
+Send cohort data with Omaha self-update pings as well as with exception/debug pings
+such as when Omaha could not install itself or CUP failure pings.
+--------------------------------------------------------------------------------
+Debug logging change.
+--------------------------------------------------------------------------------
+Reliable pings in Omaha. This feature makes all pings persisted objects. If for
+some reason Omaha is unable to transmit pings, the persisted pings are
+transmitted the next time the Omaha UA process runs.
+--------------------------------------------------------------------------------
+This change switches the ClickOnce single-sign timestamp servers to ComodoCA.
+This makes all the time stamp servers use ComodoCA.
+--------------------------------------------------------------------------------
+Integrate changes and delete unused code in base/security
+--------------------------------------------------------------------------------
+
 ## 2016-02-03 @109823444,113564071 1.3.29.5
 --------------------------------------------------------------------------------
 Change cacheable URL GPO reg value from "PayloadType" to "DownloadPreference".
--------------------------------------------------------------------------------- 
-Change to ::GetModuleHandle() instead of ::LoadLibrary() when getting a resource 
+--------------------------------------------------------------------------------
+Change to ::GetModuleHandle() instead of ::LoadLibrary() when getting a resource
 from goopdate.dll. The DLL is already loaded in memory, so LL is not needed.
 --------------------------------------------------------------------------------
-Mitigate DLL highjacking in the Omaha client. We now call ::SetDefaultDllDirectories 
-to retrict DLL loads to either full paths or %SYSTEM32%. ::SetDefaultDllDirectories 
-is available on Windows 8.1 and above, and on Windows Vista and above 
+Mitigate DLL highjacking in the Omaha client. We now call ::SetDefaultDllDirectories
+to retrict DLL loads to either full paths or %SYSTEM32%. ::SetDefaultDllDirectories
+is available on Windows 8.1 and above, and on Windows Vista and above
 when KB2533623 is applied.
--------------------------------------------------------------------------------- 
-Update the build files to use the new DualSignedBinary function. This function 
+--------------------------------------------------------------------------------
+Update the build files to use the new DualSignedBinary function. This function
 signs binaries with both SHA1 and SHA256 certificates.
--------------------------------------------------------------------------------- 
+--------------------------------------------------------------------------------
 
 ## 2015-12-09 @109823443,110222497 1.3.29.1
 --------------------------------------------------------------------------------

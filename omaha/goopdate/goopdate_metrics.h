@@ -76,6 +76,9 @@ DECLARE_METRIC_count(goopdate_constructor);
 DECLARE_METRIC_count(goopdate_destructor);
 DECLARE_METRIC_count(goopdate_main);
 
+DECLARE_METRIC_bool(is_system_install);
+DECLARE_METRIC_integer(omaha_version);
+
 }  // namespace omaha
 
 #endif  // OMAHA_GOOPDATE_GOOPDATE_METRICS_H_

@@ -163,9 +163,6 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
 
   void PersistRetryAfter(int retry_after_sec) const;
 
-  void PersistUpdateCheckSuccessfullySent(
-      AppBundle* app_bundle, int daynum, int daystart);
-
   HRESULT QueueDeferredFunctionCall0(
       shared_ptr<AppBundle> app_bundle,
       void (Worker::*deferred_function)(shared_ptr<AppBundle>));

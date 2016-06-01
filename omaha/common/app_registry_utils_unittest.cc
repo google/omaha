@@ -121,7 +121,8 @@ TEST(AppRegistryUtilsTest, GetAppClientStateMediumKey_UserAndMachineAreSame) {
                GetAppClientStateMediumKey(false, kAppGuid1));
 }
 
-class AppRegistryUtilsRegistryProtectedTest : public testing::Test {
+class AppRegistryUtilsRegistryProtectedTest :
+    public ::testing::TestWithParam<bool> {
  protected:
   AppRegistryUtilsRegistryProtectedTest()
       : hive_override_key_name_(kRegistryHiveOverrideRoot) {
@@ -137,6 +138,15 @@ class AppRegistryUtilsRegistryProtectedTest : public testing::Test {
   virtual void TearDown() {
     RestoreRegistryHives();
     ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
+  }
+
+  const bool IsMachine() {
+    return GetParam();
+  }
+
+  const CString GetClientStatePath() {
+    return IsMachine() ? kOmahaMachineClientStatePath :
+                         kOmahaUserClientStatePath;
   }
 };
 
@@ -2460,8 +2470,11 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest, GetAppLang_Machine) {
   EXPECT_STREQ(expected_lang, actual_lang);
 }
 
-TEST_F(AppRegistryUtilsRegistryProtectedTest,
-       GetClientStateData_User) {
+INSTANTIATE_TEST_CASE_P(IsMachine,
+                        AppRegistryUtilsRegistryProtectedTest,
+                        ::testing::Bool());
+
+TEST_P(AppRegistryUtilsRegistryProtectedTest, GetClientStateData) {
   const CString expected_pv           = _T("1.0");
   const CString expected_ap           = _T("additional parameters");
   const CString expected_lang         = _T("some lang");
@@ -2471,46 +2484,55 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
       _T("{7C0B6E56-B24B-436b-A960-A6EA201E886F}");
   const CString expected_experiment_label =
       _T("some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT");
+  const Cohort expected_cohort = {
+    _T("Cohort1"),
+    _T("CohortHint1"),
+    _T("CohortName1")
+  };
   const int day_of_install   = 2677;
 
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueProductVersion,
                                             expected_pv));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueAdditionalParams,
                                             expected_ap));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueLanguage,
                                             expected_lang));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueBrandCode,
                                             expected_brand_code));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueClientId,
                                             expected_client_id));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueInstallationId,
                                             expected_iid));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueExperimentLabels,
                                             expected_experiment_label));
+  EXPECT_HRESULT_SUCCEEDED(WriteCohort(IsMachine(),
+                                       kGoogleUpdateAppId,
+                                       expected_cohort));
   EXPECT_HRESULT_SUCCEEDED(
-      RegKey::SetValue(kOmahaUserClientStatePath,
+      RegKey::SetValue(GetClientStatePath(),
                        kRegValueDayOfInstall,
                        static_cast<DWORD>(day_of_install)));
 
 
   const DWORD now = Time64ToInt32(GetCurrent100NSTime());
   const DWORD one_day_back = now - kSecondsPerDay;
-  ASSERT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
+  ASSERT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                     kRegValueInstallTimeSec,
                                     one_day_back));
   CString actual_pv, actual_ap, actual_lang, actual_brand_code,
       actual_client_id, actual_experiment_label, actual_iid;
+  Cohort actual_cohort;
   int actual_day_of_install(0);
   int actual_install_time_diff_sec(0);
 
-  GetClientStateData(false,
+  GetClientStateData(IsMachine(),
                      kGoogleUpdateAppId,
                      &actual_pv,
                      &actual_ap,
@@ -2519,6 +2541,7 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
                      &actual_client_id,
                      &actual_iid,
                      &actual_experiment_label,
+                     &actual_cohort,
                      &actual_install_time_diff_sec,
                      &actual_day_of_install);
 
@@ -2529,79 +2552,9 @@ TEST_F(AppRegistryUtilsRegistryProtectedTest,
   EXPECT_STREQ(expected_client_id, actual_client_id);
   EXPECT_STREQ(expected_iid, actual_iid);
   EXPECT_STREQ(expected_experiment_label, actual_experiment_label);
-  EXPECT_EQ(GetFirstDayOfWeek(day_of_install), actual_day_of_install);
-  EXPECT_GE(actual_install_time_diff_sec, kSecondsPerDay);
-}
-
-TEST_F(AppRegistryUtilsRegistryProtectedTest,
-       GetGoogleUpdatePersistentData_Machine) {
-  const CString expected_pv           = _T("1.0");
-  const CString expected_ap           = _T("additional parameters");
-  const CString expected_lang         = _T("some lang");
-  const CString expected_brand_code   = _T("some brand");
-  const CString expected_client_id    = _T("some client id");
-  const CString expected_iid          =
-      _T("{7C0B6E56-B24B-436b-A960-A6EA201E886F}");
-  const CString expected_experiment_label =
-      _T("some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT");
-  const int day_of_install   = 3377;
-
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                            kRegValueProductVersion,
-                                            expected_pv));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                            kRegValueAdditionalParams,
-                                            expected_ap));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                            kRegValueLanguage,
-                                            expected_lang));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                            kRegValueBrandCode,
-                                            expected_brand_code));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                            kRegValueClientId,
-                                            expected_client_id));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                            kRegValueInstallationId,
-                                            expected_iid));
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                            kRegValueExperimentLabels,
-                                            expected_experiment_label));
-  EXPECT_HRESULT_SUCCEEDED(
-      RegKey::SetValue(kOmahaMachineClientStatePath,
-                       kRegValueDayOfInstall,
-                       static_cast<DWORD>(day_of_install)));
-
-  const DWORD now = Time64ToInt32(GetCurrent100NSTime());
-  const DWORD one_day_back = now - kSecondsPerDay;
-  ASSERT_SUCCEEDED(RegKey::SetValue(kOmahaMachineClientStatePath,
-                                    kRegValueInstallTimeSec,
-                                    one_day_back));
-
-  CString actual_pv, actual_ap, actual_lang, actual_brand_code,
-      actual_client_id, actual_experiment_label, actual_iid;
-  int actual_day_of_install(0);
-  int actual_install_time_diff_sec(0);
-
-  GetClientStateData(true,
-                     kGoogleUpdateAppId,
-                     &actual_pv,
-                     &actual_ap,
-                     &actual_lang,
-                     &actual_brand_code,
-                     &actual_client_id,
-                     &actual_iid,
-                     &actual_experiment_label,
-                     &actual_install_time_diff_sec,
-                     &actual_day_of_install);
-
-  EXPECT_STREQ(expected_pv, actual_pv);
-  EXPECT_STREQ(expected_ap, actual_ap);
-  EXPECT_STREQ(expected_lang, actual_lang);
-  EXPECT_STREQ(expected_brand_code, actual_brand_code);
-  EXPECT_STREQ(expected_client_id, actual_client_id);
-  EXPECT_STREQ(expected_iid, actual_iid);
-  EXPECT_STREQ(expected_experiment_label, actual_experiment_label);
+  EXPECT_STREQ(expected_cohort.cohort, actual_cohort.cohort);
+  EXPECT_STREQ(expected_cohort.hint, actual_cohort.hint);
+  EXPECT_STREQ(expected_cohort.name, actual_cohort.name);
   EXPECT_EQ(GetFirstDayOfWeek(day_of_install), actual_day_of_install);
   EXPECT_GE(actual_install_time_diff_sec, kSecondsPerDay);
 }

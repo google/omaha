@@ -42,7 +42,8 @@ UpdateRequest::~UpdateRequest() {
 UpdateRequest* UpdateRequest::Create(bool is_machine,
                                      const CString& session_id,
                                      const CString& install_source,
-                                     const CString& origin_url) {
+                                     const CString& origin_url,
+                                     const CString& request_id) {
   const ConfigManager* cm = ConfigManager::Instance();
 
   scoped_ptr<UpdateRequest> update_request(new UpdateRequest);
@@ -60,11 +61,8 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
   request.origin_url = origin_url;
   request.test_source = cm->GetTestSource();
 
-  GUID req_id = GUID_NULL;
-  VERIFY1(SUCCEEDED(::CoCreateGuid(&req_id)));
-  request.request_id = GuidToString(req_id);
-
   request.session_id = session_id;
+  request.request_id = request_id;
 
   bool is_period_overridden = false;
   const int check_period_sec = cm->GetLastCheckPeriodSec(&is_period_overridden);
@@ -111,6 +109,15 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
       SystemInfo::GetProcessorArchitecture());
 
   return update_request.release();
+}
+
+UpdateRequest* UpdateRequest::Create(bool is_machine,
+                                     const CString& session_id,
+                                     const CString& install_source,
+                                     const CString& origin_url) {
+  CString request_id;
+  VERIFY1(SUCCEEDED(GetGuid(&request_id)));
+  return Create(is_machine, session_id, install_source, origin_url, request_id);
 }
 
 void UpdateRequest::AddApp(const request::App& app) {

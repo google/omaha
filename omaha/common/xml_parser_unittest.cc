@@ -46,6 +46,10 @@ class XmlParserTest : public ::testing::TestWithParam<bool> {
     return GetParam();
   }
 
+  virtual void SetUp() {
+    RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
+  }
+
   // Allows test fixtures access to implementation details of UpdateRequest.
   request::Request& get_xml_request(UpdateRequest* update_request) {
     return update_request->request_;
@@ -233,7 +237,7 @@ TEST_F(XmlParserTest, Parse) {
   // Array of two request strings that are almost same except the second one
   // contains some unsupported elements that we expect to be ignored.
   CStringA buffer_strings[] = {
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response protocol=\"3.0\"><daystart elapsed_seconds=\"8400\" elapsed_days=\"3255\" /><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" status=\"ok\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\"><updatecheck status=\"ok\"><urls><url codebase=\"http://cache.pack.google.com/edgedl/chrome/install/172.37/\"/></urls><manifest version=\"2.0.172.37\"><packages><package hash_sha256=\"d5e06b4436c5e33f2de88298b890f47815fc657b63b3050d2217c55a5d0730b0\" hash=\"NT/6ilbSjWgbVqHZ0rT1vTg1coE=\" name=\"chrome_installer.exe\" required=\"true\" size=\"9614320\"/></packages><actions><action arguments=\"--do-not-launch-chrome\" event=\"install\" needsadmin=\"false\" run=\"chrome_installer.exe\"/><action event=\"postinstall\" onsuccess=\"exitsilentlyonlaunchcmd\"/></actions></manifest></updatecheck><data index=\"verboselogging\" name=\"install\" status=\"ok\">{\n \"distribution\": {\n   \"verbose_logging\": true\n }\n}\n</data><data name=\"untrusted\" status=\"ok\"/><ping status=\"ok\"/></app></response>",  // NOLINT
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response protocol=\"3.0\"><systemrequirements platform=\"win\" arch=\"x86\" min_os_version=\"6.0\"/><daystart elapsed_seconds=\"8400\" elapsed_days=\"3255\" /><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" status=\"ok\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\"><updatecheck status=\"ok\"><urls><url codebase=\"http://cache.pack.google.com/edgedl/chrome/install/172.37/\"/></urls><manifest version=\"2.0.172.37\"><packages><package hash_sha256=\"d5e06b4436c5e33f2de88298b890f47815fc657b63b3050d2217c55a5d0730b0\" hash=\"NT/6ilbSjWgbVqHZ0rT1vTg1coE=\" name=\"chrome_installer.exe\" required=\"true\" size=\"9614320\"/></packages><actions><action arguments=\"--do-not-launch-chrome\" event=\"install\" needsadmin=\"false\" run=\"chrome_installer.exe\"/><action event=\"postinstall\" onsuccess=\"exitsilentlyonlaunchcmd\"/></actions></manifest></updatecheck><data index=\"verboselogging\" name=\"install\" status=\"ok\">{\n \"distribution\": {\n   \"verbose_logging\": true\n }\n}\n</data><data name=\"untrusted\" status=\"ok\"/><ping status=\"ok\"/></app></response>",  // NOLINT
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response protocol=\"3.0\" ExtraUnsupportedAttribute=\"123\"><daystart elapsed_seconds=\"8400\" elapsed_days=\"3255\" /><UnsupportedElement1 UnsupportedAttribute1=\"some value\" /><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" status=\"ok\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\"><updatecheck status=\"ok\"><urls><url codebase=\"http://cache.pack.google.com/edgedl/chrome/install/172.37/\"/></urls><manifest version=\"2.0.172.37\"><packages><package hash_sha256=\"d5e06b4436c5e33f2de88298b890f47815fc657b63b3050d2217c55a5d0730b0\" hash=\"NT/6ilbSjWgbVqHZ0rT1vTg1coE=\" name=\"chrome_installer.exe\" required=\"true\" size=\"9614320\"/></packages><actions><action arguments=\"--do-not-launch-chrome\" event=\"install\" needsadmin=\"false\" run=\"chrome_installer.exe\"/><action event=\"postinstall\" onsuccess=\"exitsilentlyonlaunchcmd\"/></actions></manifest></updatecheck><data index=\"verboselogging\" name=\"install\" status=\"ok\">{\n \"distribution\": {\n   \"verbose_logging\": true\n }\n}\n</data><data name=\"untrusted\" status=\"ok\"/><ping status=\"ok\"/></app><UnsupportedElement2 UnsupportedAttribute2=\"Unsupported value\" >Some strings inside an unsupported element, should be ignored.<ping status=\"ok\"/></UnsupportedElement2></response>",  // NOLINT
   };
 
@@ -310,6 +314,11 @@ TEST_F(XmlParserTest, Parse) {
 
     EXPECT_EQ(S_OK,
               update_response_utils::ValidateUntrustedData(app.data));
+
+    EXPECT_STREQ(i == 0 ? _T("win") : _T(""), xml_response.sys_req.platform);
+    EXPECT_STREQ(i == 0 ? _T("x86") : _T(""), xml_response.sys_req.arch);
+    EXPECT_STREQ(i == 0 ? _T("6.0") : _T(""),
+                 xml_response.sys_req.min_os_version);
   }
 }
 

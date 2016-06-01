@@ -1361,7 +1361,7 @@ HRESULT Setup::SendUninstallPing() {
     apps_uninstall_ping.LoadAppDataFromRegistry(uninstalled_apps);
     apps_uninstall_ping.BuildAppsPing(uninstall_ping_event);
 
-    hr = apps_uninstall_ping.Send(false);
+    hr = SendReliablePing(&apps_uninstall_ping, false);
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("[SendUninstallPing: failed to send app uninstall ping]")
                     _T("[0x%08x]"), hr));
@@ -1376,7 +1376,7 @@ HRESULT Setup::SendUninstallPing() {
   omaha_uninstall_ping.BuildOmahaPing(current_omaha_version,
                                       next_omaha_version,
                                       uninstall_ping_event);
-  hr = omaha_uninstall_ping.Send(false);
+  hr = SendReliablePing(&omaha_uninstall_ping, false);
   if (SUCCEEDED(hr)) {
     // Clears the registry after ping is sent successfully.
     uninstalled_apps.clear();

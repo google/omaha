@@ -18,9 +18,11 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/system_info.h"
 #include "omaha/common/lang.h"
 #include "omaha/common/experiment_labels.h"
 #include "omaha/common/xml_const.h"
+#include "omaha/common/xml_parser.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/server_resource.h"
 #include "omaha/goopdate/string_formatter.h"
@@ -28,6 +30,38 @@
 namespace omaha {
 
 namespace update_response_utils {
+
+namespace {
+
+ULONGLONG OSVersionFromString(const CString& s) {
+  // Convert from "x.y" to "x.y.0.0" format so we can use the existing
+  // VersionFromString utility function.
+  return VersionFromString(s + _T(".0.0"));
+}
+
+bool IsPlatformCompatible(const CString& platform) {
+  return platform.IsEmpty() || !platform.CompareNoCase(kPlatformWin);
+}
+
+bool IsArchCompatible(const CString& arch) {
+  const CString current_arch(xml::ConvertProcessorArchitectureToString(
+                                 SystemInfo::GetProcessorArchitecture()));
+  return arch.IsEmpty() ||
+         !arch.CompareNoCase(current_arch) ||
+         (arch == xml::value::kArchIntel &&
+         current_arch == xml::value::kArchAmd64);
+}
+
+bool IsOSVersionCompatible(const CString& min_os_version) {
+  CString current_os_ver;
+  CString current_sp;
+  return min_os_version.IsEmpty() ||
+         FAILED(goopdate_utils::GetOSInfo(&current_os_ver, &current_sp)) ||
+         (OSVersionFromString(current_os_ver) >=
+          OSVersionFromString(min_os_version));
+}
+
+}  // namespace
 
 // TODO(omaha): unit test the functions below.
 
@@ -342,6 +376,26 @@ HRESULT ApplyExperimentLabelDeltas(bool is_machine,
 
   return S_OK;
 }
+
+xml::UpdateResponseResult CheckSystemRequirements(
+    const xml::UpdateResponse* update_response, const CString& language) {
+  ASSERT1(update_response);
+
+  const xml::response::SystemRequirements& sys_req(
+      update_response->response().sys_req);
+  StringFormatter formatter(language);
+  CString text;
+
+  if (IsPlatformCompatible(sys_req.platform) &&
+      IsArchCompatible(sys_req.arch) &&
+      IsOSVersionCompatible(sys_req.min_os_version)) {
+    return std::make_pair(S_OK, CString());
+  }
+
+  VERIFY1(SUCCEEDED(formatter.LoadString(IDS_OS_NOT_SUPPORTED, &text)));
+  return std::make_pair(GOOPDATE_E_OS_NOT_SUPPORTED, text);
+}
+
 
 }  // namespace update_response_utils
 
