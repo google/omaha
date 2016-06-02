@@ -990,6 +990,19 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
       app->ap_.Empty();
     }
 
+    const TCHAR* const kExpiredExperimentLabel =
+        _T("omaha=v3_23_9_int|Fri, 14 Mar 2014 23:36:18 GMT");
+    const TCHAR* const kValidExperimentLabel =
+        _T("omaha=v3_23_9_int|Wed, 14 Mar 2029 23:36:18 GMT");
+
+    CString experiment_labels;
+    experiment_labels.Format(_T("%s;%s"),
+                             kExpiredExperimentLabel, kValidExperimentLabel);
+    EXPECT_SUCCEEDED(RegKey::SetValue(
+      app_registry_utils::GetAppClientStateKey(is_machine_, kGuid1),
+      kRegValueExperimentLabels,
+      experiment_labels));
+
     __mutexScope(AppManager::Instance()->GetRegistryStableStateLock());
 
     EXPECT_SUCCEEDED(app_manager_->WritePreInstallData(*app));
@@ -1062,6 +1075,8 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     // Version should not be written to clientstate by WritePreInstallData().
     EXPECT_FALSE(RegKey::HasValue(client_state_key_name,
                                   kRegValueProductVersion));
+
+    EXPECT_STREQ(kValidExperimentLabel, app->GetExperimentLabels());
   }
 
   static void ValidateClientStateMedium(bool is_machine,

@@ -23,6 +23,13 @@
 // C4201: nonstandard extension used : nameless struct/union
 #pragma warning(disable : 4201)
 #include <windows.h>
+
+// Redefining the macro RegisterEventSource to evaluate to NULL so that
+// CAtlServiceModuleT::LogEvent() code does not log to the event log. Doing this
+// avoids duplicating the CAtlServiceModuleT code.
+#undef RegisterEventSource
+#define RegisterEventSource(x, ...) NULL
+
 #include <winioctl.h>
 #include <wtypes.h>
 #include <tchar.h>

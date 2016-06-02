@@ -360,14 +360,9 @@ HRESULT ApplyExperimentLabelDeltas(bool is_machine,
     if (!app.experiments.IsEmpty()) {
       VERIFY1(IsGuid(app.appid));
 
-      ExperimentLabels labels;
-      VERIFY1(SUCCEEDED(labels.ReadFromRegistry(is_machine, app.appid)));
-
-      if (!labels.DeserializeAndApplyDelta(app.experiments)) {
-        return E_FAIL;
-      }
-
-      HRESULT hr = labels.WriteToRegistry(is_machine, app.appid);
+      HRESULT hr = ExperimentLabels::WriteToRegistry(is_machine,
+                                                     app.appid,
+                                                     app.experiments);
       if (FAILED(hr)) {
         return hr;
       }

@@ -192,43 +192,6 @@ HRESULT SetInstallationId(const CString& omaha_client_state_key_path,
   return S_OK;
 }
 
-// Persist experiment labels that are specific to Google Update itself during
-// an initial install.  These are specified in a tag using "omahaexperiments";
-// once it's on the machine, Google Update's experiment labels will be read
-// and modified like any other app on the system.
-HRESULT SetExperimentLabels(const CString& omaha_client_state_key_path,
-                            const CString& new_labels) {
-  if (new_labels.IsEmpty()) {
-    return S_FALSE;
-  }
-
-  if (!ExperimentLabels::IsStringValidLabelSet(new_labels)) {
-    OPT_LOG(LE, (_T("[New experiment labels are unparsable][%s]"), new_labels));
-    return E_INVALIDARG;
-  }
-
-  CString labels_to_write = new_labels;
-
-  // Do we have any existing values in the registry?
-  CString old_labels;
-  if (SUCCEEDED(RegKey::GetValue(omaha_client_state_key_path,
-                                 kRegValueExperimentLabels,
-                                 &old_labels))) {
-    if (!ExperimentLabels::MergeLabelSets(old_labels,
-                                          new_labels,
-                                          &labels_to_write)) {
-      // If we can't merge successfully, take the old labels.
-      CORE_LOG(LE, (_T("[MergeLabelSets() failed; using new labels only]")));
-      labels_to_write = new_labels;
-    }
-  }
-
-  // Write the merged (or new) label set to the registry.
-  return RegKey::SetValue(omaha_client_state_key_path,
-                          kRegValueExperimentLabels,
-                          labels_to_write);
-}
-
 void PersistUpdateErrorInfo(bool is_machine,
                             HRESULT error,
                             int extra_code1,
@@ -332,9 +295,8 @@ HRESULT InstallSelf(bool is_machine,
   // TODO(omaha): move SetInstallationId to app_registry_utils
   VERIFY1(SUCCEEDED(internal::SetInstallationId(omaha_client_state_key_path,
                                                 extra_args.installation_id)));
-  VERIFY1(SUCCEEDED(internal::SetExperimentLabels(
-      omaha_client_state_key_path,
-      extra_args.experiment_labels)));
+  VERIFY1(SUCCEEDED(ExperimentLabels::WriteToRegistry(
+      is_machine, kGoogleUpdateAppId, extra_args.experiment_labels)));
   VERIFY1(SUCCEEDED(app_registry_utils::SetGoogleUpdateBranding(
       omaha_client_state_key_path,
       extra_args.brand_code,

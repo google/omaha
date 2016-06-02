@@ -457,7 +457,8 @@ void GetClientStateData(bool is_machine,
     key.GetValue(kRegValueInstallationId, iid);
   }
   if (experiment_labels) {
-    key.GetValue(kRegValueExperimentLabels, experiment_labels);
+    *experiment_labels = ExperimentLabels::ReadFromRegistry(
+        is_machine, app_id, false);
   }
   if (cohort) {
     ReadCohort(is_machine, app_id, cohort);
@@ -629,43 +630,6 @@ void RemoveClientStateForApps(bool is_machine,
   for (it = apps.begin(); it != apps.end(); ++it) {
     RemoveClientState(is_machine, *it);
   }
-}
-
-HRESULT GetExperimentLabels(bool is_machine, const CString& app_id,
-                            CString* labels_out) {
-  ASSERT1(!app_id.IsEmpty());
-  ASSERT1(labels_out);
-
-  const CString state_key = GetAppClientStateKey(is_machine, app_id);
-  if (!RegKey::HasValue(state_key, kRegValueExperimentLabels)) {
-    return S_OK;
-  }
-
-  return RegKey::GetValue(state_key, kRegValueExperimentLabels, labels_out);
-}
-
-HRESULT GetExperimentLabelsMedium(const CString& app_id, CString* labels_out) {
-  ASSERT1(!app_id.IsEmpty());
-  ASSERT1(labels_out);
-
-  const bool kIsMachine = true;
-
-  const CString med_state_key = GetAppClientStateMediumKey(kIsMachine, app_id);
-  if (!RegKey::HasValue(med_state_key, kRegValueExperimentLabels)) {
-    return S_OK;
-  }
-
-  return RegKey::GetValue(med_state_key, kRegValueExperimentLabels, labels_out);
-}
-
-HRESULT SetExperimentLabels(bool is_machine, const CString& app_id,
-                            const CString& new_labels) {
-  ASSERT1(!app_id.IsEmpty());
-  ASSERT1(ExperimentLabels::IsStringValidLabelSet(new_labels));
-
-  return RegKey::SetValue(GetAppClientStateKey(is_machine, app_id),
-                          kRegValueExperimentLabels,
-                          new_labels);
 }
 
 HRESULT GetLastOSVersion(bool is_machine, OSVERSIONINFOEX* os_version_out) {

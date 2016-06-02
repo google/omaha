@@ -31,8 +31,9 @@
                       OnlyDetect='no'
                       Minimum='0.0.0.0' IncludeMinimum='yes'
                       Maximum='$(var.ProductVersion)' IncludeMaximum='yes' />
+      <!-- Allow downgrade. -->
       <UpgradeVersion Property='NEWPRODUCTFOUND'
-                      OnlyDetect='yes'
+                      OnlyDetect='no'
                       Minimum='$(var.ProductVersion)' IncludeMinimum='no' />
     </Upgrade>
 
@@ -70,6 +71,7 @@
                       Key='Software\Google\Update\ClientState\$(var.ProductGuid)'
                       Name='UninstallArguments'/>
     </Property>
+    <Property Id='AllowDowngradeSubstitution'>false</Property>
 
     <!-- Eliminates "warning LGHT1076 : ICE71: The Media table has no entries."
     -->
@@ -208,11 +210,18 @@
       Execute='deferred'
       Return='check' />
 
+    <!-- Set [AllowDowngradeSubstitution] to true for downgrades. -->
+    <CustomAction Id='DoAllowDowngradeSubstitution'
+      Property='AllowDowngradeSubstitution'
+      Value='true'
+      Execute='immediate'
+      Return='check'/>
+
     <InstallExecuteSequence>
       <RemoveExistingProducts After='InstallValidate' />
 
       <Custom Action='NewerVersionError' After='FindRelatedProducts'>
-        NEWPRODUCTFOUND
+        (NEWPRODUCTFOUND AND (ALLOWDOWNGRADE = ""))
       </Custom>
 
       <!-- Build tag property. -->
@@ -248,6 +257,12 @@
               Before='BuildInstallCommand'>
         (($ProductClientState>2) OR REINSTALL) AND (NOGOOGLEUPDATEPING &lt;&gt; "")
       </Custom>
+
+      <!-- Set [AllowDowngradeSubstitution] to true if downgrades are allowed. -->
+      <Custom Action='DoAllowDowngradeSubstitution' Before='BuildInstallCommand'>
+        (($ProductClientState>2) OR REINSTALL) AND (ALLOWDOWNGRADE &lt;&gt; "")
+      </Custom>
+
       <Custom Action='BuildInstallCommand'
               Before='SetAppGuidProperty'>
         (($ProductClientState>2) OR REINSTALL)

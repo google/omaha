@@ -30,8 +30,11 @@
 #include "omaha/common/experiment_labels.h"
 
 #include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
+#include "omaha/base/reg_key.h"
 #include "omaha/common/app_registry_utils.h"
+#include "omaha/common/const_goopdate.h"
 
 namespace omaha {
 
@@ -167,33 +170,42 @@ void ExperimentLabels::SetPreserveExpiredLabels(bool preserve) {
 
 HRESULT ExperimentLabels::WriteToRegistry(bool is_machine,
                                           const CString& app_id) {
-  return app_registry_utils::SetExperimentLabels(
-      is_machine, app_id, Serialize(SerializeOptions::INCLUDE_TIMESTAMPS));
+  return RegKey::SetValue(
+      app_registry_utils::GetAppClientStateKey(is_machine, app_id),
+      kRegValueExperimentLabels,
+      Serialize(SerializeOptions::INCLUDE_TIMESTAMPS));
 }
 
 HRESULT ExperimentLabels::ReadFromRegistry(bool is_machine,
                                            const CString& app_id) {
   CString label_list;
-  HRESULT hr = app_registry_utils::GetExperimentLabels(is_machine, app_id,
-                                                       &label_list);
-  if (FAILED(hr)) {
-    return hr;
+  const CString state_key(
+      app_registry_utils::GetAppClientStateKey(is_machine, app_id));
+  if (RegKey::HasValue(state_key, kRegValueExperimentLabels)) {
+    VERIFY1(SUCCEEDED(RegKey::GetValue(
+        state_key, kRegValueExperimentLabels, &label_list)));
   }
+
   if (!Deserialize(label_list)) {
     return E_FAIL;
   }
 
+  if (!is_machine) {
+    return S_OK;
+  }
+
   // If we're running as machine, check the ClientStateMedium key as well,
   // and integrate it into ClientState.
-  if (is_machine) {
-    hr = app_registry_utils::GetExperimentLabelsMedium(app_id, &label_list);
-    if (FAILED(hr)) {
-      return hr;
-    }
-    if (!label_list.IsEmpty()) {
-      if (!DeserializeAndApplyDelta(label_list)) {
-        return E_FAIL;
-      }
+  const CString med_state_key(
+      app_registry_utils::GetAppClientStateMediumKey(true, app_id));
+  if (RegKey::HasValue(med_state_key, kRegValueExperimentLabels)) {
+    VERIFY1(SUCCEEDED(RegKey::GetValue(
+        med_state_key, kRegValueExperimentLabels, &label_list)));
+  }
+
+  if (!label_list.IsEmpty()) {
+    if (!DeserializeAndApplyDelta(label_list)) {
+      return E_FAIL;
     }
   }
 
@@ -304,9 +316,25 @@ bool ExperimentLabels::DoDeserialize(LabelMap* map, const CString& label_list,
   return true;
 }
 
+CString ExperimentLabels::CreateLabel(const CString& key,
+                                      const CString& value,
+                                      time64 expiration,
+                                      bool include_timestamps) {
+  ExperimentLabels label;
+  if (!label.SetLabel(key, value, expiration)) {
+    return CString();
+  }
+
+  return label.Serialize(
+      include_timestamps ?
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
+      ExperimentLabels::SerializeOptions::DEFAULT);
+}
+
 bool ExperimentLabels::MergeLabelSets(const CString& old_label_list,
                                       const CString& new_label_list,
-                                      CString* merged_list) {
+                                      CString* merged_list,
+                                      bool include_timestamps) {
   ExperimentLabels labels;
   if (!labels.Deserialize(old_label_list)) {
     return false;
@@ -314,8 +342,58 @@ bool ExperimentLabels::MergeLabelSets(const CString& old_label_list,
   if (!labels.DeserializeAndApplyDelta(new_label_list)) {
     return false;
   }
-  *merged_list = labels.Serialize(SerializeOptions::INCLUDE_TIMESTAMPS);
+  *merged_list = labels.Serialize(
+      include_timestamps ?
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
+      ExperimentLabels::SerializeOptions::DEFAULT);
   return true;
+}
+
+CString ExperimentLabels::ReadFromRegistry(bool is_machine,
+                                           const CString& app_id,
+                                           bool include_timestamps) {
+  ExperimentLabels stored_labels;
+  VERIFY1(SUCCEEDED(stored_labels.ReadFromRegistry(is_machine, app_id)));
+  return stored_labels.Serialize(
+      include_timestamps ?
+      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
+      ExperimentLabels::SerializeOptions::DEFAULT);
+}
+
+HRESULT ExperimentLabels::WriteToRegistry(bool is_machine,
+                                          const CString& app_id,
+                                          const CString& new_labels) {
+  if (new_labels.IsEmpty()) {
+    return S_OK;
+  }
+
+  // Read any existing experiment labels for this app in the Registry.
+  ExperimentLabels labels;
+  HRESULT hr = labels.ReadFromRegistry(is_machine, app_id);
+
+  // If there are existing labels, attempt to merge them with the new labels. If
+  // no existing labels, attempt to use just the new labels.
+  bool deserialize_succeeded = SUCCEEDED(hr) ?
+                               labels.DeserializeAndApplyDelta(new_labels) :
+                               labels.Deserialize(new_labels);
+  if (!deserialize_succeeded) {
+    OPT_LOG(LE, (_T("[New experiment labels are unparsable][%s]"), new_labels));
+    return E_INVALIDARG;
+  }
+
+  hr = labels.WriteToRegistry(is_machine, app_id);
+
+  // If running as machine, delete any ClientStateMedium entry, since we have
+  // already merged the ClientStateMedium data above using ReadFromRegistry,
+  // Deserialize, and WriteToRegistry.
+  if (is_machine) {
+    const CString med_state_key(
+        app_registry_utils::GetAppClientStateMediumKey(is_machine, app_id));
+    VERIFY1(SUCCEEDED(RegKey::DeleteValue(med_state_key,
+                                          kRegValueExperimentLabels)));
+  }
+
+  return hr;
 }
 
 }  // namespace omaha

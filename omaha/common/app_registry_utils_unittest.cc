@@ -2482,8 +2482,9 @@ TEST_P(AppRegistryUtilsRegistryProtectedTest, GetClientStateData) {
   const CString expected_client_id    = _T("some client id");
   const CString expected_iid          =
       _T("{7C0B6E56-B24B-436b-A960-A6EA201E886F}");
-  const CString expected_experiment_label =
-      _T("some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT");
+  const CString experiment_label =
+      _T("a=a|Wed, 14 Mar 2029 23:36:18 GMT;b=a|Fri, 14 Aug 2015 16:13:03 GMT");
+  const CString expected_experiment_label = _T("a=a");
   const Cohort expected_cohort = {
     _T("Cohort1"),
     _T("CohortHint1"),
@@ -2511,7 +2512,7 @@ TEST_P(AppRegistryUtilsRegistryProtectedTest, GetClientStateData) {
                                             expected_iid));
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(GetClientStatePath(),
                                             kRegValueExperimentLabels,
-                                            expected_experiment_label));
+                                            experiment_label));
   EXPECT_HRESULT_SUCCEEDED(WriteCohort(IsMachine(),
                                        kGoogleUpdateAppId,
                                        expected_cohort));

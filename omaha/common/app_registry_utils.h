@@ -153,18 +153,6 @@ HRESULT RemoveClientState(bool is_machine, const CString& app_guid);
 void RemoveClientStateForApps(bool is_machine,
                               const std::vector<CString>& apps);
 
-// Retrieves experiment labels for an app from the Registry.
-HRESULT GetExperimentLabels(bool is_machine, const CString& app_id,
-                            CString* labels_out);
-
-// On machine only, retrieves experiment labels for an app from the Registry
-// in the ClientStateMedium key.
-HRESULT GetExperimentLabelsMedium(const CString& app_id, CString* labels_out);
-
-// Overwrites the experiment labels for an app in the Registry.
-HRESULT SetExperimentLabels(bool is_machine, const CString& app_id,
-                            const CString& new_labels);
-
 // Retrieves the previously stored OS version from the Registry.
 HRESULT GetLastOSVersion(bool is_machine, OSVERSIONINFOEX* os_version_out);
 

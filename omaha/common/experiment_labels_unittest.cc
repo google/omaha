@@ -125,7 +125,10 @@ const TCHAR* const kExperimentLabelTestAppId =
 
 }  // end namespace
 
-TEST(ExperimentLabelsTest, Empty) {
+class ExperimentLabelsTest : public testing::Test {
+};
+
+TEST_F(ExperimentLabelsTest, Empty) {
   ExperimentLabels el;
 
   EXPECT_EQ(0, el.NumLabels());
@@ -137,7 +140,7 @@ TEST(ExperimentLabelsTest, Empty) {
   EXPECT_FALSE(el.FindLabelByKey(kLabelOldKey, NULL, NULL));
 }
 
-TEST(ExperimentLabelsTest, BasicOperations) {
+TEST_F(ExperimentLabelsTest, BasicOperations) {
   ExperimentLabels el;
 
   EXPECT_EQ(0, el.NumLabels());
@@ -177,7 +180,7 @@ TEST(ExperimentLabelsTest, BasicOperations) {
   EXPECT_FALSE(el.ContainsKey(kLabelOldKey));
 }
 
-TEST(ExperimentLabelsTest, SetInvalidParameters) {
+TEST_F(ExperimentLabelsTest, SetInvalidParameters) {
   ExperimentLabels el;
 
   // Verify that our core test parameters are okay by adding a key, then
@@ -228,7 +231,7 @@ TEST(ExperimentLabelsTest, SetInvalidParameters) {
   EXPECT_EQ(1, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, SetWillOverwrite) {
+TEST_F(ExperimentLabelsTest, SetWillOverwrite) {
   ExperimentLabels el;
   CString value;
   time64 expiration;
@@ -248,7 +251,7 @@ TEST(ExperimentLabelsTest, SetWillOverwrite) {
   EXPECT_EQ(expiration, kLabelTwoExpInt);
 }
 
-TEST(ExperimentLabelsTest, FindLabelByKey) {
+TEST_F(ExperimentLabelsTest, FindLabelByKey) {
   ExperimentLabels el;
   CString value;
   time64 expiration;
@@ -275,7 +278,7 @@ TEST(ExperimentLabelsTest, FindLabelByKey) {
   EXPECT_EQ(expiration, kLabelTwoExpInt);
 }
 
-TEST(ExperimentLabelsTest, Serialize_Empty) {
+TEST_F(ExperimentLabelsTest, Serialize_Empty) {
   ExperimentLabels el;
 
   CString serialized = el.Serialize(
@@ -283,7 +286,7 @@ TEST(ExperimentLabelsTest, Serialize_Empty) {
   EXPECT_STREQ(serialized, _T(""));
 }
 
-TEST(ExperimentLabelsTest, Serialize_Single_Valid) {
+TEST_F(ExperimentLabelsTest, Serialize_Single_Valid) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOneValue, kLabelOneExpInt));
@@ -294,7 +297,7 @@ TEST(ExperimentLabelsTest, Serialize_Single_Valid) {
   EXPECT_STREQ(serialized, kLabelOneCombined);
 }
 
-TEST(ExperimentLabelsTest, Serialize_Single_Expired) {
+TEST_F(ExperimentLabelsTest, Serialize_Single_Expired) {
   ExperimentLabels el;
 
   el.SetPreserveExpiredLabels(true);
@@ -312,7 +315,7 @@ TEST(ExperimentLabelsTest, Serialize_Single_Expired) {
   EXPECT_STREQ(serialized, kLabelOldCombined);
 }
 
-TEST(ExperimentLabelsTest, Serialize_Multi_Valid) {
+TEST_F(ExperimentLabelsTest, Serialize_Multi_Valid) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOneValue, kLabelOneExpInt));
@@ -324,7 +327,7 @@ TEST(ExperimentLabelsTest, Serialize_Multi_Valid) {
   EXPECT_STREQ(serialized, kLabelNewCombined);
 }
 
-TEST(ExperimentLabelsTest, Serialize_Multi_Valid_NoTimeStamps) {
+TEST_F(ExperimentLabelsTest, Serialize_Multi_Valid_NoTimeStamps) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOneValue, kLabelOneExpInt));
@@ -337,7 +340,7 @@ TEST(ExperimentLabelsTest, Serialize_Multi_Valid_NoTimeStamps) {
 }
 
 
-TEST(ExperimentLabelsTest, Serialize_Multi_Valid_Expired) {
+TEST_F(ExperimentLabelsTest, Serialize_Multi_Valid_Expired) {
   ExperimentLabels el;
 
   el.SetPreserveExpiredLabels(true);
@@ -358,14 +361,14 @@ TEST(ExperimentLabelsTest, Serialize_Multi_Valid_Expired) {
 }
 
 
-TEST(ExperimentLabelsTest, Deserialize_EmptyString) {
+TEST_F(ExperimentLabelsTest, Deserialize_EmptyString) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.Deserialize(_T("")));
   EXPECT_EQ(0, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Single_Valid) {
+TEST_F(ExperimentLabelsTest, Deserialize_Single_Valid) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.Deserialize(kLabelOneCombined));
@@ -380,7 +383,7 @@ TEST(ExperimentLabelsTest, Deserialize_Single_Valid) {
   EXPECT_EQ(expiration, kLabelOneExpInt);
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Multi_Valid) {
+TEST_F(ExperimentLabelsTest, Deserialize_Multi_Valid) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.Deserialize(kLabelNewCombined));
@@ -399,7 +402,7 @@ TEST(ExperimentLabelsTest, Deserialize_Multi_Valid) {
   EXPECT_EQ(expiration, kLabelTwoExpInt);
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Single_Valid_Expired) {
+TEST_F(ExperimentLabelsTest, Deserialize_Single_Valid_Expired) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.Deserialize(kLabelOldCombined));
@@ -418,7 +421,7 @@ TEST(ExperimentLabelsTest, Deserialize_Single_Valid_Expired) {
   EXPECT_EQ(expiration, kLabelOldExpInt);
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Multi_Valid_Expired) {
+TEST_F(ExperimentLabelsTest, Deserialize_Multi_Valid_Expired) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.Deserialize(kLabelAllCombined));
@@ -437,7 +440,7 @@ TEST(ExperimentLabelsTest, Deserialize_Multi_Valid_Expired) {
   EXPECT_TRUE(el.ContainsKey(kLabelOldKey));
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthKey) {
+TEST_F(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthKey) {
   ExperimentLabels el;
 
   // Base case: "=valid_value|valid_exp"
@@ -463,7 +466,7 @@ TEST(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthKey) {
   EXPECT_EQ(0, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthValue) {
+TEST_F(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthValue) {
   ExperimentLabels el;
 
   // Base case: "valid_key=|valid_exp"
@@ -490,7 +493,7 @@ TEST(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthValue) {
   EXPECT_EQ(0, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthDate) {
+TEST_F(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthDate) {
   ExperimentLabels el;
 
   // Base case: "valid_key=valid_value|"
@@ -516,7 +519,7 @@ TEST(ExperimentLabelsTest, Deserialize_Invalid_ZeroLengthDate) {
   EXPECT_EQ(0, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Invalid_ExtraDelimiters) {
+TEST_F(ExperimentLabelsTest, Deserialize_Invalid_ExtraDelimiters) {
   ExperimentLabels el;
 
   // Repeated equals: "k==v|e"
@@ -545,7 +548,7 @@ TEST(ExperimentLabelsTest, Deserialize_Invalid_ExtraDelimiters) {
   EXPECT_EQ(0, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Valid_ExtraLabelDelimiters) {
+TEST_F(ExperimentLabelsTest, Deserialize_Valid_ExtraLabelDelimiters) {
   ExperimentLabels el;
 
   // We support (but discourage) leading/trailing/repeated separators;
@@ -577,7 +580,7 @@ TEST(ExperimentLabelsTest, Deserialize_Valid_ExtraLabelDelimiters) {
   EXPECT_EQ(0, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, Deserialize_Invalid_MissingDelimiters) {
+TEST_F(ExperimentLabelsTest, Deserialize_Invalid_MissingDelimiters) {
   ExperimentLabels el;
 
   // Missing all delimiters, single string (kve)
@@ -649,7 +652,7 @@ TEST(ExperimentLabelsTest, Deserialize_Invalid_MissingDelimiters) {
   EXPECT_EQ(0, el.NumLabels());
 }
 
-TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Append) {
+TEST_F(ExperimentLabelsTest, DeserializeAndApplyDelta_Append) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOneValue, kLabelOneExpInt));
@@ -667,7 +670,7 @@ TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Append) {
   EXPECT_EQ(expiration, kLabelTwoExpInt);
 }
 
-TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Append_Expired) {
+TEST_F(ExperimentLabelsTest, DeserializeAndApplyDelta_Append_Expired) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOneValue, kLabelOneExpInt));
@@ -681,7 +684,7 @@ TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Append_Expired) {
   EXPECT_FALSE(el.ContainsKey(kLabelOldKey));
 }
 
-TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Single) {
+TEST_F(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Single) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOldValue, kLabelOneExpInt));
@@ -705,7 +708,7 @@ TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Single) {
   EXPECT_EQ(expiration, kLabelOneExpInt);
 }
 
-TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Multi) {
+TEST_F(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Multi) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelOldValue, kLabelOneExpInt));
@@ -728,7 +731,8 @@ TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Multi) {
   EXPECT_EQ(expiration, kLabelTwoExpInt);
 }
 
-TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Single_Expired) {
+TEST_F(ExperimentLabelsTest,
+       DeserializeAndApplyDelta_Overwrite_Single_Expired) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOldKey, kLabelOldValue, kLabelOneExpInt));
@@ -743,7 +747,7 @@ TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Single_Expired) {
   EXPECT_TRUE(el.ContainsKey(kLabelTwoKey));
 }
 
-TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Multi_Expired) {
+TEST_F(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Multi_Expired) {
   ExperimentLabels el;
 
   EXPECT_TRUE(el.SetLabel(kLabelOneKey, kLabelTwoValue, kLabelOneExpInt));
@@ -761,7 +765,7 @@ TEST(ExperimentLabelsTest, DeserializeAndApplyDelta_Overwrite_Multi_Expired) {
   EXPECT_FALSE(el.ContainsKey(kLabelOldKey));
 }
 
-TEST(ExperimentLabelsTest, Expire) {
+TEST_F(ExperimentLabelsTest, Expire) {
   ExperimentLabels el;
 
   el.SetPreserveExpiredLabels(true);
@@ -826,6 +830,11 @@ class ExperimentLabelsRegistryProtectedTest : public testing::Test {
     ASSERT_SUCCEEDED(RegKey::SetValue(GetAppClientStateMediumKey(),
                                       kRegValueExperimentLabels,
                                       str));
+  }
+
+  bool HasValueClientStateMedium() {
+    return RegKey::HasValue(GetAppClientStateMediumKey(),
+                            kRegValueExperimentLabels);
   }
 
   void ReadClientState(CString* str_out) {
@@ -903,6 +912,44 @@ TEST_F(ExperimentLabelsRegistryProtectedTest, Merge) {
 
   ClearClientState();
   el.WriteToRegistry(true, kExperimentLabelTestAppId);
+  CString merged_str;
+  ReadClientState(&merged_str);
+  EXPECT_STREQ(kExpectedMergedResult, merged_str);
+}
+
+TEST_F(ExperimentLabelsRegistryProtectedTest, CreateReadWrite) {
+  ClearClientState();
+  SetClientState(kClientStateTestLabels);
+  SetClientStateMedium(kClientStateMediumTestLabels);
+
+  ExperimentLabels el;
+  el.ReadFromRegistry(true, kExperimentLabelTestAppId);
+
+  EXPECT_EQ(4, el.NumLabels());
+  EXPECT_TRUE(el.ContainsKey(_T("cs_unique")));
+  EXPECT_TRUE(el.ContainsKey(_T("csm_unique")));
+  EXPECT_TRUE(el.ContainsKey(_T("common")));
+  EXPECT_FALSE(el.ContainsKey(_T("cs_new_delete")));
+  EXPECT_TRUE(el.ContainsKey(_T("cs_old_keep")));
+
+  CString common_value;
+  ASSERT_TRUE(el.FindLabelByKey(_T("common"), &common_value, NULL));
+  EXPECT_STREQ(_T("csm"), common_value);
+
+  EXPECT_TRUE(HasValueClientStateMedium());
+
+  CString labels(ExperimentLabels::ReadFromRegistry(
+      true, kExperimentLabelTestAppId, true));
+  EXPECT_STREQ(kExpectedMergedResult, labels);
+
+  // Sun, 09 Mar 2025 16:13:03 GMT.
+  const time64 expiration = 133860103830000000uI64;
+  CString label(ExperimentLabels::CreateLabel(
+      _T("common"), _T("csm"), expiration, true));
+  ExperimentLabels::WriteToRegistry(true, kExperimentLabelTestAppId, label);
+
+  EXPECT_FALSE(HasValueClientStateMedium());
+
   CString merged_str;
   ReadClientState(&merged_str);
   EXPECT_STREQ(kExpectedMergedResult, merged_str);

@@ -148,8 +148,8 @@ TEST_F(PingTest, BuildAppsPing) {
   const CString expected_client_id    = _T("someclientid");
   const CString expected_iid          =
       _T("{7C0B6E56-B24B-436b-A960-A6EA201E886F}");
-  const CString expected_experiment_label =
-      _T("some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT");
+  const CString experiment_labels =
+    _T("a=a|Wed, 14 Mar 2029 23:36:18 GMT;b=a|Fri, 14 Aug 2015 16:13:03 GMT");
 
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
                                             kRegValueProductVersion,
@@ -168,7 +168,7 @@ TEST_F(PingTest, BuildAppsPing) {
                                             expected_iid));
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kOmahaUserClientStatePath,
                                             kRegValueExperimentLabels,
-                                            expected_experiment_label));
+                                            experiment_labels));
 
   const DWORD now = Time64ToInt32(GetCurrent100NSTime());
   const DWORD two_days_back = now - (2 * kSecondsPerDay);
@@ -195,7 +195,7 @@ TEST_F(PingTest, BuildAppsPing) {
   apps_ping.BuildAppsPing(ping_event);
 
   CString expected_ping_request_substring;
-  expected_ping_request_substring.Format(_T("<app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.3.99.0\" nextversion=\"\" lang=\"en\" brand=\"GGLS\" client=\"someclientid\" experiments=\"some_experiment=a|Fri, 14 Aug 2015 16:13:03 GMT\" installage=\"2\" installdate=\"9086\" iid=\"{7C0B6E56-B24B-436b-A960-A6EA201E886F}\"><event eventtype=\"2\" eventresult=\"1\" errorcode=\"34\" extracode1=\"6\"/></app>"));  // NOLINT
+  expected_ping_request_substring.Format(_T("<app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" version=\"1.3.99.0\" nextversion=\"\" lang=\"en\" brand=\"GGLS\" client=\"someclientid\" experiments=\"a=a\" installage=\"2\" installdate=\"9086\" iid=\"{7C0B6E56-B24B-436b-A960-A6EA201E886F}\"><event eventtype=\"2\" eventresult=\"1\" errorcode=\"34\" extracode1=\"6\"/></app>"));  // NOLINT
 
   CString actual_ping_request;
   apps_ping.BuildRequestString(&actual_ping_request);

@@ -50,9 +50,17 @@ TEST(CertInfoTest, CertInfo) {
   CertList cert_list;
   ExtractAllCertificatesFromSignature(executable_full_path, &cert_list);
 
-  // There are four certificates: two code signing and two time stamping
-  // certificates: the certs and their immediate parents but not the roots.
-  EXPECT_EQ(4, cert_list.size());
+  // ExtractAllCertificatesFromSignature() gets the certificate chain for the
+  // first signature and the certificate chain for the corresponding timestamp,
+  // excluding the root certificates.
+  // The following certificates are enumerated from SaveArguments.exe signed
+  // Thursday, April 14, 2016 3:57:37 PM:
+  // * "VeriSign Class 3 Code Signing 2010 CA" hash
+  //   495847A93187CFB8C71F840CB7B41497AD95C64F.
+  // * "Google Inc" hash 264E38570F882E5A0272423757741233A661B553.
+  // * "COMODO SHA-1 Time Stamping Signer" hash
+  //   03A5B14663EB12023091B84A6D6A68BC871DE66B.
+  EXPECT_EQ(3, cert_list.size());
 
   const CertInfo* cert_info = NULL;
   cert_list.FindFirstCert(&cert_info,

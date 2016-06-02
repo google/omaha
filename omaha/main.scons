@@ -90,8 +90,8 @@ _OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2007-2010 Google Inc.'
 
 # The hash comes from the Thumbprint item in the Details tab of the file
 # properties for the public key .cer file.
-# Omaha and Chrome certificate: sha1 (12/13/2015 to 12/14/2016).
-_BUILD_SERVER_CERTIFICATE_HASH = '264e38570f882e5a0272423757741233a661b553'
+# Omaha and Chrome certificate: sha256 (12/15/2015 to 12/16/2018).
+_BUILD_SERVER_CERTIFICATE_HASH = '5a9272ce76a9415a4a3a5002a2589a049312aa40'
 
 #
 # End vendor-specific constants.

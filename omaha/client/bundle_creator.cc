@@ -43,45 +43,6 @@ namespace bundle_creator {
 
 namespace internal {
 
-HRESULT MergeAndSetExperimentLabels(const CString& new_labels, IApp* app) {
-  if (new_labels.IsEmpty()) {
-    return S_FALSE;
-  }
-
-  // Is this incoming label set valid?
-  if (!ExperimentLabels::IsStringValidLabelSet(new_labels)) {
-    OPT_LOG(LE, (_T("[New experiment labels are unparsable][%s]"), new_labels));
-    return E_INVALIDARG;
-  }
-
-  // Do we have any existing experiment labels for this app id in the Registry?
-  CComBSTR old_labels;
-  HRESULT hr = app->get_labels(&old_labels);
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[get_labels() failed][0x%x]"), hr));
-    return hr;
-  }
-
-  // Attempt to merge them.  If it fails, overwrite with the new ones, since we
-  // know from the above check that they're valid.
-  CString merged_labels;
-  if (!ExperimentLabels::MergeLabelSets(CString(old_labels),
-                                        new_labels,
-                                        &merged_labels)) {
-    CORE_LOG(LE, (_T("[MergeLabelSets() failed; using new labels only]")));
-    merged_labels = new_labels;
-  }
-
-  // Write the merged (or new, if the merge failed) labels into the Registry.
-  hr = app->put_labels(CComBSTR(merged_labels));
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[put_labels() failed][%s][0x%x]"), merged_labels, hr));
-    return hr;
-  }
-
-  return S_OK;
-}
-
 bool IsNotPrintable(TCHAR c) {
   return c < 32 || c >= 127;
 }
@@ -269,8 +230,10 @@ HRESULT PopulateAppSpecificData(const CommandLineAppArgs& app_args,
   }
 
   if (!app_args.experiment_labels.IsEmpty()) {
-    hr = MergeAndSetExperimentLabels(app_args.experiment_labels, app);
+    hr = app->put_labels(CComBSTR(app_args.experiment_labels));
     if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[put_labels() failed][%s][%#x]"),
+                    app_args.experiment_labels, hr));
       return hr;
     }
   }

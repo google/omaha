@@ -161,7 +161,8 @@ void Ping::AddExtraOmahaLabel(const CString& label_set) {
   CString new_labels;
   if (ExperimentLabels::MergeLabelSets(omaha_data_.experiment_labels,
                                        label_set,
-                                       &new_labels)) {
+                                       &new_labels,
+                                       false)) {
     omaha_data_.experiment_labels = new_labels;
   }
 }
@@ -491,21 +492,6 @@ HRESULT Ping::SendPersistedPings(bool is_machine) {
     return hr;
   }
 
-  scoped_handle impersonation_token;
-  hr = vista::GetLoggedOnUserToken(address(impersonation_token));
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[SendPersistedPings][GetLoggedOnUserToken failed][%#x]"),
-                  hr));
-    // Continue anyway.
-  }
-
-  scoped_impersonation impersonate_user(get(impersonation_token));
-  hr = HRESULT_FROM_WIN32(impersonate_user.result());
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[SendPersistedPings][impersonation failed][%#x]"), hr));
-    // Continue anyway.
-  }
-
   for (size_t i = 0; i != persisted_pings.size(); ++i) {
     const CString& persisted_subkey_name(persisted_pings[i].first);
     time64 persisted_time = persisted_pings[i].second.first;
@@ -571,6 +557,9 @@ HRESULT Ping::SendString(bool is_machine,
   // persist the labels for some reason), returning a failure code would result
   // in the ping being persisted and re-sent later.  For this reason, we always
   // return a success code if we sent the ping, even if following actions fail.
+
+  // Registry writes to HKLM need admin.
+  scoped_revert_to_self revert_to_self;
   VERIFY1(SUCCEEDED(update_response_utils::ApplyExperimentLabelDeltas(
       is_machine,
       response.get())));

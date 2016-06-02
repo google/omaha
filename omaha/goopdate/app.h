@@ -406,8 +406,6 @@ class App : public ModelObject {
   int GetTimeDifferenceMs(TimeMetricType time_start_metric_type,
                           TimeMetricType time_end_metric_type) const;
 
-  CString GetExperimentLabelsHelper(bool include_timestamps) const;
-
   scoped_ptr<fsm::AppState> app_state_;
 
   scoped_ptr<AppVersion> current_version_;

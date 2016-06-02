@@ -83,7 +83,7 @@ def SignDotNetManifest(env, target, unsigned_manifest):
   Returns:
     Output node list from env.Command().
   """
-  mage_sign_path = ('python $MAIN_DIR/tools/retry.py 10 5 %s/%s' %
+  mage_sign_path = ('python $MAIN_DIR/tools/retry.py 10 15 %s/%s' %
                     (os.getenv('OMAHA_NETFX_TOOLS_DIR'), 'mage.exe -Sign'))
   sign_manifest_cmd = (mage_sign_path +
                        ' $SOURCE -ToFile $TARGET -TimestampUri ' +

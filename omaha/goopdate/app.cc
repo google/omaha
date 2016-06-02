@@ -198,12 +198,9 @@ STDMETHODIMP App::get_labels(BSTR* labels) {
 
 STDMETHODIMP App::put_labels(BSTR labels) {
   __mutexScope(model()->lock());
-  ExperimentLabels decoded_labels;
-  if (!decoded_labels.Deserialize(labels)) {
-    return E_INVALIDARG;
-  }
-  return decoded_labels.WriteToRegistry(app_bundle_->is_machine(),
-                                        app_guid_string());
+  return ExperimentLabels::WriteToRegistry(app_bundle_->is_machine(),
+                                           app_guid_string(),
+                                           labels);
 }
 
 STDMETHODIMP App::get_referralId(BSTR* referral_id) {
@@ -694,12 +691,16 @@ CString App::client_id() const {
 
 CString App::GetExperimentLabels() const {
   __mutexScope(model()->lock());
-  return App::GetExperimentLabelsHelper(true);
+  return ExperimentLabels::ReadFromRegistry(app_bundle_->is_machine(),
+                                            app_guid_string(),
+                                            true);
 }
 
 CString App::GetExperimentLabelsNoTimestamps() const {
   __mutexScope(model()->lock());
-  return App::GetExperimentLabelsHelper(false);
+  return ExperimentLabels::ReadFromRegistry(app_bundle_->is_machine(),
+                                            app_guid_string(),
+                                            false);
 }
 
 CString App::referral_id() const {
@@ -1256,16 +1257,6 @@ CString App::GetInstallData() const {
   }
 
   return server_install_data_;
-}
-
-CString App::GetExperimentLabelsHelper(bool include_timestamps) const {
-  ExperimentLabels stored_labels;
-  VERIFY1(SUCCEEDED(stored_labels.ReadFromRegistry(app_bundle_->is_machine(),
-                                                   app_guid_string())));
-  return stored_labels.Serialize(
-      include_timestamps ?
-      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
-      ExperimentLabels::SerializeOptions::DEFAULT);
 }
 
 // IApp.

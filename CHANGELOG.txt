@@ -1,3 +1,64 @@
+## 2016-06-01 @120560962,123807766
+
+### Changes
+--------------------------------------------------------------------------------
+Fix bug CertInfoTest.CertInfo fails. ExtractAllCertificatesFromSignature() gets
+the certificate chain for the first signature and the certificate chain for the
+corresponding timestamp. With the older SaveArguments.exe, the "Symantec Time
+Stamping Services Signer - G4" timestamp had 2 certificates in the certificate
+chain. With the newer SaveArguments.exe, the "COMODO SHA-1 Time Stamping Signer"
+has only a single certificate in the chain. So the total is off by 1.
+Fixing the total to be 3 now.
+
+The code we have in signaturevalidator.cc works for now.
+ExtractAllCertificatesFromSignature() only extracts the first signature in files
+with multiple digital signatures. It turns out that ::CryptQueryObject in
+conjunction with ::CertEnumCertificatesInStore on the returned HCERTSTORE only
+enumerates over the first signature (the SHA1 in this case). If we need to read
+subsequent signatures (the SHA256 for instance), we need to parse the
+unauthenticated attribute OID szOID_NESTED_SIGNATURE. For now, the code that
+we depend on works fine with the SHA1 signature, so I am only fixing the unit
+test.
+--------------------------------------------------------------------------------
+Bypass signing process for development build.
+--------------------------------------------------------------------------------
+Omaha fonts look bad on hi-dpi windows and fix Chromium Issue 612283 Installer
+text is blurry on Hi-DPI devices. Changing the manifest to specify that the
+Omaha UI is DPI-Aware. Tested with different DPI settings on Windows 8.1,
+the UI works well. More work may be needed on Windows 7, where the progress
+bar is not scaled appropriately.
+--------------------------------------------------------------------------------
+Fix ADMX generation for the UpdateDefault policy.
+Addressing crbug/609145.
+--------------------------------------------------------------------------------
+Add support for product downgrades to GoogleChromeStandaloneEnterprise.msi
+wrappers around standalone installers.
+
+Ordinarily, the MSI wrapper prevents product downgrades. This can be
+suppressed by passing ALLOWDOWNGRADE=1 (or any other value) via the
+command line to msiexec. This option can be propagated to app installers
+(mini_installer.exe) via a substitution of the [AllowDowngradeSubstitution]
+property in the app's ProductInstallerData. This property will be 'false'
+under normal circumstances, and 'true' when ALLOWDOWNGRADE=1
+is used.
+
+This feature is added in support of Chrome's enterprise installer; see
+http://crbug.com/607592.
+--------------------------------------------------------------------------------
+Fix bug 28297220 Experiment Label deltas not being saved correctly for machine
+ping requests.
+--------------------------------------------------------------------------------
+Update service spam to Event Log. Redefining the macro RegisterEventSource to
+evaluate to NULL so that ATL's logging code does nothing.
+Explicitly using ::RegisterEventSourceW in the Omaha codebase.
+--------------------------------------------------------------------------------
+Authenticode timestamping changes. Increasing the timeout between retries of
+signing a single file to 15 seconds as per Comodo's recommendations.
+--------------------------------------------------------------------------------
+Refactor Experiment Labels. This change reduces the public interface for
+experiment labels down to 4 functions. This makes the calling code less
+error-prone, more readable, and avoids duplicated functionality.
+
 ## 2016-05-31 @113564071,120560961 1.3.30.3
 
 ### Changes

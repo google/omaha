@@ -920,13 +920,6 @@ HRESULT AppManager::WritePreInstallData(const App& app) {
       app.referral_id(),
       app.day_of_last_response())));
 
-  if (app.GetExperimentLabels().IsEmpty()) {
-    VERIFY1(SUCCEEDED(client_state_key.DeleteValue(kRegValueExperimentLabels)));
-  } else {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueExperimentLabels,
-                                                app.GetExperimentLabels())));
-  }
-
   if (oem_install_utils::IsOemInstalling(is_machine_)) {
     ASSERT1(is_machine_);
     VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueOemInstall, _T("1"))));

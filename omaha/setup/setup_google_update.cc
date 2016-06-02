@@ -42,7 +42,6 @@
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
-#include "omaha/common/experiment_labels.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/setup/setup_metrics.h"
@@ -123,37 +122,6 @@ HRESULT RegisterOrUnregisterService(bool reg, CString service_path) {
                                    COMMANDLINE_MODE_SERVICE_UNREGISTER);
   CString cmd_line = builder.GetCommandLineArgs();
   return RegisterOrUnregisterExe(service_path, cmd_line);
-}
-
-HRESULT SetB2173996ExperimentLabelIfNeeded(bool is_machine,
-                                           const CString& shell_path) {
-  if (is_machine || !::IsUserAnAdmin() || !vista_util::IsVistaOrLater()) {
-    return S_FALSE;
-  }
-
-  const ULONGLONG kShellVersion1_2_131_7 = 0x0001000200830007;
-
-  ULONGLONG shell_version = app_util::GetVersionFromFile(shell_path);
-  if (shell_version > kShellVersion1_2_131_7) {
-    return S_FALSE;
-  }
-
-  bool is_uac_on(false);
-  if (vista_util::IsVistaOrLater()) {
-    VERIFY1(SUCCEEDED(vista_util::IsUACOn(&is_uac_on)));
-  }
-
-  const TCHAR* const kLabelName = _T("B2173996");
-  CString label_value;
-  label_value.Format(_T("UAC%d"), is_uac_on);
-  const time64 kValidityPeriod =
-      static_cast<time64>(kSecsTo100ns) * kSecondsPerDay * 60;
-
-  ExperimentLabels labels;
-  VERIFY1(SUCCEEDED(labels.ReadFromRegistry(true, kGoogleUpdateAppId)));
-  time64 now = GetCurrent100NSTime();
-  labels.SetLabel(kLabelName, label_value, now + kValidityPeriod);
-  return labels.WriteToRegistry(true, kGoogleUpdateAppId);
 }
 
 }  // namespace
@@ -353,8 +321,6 @@ HRESULT SetupGoogleUpdate::InstallRegistryValues() {
     VERIFY1(SUCCEEDED(goopdate_utils::EnableSEHOP(true)));
   }
 
-  VERIFY1(SUCCEEDED(SetB2173996ExperimentLabelIfNeeded(is_machine_,
-                                                       shell_path)));
   return S_OK;
 }
 

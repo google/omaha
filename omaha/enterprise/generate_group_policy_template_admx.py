@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-
 """Generates a Group Policy admx/adml template file for Google Update policies.
 
 The resulting strings and files use CRLF as required by gpedit.msc.
@@ -27,7 +26,6 @@ import filecmp
 import os
 import re
 import sys
-
 
 MAIN_POLICY_KEY = r'Software\Policies\Google\Update'
 
@@ -52,7 +50,6 @@ ADMX_ENVIRONMENT = '''
   </supportedOn>
 '''
 
-
 ADMX_CATEGORIES = '''
   <categories>
     <category name="Cat_Google" displayName="$(string.Cat_Google)" />
@@ -74,7 +71,6 @@ ADMX_CATEGORIES = '''
 %(AppCategorList)s
   </categories>
 '''
-
 
 ADMX_POLICIES = '''
   <policies>
@@ -186,7 +182,7 @@ ADMX_POLICIES = '''
         displayName="$(string.Pol_DefaultUpdatePolicy)"
         explainText="$(string.Explain_DefaultUpdatePolicy)"
         presentation="$(presentation.Pol_DefaultUpdatePolicy)"
-        key="%(RootPolicyKey)s" valueName="UpdateDefault">
+        key="%(RootPolicyKey)s">
       <parentCategory ref="Cat_Applications" />
       <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
       <elements>
@@ -218,7 +214,6 @@ ADMX_POLICIES = '''
 %(AppPolicyList)s
   </policies>
 '''
-
 
 ADMX_APP_POLICY_TEMPLATE = '''\
     <policy name="Pol_AllowInstallation%(AppLegalId)s" class="Machine"
@@ -265,7 +260,6 @@ ADMX_APP_POLICY_TEMPLATE = '''\
         </enum>
       </elements>
     </policy>'''
-
 
 ADMX_FOOTER = '</policyDefinitions>'
 
@@ -326,7 +320,7 @@ def GenerateGroupPolicyTemplateAdmx(apps):
       app_name = app[0]
       app_category_list.append(admx_app_category_template % {
           'AppLegalId': _CreateLegalIdentifier(app_name)
-          })
+      })
 
     return ADMX_CATEGORIES % {'AppCategorList': '\n'.join(app_category_list)}
 
@@ -348,12 +342,12 @@ def GenerateGroupPolicyTemplateAdmx(apps):
           'AppLegalId': _CreateLegalIdentifier(app_name),
           'AppGuid': app_guid,
           'RootPolicyKey': MAIN_POLICY_KEY,
-          })
+      })
 
     return ADMX_POLICIES % {
         'AppPolicyList': '\n'.join(app_policy_list),
         'RootPolicyKey': MAIN_POLICY_KEY,
-        }
+    }
 
   target_contents = [
       ADMX_HEADER,
@@ -361,7 +355,7 @@ def GenerateGroupPolicyTemplateAdmx(apps):
       _GenerateCategories(apps),
       _GeneratePolicies(apps),
       ADMX_FOOTER,
-      ]
+  ]
 
   return ''.join(target_contents)
 
@@ -370,14 +364,12 @@ ADML_HEADER = '''\
 <policyDefinitionResources revision="1.0" schemaVersion="1.0">
 '''
 
-
 ADML_ENVIRONMENT = '''\
   <displayName>
   </displayName>
   <description>
   </description>
 '''
-
 
 ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Sup_GoogleUpdate1_2_145_5', 'At least Google Update 1.2.145.5'),
@@ -441,8 +433,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
      'You can specify a URL to a proxy .pac file here.\n\n'
      'This policy only takes effect if you have selected manual proxy settings '
      'at \'Choose how to specify proxy server settings\'.'),
-    ('Explain_Applications',
-     'Policies for individual applications.\n\n'
+    ('Explain_Applications', 'Policies for individual applications.\n\n'
      'An updated ADMX/ADML template will be required to support '
      'Google applications released in the future.'),
     ('Explain_DefaultAllowInstallation',
@@ -480,8 +471,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
      'future versions of installed applications.'),
 ]
 
-
-ADML_PRESENTATIONS  = '''\
+ADML_PRESENTATIONS = '''\
       <presentation id="Pol_AutoUpdateCheckPeriod">
         <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="1400"
             spinStep="60">Minutes between update checks</decimalTextBox>
@@ -519,7 +509,6 @@ ADML_PRESENTATIONS  = '''\
       </presentation>\
 '''
 
-
 ADML_RESOURCE_TABLE_TEMPLATE = '''
   <resources>
     <stringTable>
@@ -530,7 +519,6 @@ ADML_RESOURCE_TABLE_TEMPLATE = '''
     </presentationTable>
   </resources>
 '''
-
 
 ADML_FOOTER = '</policyDefinitionResources>'
 
@@ -589,24 +577,24 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'If you select manual updates, you should periodically check for '
         'updates using the application\'s manual update mechanism if '
         'available. If you disable updates, you should periodically check '
-        'for updates and distribute them to users.%s'
-        % (app_name, app_additional_help_msg))
+        'for updates and distribute them to users.%s' %
+        (app_name, app_additional_help_msg))
     string_definition_list.append(app_auto_update_policy_explanation)
 
   app_resource_strings = []
   for entry in string_definition_list:
-    app_resource_strings.append(
-        '      <string id="%s">%s</string>' % (entry[0], entry[1]))
+    app_resource_strings.append('      <string id="%s">%s</string>' %
+                                (entry[0], entry[1]))
 
   app_resource_tables = (ADML_RESOURCE_TABLE_TEMPLATE %
-      ('\n'.join(app_resource_strings), ADML_PRESENTATIONS))
+                         ('\n'.join(app_resource_strings), ADML_PRESENTATIONS))
 
   target_contents = [
       ADML_HEADER,
       ADML_ENVIRONMENT,
       app_resource_tables,
       ADML_FOOTER,
-      ]
+  ]
 
   return ''.join(target_contents)
 
@@ -652,17 +640,15 @@ def WriteGroupPolicyTemplateAdml(target_path, apps):
   f.write(contents)
   f.close()
 
-
 # Run a unit test when the module is run directly.
 if __name__ == '__main__':
   TEST_APPS = [
-      ('Google Test Foo',
-       '{D6B08267-B440-4c85-9F79-E195E80D9937}',
+      ('Google Test Foo', '{D6B08267-B440-4c85-9F79-E195E80D9937}',
        ' Check http://www.google.com/test_foo/.'),
       (u'Google User Test Foo\u00a9\u00ae\u2122',
        '{104844D6-7DDA-460b-89F0-FBF8AFDD0A67}',
        ' Check http://www.google.com/user_test_foo/.'),
-      ]
+  ]
   module_dir = os.path.abspath(os.path.dirname(__file__))
   gold_path = os.path.join(module_dir, 'test_gold.admx')
   output_path = os.path.join(module_dir, 'test_out.admx')

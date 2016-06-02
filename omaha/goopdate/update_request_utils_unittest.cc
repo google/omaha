@@ -294,12 +294,11 @@ TEST_F(UpdateRequestUtilsTest, PingFreshness) {
 TEST_F(UpdateRequestUtilsTest, ExperimentLabels) {
   const TCHAR expiration_date[] = _T("Sun, 09 Mar 2025 16:13:03 GMT");
   const time64 expiration = 133860103830000000uI64;
-  ExperimentLabels experiment_labels;
-  EXPECT_TRUE(experiment_labels.SetLabel(_T("label key"),
-                                         _T("label value"),
-                                         expiration));
-  EXPECT_SUCCEEDED(experiment_labels.WriteToRegistry(false,
-                                                     app_->app_guid_string()));
+
+  CString label(ExperimentLabels::CreateLabel(
+      _T("label key"), _T("label value"), expiration, true));
+  EXPECT_SUCCEEDED(ExperimentLabels::WriteToRegistry(
+      false, app_->app_guid_string(), label));
 
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
   BuildRequest(app_, true, update_request_.get());

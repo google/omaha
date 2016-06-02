@@ -130,7 +130,9 @@ HRESULT EventLogger::ReportEvent(const TCHAR* src_name,
   }
 
   //  Opens the log on the local computer.
-  HANDLE hlog = ::RegisterEventSource(NULL, src_name);
+  // The macro RegisterEventSource has been redefined to evaluate to NULL in
+  // precompile.h, so we need to explicitly use ::RegisterEventSourceW here.
+  HANDLE hlog = ::RegisterEventSourceW(NULL, src_name);
   if (!hlog) {
     return HRESULTFromLastError();
   }

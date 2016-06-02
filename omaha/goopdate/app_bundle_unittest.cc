@@ -1034,6 +1034,31 @@ TEST_F(AppBundlePopulatedRegistryMachineTest, createInstalledApp_Present) {
   EXPECT_EQ(1, num_apps);
 }
 
+TEST_F(AppBundlePopulatedRegistryMachineTest, ExperimentLabels) {
+  const TCHAR* const kExpiredExperimentLabel =
+      _T("omaha=v3_23_9_int|Fri, 14 Mar 2014 23:36:18 GMT");
+  const TCHAR* const kValidExperimentLabel =
+      _T("omaha=v3_23_9_int|Wed, 14 Mar 2029 23:36:18 GMT");
+
+  App *expected_app0 = NULL;
+  App *expected_app1 = NULL;
+  App *expected_app2 = NULL;
+  PopulateDataAndRegistryForRegisteredAndUnInstalledAppsTests(&expected_app0,
+                                                              &expected_app1,
+                                                              &expected_app2);
+  EXPECT_SUCCEEDED(RegKey::SetValue(
+      app_registry_utils::GetAppClientStateKey(true, kGuid1),
+      kRegValueExperimentLabels,
+      kExpiredExperimentLabel));
+  EXPECT_STREQ(_T(""), expected_app0->GetExperimentLabels());
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(
+      app_registry_utils::GetAppClientStateKey(true, kGuid1),
+      kRegValueExperimentLabels,
+      kValidExperimentLabel));
+  EXPECT_STREQ(kValidExperimentLabel, expected_app0->GetExperimentLabels());
+}
+
 // TODO(omaha3): Test that the same app can be added to different bundles for
 // each of the create methods.
 TEST_F(AppBundlePopulatedRegistryUserTest, createInstalledApp_SameAppTwice) {
