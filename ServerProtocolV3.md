@@ -11,7 +11,7 @@ The client sends requests via HTTP POST with an XML data body. The response is a
 
 Diagram of an example request-response pair:
 
-![Protocol V3 Illustration](https://cdn.rawgit.com/google/omaha/wiki/protocol_v3.svg)
+![Protocol V3 Illustration](https://cdn.rawgit.com/google/omaha/master/protocol_v3.svg)
 
 ## Terminology ##
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.ietf.org/rfc/rfc2119.txt).
