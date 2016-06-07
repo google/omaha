@@ -5,7 +5,7 @@ This document describes version 2 of the Omaha client-server protocol.  Omaha wa
 ## Overview ##
 The client sends requests via HTTP POST with an XML data body.  The response is an XML data body.
 
-![http://omaha.googlecode.com/svn/wiki/ServerProtocol_Images/omahaprotocol2.jpg](http://omaha.googlecode.com/svn/wiki/ServerProtocol_Images/omahaprotocol2.jpg)
+![big-picture.jpg](big-picture.jpg)
 
 An HTTP request may concatenate multiple applications in one XML body; similarly, multiple request-actions may be included for any application.  The server responds with a status and other information (as appropriate) for each action, organized in a similar nested XML structure.
 
@@ -327,7 +327,7 @@ The response must be secure: the client must be sure the response data blob came
   * using SSL
   * using the secure Client-Update Protocol (CUP)
 
-If the client elects to use SSL, no further integrity checking is needed.  If CUP is used, the following HTTP headers and parameters will be added, which allow a signature to be supplied by the server and verified by the client.  The [CUP design document](http://omaha.googlecode.com/svn/wiki/cup.html) describes the protocol in detail.
+If the client elects to use SSL, no further integrity checking is needed.  If CUP is used, the following HTTP headers and parameters will be added, which allow a signature to be supplied by the server and verified by the client.  The [CUP design document](cup.html) describes the protocol in detail.
 
 ### CUP Request ###
   * w (URL parameter): Encodes a proposed private key.  Provides nonce for protection against replay in the signed response.

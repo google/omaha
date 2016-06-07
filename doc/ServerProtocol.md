@@ -7,7 +7,7 @@ Version 2 is documented [here](ServerProtocolV2.md).
 ## Overview ##
 The client sends requests via HTTP POST with an XML data body.  The response is an XML data body.
 
-![http://omaha.googlecode.com/svn/wiki/ServerProtocol_Images/omahaprotocol3.png](http://omaha.googlecode.com/svn/wiki/ServerProtocol_Images/omahaprotocol3.png)
+![Protocol V3 Illustration](https://cdn.rawgit.com/google/omaha/master/doc/protocol_v3.svg)
 
 An HTTP request may concatenate multiple applications in one XML body; similarly, multiple request-actions may be included for any application.  The server responds with a status and other information (as appropriate) for each action, organized in a similar nested XML structure.
 
@@ -479,7 +479,7 @@ The response must be secure: the client must be sure the response data blob came
   * using SSL
   * using the secure Client-Update Protocol (CUP)
 
-If the client elects to use SSL, no further integrity checking is needed.  If CUP is used, the following HTTP headers and parameters will be added, which allow a signature to be supplied by the server and verified by the client.  The [CUP design document](http://omaha.googlecode.com/svn/wiki/cup.html) describes the protocol in detail.
+If the client elects to use SSL, no further integrity checking is needed.  If CUP is used, the following HTTP headers and parameters will be added, which allow a signature to be supplied by the server and verified by the client.  The [CUP design document](cup.html) describes the protocol in detail.
 
 ## Other Headers ##
   * `X-GoogleUpdate-Interactivity` -- Either 'fg' or 'bg' when present, 'fg' indicating a user-initiated foreground update. 'bg' indicates that the request is part of a background update. If the server is under extremely high load, it may use this to prioritize 'fg' requests over 'bg' requests.

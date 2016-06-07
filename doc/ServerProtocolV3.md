@@ -7,7 +7,7 @@ Version 2 is documented [here](ServerProtocolV2.md). An older description of the
 ## Introduction ##
 The Omaha protocol is designed to facilitate the acquisition, delivery, and metrics of software updates over the Internet. It is an application-layer protocol on top of HTTP.
 
-The client sends requests via HTTP POST with an XML data body. The response is an XML data body. For Omaha Client, the request and response are secured by [CUP](http://omaha.googlecode.com/svn/wiki/cup.html) or SSL.
+The client sends requests via HTTP POST with an XML data body. The response is an XML data body. For Omaha Client, the request and response are secured by [CUP](cup.html) or SSL.
 
 Diagram of an example request-response pair:
 
@@ -552,7 +552,7 @@ Compatible clients MAY include additional headers in requests to the server. Suc
 
 Compatible servers MAY include additional headers in responses to the client. Compatible clients MUST be able to tolerate unexpected headers.
 
-Omaha Client uses additional headers in the request and response to implement [CUP](http://omaha.googlecode.com/svn/wiki/cup.html), as well as send network diagnostics. Omaha Client sends the following custom headers:
+Omaha Client uses additional headers in the request and response to implement [CUP](cup.html), as well as send network diagnostics. Omaha Client sends the following custom headers:
   * `X-Last-HR`: On a retry, contains the HRESULT error code returned from `NetworkRequestImple::DoSendHttpRequestion()` for the previous attempt.
   * `X-Last-HTTP-Status-Code`: On a retry, contains the HTTP status code of the previous attempt, if any HTTP status code was received.
   * `X-Proxy-Manual-Auth`: When present, this header indicates that the request was sent through at least one proxy that required authentication and that Omaha had no cached credentials for the proxy, causing it to display a UI to prompt the user. The header's value, when present, is always `1`.
