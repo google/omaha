@@ -1,0 +1,732 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html class="pageview">
+
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<base target="_top">
+<style type="text/css">
+  
+
+/* default css */
+
+table {
+  font-size: 1em;
+  line-height: inherit;
+  border-collapse: collapse;
+}
+
+
+tr {
+  
+  text-align: left;
+  
+}
+
+
+div, address, ol, ul, li, option, select {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+p {
+  margin: 0px;
+}
+
+
+pre {
+  font-family: Courier New;
+  white-space: pre-wrap;
+  margin:0;
+}
+
+body {
+  margin: 6px;
+  padding: 0px;
+  font-family: Verdana, sans-serif;
+  font-size: 10pt;
+  background-color: #ffffff;
+}
+
+
+img {
+  -moz-force-broken-image-icon: 1;
+}
+
+@media screen {
+  html.pageview {
+    background-color: #f3f3f3 !important;
+  }
+
+  
+
+  body {
+    min-height: 1100px;
+    
+    counter-reset: __goog_page__;
+  }
+  * html body {
+    height: 1100px;
+  }
+  .pageview body {
+    border-top: 1px solid #ccc;
+    border-left: 1px solid #ccc;
+    border-right: 2px solid #bbb;
+    border-bottom: 2px solid #bbb;
+    width: 648px !important;
+    margin: 15px auto 25px;
+    padding: 40px 50px;
+  }
+  /* IE6 */
+  * html {
+    overflow-y: scroll;
+  }
+  * html.pageview body {
+    overflow-x: auto;
+  }
+  /* Prevent repaint errors when scrolling in Safari. This "Star-7" css hack
+     targets Safari 3.1, but not WebKit nightlies and presumably Safari 4.
+     That's OK because this bug is fixed in WebKit nightlies/Safari 4 :-). */
+  html*#wys_frame::before {
+    content: '\A0';
+    position: fixed;
+    overflow: hidden;
+    width: 0;
+    height: 0;
+    top: 0;
+    left: 0;
+  }
+  
+  
+
+  
+    .writely-callout-data {
+      display: none;
+      *display: inline-block;
+      *width: 0;
+      *height: 0;
+      *overflow: hidden;
+    }
+    .writely-footnote-marker {
+      background-image: url('MISSING');
+      background-color: transparent;
+      background-repeat: no-repeat;
+      width: 7px;
+      overflow: hidden;
+      height: 16px;
+      vertical-align: top;
+
+      
+      -moz-user-select: none;
+    }
+    .editor .writely-footnote-marker {
+      cursor: move;
+    }
+    .writely-footnote-marker-highlight {
+      background-position: -15px 0;
+      -moz-user-select: text;
+    }
+    .writely-footnote-hide-selection ::-moz-selection, .writely-footnote-hide-selection::-moz-selection {
+      background: transparent;
+    }
+    .writely-footnote-hide-selection ::selection, .writely-footnote-hide-selection::selection {
+      background: transparent;
+    }
+    .writely-footnote-hide-selection {
+      cursor: move;
+    }
+
+    
+    .editor .writely-comment-yellow {
+      background-color: #FF9;
+      background-position: -240px 0;
+    }
+    .editor .writely-comment-yellow-hover {
+      background-color: #FF0;
+      background-position: -224px 0;
+    }
+    .editor .writely-comment-blue {
+      background-color: #C0D3FF;
+      background-position: -16px 0;
+    }
+    .editor .writely-comment-blue-hover {
+      background-color: #6292FE;
+      background-position: 0 0;
+    }
+    .editor .writely-comment-orange {
+      background-color: #FFDEAD;
+      background-position: -80px 0;
+    }
+    .editor .writely-comment-orange-hover {
+      background-color: #F90;
+      background-position: -64px 0;
+    }
+    .editor .writely-comment-green {
+      background-color: #99FBB3;
+      background-position: -48px 0;
+    }
+    .editor .writely-comment-green-hover {
+      background-color: #00F442;
+      background-position: -32px 0;
+    }
+    .editor .writely-comment-cyan {
+      background-color: #CFF;
+      background-position: -208px 0;
+    }
+    .editor .writely-comment-cyan-hover {
+      background-color: #0FF;
+      background-position: -192px 0;
+    }
+    .editor .writely-comment-purple {
+      background-color: #EBCCFF;
+      background-position: -144px 0;
+    }
+    .editor .writely-comment-purple-hover {
+      background-color: #90F;
+      background-position: -128px 0;
+    }
+    .editor .writely-comment-magenta {
+      background-color: #FCF;
+      background-position: -112px 0;
+    }
+    .editor .writely-comment-magenta-hover {
+      background-color: #F0F;
+      background-position: -96px 0;
+    }
+    .editor .writely-comment-red {
+      background-color: #FFCACA;
+      background-position: -176px 0;
+    }
+    .editor .writely-comment-red-hover {
+      background-color: #FF7A7A;
+      background-position: -160px 0;
+    }
+
+    .editor .writely-comment-marker {
+      background-image: url('MISSING');
+      background-color: transparent;
+      padding-right: 11px;
+      background-repeat: no-repeat;
+      width: 16px;
+      height: 16px;
+      -moz-user-select: none;
+    }
+
+    .editor .writely-comment-hidden {
+      padding: 0;
+      background: none;
+    }
+    .editor .writely-comment-marker-hidden {
+      background: none;
+      padding: 0;
+      width: 0;
+    }
+    .editor .writely-comment-none {
+      opacity: .2;
+      filter:progid:DXImageTransform.Microsoft.Alpha(opacity=20);
+      -moz-opacity: .2;
+    }
+    .editor .writely-comment-none-hover {
+      opacity: .2;
+      filter:progid:DXImageTransform.Microsoft.Alpha(opacity=20);
+      -moz-opacity: .2;
+    }
+  
+
+
+  
+  .br_fix span+br:not(:-moz-last-node) {
+    
+    position:relative;
+    
+    left: -1ex
+    
+  }
+
+  
+  #cb-p-tgt {
+    font-size: 8pt;
+    padding: .4em;
+    font-style: oblique;
+    background-color: #FFF1A8;
+    border: 1px solid #000;
+  }
+}
+
+h6 { font-size: 8pt }
+h5 { font-size: 8pt }
+h4 { font-size: 10pt }
+h3 { font-size: 12pt }
+h2 { font-size: 14pt }
+h1 { font-size: 18pt }
+
+blockquote {padding: 10px; border: 1px #DDD dashed }
+
+.webkit-indent-blockquote { border: none; }
+
+a img {border: 0}
+
+.pb {
+  border-width: 0;
+  page-break-after: always;
+  /* We don't want this to be resizeable, so enforce a width and height
+     using !important */
+  height: 1px !important;
+  width: 100% !important;
+}
+
+.editor .pb {
+  border-top: 1px dashed #C0C0C0;
+  border-bottom: 1px dashed #C0C0C0;
+}
+
+div.google_header, div.google_footer {
+  position: relative;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+
+/* Table of contents */
+.editor div.writely-toc {
+  background-color: #f3f3f3;
+  border: 1px solid #ccc;
+}
+.writely-toc > ol {
+  padding-left: 3em;
+  font-weight: bold;
+}
+ol.writely-toc-subheading {
+  padding-left: 1em;
+  font-weight: normal;
+}
+/* IE6 only */
+* html writely-toc ol {
+  list-style-position: inside;
+}
+.writely-toc-none {
+  list-style-type: none;
+}
+.writely-toc-decimal {
+  list-style-type: decimal;
+}
+.writely-toc-upper-alpha {
+  list-style-type: upper-alpha;
+}
+.writely-toc-lower-alpha {
+  list-style-type: lower-alpha;
+}
+.writely-toc-upper-roman {
+  list-style-type: upper-roman;
+}
+.writely-toc-lower-roman {
+  list-style-type: lower-roman;
+}
+.writely-toc-disc {
+  list-style-type: disc;
+}
+
+/* Ordered lists converted to numbered lists can preserve ordered types, and
+   vice versa. This is confusing, so disallow it */
+ul[type="i"], ul[type="I"], ul[type="1"], ul[type="a"], ul[type="A"] {
+  list-style-type: disc;
+}
+
+ol[type="disc"], ol[type="circle"], ol[type="square"] {
+  list-style-type: decimal;
+}
+
+/* end default css */
+
+
+  /* default print css */
+  
+  @media print {
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    div.google_header, div.google_footer {
+      display: block;
+      min-height: 0;
+      border: none;
+    }
+
+    div.google_header {
+      flow: static(header);
+    }
+
+    /* used to insert page numbers */
+    div.google_header::before, div.google_footer::before {
+      position: absolute;
+      top: 0;
+    }
+
+    div.google_footer {
+      flow: static(footer);
+    }
+
+    /* always consider this element at the start of the doc */
+    div#google_footer {
+      flow: static(footer, start);
+    }
+
+    span.google_pagenumber {
+      content: counter(page);
+    }
+
+    span.google_pagecount {
+      content: counter(pages);
+    }
+
+
+    callout.google_footnote {
+      
+      display: prince-footnote;
+      footnote-style-position: inside;
+      /* These styles keep the footnote from taking on the style of the text
+         surrounding the footnote marker. They can be overridden in the
+         document CSS. */
+      color: #000;
+      font-family: Verdana;
+      font-size: 10.0pt;
+      font-weight: normal;
+    }
+
+    /* Table of contents */
+    #WritelyTableOfContents a::after {
+      content: leader('.') target-counter(attr(href), page);
+    }
+
+    #WritelyTableOfContents a {
+      text-decoration: none;
+      color: black;
+    }
+  }
+
+  @page {
+    @top {
+      content: flow(header);
+    }
+    @bottom {
+      content: flow(footer);
+    }
+    @footnotes {
+      border-top: solid black thin;
+      padding-top: 8pt;
+    }
+  }
+  /* end default print css */
+
+
+/* custom css */
+
+h1, h2, h3, h4 {
+  color: #008800;
+}
+h1 {
+  text-align: center;
+}
+
+/* end custom css */
+
+/* ui edited css */
+
+body {
+  font-family: Verdana;
+  
+  font-size: 10.0pt;
+  line-height: normal;
+  background-color: #ffffff;
+}
+/* end ui edited css */
+
+
+/* editor CSS */
+.editor a:visited {color: #551A8B}
+.editor table.zeroBorder {border: 1px dotted gray}
+.editor table.zeroBorder td {border: 1px dotted gray}
+.editor table.zeroBorder th {border: 1px dotted gray}
+
+
+.editor div.google_header, .editor div.google_footer {
+  border: 2px #DDDDDD dashed;
+  position: static;
+  width: 100%;
+  min-height: 2em;
+}
+
+.editor .misspell {background-color: yellow}
+
+.editor .writely-comment {
+  font-size: 9pt;
+  line-height: 1.4;
+  padding: 1px;
+  border: 1px dashed #C0C0C0
+}
+
+
+/* end editor CSS */
+
+</style>
+
+  
+  <title>Google Update on a Schedule Overview</title>
+
+</head>
+
+<body 
+    
+    >
+    
+    
+    
+<h1 id=x.3q>
+  <font size=4>GoogleUpdate.exe on a Schedule Overview</font>
+</h1>
+<div id=ll4w style=TEXT-ALIGN:left>
+  <h2 id=a7yy0>
+    Background
+  </h2>
+  <span style="FONT-FAMILY:Arial; COLOR:#333333">
+  <div>
+    <font class=Apple-style-span face=Verdana><font class=Apple-style-span color=#000000>As mentioned in the&nbsp;<a href=http://google-opensource.blogspot.com/2009/07/google-update-regularly-scheduled.html id=elc5 target=_blank title="release announcement">release announcement</a>, client software products have unique challenges, with one of the important challenges being keeping the product up to date. Deploying critical security fixes in a timely and effective manner is one key way that GoogleUpdate.exe, code name Omaha, helps&nbsp;</font></font><a href=http://www.techzoom.net/publications/silent-updates/ id=ddnv target=_blank title="keep users secure"><font class=Apple-style-span face=Verdana><font class=Apple-style-span color=#000000>keep users secure</font></font></a><font class=Apple-style-span face=Verdana><font class=Apple-style-span color=#000000>. Another benefit is that cool new features get deployed and adopted quickly.&nbsp;</font></font>
+  </div>
+  <div>
+    <br>
+  </div>
+  <div>
+    <font class=Apple-style-span face=Verdana><font class=Apple-style-span color=#000000>Until now, Google Update would always run in the background, functioning primarily as a reliable scheduler performing update checks at periodic time intervals. The Google Update <i>Core</i> was primarily responsible for runnning the internal task scheduler. A secondary purpose of the Core was to handle crashes. The Google Update <i>Update Worker</i> did the actual update check, and updated any applications that had updates on the Omaha server.</font></font>
+  </div>
+  <div>
+    <br>
+  </div>
+  <div>
+    <font class=Apple-style-span face=Verdana><font class=Apple-style-span color=#000000>Google Update now uses the&nbsp;</font></font><a href=http://en.wikipedia.org/wiki/Task_Scheduler id=v-ed target=_blank title="Windows Task Scheduler"><font class=Apple-style-span face=Verdana><font class=Apple-style-span color=#000000>Windows Task Scheduler</font></font></a><font class=Apple-style-span face=Verdana><font class=Apple-style-span color=#000000>&nbsp;to only run at periodic intervals. At the same time, the design is careful to ensure that automatic updates work just as reliably, and that users are just as safe and secure as before.</font></font>
+  </div>
+  <div>
+    <br>
+  </div>
+  </span>
+  <h2 id=xp3r6>
+    Requirements
+  </h2>
+  &nbsp;&nbsp;The list of requirements includes:<br>
+  <ol>
+    <li>
+      Only run Google Update when needed and limit the amount of time it runs.
+    </li>
+    <li>
+      For handling crashes, GoogleCrashHandler.exe will be running and ready at the point where the Google application process starts. This is to allow for early crashes in an application to be caught. In addition, the application does not incur a startup delay waiting for the crash handler to start.
+    </li>
+  </ol>
+  <h2 id=a7yy11>
+    Design<br id=zqm80>
+  </h2>
+  <p id=h1gl>
+  </p>
+  <p id=h6x1 style="MARGIN-RIGHT:0px; MARGIN-LEFT:0px">
+    A quick note on terminology: Google Update installs itself for the entire "Machine" when it is asked to install an application for all users. This is known as the "Machine instance" or the "Machine Case". In cases where Google Update installs a per-user application and itself as "User", this is known as the "User instance" or the "User case".&nbsp;
+  </p>
+  <div>
+    <br>
+  </div>
+  With the new design, the Google Update Core, as well as the Update Worker, will primarily run as tasks scheduled by the Windows Task Scheduler.&nbsp;
+</div>
+<div id=yzd1 style=TEXT-ALIGN:left>
+  <br>
+</div>
+<div id=xnk: style=TEXT-ALIGN:left>
+  The Core scheduled task will have a trigger to run at logon<i>&nbsp;only for the machine case, </i>and a trigger to run at daily intervals for both user and machine.&nbsp;
+</div>
+<div id=k78n style=TEXT-ALIGN:left>
+  <br>
+</div>
+<div id=fgbf style=TEXT-ALIGN:left>
+  The Update Worker task will be installed for both the user and machine cases. It will run at a<i>&nbsp;fixed interval of one hour.&nbsp;</i>
+</div>
+<div id=oad9 style=TEXT-ALIGN:left>
+  <br>
+</div>
+<div id=zfoh style=TEXT-ALIGN:left>
+  <i><span style=FONT-STYLE:normal>The existing mechanisms to launch the Core using the System Service for machine and the Run key for user are also being retained in case the Task Scheduler does not work as intended.&nbsp;</span></i>
+  <p>
+    &nbsp;
+  </p>
+  <p id=qvno>
+  </p>
+  <p>
+    &nbsp;
+  </p>
+  <div id=t9e3 style=TEXT-ALIGN:left>
+    <img src="GoogleUpdateOnAScheduleOverview_Images/Omaha_kickoff_mechanisms_setup.jpg" style="WIDTH:582px; HEIGHT:831px">
+  </div>
+  &nbsp;
+  <p>
+    &nbsp;
+  </p>
+  &nbsp;
+  <p>
+    &nbsp;
+  </p>
+  <div id=lhbt style=TEXT-ALIGN:left>
+    <img src="GoogleUpdateOnAScheduleOverview_Images/Core_Update_Worker_Crash_Handler.jpg" style="WIDTH:648px; HEIGHT:838.588px">
+  </div>
+  <p>
+    &nbsp;
+  </p>
+  <p id=g58i>
+  </p>
+  <p>
+    &nbsp;
+  </p>
+  &nbsp;
+  <p id=fge2>
+    <b>When the Core runs, it will do the following:</b>
+  </p>
+  <p id=h0um>
+  </p>
+  <ul>
+    <li>
+      <i>Do a Code Red check. </i>This works like it worked before the architectural changes.
+    </li>
+    <li>
+      <i>Exit if there is another instance of the Core running.</i><br>
+    </li>
+    <li>
+      <i>Check if all Omaha-supported applications have uninstalled, and if so, will start an uninstall Update worker. </i>The Update worker will then uninstall Omaha. <i>The Core will exit at this point and not do further processing.</i><br>
+      <br>
+      Only when the Core or the Update Worker run will the uninstall check be performed. Omaha will not be actively monitoring the Clients key, to see if Omaha-supported applications have uninstalled.<br>
+      <br>
+    </li>
+    <li>
+      <i>If Omaha does not need uninstalling, start a plain-vanilla Update worker. </i>The update worker will check if it needs to do an update check, and if not, shut down immediately. Update check intervals for Omaha are now configurable, as are update policies per Omaha application, using Group Policy. For more information, please refer to&nbsp;<a href=http://google-opensource.blogspot.com/2009/05/google-update-releases-update-controls.html target=_blank title="Omaha Group Policy Support">Omaha Group Policy Support</a>.<br>
+    </li>
+    <li>
+      <i>Start a Crash Handler worker, GoogleCrashHandler.exe. </i>The crash handler worker will check if usagestats are enabled for any application that Omaha supports, and if not, shut down immediately. For per-machine installs (HKLM), Omaha will also check ClientStateMedium in addition to ClientState, where the application can write the usagestats value. Like the existing ClientState key, there will be a subkey for each application.&nbsp;<br>
+      <br>
+      <i>If usagestats are enabled, the GoogleCrashHandler.exe will run all the time</i>, and handle crashes. When a crash occurs, GoogleCrashHandler.exe will spawn an instance of the GoogleUpdate.exe constant shell to upload the crash.<br>
+      <br>
+    </li>
+    <li>
+      <i>The Core will exit at this point, if the following are <b>all</b> true:</i>
+    </li>
+    <ul>
+      <li>
+        the Task Scheduler is running.
+      </li>
+      <li>
+        the Update Worker scheduled task is installed, not disabled, and, if it has been more than 24 hours since the last install/update of Omaha, the task has run successfully in the past.
+      </li>
+      <li>
+        the Service is installed and enabled.
+      </li>
+      <li>
+        It has not been greater than 14 days since Omaha last successfully checked for updates.<br>
+        <br>
+      </li>
+    </ul>
+    <li>
+      <i>If <b>any </b>of the above conditions are not true, the Core will run the internal scheduler, which runs the Update Worker. </i>In other words, the Core will continue to run.&nbsp;<br>
+      <br>
+    </li>
+    <li>
+      <i>In this new architecture, the Google Update Service now supports the Elevator interface. </i>If the Service is not installed for some reason, the Core will continue to run, in order to support the Elevator interface.
+    </li>
+  </ul>
+  <div id=vh7m style=TEXT-ALIGN:left>
+    <br>
+  </div>
+  <p id=j_4z style="MARGIN-RIGHT:0px; MARGIN-LEFT:0px">
+    <b>When the Update Worker runs it will do the following:</b>
+  </p>
+  <p id=vt_8 style="MARGIN-RIGHT:0px; MARGIN-LEFT:0px">
+  </p>
+  <ul>
+    <li>
+      Check whether to uninstall Omaha and uninstall Omaha if needed.
+    </li>
+    <li>
+      Behave as before, in that it will check for and install updates to Omaha and applications.
+    </li>
+  </ul>
+  <p>
+    &nbsp;
+  </p>
+  <p id=ie2b0 style="MARGIN-RIGHT:0px; MARGIN-LEFT:0px">
+  </p>
+  <ul>
+  </ul>
+  <div id=qn35z style=TEXT-ALIGN:left>
+    <br>
+  </div>
+  <div id=p7m8j style=TEXT-ALIGN:left>
+    <div>
+      <b>Some notable changes:</b>
+    </div>
+    <div>
+      <ul>
+        <li>
+          The idle trigger is being eliminated for the scheduled tasks, because it offers limited robustness benefits, and has issues with the Core running too frequently.
+        </li>
+        <li>
+          There will now be two scheduled tasks installed for Omaha, one for the Core, and another for the Update Worker.
+        </li>
+        <ul>
+          <li>
+            The Core scheduled task will have two triggers for machine, and one for user: The common trigger will run the Core task once every 24 hours. The additional trigger for machine will run the task at logon; this is a secondary kickoff mechanism for the machine case. Windows does not allow a "run only when logged on" task to have a logon trigger, hence Omaha does not have that trigger for the user case.&nbsp;
+          </li>
+          <li>
+            The Core task will have the default name of "GoogleUpdateTask[User|Machine]Core", or if that name is already taken, a name of the form "GoogleUpdateTask[User|Machine]{uniquestring}Core".&nbsp;
+          </li>
+          <li>
+            If the Core task name is not the default name, the unique name will be stored in the "Google\Update" registry under the "gupdate_task_name_c" named value.
+          </li>
+          <li>
+            The Update Worker task will have one trigger: run at fixed intervals of approximately one hour.
+          </li>
+          <li>
+            The Update Worker task will have the default name of "GoogleUpdateTask[User|Machine]UA", or if that name already exists, a name of the form "GoogleUpdateTask[User|Machine]{uniquestring}UA".
+          </li>
+          <li>
+            If the Update Worker task name is not the default name, the unique name will be stored in the "Google\Update" registry under the "gupdate_task_name_ua" named value.
+          </li>
+        </ul>
+        <li>
+          When the Core runs, it will check for existence of the UA scheduled task. It does not care if the Core task is installed or not. If the UA task is not installed, the Core will run continously.
+        </li>
+      </ul>
+    </div>
+    <div>
+      <br>
+    </div>
+  </div>
+</div>
+<div id=coz58 style=TEXT-ALIGN:left>
+  <div style=direction:inherit>
+    <div style=direction:inherit>
+      <span style=COLOR:#008800><b><font size=4>Addressing issues with using the Windows Task Scheduler</font></b></span>
+    </div>
+  </div>
+  <ul>
+    <li>
+      <span class=nfakPe>Credentials</span>&nbsp;is an issue <span class=nfakPe>when creating a user task</span>. The&nbsp;<span class=nfakPe>scheduler</span>&nbsp;caches&nbsp;<span class=nfakPe>credentials</span>&nbsp;for the user that registered the scheduled task and if the user password changes, then the task does not work anymore. This issue was worked around by creating a task that is launched only when the user is logged on, which does not have the credential caching issue.&nbsp;
+    </li>
+    <li>
+      There are cases where the scheduled task cannot be installed for some reason. For instance, a non-admin user on Windows Server 2003 does not have permissions to install scheduled tasks. This issue is addressed by the fallback mechanism to run the Core all the time.
+    </li>
+    <li>
+      If the machine is in a sleep state, there are some hardware configurations on which the scheduled task will not be scheduled. There are some reported hardware configurations on which the scheduled taks fail because of suspected ACPI interactions. These issues are addressed by the fallback mechanism to run the Core all the time in cases where Google Update detects that either the scheduled task has not run for a while or that it terminated with an error.
+    </li>
+    <li>
+      If the task fails for some reason, on certain Windows systems, a message is displayed to the user. There have also been reports of the Task Scheduler service failing in some cases. To address this issue, we are careful not to return any error to the Task Scheduler from the scheduled task process.
+    </li>
+  </ul>
+</div>
+<br></body>
+</html>
