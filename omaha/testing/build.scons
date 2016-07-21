@@ -195,7 +195,6 @@ omaha_unittest_libs = [
     'ole32.lib',
     'oleaut32.lib',
     'psapi.lib',
-    'rasapi32.lib',
     'rpcns4.lib',
     'rpcrt4.lib',
     'shlwapi.lib',
@@ -633,7 +632,6 @@ if env.Bit('all'):
           # These are required by common_lib
           'netapi32.lib',
           'psapi.lib',
-          'rasapi32.lib',
           'shlwapi.lib',
           'userenv.lib',
           'version.lib',

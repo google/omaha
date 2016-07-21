@@ -25,6 +25,7 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/error.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/signaturevalidator.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/const_group_policy.h"
@@ -211,9 +212,9 @@ HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
     HRESULT hr = HRESULT_FROM_WIN32(::GetLastError());
     return hr;
   } else {
-    os_version->Format(_T("%u.%u"),
-                       os_version_info.dwMajorVersion,
-                       os_version_info.dwMinorVersion);
+    SafeCStringFormat(os_version, _T("%u.%u"),
+                      os_version_info.dwMajorVersion,
+                      os_version_info.dwMinorVersion);
     *service_pack = os_version_info.szCSDVersion;
   }
   return S_OK;
@@ -364,15 +365,15 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
   StringEscape(os_version, true, &os_version_escaped);
   StringEscape(os_service_pack, true, &os_service_pack_escaped);
 
-  query->Format(kQueryStringFormat,
-                app_guid_escaped,
-                app_version_escaped,
-                app_language_escaped,
-                is_machine_app ? 1 : 0,
-                omaha_version_escaped,
-                user_id_escaped,
-                os_version_escaped,
-                os_service_pack_escaped);
+  SafeCStringFormat(query, kQueryStringFormat,
+                    app_guid_escaped,
+                    app_version_escaped,
+                    app_language_escaped,
+                    is_machine_app ? 1 : 0,
+                    omaha_version_escaped,
+                    user_id_escaped,
+                    os_version_escaped,
+                    os_service_pack_escaped);
 
   return S_OK;
 }

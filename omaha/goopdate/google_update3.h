@@ -92,6 +92,12 @@ class ATL_NO_VTABLE Update3COMClass
 
   STDMETHODIMP get_Count(long* count) {  // NOLINT
     ASSERT1(count);
+
+    HRESULT hr = InitializeWorker(this);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
     __mutexScope(model()->lock());
 
     const size_t num_app_bundles = model()->GetNumberOfAppBundles();
@@ -112,6 +118,11 @@ class ATL_NO_VTABLE Update3COMClass
       return E_ACCESSDENIED;
     }
 
+    HRESULT hr = InitializeWorker(this);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
     __mutexScope(model()->lock());
 
     const size_t num_app_bundles(model()->GetNumberOfAppBundles());
@@ -127,6 +138,12 @@ class ATL_NO_VTABLE Update3COMClass
   // Creates an AppBundle object and its corresponding COM wrapper.
   STDMETHODIMP createAppBundle(IDispatch** app_bundle_wrapper) {
     ASSERT1(app_bundle_wrapper);
+
+    HRESULT hr = InitializeWorker(this);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
     __mutexScope(model()->lock());
 
     shared_ptr<AppBundle> app_bundle(model()->CreateAppBundle(T::is_machine()));
@@ -138,23 +155,7 @@ class ATL_NO_VTABLE Update3COMClass
   HRESULT FinalConstruct() {
     CORE_LOG(L2, (_T("[Update3COMClass::FinalConstruct]")));
 
-    HRESULT hr = InitializeWorker();
-    if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[InitializeWorker failed][0x%x]"), hr));
-      return hr;
-    }
-
-    hr = Worker::Instance().EnsureSingleInstance();
-    if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[EnsureSingleInstance failed][0x%x]"), hr));
-      return hr;
-    }
-
     Worker::Instance().Lock();
-
-    omaha::interlocked_exchange_pointer(&model_, Worker::Instance().model());
-    ASSERT1(model());
-
     return S_OK;
   }
 
@@ -164,22 +165,29 @@ class ATL_NO_VTABLE Update3COMClass
   }
 
  private:
-  static HRESULT InitializeWorker() {
+  static HRESULT InitializeWorker(Update3COMClass* instance) {
+    ASSERT1(instance);
+
     static LLock lock;
     static bool is_initialized = false;
     __mutexScope(lock);
 
-    if (is_initialized) {
-      return S_OK;
+    if (!is_initialized) {
+      CORE_LOG(L2, (_T("[InitializeWorker][%d]"), T::is_machine()));
+      HRESULT hr = Worker::Instance().Initialize(T::is_machine());
+      if (FAILED(hr)) {
+        return hr;
+      }
+
+      is_initialized = true;
     }
 
-    CORE_LOG(L2, (_T("[InitializeWorker][%d]"), T::is_machine()));
-    HRESULT hr = Worker::Instance().Initialize(T::is_machine());
-    if (FAILED(hr)) {
-      return hr;
+    if (!instance->model()) {
+      omaha::interlocked_exchange_pointer(&instance->model_, 
+                                          Worker::Instance().model());
     }
+    ASSERT1(instance->model());
 
-    is_initialized = true;
     return S_OK;
   }
 

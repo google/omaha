@@ -24,6 +24,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/localization.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 
 using std::string;
 
@@ -2039,7 +2040,7 @@ TCHAR * String_FastToLower(TCHAR * str) {
 // Convert a size_t to a CString
 CString sizet_to_str(const size_t & i) {
   CString out;
-  out.Format(NOTRANSL(_T("%Iu")),i);
+  SafeCStringFormat(&out, NOTRANSL(_T("%Iu")),i);
   return out;
 }
 
@@ -3041,9 +3042,9 @@ CString FormatResourceMessage(uint32 resource_id, ...) {
 CString FormatErrorCode(DWORD error_code) {
   CString error_code_string;
   if (FAILED(error_code)) {
-    error_code_string.Format(_T("0x%08x"), error_code);
+    SafeCStringFormat(&error_code_string, _T("0x%08x"), error_code);
   } else {
-    error_code_string.Format(_T("%u"), error_code);
+    SafeCStringFormat(&error_code_string, _T("%u"), error_code);
   }
   return error_code_string;
 }

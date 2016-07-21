@@ -290,7 +290,7 @@ class MetaInstaller {
     _ASSERTE(command_line);
 
     CString target;
-    target.Format(_T(" /%s"), kCmdLineNoMetainstallerTag);
+    SafeCStringAppendCmdLine(&target, _T(" /%s"), kCmdLineNoMetainstallerTag);
 
     if (command_line->Right(target.GetLength()).CompareNoCase(target) == 0) {
       command_line->Truncate(command_line->GetLength() - target.GetLength());

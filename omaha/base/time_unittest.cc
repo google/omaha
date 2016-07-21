@@ -85,7 +85,9 @@ void TimeToStringTest(FILETIME *ft, bool daylight_savings_time) {
   ASSERT_STREQ(date1, date2);
 }
 
-TEST(TimeTest, TimeToStringTest) {
+// Disabling this test since TimeTest.TimeToStringTest is broken on VS2015.
+// https://github.com/google/omaha/issues/74
+TEST(TimeTest, DISABLED_TimeToStringTest) {
   bool daylight_savings_time = false;
   TIME_ZONE_INFORMATION tz;
   if (GetTimeZoneInformation(&tz) == TIME_ZONE_ID_DAYLIGHT) {

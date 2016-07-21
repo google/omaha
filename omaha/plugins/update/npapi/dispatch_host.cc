@@ -20,6 +20,7 @@
 #include "base/logging.h"
 #include "base/scope_guard.h"
 #include "base/scoped_ptr.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/plugins/update/npapi/variant_utils.h"
 
@@ -30,7 +31,7 @@ namespace {
 void SetExceptionIfFailed(NPObject* object, HRESULT result) {
   if (FAILED(result)) {
     CStringA message;
-    message.Format("0x%08x", result);
+    SafeCStringAFormat(&message, "0x%08x", result);
     NPN_SetException(object, message);
   }
 }

@@ -22,6 +22,7 @@
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
@@ -598,7 +599,7 @@ HRESULT AppManager::ReadAppDefinedAttributeSubkeys(
 
 
     CString attribute_value;
-    attribute_value.Format(_T("%d"), attribute_sum);
+    SafeCStringFormat(&attribute_value, _T("%d"), attribute_sum);
     attributes->push_back(std::make_pair(attribute_subkey_name,
                                          attribute_value));
   }

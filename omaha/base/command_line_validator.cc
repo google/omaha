@@ -21,6 +21,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/utils.h"
 
 namespace omaha {
@@ -91,7 +92,8 @@ HRESULT CommandLineValidator::CreateScenarioFromCmdLine(
   CString scenario_name_str;
   do {
     ++scenario_sequence_number_;
-    scenario_name_str.Format(_T("scenario_%Iu"), scenario_sequence_number_);
+    SafeCStringFormat(&scenario_name_str, _T("scenario_%Iu"),
+                      scenario_sequence_number_);
   } while (scenarios_.find(scenario_name_str) != scenarios_.end());
 
   CreateScenario(scenario_name_str);

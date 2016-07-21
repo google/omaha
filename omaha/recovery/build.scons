@@ -76,7 +76,6 @@ test_env.Append(
         # These are required by base.lib
         'netapi32.lib',
         'psapi.lib',
-        'rasapi32.lib',
         'shlwapi.lib',
         'userenv.lib',
         'version.lib',

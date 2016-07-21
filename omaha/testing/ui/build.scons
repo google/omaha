@@ -59,7 +59,6 @@ local_env.Append(
         'mstask.lib',
         'netapi32.lib',
         'psapi.lib',
-        'rasapi32.lib',
         'rpcns4.lib',
         'rpcrt4.lib',
         'shlwapi.lib',

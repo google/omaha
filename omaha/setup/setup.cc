@@ -32,6 +32,7 @@
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/synchronized.h"
@@ -172,7 +173,7 @@ HRESULT GetPidsWithArgsForAllUsers(const CString& args,
 
 void WriteGoogleUpdateUninstallEvent(bool is_machine) {
   CString description;
-  description.Format(kUninstallEventDescriptionFormat, kAppName);
+  SafeCStringFormat(&description, kUninstallEventDescriptionFormat, kAppName);
   GoogleUpdateLogEvent uninstall_event(EVENTLOG_INFORMATION_TYPE,
                                        kUninstallEventId,
                                        is_machine);
@@ -271,7 +272,7 @@ HRESULT Setup::HandleLockFailed(int lock_version) {
   Pids matching_pids;
   CString switch_to_include;
 
-  switch_to_include.Format(_T("/%s"), kCmdLineUpdate);
+  SafeCStringFormat(&switch_to_include, _T("/%s"), kCmdLineUpdate);
   HRESULT hr = GetPidsWithArgsForAllUsers(switch_to_include, &matching_pids);
   if (FAILED(hr)) {
     ASSERT1(false);
@@ -281,7 +282,7 @@ HRESULT Setup::HandleLockFailed(int lock_version) {
     return GOOPDATE_E_FAILED_TO_GET_LOCK_UPDATE_PROCESS_RUNNING;
   }
 
-  switch_to_include.Format(_T("/%s"), kCmdLineUninstall);
+  SafeCStringFormat(&switch_to_include, _T("/%s"), kCmdLineUninstall);
   hr = GetPidsWithArgsForAllUsers(switch_to_include, &matching_pids);
   if (FAILED(hr)) {
     ASSERT1(false);
@@ -291,7 +292,7 @@ HRESULT Setup::HandleLockFailed(int lock_version) {
     return GOOPDATE_E_FAILED_TO_GET_LOCK_UNINSTALL_PROCESS_RUNNING;
   }
 
-  switch_to_include.Format(_T("/%s"), kCmdLineInstall);
+  SafeCStringFormat(&switch_to_include, _T("/%s"), kCmdLineInstall);
   hr = GetPidsWithArgsForAllUsers(switch_to_include, &matching_pids);
   if (FAILED(hr)) {
     ASSERT1(false);
@@ -947,9 +948,9 @@ HRESULT Setup::GetPidsToWaitForUsingCommandLine(Pids* pids) const {
   // * "/registerproduct" - same as for /install.
   std::vector<CString> command_lines;
   CString switch_to_exclude;
-  switch_to_exclude.Format(_T("/%s"), kCmdLineInstall);
+  SafeCStringFormat(&switch_to_exclude, _T("/%s"), kCmdLineInstall);
   command_lines.push_back(switch_to_exclude);
-  switch_to_exclude.Format(_T("/%s"), kCmdLineRegisterProduct);
+  SafeCStringFormat(&switch_to_exclude, _T("/%s"), kCmdLineRegisterProduct);
   command_lines.push_back(switch_to_exclude);
 
   CString user_sid;
@@ -1114,7 +1115,7 @@ HRESULT Setup::FindCoreProcesses(Pids* found_core_pids) const {
 
   std::vector<CString> command_lines;
   CString switch_to_include;
-  switch_to_include.Format(_T("/%s"), kCmdLineCore);
+  SafeCStringFormat(&switch_to_include, _T("/%s"), kCmdLineCore);
   command_lines.push_back(switch_to_include);
 
   DWORD flags = INCLUDE_ONLY_PROCESS_OWNED_BY_USER |

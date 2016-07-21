@@ -16,7 +16,7 @@
 // The __ symbols are replaced by a script that creates the rc file.
 #include "__RESOURCE_FILENAME__"
 
-#include <afxres.h>
+#include <winres.h>
 
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 IDR_PAYLOAD B "__PAYLOAD_FILENAME__"

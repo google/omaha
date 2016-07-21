@@ -24,6 +24,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/smart_handle.h"
 #include "omaha/base/string.h"
 #include "omaha/base/timer.h"
@@ -190,10 +191,10 @@ CString ServiceInstall::GenerateServiceName(const TCHAR* service_prefix) {
   FILETIME ft = {0};
   ::GetSystemTimeAsFileTime(&ft);
   CString versioned_service_name;
-  versioned_service_name.Format(_T("%s%x%x"),
-                                service_prefix,
-                                ft.dwHighDateTime,
-                                ft.dwLowDateTime);
+  SafeCStringFormat(&versioned_service_name, _T("%s%x%x"),
+                    service_prefix,
+                    ft.dwHighDateTime,
+                    ft.dwLowDateTime);
 
   ASSERT1(!versioned_service_name.IsEmpty());
   return versioned_service_name;

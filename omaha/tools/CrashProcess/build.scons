@@ -25,7 +25,6 @@ local_env.Append(
         local_env['crt_libs'][local_env.Bit('debug')],
         'netapi32.lib',
         'psapi.lib',
-        'rasapi32.lib',
         'shlwapi.lib',
         'userenv.lib',
         'version.lib',

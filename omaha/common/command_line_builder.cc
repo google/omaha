@@ -267,7 +267,7 @@ CString CommandLineBuilder::GetCommandLine(const CString& program_name) const {
 
 CString CommandLineBuilder::GetSingleSwitch(const CString& switch_name) const {
   CString cmd_line;
-  cmd_line.Format(_T("/%s"), switch_name.GetString());
+  SafeCStringFormat(&cmd_line, _T("/%s"), switch_name.GetString());
   return cmd_line;
 }
 
@@ -390,7 +390,7 @@ CString CommandLineBuilder::GetInstall() const {
 
 CString CommandLineBuilder::GetUpdate() const {
   CString cmd_line;
-  cmd_line.Format(_T("/%s"), kCmdLineUpdate);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineUpdate);
   if (!session_id_.IsEmpty()) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s \"%s\""),
                             kCmdLineSessionId,

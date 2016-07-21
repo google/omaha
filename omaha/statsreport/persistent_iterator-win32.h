@@ -17,25 +17,26 @@
 #ifndef OMAHA_STATSREPORT_PERSISTENT_ITERATOR_WIN32_H__
 #define OMAHA_STATSREPORT_PERSISTENT_ITERATOR_WIN32_H__
 
-#include "base/scoped_ptr.h"
-#include "metrics.h"
-#include "const-win32.h"
-
 #include <atlbase.h>
 #include <atlstr.h>
 #include <iterator>
+
+#include "base/scoped_ptr.h"
+#include "omaha/base/safe_format.h"
+#include "omaha/statsreport/metrics.h"
+#include "omaha/statsreport/const-win32.h"
 
 namespace stats_report {
 
 /// Forward iterator for persisted metrics
 class PersistentMetricsIteratorWin32
     : public std::iterator<std::forward_iterator_tag, const MetricBase *> {
-public:
+ public:
   /// @param app_name see MetricsAggregatorWin32
   explicit PersistentMetricsIteratorWin32(const wchar_t *app_name)
       : state_(kUninitialized),
        is_machine_(false) {
-    key_name_.Format(kStatsKeyFormatString, app_name);
+    omaha::SafeCStringFormat(&key_name_, kStatsKeyFormatString, app_name);
     Next();
   }
 
@@ -44,7 +45,7 @@ public:
   PersistentMetricsIteratorWin32(const wchar_t *app_name, bool is_machine)
       : state_(kUninitialized),
         is_machine_(is_machine) {
-    key_name_.Format(kStatsKeyFormatString, app_name);
+    omaha::SafeCStringFormat(&key_name_, kStatsKeyFormatString, app_name);
     Next();
   }
 
@@ -77,7 +78,7 @@ public:
     return false;
   }
 
-private:
+ private:
   MetricBase *Current() {
     DCHECK(current_value_.get());
     return current_value_.get();
@@ -131,6 +132,6 @@ inline bool operator != (const PersistentMetricsIteratorWin32 &a,
   return !a.equals(b);
 }
 
-} // namespace stats_report
+}  // namespace stats_report
 
 #endif  // OMAHA_STATSREPORT_PERSISTENT_ITERATOR_WIN32_H__

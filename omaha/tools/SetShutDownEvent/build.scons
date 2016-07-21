@@ -27,7 +27,6 @@ local_env.Append(
         'netapi32.lib',
         'ole32.lib',
         'psapi.lib',
-        'rasapi32.lib',
         'shell32.lib',
         'shlwapi.lib',
         'user32.lib',

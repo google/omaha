@@ -16,6 +16,7 @@
 #include "omaha/base/file_ver.h"
 #include "omaha/base/commontypes.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/safe_format.h"
 
 namespace omaha {
 
@@ -95,9 +96,9 @@ CString FileVer::QueryValue(const TCHAR* lpszValueName) const {
   UINT query_size = 0;
   LPVOID query_data = NULL;
   CString str_query_value, str_block_name;
-  str_block_name.Format(_T("\\StringFileInfo\\%08lx\\%s"),
-                        lang_charset_,
-                        lpszValueName);
+  SafeCStringFormat(&str_block_name, _T("\\StringFileInfo\\%08lx\\%s"),
+                    lang_charset_,
+                    lpszValueName);
 
   if (::VerQueryValue(reinterpret_cast<void**>(file_ver_data_),
                       str_block_name.GetBuffer(0),
@@ -138,11 +139,11 @@ CString FileVer::FormatFixedFileVersion() const {
   VS_FIXEDFILEINFO vsffi = {0};
 
   if (GetFixedInfo(vsffi)) {
-    str_version.Format(NOTRANSL(_T("%u.%u.%u.%u")),
-                       HIWORD(vsffi.dwFileVersionMS),
-                       LOWORD(vsffi.dwFileVersionMS),
-                       HIWORD(vsffi.dwFileVersionLS),
-                       LOWORD(vsffi.dwFileVersionLS));
+    SafeCStringFormat(&str_version, NOTRANSL(_T("%u.%u.%u.%u")),
+                      HIWORD(vsffi.dwFileVersionMS),
+                      LOWORD(vsffi.dwFileVersionMS),
+                      HIWORD(vsffi.dwFileVersionLS),
+                      LOWORD(vsffi.dwFileVersionLS));
   }
   return str_version;
 }
@@ -152,11 +153,11 @@ CString FileVer::FormatFixedProductVersion() const {
   VS_FIXEDFILEINFO vsffi = {0};
 
   if (GetFixedInfo(vsffi)) {
-    str_version.Format(NOTRANSL(_T("%u.%u.%u.%u")),
-                       HIWORD(vsffi.dwProductVersionMS),
-                       LOWORD(vsffi.dwProductVersionMS),
-                       HIWORD(vsffi.dwProductVersionLS),
-                       LOWORD(vsffi.dwProductVersionLS));
+    SafeCStringFormat(&str_version, NOTRANSL(_T("%u.%u.%u.%u")),
+                      HIWORD(vsffi.dwProductVersionMS),
+                      LOWORD(vsffi.dwProductVersionMS),
+                      HIWORD(vsffi.dwProductVersionLS),
+                      LOWORD(vsffi.dwProductVersionLS));
   }
   return str_version;
 }

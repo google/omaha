@@ -18,6 +18,7 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_impersonation.h"
@@ -463,7 +464,7 @@ HRESULT Ping::PersistPing() {
   }
 
   CString time_now_str;
-  time_now_str.Format(_T("%I64u"), GetCurrent100NSTime());
+  SafeCStringFormat(&time_now_str, _T("%I64u"), GetCurrent100NSTime());
   CORE_LOG(L3, (_T("[Ping::PersistPing][%s][%s][%s]"),
                 request_id_, time_now_str, ping_string));
 
@@ -506,7 +507,7 @@ HRESULT Ping::SendPersistedPings(bool is_machine) {
                   persisted_ping_string));
 
     CString request_age_string;
-    request_age_string.Format(_T("%d"), request_age);
+    SafeCStringFormat(&request_age_string, _T("%d"), request_age);
     HeadersVector headers;
     headers.push_back(std::make_pair(kHeaderXRequestAge, request_age_string));
 

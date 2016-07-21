@@ -20,6 +20,7 @@
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/omaha_version.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
@@ -132,19 +133,19 @@ HRESULT HelpUrlBuilder::BuildHttpGetString(
       // Special case for installer error: app or MSI installer can optionally
       // provide detail error information via extra code when installer error
       // happens. So use extra code to get more relevant help when it exists.
-      error_code_str.Format(_T("%d"), app_results[i].extra_code);
+      SafeCStringFormat(&error_code_str, _T("%d"), app_results[i].extra_code);
       elements.push_back(QueryElement(_T("error"), error_code_str));
 
       // Add a flag to indicate that the error code is actually the extra code.
       elements.push_back(QueryElement(_T("from_extra_code"), _T("1")));
     } else {
-      error_code_str.Format(_T("0x%x"), app_results[i].error_code);
+      SafeCStringFormat(&error_code_str, _T("0x%x"), app_results[i].error_code);
       elements.push_back(QueryElement(_T("error"), error_code_str));
 
       // Add extra code to the parameter list. This is currently not used by the
       // Google help doc server but just for future possible usage.
       CString extra_code_str;
-      extra_code_str.Format(_T("%d"), app_results[i].extra_code);
+      SafeCStringFormat(&extra_code_str, _T("%d"), app_results[i].extra_code);
       elements.push_back(QueryElement(_T("extra_code"), extra_code_str));
     }
 

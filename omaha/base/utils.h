@@ -19,6 +19,7 @@
 #include <windows.h>
 #include <accctrl.h>
 #include <aclapi.h>
+#include <ras.h>
 #include <sddl.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -177,14 +178,22 @@ bool GPA(HMODULE module, const char* function_name, T* function_pointer) {
                  result_error)                                              \
 typedef result_type (calling_convention *function##_pointer) proto;         \
 inline result_type function##Wrap proto {                                   \
-  HINSTANCE module_instance = ::GetModuleHandle(_T(#module));               \
-  ASSERT1(module_instance);                                                 \
-  if (!module_instance) {                                                   \
+  scoped_library dll(::LoadLibrary(_T(#module)));                           \
+  ASSERT1(dll);                                                             \
+  if (!dll) {                                                               \
     return result_error;                                                    \
   }                                                                         \
   function##_pointer fn = NULL;                                             \
-  return GPA(module_instance, #function, &fn) ? (*fn) call : result_error;  \
+  return GPA(get(dll), #function, &fn) ? (*fn) call : result_error;         \
 }
+
+GPA_WRAP(RasApi32.dll,
+         RasEnumEntriesW,
+         (LPCWSTR reserved, LPCWSTR phonebook, LPRASENTRYNAMEW rasentryname, LPDWORD size_in_bytes, LPDWORD count_of_entries),  // NOLINT
+         (reserved, phonebook, rasentryname, size_in_bytes, count_of_entries),
+         APIENTRY,
+         DWORD,
+         ERROR_MOD_NOT_FOUND);
 
 GPA_WRAP(kernel32.dll,
          AttachConsole,

@@ -1081,9 +1081,9 @@ HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
     return hr;
   }
 
-  os_version->Format(_T("%u.%u"),
-                     os_version_info.dwMajorVersion,
-                     os_version_info.dwMinorVersion);
+  SafeCStringFormat(os_version, _T("%u.%u"),
+                    os_version_info.dwMajorVersion,
+                    os_version_info.dwMinorVersion);
   *service_pack = os_version_info.szCSDVersion;
   return S_OK;
 }
@@ -1129,16 +1129,18 @@ HRESULT GetInstallWorkerProcesses(bool is_machine,
 
   std::vector<CString> command_lines;
   CString command_line_to_include;
-  command_line_to_include.Format(_T("/%s"), kCmdLineInstall);
+  SafeCStringFormat(&command_line_to_include, _T("/%s"), kCmdLineInstall);
   command_lines.push_back(command_line_to_include);
-  command_line_to_include.Format(_T("/%s"), kCmdLineInstallElevated);
+  SafeCStringFormat(&command_line_to_include, _T("/%s"),
+                    kCmdLineInstallElevated);
   command_lines.push_back(command_line_to_include);
-  command_line_to_include.Format(_T("/%s"), kCmdLineAppHandoffInstall);
+  SafeCStringFormat(&command_line_to_include, _T("/%s"),
+                    kCmdLineAppHandoffInstall);
   command_lines.push_back(command_line_to_include);
-  command_line_to_include.Format(_T("/%s"), kCmdLineUpdate);
+  SafeCStringFormat(&command_line_to_include, _T("/%s"), kCmdLineUpdate);
   command_lines.push_back(command_line_to_include);
-  command_line_to_include.Format(_T("/%s"),
-                                 kCmdLineLegacyFinishGoogleUpdateInstall);
+  SafeCStringFormat(&command_line_to_include, _T("/%s"),
+                    kCmdLineLegacyFinishGoogleUpdateInstall);
   command_lines.push_back(command_line_to_include);
   command_lines.push_back(kCmdLineComServerDash);
 
@@ -1494,9 +1496,9 @@ HANDLE GetImpersonationTokenForMachineProcess(bool is_machine) {
 HRESULT EnableSEHOP(bool enable) {
   CORE_LOG(L3, (_T("[EnableSEHOP][%d]"), enable));
   CString omaha_ifeo_key_path;
-  omaha_ifeo_key_path.Format(_T("%s\\%s"),
-                             kRegKeyImageFileExecutionOptions,
-                             kOmahaShellFileName);
+  SafeCStringFormat(&omaha_ifeo_key_path, _T("%s\\%s"),
+                    kRegKeyImageFileExecutionOptions,
+                    kOmahaShellFileName);
   return enable ?
       RegKey::SetValue(omaha_ifeo_key_path, kRegKeyDisableSEHOPValue,
                        static_cast<DWORD>(0)) :
@@ -1843,20 +1845,20 @@ CString GetUserIdHistory(bool is_machine) {
     }
 
     CString uid_age;
-    uid_age.Format(_T("%s%s=%d"),
-                   old_uid.IsEmpty() ? _T("") : _T("; "),
-                   kHeaderValueUidAge,
-                   uid_age_day);
+    SafeCStringFormat(&uid_age, _T("%s%s=%d"),
+                      old_uid.IsEmpty() ? _T("") : _T("; "),
+                      kHeaderValueUidAge,
+                      uid_age_day);
     old_uid.Append(uid_age);
   }
 
   DWORD num_rotations(0);
   update_key.GetValue(kRegValueUserIdNumRotations, &num_rotations);
   CString uid_num_rotations;
-  uid_num_rotations.Format(_T("%s%s=%u"),
-                           old_uid.IsEmpty() ? _T("") : _T("; "),
-                           kHeaderValueNumUidRotation,
-                           num_rotations);
+  SafeCStringFormat(&uid_num_rotations, _T("%s%s=%u"),
+                    old_uid.IsEmpty() ? _T("") : _T("; "),
+                    kHeaderValueNumUidRotation,
+                    num_rotations);
   old_uid.Append(uid_num_rotations);
   return old_uid;
 }

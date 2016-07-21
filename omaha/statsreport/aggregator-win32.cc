@@ -14,29 +14,31 @@
 // ========================================================================
 //
 // Implementation of Win32 metrics aggregator.
-#include "aggregator-win32.h"
-#include "const-win32.h"
-#include "util-win32.h"
+#include "omaha/statsreport/aggregator-win32.h"
+
+#include "omaha/base/safe_format.h"
+#include "omaha/statsreport/const-win32.h"
+#include "omaha/statsreport/util-win32.h"
 
 namespace stats_report {
 
-MetricsAggregatorWin32::MetricsAggregatorWin32(MetricCollection &coll,
+MetricsAggregatorWin32::MetricsAggregatorWin32(MetricCollection &coll,  // NOLINT
                                                const wchar_t *key_name)
     : MetricsAggregator(coll),
       is_machine_(false) {
   DCHECK(NULL != key_name);
 
-  key_name_.Format(kStatsKeyFormatString, key_name);
+  omaha::SafeCStringFormat(&key_name_, kStatsKeyFormatString, key_name);
 }
 
-MetricsAggregatorWin32::MetricsAggregatorWin32(MetricCollection &coll,
+MetricsAggregatorWin32::MetricsAggregatorWin32(MetricCollection &coll,  // NOLINT
                                                const wchar_t *key_name,
                                                bool is_machine)
     : MetricsAggregator(coll),
       is_machine_(is_machine) {
   DCHECK(NULL != key_name);
 
-  key_name_.Format(kStatsKeyFormatString, key_name);
+  omaha::SafeCStringFormat(&key_name_, kStatsKeyFormatString, key_name);
 }
 
 MetricsAggregatorWin32::~MetricsAggregatorWin32() {
@@ -76,7 +78,7 @@ bool MetricsAggregatorWin32::EnsureKey(const wchar_t *name, CRegKey *key) {
   return true;
 }
 
-void MetricsAggregatorWin32::Aggregate(CountMetric &metric) {
+void MetricsAggregatorWin32::Aggregate(CountMetric &metric) {  // NOLINT
   // do as little as possible if no value
   int64 value = metric.Reset();
   if (0 == value)
@@ -95,7 +97,7 @@ void MetricsAggregatorWin32::Aggregate(CountMetric &metric) {
   LONG err = count_key_.SetBinaryValue(name, &reg_value, sizeof(reg_value));
 }
 
-void MetricsAggregatorWin32::Aggregate(TimingMetric &metric) {
+void MetricsAggregatorWin32::Aggregate(TimingMetric &metric) {  // NOLINT
   // do as little as possible if no value
   TimingMetric::TimingData value = metric.Reset();
   if (0 == value.count)
@@ -118,7 +120,7 @@ void MetricsAggregatorWin32::Aggregate(TimingMetric &metric) {
   LONG err = timing_key_.SetBinaryValue(name, &reg_value, sizeof(reg_value));
 }
 
-void MetricsAggregatorWin32::Aggregate(IntegerMetric &metric) {
+void MetricsAggregatorWin32::Aggregate(IntegerMetric &metric) {  // NOLINT
   // do as little as possible if no value
   int64 value = metric.value();
   if (0 == value)
@@ -131,7 +133,7 @@ void MetricsAggregatorWin32::Aggregate(IntegerMetric &metric) {
                                          &value, sizeof(value));
 }
 
-void MetricsAggregatorWin32::Aggregate(BoolMetric &metric) {
+void MetricsAggregatorWin32::Aggregate(BoolMetric &metric) {  // NOLINT
   // do as little as possible if no value
   int32 value = metric.Reset();
   if (BoolMetric::kBoolUnset == value)
@@ -144,4 +146,4 @@ void MetricsAggregatorWin32::Aggregate(BoolMetric &metric) {
                                       &value, sizeof(value));
 }
 
-} // namespace stats_report
+}  // namespace stats_report

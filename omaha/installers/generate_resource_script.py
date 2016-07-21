@@ -34,29 +34,31 @@ def GenerateResourceScript(input_filename, output_filename, payload_filename,
                 re.sub(r'__MANIFEST_FILENAME__', manifest_filename,
                 re.sub(r'__PAYLOAD_FILENAME__', payload_filename, line))))
 
-(opts, args) = getopt.getopt(sys.argv[1:], 'i:o:p:m:r:')
 
-input_filename = ''
-output_filename = ''
-payload_filename = ''
-manifest_filename = ''
-resource_filename = ''
+if __name__ == '__main__':
+  (opts, args) = getopt.getopt(sys.argv[1:], 'i:o:p:m:r:')
 
-for (o, v) in opts:
-  if o == '-i':
-    input_filename = v
-  if o == '-o':
-    output_filename = v
-  if o == '-p':
-    payload_filename = v
-  if o == '-m':
-    manifest_filename = v
-  if o == '-r':
-    resource_filename = v
+  input_filename = ''
+  output_filename = ''
+  payload_filename = ''
+  manifest_filename = ''
+  resource_filename = ''
 
-# The forward slashes prevent the RC compiler from trying to interpret
-# backslashes in the quoted path.
-GenerateResourceScript(input_filename, output_filename,
-  re.sub(r'\\', r'/', payload_filename),
-  re.sub(r'\\', r'/', manifest_filename),
-  re.sub(r'\\', r'/', resource_filename))
+  for (o, v) in opts:
+    if o == '-i':
+      input_filename = v
+    if o == '-o':
+      output_filename = v
+    if o == '-p':
+      payload_filename = v
+    if o == '-m':
+      manifest_filename = v
+    if o == '-r':
+      resource_filename = v
+
+  # The forward slashes prevent the RC compiler from trying to interpret
+  # backslashes in the quoted path.
+  GenerateResourceScript(input_filename, output_filename,
+    re.sub(r'\\', r'/', payload_filename),
+    re.sub(r'\\', r'/', manifest_filename),
+    re.sub(r'\\', r'/', resource_filename))

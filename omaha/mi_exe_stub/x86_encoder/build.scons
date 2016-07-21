@@ -36,7 +36,6 @@ bin_env.Append(
         'kernel32.lib',
         'netapi32.lib',
         'psapi.lib',
-        'rasapi32.lib',
         'shlwapi.lib',
         'userenv.lib',
         'version.lib',

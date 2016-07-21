@@ -41,6 +41,7 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/program_instance.h"
 #include "omaha/base/reactor.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
@@ -103,7 +104,8 @@ HRESULT CrashHandler::Main(bool is_system) {
     // handler.
     CustomInfoMap custom_info_map;
     CString command_line_mode;
-    command_line_mode.Format(_T("%d"), COMMANDLINE_MODE_CRASH_HANDLER);
+    SafeCStringFormat(&command_line_mode, _T("%d"),
+                      COMMANDLINE_MODE_CRASH_HANDLER);
     custom_info_map[kCrashCustomInfoCommandLineMode] = command_line_mode;
 
     VERIFY1(SUCCEEDED(

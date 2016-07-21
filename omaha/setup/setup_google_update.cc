@@ -32,6 +32,7 @@
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/service_utils.h"
 #include "omaha/base/utils.h"
@@ -519,7 +520,8 @@ HRESULT SetupGoogleUpdate::RegisterOrUnregisterCOMLocalServer(bool reg) {
   const CString google_update_path =
       goopdate_utils::BuildGoogleUpdateExePath(is_machine_);
   CString register_cmd;
-  register_cmd.Format(_T("/%s"), reg ? kCmdRegServer : kCmdUnregServer);
+  SafeCStringFormat(&register_cmd, _T("/%s"),
+                    reg ? kCmdRegServer : kCmdUnregServer);
   HRESULT hr = RegisterOrUnregisterExe(google_update_path, register_cmd);
   if (FAILED(hr)) {
     SETUP_LOG(LE, (_T("[RegisterOrUnregisterExe failed][0x%08x]"), hr));
@@ -553,8 +555,9 @@ HRESULT SetupGoogleUpdate::InstallMsiHelper() {
     // The product may already be installed. Force a reinstall of everything.
     SETUP_LOG(L3, (_T("[ERROR_PRODUCT_VERSION returned - forcing reinstall]")));
     CString force_install_cmd_line;
-    force_install_cmd_line.Format(_T("REINSTALL=ALL REINSTALLMODE=vamus %s"),
-                                  kMsiSuppressAllRebootsCmdLine);
+    SafeCStringFormat(&force_install_cmd_line,
+                      _T("REINSTALL=ALL REINSTALLMODE=vamus %s"),
+                      kMsiSuppressAllRebootsCmdLine);
     res = ::MsiInstallProduct(msi_path, force_install_cmd_line);
   }
 
@@ -585,8 +588,8 @@ HRESULT SetupGoogleUpdate::UninstallMsiHelper() {
   // command line to be used. Therefore, instead of using INSTALLSTATE_ABSENT
   // to uninstall, we must pass REMOVE=ALL in the command line.
   CString uninstall_cmd_line;
-  uninstall_cmd_line.Format(_T("REMOVE=ALL %s"),
-                            kMsiSuppressAllRebootsCmdLine);
+  SafeCStringFormat(&uninstall_cmd_line, _T("REMOVE=ALL %s"),
+                    kMsiSuppressAllRebootsCmdLine);
   UINT res = ::MsiConfigureProductEx(kHelperInstallerProductGuid,
                                      INSTALLLEVEL_DEFAULT,
                                      INSTALLSTATE_DEFAULT,

@@ -22,6 +22,7 @@
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/process.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/core/google_update_core.h"
 #include "omaha/goopdate/broker_class_factory.h"
@@ -223,9 +224,9 @@ HRESULT RegisterOrUnregisterProxies64(bool is_machine, bool is_register) {
   //   /user: register the proxy for user case, otherwise for machine case.
   //   /unregister: do unregister, otherwise register.
   CString cmd_line_args;
-  cmd_line_args.Format(_T("%s %s"),
-                       is_machine ? _T("") : _T("/user"),
-                       is_register ? _T("") : _T("/unregister"));
+  SafeCStringFormat(&cmd_line_args, _T("%s %s"),
+                    is_machine ? _T("") : _T("/user"),
+                    is_register ? _T("") : _T("/unregister"));
 
   Process register_process(com_register_shell64, NULL);
   HRESULT hr = register_process.Start(cmd_line_args, NULL);

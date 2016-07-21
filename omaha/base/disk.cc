@@ -25,6 +25,7 @@
 #include "omaha/base/file.h"
 #include "omaha/base/localization.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/string.h"
 #include "omaha/base/synchronized.h"
@@ -384,7 +385,8 @@ HRESULT DevicePathToDosPath(const TCHAR* device_path, CString* dos_path) {
     size_t name_length = _tcslen(device_name);
     if (_tcsnicmp(device_path, device_name, name_length) == 0) {
       // Construct DOS path.
-      dos_path->Format(_T("%s%s"), drive_colon, device_path + name_length);
+      SafeCStringFormat(dos_path, _T("%s%s"),
+                        drive_colon, device_path + name_length);
       return S_OK;
     }
   }

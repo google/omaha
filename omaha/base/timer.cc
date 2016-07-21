@@ -19,6 +19,7 @@
 #include "omaha/base/commontypes.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 
@@ -149,11 +150,13 @@ CString Timer::DebugString() const {
   CString s;
   double seconds = GetSeconds();
   if (iterations_) {
-    s.Format(_T("%s sec %d iterations %s sec/iteration"),
-             String_DoubleToString(seconds, 3).GetString(), iterations_,
-             String_DoubleToString(seconds/iterations_, 3).GetString());
+    SafeCStringFormat(
+        &s, _T("%s sec %d iterations %s sec/iteration"),
+            String_DoubleToString(seconds, 3).GetString(), iterations_,
+            String_DoubleToString(seconds/iterations_, 3).GetString());
   } else {
-    s.Format(_T("%s sec"), String_DoubleToString(seconds, 3).GetString());
+    SafeCStringFormat(&s, _T("%s sec"),
+                      String_DoubleToString(seconds, 3).GetString());
   }
   return s;
 }

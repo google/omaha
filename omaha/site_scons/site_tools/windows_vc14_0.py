@@ -65,9 +65,7 @@ def _SetMsvcCompiler(
       PLATFORM_SDK_DIR=platform_sdk_dir,
       MSVC_FLAVOR=('amd64', 'x86')[vc_flavor == 'x86'],
       VC14_0_DIR=vc_dir,
-      WINDOWS_SDK_10_DIR=platform_sdk_dir,
-      WINDOWS_SDK_10_INCLUDE_DIR=platform_sdk_include_dir,
-      WINDOWS_SDK_10_LIB_DIR=platform_sdk_lib_dir,
+      WINDOWS_SDK_10_0_DIR=platform_sdk_dir,
   )
 
   # Clear any existing paths.

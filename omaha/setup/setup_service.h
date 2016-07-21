@@ -506,7 +506,8 @@ class SetupService {
 
     CString display_name;
     display_name.FormatMessage(IDS_SERVICE_DISPLAY_NAME, product_name);
-    display_name.AppendFormat(_T(" (%s)"), T::GetCurrentServiceName());
+    SafeCStringAppendFormat(&display_name, _T(" (%s)"),
+                            T::GetCurrentServiceName());
     return display_name;
   }
 

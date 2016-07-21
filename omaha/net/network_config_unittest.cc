@@ -224,5 +224,16 @@ TEST_F(NetworkConfigTest, GetProxyForUrlLocal) {
   EXPECT_EQ(NULL, proxy_info.proxy_bypass);
 }
 
+TEST_F(NetworkConfigTest, ToString) {
+  const CString string4096(_T('a'), 4096);
+
+  ProxyConfig config;
+  config.proxy = string4096;
+
+  const CString expected_tostring(_T("priority=0, source=, named proxy=") +
+                                  string4096 + _T(", bypass="));
+  EXPECT_STREQ(expected_tostring, NetworkConfig::ToString(config));
+}
+
 }  // namespace omaha
 

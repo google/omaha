@@ -21,6 +21,7 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/synchronized.h"
+#include "omaha/base/safe_format.h"
 
 namespace omaha {
 
@@ -46,8 +47,8 @@ class PackageCache {
 
     CString ToString() const {
       CString result;
-      result.Format(_T("appid=%s; version=%s; package_name=%s"),
-                    app_id_, version_, package_name_);
+      SafeCStringFormat(&result, _T("appid=%s; version=%s; package_name=%s"),
+                        app_id_, version_, package_name_);
       return result;
     }
 

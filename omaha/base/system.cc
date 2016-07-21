@@ -30,6 +30,7 @@
 #include "omaha/base/file.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
@@ -100,7 +101,7 @@ HRESULT System::GetDiskActivityCounters(uint64* reads,
 
     // check whether we can access this device
     CString device_name;
-    device_name.Format(_T("\\\\.\\PhysicalDrive%d"), drive);
+    SafeCStringFormat(&device_name, _T("\\\\.\\PhysicalDrive%d"), drive);
     scoped_handle device(::CreateFile(device_name, 0,
                                       FILE_SHARE_READ | FILE_SHARE_WRITE,
                                       NULL, OPEN_EXISTING, 0, NULL));

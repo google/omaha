@@ -15,7 +15,6 @@
 
 #include "omaha/base/utils.h"
 #include <lm.h>
-#include <ras.h>
 #include <regstr.h>
 #include <urlmon.h>
 #include <wincrypt.h>
@@ -155,11 +154,11 @@ CString StringFromVersion(ULONGLONG version) {
   const WORD version_patch = LOWORD(version);
 
   CString version_string;
-  version_string.Format((_T("%u.%u.%u.%u")),
-                        version_major,
-                        version_minor,
-                        version_build,
-                        version_patch);
+  SafeCStringFormat(&version_string, _T("%u.%u.%u.%u"),
+                    version_major,
+                    version_minor,
+                    version_build,
+                    version_patch);
   return version_string;
 }
 
@@ -1780,11 +1779,11 @@ void EnsureRasmanLoaded() {
   ras_entry_name.dwSize = size_bytes;
   // we don't really need results of this method,
   // it simply triggers RASAPI32!LoadRasmanDllAndInit() internally.
-  ::RasEnumEntries(NULL,
-                   NULL,
-                   &ras_entry_name,
-                   &size_bytes,
-                   &number_of_entries);
+  RasEnumEntriesWWrap(NULL,
+                      NULL,
+                      &ras_entry_name,
+                      &size_bytes,
+                      &number_of_entries);
 }
 
 // Appends two reg keys. Handles the situation where there are traling
@@ -2209,7 +2208,7 @@ DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout) {
                                     timeout);
   }
 
-  UTIL_LOG(L3, (_T("[WaitForAllObjects][%Iu][%lu ms]"), count, timeout));
+  UTIL_LOG(L3, (_T("[WaitForAllObjects][%Iu][%u ms]"), count, timeout));
 
   // Spin in a loop, calling ::WFMO() on blocks of handles at a time. If it
   // returns WAIT_TIMEOUT or WAIT_FAILED, we can immediately exit without

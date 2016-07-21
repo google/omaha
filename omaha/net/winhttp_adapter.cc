@@ -18,6 +18,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 
 namespace omaha {
 
@@ -508,22 +509,22 @@ void __stdcall WinHttpAdapter::WinHttpStatusCallback(HINTERNET handle,
       status_string = _T("https failure");
       ASSERT1(info);
       ASSERT1(info_len == sizeof(DWORD));
-      info_string.Format(_T("0x%x"), *static_cast<DWORD*>(info));
+      SafeCStringFormat(&info_string, _T("0x%x"), *static_cast<DWORD*>(info));
       break;
     default:
       break;
   }
 
   CString log_line;
-  log_line.AppendFormat(_T("[WinHttp status callback][%p][handle=%p]"),
-                        http_adapter, handle);
+  SafeCStringFormat(&log_line, _T("[WinHttp status callback][%p][handle=%p]"),
+                    http_adapter, handle);
   if (!status_string.IsEmpty()) {
-    log_line.AppendFormat(_T("[%s]"), status_string);
+    SafeCStringAppendFormat(&log_line, _T("[%s]"), status_string);
   } else {
-    log_line.AppendFormat(_T("[0x%08x]"), status);
+    SafeCStringAppendFormat(&log_line, _T("[0x%08x]"), status);
   }
   if (!info_string.IsEmpty()) {
-    log_line.AppendFormat(_T("[%s]"), info_string);
+    SafeCStringAppendFormat(&log_line, _T("[%s]"), info_string);
   }
   NET_LOG(L3, (_T("%s"), log_line));
 

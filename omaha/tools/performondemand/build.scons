@@ -37,7 +37,6 @@ def BuildPerformOnDemand(local_env):
           'mstask.lib',
           'netapi32.lib',
           'psapi.lib',
-          'rasapi32.lib',
           'shlwapi.lib',
           'urlmon.lib',
           'userenv.lib',

@@ -159,38 +159,38 @@ HRESULT PingEvent::ToXml(IXMLDOMNode* parent_node) const {
 
 CString PingEvent::ToString() const {
   CString ping_str;
-  ping_str.Format(_T("%s=%s, %s=%s, %s=%s, %s=%s"),
-      xml::attribute::kEventType, itostr(event_type_),
-      xml::attribute::kEventResult, itostr(event_result_),
-      xml::attribute::kErrorCode, itostr(error_code_),
-      xml::attribute::kExtraCode1, itostr(extra_code1_));
+  SafeCStringFormat(&ping_str, _T("%s=%s, %s=%s, %s=%s, %s=%s"),
+                    xml::attribute::kEventType, itostr(event_type_),
+                    xml::attribute::kEventResult, itostr(event_result_),
+                    xml::attribute::kErrorCode, itostr(error_code_),
+                    xml::attribute::kExtraCode1, itostr(extra_code1_));
 
   if (source_url_index_ >= 0) {
-    ping_str.AppendFormat(_T(", %s=%s"),
-                          xml::attribute::kSourceUrlIndex,
-                          itostr(source_url_index_));
+    SafeCStringAppendFormat(&ping_str, _T(", %s=%s"),
+                            xml::attribute::kSourceUrlIndex,
+                            itostr(source_url_index_));
   }
 
   if (update_check_time_ms_ != 0) {
-    ping_str.AppendFormat(_T(", %s=%s"),
-                          xml::attribute::kUpdateCheckTime,
-                          itostr(update_check_time_ms_));
+    SafeCStringAppendFormat(&ping_str, _T(", %s=%s"),
+                            xml::attribute::kUpdateCheckTime,
+                            itostr(update_check_time_ms_));
   }
 
   if (app_size_ != 0) {
-    ping_str.AppendFormat(_T(", %s=%s, %s=%s, %s=%s"),
-                          xml::attribute::kDownloadTime,
-                          itostr(download_time_ms_),
-                          xml::attribute::kAppBytesDownloaded,
-                          String_Uint64ToString(num_bytes_downloaded_, 10),
-                          xml::attribute::kAppBytesTotal,
-                          String_Uint64ToString(app_size_, 10));
+    SafeCStringAppendFormat(&ping_str, _T(", %s=%s, %s=%s, %s=%s"),
+                            xml::attribute::kDownloadTime,
+                            itostr(download_time_ms_),
+                            xml::attribute::kAppBytesDownloaded,
+                            String_Uint64ToString(num_bytes_downloaded_, 10),
+                            xml::attribute::kAppBytesTotal,
+                            String_Uint64ToString(app_size_, 10));
   }
 
   if (install_time_ms_ != 0) {
-    ping_str.AppendFormat(_T(", %s=%s"),
-                          xml::attribute::kInstallTime,
-                          itostr(install_time_ms_));
+    SafeCStringAppendFormat(&ping_str, _T(", %s=%s"),
+                            xml::attribute::kInstallTime,
+                            itostr(install_time_ms_));
   }
 
   return ping_str;

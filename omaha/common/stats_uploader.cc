@@ -156,7 +156,7 @@ HRESULT ReportMetrics(bool is_machine,
 
 HRESULT DoResetMetrics(bool is_machine) {
   CString key_name;
-  key_name.Format(kStatsKeyFormatString, kMetricsProductName);
+  SafeCStringFormat(&key_name, kStatsKeyFormatString, kMetricsProductName);
   HKEY parent_key = is_machine ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER;
   RegKey key;
   HRESULT hr = key.Create(parent_key, key_name);
@@ -180,7 +180,7 @@ HRESULT DoAggregateMetrics(bool is_machine) {
 
 HRESULT DoAggregateAndReportMetrics(bool is_machine, bool force_report) {
   CString key_name;
-  key_name.Format(kStatsKeyFormatString, kMetricsProductName);
+  SafeCStringFormat(&key_name, kStatsKeyFormatString, kMetricsProductName);
   HKEY parent_key = is_machine ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER;
   RegKey key;
   HRESULT hr = key.Create(parent_key, key_name);

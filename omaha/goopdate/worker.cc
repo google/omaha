@@ -235,6 +235,10 @@ Worker::Worker()
       lock_count_(0),
       single_instance_hr_(E_FAIL) {
   CORE_LOG(L1, (_T("[Worker::Worker]")));
+
+  reactor_.reset(new Reactor);
+  shutdown_handler_.reset(new ShutdownHandler);
+  model_.reset(new Model(this));
 }
 
 Worker::~Worker() {
@@ -310,10 +314,6 @@ HRESULT Worker::Initialize(bool is_machine) {
   CORE_LOG(L1, (_T("[Worker::Initialize][%d]"), is_machine));
 
   is_machine_ = is_machine;
-
-  reactor_.reset(new Reactor);
-  shutdown_handler_.reset(new ShutdownHandler);
-  model_.reset(new Model(this));
 
   HRESULT hr = EnsureSingleInstance();
   if (FAILED(hr)) {
@@ -505,7 +505,8 @@ void Worker::CheckForUpdateHelper(AppBundle* app_bundle,
   }
 
   CString event_description;
-  event_description.Format(_T("Update check. Status = 0x%08x"), hr);
+  SafeCStringFormat(&event_description, _T("Update check. Status = 0x%08x"),
+                    hr);
   CString event_text;
   CString url;
   VERIFY1(SUCCEEDED(ConfigManager::Instance()->GetUpdateCheckUrl(&url)));

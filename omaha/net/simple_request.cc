@@ -37,6 +37,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
@@ -73,7 +74,8 @@ SimpleRequest::SimpleRequest()
       callback_(NULL),
       download_completed_(false),
       pause_happened_(false) {
-  user_agent_.Format(_T("%s;winhttp"), NetworkConfig::GetUserAgent());
+  SafeCStringFormat(&user_agent_, _T("%s;winhttp"),
+                    NetworkConfig::GetUserAgent());
 
   // Create a manual reset event to wait on during network transfer.
   // The event is signaled by default meaning the network transferring is
@@ -348,8 +350,8 @@ HRESULT SimpleRequest::Connect() {
   if (request_state_->current_bytes != 0 &&
       request_state_->current_bytes != request_state_->content_length) {
     ASSERT1(request_state_->current_bytes < request_state_->content_length);
-    additional_headers.AppendFormat(_T("Range: bytes=%d-\r\n"),
-                                    request_state_->current_bytes);
+    SafeCStringAppendFormat(&additional_headers, _T("Range: bytes=%d-\r\n"),
+                            request_state_->current_bytes);
   }
   if (!additional_headers.IsEmpty()) {
     uint32 header_flags = WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE;
@@ -445,10 +447,11 @@ HRESULT SimpleRequest::SendRequest() {
                                        username, password);
 
       CString headers;
-      headers.Format(_T("%s: %d\r\n"),
-                     kHeaderXProxyRetryCount, proxy_retry_count);
+      SafeCStringFormat(&headers, _T("%s: %d\r\n"),
+                        kHeaderXProxyRetryCount, proxy_retry_count);
       if (!username.IsEmpty()) {
-        headers.AppendFormat(_T("%s: 1\r\n"), kHeaderXProxyManualAuth);
+        SafeCStringAppendFormat(&headers, _T("%s: 1\r\n"),
+                                kHeaderXProxyManualAuth);
       }
       uint32 flags = WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE;
       VERIFY1(SUCCEEDED(winhttp_adapter_->AddRequestHeaders(headers,

@@ -579,7 +579,8 @@ HRESULT GoopdateImpl::DoMain(HINSTANCE instance,
       // The resources are unavaliable, so we must use hard-coded text.
       const TCHAR* const kMsgBoxTitle = _T("Google Installer");
       CString message;
-      message.Format(_T("Installation failed with error 0x%08x."), hr);
+      SafeCStringFormat(&message, _T("Installation failed with error 0x%08x."),
+                        hr);
       VERIFY1(IDOK == ::MessageBox(NULL, message, kMsgBoxTitle, MB_OK));
     }
     return hr;
@@ -1484,7 +1485,7 @@ HRESULT GoopdateImpl::InstallExceptionHandler() {
 
   CustomInfoMap custom_info_map;
   CString command_line_mode;
-  command_line_mode.Format(_T("%d"), args_.mode);
+  SafeCStringFormat(&command_line_mode, _T("%d"), args_.mode);
   custom_info_map[kCrashCustomInfoCommandLineMode] = command_line_mode;
 
   return OmahaExceptionHandler::Create(is_machine_,

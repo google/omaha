@@ -33,6 +33,7 @@
 #include "omaha/base/disk.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
@@ -553,10 +554,10 @@ uint32 Process::GetDescendantProcess(HANDLE job,
     debug_info_ += _T("\n");
     for (ProcessInfoConstIterator it(descendant_processes.begin());
          it != descendant_processes.end(); ++it) {
-      debug_info_.AppendFormat(_T("%u %u %s\n"),
-                               it->process_id,
-                               it->parent_id,
-                               it->exe_file.GetString());
+      SafeCStringAppendFormat(&debug_info_, _T("%u %u %s\n"),
+                              it->process_id,
+                              it->parent_id,
+                              it->exe_file.GetString());
     }
   }
 #else

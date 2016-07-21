@@ -20,6 +20,7 @@
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/common/command_line.h"
 #include "omaha/common/command_line_builder.h"
@@ -44,43 +45,44 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnNoArgs);
 
   // gu.exe /c [/nocrashserver
-  cmd_line.Format(_T("/%s [/%s"), kCmdLineCore, kCmdLineNoCrashHandler);
+  SafeCStringFormat(&cmd_line, _T("/%s [/%s"),
+                    kCmdLineCore, kCmdLineNoCrashHandler);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnCore);
 
   // gu.exe /crashhandler
-  cmd_line.Format(_T("/%s"), kCmdLineCrashHandler);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineCrashHandler);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnCrashHandler);
 
   // gu.exe /svc
-  cmd_line.Format(_T("/%s"), kCmdLineService);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineService);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnService);
 
   // gu.exe /medsvc
-  cmd_line.Format(_T("/%s"), kCmdLineMediumService);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineMediumService);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnMediumService);
 
   // gu.exe /regsvc
-  cmd_line.Format(_T("/%s"), kCmdLineRegisterService);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineRegisterService);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnServiceRegister);
 
   // gu.exe /unregsvc
-  cmd_line.Format(_T("/%s"), kCmdLineUnregisterService);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineUnregisterService);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnServiceUnregister);
 
   // gu.exe /regserver
-  cmd_line.Format(_T("/%s"), kCmdRegServer);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdRegServer);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnRegServer);
 
   // gu.exe /unregserver
-  cmd_line.Format(_T("/%s"), kCmdUnregServer);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdUnregServer);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnUnregServer);
 
   // gu.exe /netdiags
-  cmd_line.Format(_T("/%s"), kCmdLineNetDiags);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineNetDiags);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnNetDiags);
 
   // gu.exe /crash
-  cmd_line.Format(_T("/%s"), kCmdLineCrash);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineCrash);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnCrash);
 
   // gu.exe -Embedding. The -Embedding text is injected via COM.
@@ -96,100 +98,104 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   // gu.exe /install <extraargs> [/appargs <appargs> [/installsource source
   //        [/silent [/eularequired [/oem [/installelevated [/sessionid <sid>
   //        [/enterprise
-  cmd_line.Format(_T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s ")
-                  _T("[/%s sid [/%s"),
-                  kCmdLineInstall,
-                  kCmdLineAppArgs,
-                  kCmdLineInstallSource,
-                  kCmdLineSilent,
-                  kCmdLineEulaRequired,
-                  kCmdLineOem,
-                  kCmdLineInstallElevated,
-                  kCmdLineSessionId,
-                  kCmdLineEnterprise);
+  SafeCStringFormat(
+      &cmd_line, _T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s ")
+                 _T("[/%s sid [/%s"),
+                 kCmdLineInstall,
+                 kCmdLineAppArgs,
+                 kCmdLineInstallSource,
+                 kCmdLineSilent,
+                 kCmdLineEulaRequired,
+                 kCmdLineOem,
+                 kCmdLineInstallElevated,
+                 kCmdLineSessionId,
+                 kCmdLineEnterprise);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnInstall);
 
   // gu.exe /update [/sessionid <sid>
-  cmd_line.Format(_T("/%s [/%s sid"), kCmdLineUpdate, kCmdLineSessionId);
+  SafeCStringFormat(&cmd_line, _T("/%s [/%s sid"),
+                    kCmdLineUpdate, kCmdLineSessionId);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnUpdate);
 
   // gu.exe /handoff <extraargs> [/appargs <appargs> [/installsource source
   //        [/silent [/eularequired [/offlineinstall [/offlinedir <dir>
   //        [/sessionid <sid> [/enterprise
-  cmd_line.Format(_T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s dir ")
-                  _T("[/%s sid [/%s"),
-                  kCmdLineAppHandoffInstall,
-                  kCmdLineAppArgs,
-                  kCmdLineInstallSource,
-                  kCmdLineSilent,
-                  kCmdLineEulaRequired,
-                  kCmdLineLegacyOfflineInstall,
-                  kCmdLineOfflineDir,
-                  kCmdLineSessionId,
-                  kCmdLineEnterprise);
+  SafeCStringFormat(
+      &cmd_line, _T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s dir ")
+                 _T("[/%s sid [/%s"),
+                 kCmdLineAppHandoffInstall,
+                 kCmdLineAppArgs,
+                 kCmdLineInstallSource,
+                 kCmdLineSilent,
+                 kCmdLineEulaRequired,
+                 kCmdLineLegacyOfflineInstall,
+                 kCmdLineOfflineDir,
+                 kCmdLineSessionId,
+                 kCmdLineEnterprise);
   CreateScenario(cmd_line,
                  &GoopdateCommandLineValidator::OnInstallHandoffWorker);
 
   // gu.exe /ua [/installsource source [/machine
-  cmd_line.Format(_T("/%s [/%s source [/%s"),
-                  kCmdLineUpdateApps, kCmdLineInstallSource, kCmdLineMachine);
+  SafeCStringFormat(&cmd_line, _T("/%s [/%s source [/%s"),
+                    kCmdLineUpdateApps, kCmdLineInstallSource, kCmdLineMachine);
   CreateScenario(cmd_line,
                  &GoopdateCommandLineValidator::OnUpdateApps);
 
   // gu.exe /report <crash_filename> [/machine
   //        [/custom_info <custom_info_filename>
-  cmd_line.Format(_T("/%s filename [/%s [/%s customfilename"),
-                  kCmdLineReport,
-                  kCmdLineMachine,
-                  kCmdLineCustomInfoFileName);
+  SafeCStringFormat(&cmd_line, _T("/%s filename [/%s [/%s customfilename"),
+                    kCmdLineReport,
+                    kCmdLineMachine,
+                    kCmdLineCustomInfoFileName);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnReportCrash);
 
   // gu.exe /report /i <crash_filename> [/machine
-  cmd_line.Format(_T("/%s /%s filename [/%s"),
-                  kCmdLineReport,
-                  kCmdLineInteractive,
-                  kCmdLineMachine);
+  SafeCStringFormat(&cmd_line, _T("/%s /%s filename [/%s"),
+                    kCmdLineReport,
+                    kCmdLineInteractive,
+                    kCmdLineMachine);
   CreateScenario(cmd_line,
                  &GoopdateCommandLineValidator::OnReportCrashInteractive);
 
   // gu.exe /pi <domainurl> <args> /installsource <oneclick|update3web>
-  cmd_line.Format(_T("/%s domainurl args /%s src"),
-                  kCmdLineWebPlugin,
-                  kCmdLineInstallSource);
+  SafeCStringFormat(&cmd_line, _T("/%s domainurl args /%s src"),
+                    kCmdLineWebPlugin,
+                    kCmdLineInstallSource);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnWebPlugin);
 
   // gu.exe /cr
-  cmd_line.Format(_T("/%s"), kCmdLineCodeRedCheck);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineCodeRedCheck);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnCodeRed);
 
   // gu.exe /recover <repair_file>
-  cmd_line.Format(_T("/%s repairfile"), kCmdLineRecover);
+  SafeCStringFormat(&cmd_line, _T("/%s repairfile"), kCmdLineRecover);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnRecover);
 
   // gu.exe /recover /machine <repair_file>
-  cmd_line.Format(_T("/%s /%s repairfile"), kCmdLineRecover, kCmdLineMachine);
+  SafeCStringFormat(&cmd_line, _T("/%s /%s repairfile"),
+                    kCmdLineRecover, kCmdLineMachine);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnRecoverMachine);
 
   // gu.exe /uninstall
-  cmd_line.Format(_T("/%s"), kCmdLineUninstall);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineUninstall);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnUninstall);
 
   // gu.exe /registerproduct "extraargs" [/installsource source
-  cmd_line.Format(_T("/%s extraargs [/%s source"),
+  SafeCStringFormat(&cmd_line, _T("/%s extraargs [/%s source"),
                   kCmdLineRegisterProduct,
                   kCmdLineInstallSource);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnRegisterProduct);
 
   // gu.exe /unregisterproduct "extraargs"
-  cmd_line.Format(_T("/%s extraargs"), kCmdLineUnregisterProduct);
+  SafeCStringFormat(&cmd_line, _T("/%s extraargs"), kCmdLineUnregisterProduct);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnUnregisterProduct);
 
   // gu.exe /ping pingstring
-  cmd_line.Format(_T("/%s pingstring"), kCmdLinePing);
+  SafeCStringFormat(&cmd_line, _T("/%s pingstring"), kCmdLinePing);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnPing);
 
   // gu.exe /healthcheck
-  cmd_line.Format(_T("/%s"), kCmdLineHealthCheck);
+  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineHealthCheck);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnHealthCheck);
 
   return S_OK;
@@ -227,7 +233,7 @@ void GoopdateCommandLineValidator::CreateScenario(const TCHAR* cmd_line,
                                                   ScenarioHandler handler) {
   // Prepend the program name onto the cmd_line.
   CString scenario_cmd_line;
-  scenario_cmd_line.Format(_T("prog.exe %s"), cmd_line);
+  SafeCStringFormat(&scenario_cmd_line, _T("prog.exe %s"), cmd_line);
 
   CString scenario_name;
   validator_->CreateScenarioFromCmdLine(scenario_cmd_line, &scenario_name);

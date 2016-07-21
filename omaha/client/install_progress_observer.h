@@ -119,7 +119,7 @@ struct ObserverCompletionInfo {
     SafeCStringFormat(&result, _T("[ObserverCompletionInfo][code=%d][text=%s]"),
                       completion_code, completion_text);
     for (size_t i = 0; i < apps_info.size(); ++i) {
-      result.AppendFormat(_T("[%s]"), apps_info[i].ToString());
+      SafeCStringAppendFormat(&result, _T("[%s]"), apps_info[i].ToString());
     }
     return result;
   }

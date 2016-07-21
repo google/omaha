@@ -19,6 +19,7 @@
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/xml_utils.h"
@@ -1657,8 +1658,9 @@ HRESULT XmlParser::CreateElementNode(const TCHAR* name,
   // size explosion where the namespace uri gets automatically added to every
   // element by msxml.
   CString namespace_qualified_name;
-  namespace_qualified_name.Format(kXmlNamespace ? _T("o:%s") : _T("%s"),
-                                  name);
+  SafeCStringFormat(&namespace_qualified_name,
+                    kXmlNamespace ? _T("o:%s") : _T("%s"),
+                    name);
   ASSERT1(document_);
   HRESULT hr = CreateXMLNode(document_,
                              NODE_ELEMENT,

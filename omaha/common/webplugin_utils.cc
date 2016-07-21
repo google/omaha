@@ -96,7 +96,7 @@ HRESULT BuildWebPluginCommandLine(const CString& url_domain,
   CString webplugin_cmd_line(webplugin_builder.GetCommandLineArgs());
 
   CString cmd_line_web_plugin;
-  cmd_line_web_plugin.Format(_T("/%s"), kCmdLineWebPlugin);
+  SafeCStringFormat(&cmd_line_web_plugin, _T("/%s"), kCmdLineWebPlugin);
 
   if (!String_StartsWith(webplugin_cmd_line, cmd_line_web_plugin, false)) {
     return E_UNEXPECTED;

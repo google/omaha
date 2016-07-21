@@ -25,6 +25,7 @@
 #include "omaha/base/file_ver.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/lang.h"
@@ -176,8 +177,8 @@ CString ResourceManager::GetResourceDllName(const CString& language) {
   ASSERT1(!language.IsEmpty());
 
   CString filename;
-  filename.Format(kOmahaResourceDllNameFormat,
-                  lang::GetWrittenLanguage(language));
+  SafeCStringFormat(&filename, kOmahaResourceDllNameFormat,
+                    lang::GetWrittenLanguage(language));
   return filename;
 }
 

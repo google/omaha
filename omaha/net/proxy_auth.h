@@ -22,6 +22,7 @@
 #include <atlsimpcoll.h>
 #include <atlstr.h>
 #include <vector>
+#include "omaha/base/safe_format.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/common/goopdate_utils.h"
 
@@ -38,8 +39,8 @@ struct ProxyAuthConfig {
 
   CString ToString() const {
     CString result;
-    result.Format(_T("[ProxyAuthConfig][%p][%s]"),
-                  parent_hwnd, prompt_caption.GetString());
+    SafeCStringFormat(&result, _T("[ProxyAuthConfig][%p][%s]"),
+                      parent_hwnd, prompt_caption.GetString());
     return result;
   }
 

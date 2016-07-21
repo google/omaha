@@ -28,6 +28,7 @@
 #pragma warning(pop)
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/base/security/sha256.h"
@@ -252,8 +253,9 @@ CString CertInfo::FileTimeToString(const FILETIME* ft) {
 
   // Build a string showing the date and time.
   CString time_str;
-  time_str.Format(_T("%02d/%02d/%d  %02d:%02d"), st.wDay, st.wMonth, st.wYear,
-    st.wHour, st.wMinute);
+  SafeCStringFormat(&time_str, _T("%02d/%02d/%d  %02d:%02d"),
+                    st.wDay, st.wMonth, st.wYear,
+                    st.wHour, st.wMinute);
   return time_str;
 }
 

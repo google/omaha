@@ -65,6 +65,7 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
@@ -405,10 +406,10 @@ HRESULT File::DeleteAfterReboot(const TCHAR* from) {
                                           _T("\\"),
                                           false));
       // Of the form "C:\\Windows\\Temp\\FROM.EXE1f4c0b7f"
-      from_temp.Format(_T("%s%s%x"),
-                       temp_dir,
-                       GetFileFromPath(from),
-                       ::GetTickCount());
+      SafeCStringFormat(&from_temp, _T("%s%s%x"),
+                        temp_dir,
+                        GetFileFromPath(from),
+                        ::GetTickCount());
 
       hr = File::Move(from, from_temp, true);
       UTIL_LOG(L2, (_T("[File::DeleteAfterReboot - move %s to %s][0x%x]"),

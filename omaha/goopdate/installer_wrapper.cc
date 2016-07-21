@@ -720,7 +720,8 @@ HRESULT InstallerWrapper::DoInstallApp(HANDLE user_token,
   const TCHAR* const kChromePerMachineArg = _T("--system-level");
   CString modified_arguments = arguments;
   if (kChromeAppId == GuidToString(app_guid) && is_machine_) {
-    modified_arguments.AppendFormat(_T(" %s"), kChromePerMachineArg);
+    SafeCStringAppendFormat(&modified_arguments, _T(" %s"),
+                            kChromePerMachineArg);
   }
 
   HRESULT hr = BuildCommandLineFromFilename(installer_path,

@@ -38,12 +38,14 @@ def GenerateTarball(output_filename, members):
     tarball.add(filename, scrubbed_filename)
   tarball.close()
 
-(opts, args) = getopt.getopt(sys.argv[1:], 'i:o:p:')
 
-output_filename = ''
+if __name__ == '__main__':
+  (opts, args) = getopt.getopt(sys.argv[1:], 'i:o:p:')
 
-for (o, v) in opts:
-  if o == '-o':
-    output_filename = v
+  output_filename = ''
 
-GenerateTarball(output_filename, args)
+  for (o, v) in opts:
+    if o == '-o':
+      output_filename = v
+
+  GenerateTarball(output_filename, args)

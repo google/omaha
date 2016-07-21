@@ -18,12 +18,12 @@
 #include <winhttp.h>
 #include <atlconv.h>
 #include <atlsecurity.h>
-#include <algorithm>
 #if _MSC_VER >= 1900
 #include <unordered_set>
 #else
 #include <hash_set>
 #endif
+#include <algorithm>
 #include <vector>
 #include "base/error.h"
 #include "base/scoped_ptr.h"
@@ -38,6 +38,7 @@
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
@@ -282,20 +283,20 @@ void NetworkConfig::SetConfigurationOverride(
 // Serializes configurations for debugging purposes.
 CString NetworkConfig::ToString(const ProxyConfig& config) {
   CString result;
-  result.AppendFormat(_T("priority=%d, source=%s, "),
-                      config.priority, config.source);
+  SafeCStringFormat(&result, _T("priority=%d, source=%s, "),
+                    config.priority, config.source);
 
   switch (GetAccessType(config)) {
     case WINHTTP_ACCESS_TYPE_NO_PROXY:
-      result.AppendFormat(_T("direct connection"));
+      SafeCStringAppendFormat(&result, _T("direct connection"));
       break;
     case WINHTTP_ACCESS_TYPE_NAMED_PROXY:
-      result.AppendFormat(_T("named proxy=%s, bypass=%s"),
-                          config.proxy, config.proxy_bypass);
+      SafeCStringAppendFormat(&result, _T("named proxy=%s, bypass=%s"),
+                              config.proxy, config.proxy_bypass);
       break;
     case WINHTTP_ACCESS_TYPE_AUTO_DETECT:
-      result.AppendFormat(_T("wpad=%d, script=%s"),
-                          config.auto_detect, config.auto_config_url);
+      SafeCStringAppendFormat(&result, _T("wpad=%d, script=%s"),
+                              config.auto_detect, config.auto_config_url);
       break;
     default:
       ASSERT1(false);
@@ -442,7 +443,7 @@ HRESULT NetworkConfig::GetPACProxyForUrl(const CString& url,
 
 CString NetworkConfig::GetUserAgent() {
   CString user_agent;
-  user_agent.Format(kUserAgent, GetVersionString());
+  SafeCStringFormat(&user_agent, kUserAgent, GetVersionString());
   return user_agent;
 }
 

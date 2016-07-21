@@ -20,6 +20,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 
@@ -128,8 +129,10 @@ CString ConvertTimeToGMTString(const FILETIME *ft) {
   }
 
   // same as FormatGmt(_T("%a, %d %b %Y %H:%M:%S GMT"));
-  s.Format(NOTRANSL(L"%s, %02u %s %u %02u:%02u:%02u GMT"), days[st.wDayOfWeek],
-    st.wDay, months[st.wMonth-1], st.wYear, st.wHour, st.wMinute, st.wSecond);
+  SafeCStringFormat(
+      &s, NOTRANSL(L"%s, %02u %s %u %02u:%02u:%02u GMT"),
+      days[st.wDayOfWeek],
+      st.wDay, months[st.wMonth-1], st.wYear, st.wHour, st.wMinute, st.wSecond);
   return s;
 }
 

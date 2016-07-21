@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/goopdate/ping_event_cancel.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/xml_utils.h"
 #include "omaha/common/xml_const.h"
@@ -83,29 +84,29 @@ HRESULT PingEventCancel::ToXml(IXMLDOMNode* parent_node) const {
 CString PingEventCancel::ToString() const {
   CString time_since_update_available_str;
   if (time_since_update_available_ms_ >= 0) {
-    time_since_update_available_str.Format(
-        _T(", %s=%s"),
-        xml::attribute::kTimeSinceUpdateAvailable,
-        itostr(time_since_update_available_ms_));
+    SafeCStringFormat(&time_since_update_available_str,
+                      _T(", %s=%s"),
+                      xml::attribute::kTimeSinceUpdateAvailable,
+                      itostr(time_since_update_available_ms_));
   }
 
   CString time_since_download_start_str;
   if (time_since_download_start_ms_ >= 0) {
-    time_since_download_start_str.Format(
-        _T(", %s=%s"),
-        xml::attribute::kTimeSinceDownloadStart,
-        itostr(time_since_download_start_ms_));
+    SafeCStringFormat(&time_since_download_start_str,
+                      _T(", %s=%s"),
+                      xml::attribute::kTimeSinceDownloadStart,
+                      itostr(time_since_download_start_ms_));
   }
 
   CString ping_str;
-  ping_str.Format(_T("%s, %s=%s, %s=%s%s%s"),
-                  PingEvent::ToString(),
-                  xml::attribute::kIsBundled,
-                  itostr(is_bundled_),
-                  xml::attribute::kStateCancelled,
-                  itostr(state_when_cancelled_),
-                  time_since_update_available_str,
-                  time_since_download_start_str);
+  SafeCStringFormat(&ping_str, _T("%s, %s=%s, %s=%s%s%s"),
+                    PingEvent::ToString(),
+                    xml::attribute::kIsBundled,
+                    itostr(is_bundled_),
+                    xml::attribute::kStateCancelled,
+                    itostr(state_when_cancelled_),
+                    time_since_update_available_str,
+                    time_since_download_start_str);
 
   return ping_str;
 }

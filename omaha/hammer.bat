@@ -38,6 +38,7 @@ set OMAHA_PYTHON_DIR=C:\Python24
 set OMAHA_WIX_DIR=%ProgramFiles(x86)%\WiX Toolset v3.8\bin
 set OMAHA_WTL_DIR=C:\wtl\files
 set OMAHA_PLATFORM_SDK_DIR=%WindowsSdkDir%\
+set OMAHA_WINDOWS_SDK_10_0_VERSION=%WindowsSDKVersion:~0,-1%
 set OMAHA_SIGNTOOL_SDK_DIR=%WindowsSdkDir%\bin\x86
 set PYTHONPATH=%OMAHA_PYTHON_DIR%
 set SCONS_DIR=C:\Python24\Lib\site-packages\scons-1.3.1

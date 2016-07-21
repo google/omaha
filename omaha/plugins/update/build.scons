@@ -80,7 +80,6 @@ update_env.Append(
         'mstask.lib',
         'psapi.lib',
         'netapi32.lib',
-        'rasapi32.lib',
         'shlwapi.lib',
         'taskschd.lib',
         'userenv.lib',

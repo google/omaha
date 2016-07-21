@@ -60,6 +60,7 @@
 #include "omaha/base/etw_log_writer.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
@@ -138,19 +139,20 @@ static CString GetProcName() {
 // otherwise just the process:module.
 static void FormatLinePrefix(bool show_time,
                              const wchar_t* proc_name,
-                             CString& result) {
+                             CString& result) {  // NOLINT
   if (show_time) {
     SYSTEMTIME system_time = {0};
     GetLocalTime(&system_time);
-    result.Format(L"[%02d/%02d/%02d %02d:%02d:%02d.%03d]",
-                  system_time.wMonth, system_time.wDay, system_time.wYear % 100,
-                  system_time.wHour, system_time.wMinute, system_time.wSecond,
-                  system_time.wMilliseconds);
+    SafeCStringFormat(
+        &result, L"[%02d/%02d/%02d %02d:%02d:%02d.%03d]",
+        system_time.wMonth, system_time.wDay, system_time.wYear % 100,
+        system_time.wHour, system_time.wMinute, system_time.wSecond,
+        system_time.wMilliseconds);
   }
-  result.AppendFormat(L"[%s][%u:%u]",
-                      proc_name,
-                      ::GetCurrentProcessId(),
-                      ::GetCurrentThreadId());
+  SafeCStringAppendFormat(&result, L"[%s][%u:%u]",
+                          proc_name,
+                          ::GetCurrentProcessId(),
+                          ::GetCurrentThreadId());
 }
 
 static bool g_logging_valid = false;

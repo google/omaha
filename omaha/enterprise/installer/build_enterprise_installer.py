@@ -24,14 +24,12 @@
   tries to apply WiX building rules to any input file with the .wxs suffix.
 
   BuildGoogleUpdateFragment(): Build an update fragment into a .wixobj.
-  GenerateNameBasedGUID(): Generate a GUID based on the names supplied.
   BuildEnterpriseInstaller(): Build an MSI installer for use in enterprises.
 """
 
-import binascii
-import md5
+import enterprise.installer.utils as ei_utils
 
-_GOOGLE_UPDATE_NAMESPACE_GUID = 'BE19B3E4502845af8B3E67A99FCDCFB1'
+
 
 
 def BuildGoogleUpdateFragment(env,
@@ -64,7 +62,8 @@ def BuildGoogleUpdateFragment(env,
   Raises:
     Nothing.
   """
-  msi_product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
+  msi_product_version = ei_utils.ConvertToMSIVersionNumberIfNeeded(
+      product_version)
 
   product_name_legal_identifier = product_name.replace(' ', '')
 
@@ -76,16 +75,14 @@ def BuildGoogleUpdateFragment(env,
       action='@copy /y $SOURCE $TARGET',
   )
 
-  wix_defines = [
-      '-dProductName="%s"' % product_name,
-      '-dProductNameLegalIdentifier="%s"' % product_name_legal_identifier,
-      '-dProductVersion=' + msi_product_version,
-      '-dProductOriginalVersionString=' + product_version,
-      '-dProductGuid="%s"' % product_guid,
-      '-dProductCustomParams="%s"' % product_custom_params,
-      '-dGoogleUpdateMetainstallerPath="%s"' % (
-          env.File(metainstaller_path).abspath),
-      ]
+  wix_defines = ei_utils.GetWixCandleFlags(
+      '"%s"' % product_name,
+      '"%s"' % product_name_legal_identifier,
+      msi_product_version,
+      product_version,
+      '"%s"' % product_guid,
+      product_custom_params=product_custom_params,
+      metainstaller_path=str(env.File(metainstaller_path).abspath))
 
   wixobj_output = env.Command(
       target=intermediate_base_name + '.wixobj',
@@ -163,18 +160,19 @@ def _BuildMsiForExe(env,
   product_name_legal_identifier = product_name.replace(' ', '')
   msi_name = msi_base_name + '.msi'
 
-  msi_product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
+  msi_product_version = ei_utils.ConvertToMSIVersionNumberIfNeeded(
+      product_version)
 
-  omaha_installer_namespace = binascii.a2b_hex(_GOOGLE_UPDATE_NAMESPACE_GUID)
+  omaha_installer_namespace = ei_utils.GetInstallerNamespace()
 
   # Include the .msi filename in the Product Code generation because "the
   # product code must be changed if... the name of the .msi file has been
   # changed" according to http://msdn.microsoft.com/en-us/library/aa367850.aspx.
-  msi_product_id = GenerateNameBasedGUID(
+  msi_product_id = ei_utils.GenerateNameBasedGUID(
       omaha_installer_namespace,
       'Product %s %s' % (product_name, msi_base_name)
   )
-  msi_upgradecode_guid = GenerateNameBasedGUID(
+  msi_upgradecode_guid = ei_utils.GenerateNameBasedGUID(
       omaha_installer_namespace,
       'Upgrade ' + product_name
   )
@@ -185,32 +183,23 @@ def _BuildMsiForExe(env,
       action='@copy /y $SOURCE $TARGET',
   )
 
-  # Disable warning LGHT1076 and internal check ICE61 on light.exe.  Details:
-  # http://blogs.msdn.com/astebner/archive/2007/02/13/building-an-msi-using-wix-v3-0-that-includes-the-vc-8-0-runtime-merge-modules.aspx
-  # http://windows-installer-xml-wix-toolset.687559.n2.nabble.com/ICE61-Upgrade-VersionMax-format-is-wrong-td4396813.html # pylint: disable-msg=C6310
   wix_env = env.Clone()
   wix_env.Append(
-      WIXCANDLEFLAGS=[
-          '-dProductName=' + product_name,
-          '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
-          '-dProductVersion=' + msi_product_version,
-          '-dProductOriginalVersionString=' + product_version,
-          '-dProductGuid=' + product_guid,
-          '-dProductInstallerPath=' + env.File(product_installer_path).abspath,
-          '-dProductInstallerInstallCommand=' + (
-              product_installer_install_command),
-          '-dProductInstallerDisableUpdateRegistrationArg=' + (
-              product_installer_disable_update_registration_arg),
-          '-dMsiInstallerCADll=' + env.File(custom_action_dll_path).abspath,
-          '-dProductUninstallerAdditionalArgs=' + (
-              product_uninstaller_additional_args),
-          '-dMsiProductId=' + msi_product_id,
-          '-dMsiUpgradeCode=' + msi_upgradecode_guid,
-          ],
-      WIXLIGHTFLAGS=[
-          '-sw1076',
-          '-sice:ICE61',
-          ],
+      WIXCANDLEFLAGS=ei_utils.GetWixCandleFlags(
+          product_name,
+          product_name_legal_identifier,
+          msi_product_version,
+          product_version,
+          product_guid,
+          custom_action_dll_path=str(env.File(custom_action_dll_path).abspath),
+          product_uninstaller_additional_args=product_uninstaller_additional_args,
+          msi_product_id=msi_product_id,
+          msi_upgradecode_guid=msi_upgradecode_guid,
+          product_installer_path=str(env.File(product_installer_path).abspath),
+          product_installer_install_command=product_installer_install_command,
+          product_installer_disable_update_registration_arg=(
+              product_installer_disable_update_registration_arg)),
+      WIXLIGHTFLAGS=ei_utils.GetWixLightFlags()
   )
 
   wix_output = wix_env.WiX(
@@ -233,103 +222,6 @@ def _BuildMsiForExe(env,
   )
 
   env.Replicate(output_dir, sign_output)
-
-
-def GenerateNameBasedGUID(namespace, name):
-  """Generate a GUID based on the names supplied.
-
-  Follows a methodology recommended in Section 4.3 of RFC 4122 to generate
-  a "name-based UUID," which basically means that you want to control the
-  inputs to the GUID so that you can generate the same valid GUID each time
-  given the same inputs.
-
-  Args:
-    namespace: First part of identifier used to generate GUID
-    name: Second part of identifier used to generate GUID
-
-  Returns:
-    String representation of the generated GUID.
-
-  Raises:
-    Nothing.
-  """
-
-  # Generate 128 unique bits.
-  mymd5 = md5.new()
-  mymd5.update(namespace + name)
-  md5_hash = mymd5.digest()
-
-  # Set various reserved bits to make this a valid GUID.
-
-  # "Set the four most significant bits (bits 12 through 15) of the
-  # time_hi_and_version field to the appropriate 4-bit version number
-  # from Section 4.1.3."
-  version = ord(md5_hash[6])
-  version = 0x30 | (version & 0x0f)
-
-  # "Set the two most significant bits (bits 6 and 7) of the
-  # clock_seq_hi_and_reserved to zero and one, respectively."
-  clock_seq_hi_and_reserved = ord(md5_hash[8])
-  clock_seq_hi_and_reserved = 0x80 | (clock_seq_hi_and_reserved & 0x3f)
-
-  return (
-      '%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X' % (
-          ord(md5_hash[0]), ord(md5_hash[1]), ord(md5_hash[2]),
-          ord(md5_hash[3]),
-          ord(md5_hash[4]), ord(md5_hash[5]),
-          version, ord(md5_hash[7]),
-          clock_seq_hi_and_reserved, ord(md5_hash[9]),
-          ord(md5_hash[10]), ord(md5_hash[11]), ord(md5_hash[12]),
-          ord(md5_hash[13]), ord(md5_hash[14]), ord(md5_hash[15])))
-
-
-def ConvertToMSIVersionNumberIfNeeded(product_version):
-  """Change product_version to fit in an MSI version number if needed.
-
-  Some products use a 4-field version numbering scheme whereas MSI looks only
-  at the first three fields when considering version numbers. Furthermore, MSI
-  version fields have documented width restrictions of 8bits.8bits.16bits as
-  per http://msdn.microsoft.com/en-us/library/aa370859(VS.85).aspx
-
-  As such, the following scheme is used:
-
-  Product a.b.c.d -> MSI X.Y.Z:
-    X = (1 << 6) | ((C & 0xffff) >> 10)
-    Y = (C >> 2) & 0xff
-    Z = ((C & 0x3) << 14) | (D & 0x3FFF)
-
-  So eg. 6.1.420.8 would become 64.105.8
-
-  This assumes:
-  1) we care about neither the product major number nor the product minor
-     number, e.g. we will never reset the 'c' number after an increase in
-     either 'a' or 'b'.
-  2) 'd' will always be <= 16383
-  3) 'c' is <= 65535
-
-  We assert on assumptions 2) and 3)
-
-  As a final note, if product_version is not of the format a.b.c.d then
-  this function returns the original product_version value.
-  """
-
-  try:
-    version_field_strings = product_version.split('.')
-    (major, minor, build, patch) = [int(x) for x in version_field_strings]
-  except:
-    # Couldn't parse the version number as a 4-term period-separated number,
-    # just return the original string.
-    return product_version
-
-  # Check that the input version number is in range.
-  assert patch <= 16383, "Error, patch number %s out of range." % patch
-  assert build <= 65535, "Error, build number %s out of range." % build
-
-  msi_major = (1 << 6) | ((build & 0xffff) >> 10)
-  msi_minor = (build >> 2) & 0xff
-  msi_build = ((build & 0x3) << 14) | (patch & 0x3FFF)
-
-  return str(msi_major) + '.' + str(msi_minor) + '.' + str(msi_build)
 
 
 def BuildEnterpriseInstaller(env,
@@ -471,20 +363,21 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   """
   product_name_legal_identifier = product_name.replace(' ', '')
   msi_name = msi_base_name + '.msi'
-  msi_product_version = ConvertToMSIVersionNumberIfNeeded(product_version)
+  msi_product_version = ei_utils.ConvertToMSIVersionNumberIfNeeded(
+      product_version)
 
-  omaha_installer_namespace = binascii.a2b_hex(_GOOGLE_UPDATE_NAMESPACE_GUID)
+  omaha_installer_namespace = ei_utils.GetInstallerNamespace()
 
   # Include the .msi filename in the Product Code generation because "the
   # product code must be changed if... the name of the .msi file has been
   # changed" according to http://msdn.microsoft.com/en-us/library/aa367850.aspx.
   # Also include the version number since we process version changes as major
   # upgrades.
-  msi_product_id = GenerateNameBasedGUID(
+  msi_product_id = ei_utils.GenerateNameBasedGUID(
       omaha_installer_namespace,
       'Product %s %s %s' % (product_name, msi_base_name, product_version)
   )
-  msi_upgradecode_guid = GenerateNameBasedGUID(
+  msi_upgradecode_guid = ei_utils.GenerateNameBasedGUID(
       omaha_installer_namespace,
       'Upgrade ' + product_name
   )
@@ -501,33 +394,23 @@ def BuildEnterpriseInstallerFromStandaloneInstaller(
   )
 
   wix_env = env.Clone()
-  wix_candle_flags = [
-      '-dProductName=' + product_name,
-      '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
-      '-dProductVersion=' + msi_product_version,
-      '-dProductOriginalVersionString=' + product_version,
-      '-dProductGuid="%s"' % product_guid,
-      '-dProductCustomParams="%s"' % product_custom_params,
-      '-dStandaloneInstallerPath=' + (
-          env.File(standalone_installer_path).abspath),
-      '-dMsiInstallerCADll=' + env.File(custom_action_dll_path).abspath,
-      '-dProductUninstallerAdditionalArgs=' + (
-          product_uninstaller_additional_args),
-      '-dMsiProductId=' + msi_product_id,
-      '-dMsiUpgradeCode=' + msi_upgradecode_guid,
-  ]
-
-  if product_installer_data:
-    wix_candle_flags.append('-dProductInstallerData=' + product_installer_data)
-
-  wix_light_flags = [
-      '-sw1076',
-      '-sice:ICE61',
-  ]
+  wix_candle_flags = ei_utils.GetWixCandleFlags(
+      product_name,
+      product_name_legal_identifier,
+      msi_product_version,
+      product_version,
+      '"%s"' % product_guid,
+      product_custom_params=product_custom_params,
+      standalone_installer_path=str(env.File(standalone_installer_path).abspath),
+      custom_action_dll_path=str(env.File(custom_action_dll_path).abspath),
+      product_uninstaller_additional_args=product_uninstaller_additional_args,
+      msi_product_id=msi_product_id,
+      msi_upgradecode_guid=msi_upgradecode_guid,
+      product_installer_data=product_installer_data)
 
   wix_env.Append(
       WIXCANDLEFLAGS=wix_candle_flags,
-      WIXLIGHTFLAGS=wix_light_flags
+      WIXLIGHTFLAGS=ei_utils.GetWixLightFlags()
   )
 
   wix_output = wix_env.WiX(

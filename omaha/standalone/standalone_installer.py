@@ -25,16 +25,14 @@ update response tarred together.
 MSI installers that wrap the standalone installer may also be created.
 """
 
-import array
-import base64
 import codecs
 import os
-import sha
 
 from enterprise.installer import build_enterprise_installer
 from installers import build_metainstaller
 from installers import tag_meta_installers
 from installers import tagged_installer
+import standalone.utils
 
 
 class OfflineInstaller(object):
@@ -140,74 +138,15 @@ def BuildOfflineInstallersVersion(env,
 
 
 def _GenerateUpdateResponseFile(target, source, env):
-  """Generate GUP file based on a list of sources.
-
-  Don't call function directly from this script. source may be
-  generated as part of build. Use function as action in env.Command.
-
-  Args:
-    target: Target GUP file name.
-    source: A list of source files. Source files should be listed as manifest1,
-      binary1, manifest2, binary2 and so on. Order is important so that
-      manifests and installers can be differentiated and 'INSTALLER_VERSIONS'
-      can be applied properly.
-    env: Construct environment. This environment must contain environment
-      variable 'INSTALLER_VERSIONS', which contains a list of versions for
-      corresponding binaries in source and should be in same order.
-
-  Raises:
-    Exception: When build encounters error.
-  """
-  xml_header = '<?xml version="1.0" encoding="UTF-8"?>\n'
-  response_header = '<response protocol="3.0">'
-  response_footer = '</response>'
-
+  """Legacy scons wrapper for utils.GenerateUpdateResponseFile()."""
   local_env = env.Clone()
 
   version_list = local_env['INSTALLER_VERSIONS']
   if not version_list:
     raise Exception('INSTALLER_VERSIONS is missing from environment.')
 
-  manifest_content_list = [xml_header, response_header]
-  for file_index in xrange(0, len(source), 2):
-    source_manifest_path = source[file_index]
-    binary_path = source[file_index + 1]
-    size = os.stat(binary_path.abspath).st_size
-    installer_file = open(binary_path.abspath, mode='rb')
-    data = array.array('B')
-    data.fromfile(installer_file, size)
-    installer_file.close()
-    s = sha.new(data)
-    hash_value = base64.b64encode(s.digest())
-
-    manifest_file = open(source_manifest_path.abspath)
-    manifest_content = manifest_file.read()
-    response_body_start_index = manifest_content.find('<response')
-    if response_body_start_index < 0:
-      raise Exception('GUP file does not contain response element.')
-    # + 1 to include the closing > in header
-    response_body_start_index = manifest_content.find(
-        '>', response_body_start_index)
-    if response_body_start_index < 0:
-      raise Exception('GUP file does not contain response element.')
-    response_body_start_index += 1
-    response_body_end_index = manifest_content.find(
-        '</response>', response_body_start_index)
-    if response_body_end_index < 0:
-      raise Exception('GUP file is not in valid response format.')
-    local_env['INSTALLER_SIZE'] = str(size)
-    local_env['INSTALLER_HASH'] = hash_value
-    local_env['INSTALLER_VERSION'] = version_list[file_index/2]
-    manifest_content_list.append(local_env.subst(
-        manifest_content[response_body_start_index:response_body_end_index],
-        raw=1))
-    manifest_file.close()
-  manifest_content_list.append(response_footer)
-
-  manifest_content_str = ''.join(manifest_content_list)
-  output_file = open(target[0].abspath, 'w')
-  output_file.write(manifest_content_str)
-  output_file.close()
+  standalone.utils.GenerateUpdateResponseFile(
+      str(target[0]), [str(s) for s in source], version_list)
 
 
 def BuildOfflineInstaller(
@@ -319,22 +258,9 @@ def BuildOfflineInstaller(
   additional_payload_contents.append(manifest_file_path)
 
   def WriteLog(target, source, env):
-    """Writes the log of what is being built."""
-    dump_data = ''
-    for f in source:
-      file_to_dump = open(env.File(f).abspath, 'r', -1)
-      content = file_to_dump.read()
-      file_to_dump.close()
-      dump_data += '\nMANIFEST:\n'
-      dump_data += str(f)
-      dump_data += '\n'
-      dump_data += content
-    source = source  # Avoid PyLint warning.
-    f = open(env.File(target[0]).abspath, 'w')
-    f.write(env['write_data'])
-    f.write(dump_data)
-    f.close()
-    return 0
+    """Legacy scons wrapper for utils.WriteInstallerLog()."""
+    return standalone.utils.WriteInstallerLog(
+        str(target[0]), env['write_data'], str(source[0]))
 
   env.Command(
       target='%s/%s' % (output_dir, log_name),
