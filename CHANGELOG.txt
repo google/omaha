@@ -1,3 +1,40 @@
+## 2016-07-21 @123807767,127906166 1.3.31.5
+
+--------------------------------------------------------------------------------
+Build changes for opensource: define shell var OMAHA_WINDOWS_SDK_10_0_VERSION
+--------------------------------------------------------------------------------
+SafeFormatTest.BrokenCStringFormatTruncates crashes and
+TimeTest.TimeToStringTest fails.
+Deleting SafeFormatTest.BrokenCStringFormatTruncates and
+disabling TimeTest.TimeToStringTest.
+--------------------------------------------------------------------------------
+Changes all CStringT Format/AppendFormat calls to use the safe versions
+SafeCStringFormat/AppendFormat.
+--------------------------------------------------------------------------------
+Change GPA_WRAP to use ::LoadLibrary instead of ::GetModuleHandle. The
+former is needed for cases where the module is not already loaded.
+--------------------------------------------------------------------------------
+Fix bug 29402553 Omaha metainstaller fails silently with Server Core for
+Windows Server 2012 R2. There are dependencies missing in Server Core for
+Windows Server 2012 R2. Server Core is a minimal server installation option for
+Windows Server that provides a low-maintenance server environment with limited
+functionality. I removed the rasapi32/rasman dependency, and the installer
+works on Server Core.
+--------------------------------------------------------------------------------
+The Model object is now created in the Worker constructor so that the
+locking/unlocking works correctly.
+--------------------------------------------------------------------------------
+Service not shutting down fast enough for a fallback local instance to install.
+This CL moves the Worker initialization (which includes the single instance
+mutex) to method calls on the IGoogleUpdate3 interface. In other words, the
+Worker is only initialized when the Client has a valid IGoogleUpdate3 interface
+pointer and calls a method on it. This change allows the client to reliably
+fall back to the in-proc COM server when the service takes too long to come
+up or if the interfaces are not registered correctly.
+--------------------------------------------------------------------------------
+Refactor parts of standalone_installer into plain python module.
+--------------------------------------------------------------------------------
+
 ## 2016-06-01 @120560962,123807766
 
 ### Changes
