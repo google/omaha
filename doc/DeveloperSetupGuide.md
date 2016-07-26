@@ -2,12 +2,15 @@
 
 These instructions are intended to assist the would-be Omaha developer with setting up an environment in which to successfully build the Omaha source code. The open source build of Omaha is not hermetic. That means that several dependencies are needed to be resolved by hand in order to have a tree which can be built.
 
+We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
+
+#### Currently, the supported toolchain is Visual Studio 2015 Update 3 and Windows SDK 10.0.10586.0.####
 
 # Required Downloads/Tools #
 
 The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
-  * Microsoft Visual Studio 2013 or 2015
+  * Microsoft Visual Studio 2015 Update 3
    * The Express Editions are not sufficient - they do not include ATL/MFC headers or libraries, which Omaha requires.
   * ATL Server headers 
    * Download [here](http://atlserver.codeplex.com). Omaha needs this library for regular expression support.
