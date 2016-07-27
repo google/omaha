@@ -102,7 +102,7 @@ A larger suite of unit tests is also included in the Omaha source.
 
 The Omaha build proces includes building an automated unit test suite, based on the [GTest](https://github.com/google/googletest) framework.  In order to run it, there are two pieces of preparation you must do:
 
-* Create the following registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\Google\UpdateDev`. Then, add a string value named `TestSource` with the value `ossdev`.
+* Create the following registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\OmahaCompanyName\UpdateDev`. Then, add a string value named `TestSource` with the value `ossdev`. (Note: If you are on 64 bit Windows and are using `regedit` to create the value then you need to place it in `HKEY_LOCAL_MACHINE\Wow6432Node\SOFTWARE\OmahaCompanyName\UpdateDev`. [This allows 32 bit processes to read it.](https://support.microsoft.com/en-us/kb/305097)).
 * Download the Windows Sysinternals PSTools suite (available [here](http://technet.microsoft.com/en-us/sysinternals/bb897553)) and save `psexec.exe` somewhere. Then, set an environment variable named `OMAHA_PSEXEC_DIR` to the directory containing `psexec.exe`.
 
 When running unit tests:
