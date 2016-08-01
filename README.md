@@ -6,3 +6,4 @@ Omaha is the open-source version of Google Update, a program to install requeste
 
 We know that keeping software updated is both important and hard, and so by open-sourcing this project, our hope is that perhaps we can help others solve this problem. So, if you'd like to get involved, or even use Omaha to support your own software projects, then just follow the instructions in the [Developer Setup Guide](https://github.com/google/omaha/blob/master/doc/DeveloperSetupGuide.md), and you'll be good to go!
 
+There is also an unofficial [tutorial](https://fman.io/blog/google-omaha-tutorial/). Please note that it was written by a third party so we cannot guarantee its availability, accuracy or safety.
