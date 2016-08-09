@@ -68,22 +68,6 @@ To run the unit tests, one more package is needed. Download the Windows Sysinter
 
 Once the tree is in place, a number of environment variables need to be set up in the file ```omaha\\hammer.bat``` to match the local build environment. The sample of ```omaha\\hammer.bat``` is provided as an example and assumes an x64 architecture for the OS.
 
-Create the following environment variables:
-* GOROOT - set to the directory where the Go programming language toolchain is installed.
-* OMAHA_ATL_SERVER_DIR - set to the directory where AtlServer files are
-* OMAHA_NET_DIR - This will depend on your OS:
-  * If this version of the .Net framework came with the OS, then set it to the framework directory (something like `C:\Windows\Microsoft.NET\Framework\v2.0.50727`).
-  * Otherwise, set it to the directory where the .NET framework is installed.
-* OMAHA_NETFX_TOOLS_DIR - this directory is needed to find `mage.exe` tool, which is the .Net manifest generating tool. This tool ships as part of the Windows SDK. However, newer versions of mage.exe can't targer older versions of .Net framework. If there is a need for the click-once application to run on older versions of the .Net framework, then an older version of the Windows SDK needs to be installed and this environment variable point to that directory.
-* OMAHA_PSEXEC_DIR - set to the directory containing psexec.exe. The unit tests rely on psexec.exe to get SYSTEM privileges to run some test cases.
-* OMAHA_PYTHON_DIR - set to the directory where python was installed. This directory should contain python.exe. (eg. `C:\python_24`).
-* OMAHA_WIX_DIR - set to the directory in WiX where `candle.exe` and `light.exe` are installed. This may be something like  `%ProgramFiles(x86)%\WiX Toolset v3.8\bin`
-* OMAHA_WTL_DIR - set to the root directory of the WTL installation.
-* OMAHA_PLATFORM_SDK_DIR - set to the root directory of the Windows SDK installation.
-* OMAHA_SIGNTOOL_SDK_DIR - set to the directory which includes the `sign.exe` tool for Authenticode signing.
-* SCONS_DIR - set to the directory of Scons, (eg. `C:\Python24\Lib\site-packages\scons-1.3.1`).
-* SCT_DIR - set to the directory of the Software Construction Toolkit (eg. `C:\swtoolkit`)
-
 ## Build ##
 
 Once the above setup is complete:
