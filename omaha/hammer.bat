@@ -30,18 +30,49 @@ set OMAHA_MSC_VER=1900
 goto set_env_variables
 
 :set_env_variables
+
+:: Change these variables to match the local build environment.
+
+:: Directory where the Go programming language toolchain is installed.
 set GOROOT=%ProgramFiles(x86)%\go\files
+
+:: Directory where AtlServer files are.
 set OMAHA_ATL_SERVER_DIR=c:\atl_server\files
+
+:: This will depend on your OS. If this version of the .Net framework came with
+:: the OS, then set it to the framework directory
+:: (something like C:\Windows\Microsoft.NET\Framework\v2.0.50727).
+:: Otherwise, set it to the directory where the .NET framework is installed.
 set OMAHA_NET_DIR=%WINDIR%\Microsoft.NET\Framework\v2.0.50727
+
+:: This directory is needed to find mage.exe tool, which is the .Net manifest
+:: generating tool. This tool ships as part of the Windows SDK.
+:: However, newer versions of mage.exe can't targer older versions of .Net
+:: framework. If there is a need for the click-once application to run on older
+:: versions of the .Net framework, then an older version of the Windows SDK
+:: needs to be installed and this environment variable point to that directory.
 set OMAHA_NETFX_TOOLS_DIR=%WindowsSDK_ExecutablePath_x86%
+
+:: Directory where Python (python.exe) is installed.
 set OMAHA_PYTHON_DIR=C:\Python24
+
+:: Directory in WiX where candle.exe and light.exe are installed.
 set OMAHA_WIX_DIR=%ProgramFiles(x86)%\WiX Toolset v3.8\bin
+
+:: Root directory of the WTL installation.
 set OMAHA_WTL_DIR=C:\wtl\files
+
 set OMAHA_PLATFORM_SDK_DIR=%WindowsSdkDir%\
 set OMAHA_WINDOWS_SDK_10_0_VERSION=%WindowsSDKVersion:~0,-1%
+
+:: Directory which includes the sign.exe tool for Authenticode signing.
 set OMAHA_SIGNTOOL_SDK_DIR=%WindowsSdkDir%\bin\x86
 set PYTHONPATH=%OMAHA_PYTHON_DIR%
+
+:: Directory of Scons (http://www.scons.org/).
 set SCONS_DIR=C:\Python24\Lib\site-packages\scons-1.3.1
+
+:: Directory of the Google's Software Construction Toolkit.
 set SCT_DIR=C:\swtoolkit
 
 set PROXY_CLSID_TARGET=%~dp0proxy_clsids.txt
