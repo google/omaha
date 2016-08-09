@@ -20,11 +20,5 @@ omaha/proxy_clsids.txt
 omaha/*.idb
 omaha/scons-out/**
 
-#external dependencies
-third_party/breakpad/**
-third_party/gmock/**
-third_party/gtest/**
-third_party/googletest/**
-
 # Ignore compiled Python files.
 *.pyc
