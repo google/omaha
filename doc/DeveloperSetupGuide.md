@@ -10,12 +10,11 @@ We are striving to make the code build with the latest Windows toolchain from Mi
 
 The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
-  * Microsoft Visual Studio 2015 Update 3
+  * Microsoft Visual Studio 2015 Update 3. The free Visual Studion Community edition is sufficient to build.
    * The Express Editions are not sufficient - they do not include ATL/MFC headers or libraries, which Omaha requires.
   * ATL Server headers 
    * Download [here](http://atlserver.codeplex.com). Omaha needs this library for regular expression support.
-  * Microsoft Windows 8.1 SDK if building with VS 2013, or Windows 10 SDK if building with VS2015, respectively.
-   * Download Windows 8.1 SDK [here](https://msdn.microsoft.com/en-us/windows/desktop/bg162891.aspx).
+  * Windows 10 SDK.
    * Download Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
   * Microsoft .NET Framework 2.0
    * This should be pre-installed on Windows Vista and Windows 7. This old version of SDK is needed for click-once compatibility with Windows XP systems.
@@ -90,7 +89,7 @@ Create the following environment variables:
 Once the above setup is complete:
  * Open a fresh cmd.exe window as Administrator.
  * Navigate to the 'omaha' directory in your source checkout, for example: `D:\src\omahaopensource\omaha\omaha>`
- * Run the vsvars.bat file correspionding to the Visual C++ instance you want to use to build. For example: `%ProgramFiles(x86)%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat`. This step sets up the environment variables that the build scripts use.
+ * Run the vsvars.bat file corresponding to the Visual C++ instance you want to use to build. For example: `%ProgramFiles(x86)%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat`. This step sets up the environment variables that the build scripts use.
  * From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions](HammerOptions.md).  In particular, if you are building on a multi-core or multi-processor, consider passing the -j# flag to Hammer to enable parallel compilation.)
  * To build all targets in all modes, type `hammer --all --mode=all`. This builds both debug and opt versions of the binaries, including all unit tests, and standalone installers.
 
