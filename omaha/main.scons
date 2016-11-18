@@ -485,6 +485,7 @@ win_env.AppendUnique(
                     # in an inlined function.
         '/wd4777',  # format string 'requires an argument of type...
         '/wd4820',  # bytes padding added after construct 'member_name'
+        '/wd4091',  # 'typedef': ignored on left of when no variable is declared
         '/wd4987',  # nonstandard extension used: 'throw (...)
         '/wd4995',  # name was marked as #pragma deprecated
         '/wd4996',  # 'function': was declared deprecated
