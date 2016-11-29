@@ -34,7 +34,7 @@ goto set_env_variables
 :: Change these variables to match the local build environment.
 
 :: Directory where the Go programming language toolchain is installed.
-set GOROOT=%ProgramFiles(x86)%\go\files
+set GOROOT=C:\go
 
 :: Directory where AtlServer files are.
 set OMAHA_ATL_SERVER_DIR=c:\atl_server\files
@@ -57,7 +57,7 @@ set OMAHA_NETFX_TOOLS_DIR=%WindowsSDK_ExecutablePath_x86%
 set OMAHA_PYTHON_DIR=C:\Python24
 
 :: Directory in WiX where candle.exe and light.exe are installed.
-set OMAHA_WIX_DIR=%ProgramFiles(x86)%\WiX Toolset v3.8\bin
+set OMAHA_WIX_DIR=%ProgramFiles(x86)%\WiX Toolset v3.10\bin
 
 :: Root directory of the WTL installation.
 set OMAHA_WTL_DIR=C:\wtl\files
