@@ -62,14 +62,16 @@
                       Root='HKLM'
                       Type='raw'
                       Key='Software\Google\Update\ClientState\$(var.ProductGuid)'
-                      Name='UninstallString'/>
+                      Name='UninstallString'
+                      Win64='no'/>
     </Property>
     <Property Id='UNINSTALLCMDARGS'>
       <RegistrySearch Id='UninstallArgSearch'
                       Root='HKLM'
                       Type='raw'
                       Key='Software\Google\Update\ClientState\$(var.ProductGuid)'
-                      Name='UninstallArguments'/>
+                      Name='UninstallArguments'
+                      Win64='no'/>
     </Property>
     <Property Id='AllowDowngradeSubstitution'>false</Property>
 
@@ -81,7 +83,7 @@
 
       <!-- Use the ProductCode as the ComponentId since we want the latter to
            change for each version change in support of major upgrades. -->
-      <Component Id='ProductClientState' Guid='$(var.MsiProductId)'>
+      <Component Id='ProductClientState' Guid='$(var.MsiProductId)' Win64='no'>
         <!-- Clear the last UI string before running the installer so we know
              that any value present upon rollback is fresh. -->
         <RemoveRegistryValue Key='$(var.UpdateKeyPath)\ClientState\$(var.ProductGuid)'

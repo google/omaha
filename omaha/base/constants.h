@@ -121,6 +121,7 @@ const TCHAR* const kOmahaMetainstallerFileName =
     MAIN_EXE_BASE_NAME _T("Setup.exe");
 const TCHAR* const kOmahaCOMRegisterShell64    =
     MAIN_EXE_BASE_NAME _T("ComRegisterShell64.exe");
+const TCHAR* const kOmahaCoreFileName  = MAIN_EXE_BASE_NAME _T("Core.exe");
 const TCHAR* const kPSFileNameMachine  = _T("psmachine.dll");
 const TCHAR* const kPSFileNameMachine64= _T("psmachine_64.dll");
 const TCHAR* const kPSFileNameUser     = _T("psuser.dll");
@@ -441,6 +442,10 @@ const int kUpdateTimerStartupDelayMaxMs = 15 * 60 * 1000;   // 15 minutes.
 // automation.
 const int kMinAUCheckPeriodMs = 1000 * 3;   // 3 seconds.
 
+// The maximum wait time between Core runs. If the Core has not run for more
+// than this interval, it is time to run the Core again.
+const int kMaxWaitBetweenCoreRunsMs = 25 * 60 * 60 * 1000;    // 25 hours.
+
 // The Code Red check frequency.
 const int kCodeRedCheckPeriodMs     = 24 * 60 * 60 * 1000;    // 24 hours.
 const int kMinCodeRedCheckPeriodMs  = 60 * 1000;              // 1 minute.
@@ -538,7 +543,17 @@ const TCHAR kHeaderXOldUserId[]          = _T("X-Old-UID");
 // the current request is foreground or background.
 // A value of "fg" ("foreground") indicates foreground install or on-demand
 // updates. "bg" ("background") indicates silent update traffic.
-const TCHAR kHeaderXInteractive[]        = _T("X-GoogleUpdate-Interactivity");
+const TCHAR kHeaderXInteractive[] = _T("X-GoogleUpdate-Interactivity");
+
+// The client sends a X-GoogleUpdate-AppId header to indicate the apps
+// associated with the request. When updating multiple apps, the client
+// specifies a comma-separated list of app ids.
+const TCHAR kHeaderXAppId[]       = _T("X-GoogleUpdate-AppId");
+
+// The client sends a X-GoogleUpdate-Updater header to indicate the identity of
+// the updater. This is the "updater" version string also present in the
+// request. In the case of Omaha, prepend "Omaha-" to the version string.
+const TCHAR kHeaderXUpdater[]     = _T("X-GoogleUpdate-Updater");
 
 // ***                                                                      ***
 // *** Custom HTTP request headers that may be in an Omaha server response. ***

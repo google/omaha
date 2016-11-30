@@ -181,6 +181,7 @@ class WebServicesClient : public WebServicesClientInterface {
 
   // Contains the request headers to send.
   HeadersVector headers_;
+  HeadersVector update_request_headers_;
 
   // Even if the response can't be parsed for any reason, store the values
   // for these headers anyway, if the values are present. Since it is possible

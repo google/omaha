@@ -210,6 +210,11 @@ class ConfigManager {
   // by UpdateDev settings.
   int GetAutoUpdateJitterMs() const;
 
+  // Core interval between runs functions.
+  time64 GetTimeSinceLastCoreRunMs(bool is_machine) const;
+  time64 GetLastCoreRunTimeMs(bool is_machine) const;
+  HRESULT SetLastCoreRunTimeMs(bool is_machine, time64 time);
+
   // Code Red check interval functions.
   int GetCodeRedTimerIntervalMs() const;
   time64 GetTimeSinceLastCodeRedCheckMs(bool is_machine) const;

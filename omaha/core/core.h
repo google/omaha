@@ -35,9 +35,6 @@
 
 namespace omaha {
 
-class Scheduler;
-class ShutdownHandler;
-
 // To support hosting ATL COM objects, Core derives from CAtlExeModuleT. Other
 // than the ATL module count, no functionality of CAtlExeModuleT is used.
 class Core
@@ -79,6 +76,8 @@ class Core
     return CAtlModuleT<Core>::Unlock();
   }
 
+  static HRESULT StartCoreIfNeeded(bool is_system);
+
  private:
   HRESULT DoMain(bool is_system, bool is_crash_handler_enabled);
 
@@ -111,6 +110,9 @@ class Core
 
   // Collects ambient core metrics.
   void CollectMetrics()const;
+
+  static bool ShouldRunCore(bool is_system);
+  static HRESULT UpdateLastCoreRunTime(bool is_system);
 
   bool is_system_;
 

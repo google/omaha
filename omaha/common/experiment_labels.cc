@@ -135,7 +135,7 @@ CString ExperimentLabels::Serialize(SerializeOptions options) const {
       }
       SafeCStringAppendFormat(&serialized, L"%s=%s",
                               cit->first, cit->second.first);
-      if (options & INCLUDE_TIMESTAMPS) {
+      if (options & SerializeOptions::INCLUDE_TIMESTAMPS) {
         FILETIME ft = {};
         Time64ToFileTime(cit->second.second, &ft);
         SafeCStringAppendFormat(&serialized, L"|%s",
@@ -318,23 +318,18 @@ bool ExperimentLabels::DoDeserialize(LabelMap* map, const CString& label_list,
 
 CString ExperimentLabels::CreateLabel(const CString& key,
                                       const CString& value,
-                                      time64 expiration,
-                                      bool include_timestamps) {
+                                      time64 expiration) {
   ExperimentLabels label;
   if (!label.SetLabel(key, value, expiration)) {
     return CString();
   }
 
-  return label.Serialize(
-      include_timestamps ?
-      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
-      ExperimentLabels::SerializeOptions::DEFAULT);
+  return label.Serialize(SerializeOptions::INCLUDE_TIMESTAMPS);
 }
 
 bool ExperimentLabels::MergeLabelSets(const CString& old_label_list,
                                       const CString& new_label_list,
-                                      CString* merged_list,
-                                      bool include_timestamps) {
+                                      CString* merged_list) {
   ExperimentLabels labels;
   if (!labels.Deserialize(old_label_list)) {
     return false;
@@ -342,27 +337,20 @@ bool ExperimentLabels::MergeLabelSets(const CString& old_label_list,
   if (!labels.DeserializeAndApplyDelta(new_label_list)) {
     return false;
   }
-  *merged_list = labels.Serialize(
-      include_timestamps ?
-      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
-      ExperimentLabels::SerializeOptions::DEFAULT);
+
+  *merged_list = labels.Serialize(SerializeOptions::INCLUDE_TIMESTAMPS);
   return true;
 }
 
-CString ExperimentLabels::ReadFromRegistry(bool is_machine,
-                                           const CString& app_id,
-                                           bool include_timestamps) {
+CString ExperimentLabels::ReadRegistry(bool is_machine, const CString& app_id) {
   ExperimentLabels stored_labels;
   VERIFY1(SUCCEEDED(stored_labels.ReadFromRegistry(is_machine, app_id)));
-  return stored_labels.Serialize(
-      include_timestamps ?
-      ExperimentLabels::SerializeOptions::INCLUDE_TIMESTAMPS :
-      ExperimentLabels::SerializeOptions::DEFAULT);
+  return stored_labels.Serialize(SerializeOptions::INCLUDE_TIMESTAMPS);
 }
 
-HRESULT ExperimentLabels::WriteToRegistry(bool is_machine,
-                                          const CString& app_id,
-                                          const CString& new_labels) {
+HRESULT ExperimentLabels::WriteRegistry(bool is_machine,
+                                        const CString& app_id,
+                                        const CString& new_labels) {
   if (new_labels.IsEmpty()) {
     return S_OK;
   }
@@ -394,6 +382,13 @@ HRESULT ExperimentLabels::WriteToRegistry(bool is_machine,
   }
 
   return hr;
+}
+
+CString ExperimentLabels::RemoveTimestamps(const CString& labels) {
+  ExperimentLabels stored_labels;
+  VERIFY1(SUCCEEDED(stored_labels.Deserialize(labels)));
+
+  return stored_labels.Serialize(SerializeOptions::EXCLUDE_TIMESTAMPS);
 }
 
 }  // namespace omaha

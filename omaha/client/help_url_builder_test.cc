@@ -18,6 +18,7 @@
 #include <atlsecurity.h>
 #include <atlstr.h>
 #include <vector>
+#include "omaha/base/atl_regexp.h"
 #include "omaha/base/error.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/reg_key.h"
@@ -48,36 +49,15 @@ int VerifyOSInUrl(const CString& url, int* length) {
   ASSERT1(length);
   *length = 0;
 
-  // The strings are in descending version order to avoid breaking on a
-  // substring of the version we are looking for.
-  // TODO(omaha): This is a maintenance problem. Consider eliminating the
-  // "&sp=" at the very least.
-  const TCHAR* kExpectedOsStrings[] = {
-      _T("10.0&sp="),
-      _T("6.3&sp="),
-      _T("6.1&sp=Service%20Pack%201"),
-      _T("6.1&sp="),
-      _T("6.0&sp=Service%20Pack%201"),
-      _T("6.0&sp="),
-      _T("5.2&sp=Service%20Pack%202"),
-      _T("5.2&sp=Service%20Pack%201"),
-      _T("5.1&sp=Service%20Pack%203"),
-      _T("5.1&sp=Service%20Pack%202")};
+  const AtlRE expected_os_string =
+      _T("{(5\\.1)|(5\\.2)|(6\\.0)|(6\\.1)|(6\\.3)|(10\\.0)\\.\\d+\\.\\d+")
+      _T("&sp=(Service%20Pack%20(1|2|3))?}");
 
-  bool found = false;
-  int this_pos = 0;
+  CString os_string;
+  EXPECT_TRUE(AtlRE::PartialMatch(url, expected_os_string, &os_string));
 
-  for (int i = 0; i < arraysize(kExpectedOsStrings); ++i) {
-    this_pos = url.Find(kExpectedOsStrings[i]);
-    if (-1 != this_pos) {
-      found = true;
-      *length = static_cast<int>(_tcslen(kExpectedOsStrings[i]));
-      break;
-    }
-  }
-
-  EXPECT_TRUE(found);
-  return this_pos;
+  *length = os_string.GetLength();
+  return url.Find(os_string);
 }
 
 }  // namespace

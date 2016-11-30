@@ -29,6 +29,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/omaha_version.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
@@ -613,6 +614,10 @@ CString NetworkRequestImpl::BuildPerRequestHeaders() const {
   SafeCStringAppendFormat(&headers, _T("%s: %s\r\n"),
                                     kHeaderXInteractive,
                                     low_priority_ ? _T("bg") : _T("fg"));
+
+  SafeCStringAppendFormat(&headers, _T("%s: Omaha-%s\r\n"),
+                                    kHeaderXUpdater,
+                                    GetVersionString());
 
   NET_LOG(L4, (_T("[BuildPerRequestHeaders][%s]"), headers));
   return headers;

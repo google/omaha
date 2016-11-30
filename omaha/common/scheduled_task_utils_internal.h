@@ -94,10 +94,33 @@ namespace v2 {
 
 // Task Scheduler 2.0 API helpers.
 bool IsTaskScheduler2APIAvailable();
-HRESULT GetRegisteredTask(const TCHAR* task_name, IRegisteredTask** task);
-bool IsScheduledTaskRunning(const TCHAR* task_name);
-HRESULT StartScheduledTask(const TCHAR* task_name);
-HRESULT StopScheduledTask(const TCHAR* task_name);
+HRESULT GetTaskFolder(ITaskFolder** task_folder);
+HRESULT GetRegisteredTask(const CString& task_name, IRegisteredTask** task);
+bool IsScheduledTaskRunning(const CString&  task_name);
+HRESULT StartScheduledTask(const CString&  task_name);
+HRESULT StopScheduledTask(const CString&  task_name);
+HRESULT CreateScheduledTaskXml(const CString& task_path,
+                               const CString& task_parameters,
+                               const CString& task_description,
+                               const CString& start_time,
+                               bool is_machine,
+                               bool create_logon_trigger,
+                               bool create_hourly_trigger,
+                               CString* scheduled_task_xml);
+HRESULT InstallScheduledTask(const CString& task_name,
+                             const CString& task_path,
+                             const CString& task_parameters,
+                             const CString& task_description,
+                             bool is_machine,
+                             bool create_logon_trigger,
+                             bool create_hourly_trigger);
+HRESULT UninstallScheduledTask(const CString& task_name);
+HRESULT UninstallScheduledTasks(const CString& task_prefix);
+bool IsInstalledScheduledTask(const CString& task_name);
+int GetScheduledTaskPriority(const CString& task_name);
+bool HasScheduledTaskEverRun(const CString& task_name);
+HRESULT GetScheduledTaskStatus(const CString& task_name);
+HRESULT GetScheduledTaskLastResult(const CString& task_name);
 
 }  // namespace v2
 

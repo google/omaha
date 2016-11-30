@@ -128,6 +128,7 @@ TEST(OmahaCustomizationTest, Constants_Filenames) {
   EXPECT_STREQ(_T("goopdate.dll"), kOmahaDllName);
   EXPECT_STREQ(_T("goopdateres_%s.dll"), kOmahaResourceDllNameFormat);
   EXPECT_STREQ(_T("GoogleUpdateBroker.exe"), kOmahaBrokerFileName);
+  EXPECT_STREQ(_T("GoogleUpdateCore.exe"), kOmahaCoreFileName);
   EXPECT_STREQ(_T("GoogleUpdateOnDemand.exe"), kOmahaOnDemandFileName);
   EXPECT_STREQ(_T("GoogleUpdateWebPlugin.exe"), kOmahaWebPluginFileName);
   EXPECT_STREQ(_T("GoogleUpdateSetup.exe"), kOmahaMetainstallerFileName);

@@ -168,6 +168,41 @@ bool Core::ShouldRunForever() const {
   return result;
 }
 
+bool Core::ShouldRunCore(bool is_system) {
+  ConfigManager* cm = ConfigManager::Instance();
+  const time64 time_difference_ms = cm->GetTimeSinceLastCoreRunMs(is_system);
+
+  const bool result = time_difference_ms >= kMaxWaitBetweenCoreRunsMs;
+  CORE_LOG(L3, (_T("[ShouldRunCore][%d][%llu]"), result, time_difference_ms));
+  return result;
+}
+
+HRESULT Core::UpdateLastCoreRunTime(bool is_system) {
+  const time64 now = GetCurrentMsTime();
+  return ConfigManager::Instance()->SetLastCoreRunTimeMs(is_system, now);
+}
+
+HRESULT Core::StartCoreIfNeeded(bool is_system) {
+  CORE_LOG(L3, (_T("[Core::StartCoreIfNeeded][%d]"), is_system));
+
+  if (!ShouldRunCore(is_system)) {
+    return S_OK;
+  }
+
+  CommandLineBuilder builder(omaha::COMMANDLINE_MODE_CORE);
+  CString cmd_line(builder.GetCommandLineArgs());
+  scoped_process process;
+  HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_system,
+                                                         cmd_line,
+                                                         address(process));
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[Unable to start Core][%#x]"), hr));
+    return hr;
+  }
+
+  VERIFY1(SUCCEEDED(UpdateLastCoreRunTime(is_system)));
+  return S_OK;
+}
 
 HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   main_thread_id_ = ::GetCurrentThreadId();

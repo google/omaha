@@ -21,6 +21,7 @@
 #include <map>
 #include <vector>
 #include "omaha/base/app_util.h"
+#include "omaha/base/atl_regexp.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/const_utils.h"
@@ -35,6 +36,7 @@
 #include "omaha/base/scoped_ptr_cotask.h"
 #include "omaha/base/signatures.h"
 #include "omaha/base/string.h"
+#include "omaha/base/system_info.h"
 #include "omaha/base/time.h"
 #include "omaha/base/user_info.h"
 #include "omaha/base/utils.h"
@@ -882,24 +884,28 @@ TEST(GoopdateUtilsTest, RedirectHKCRTest) {
   Cleanup();
 }
 
-TEST(GoopdateUtilsTest, GetKernel32OSInfo) {
-  CString os_version;
-  CString sp_qfe;
-  EXPECT_TRUE(GetKernel32OSInfo(&os_version, &sp_qfe));
-  EXPECT_TRUE(!os_version.IsEmpty());
 
+// Compares the major.minor.build version returned by GetOSInfo with the
+// version present in the kernel32.dll version resource.
+TEST(GoopdateUtilsTest, GetOSInfo) {
   CString os_version_getosinfo;
   CString sp_getosinfo;
   EXPECT_SUCCEEDED(GetOSInfo(&os_version_getosinfo, &sp_getosinfo));
 
-  EXPECT_STREQ(os_version_getosinfo, os_version);
-}
-
-TEST(GoopdateUtilsTest, GetOSInfo) {
-  CString os_version;
-  CString service_pack;
-  EXPECT_SUCCEEDED(GetOSInfo(&os_version, &service_pack));
+  CString os_version = SystemInfo::GetKernel32OSVersion();
   EXPECT_TRUE(!os_version.IsEmpty());
+
+  const AtlRE major_minor_build = _T("{\\d+\\.\\d+\\.\\d+}");
+
+  CString expected_os_version;
+  CString actual_os_version;
+  EXPECT_TRUE(AtlRE::PartialMatch(os_version,
+                                  major_minor_build,
+                                  &expected_os_version));
+  EXPECT_TRUE(AtlRE::PartialMatch(os_version_getosinfo,
+                                  major_minor_build,
+                                  &actual_os_version));
+  EXPECT_STREQ(expected_os_version, actual_os_version);
 }
 
 class GoopdateUtilsRegistryProtectedTest : public testing::Test {

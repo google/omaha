@@ -295,7 +295,7 @@ HRESULT InstallSelf(bool is_machine,
   // TODO(omaha): move SetInstallationId to app_registry_utils
   VERIFY1(SUCCEEDED(internal::SetInstallationId(omaha_client_state_key_path,
                                                 extra_args.installation_id)));
-  VERIFY1(SUCCEEDED(ExperimentLabels::WriteToRegistry(
+  VERIFY1(SUCCEEDED(ExperimentLabels::WriteRegistry(
       is_machine, kGoogleUpdateAppId, extra_args.experiment_labels)));
   VERIFY1(SUCCEEDED(app_registry_utils::SetGoogleUpdateBranding(
       omaha_client_state_key_path,

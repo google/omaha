@@ -134,6 +134,19 @@ bool UpdateRequest::has_tt_token() const {
   return false;
 }
 
+CString UpdateRequest::app_ids() const {
+  CString app_ids_string;
+  for (size_t i = 0; i != request_.apps.size(); ++i) {
+    if (i > 0) {
+      app_ids_string += ',';
+    }
+
+    app_ids_string += request_.apps[i].app_id;
+  }
+
+  return app_ids_string;
+}
+
 HRESULT UpdateRequest::Serialize(CString* buffer) const {
   ASSERT1(buffer);
   return XmlParser::SerializeRequest(*this, buffer);

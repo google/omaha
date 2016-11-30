@@ -33,3 +33,95 @@ local_env['CPPPATH'] += [
     ]
 
 local_env.ComponentStaticLibrary('core', inputs)
+
+core_env = env.Clone()
+omaha_version_info = core_env['omaha_versions_info'][0]
+core_env['CPPPATH'] += [
+    '$OBJ_ROOT',
+    ]
+core_env.Append(
+    LIBS = [
+        'advapi32.lib',
+        'bits.lib',
+        'comctl32.lib',
+        'crypt32.lib',
+        'delayimp.lib',
+        'imagehlp.lib',
+        'iphlpapi.lib',
+        'kernel32.lib',
+        'msi.lib',
+        'msimg32.lib',
+        'mstask.lib',
+        'netapi32.lib',
+        'ole32.lib',
+        'psapi.lib',
+        'rpcns4.lib',
+        'rpcrt4.lib',
+        'shell32.lib',
+        'shlwapi.lib',
+        'taskschd.lib',
+        'user32.lib',
+        'userenv.lib',
+        'uxtheme.lib',
+        'version.lib',
+        'wininet.lib',
+        'wintrust.lib',
+        'ws2_32.lib',
+        'wtsapi32.lib',
+        core_env['atls_libs'][core_env.Bit('debug')],
+        core_env['crt_libs'][core_env.Bit('debug')],
+        core_env.GetMultiarchLibName('base'),
+        core_env.GetMultiarchLibName('breakpad'),
+        core_env.GetMultiarchLibName('client'),
+        core_env.GetMultiarchLibName('common'),
+        core_env.GetMultiarchLibName('core'),
+        core_env.GetMultiarchLibName('crash_handler'),
+        core_env.GetMultiarchLibName('google_update_recovery'),
+        core_env.GetMultiarchLibName('goopdate_lib'),
+        core_env.GetMultiarchLibName('logging'),
+        core_env.GetMultiarchLibName('net'),
+        core_env.GetMultiarchLibName('omaha3_idl'),
+        core_env.GetMultiarchLibName('security'),
+        core_env.GetMultiarchLibName('service'),
+        core_env.GetMultiarchLibName('setup'),
+        core_env.GetMultiarchLibName('statsreport'),
+        core_env.GetMultiarchLibName('ui'),
+        ],
+  RCFLAGS = [
+      '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+      '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+      '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+      '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+      '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+          omaha_version_info.GetVersionString()),
+      ],
+)
+
+google_core_res_target = 'resource.res'
+google_core_res = core_env.RES(source = 'resource.rc',
+                                      target = google_core_res_target)
+core_env.Depends(google_core_res, 'GoogleUpdateCore.manifest')
+
+google_core_inputs = [
+    'winmain.cc',
+    google_core_res,
+    ]
+
+# Disable stack checks for VC80.
+if core_env['msc_ver'] >= 1400:
+  core_env['CCFLAGS'] += ['/GS-']
+
+exe_name = 'GoogleUpdateCore'
+
+unsigned_core = core_env.ComponentProgram(
+    prog_name='%s_unsigned.exe' % exe_name,
+    source=google_core_inputs,
+)
+
+signed_core = core_env.DualSignedBinary(
+    target='%s.exe' % exe_name,
+    source=unsigned_core,
+)
+
+env.Replicate('$STAGING_DIR', signed_core)
+

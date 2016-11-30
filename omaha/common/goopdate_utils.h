@@ -187,10 +187,7 @@ bool GetBrowserToRestart(BrowserType type,
                          const TerminateBrowserResult& def_res,
                          BrowserType* browser_type);
 
-// Obtains the OS version and service pack from the kernel32 ProductVersion.
-bool GetKernel32OSInfo(CString* os_version, CString* sp_qfe);
-
-// Obtains the OS version and service pack.
+// Obtains the OS version as a dotted-quad version and the service pack string.
 HRESULT GetOSInfo(CString* os_version, CString* service_pack);
 
 // Returns the install directory for the specified version.

@@ -15,6 +15,7 @@
 
 #include "base/scoped_ptr.h"
 #include "omaha/base/const_addresses.h"
+#include "omaha/base/omaha_version.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_ptr_address.h"
@@ -129,6 +130,33 @@ TEST_F(WebServicesClientTest, SendUsingCup) {
 
   EXPECT_STREQ(_T(""), no_request_age_header);
 
+  CString interactive_header;
+  network_request->QueryHeadersString(
+      WINHTTP_QUERY_CUSTOM | WINHTTP_QUERY_FLAG_REQUEST_HEADERS,
+      kHeaderXInteractive,
+      &interactive_header);
+
+  EXPECT_STREQ(_T("fg"), interactive_header);
+
+  CString app_ids_header;
+  network_request->QueryHeadersString(
+      WINHTTP_QUERY_CUSTOM | WINHTTP_QUERY_FLAG_REQUEST_HEADERS,
+      kHeaderXAppId,
+      &app_ids_header);
+
+  EXPECT_STREQ(_T(""), app_ids_header);
+
+  CString updater_header;
+  network_request->QueryHeadersString(
+      WINHTTP_QUERY_CUSTOM | WINHTTP_QUERY_FLAG_REQUEST_HEADERS,
+      kHeaderXUpdater,
+      &updater_header);
+
+  CString expected_updater_header;
+  SafeCStringAppendFormat(&expected_updater_header, _T("Omaha-%s"),
+                                                    GetVersionString());
+  EXPECT_STREQ(expected_updater_header, updater_header);
+
   // A CUP transaction has either a request or a response CUP cookie and
   // the ETag response header.
   CString request_cookie;
@@ -175,6 +203,11 @@ TEST_F(WebServicesClientTest, SendForcingHttps) {
   app.update_check.is_valid = true;
   app.update_check.tt_token = _T("Test TT token");
   update_request_->AddApp(app);
+  app.app_id = _T("{E608D3AC-AA44-4754-A391-DA830AE78EA4}");
+  app.iid    = _T("{00000000-0000-0000-0000-000000000000}");
+  app.update_check.is_valid = true;
+  app.update_check.tt_token = _T("");
+  update_request_->AddApp(app);
 
   EXPECT_FALSE(update_request_->IsEmpty());
   EXPECT_TRUE(update_request_->has_tt_token());
@@ -183,11 +216,24 @@ TEST_F(WebServicesClientTest, SendForcingHttps) {
                                                     update_response_.get()));
   EXPECT_TRUE(web_service_client_->is_http_success());
 
+  NetworkRequest* network_request(network_request());
+
+  CString app_ids_header;
+  network_request->QueryHeadersString(
+      WINHTTP_QUERY_CUSTOM | WINHTTP_QUERY_FLAG_REQUEST_HEADERS,
+      kHeaderXAppId,
+      &app_ids_header);
+
+  EXPECT_STREQ(_T("{21CD0965-0B0E-47cf-B421-2D191C16C0E2},")
+               _T("{E608D3AC-AA44-4754-A391-DA830AE78EA4}"),
+               app_ids_header);
+
   // Do a couple of sanity checks on the parsing of the response.
   xml::response::Response response(update_response_->response());
   EXPECT_STREQ(_T("3.0"), response.protocol);
-  ASSERT_EQ(1, response.apps.size());
+  ASSERT_EQ(2, response.apps.size());
   EXPECT_STREQ(_T("error-unknownApplication"), response.apps[0].status);
+  EXPECT_STREQ(_T("error-unknownApplication"), response.apps[1].status);
 }
 
 TEST_F(WebServicesClientTest, SendWithCustomHeader) {

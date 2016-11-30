@@ -1050,24 +1050,17 @@ CString ConvertBrowserTypeToString(BrowserType type) {
   return text;
 }
 
-bool GetKernel32OSInfo(CString* os_version, CString* sp_qfe) {
-  ASSERT1(os_version);
-  ASSERT1(sp_qfe);
-
-  CString s(SystemInfo::GetKernel32OSVersion());
-
-  int pos(0);
-  for (int i = 0; i < 2; ++i) {
-    CString q = s.Tokenize(_T("."), pos);
-    if (i == 0 && pos < 1) {
-      return false;
-    }
-  }
-
-  *os_version = s.Left(pos < 1 ? s.GetLength() : pos - 1);
-  *sp_qfe = pos < 1 ? CString() : s.Mid(pos);
-
-  return true;
+// Returns the the "UBR" value from the registry. Introduced in Windows 10,
+// this undocumented value appears to be similar to a patch number.
+// Returns 0 if the value does not exist or it could not be read.
+DWORD GetUBR() {
+  // The values under the CurrentVersion registry hive are mirrored under
+  // the corresponding WOW6432 hive.
+  DWORD ubr = 0;
+  RegKey::GetValue(
+      _T("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
+      _T("UBR"), &ubr);
+  return ubr;
 }
 
 HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
@@ -1081,9 +1074,13 @@ HRESULT GetOSInfo(CString* os_version, CString* service_pack) {
     return hr;
   }
 
-  SafeCStringFormat(os_version, _T("%u.%u"),
+  // Format the version as major.minor.build.patch by reading the UBR value
+  // from the registry.
+  SafeCStringFormat(os_version, _T("%u.%u.%u.%u"),
                     os_version_info.dwMajorVersion,
-                    os_version_info.dwMinorVersion);
+                    os_version_info.dwMinorVersion,
+                    os_version_info.dwBuildNumber,
+                    GetUBR());
   *service_pack = os_version_info.szCSDVersion;
   return S_OK;
 }

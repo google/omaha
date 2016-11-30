@@ -19,7 +19,9 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
+#include "omaha/base/omaha_version.h"
 #include "omaha/base/path.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_ptr_cotask.h"
 #include "omaha/base/user_info.h"
 #include "omaha/base/vistautil.h"
@@ -61,18 +63,22 @@ using vista_util::IsUserAdmin;
 namespace internal {
 
 void StopScheduledTaskAndVerifyReadyState(const CString& task_name) {
+  HRESULT wait_for_state(v2::IsTaskScheduler2APIAvailable() ?
+                         SCHED_S_TASK_TERMINATED :
+                         SCHED_S_TASK_READY);
+
   // For some reason, StopScheduleTask may not successfully stop the task
   // even it returns S_OK. So try to stop multiple times.
   for (int i = 0; i < 3; ++i) {
     EXPECT_SUCCEEDED(StopScheduledTask(task_name));
 
-    if (SCHED_S_TASK_READY == WaitForTaskStatus(task_name,
-                                                SCHED_S_TASK_READY,
-                                                kMsPerSec)) {
+    if (wait_for_state == WaitForTaskStatus(task_name,
+                                            wait_for_state,
+                                            kMsPerSec)) {
       break;
     }
   }
-  EXPECT_EQ(SCHED_S_TASK_READY, GetScheduledTaskStatus(task_name));
+  EXPECT_EQ(wait_for_state, GetScheduledTaskStatus(task_name));
 }
 
 TEST(ScheduledTaskUtilsTest, ScheduledTasks) {
@@ -117,10 +123,6 @@ TEST(ScheduledTaskUtilsTest, ScheduledTasks) {
                                         true));
 
   EXPECT_FALSE(HasScheduledTaskEverRun(kSchedTestTaskName));
-
-  // Start and stop.
-  EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN,
-            GetScheduledTaskStatus(kSchedTestTaskName));
   EXPECT_SUCCEEDED(StartScheduledTask(kSchedTestTaskName));
   EXPECT_EQ(SCHED_S_TASK_RUNNING,
             WaitForTaskStatus(kSchedTestTaskName,
@@ -175,6 +177,157 @@ TEST(ScheduledTaskUtilsTest, ScheduledTasksV2) {
 }
 */
 
+class ScheduledTaskUtilsV2Test : public ::testing::TestWithParam<bool> {
+ protected:
+  bool IsMachine() {
+    return GetParam();
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(IsMachine,
+                        ScheduledTaskUtilsV2Test,
+                        ::testing::Bool());
+
+TEST_P(ScheduledTaskUtilsV2Test, CreateScheduledTaskXml) {
+  if (!v2::IsTaskScheduler2APIAvailable()) {
+    std::wcout << _T("\tTest did not run because this OS does not support the ")
+                  _T("Task Scheduler 2.0 API.") << std::endl;
+    return;
+  }
+
+  const TCHAR kSchedTestTaskName[]            = _T("TestScheduledTaskV2");
+  const TCHAR kScheduledTaskExecutable[]      = _T("netstat.exe");
+  const TCHAR kScheduledTaskParameters[]      = _T("20");
+  const TCHAR kSchedTestTaskDescription[]     = _T("Google Test Task V2");
+
+  const CTime plus_5min(CTime::GetCurrentTime() + CTimeSpan(0, 0, 5, 0));
+  const CString start_time(plus_5min.Format(_T("%Y-%m-%dT%H:%M:%S")));
+
+  const CString task_path = ConcatenatePath(app_util::GetSystemDir(),
+                                            kScheduledTaskExecutable);
+  CString logon_trigger;
+  if (IsMachine()) {
+    logon_trigger =
+        _T("  <LogonTrigger>\n")
+        _T("    <Enabled>true</Enabled>\n")
+        _T("  </LogonTrigger>\n");
+  }
+
+  CString hourly_trigger =
+        _T("    <Repetition>\n")
+        _T("      <Interval>PT1H</Interval>\n")
+        _T("      <Duration>P1D</Duration>\n")
+        _T("    </Repetition>\n");
+
+  CString user_id;
+  CString principal_attributes;
+
+  if (IsMachine()) {
+    user_id = _T("S-1-5-18");
+    principal_attributes = _T("<RunLevel>HighestAvailable</RunLevel>\n");
+  } else {
+    CAccessToken access_token;
+    CSid current_user_sid;
+    VERIFY1(access_token.GetProcessToken(TOKEN_READ | TOKEN_QUERY));
+    VERIFY1(access_token.GetUser(&current_user_sid));
+    user_id = current_user_sid.Sid();
+    principal_attributes = _T("<LogonType>InteractiveToken</LogonType>\n");
+  }
+
+  CString expected_task_xml;
+  SafeCStringFormat(&expected_task_xml,
+      _T("<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n")
+      _T("<Task version=\"1.2\"\n")
+      _T("  xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n")
+      _T("  <RegistrationInfo>\n")
+      _T("    <Version>%s</Version>\n")
+      _T("    <Description>%s</Description>\n")
+      _T("  </RegistrationInfo>\n")
+      _T("  <Triggers>\n")
+      _T("    %s\n")
+      _T("    <CalendarTrigger>\n")
+      _T("      <StartBoundary>%s</StartBoundary>\n")
+      _T("      %s\n")
+      _T("      <ScheduleByDay>\n")
+      _T("        <DaysInterval>1</DaysInterval>\n")
+      _T("      </ScheduleByDay>\n")
+      _T("    </CalendarTrigger>\n")
+      _T("  </Triggers>\n")
+      _T("  <Principals>\n")
+      _T("    <Principal>\n")
+      _T("      <UserId>%s</UserId>\n")
+      _T("      %s\n")
+      _T("    </Principal>\n")
+      _T("  </Principals>\n")
+      _T("  <Settings>\n")
+      _T("    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n")
+      _T("    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n")
+      _T("    <StartWhenAvailable>true</StartWhenAvailable>\n")
+      _T("    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>\n")
+      _T("    <Enabled>true</Enabled>\n")
+      _T("    <RunOnlyIfIdle>false</RunOnlyIfIdle>\n")
+      _T("    <WakeToRun>false</WakeToRun>\n")
+      _T("    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>\n")
+      _T("  </Settings>\n")
+      _T("  <Actions>\n")
+      _T("    <Exec>\n")
+      _T("      <Command>%s</Command>\n")
+      _T("      <Arguments>%s</Arguments>\n")
+      _T("    </Exec>\n")
+      _T("  </Actions>\n")
+      _T("</Task>\n"),
+      omaha::GetVersionString(),
+      kSchedTestTaskDescription,
+      logon_trigger,
+      start_time,
+      hourly_trigger,
+      user_id,
+      principal_attributes,
+      task_path,
+      kScheduledTaskParameters);
+
+  CString task_xml;
+  EXPECT_SUCCEEDED(v2::CreateScheduledTaskXml(task_path,
+                                              kScheduledTaskParameters,
+                                              kSchedTestTaskDescription,
+                                              start_time,
+                                              IsMachine(),
+                                              IsMachine(),
+                                              true,
+                                              &task_xml));
+
+  EXPECT_STREQ(expected_task_xml, task_xml);
+}
+
+TEST_P(ScheduledTaskUtilsV2Test, InstallScheduledTask) {
+  if (!v2::IsTaskScheduler2APIAvailable()) {
+    std::wcout << _T("\tTest did not run because this OS does not support the ")
+                  _T("Task Scheduler 2.0 API.") << std::endl;
+    return;
+  }
+
+  const TCHAR kSchedTestTaskName[]            = _T("TestScheduledTaskV2");
+  const TCHAR kScheduledTaskExecutable[]      = _T("netstat.exe");
+  const TCHAR kScheduledTaskParameters[]      = _T("20");
+  const TCHAR kSchedTestTaskDescription[]     = _T("Google Test Task V2");
+
+  const CTime plus_5min(CTime::GetCurrentTime() + CTimeSpan(0, 0, 5, 0));
+  const CString start_time(plus_5min.Format(_T("%Y-%m-%dT%H:%M:%S")));
+
+  const CString task_path = ConcatenatePath(app_util::GetSystemDir(),
+                                            kScheduledTaskExecutable);
+  EXPECT_SUCCEEDED(v2::InstallScheduledTask(
+                             kSchedTestTaskName,
+                             task_path,
+                             kScheduledTaskParameters,
+                             kSchedTestTaskDescription,
+                             IsMachine(),
+                             IsMachine(),
+                             true));
+
+  EXPECT_SUCCEEDED(v2::UninstallScheduledTask(kSchedTestTaskName));
+}
+
 }  // namespace internal
 
 
@@ -206,7 +359,13 @@ TEST(ScheduledTaskUtilsTest, GoopdateTasks) {
   EXPECT_SUCCEEDED(UninstallGoopdateTasks(IsUserAdmin()));
 }
 
-TEST(ScheduledTaskUtilsTest, GoopdateTaskInUseOverinstall) {
+TEST(ScheduledTaskUtilsTest, V1OnlyGoopdateTaskInUseOverinstall) {
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    std::wcout << _T("\tTest did not run because this OS supports the ")
+                  _T("Task Scheduler 2.0 API.") << std::endl;
+    return;
+  }
+
   const CString task_path = GetLongRunningProcessPath();
   EXPECT_SUCCEEDED(InstallGoopdateTasks(task_path, IsUserAdmin()));
 
@@ -256,10 +415,12 @@ TEST(ScheduledTaskUtilsTest, GetExitCodeGoopdateTaskUA) {
   // for unknown reason. Attempting to run the task multiple times does not
   // work. This remains a flaky test.
   EXPECT_SUCCEEDED(StartScheduledTask(task_name));
-  EXPECT_EQ(SCHED_S_TASK_READY,
-            WaitForTaskStatus(task_name,
-                              SCHED_S_TASK_READY,
-                              kMaxWaitForProcessMs));
+  HRESULT wait_for_state(v2::IsTaskScheduler2APIAvailable() ?
+                         S_OK :
+                         SCHED_S_TASK_READY);
+  EXPECT_EQ(wait_for_state, WaitForTaskStatus(task_name,
+                                              wait_for_state,
+                                              kMaxWaitForProcessMs));
   EXPECT_TRUE(HasScheduledTaskEverRun(task_name));
   EXPECT_EQ(S_OK, GetExitCodeGoopdateTaskUA(IsUserAdmin()));
 

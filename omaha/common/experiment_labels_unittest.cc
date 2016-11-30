@@ -335,7 +335,7 @@ TEST_F(ExperimentLabelsTest, Serialize_Multi_Valid_NoTimeStamps) {
   EXPECT_EQ(2, el.NumLabels());
 
   CString serialized = el.Serialize(
-      ExperimentLabels::SerializeOptions::DEFAULT);
+      ExperimentLabels::SerializeOptions::EXCLUDE_TIMESTAMPS);
   EXPECT_STREQ(serialized, kLabelNewCombinedNoTimeStamps);
 }
 
@@ -938,21 +938,26 @@ TEST_F(ExperimentLabelsRegistryProtectedTest, CreateReadWrite) {
 
   EXPECT_TRUE(HasValueClientStateMedium());
 
-  CString labels(ExperimentLabels::ReadFromRegistry(
-      true, kExperimentLabelTestAppId, true));
+  CString labels(ExperimentLabels::ReadRegistry(
+      true, kExperimentLabelTestAppId));
   EXPECT_STREQ(kExpectedMergedResult, labels);
 
   // Sun, 09 Mar 2025 16:13:03 GMT.
   const time64 expiration = 133860103830000000uI64;
   CString label(ExperimentLabels::CreateLabel(
-      _T("common"), _T("csm"), expiration, true));
-  ExperimentLabels::WriteToRegistry(true, kExperimentLabelTestAppId, label);
+      _T("common"), _T("csm"), expiration));
+  ExperimentLabels::WriteRegistry(true, kExperimentLabelTestAppId, label);
 
   EXPECT_FALSE(HasValueClientStateMedium());
 
   CString merged_str;
   ReadClientState(&merged_str);
   EXPECT_STREQ(kExpectedMergedResult, merged_str);
+}
+
+TEST_F(ExperimentLabelsTest, RemoveTimestamps) {
+  EXPECT_STREQ(ExperimentLabels::RemoveTimestamps(kLabelNewCombined),
+               kLabelNewCombinedNoTimeStamps);
 }
 
 }  // namespace omaha

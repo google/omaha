@@ -241,6 +241,10 @@ class CoreUtilsTest : public testing::Test {
     return core_->HasOSUpgraded();
   }
 
+  bool ShouldRunCore() {
+    return Core::ShouldRunCore(is_machine_);
+  }
+
   bool ShouldRunCodeRed() {
     return core_->ShouldRunCodeRed();
   }
@@ -463,6 +467,43 @@ TEST_F(CoreUtilsTest, HasOSUpgraded) {
   // Restore the registry redirection.
   RestoreRegistryHives();
   RegKey::DeleteKey(kRegistryHiveOverrideRoot, true);
+}
+
+TEST_F(CoreUtilsTest, ShouldRunCore) {
+  const bool is_machine = vista_util::IsUserAdmin();
+  const TCHAR* reg_update_key(is_machine ? MACHINE_REG_UPDATE :
+                                           USER_REG_UPDATE);
+
+  const time64 now = GetCurrentMsTime();
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCoreRun,
+                                    now));
+  EXPECT_FALSE(ShouldRunCore());
+
+  const time64 nowMinus23Hours = now -
+                                 (kSecondsPerDay - kSecondsPerHour) * kMsPerSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCoreRun,
+                                    nowMinus23Hours));
+  EXPECT_FALSE(ShouldRunCore());
+
+  const time64 nowMinus25PlusHours = now -
+      (kSecondsPerDay + kSecondsPerHour + kSecPerMin) * kMsPerSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCoreRun,
+                                    nowMinus25PlusHours));
+  EXPECT_TRUE(ShouldRunCore());
+
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(reg_update_key,
+                                       kRegValueLastCoreRun));
+  EXPECT_TRUE(ShouldRunCore());
+
+  const time64 nowPlus2000Days = now +
+                                 2000ULL * kSecondsPerDay * kMsPerSec;
+  EXPECT_SUCCEEDED(RegKey::SetValue(reg_update_key,
+                                    kRegValueLastCoreRun,
+                                    nowPlus2000Days));
+  EXPECT_TRUE(ShouldRunCore());
 }
 
 TEST_F(CoreUtilsTest, ShouldRunCodeRed) {

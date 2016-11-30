@@ -55,6 +55,8 @@ class UpdateRequest {
   // trusted tester token.
   bool has_tt_token() const;
 
+  CString app_ids() const;
+
   void set_omaha_shell_version(const CString& shell_version_string) {
     request_.omaha_shell_version = shell_version_string;
   }

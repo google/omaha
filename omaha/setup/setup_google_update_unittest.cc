@@ -23,6 +23,7 @@
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/scoped_ptr_address.h"
@@ -53,11 +54,6 @@ const TCHAR kRunKey[] =
 const TCHAR* const kAppId1 = _T("{B7E61EF9-AAE5-4cdf-A2D3-E4C8DF975145}");
 const TCHAR* const kAppId2 = _T("{35F1A986-417D-4039-8718-781DD418232A}");
 
-const TCHAR kRegistryHiveOverrideRootInHklm[] =
-    _T("HKLM\\Software\\") _T(SHORT_COMPANY_NAME_ANSI)
-    _T("\\") _T(PRODUCT_NAME_ANSI)
-    _T("\\UnitTest\\");
-
 CString GetMsiUninstallKey() {
   CString msi_uninstall_parent_key(kMsiUninstallParentKey);
   return msi_uninstall_parent_key + kHelperInstallerProductGuid;
@@ -81,12 +77,13 @@ void CopyFilesRequiredByFinishInstall(bool is_machine, const CString& version) {
 
   ASSERT_SUCCEEDED(CreateDir(version_path, NULL));
 
-  const TCHAR* files[] = {kOmahaDllName,
-                          kHelperInstallerName,
-// TODO(omaha3): Enable once this is being built.
-#if 0
-                          _T("GoopdateBho.dll"),
-#endif
+  const TCHAR* files[] = {kHelperInstallerName,
+                          kOmahaDllName,
+                          kOmahaCOMRegisterShell64,
+                          kPSFileNameMachine,
+                          kPSFileNameMachine64,
+                          kPSFileNameUser,
+                          kPSFileNameUser64,
                           UPDATE_PLUGIN_FILENAME};
   for (size_t i = 0; i < arraysize(files); ++i) {
     ASSERT_SUCCEEDED(File::Copy(
@@ -270,9 +267,8 @@ void VerifyHklmKeyHasMediumIntegrity(const CString& key_full_name) {
 
 class SetupGoogleUpdateTest : public testing::Test {
  protected:
-  explicit SetupGoogleUpdateTest(bool is_machine)
-      : is_machine_(is_machine) {
-  }
+  explicit SetupGoogleUpdateTest(bool is_machine) : is_machine_(is_machine) {}
+  virtual ~SetupGoogleUpdateTest() {}
 
   virtual void SetUp() {
     setup_google_update_.reset(new SetupGoogleUpdate(is_machine_, false));
@@ -308,108 +304,54 @@ class SetupGoogleUpdateTest : public testing::Test {
 
 class SetupGoogleUpdateUserTest : public SetupGoogleUpdateTest {
  protected:
-  SetupGoogleUpdateUserTest()
-      : SetupGoogleUpdateTest(false) {
+  SetupGoogleUpdateUserTest() : SetupGoogleUpdateTest(false) {
+    CString expected_shell_path =
+        ConcatenatePath(GetGoogleUpdateUserPath(), GetVersionString());
+    expected_run_key_value_ = ConcatenatePath(expected_shell_path,
+                                              kOmahaCoreFileName);
   }
+
+  virtual void SetUp() {
+    SetupGoogleUpdateTest::SetUp();
+    RegKey::DeleteKey(USER_REG_UPDATE);
+  }
+
+  virtual void TearDown() {
+    RegKey::DeleteKey(USER_REG_UPDATE);
+    SetupGoogleUpdateTest::TearDown();
+  }
+
+  CString expected_run_key_value_;
 };
 
 class SetupGoogleUpdateMachineTest : public SetupGoogleUpdateTest {
  protected:
-  SetupGoogleUpdateMachineTest()
-      : SetupGoogleUpdateTest(true) {
-  }
-};
-
-class SetupGoogleUpdateUserRegistryProtectedTest
-    : public SetupGoogleUpdateUserTest {
- protected:
-  SetupGoogleUpdateUserRegistryProtectedTest()
-      : SetupGoogleUpdateUserTest(),
-        hive_override_key_name_(kRegistryHiveOverrideRoot) {
-    const CString expected_shell_path =
-        ConcatenatePath(GetGoogleUpdateUserPath(), kOmahaShellFileName);
-    expected_run_key_value_.Format(_T("\"%s\" /c"), expected_shell_path);
-  }
+  SetupGoogleUpdateMachineTest() : SetupGoogleUpdateTest(true) {}
 
   virtual void SetUp() {
-    RegKey::DeleteKey(hive_override_key_name_, true);
-    // Do not override HKLM because it contains the CSIDL_* definitions.
-    OverrideSpecifiedRegistryHives(hive_override_key_name_, false, true);
-
-    SetupGoogleUpdateUserTest::SetUp();
+    RegKey::DeleteKey(MACHINE_REG_UPDATE);
+    SetupGoogleUpdateTest::SetUp();
   }
 
   virtual void TearDown() {
-    SetupGoogleUpdateUserTest::TearDown();
-
-    RestoreRegistryHives();
-    ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
-  }
-
-  CString hive_override_key_name_;
-  CString expected_run_key_value_;
-};
-
-class SetupGoogleUpdateMachineRegistryProtectedTest
-    : public SetupGoogleUpdateMachineTest {
- protected:
-  SetupGoogleUpdateMachineRegistryProtectedTest()
-      : SetupGoogleUpdateMachineTest(),
-        hive_override_key_name_(kRegistryHiveOverrideRoot) {
-  }
-
-  virtual void SetUp() {
-    RegKey::DeleteKey(hive_override_key_name_, true);
-    OverrideRegistryHives(hive_override_key_name_);
-
-    // Add CSIDL values needed by the tests.
-    ASSERT_SUCCEEDED(RegKey::SetValue(kCsidlSystemIdsRegKey,
-                                      kCsidlProgramFilesRegValue,
-                                      _T("C:\\Program Files")));
-
-    SetupGoogleUpdateMachineTest::SetUp();
-  }
-
-  virtual void TearDown() {
-    SetupGoogleUpdateMachineTest::TearDown();
-
-    RestoreRegistryHives();
-    ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
-  }
-
-  CString hive_override_key_name_;
-};
-
-// There are a few tests where keys need to inherit the HKLM privileges, so put
-// the override root in HKLM. All tests using this framework must run as admin.
-class SetupGoogleUpdateMachineRegistryProtectedInHklmTest
-    : public SetupGoogleUpdateMachineRegistryProtectedTest {
- protected:
-  SetupGoogleUpdateMachineRegistryProtectedInHklmTest()
-      : SetupGoogleUpdateMachineRegistryProtectedTest() {
-    hive_override_key_name_ = kRegistryHiveOverrideRootInHklm;
+    RegKey::DeleteKey(MACHINE_REG_UPDATE);
+    SetupGoogleUpdateTest::TearDown();
   }
 };
 
 // This test uninstalls all other versions of Omaha.
-TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
-       FinishInstall_RunKeyDoesNotExist) {
-  // The version in the real registry must be set because it is used by
-  // GoogleUpdate.exe during registrations.
-  RestoreRegistryHives();
+TEST_F(SetupGoogleUpdateUserTest, FinishInstall_RunKeyDoesNotExist) {
+  RegKey::DeleteValue(kRunKey, _T(OMAHA_APP_NAME_ANSI));
+  ASSERT_FALSE(RegKey::HasValue(kRunKey, _T(OMAHA_APP_NAME_ANSI)));
+
   const bool had_pv = RegKey::HasValue(USER_REG_CLIENTS_GOOPDATE,
                                        kRegValueProductVersion);
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_CLIENTS_GOOPDATE,
                                     kRegValueProductVersion,
                                     GetVersionString()));
-  OverrideSpecifiedRegistryHives(hive_override_key_name_, false, true);
 
   CopyFilesRequiredByFinishInstall(is_machine_, GetVersionString());
   SetupCOMLocalServerRegistration(is_machine_);
-
-  EXPECT_SUCCEEDED(RegKey::CreateKey(_T("HKCU\\Software\\Classes")));
-
-  ASSERT_FALSE(RegKey::HasKey(kRunKey));
 
   EXPECT_SUCCEEDED(RegKey::SetValue(USER_REG_UPDATE,
                                     _T("mi"),
@@ -459,7 +401,6 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   if (!had_pv) {
     // Delete the pv value. Some tests or shell .exe instances may see this
     // value and assume Omaha is correctly installed.
-    RestoreRegistryHives();
     EXPECT_SUCCEEDED(RegKey::DeleteValue(USER_REG_CLIENTS_GOOPDATE,
                                          kRegValueProductVersion));
   }
@@ -467,25 +408,13 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
 
 // TODO(omaha): Assumes GoogleUpdate.exe exists in the installed location, which
 // is not always true when run independently.
-TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
+TEST_F(SetupGoogleUpdateUserTest, InstallRegistryValues) {
   if (IsTestRunByLocalSystem()) {
     return;
   }
 
-  // For this test only, we must also override HKLM in order to check that
-  // MACHINE_REG_CLIENT_STATE_MEDIUM was not created.
-  // Get the correct value of and set the CSIDL value needed by the test.
-  CString profile_path;
-  EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROFILE, &profile_path));
-  OverrideSpecifiedRegistryHives(hive_override_key_name_, true, true);
-  CString user_sid;
-  EXPECT_SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid));
-  const TCHAR* const kProfileListKey =
-      _T("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\")
-      _T("ProfileList\\");
-  const CString profile_path_key = kProfileListKey + user_sid;
-  EXPECT_SUCCEEDED(
-    RegKey::SetValue(profile_path_key, _T("ProfileImagePath"), profile_path));
+  RegKey::DeleteKey(USER_REG_UPDATE);
+  RegKey::DeleteKey(MACHINE_REG_CLIENT_STATE_MEDIUM);
 
   EXPECT_SUCCEEDED(InstallRegistryValues());
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
@@ -499,10 +428,6 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
   EXPECT_FALSE(RegKey::HasKey(MACHINE_REG_CLIENT_STATE_MEDIUM));
 
   // Ensure no unexpected keys were created.
-  RegKey google_key;
-  EXPECT_SUCCEEDED(google_key.Open(USER_REG_GOOGLE));
-  EXPECT_EQ(1, google_key.GetSubkeyCount());
-
   RegKey update_key;
   EXPECT_SUCCEEDED(update_key.Open(USER_REG_UPDATE));
   EXPECT_EQ(2, update_key.GetSubkeyCount());
@@ -540,8 +465,7 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest, InstallRegistryValues) {
 // TODO(omaha): Assumes GoogleUpdate.exe exists in the installed location, which
 // is not always true when run independently.
 // TODO(omaha): Fails when run by itself on Windows Vista.
-TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
-       InstallRegistryValues) {
+TEST_F(SetupGoogleUpdateMachineTest, InstallRegistryValues) {
   EXPECT_SUCCEEDED(InstallRegistryValues());
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
@@ -554,10 +478,6 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
   EXPECT_TRUE(RegKey::HasKey(MACHINE_REG_CLIENT_STATE_MEDIUM));
 
   // Ensure no unexpected keys were created.
-  RegKey google_key;
-  EXPECT_SUCCEEDED(google_key.Open(MACHINE_REG_GOOGLE));
-  EXPECT_EQ(1, google_key.GetSubkeyCount());
-
   RegKey update_key;
   EXPECT_SUCCEEDED(update_key.Open(MACHINE_REG_UPDATE));
   EXPECT_EQ(3, update_key.GetSubkeyCount());
@@ -614,7 +534,7 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
   VerifyHklmKeyHasMediumIntegrity(app_client_state_medium_key_name);
 }
 
-TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
+TEST_F(SetupGoogleUpdateMachineTest,
        CreateClientStateMedium_KeyAlreadyExistsWithSamePermissions) {
   EXPECT_SUCCEEDED(RegKey::CreateKey(MACHINE_REG_UPDATE));
   EXPECT_SUCCEEDED(CreateClientStateMedium());
@@ -625,7 +545,7 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
 }
 
 // CreateClientStateMedium does not replace permissions on existing keys.
-TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
+TEST_F(SetupGoogleUpdateMachineTest,
        CreateClientStateMedium_KeysAlreadyExistWithDifferentPermissions) {
   const CString app1_client_state_medium_key_name = AppendRegKeyPath(
       MACHINE_REG_CLIENT_STATE_MEDIUM,
@@ -687,8 +607,7 @@ TEST_F(SetupGoogleUpdateMachineRegistryProtectedInHklmTest,
       app2_client_state_medium_key_name, KEY_WRITE, &dacl, &interactive);
 }
 
-TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
-       InstallLaunchMechanisms_RunKeyValueExists) {
+TEST_F(SetupGoogleUpdateUserTest, InstallLaunchMechanisms_RunKeyValueExists) {
   EXPECT_SUCCEEDED(RegKey::SetValue(kRunKey,
                                     _T(OMAHA_APP_NAME_ANSI),
                                     _T("fo /b")));
@@ -708,9 +627,9 @@ TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
   EXPECT_FALSE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
 }
 
-TEST_F(SetupGoogleUpdateUserRegistryProtectedTest,
-       InstallLaunchMechanisms_RunKeyDoesNotExist) {
-  ASSERT_FALSE(RegKey::HasKey(kRunKey));
+TEST_F(SetupGoogleUpdateUserTest, InstallLaunchMechanisms_RunKeyDoesNotExist) {
+  RegKey::DeleteValue(kRunKey, _T(OMAHA_APP_NAME_ANSI));
+  ASSERT_FALSE(RegKey::HasValue(kRunKey, _T(OMAHA_APP_NAME_ANSI)));
 
   EXPECT_SUCCEEDED(InstallLaunchMechanisms());
 
@@ -738,8 +657,9 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
   if (vista_util::IsUserAdmin()) {
     // Prepare for the test - make sure the helper isn't installed.
     EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
-    EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-    EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
+
+    RegKey::DeleteValue(MsiInstallRegValueKey, kMsiInstallRegValue);
+    RegKey::DeleteKey(GetMsiUninstallKey());
 
     // Verify installation.
     DWORD reg_value = 0xffffffff;
@@ -881,6 +801,31 @@ TEST_F(SetupGoogleUpdateMachineTest, WriteClientStateMedium) {
   RegKey subkey;
   EXPECT_SUCCEEDED(subkey.Create(subkey_name));
   EXPECT_SUCCEEDED(subkey.SetValue(_T("Subkey1Value1"), _T("21")));
+}
+
+// Creates the ClientStateMedium key with the appropriate permissions then
+// verifies that the created app subkey inherits those.
+// The Update key must be created first to avoid applying ClientStateMedium's
+// permissions to all its parent keys.
+TEST_F(SetupGoogleUpdateMachineTest,
+       WritePreInstallData_CheckClientStateMediumPermissions) {
+  // Start with a clean state without a ClientStateMedium key.
+  const CString client_state_medium_key_name(
+      ConfigManager::Instance()->machine_registry_client_state_medium());
+  RegKey::DeleteKey(client_state_medium_key_name);
+
+  // Create the ClientStateMedium key and one subkey.
+  EXPECT_SUCCEEDED(RegKey::CreateKey(
+      ConfigManager::Instance()->machine_registry_update()));
+  CreateClientStateMedium();
+  CString app_client_state_medium_key_name;
+  SafeCStringFormat(&app_client_state_medium_key_name, _T("%s\\%s"),
+      client_state_medium_key_name, "{21CD0965-0B0E-47cf-B421-2D191C16C0E2}");
+  EXPECT_SUCCEEDED(RegKey::CreateKey(app_client_state_medium_key_name));
+
+  // Verify the security ACLs for the key and its subkey.
+  VerifyHklmKeyHasMediumIntegrity(app_client_state_medium_key_name);
+  VerifyHklmKeyHasDefaultIntegrity(client_state_medium_key_name);
 }
 
 }  // namespace omaha

@@ -18,9 +18,12 @@
 #include <lmsname.h>
 #include <mstask.h>
 #include <atlsecurity.h>
+#include <atltime.h>
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_ptr_cotask.h"
 #include "omaha/base/service_utils.h"
 #include "omaha/base/string.h"
@@ -90,6 +93,10 @@ HRESULT CreateAndSetVersionedTaskNameUAInRegistry(bool machine) {
 bool IsInstalledScheduledTask(const TCHAR* task_name) {
   ASSERT1(task_name && *task_name);
 
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::IsInstalledScheduledTask(task_name);
+  }
+
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -110,6 +117,10 @@ bool IsInstalledScheduledTask(const TCHAR* task_name) {
 
 DWORD GetScheduledTaskPriority(const TCHAR* task_name) {
   ASSERT1(task_name && *task_name);
+
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::GetScheduledTaskPriority(task_name);
+  }
 
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
@@ -144,6 +155,10 @@ DWORD GetScheduledTaskPriority(const TCHAR* task_name) {
 bool HasScheduledTaskEverRun(const TCHAR* task_name) {
   ASSERT1(task_name && *task_name);
 
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::HasScheduledTaskEverRun(task_name);
+  }
+
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -171,11 +186,15 @@ bool HasScheduledTaskEverRun(const TCHAR* task_name) {
   }
 
   // hr == SCHED_S_TASK_HAS_NOT_RUN if the task has never run.
-  return hr == S_OK;
+  return hr != SCHED_S_TASK_HAS_NOT_RUN;
 }
 
 HRESULT GetScheduledTaskStatus(const TCHAR* task_name) {
   ASSERT1(task_name && *task_name);
+
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::GetScheduledTaskStatus(task_name);
+  }
 
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
@@ -208,6 +227,10 @@ HRESULT GetScheduledTaskStatus(const TCHAR* task_name) {
 
 HRESULT GetScheduledTaskExitCode(const TCHAR* task_name) {
   ASSERT1(task_name && *task_name);
+
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::GetScheduledTaskLastResult(task_name);
+  }
 
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
@@ -567,6 +590,16 @@ HRESULT UpgradeScheduledTask(const TCHAR* task_name,
   ASSERT1(task_name && *task_name);
   ASSERT1(IsInstalledScheduledTask(task_name));
 
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::InstallScheduledTask(task_name,
+                                    task_path,
+                                    task_parameters,
+                                    task_comment,
+                                    is_machine,
+                                    create_logon_trigger,
+                                    create_hourly_trigger);
+  }
+
   UTIL_LOG(L3, (_T("[UpgradeScheduledTask][%s][%s][%s][%d]"),
                 task_name, task_path, task_parameters, is_machine));
 
@@ -625,6 +658,16 @@ HRESULT InstallScheduledTask(const TCHAR* task_name,
                              bool create_logon_trigger,
                              bool create_daily_trigger,
                              bool create_hourly_trigger) {
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::InstallScheduledTask(task_name,
+                                    task_path,
+                                    task_parameters,
+                                    task_comment,
+                                    is_machine,
+                                    create_logon_trigger,
+                                    create_hourly_trigger);
+  }
+
   if (IsInstalledScheduledTask(task_name)) {
     UninstallScheduledTask(task_name);
   }
@@ -661,6 +704,10 @@ HRESULT InstallScheduledTask(const TCHAR* task_name,
 
 HRESULT UninstallScheduledTask(const TCHAR* task_name) {
   ASSERT1(task_name && *task_name);
+
+  if (v2::IsTaskScheduler2APIAvailable()) {
+    return v2::UninstallScheduledTask(task_name);
+  }
 
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
@@ -762,10 +809,9 @@ bool IsTaskScheduler2APIAvailable() {
                                                  CLSCTX_INPROC_SERVER));
 }
 
-HRESULT GetRegisteredTask(const TCHAR* task_name, IRegisteredTask** task) {
+HRESULT GetTaskFolder(ITaskFolder** task_folder) {
   ASSERT1(IsTaskScheduler2APIAvailable());
-  ASSERT1(task_name && *task_name);
-  ASSERT1(task);
+  ASSERT1(task_folder);
 
   CComPtr<ITaskService> task_service;
   HRESULT hr = task_service.CoCreateInstance(CLSID_TaskScheduler,
@@ -783,8 +829,23 @@ HRESULT GetRegisteredTask(const TCHAR* task_name, IRegisteredTask** task) {
     return hr;
   }
 
+  CComPtr<ITaskFolder> folder;
+  hr = task_service->GetFolder(CComBSTR(_T("\\")) , &folder);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[Cannot get Root Folder pointer][0x%x]"), hr));
+    return hr;
+  }
+
+  *task_folder = folder.Detach();
+  return S_OK;
+}
+
+HRESULT GetRegisteredTask(const CString& task_name, IRegisteredTask** task) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+  ASSERT1(task);
+
   CComPtr<ITaskFolder> task_folder;
-  hr = task_service->GetFolder(CComBSTR(_T("\\")) , &task_folder);
+  HRESULT hr = GetTaskFolder(&task_folder);
   if (FAILED(hr)) {
     UTIL_LOG(LE, (_T("[Cannot get Root Folder pointer][0x%x]"), hr));
     return hr;
@@ -801,9 +862,8 @@ HRESULT GetRegisteredTask(const TCHAR* task_name, IRegisteredTask** task) {
   return S_OK;
 }
 
-bool IsScheduledTaskRunning(const TCHAR* task_name) {
+bool IsScheduledTaskRunning(const CString& task_name) {
   ASSERT1(IsTaskScheduler2APIAvailable());
-  ASSERT1(task_name && *task_name);
 
   CComPtr<IRegisteredTask> registered_task;
   HRESULT hr = GetRegisteredTask(task_name, &registered_task);
@@ -818,7 +878,7 @@ bool IsScheduledTaskRunning(const TCHAR* task_name) {
     return false;
   }
 
-  long count = 0;
+  long count = 0;  // NOLINT
   hr = running_task_collection->get_Count(&count);
   if (FAILED(hr)) {
     UTIL_LOG(LE, (_T("[IRunningTaskCollection.get_Count failed][0x%x]"), hr));
@@ -828,9 +888,8 @@ bool IsScheduledTaskRunning(const TCHAR* task_name) {
   return count > 0;
 }
 
-HRESULT StartScheduledTask(const TCHAR* task_name) {
+HRESULT StartScheduledTask(const CString& task_name) {
   ASSERT1(IsTaskScheduler2APIAvailable());
-  ASSERT1(task_name && *task_name);
 
   if (IsScheduledTaskRunning(task_name)) {
     return S_OK;
@@ -851,9 +910,8 @@ HRESULT StartScheduledTask(const TCHAR* task_name) {
   return hr;
 }
 
-HRESULT StopScheduledTask(const TCHAR* task_name) {
+HRESULT StopScheduledTask(const CString& task_name) {
   ASSERT1(IsTaskScheduler2APIAvailable());
-  ASSERT1(task_name && *task_name);
 
   if (!IsScheduledTaskRunning(task_name)) {
     return S_OK;
@@ -872,7 +930,7 @@ HRESULT StopScheduledTask(const TCHAR* task_name) {
     return hr;
   }
 
-  long count = 0;
+  long count = 0;  // NOLINT
   hr = running_task_collection->get_Count(&count);
   if (FAILED(hr)) {
     UTIL_LOG(LE, (_T("[IRunningTaskCollection.get_Count failed][0x%x]"), hr));
@@ -883,7 +941,7 @@ HRESULT StopScheduledTask(const TCHAR* task_name) {
     return S_OK;
   }
 
-  for (long i = 0; i < count; ++i) {
+  for (long i = 0; i < count; ++i) {  // NOLINT
     CComPtr<IRunningTask> running_task;
     hr = running_task_collection->get_Item(CComVariant(i+1), &running_task);
     if (FAILED(hr)) {
@@ -899,6 +957,315 @@ HRESULT StopScheduledTask(const TCHAR* task_name) {
   }
 
   return S_OK;
+}
+
+HRESULT CreateScheduledTaskXml(const CString& task_path,
+                               const CString& task_parameters,
+                               const CString& task_description,
+                               const CString& start_time,
+                               bool is_machine,
+                               bool create_logon_trigger,
+                               bool create_hourly_trigger,
+                               CString* scheduled_task_xml) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+  ASSERT1(!create_logon_trigger || (create_logon_trigger && is_machine));
+  ASSERT1(scheduled_task_xml);
+
+  UTIL_LOG(L3, (_T("[CreateScheduledTaskXml][%s][%s][%d]"),
+                task_path, task_parameters, is_machine));
+
+  CString logon_trigger;
+  if (create_logon_trigger) {
+    logon_trigger =
+        _T("  <LogonTrigger>\n")
+        _T("    <Enabled>true</Enabled>\n")
+        _T("  </LogonTrigger>\n");
+  }
+
+  CString hourly_trigger;
+  if (create_hourly_trigger) {
+    hourly_trigger =
+        _T("    <Repetition>\n")
+        _T("      <Interval>PT1H</Interval>\n")
+        _T("      <Duration>P1D</Duration>\n")
+        _T("    </Repetition>\n");
+  }
+  CString user_id;
+  CString principal_attributes;
+  if (is_machine) {
+    user_id = Sids::System().Sid();
+    principal_attributes = _T("<RunLevel>HighestAvailable</RunLevel>\n");
+  } else {
+    CAccessToken access_token;
+    CSid current_user_sid;
+    VERIFY1(access_token.GetProcessToken(TOKEN_READ | TOKEN_QUERY));
+    VERIFY1(access_token.GetUser(&current_user_sid));
+    user_id = current_user_sid.Sid();
+    principal_attributes = _T("<LogonType>InteractiveToken</LogonType>\n");
+  }
+
+  CString task_xml;
+  SafeCStringFormat(&task_xml,
+      _T("<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n")
+      _T("<Task version=\"1.2\"\n")
+      _T("  xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n")
+      _T("  <RegistrationInfo>\n")
+      _T("    <Version>%s</Version>\n")
+      _T("    <Description>%s</Description>\n")
+      _T("  </RegistrationInfo>\n")
+      _T("  <Triggers>\n")
+      _T("    %s\n")
+      _T("    <CalendarTrigger>\n")
+      _T("      <StartBoundary>%s</StartBoundary>\n")
+      _T("      %s\n")
+      _T("      <ScheduleByDay>\n")
+      _T("        <DaysInterval>1</DaysInterval>\n")
+      _T("      </ScheduleByDay>\n")
+      _T("    </CalendarTrigger>\n")
+      _T("  </Triggers>\n")
+      _T("  <Principals>\n")
+      _T("    <Principal>\n")
+      _T("      <UserId>%s</UserId>\n")
+      _T("      %s\n")
+      _T("    </Principal>\n")
+      _T("  </Principals>\n")
+      _T("  <Settings>\n")
+      _T("    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n")
+      _T("    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n")
+      _T("    <StartWhenAvailable>true</StartWhenAvailable>\n")
+      _T("    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>\n")
+      _T("    <Enabled>true</Enabled>\n")
+      _T("    <RunOnlyIfIdle>false</RunOnlyIfIdle>\n")
+      _T("    <WakeToRun>false</WakeToRun>\n")
+      _T("    <ExecutionTimeLimit>PT72H</ExecutionTimeLimit>\n")
+      _T("  </Settings>\n")
+      _T("  <Actions>\n")
+      _T("    <Exec>\n")
+      _T("      <Command>%s</Command>\n")
+      _T("      <Arguments>%s</Arguments>\n")
+      _T("    </Exec>\n")
+      _T("  </Actions>\n")
+      _T("</Task>\n"),
+      omaha::GetVersionString(),
+      task_description,
+      logon_trigger,
+      start_time,
+      hourly_trigger,
+      user_id,
+      principal_attributes,
+      task_path,
+      task_parameters);
+
+  *scheduled_task_xml = task_xml;
+  UTIL_LOG(L6, (_T("[CreateScheduledTaskXml][%s]"), task_xml));
+  return S_OK;
+}
+
+HRESULT InstallScheduledTask(const CString& task_name,
+                             const CString& task_path,
+                             const CString& task_parameters,
+                             const CString& task_description,
+                             bool is_machine,
+                             bool create_logon_trigger,
+                             bool create_hourly_trigger) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  CComPtr<ITaskFolder> task_folder;
+  HRESULT hr = GetTaskFolder(&task_folder);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[Cannot get Root Folder pointer][0x%x]"), hr));
+    return hr;
+  }
+
+  const CTime plus_5min(CTime::GetCurrentTime() + CTimeSpan(0, 0, 5, 0));
+  const CString start_time(plus_5min.Format(_T("%Y-%m-%dT%H:%M:%S")));
+
+  CString task_xml;
+  VERIFY1(SUCCEEDED(CreateScheduledTaskXml(
+                             task_path,
+                             task_parameters,
+                             task_description,
+                             start_time,
+                             is_machine,
+                             create_logon_trigger,
+                             create_hourly_trigger,
+                             &task_xml)));
+
+  CString user_name;
+  DWORD buffer_size = UNLEN + 1;
+  if (!::GetUserName(CStrBuf(user_name, buffer_size), &buffer_size)) {
+    hr = HRESULTFromLastError();
+    UTIL_LOG(LE, (_T("[::GetUserName failed][0x%x]"), hr));
+    return hr;
+  }
+
+  CComPtr<IRegisteredTask> registered_task;
+  return task_folder->RegisterTask(
+      CComBSTR(task_name),
+      CComBSTR(task_xml),
+      TASK_CREATE_OR_UPDATE,
+      CComVariant(),
+      CComVariant(),
+      is_machine ? TASK_LOGON_SERVICE_ACCOUNT : TASK_LOGON_INTERACTIVE_TOKEN,
+      CComVariant(),
+      &registered_task);
+}
+
+HRESULT UninstallScheduledTask(const CString& task_name) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  CComPtr<ITaskFolder> task_folder;
+  HRESULT hr = GetTaskFolder(&task_folder);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[Cannot get Root Folder pointer][0x%x]"), hr));
+    return hr;
+  }
+
+  hr = task_folder->DeleteTask(CComBSTR(task_name), 0);
+  if (FAILED(hr) && hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) {
+    UTIL_LOG(LE, (_T("[UninstallScheduledTask][Delete failed][0x%x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT UninstallScheduledTasks(const CString& task_prefix) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  CComPtr<ITaskFolder> task_folder;
+  HRESULT hr = GetTaskFolder(&task_folder);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[Cannot get Root Folder pointer][0x%x]"), hr));
+    return hr;
+  }
+
+  CComPtr<IRegisteredTaskCollection> registered_task_collection;
+  hr = task_folder->GetTasks(0, &registered_task_collection);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[GetTasks failed][0x%x]"), hr));
+    return hr;
+  }
+
+  long num_tasks = 0;  // NOLINT
+  hr = registered_task_collection->get_Count(&num_tasks);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[get_Count failed][0x%x]"), hr));
+    return hr;
+  }
+
+  // Collections are 1-based.
+  for (long i = 1; i <= num_tasks; ++i) {  // NOLINT
+    CComPtr<IRegisteredTask> registered_task;
+    hr = registered_task_collection->get_Item(CComVariant(i), &registered_task);
+    if (FAILED(hr)) {
+      UTIL_LOG(LE, (_T("[Failed to get Item][%d][0x%x]"), i, hr));
+      continue;
+    }
+
+    CComBSTR task_name;
+    hr = registered_task->get_Name(&task_name);
+    if (FAILED(hr)) {
+      UTIL_LOG(LE, (_T("[Failed to get Name][%d][0x%x]"), i, hr));
+      continue;
+    }
+
+    if (String_StartsWith(task_name, task_prefix, true)) {
+      UninstallScheduledTask(CString(task_name));
+    }
+  }
+
+  return S_OK;
+}
+
+bool IsInstalledScheduledTask(const CString& task_name) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  CComPtr<IRegisteredTask> registered_task;
+  HRESULT hr = GetRegisteredTask(task_name, &registered_task);
+
+  UTIL_LOG(L3, (_T("[IsInstalledScheduledTask returned][0x%x]"), hr));
+  return hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+}
+
+int GetScheduledTaskPriority(const CString& task_name) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  CComPtr<IRegisteredTask> registered_task;
+  HRESULT hr = GetRegisteredTask(task_name, &registered_task);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[GetScheduledTaskPriority][failed][0x%x]"), hr));
+    return -1;
+  }
+
+  CComPtr<ITaskDefinition> task_definition;
+  hr = registered_task->get_Definition(&task_definition);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[get_Definition][failed][0x%x]"), hr));
+    return -1;
+  }
+
+  CComPtr<ITaskSettings> task_settings;
+  hr = task_definition->get_Settings(&task_settings);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[get_Settings][failed][0x%x]"), hr));
+    return -1;
+  }
+
+  int priority = 0;
+  hr = task_settings->get_Priority(&priority);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[get_Priority failed][0x%x]"), hr));
+    return -1;
+  }
+
+  return priority;
+}
+
+bool HasScheduledTaskEverRun(const CString& task_name) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  CComPtr<IRegisteredTask> registered_task;
+  HRESULT hr = GetRegisteredTask(task_name, &registered_task);
+
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[HasScheduledTaskEverRun][get failed][0x%x]"), hr));
+    return false;
+  }
+
+  DATE recent_run_time = 0;
+  hr = registered_task->get_LastRunTime(&recent_run_time);
+
+  // hr == SCHED_S_TASK_HAS_NOT_RUN if the task has never run.
+  return hr != SCHED_S_TASK_HAS_NOT_RUN;
+}
+
+HRESULT GetScheduledTaskStatus(const CString& task_name) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  return GetScheduledTaskLastResult(task_name);
+}
+
+HRESULT GetScheduledTaskLastResult(const CString& task_name) {
+  ASSERT1(IsTaskScheduler2APIAvailable());
+
+  CComPtr<IRegisteredTask> registered_task;
+  HRESULT hr = GetRegisteredTask(task_name, &registered_task);
+
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[GetScheduledTaskLastResult][get failed][0x%x]"), hr));
+    return hr;
+  }
+
+  HRESULT last_task_result(E_FAIL);
+  hr = registered_task->get_LastTaskResult(&last_task_result);
+  if (FAILED(hr)) {
+    UTIL_LOG(LE, (_T("[get_LastTaskResult failed][0x%x]"), hr));
+    return hr;
+  }
+
+  UTIL_LOG(L6, (_T("[GetScheduledTaskLastResult][0x%x]"), last_task_result));
+  return last_task_result;
 }
 
 }  // namespace v2

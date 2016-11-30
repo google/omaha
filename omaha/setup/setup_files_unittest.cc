@@ -34,7 +34,7 @@ namespace {
 // TODO(omaha3): Update the numbers in the else block as we build more files.
 // Eventually use the original values in the if block.
 const int kNumberOfLanguageDlls = 55;
-const int kNumberOfCoreFiles = 10;
+const int kNumberOfCoreFiles = 11;
 const int kNumberOfMetainstallerFiles = 1;
 const int kNumberOfOptionalFiles = 4;
 const int kNumberOfInstalledRequiredFiles =
@@ -62,7 +62,8 @@ void CopyGoopdateFiles(const CString& omaha_path, const CString& version) {
 
   EXPECT_SUCCEEDED(CreateDir(version_path, NULL));
 
-  const TCHAR* files[] = {kCrashHandlerFileName,
+  const TCHAR* files[] = {kOmahaCoreFileName,
+                          kCrashHandlerFileName,
                           kCrashHandler64FileName,
                           kOmahaShellFileName,
                           kHelperInstallerName,
@@ -184,6 +185,7 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(kOmahaShellFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaBrokerFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaCOMRegisterShell64, files[file_index++]);
+    EXPECT_STREQ(kOmahaCoreFileName, files[file_index++]);
     EXPECT_STREQ(kHelperInstallerName, files[file_index++]);
     EXPECT_STREQ(kOmahaOnDemandFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaMetainstallerFileName, files[file_index++]);

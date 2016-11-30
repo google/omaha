@@ -676,10 +676,10 @@ CString SetupGoogleUpdate::BuildSupportFileInstallPath(
 }
 
 CString SetupGoogleUpdate::BuildCoreProcessCommandLine() const {
-  CString google_update_path =
-      goopdate_utils::BuildGoogleUpdateExePath(is_machine_);
-  CommandLineBuilder builder(COMMANDLINE_MODE_CORE);
-  return builder.GetCommandLine(google_update_path);
+  CPath full_file_path(goopdate_utils::BuildInstallDirectory(
+      is_machine_, GetVersionString()));
+  VERIFY1(full_file_path.Append(kOmahaCoreFileName));
+  return full_file_path;
 }
 
 HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {

@@ -296,8 +296,8 @@ TEST_F(UpdateRequestUtilsTest, ExperimentLabels) {
   const time64 expiration = 133860103830000000uI64;
 
   CString label(ExperimentLabels::CreateLabel(
-      _T("label key"), _T("label value"), expiration, true));
-  EXPECT_SUCCEEDED(ExperimentLabels::WriteToRegistry(
+      _T("label key"), _T("label value"), expiration));
+  EXPECT_SUCCEEDED(ExperimentLabels::WriteRegistry(
       false, app_->app_guid_string(), label));
 
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));

@@ -165,6 +165,12 @@ def _GetMetainstallerPayloadFilenames(prefix,
     # 64-bit crash handler is added on 1.3.21.85 and later
     payload_files.append('%s64.exe' % _CRASH_HANDLER_NAME)
 
+  if (omaha_version[0] >= 1 and
+      omaha_version[1] >= 3 and
+      (omaha_version[2] >= 32)):
+    # added with 1.3.32.1 and later
+    payload_files.append('GoogleUpdateCore.exe')
+
   for language in languages:
     payload_files += ['%sgoopdateres_%s.dll' % (prefix, language)]
 

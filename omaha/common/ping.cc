@@ -162,8 +162,7 @@ void Ping::AddExtraOmahaLabel(const CString& label_set) {
   CString new_labels;
   if (ExperimentLabels::MergeLabelSets(omaha_data_.experiment_labels,
                                        label_set,
-                                       &new_labels,
-                                       false)) {
+                                       &new_labels)) {
     omaha_data_.experiment_labels = new_labels;
   }
 }
@@ -238,7 +237,8 @@ xml::request::App Ping::BuildOmahaApp(const CString& version,
   app.lang                  = omaha_data_.language;
   app.brand_code            = omaha_data_.brand_code;
   app.client_id             = omaha_data_.client_id;
-  app.experiments           = omaha_data_.experiment_labels;
+  app.experiments           =
+      ExperimentLabels::RemoveTimestamps(omaha_data_.experiment_labels);
   app.iid                   = omaha_data_.installation_id;
   app.install_time_diff_sec = omaha_data_.install_time_diff_sec;
   app.day_of_install        = omaha_data_.day_of_install;
@@ -261,7 +261,8 @@ void Ping::BuildAppsPing(const PingEventPtr& ping_event) {
     app.lang                  = apps_data_[i].language;
     app.brand_code            = apps_data_[i].brand_code;
     app.client_id             = apps_data_[i].client_id;
-    app.experiments           = apps_data_[i].experiment_labels;
+    app.experiments           =
+        ExperimentLabels::RemoveTimestamps(apps_data_[i].experiment_labels);
     app.iid                   = apps_data_[i].installation_id;
     app.install_time_diff_sec = apps_data_[i].install_time_diff_sec;
     app.day_of_install        = apps_data_[i].day_of_install;

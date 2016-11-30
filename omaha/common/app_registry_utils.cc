@@ -457,8 +457,7 @@ void GetClientStateData(bool is_machine,
     key.GetValue(kRegValueInstallationId, iid);
   }
   if (experiment_labels) {
-    *experiment_labels = ExperimentLabels::ReadFromRegistry(
-        is_machine, app_id, false);
+    *experiment_labels = ExperimentLabels::ReadRegistry(is_machine, app_id);
   }
   if (cohort) {
     ReadCohort(is_machine, app_id, cohort);

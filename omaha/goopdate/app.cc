@@ -198,9 +198,9 @@ STDMETHODIMP App::get_labels(BSTR* labels) {
 
 STDMETHODIMP App::put_labels(BSTR labels) {
   __mutexScope(model()->lock());
-  return ExperimentLabels::WriteToRegistry(app_bundle_->is_machine(),
-                                           app_guid_string(),
-                                           labels);
+  return ExperimentLabels::WriteRegistry(app_bundle_->is_machine(),
+                                         app_guid_string(),
+                                         labels);
 }
 
 STDMETHODIMP App::get_referralId(BSTR* referral_id) {
@@ -691,16 +691,13 @@ CString App::client_id() const {
 
 CString App::GetExperimentLabels() const {
   __mutexScope(model()->lock());
-  return ExperimentLabels::ReadFromRegistry(app_bundle_->is_machine(),
-                                            app_guid_string(),
-                                            true);
+  return ExperimentLabels::ReadRegistry(app_bundle_->is_machine(),
+                                        app_guid_string());
 }
 
 CString App::GetExperimentLabelsNoTimestamps() const {
   __mutexScope(model()->lock());
-  return ExperimentLabels::ReadFromRegistry(app_bundle_->is_machine(),
-                                            app_guid_string(),
-                                            false);
+  return ExperimentLabels::RemoveTimestamps(GetExperimentLabels());
 }
 
 CString App::referral_id() const {

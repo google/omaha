@@ -1003,9 +1003,8 @@ TEST_F(AppInstallTest, ExperimentLabels) {
   const time64 expiration = 133860103830000000uI64;
 
   CString label(ExperimentLabels::CreateLabel(
-      _T("label key"), _T("label value"), expiration, true));
-  EXPECT_SUCCEEDED(ExperimentLabels::WriteToRegistry(
-      false, kChromeAppId, label));
+      _T("label key"), _T("label value"), expiration));
+  EXPECT_SUCCEEDED(ExperimentLabels::WriteRegistry(false, kChromeAppId, label));
 
   EXPECT_STREQ(_T("label key=label value|Sun, 09 Mar 2025 16:13:03 GMT"),
                app->GetExperimentLabels());

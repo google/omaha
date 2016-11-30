@@ -18,6 +18,7 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/atl_regexp.h"
 #include "omaha/base/system_info.h"
 #include "omaha/common/lang.h"
 #include "omaha/common/experiment_labels.h"
@@ -33,10 +34,21 @@ namespace update_response_utils {
 
 namespace {
 
+// This function is called with a dotted pair, which is the minimum OS
+// version and it comes from the update response, or with the a dotted quad,
+// which is the OS version of the host.
 ULONGLONG OSVersionFromString(const CString& s) {
-  // Convert from "x.y" to "x.y.0.0" format so we can use the existing
-  // VersionFromString utility function.
-  return VersionFromString(s + _T(".0.0"));
+  if (AtlRE::PartialMatch(s, AtlRE(_T("^\\d+\\.\\d+$")))) {
+    // Convert from "x.y" to "x.y.0.0" format so we can use the existing
+    // VersionFromString utility function.
+    return VersionFromString(s + _T(".0.0"));
+  }
+
+  // The string is a dotted quad version. VersionFromString handles the error if
+  // the parameter is something else.
+  ASSERT1(AtlRE::PartialMatch(s, AtlRE(_T("^\\d+\\.\\d+\\.\\d+\\.\\d+$"))));
+
+  return VersionFromString(s);
 }
 
 bool IsPlatformCompatible(const CString& platform) {
@@ -360,9 +372,9 @@ HRESULT ApplyExperimentLabelDeltas(bool is_machine,
     if (!app.experiments.IsEmpty()) {
       VERIFY1(IsGuid(app.appid));
 
-      HRESULT hr = ExperimentLabels::WriteToRegistry(is_machine,
-                                                     app.appid,
-                                                     app.experiments);
+      HRESULT hr = ExperimentLabels::WriteRegistry(is_machine,
+                                                   app.appid,
+                                                   app.experiments);
       if (FAILED(hr)) {
         return hr;
       }

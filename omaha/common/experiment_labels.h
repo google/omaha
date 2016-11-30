@@ -44,40 +44,41 @@ namespace omaha {
 class ExperimentLabels {
  public:
   // Creates an experiment label in string format. For example, given the inputs
-  // ("label_key", "label_value", expiration, true), the return value
-  // would be:
+  // ("label_key", "label_value", expiration), the return value would be:
   // "label_key=label_value|Sun, 09 Mar 2025 16:13:03 GMT".
   static CString CreateLabel(const CString& key,
                              const CString& value,
-                             time64 expiration,
-                             bool include_timestamps);
+                             time64 expiration);
 
   // Takes the existing label list, applies a delta to it, and returns the new
   // label list.  Returns true on success, false on failure.
   static bool MergeLabelSets(const CString& old_label_list,
                              const CString& new_label_list,
-                             CString* merged_list,
-                             bool include_timestamps);
+                             CString* merged_list);
 
   // Deserializes the experiment labels for the given app_id from the Registry
   // under both ClientState and ClientStateMedium. Returns the labels as an
   // aggregate in string format. An example return value:
   // "k1=v1|Sun, 09 Mar 2025 16:13:03 GMT;k2=v2|Mon, 17 Mar 2025 16:13:03 GMT".
-  static CString ReadFromRegistry(bool is_machine,
-                                  const CString& app_id,
-                                  bool include_timestamps);
+  static CString ReadRegistry(bool is_machine, const CString& app_id);
 
   // Takes the provided label list, combines it with any existing label list in
   // the registry, and writes the combined label list to the registry.
-  static HRESULT WriteToRegistry(bool is_machine,
-                                 const CString& app_id,
-                                 const CString& new_labels);
+  static HRESULT WriteRegistry(bool is_machine,
+                               const CString& app_id,
+                               const CString& new_labels);
+
+  // Removes time stamps from a serialized label string. An example input:
+  // "k1=v1|Sun, 09 Mar 2025 16:13:03 GMT;k2=v2|Mon, 17 Mar 2025 16:13:03 GMT".
+  // returns
+  // "k1=v1;k2=v2".
+  static CString RemoveTimestamps(const CString& labels);
 
  private:
   // Controls the format of the label serialization.
   enum SerializeOptions {
     // The privacy-safe behavior is to not serialize time stamps.
-    DEFAULT = 0x0,
+    EXCLUDE_TIMESTAMPS = 0x0,
     // Outputs the time stamps of the experiment labels.
     INCLUDE_TIMESTAMPS = 0x1,
   };

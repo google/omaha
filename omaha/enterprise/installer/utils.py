@@ -129,7 +129,8 @@ def GetWixCandleFlags(
     product_installer_disable_update_registration_arg=None,
     product_custom_params=None,
     standalone_installer_path=None,
-    metainstaller_path=None):
+    metainstaller_path=None,
+    architecture=None):
   """Generate the proper set of defines for WiX Candle usage."""
   flags = [
       '-dProductName=' + product_name,
@@ -178,6 +179,13 @@ def GetWixCandleFlags(
         '==MSI-PRODUCT-ID==', msi_product_id)
     flags.append('-dProductInstallerData=' + product_installer_data)
 
+  if architecture:
+    # Translate some common strings, like from platform.machine().
+    arch_map = {
+        'amd64': 'x64',
+        'x86_64': 'x64',
+    }
+    flags.extend(['-arch', arch_map.get(architecture, architecture)])
   return flags
 
 

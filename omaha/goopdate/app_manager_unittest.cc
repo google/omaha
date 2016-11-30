@@ -93,8 +93,6 @@ void InitializeAppManagerRegistryLock(bool is_machine, GLock* lock) {
 
 // Helper functions defined in other test files.
 void ValidateExpectedValues(const App& expected, const App& actual);
-void VerifyHklmKeyHasMediumIntegrity(const CString& key_full_name);
-void VerifyHklmKeyHasDefaultIntegrity(const CString& key_full_name);
 
 class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
  public:
@@ -1641,45 +1639,6 @@ TEST_F(AppManagerMachineTest, WritePreInstallData_IsOem) {
 
   EXPECT_FALSE(RegKey::HasValue(kGuid1ClientStateKeyPathMachine,
                                 _T("eulaaccepted")));
-}
-
-// Creates the ClientStateMedium key with the appropriate permissions then
-// verifies that the created app subkey inherits those.
-// The Update key must be created first to avoid applying ClientStateMedium's
-// permissions to all its parent keys.
-// This keys in this test need to inherit the HKLM privileges, so put the
-// override root in HKLM.
-TEST_F(AppManagerMachineTest,
-       WritePreInstallData_CheckClientStateMediumPermissions) {
-  const TCHAR kRegistryHiveOverrideRootInHklm[] =
-      _T("HKLM\\Software\\") SHORT_COMPANY_NAME
-      _T("\\") PRODUCT_NAME _T("\\UnitTest\\");
-  RestoreRegistryHives();
-  hive_override_key_name_ = kRegistryHiveOverrideRootInHklm;
-  RegKey::DeleteKey(hive_override_key_name_);
-  OverrideRegistryHives(hive_override_key_name_);
-
-  EXPECT_SUCCEEDED(RegKey::CreateKey(
-      ConfigManager::Instance()->machine_registry_update()));
-  CreateClientStateMediumKey();
-
-  SetAppGuid(kGuid1, app_);
-  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
-  WritePreInstallDataTest(app_, false);
-
-  EXPECT_FALSE(RegKey::HasValue(kGuid1ClientStateKeyPathMachine,
-                                _T("oeminstall")));
-  EXPECT_FALSE(RegKey::HasValue(kGuid1ClientStateKeyPathMachine,
-                                _T("eulaaccepted")));
-
-  const CString app_client_state_medium_key_name = AppendRegKeyPath(
-      _T("HKLM\\Software\\") SHORT_COMPANY_NAME
-      _T("\\") PRODUCT_NAME _T("\\ClientStateMedium\\"),
-      kGuid1);
-  VerifyHklmKeyHasMediumIntegrity(app_client_state_medium_key_name);
-  VerifyHklmKeyHasDefaultIntegrity(
-      _T("HKLM\\Software\\") SHORT_COMPANY_NAME
-      _T("\\") PRODUCT_NAME _T("\\ClientStateMedium\\"));
 }
 
 TEST_F(AppManagerMachineTest,

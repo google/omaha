@@ -84,6 +84,11 @@ HRESULT WebServicesClient::CreateRequest() {
     network_request_->AddHeader(headers_[i].first, headers_[i].second);
   }
 
+  for (size_t i = 0; i < update_request_headers_.size(); ++i) {
+    network_request_->AddHeader(update_request_headers_[i].first,
+                                update_request_headers_[i].second);
+  }
+
   if (use_cup_) {
     network_request_->AddHttpRequest(new CupEcdsaRequest(new SimpleRequest));
   } else {
@@ -115,6 +120,14 @@ HRESULT WebServicesClient::Send(const xml::UpdateRequest* update_request,
   }
 
   ASSERT1(!request_string.IsEmpty());
+
+  __mutexBlock(lock_) {
+    update_request_headers_.clear();
+    if (!update_request->IsEmpty()) {
+      update_request_headers_.push_back(
+          std::make_pair(kHeaderXAppId, update_request->app_ids()));
+    }
+  }
 
   // Use encrypted transport when the request includes a tt_token.
   const bool use_encryption = update_request->has_tt_token();

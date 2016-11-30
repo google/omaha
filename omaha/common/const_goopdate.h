@@ -228,6 +228,7 @@ const TCHAR* const kRegValueTaskNameC             = _T("omaha_task_name_c");
 const TCHAR* const kRegValueTaskNameUA            = _T("omaha_task_name_ua");
 const TCHAR* const kRegValueLastStartedAU         = _T("LastStartedAU");
 const TCHAR* const kRegValueLastChecked           = _T("LastChecked");
+const TCHAR* const kRegValueLastCoreRun           = _T("LastCoreRun");
 const TCHAR* const kRegValueLastCodeRedCheck      = _T("LastCodeRedCheck");
 const TCHAR* const kRegValueOemInstallTimeSec     = _T("OemInstallTime");
 const TCHAR* const kRegValueCacheSizeLimitMBytes  = _T("PackageCacheSizeLimit");

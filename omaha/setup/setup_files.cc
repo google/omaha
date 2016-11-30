@@ -299,6 +299,7 @@ HRESULT SetupFiles::BuildFileLists() {
   core_program_files_.clear();
   core_program_files_.push_back(kOmahaShellFileName);
   core_program_files_.push_back(kOmahaDllName);
+  core_program_files_.push_back(kOmahaCoreFileName);
   core_program_files_.push_back(kCrashHandlerFileName);
   core_program_files_.push_back(kCrashHandler64FileName);
   core_program_files_.push_back(kOmahaCOMRegisterShell64);
