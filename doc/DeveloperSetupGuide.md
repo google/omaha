@@ -38,7 +38,7 @@ The following packages are required to build Omaha:
    * googletest. Source code [here](https://github.com/google/googletest). This includes both gtest and gmock frameworks.
    * Use git clone, git svn clone, or other way to get the source code for these projects into the third_party directory in the root of this repository.
 
-To run the unit tests, one more package is needed. Download the Windows Sysinternals PSTools suite [here](https://technet.microsoft.com/en-us/sysinternals/bb897553) and save psexec.exe somewhere. Then, set an environment variable named OMAHA_PSEXEC_DIR to the directory containing psexec.exe.
+To run the unit tests, one more package is needed. Download the Windows Sysinternals PSTools suite [here](https://technet.microsoft.com/en-us/sysinternals/bb897553) and save psexec.exe somewhere. Then, set a system environment variable named OMAHA_PSEXEC_DIR to the directory containing psexec.exe.
 
 # Details #
 
