@@ -34,7 +34,7 @@ class PingEvent {
 
   // List of sources that could generate EVENT_DEBUG pings.
   enum DebugMessageSource {
-    DEBUG_SOURCE_UPDATE_CHECK = 0,
+    DEBUG_SOURCE_CUP_FAILURE  = 0,
     DEBUG_SOURCE_FILE_VERIFICATION = 1,
     DEBUG_SOURCE_LONG_TAIL = 2,
     DEBUG_SOURCE_CRICKET_PROBE = 3,

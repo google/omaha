@@ -172,22 +172,38 @@ HRESULT SystemInfo::GetOSVersion(OSVERSIONINFOEX* os_out) {
   return S_OK;
 }
 
-bool SystemInfo::CompareOSVersions(OSVERSIONINFOEX* os, BYTE oper) {
-  ASSERT1(oper != 0);
+bool SystemInfo::CompareOSVersionsInternal(OSVERSIONINFOEX* os,
+                                           DWORD type_mask,
+                                           BYTE oper) {
   ASSERT1(os);
-
-  const DWORD type_mask = VER_MAJORVERSION | VER_MINORVERSION |
-                          VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR;
+  ASSERT1(type_mask != 0);
+  ASSERT1(oper != 0);
 
   ULONGLONG cond_mask = 0;
   cond_mask = ::VerSetConditionMask(cond_mask, VER_MAJORVERSION, oper);
   cond_mask = ::VerSetConditionMask(cond_mask, VER_MINORVERSION, oper);
   cond_mask = ::VerSetConditionMask(cond_mask, VER_SERVICEPACKMAJOR, oper);
   cond_mask = ::VerSetConditionMask(cond_mask, VER_SERVICEPACKMINOR, oper);
+  cond_mask = ::VerSetConditionMask(cond_mask, VER_BUILDNUMBER, oper);
 
   // ::VerifyVersionInfo could return FALSE due to an error other than
   // ERROR_OLD_WIN_VERSION. We do not handle that case here.
+  // VerifyVersionInfo is documented here: https://msdn.microsoft.com/ms725492.
   return !!::VerifyVersionInfo(os, type_mask, cond_mask);
+}
+
+bool SystemInfo::CompareOSVersions(OSVERSIONINFOEX* os, BYTE oper) {
+  ASSERT1(os);
+  ASSERT1(oper != 0);
+
+  const DWORD os_sp_type_mask = VER_MAJORVERSION | VER_MINORVERSION |
+                                VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR;
+  const DWORD build_number_type_mask = VER_BUILDNUMBER;
+
+  // If the OS and the SP match, return the build number comparison.
+  return CompareOSVersionsInternal(os, os_sp_type_mask, VER_EQUAL) ?
+         CompareOSVersionsInternal(os, build_number_type_mask, oper) :
+         CompareOSVersionsInternal(os, os_sp_type_mask, oper);
 }
 
 }  // namespace omaha

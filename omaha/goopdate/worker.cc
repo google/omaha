@@ -217,7 +217,7 @@ void SendCupFailurePing(bool is_machine,
   Ping ping(is_machine, session_id, install_source);
   PingEventPtr ping_event(new PingEvent(PingEvent::EVENT_DEBUG,
                                         PingEvent::EVENT_RESULT_ERROR,
-                                        PingEvent::DEBUG_SOURCE_UPDATE_CHECK,
+                                        PingEvent::DEBUG_SOURCE_CUP_FAILURE,
                                         static_cast<int>(extra_code)));
   ping.LoadOmahaDataFromRegistry();
   ping.BuildOmahaPing(NULL, NULL, ping_event);

@@ -115,41 +115,14 @@ bool IsInstalledScheduledTask(const TCHAR* task_name) {
   return hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 }
 
-DWORD GetScheduledTaskPriority(const TCHAR* task_name) {
+bool IsDisabledScheduledTask(const TCHAR* task_name) {
   ASSERT1(task_name && *task_name);
 
   if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::GetScheduledTaskPriority(task_name);
+    return v2::IsDisabledScheduledTask(task_name);
   }
 
-  CComPtr<ITaskScheduler> scheduler;
-  HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
-                                          NULL,
-                                          CLSCTX_INPROC_SERVER);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[ITaskScheduler.CoCreateInstance failed][0x%x]"), hr));
-    return 0;
-  }
-
-  CComPtr<ITask> task;
-  hr = scheduler->Activate(task_name,
-                           __uuidof(ITask),
-                           reinterpret_cast<IUnknown**>(&task));
-
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[GetScheduledTaskPriority][Activate failed][0x%x]"), hr));
-    return 0;
-  }
-
-  DWORD priority = 0;
-  hr = task->GetPriority(&priority);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[ITask.GetMostRecentRunTime failed][0x%x]"), hr));
-    return 0;
-  }
-
-  ASSERT1(priority);
-  return priority;
+  return GetScheduledTaskStatus(task_name) == SCHED_S_TASK_DISABLED;
 }
 
 bool HasScheduledTaskEverRun(const TCHAR* task_name) {
@@ -1091,14 +1064,6 @@ HRESULT InstallScheduledTask(const CString& task_name,
                              create_hourly_trigger,
                              &task_xml)));
 
-  CString user_name;
-  DWORD buffer_size = UNLEN + 1;
-  if (!::GetUserName(CStrBuf(user_name, buffer_size), &buffer_size)) {
-    hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[::GetUserName failed][0x%x]"), hr));
-    return hr;
-  }
-
   CComPtr<IRegisteredTask> registered_task;
   return task_folder->RegisterTask(
       CComBSTR(task_name),
@@ -1188,38 +1153,25 @@ bool IsInstalledScheduledTask(const CString& task_name) {
   return hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 }
 
-int GetScheduledTaskPriority(const CString& task_name) {
+bool IsDisabledScheduledTask(const CString& task_name) {
   ASSERT1(IsTaskScheduler2APIAvailable());
 
   CComPtr<IRegisteredTask> registered_task;
   HRESULT hr = GetRegisteredTask(task_name, &registered_task);
   if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[GetScheduledTaskPriority][failed][0x%x]"), hr));
-    return -1;
+    UTIL_LOG(LE, (_T("[GetRegisteredTask failed][0x%x]"), hr));
+    return false;
   }
 
-  CComPtr<ITaskDefinition> task_definition;
-  hr = registered_task->get_Definition(&task_definition);
+  VARIANT_BOOL is_enabled(VARIANT_TRUE);
+  hr = registered_task->get_Enabled(&is_enabled);
   if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[get_Definition][failed][0x%x]"), hr));
-    return -1;
+    UTIL_LOG(LE, (_T("[get_Enabled failed][0x%x]"), hr));
+    return false;
   }
 
-  CComPtr<ITaskSettings> task_settings;
-  hr = task_definition->get_Settings(&task_settings);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[get_Settings][failed][0x%x]"), hr));
-    return -1;
-  }
-
-  int priority = 0;
-  hr = task_settings->get_Priority(&priority);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[get_Priority failed][0x%x]"), hr));
-    return -1;
-  }
-
-  return priority;
+  UTIL_LOG(L3, (_T("[IsDisabledScheduledTask returned][%d]"), !is_enabled));
+  return !is_enabled;
 }
 
 bool HasScheduledTaskEverRun(const CString& task_name) {
@@ -1398,7 +1350,7 @@ bool IsInstalledGoopdateTaskUA(bool is_machine) {
 
 bool IsDisabledGoopdateTaskUA(bool is_machine) {
   const CString& task_name(internal::GetCurrentTaskNameUA(is_machine));
-  return internal::GetScheduledTaskStatus(task_name) == SCHED_S_TASK_DISABLED;
+  return internal::IsDisabledScheduledTask(task_name);
 }
 
 HRESULT GetExitCodeGoopdateTaskUA(bool is_machine) {

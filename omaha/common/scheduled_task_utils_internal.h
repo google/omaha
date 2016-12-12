@@ -71,9 +71,8 @@ HRESULT StartScheduledTask(const TCHAR* task_name);
 // Returns true if the scheduled task exists.
 bool IsInstalledScheduledTask(const TCHAR* task_name);
 
-// Returns the priority at which the scheduled task process will run. Returns 0
-// on failure.
-DWORD GetScheduledTaskPriority(const TCHAR* task_name);
+// Returns true if the scheduled task exists and is disabled, false otherwise.
+bool IsDisabledScheduledTask(const TCHAR* task_name);
 
 // Returns true if the scheduled task ever ran.
 bool HasScheduledTaskEverRun(const TCHAR* task_name);
@@ -117,7 +116,7 @@ HRESULT InstallScheduledTask(const CString& task_name,
 HRESULT UninstallScheduledTask(const CString& task_name);
 HRESULT UninstallScheduledTasks(const CString& task_prefix);
 bool IsInstalledScheduledTask(const CString& task_name);
-int GetScheduledTaskPriority(const CString& task_name);
+bool IsDisabledScheduledTask(const CString& task_name);
 bool HasScheduledTaskEverRun(const CString& task_name);
 HRESULT GetScheduledTaskStatus(const CString& task_name);
 HRESULT GetScheduledTaskLastResult(const CString& task_name);

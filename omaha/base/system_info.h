@@ -89,6 +89,11 @@ class SystemInfo {
   // for example, if |oper| was VER_GREATER and |os| is set to Windows Vista,
   // a machine running Windows 7 or later yields true.
   static bool CompareOSVersions(OSVERSIONINFOEX* os, BYTE oper);
+
+ private:
+  static bool CompareOSVersionsInternal(OSVERSIONINFOEX* os,
+                                        DWORD type_mask,
+                                        BYTE oper);
 };
 
 }  // namespace omaha

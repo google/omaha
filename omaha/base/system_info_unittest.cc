@@ -70,12 +70,11 @@ TEST(SystemInfoTest, CompareOSVersions_NewBuildNumber) {
   ASSERT_GT(prior_os.dwBuildNumber, 0UL);
   --prior_os.dwBuildNumber;
 
-  // We don't count build numbers, so this should be treated as equal.
-  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_EQUAL));
   EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER_EQUAL));
-  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
+  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_GREATER));
   EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS));
-  EXPECT_TRUE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
+  EXPECT_FALSE(SystemInfo::CompareOSVersions(&prior_os, VER_LESS_EQUAL));
 }
 
 TEST(SystemInfoTest, CompareOSVersions_NewMajor) {
