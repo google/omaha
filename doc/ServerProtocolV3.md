@@ -93,7 +93,7 @@ An Omaha V3 request MUST contain exactly one `<request>` element at the root lev
   * `protocol`: The version of the Omaha protocol. Compatible clients MUST provide a value of "3.0". Default: Undefined - compatible clients MUST always transmit this attribute.
   * `requestid`: A randomly-generated (uniformly distributed) GUID. Each request attempt SHOULD have (with high probability) a unique `requestid`. Default: "".
   * `sessionid`: A randomly-generated (uniformly distributed) GUID. Each single update flow (an update check, update application, event ping sequence) SHOULD have (with high probability) a single unique `sessionid`. Default: "".
-  * `testsource`: Either "", "`dev`", "`qa`", "`prober`", "`auto`", or "`ossdev`". Any value except "" indicates that the request is a test and should not be counted toward normal metrics. Default: "".
+  * `testsource`: Either "", "dev", "qa", "prober", "auto", or "ossdev". Any value except "" indicates that the request is a test and should not be counted toward normal metrics. Default: "".
   * `updaterchannel`: If present, identifies the distribution channel of the client (e.g. "stable", "beta", "dev", "canary"). Default: "".
   * `userid`: A randomly-generated (uniformly distributed) GUID. Each instance of the client SHOULD have (with high probability) either a single unique `userid`, or no `userid` at all (""). Default: "". Omaha Client transmits `userid` only for opt-in users.
   * `version`: The ID and version number of the client. Default: Undefined - compatible clients MUST always transmit this attribute. The version number MUST be one of the two following forms:
