@@ -440,8 +440,10 @@ None.
     * `error-internal`: The server encountered an unspecified internal error.
     * `error-hash`: The server attempted to serve an update, but could not provide a valid hash for the download.
     * `error-osnotsupported`: The server recognized the product, but the product is not available for the client's operating system.
-    * `error-hwnotsupported`: The server recognized the product, but the product is not available for the client's hardware configuration.
+    * `error-hwnotsupported`: The server recognized the product, but the product is not available for the client's hardware  
+    configuration.
     * `error-unsupportedProtocol`: The server recognized the product, but is incapable of delivering a response in this version of the protocol.
+  * `info`: gives more infomation about the status response.
 
 ##### Legal Child Elements #####
   * At most one `<urls>`.
