@@ -473,7 +473,7 @@ None.
 
 ---
 
-#### `<manfiest>` (Response) ####
+#### `<manifest>` (Response) ####
   * `version`:
 
 ##### Attributes #####
