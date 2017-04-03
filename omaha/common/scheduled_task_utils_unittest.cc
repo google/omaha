@@ -50,27 +50,23 @@ namespace scheduled_task_utils {
 
 using internal::GetCurrentTaskNameCore;
 using internal::GetCurrentTaskNameUA;
-using internal::GetScheduledTaskStatus;
-using internal::HasScheduledTaskEverRun;
-using internal::StartScheduledTask;
-using internal::StopScheduledTask;
+using internal::Instance;
+using internal::IsTaskScheduler2APIAvailable;
 using internal::WaitForTaskStatus;
-
-namespace v2 = internal::v2;
 
 using vista_util::IsUserAdmin;
 
 namespace internal {
 
 void StopScheduledTaskAndVerifyReadyState(const CString& task_name) {
-  HRESULT wait_for_state(v2::IsTaskScheduler2APIAvailable() ?
+  HRESULT wait_for_state(IsTaskScheduler2APIAvailable() ?
                          SCHED_S_TASK_TERMINATED :
                          SCHED_S_TASK_READY);
 
   // For some reason, StopScheduleTask may not successfully stop the task
   // even it returns S_OK. So try to stop multiple times.
   for (int i = 0; i < 3; ++i) {
-    EXPECT_SUCCEEDED(StopScheduledTask(task_name));
+    EXPECT_SUCCEEDED(Instance().StopScheduledTask(task_name));
 
     if (wait_for_state == WaitForTaskStatus(task_name,
                                             wait_for_state,
@@ -78,7 +74,7 @@ void StopScheduledTaskAndVerifyReadyState(const CString& task_name) {
       break;
     }
   }
-  EXPECT_EQ(wait_for_state, GetScheduledTaskStatus(task_name));
+  EXPECT_EQ(wait_for_state, Instance().GetScheduledTaskStatus(task_name));
 }
 
 TEST(ScheduledTaskUtilsTest, ScheduledTasks) {
@@ -90,97 +86,75 @@ TEST(ScheduledTaskUtilsTest, ScheduledTasks) {
   const CString task_path = ConcatenatePath(app_util::GetSystemDir(),
                                             kScheduledTaskExecutable);
   // Install/uninstall.
-  EXPECT_SUCCEEDED(InstallScheduledTask(kSchedTestTaskName,
-                                        task_path,
-                                        _T(""),
-                                        kSchedTestTaskComment,
-                                        IsUserAdmin(),
-                                        IsUserAdmin(),
-                                        true,
-                                        true));
-  EXPECT_SUCCEEDED(UninstallScheduledTask(kSchedTestTaskName));
+  EXPECT_SUCCEEDED(Instance().InstallScheduledTask(
+                                  kSchedTestTaskName,
+                                  task_path,
+                                  _T(""),
+                                  kSchedTestTaskComment,
+                                  IsUserAdmin(),
+                                  IsUserAdmin(),
+                                  true));
+  EXPECT_SUCCEEDED(Instance().UninstallScheduledTask(kSchedTestTaskName));
 
   // Calling InstallScheduledTask twice should succeed.
   for (int i = 0; i < 2; ++i) {
-    EXPECT_SUCCEEDED(InstallScheduledTask(kSchedTestTaskName,
-                                          task_path,
-                                          _T(""),
-                                          kSchedTestTaskComment,
-                                          IsUserAdmin(),
-                                          IsUserAdmin(),
-                                          true,
-                                          true));
+    EXPECT_SUCCEEDED(Instance().InstallScheduledTask(
+                                    kSchedTestTaskName,
+                                    task_path,
+                                    _T(""),
+                                    kSchedTestTaskComment,
+                                    IsUserAdmin(),
+                                    IsUserAdmin(),
+                                    true));
   }
 
   // "Upgrade" to a new version, which now has parameters.
-  EXPECT_SUCCEEDED(InstallScheduledTask(kSchedTestTaskName,
-                                        task_path,
-                                        kScheduledTaskParameters,
-                                        kSchedTestTaskComment,
-                                        IsUserAdmin(),
-                                        IsUserAdmin(),
-                                        true,
-                                        true));
+  EXPECT_SUCCEEDED(Instance().InstallScheduledTask(
+                                  kSchedTestTaskName,
+                                  task_path,
+                                  kScheduledTaskParameters,
+                                  kSchedTestTaskComment,
+                                  IsUserAdmin(),
+                                  IsUserAdmin(),
+                                  true));
 
-  EXPECT_FALSE(HasScheduledTaskEverRun(kSchedTestTaskName));
-  EXPECT_SUCCEEDED(StartScheduledTask(kSchedTestTaskName));
+  EXPECT_FALSE(Instance().HasScheduledTaskEverRun(kSchedTestTaskName));
+  EXPECT_SUCCEEDED(Instance().StartScheduledTask(kSchedTestTaskName));
   EXPECT_EQ(SCHED_S_TASK_RUNNING,
             WaitForTaskStatus(kSchedTestTaskName,
                               SCHED_S_TASK_RUNNING,
                               kMaxWaitForProcessMs));
 
-  EXPECT_TRUE(HasScheduledTaskEverRun(kSchedTestTaskName));
+  EXPECT_TRUE(Instance().HasScheduledTaskEverRun(kSchedTestTaskName));
 
   StopScheduledTaskAndVerifyReadyState(kSchedTestTaskName);
 
   // Finally, uninstall.
-  EXPECT_SUCCEEDED(UninstallScheduledTask(kSchedTestTaskName));
+  EXPECT_SUCCEEDED(Instance().UninstallScheduledTask(kSchedTestTaskName));
 }
-
-/*
-// Disabling this test because we are seeing random failures with 0x80070005 on
-// the UninstallScheduledTask call. The production code is not affected by this
-// failure as far as I can tell.
-TEST(ScheduledTaskUtilsTest, ScheduledTasksV2) {
-  if (!v2::IsTaskScheduler2APIAvailable()) {
-    std::wcout << _T("\tTest did not run because this OS does not support the ")
-                  _T("Task Scheduler 2.0 API.") << std::endl;
-    return;
-  }
-
-  const TCHAR kSchedTestTaskName[]            = _T("TestScheduledTaskV2");
-  const TCHAR kScheduledTaskExecutable[]      = _T("netstat.exe");
-  const TCHAR kScheduledTaskParameters[]      = _T("20");
-  const TCHAR kSchedTestTaskComment[]         = _T("Google Test Task V2");
-
-  const CString task_path = ConcatenatePath(app_util::GetSystemDir(),
-                                            kScheduledTaskExecutable);
-  EXPECT_SUCCEEDED(InstallScheduledTask(kSchedTestTaskName,
-                                        task_path,
-                                        _T(""),
-                                        kSchedTestTaskComment,
-                                        IsUserAdmin(),
-                                        IsUserAdmin(),
-                                        true,
-                                        true));
-
-  // Start and stop.
-  EXPECT_FALSE(v2::IsScheduledTaskRunning(kSchedTestTaskName));
-  EXPECT_SUCCEEDED(v2::StartScheduledTask(kSchedTestTaskName));
-  EXPECT_TRUE(v2::IsScheduledTaskRunning(kSchedTestTaskName));
-
-  EXPECT_SUCCEEDED(v2::StopScheduledTask(kSchedTestTaskName));
-  EXPECT_FALSE(v2::IsScheduledTaskRunning(kSchedTestTaskName));
-
-  // Finally, uninstall.
-  EXPECT_SUCCEEDED(UninstallScheduledTask(kSchedTestTaskName));
-}
-*/
 
 class ScheduledTaskUtilsV2Test : public ::testing::TestWithParam<bool> {
  protected:
   bool IsMachine() {
     return GetParam();
+  }
+
+  static HRESULT CreateScheduledTaskXml(const CString& task_path,
+                                        const CString& task_parameters,
+                                        const CString& task_description,
+                                        const CString& start_time,
+                                        bool is_machine,
+                                        bool create_logon_trigger,
+                                        bool create_hourly_trigger,
+                                        CString* scheduled_task_xml) {
+    return V2ScheduledTasks::CreateScheduledTaskXml(task_path,
+                                                    task_parameters,
+                                                    task_description,
+                                                    start_time,
+                                                    is_machine,
+                                                    create_logon_trigger,
+                                                    create_hourly_trigger,
+                                                    scheduled_task_xml);
   }
 };
 
@@ -189,7 +163,7 @@ INSTANTIATE_TEST_CASE_P(IsMachine,
                         ::testing::Bool());
 
 TEST_P(ScheduledTaskUtilsV2Test, CreateScheduledTaskXml) {
-  if (!v2::IsTaskScheduler2APIAvailable()) {
+  if (!IsTaskScheduler2APIAvailable()) {
     std::wcout << _T("\tTest did not run because this OS does not support the ")
                   _T("Task Scheduler 2.0 API.") << std::endl;
     return;
@@ -287,7 +261,7 @@ TEST_P(ScheduledTaskUtilsV2Test, CreateScheduledTaskXml) {
       kScheduledTaskParameters);
 
   CString task_xml;
-  EXPECT_SUCCEEDED(v2::CreateScheduledTaskXml(task_path,
+  EXPECT_SUCCEEDED(ScheduledTaskUtilsV2Test::CreateScheduledTaskXml(task_path,
                                               kScheduledTaskParameters,
                                               kSchedTestTaskDescription,
                                               start_time,
@@ -300,7 +274,7 @@ TEST_P(ScheduledTaskUtilsV2Test, CreateScheduledTaskXml) {
 }
 
 TEST_P(ScheduledTaskUtilsV2Test, InstallScheduledTask) {
-  if (!v2::IsTaskScheduler2APIAvailable()) {
+  if (!IsTaskScheduler2APIAvailable()) {
     std::wcout << _T("\tTest did not run because this OS does not support the ")
                   _T("Task Scheduler 2.0 API.") << std::endl;
     return;
@@ -316,16 +290,16 @@ TEST_P(ScheduledTaskUtilsV2Test, InstallScheduledTask) {
 
   const CString task_path = ConcatenatePath(app_util::GetSystemDir(),
                                             kScheduledTaskExecutable);
-  EXPECT_SUCCEEDED(v2::InstallScheduledTask(
-                             kSchedTestTaskName,
-                             task_path,
-                             kScheduledTaskParameters,
-                             kSchedTestTaskDescription,
-                             IsMachine(),
-                             IsMachine(),
-                             true));
+  EXPECT_SUCCEEDED(Instance().InstallScheduledTask(
+                                  kSchedTestTaskName,
+                                  task_path,
+                                  kScheduledTaskParameters,
+                                  kSchedTestTaskDescription,
+                                  IsMachine(),
+                                  IsMachine(),
+                                  true));
 
-  EXPECT_SUCCEEDED(v2::UninstallScheduledTask(kSchedTestTaskName));
+  EXPECT_SUCCEEDED(Instance().UninstallScheduledTask(kSchedTestTaskName));
 }
 
 }  // namespace internal
@@ -340,10 +314,11 @@ TEST(ScheduledTaskUtilsTest, GoopdateTasks) {
   EXPECT_SUCCEEDED(UninstallGoopdateTasks(IsUserAdmin()));
 
   EXPECT_SUCCEEDED(InstallGoopdateTasks(task_path, IsUserAdmin()));
-  EXPECT_FALSE(HasScheduledTaskEverRun(task_name));
+  EXPECT_FALSE(Instance().HasScheduledTaskEverRun(task_name));
 
   // Start and stop.
-  EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN, GetScheduledTaskStatus(task_name));
+  EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN,
+            Instance().GetScheduledTaskStatus(task_name));
   EXPECT_SUCCEEDED(StartGoopdateTaskCore(IsUserAdmin()));
 
   EXPECT_EQ(SCHED_S_TASK_RUNNING,
@@ -351,7 +326,7 @@ TEST(ScheduledTaskUtilsTest, GoopdateTasks) {
                               SCHED_S_TASK_RUNNING,
                               kMaxWaitForProcessMs));
 
-  EXPECT_TRUE(HasScheduledTaskEverRun(task_name));
+  EXPECT_TRUE(Instance().HasScheduledTaskEverRun(task_name));
 
   internal::StopScheduledTaskAndVerifyReadyState(task_name);
 
@@ -360,7 +335,7 @@ TEST(ScheduledTaskUtilsTest, GoopdateTasks) {
 }
 
 TEST(ScheduledTaskUtilsTest, V1OnlyGoopdateTaskInUseOverinstall) {
-  if (v2::IsTaskScheduler2APIAvailable()) {
+  if (IsTaskScheduler2APIAvailable()) {
     std::wcout << _T("\tTest did not run because this OS supports the ")
                   _T("Task Scheduler 2.0 API.") << std::endl;
     return;
@@ -408,20 +383,20 @@ TEST(ScheduledTaskUtilsTest, GetExitCodeGoopdateTaskUA) {
   EXPECT_SUCCEEDED(InstallGoopdateTasks(task_path, IsUserAdmin()));
   EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN,
             GetExitCodeGoopdateTaskUA(IsUserAdmin()));
-  EXPECT_FALSE(HasScheduledTaskEverRun(task_name));
+  EXPECT_FALSE(Instance().HasScheduledTaskEverRun(task_name));
 
   // Start the task and wait for it to run and become ready again. The task
   // runs a program that returns right away. Sometimes the task does not run
   // for unknown reason. Attempting to run the task multiple times does not
   // work. This remains a flaky test.
-  EXPECT_SUCCEEDED(StartScheduledTask(task_name));
-  HRESULT wait_for_state(v2::IsTaskScheduler2APIAvailable() ?
+  EXPECT_SUCCEEDED(Instance().StartScheduledTask(task_name));
+  HRESULT wait_for_state(IsTaskScheduler2APIAvailable() ?
                          S_OK :
                          SCHED_S_TASK_READY);
   EXPECT_EQ(wait_for_state, WaitForTaskStatus(task_name,
                                               wait_for_state,
                                               kMaxWaitForProcessMs));
-  EXPECT_TRUE(HasScheduledTaskEverRun(task_name));
+  EXPECT_TRUE(Instance().HasScheduledTaskEverRun(task_name));
   EXPECT_EQ(S_OK, GetExitCodeGoopdateTaskUA(IsUserAdmin()));
 
   EXPECT_SUCCEEDED(File::Remove(

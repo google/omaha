@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include <windows.h>
+#include <atltime.h>
 
 #include <tuple>
 
@@ -195,6 +196,99 @@ TEST_P(UATest, ShouldCheckForUpdates_RetryAfter) {
   EXPECT_FALSE(ShouldCheckForUpdates(is_machine_));
 
   ConfigManager::Instance()->SetRetryAfterTime(is_machine_, 0);
+}
+
+TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed) {
+  CTime now(CTime::GetCurrentTime());
+  tm local = {};
+  now.GetLocalTm(&local);
+
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartHour,
+                       static_cast<DWORD>(local.tm_hour)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartMin,
+                       static_cast<DWORD>(0)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedDurationMin,
+                       static_cast<DWORD>(60)));
+
+  EXPECT_EQ(!is_domain_, ShouldCheckForUpdates(is_machine_));
+
+  if (local.tm_min) {
+    EXPECT_SUCCEEDED(
+        RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                         kRegValueUpdatesSuppressedDurationMin,
+                         static_cast<DWORD>(local.tm_min - 1)));
+
+    EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
+  }
+}
+
+TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed_InvalidHour) {
+  CTime now(CTime::GetCurrentTime());
+  tm local = {};
+  now.GetLocalTm(&local);
+
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartHour,
+                       static_cast<DWORD>(26)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartMin,
+                       static_cast<DWORD>(0)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedDurationMin,
+                       static_cast<DWORD>(60)));
+
+  EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
+}
+
+TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed_InvalidMin) {
+  CTime now(CTime::GetCurrentTime());
+  tm local = {};
+  now.GetLocalTm(&local);
+
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartHour,
+                       static_cast<DWORD>(local.tm_hour)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartMin,
+                       static_cast<DWORD>(456)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedDurationMin,
+                       static_cast<DWORD>(60)));
+
+  EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
+}
+
+TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed_InvalidDuration) {
+  CTime now(CTime::GetCurrentTime());
+  tm local = {};
+  now.GetLocalTm(&local);
+
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartHour,
+                       static_cast<DWORD>(local.tm_hour)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedStartMin,
+                       static_cast<DWORD>(0)));
+  EXPECT_SUCCEEDED(
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueUpdatesSuppressedDurationMin,
+                       static_cast<DWORD>(200 * kMinPerHour)));
+
+  EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
 }
 
 }  // namespace goopdate_utils

@@ -34,13 +34,13 @@ const TCHAR* const kSha256CertificateSubjectName = _T("Google Inc");
 
 // The Omaha certificate thumbprint. Used by unit tests.
 const TCHAR* const kCertificateThumbprint =
-    _T("264e38570f882e5a0272423757741233a661b553");
+    _T("1a6ac0549a4a44264deb6ff003391da2f285b19f");
 const TCHAR* const kSha256CertificateThumbprint =
     _T("5a9272ce76a9415a4a3a5002a2589a049312aa40");
 
 // The SHA256 hash of the Omaha certificate RSA public key.
 const TCHAR* const kCertificatePublicKeyHash =
-    _T("309bae1b466c4235e1daea9fe0e373b3415807ac667202f704d030ef33b519d6");
+    _T("d49de35a2e9fdbed09e2b9a6c1243df414d6aac13690ab221b0017a5cbe1351f");
 const TCHAR* const kSha256CertificatePublicKeyHash =
     _T("cd623b2bf2c06940bd480b6bcf4a5c9e1cbe94626fbfa127d001bf19ae5ba9fe");
 
@@ -69,6 +69,12 @@ _T("4365c47f17727f2da65892b1f34c0cf418b0138b519b6864dd17300f21aa3144"),
 // thumbprint=264e38570f882e5a0272423757741233a661b553
 // serial=4c40dba5f988fae57a57d6457495f98b
 // SHA1 Fingerprint=26:4E:38:57:0F:88:2E:5A:02:72:42:37:57:74:12:33:A6:61:B5:53
+_T("309bae1b466c4235e1daea9fe0e373b3415807ac667202f704d030ef33b519d6"),
+
+// Omaha and Chrome certificate: sha1 (11/28/2016 to 11/21/2019).
+// thumbprint=1a6ac0549a4a44264deb6ff003391da2f285b19f
+// serial=14F8FDD167F92402B1570B5DC495C815
+// SHA1 Fingerprint=1A:6A:C0:54:9A:4A:44:26:4D:EB:6F:F0:03:39:1D:A2:F2:85:B1:9F
 kCertificatePublicKeyHash,
 
 // Omaha and Chrome certificate: sha256 (12/15/2015 to 12/16/2018).

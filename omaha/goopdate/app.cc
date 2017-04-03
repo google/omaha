@@ -362,8 +362,10 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
     case STATE_WAITING_TO_INSTALL:
       break;
     case STATE_INSTALLING:
-      hr = GetInstallProgress(&install_progress_percentage,
-                              &install_time_remaining_ms);
+      // Many installers do not write Installer Progress. We try to read it, but
+      // we ignore any read errors.
+      GetInstallProgress(&install_progress_percentage,
+                         &install_time_remaining_ms);
       VERIFY1(SUCCEEDED(AppManager::Instance()->WriteInstallProgress(
               *this, install_progress_percentage, install_time_remaining_ms)));
       break;
@@ -523,8 +525,8 @@ HRESULT App::GetInstallProgress(LONG* install_progress_percentage,
                                 kRegValueInstallerProgress,
                                 &progress_percent);
   if (FAILED(hr)) {
-    return GetInstallProgressChrome(install_progress_percentage,
-                                    install_time_remaining_ms);
+    CORE_LOG(LE, (_T("[App::GetInstallProgress failed][%#x]"), hr));
+    return hr;
   }
 
   *install_progress_percentage = std::min<DWORD>(100, progress_percent);
@@ -532,45 +534,6 @@ HRESULT App::GetInstallProgress(LONG* install_progress_percentage,
   CORE_LOG(L6, (_T("[App::GetInstallProgress][%s][%d][%d]"),
                 app_guid_string(),
                 progress_percent,
-                *install_progress_percentage));
-  return S_OK;
-}
-
-// Legacy Install progress written by the Chrome Installer.
-HRESULT App::GetInstallProgressChrome(LONG* install_progress_percentage,
-                                      LONG* install_time_remaining_ms) {
-  ASSERT1(model()->IsLockedByCaller());
-  ASSERT1(install_progress_percentage);
-  ASSERT1(install_time_remaining_ms);
-
-  *install_progress_percentage = kCurrentStateProgressUnknown;
-  *install_time_remaining_ms = kCurrentStateProgressUnknown;
-
-  if (app_guid_string().CompareNoCase(kChromeAppId) &&
-      app_guid_string().CompareNoCase(kChromeBinariesAppId)) {
-    return S_FALSE;
-  }
-
-  // Installation progress is reported in "InstallerExtraCode1" under
-  // Google\\Update\\ClientState\\{ChromeAppID}.
-  const CString base_key_name(ConfigManager::Instance()->registry_client_state(
-      app_bundle_->is_machine()));
-  const CString app_id_key_name(AppendRegKeyPath(base_key_name,
-                                                 app_guid_string()));
-  DWORD installer_extra_code1 = 0;
-  HRESULT hr = RegKey::GetValue(app_id_key_name,
-                                kRegValueInstallerExtraCode1,
-                                &installer_extra_code1);
-  if (FAILED(hr)) {
-    return S_FALSE;
-  }
-
-  DWORD progress_percentage = installer_extra_code1 * 100 /
-                              kChromeInstallerNumStages;
-  *install_progress_percentage = std::min<DWORD>(100, progress_percentage);
-
-  CORE_LOG(L6, (_T("[App::GetInstallProgressChrome][%d][%d]"),
-                installer_extra_code1,
                 *install_progress_percentage));
   return S_OK;
 }
@@ -972,6 +935,12 @@ HRESULT App::CheckGroupPolicy() const {
   }
 
   return S_OK;
+}
+
+CString App::GetTargetVersionPrefix() const {
+  __mutexScope(model()->lock());
+
+  return ConfigManager::GetTargetVersionPrefix(app_guid_);
 }
 
 void App::UpdateNumBytesDownloaded(uint64 num_bytes) {

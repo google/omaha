@@ -40,12 +40,13 @@ bool VerifySigneeIsGoogle(const wchar_t* signed_file) {
 
 TEST(CertInfoTest, CertInfo) {
   const TCHAR kRelativePath[] =
-      _T("unittest_support\\SaveArguments.exe");
+      _T("unittest_support\\sha1_14F8FDD167F92402B1570B5DC495C815.sys");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
   ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
                            kRelativePath));
   ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
 
   CertList cert_list;
   ExtractAllCertificatesFromSignature(executable_full_path, &cert_list);
@@ -55,11 +56,11 @@ TEST(CertInfoTest, CertInfo) {
   // excluding the root certificates.
   // The following certificates are enumerated from SaveArguments.exe signed
   // Thursday, April 14, 2016 3:57:37 PM:
-  // * "VeriSign Class 3 Code Signing 2010 CA" hash
-  //   495847A93187CFB8C71F840CB7B41497AD95C64F.
-  // * "Google Inc" hash 264E38570F882E5A0272423757741233A661B553.
+  // * "Google Inc" hash 1a6ac0549a4a44264deb6ff003391da2f285b19f.
+  // * "Thawte Code Signing CA - G2" hash
+  //   808d62642b7d1c4a9a83fd667f7a2a9d243fb1c7.
   // * "COMODO SHA-1 Time Stamping Signer" hash
-  //   03A5B14663EB12023091B84A6D6A68BC871DE66B.
+  //   03a5b14663eb12023091b84a6d6a68bc871de66b.
   EXPECT_EQ(3, cert_list.size());
 
   const CertInfo* cert_info = NULL;

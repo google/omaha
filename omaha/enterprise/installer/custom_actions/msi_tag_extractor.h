@@ -36,7 +36,6 @@ namespace custom_action {
 //   - Then follows the real tag string. The string is in format of:
 //     "key1=value1&key2=value2". Both the key and the value must be
 //     alpha-numeric ASCII strings for type 0 tag.
-//   - Last 4 bytes should be 0s.
 //
 // A sample layout:
 // +-------------------------------------+
@@ -47,13 +46,12 @@ namespace custom_action {
 // | Magic number 'Gact'                 | Tag starts
 // | Tag string length                   |
 // | tag string                          |
-// | 4 bytes of 0                        |
 // +-------------------------------------+
 //
 // A real example (MSI file tagged with 'brand=CDCD&key2=Test'):
 // +-----------------------------------------------------------------+
 // |  G   a   c   t  \0 024   b   r   a   n   d   =   C   D   C   D  |
-// |  &   k   e   y   2   =   T   e   s   t  \0  \0  \0  \0          |
+// |  &   k   e   y   2   =   T   e   s   t                          |
 // +-----------------------------------------------------------------+
 class MsiTagExtractor {
  public:
@@ -76,8 +74,6 @@ class MsiTagExtractor {
                                  size_t* parse_position,
                                  size_t tag_length);
   void ParseKeyValueSubstring(const std::string& key_value_str);
-  bool ParseTagEndInt(const std::vector<char>& tag_buffer,
-                      size_t* parse_position) const;
 
   std::map<std::string, std::string> tag_map_;
 

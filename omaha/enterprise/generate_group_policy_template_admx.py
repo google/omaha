@@ -34,6 +34,7 @@ ADMX_HEADER = '<policyDefinitions revision="1.0" schemaVersion="1.0">'
 ADMX_ENVIRONMENT = '''
   <policyNamespaces>
     <target namespace="Google.Policies.Update" prefix="update"/>
+    <using namespace="Google.Policies" prefix="Google"/>
     <using prefix="windows" namespace="Microsoft.Policies.Windows" />
   </policyNamespaces>
   <supersededAdm fileName="GoogleUpdate.adm" />
@@ -52,10 +53,9 @@ ADMX_ENVIRONMENT = '''
 
 ADMX_CATEGORIES = '''
   <categories>
-    <category name="Cat_Google" displayName="$(string.Cat_Google)" />
     <category name="Cat_GoogleUpdate" displayName="$(string.Cat_GoogleUpdate)"
         explainText="$(string.Explain_GoogleUpdate)">
-      <parentCategory ref="Cat_Google" />
+      <parentCategory ref="Google:Cat_Google" />
     </category>
     <category name="Cat_Preferences" displayName="$(string.Cat_Preferences)"
         explainText="$(string.Explain_Preferences)">
@@ -375,7 +375,6 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Sup_GoogleUpdate1_2_145_5', 'At least Google Update 1.2.145.5'),
     ('Sup_GoogleUpdate1_3_21_81', 'At least Google Update 1.3.21.81'),
     ('Sup_GoogleUpdate1_3_26_0', 'At least Google Update 1.3.26.0'),
-    ('Cat_Google', 'Google'),
     ('Cat_GoogleUpdate', 'Google Update'),
     ('Cat_Preferences', 'Preferences'),
     ('Cat_ProxyServer', 'Proxy Server'),

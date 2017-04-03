@@ -78,6 +78,7 @@ class GoopdateCommandLineValidator {
   HRESULT OnUnregisterProduct();
   HRESULT OnPing();
   HRESULT OnHealthCheck();
+  HRESULT OnRegisterMsiHelper();
 
   void CreateScenario(const TCHAR* cmd_line, ScenarioHandler handler);
 

@@ -115,6 +115,7 @@
 
     <CustomAction Id='NewerVersionError' Error='A newer version of the $(var.ProductName) enterprise installer is already installed.'/>
 
+    <!-- Custom actions to build the ProductTag property. -->
     <CustomAction Id='SetProductTagProperty'
       Property='ProductTag'
       Value='appguid=$(var.ProductGuid)&amp;appname=$(var.ProductName)&amp;needsAdmin=True'
@@ -125,14 +126,34 @@
       Value='[ProductTag]$(var.ProductCustomParams)'
       Execute='immediate'
       Return='check' />
+    <CustomAction Id='AppendInstallIdToProductTagProperty'
+      Property='ProductTag'
+      Value='[ProductTag]&amp;iid=[IID]'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='AppendLangToProductTagProperty'
+      Property='ProductTag'
+      Value='[ProductTag]&amp;lang=[LANG]'
+      Execute='immediate'
+      Return='check' />
     <CustomAction Id='AppendBrandToProductTagProperty'
       Property='ProductTag'
       Value='[ProductTag]&amp;brand=[BRAND]'
       Execute='immediate'
       Return='check' />
+    <CustomAction Id='AppendBrowserToProductTagProperty'
+      Property='ProductTag'
+      Value='[ProductTag]&amp;browser=[BROWSER]'
+      Execute='immediate'
+      Return='check' />
     <CustomAction Id='AppendUsageStatsToProductTagProperty'
       Property='ProductTag'
       Value='[ProductTag]&amp;usagestats=[USAGESTATS]'
+      Execute='immediate'
+      Return='check' />
+    <CustomAction Id='AppendApToProductTagProperty'
+      Property='ProductTag'
+      Value='[ProductTag]&amp;ap=[AP]'
       Execute='immediate'
       Return='check' />
     <CustomAction Id='AppendInstallDataIndexToProductTagProperty'
@@ -227,25 +248,46 @@
       </Custom>
 
       <!-- Build tag property. -->
+      <!-- First, read the tag from the .msi. -->
       <Custom Action='ExtractTagInfoFromInstaller'
               Before='SetProductTagProperty'>
         (($ProductClientState>2) OR REINSTALL)
       </Custom>
+      <!-- Now start forming [ProdutTag], first with the appguid and name. -->
       <Custom Action='SetProductTagProperty'
               Before='AppendCustomParamsToProductTagProperty'>
         (($ProductClientState>2) OR REINSTALL)
       </Custom>
+      <!-- Add on the build-time string. -->
       <Custom Action='AppendCustomParamsToProductTagProperty'
-              Before='AppendBrandToProductTagProperty'>
+              Before='AppendInstallIdToProductTagProperty'>
         (($ProductClientState>2) OR REINSTALL)
       </Custom>
+      <!-- Next add on each of the values extracted from the tag:
+           iid, lang, brand, browser, usagestats, ap, installdataindex -->
+      <Custom Action='AppendInstallIdToProductTagProperty'
+              Before='AppendLangToProductTagProperty'>
+        (($ProductClientState>2) OR REINSTALL) AND (IID &lt;&gt; "")
+      </Custom>
+      <Custom Action='AppendLangToProductTagProperty'
+              Before='AppendBrandToProductTagProperty'>
+        (($ProductClientState>2) OR REINSTALL) AND (LANG &lt;&gt; "")
+      </Custom>
       <Custom Action='AppendBrandToProductTagProperty'
-              Before='AppendUsageStatsToProductTagProperty'>
+              Before='AppendBrowserToProductTagProperty'>
         (($ProductClientState>2) OR REINSTALL) AND (BRAND &lt;&gt; "")
       </Custom>
+      <Custom Action='AppendBrowserToProductTagProperty'
+              Before='AppendUsageStatsToProductTagProperty'>
+        (($ProductClientState>2) OR REINSTALL) AND (BROWSER &lt;&gt; "")
+      </Custom>
       <Custom Action='AppendUsageStatsToProductTagProperty'
-              Before='AppendInstallDataIndexToProductTagProperty'>
+              Before='AppendApToProductTagProperty'>
         (($ProductClientState>2) OR REINSTALL) AND (USAGESTATS &lt;&gt; "")
+      </Custom>
+      <Custom Action='AppendApToProductTagProperty'
+              Before='AppendInstallDataIndexToProductTagProperty'>
+        (($ProductClientState>2) OR REINSTALL) AND (AP &lt;&gt; "")
       </Custom>
       <Custom Action='AppendInstallDataIndexToProductTagProperty'
               Before='BuildInstallCommand'>

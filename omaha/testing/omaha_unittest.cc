@@ -120,7 +120,7 @@ void ProcessEnvironmentVariables() {
 
 bool ParseOmahaArgPsexecDir(const CString& arg) {
   CString psexec_dir_arg_begin;
-  psexec_dir_arg_begin.Format(_T("%s="), kOmahaArgPsexecDir);
+  SafeCStringAppendFormat(&psexec_dir_arg_begin, _T("%s="), kOmahaArgPsexecDir);
 
   if (arg.Left(psexec_dir_arg_begin.GetLength()) != psexec_dir_arg_begin) {
     return false;

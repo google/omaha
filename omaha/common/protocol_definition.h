@@ -81,6 +81,8 @@ struct UpdateCheck {
   bool is_update_disabled;
 
   CString tt_token;
+
+  CString target_version_prefix;
 };
 
 

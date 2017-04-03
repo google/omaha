@@ -163,8 +163,6 @@ const GUID kGoopdateGuid = {0x430FD4D0, 0xB729, 0x4F61,
 // Chrome AppIDs
 #define CHROME_APP_ID _T("{8A69D345-D564-463C-AFF1-A69D9E530F96}")
 const TCHAR* const kChromeAppId = CHROME_APP_ID;
-const TCHAR* const kChromeBinariesAppId =
-    _T("{4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}");
 
 //
 // Directory names

@@ -56,8 +56,8 @@ TEST(GoogleSignatureValidatorTest, GoogleSignatureValidator) {
   // Check new Omaha/Chrome certificates.
   filename = app_util::GetCurrentModuleDirectory();
   EXPECT_TRUE(::PathAppend(CStrBuf(filename, MAX_PATH),
-                           _T("unittest_support\\Sha1_")
-                           _T("4c40dba5f988fae57a57d6457495f98b.exe")));
+                           _T("unittest_support\\sha1_")
+                           _T("14F8FDD167F92402B1570B5DC495C815.sys")));
   EXPECT_TRUE(File::Exists(filename));
   EXPECT_HRESULT_SUCCEEDED(VerifyGoogleAuthenticodeSignature(filename, true));
 

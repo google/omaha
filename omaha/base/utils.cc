@@ -15,6 +15,7 @@
 
 #include "omaha/base/utils.h"
 #include <lm.h>
+#include <mdmregistration.h>
 #include <regstr.h>
 #include <urlmon.h>
 #include <wincrypt.h>
@@ -2252,6 +2253,8 @@ DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout) {
   return abandoned ? WAIT_ABANDONED_0 : WAIT_OBJECT_0;
 }
 
+// The following code is cloned/derived from
+// https://cs.chromium.org/chromium/src/base/win/win_util.cc.
 enum DomainEnrollementState {UNKNOWN = -1, NOT_ENROLLED, ENROLLED};
 static volatile LONG g_domain_state = UNKNOWN;
 
@@ -2278,6 +2281,29 @@ bool IsEnrolledToDomain() {
   }
 
   return g_domain_state == ENROLLED;
+}
+
+// TODO(omaha): This code needs to be used instead of IsEnrolledToDomain() once
+// Chrome enables IsDeviceRegisteredWithManagement.
+
+enum DeviceRegisteredState {NOT_KNOWN = -1, NOT_REGISTERED, REGISTERED};
+static volatile LONG g_registered_state = NOT_KNOWN;
+
+bool IsDeviceRegisteredWithManagement() {
+  if (g_registered_state == NOT_KNOWN) {
+    BOOL is_registered = FALSE;
+    HRESULT hr(IsDeviceRegisteredWithManagementWrap(&is_registered, 0, NULL));
+    ::InterlockedCompareExchange(&g_registered_state,
+                                 SUCCEEDED(hr) && is_registered ?
+                                     REGISTERED : NOT_REGISTERED,
+                                 NOT_KNOWN);
+  }
+
+  return g_registered_state == REGISTERED;
+}
+
+bool IsEnterpriseManaged() {
+  return IsEnrolledToDomain() || IsDeviceRegisteredWithManagement();
 }
 
 }  // namespace omaha

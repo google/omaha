@@ -952,6 +952,22 @@ DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout);
 // base/win/win_util.cc.
 bool IsEnrolledToDomain();
 
+GPA_WRAP(MDMRegistration.dll,
+         IsDeviceRegisteredWithManagement,
+         (BOOL* is_registered, DWORD upn_length, LPWSTR upn),
+         (is_registered, upn_length, upn),
+         WINAPI,
+         HRESULT,
+         E_FAIL);
+
+// Returns true if the machine is being managed by an MDM system.
+bool IsDeviceRegisteredWithManagement();
+
+// Returns true if the current machine is considered enterprise managed in some
+// fashion.  A machine is considered managed if it is either domain enrolled
+// or registered with an MDM.
+bool IsEnterpriseManaged();
+
 }  // namespace omaha
 
 #endif  // OMAHA_BASE_UTILS_H_

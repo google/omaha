@@ -1,3 +1,105 @@
+## 2017-04-03 @141381616,151627999
+
+### Changes
+
+--------------------------------------------------------------------------------
+
+Omaha hardcodes a kChromeAppId literal in a couple of places. This change
+removes the literal for the chrome installer invocation, since the Chrome
+installer does not use it as of a few versions. The Chrome installer instead
+uses an environment variable that Omaha sets to determine the System install
+
+--------------------------------------------------------------------------------
+
+Pass more arguments from the tag on the .msi down to the wrapped standalone
+installer. Specifically:
+- iid, so that the download->install link is made as with ordinary installers
+- lang, so that the language of the dlpage is used by Omaha and Chrome on first
+  run
+- browser, so that we know what browser was used for the download
+- ap, so that we can put statsdef_{0,1} and build a beta msi
+
+--------------------------------------------------------------------------------
+
+Update MsiTagger for consistency with dlpage tagger:
+- tag length no longer includes the string terminator
+- trailing zeros are no longer written
+
+--------------------------------------------------------------------------------
+
+MSI tag extractor improvements:
+- ignore any/all padding following a tag
+- fix tag extraction from very small and very large files
+
+--------------------------------------------------------------------------------
+
+Extract more tags for use in enterprise installers.
+
+--------------------------------------------------------------------------------
+
+Do not wrap the ProductCustomParams argument value in double quotes.
+Since this command line is not passed through an interpreter, quotes aren't
+needed. In fact, they end up in the property value in the WiX wrapper.
+We end up with, for example, 'appguid={...}&appname=..."&brand=...&ap=..."'.
+Note the extra double-quotes in there.
+
+--------------------------------------------------------------------------------
+
+This change implements a group policy that allows update checks to be suppressed
+ out during the day. A group policy administrator would set
+ UpdatesSuppressedStartHour, UpdatesSuppressedStartMin, and
+ UpdatesSuppressedDurationMin to be the times when Omaha will not check for
+ updates.
+
+--------------------------------------------------------------------------------
+
+Refactor into a more object-oriented scheduled tasks API with separate classes
+for the V2 and V1 implementations.
+
+--------------------------------------------------------------------------------
+
+Many installers do not write Installer Progress. We try to read it, but we
+ignore any read errors.
+
+--------------------------------------------------------------------------------
+
+Remove support for the Legacy Install progress.
+
+--------------------------------------------------------------------------------
+
+Fix bug 24807812 Deprecate Sha1 for the Omaha Client. Going forward, the Omaha
+client will only honor SHA 256 hashes for downloaded files.
+
+--------------------------------------------------------------------------------
+
+Assert in omaha_unittest when the environment block is too large.
+
+--------------------------------------------------------------------------------
+
+For domain-joined machines with TargetVersionPrefix policy values set for any
+apps, the values will be sent as attributes of the <updatecheck>
+elements in update checks that the client makes with the Omaha server.
+Example:
+<o:updatecheck targetversionprefix="55.7" ...
+Example values:
+* "" (or not configured): update to latest version available.
+* "55.": update to any minor version of 55 (e.g. 55.24.34 or 55.60.2).
+* "55.2.": update to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).
+* "55.24.34": update to this specific version only.
+
+--------------------------------------------------------------------------------
+
+Lots of crashes in omaha::SetupGoogleUpdate::InstallMsiHelper(). This change
+moves the MSI Helper installation to a separate process, isolating any crashes
+in MSI registration from affecting the rest of the codebase.
+
+--------------------------------------------------------------------------------
+
+Fix Chrome installer hooks for Windows 10 upgrades.
+The AppCommandsOnOSUpgrade hooks now run if the OS build number changes.
+
+--------------------------------------------------------------------------------
+
 ## 2016-12-12 @140657335,141381615
 
 ### Changes

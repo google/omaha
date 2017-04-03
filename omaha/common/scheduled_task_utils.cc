@@ -16,7 +16,6 @@
 #include "omaha/common/scheduled_task_utils_internal.h"
 #include <lmcons.h>
 #include <lmsname.h>
-#include <mstask.h>
 #include <atlsecurity.h>
 #include <atltime.h>
 #include "omaha/base/debug.h"
@@ -45,58 +44,15 @@ namespace scheduled_task_utils {
 
 namespace internal {
 
-CString GetCurrentTaskNameCore(bool is_machine) {
-  UTIL_LOG(L3, (_T("[GetCurrentTaskNameCore][%d]"), is_machine));
-
-  CString default_name(GetDefaultGoopdateTaskName(is_machine,
-                                                  COMMANDLINE_MODE_CORE));
-  return goopdate_utils::GetCurrentVersionedName(is_machine,
-                                                 kRegValueTaskNameC,
-                                                 default_name);
+V1ScheduledTasks::V1ScheduledTasks() {
+  CORE_LOG(L1, (_T("[V1ScheduledTasks::V1ScheduledTasks]")));
 }
 
-HRESULT CreateAndSetVersionedTaskNameCoreInRegistry(
-    bool is_machine) {
-  UTIL_LOG(L3, (_T("[CreateAndSetVersionedTaskNameCoreInRegistry][%d]"),
-                is_machine));
-
-  CString default_name(GetDefaultGoopdateTaskName(is_machine,
-                                                  COMMANDLINE_MODE_CORE));
-  return goopdate_utils::CreateAndSetVersionedNameInRegistry(
-             is_machine,
-             default_name,
-             kRegValueTaskNameC);
+V1ScheduledTasks::~V1ScheduledTasks() {
+  CORE_LOG(L1, (_T("[V1ScheduledTasks::~V1ScheduledTasks]")));
 }
 
-CString GetCurrentTaskNameUA(bool is_machine) {
-  UTIL_LOG(L3, (_T("[GetCurrentTaskNameUA][%d]"), is_machine));
-
-  CString default_name(GetDefaultGoopdateTaskName(is_machine,
-                                                  COMMANDLINE_MODE_UA));
-  return goopdate_utils::GetCurrentVersionedName(is_machine,
-                                                 kRegValueTaskNameUA,
-                                                 default_name);
-}
-
-HRESULT CreateAndSetVersionedTaskNameUAInRegistry(bool machine) {
-  UTIL_LOG(L3, (_T("[CreateAndSetVersionedTaskNameUAInRegistry][%d]"),
-                machine));
-
-  CString default_name(GetDefaultGoopdateTaskName(machine,
-                                                  COMMANDLINE_MODE_UA));
-  return goopdate_utils::CreateAndSetVersionedNameInRegistry(
-             machine,
-             default_name,
-             kRegValueTaskNameUA);
-}
-
-bool IsInstalledScheduledTask(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::IsInstalledScheduledTask(task_name);
-  }
-
+bool V1ScheduledTasks::IsInstalledScheduledTask(const CString& task_name) {
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -115,23 +71,11 @@ bool IsInstalledScheduledTask(const TCHAR* task_name) {
   return hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 }
 
-bool IsDisabledScheduledTask(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::IsDisabledScheduledTask(task_name);
-  }
-
+bool V1ScheduledTasks::IsDisabledScheduledTask(const CString& task_name) {
   return GetScheduledTaskStatus(task_name) == SCHED_S_TASK_DISABLED;
 }
 
-bool HasScheduledTaskEverRun(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::HasScheduledTaskEverRun(task_name);
-  }
-
+bool V1ScheduledTasks::HasScheduledTaskEverRun(const CString& task_name) {
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -162,13 +106,7 @@ bool HasScheduledTaskEverRun(const TCHAR* task_name) {
   return hr != SCHED_S_TASK_HAS_NOT_RUN;
 }
 
-HRESULT GetScheduledTaskStatus(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::GetScheduledTaskStatus(task_name);
-  }
-
+HRESULT V1ScheduledTasks::GetScheduledTaskStatus(const CString& task_name) {
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -198,13 +136,7 @@ HRESULT GetScheduledTaskStatus(const TCHAR* task_name) {
   return task_status;
 }
 
-HRESULT GetScheduledTaskExitCode(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::GetScheduledTaskLastResult(task_name);
-  }
-
+HRESULT V1ScheduledTasks::GetScheduledTaskExitCode(const CString& task_name) {
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -234,13 +166,7 @@ HRESULT GetScheduledTaskExitCode(const TCHAR* task_name) {
   return hr == SCHED_S_TASK_HAS_NOT_RUN ? hr : exit_code;
 }
 
-HRESULT StartScheduledTask(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::StartScheduledTask(task_name);
-  }
-
+HRESULT V1ScheduledTasks::StartScheduledTask(const CString& task_name) {
   if (GetScheduledTaskStatus(task_name) == SCHED_S_TASK_RUNNING) {
     return S_OK;
   }
@@ -273,13 +199,7 @@ HRESULT StartScheduledTask(const TCHAR* task_name) {
   return hr;
 }
 
-HRESULT StopScheduledTask(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::StopScheduledTask(task_name);
-  }
-
+HRESULT V1ScheduledTasks::StopScheduledTask(const CString& task_name) {
   if (GetScheduledTaskStatus(task_name) != SCHED_S_TASK_RUNNING) {
     return S_OK;
   }
@@ -312,7 +232,7 @@ HRESULT StopScheduledTask(const TCHAR* task_name) {
   return hr;
 }
 
-HRESULT CreateLogonTrigger(ITask* task) {
+HRESULT V1ScheduledTasks::CreateLogonTrigger(ITask* task) {
   ASSERT1(task);
 
   CComPtr<ITaskTrigger> trigger;
@@ -344,7 +264,8 @@ HRESULT CreateLogonTrigger(ITask* task) {
   return S_OK;
 }
 
-HRESULT CreatePeriodicTrigger(ITask* task, bool create_hourly_trigger) {
+HRESULT V1ScheduledTasks::CreatePeriodicTrigger(ITask* task,
+                                                bool create_hourly_trigger) {
   ASSERT1(task);
 
   CComPtr<ITaskTrigger> trigger;
@@ -400,22 +321,15 @@ HRESULT CreatePeriodicTrigger(ITask* task, bool create_hourly_trigger) {
   return S_OK;
 }
 
-HRESULT CreateScheduledTask(ITask* task,
-                            const TCHAR* task_path,
-                            const TCHAR* task_parameters,
-                            const TCHAR* task_comment,
-                            bool is_machine,
-                            bool create_logon_trigger,
-                            bool create_daily_trigger,
-                            bool create_hourly_trigger) {
+HRESULT V1ScheduledTasks::CreateScheduledTask(ITask* task,
+                                              const CString& task_path,
+                                              const CString& task_parameters,
+                                              const CString& task_comment,
+                                              bool is_machine,
+                                              bool create_logon_trigger,
+                                              bool create_hourly_trigger) {
   ASSERT1(task);
-  ASSERT1(task_path && *task_path);
-  ASSERT1(task_parameters);
-  ASSERT1(task_comment && *task_comment);
-  ASSERT1(create_logon_trigger || create_daily_trigger);
   ASSERT1(!create_logon_trigger || (create_logon_trigger && is_machine));
-  ASSERT1(!create_hourly_trigger ||
-          (create_hourly_trigger && create_daily_trigger));
 
   UTIL_LOG(L3, (_T("[CreateScheduledTask][%s][%s][%d]"),
                 task_path, task_parameters, is_machine));
@@ -491,11 +405,9 @@ HRESULT CreateScheduledTask(ITask* task,
     }
   }
 
-  if (create_daily_trigger) {
-    hr = CreatePeriodicTrigger(task, create_hourly_trigger);
-    if (FAILED(hr)) {
-      return hr;
-    }
+  hr = CreatePeriodicTrigger(task, create_hourly_trigger);
+  if (FAILED(hr)) {
+    return hr;
   }
 
   // Save task.
@@ -552,95 +464,13 @@ HRESULT CreateScheduledTask(ITask* task,
   return S_OK;
 }
 
-HRESULT UpgradeScheduledTask(const TCHAR* task_name,
-                             const TCHAR* task_path,
-                             const TCHAR* task_parameters,
-                             const TCHAR* task_comment,
-                             bool is_machine,
-                             bool create_logon_trigger,
-                             bool create_daily_trigger,
-                             bool create_hourly_trigger) {
-  ASSERT1(task_name && *task_name);
-  ASSERT1(IsInstalledScheduledTask(task_name));
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::InstallScheduledTask(task_name,
-                                    task_path,
-                                    task_parameters,
-                                    task_comment,
-                                    is_machine,
-                                    create_logon_trigger,
-                                    create_hourly_trigger);
-  }
-
-  UTIL_LOG(L3, (_T("[UpgradeScheduledTask][%s][%s][%s][%d]"),
-                task_name, task_path, task_parameters, is_machine));
-
-  // TODO(Omaha): Perhaps pass the ITaskScheduler around where possible.
-  CComPtr<ITaskScheduler> scheduler;
-  HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
-                                          NULL,
-                                          CLSCTX_INPROC_SERVER);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[ITaskScheduler.CoCreateInstance failed][0x%x]"), hr));
-    return hr;
-  }
-
-  CComPtr<ITask> task;
-  hr = scheduler->Activate(task_name,
-                           __uuidof(ITask),
-                           reinterpret_cast<IUnknown**>(&task));
-
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[UpgradeScheduledTask][Activate failed][0x%x]"), hr));
-    return hr;
-  }
-
-  // Delete existing triggers. CreateScheduledTask() will recreate them anew.
-  WORD trigger_count(0);
-  hr = task->GetTriggerCount(&trigger_count);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[ITaskScheduler.GetTriggerCount failed][0x%x]"), hr));
-    return hr;
-  }
-
-  for (int i = 0; i < trigger_count; ++i) {
-    hr = task->DeleteTrigger(0);
-    if (FAILED(hr)) {
-      UTIL_LOG(LE, (_T("[ITaskScheduler.DeleteTrigger failed][0x%x]"), hr));
-      return hr;
-    }
-  }
-
-  return CreateScheduledTask(task,
-                             task_path,
-                             task_parameters,
-                             task_comment,
-                             is_machine,
-                             create_logon_trigger,
-                             create_daily_trigger,
-                             create_hourly_trigger);
-}
-
-// TODO(Omaha): Change the apis to avoid specifying hourly and daily triggers.
-HRESULT InstallScheduledTask(const TCHAR* task_name,
-                             const TCHAR* task_path,
-                             const TCHAR* task_parameters,
-                             const TCHAR* task_comment,
-                             bool is_machine,
-                             bool create_logon_trigger,
-                             bool create_daily_trigger,
-                             bool create_hourly_trigger) {
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::InstallScheduledTask(task_name,
-                                    task_path,
-                                    task_parameters,
-                                    task_comment,
-                                    is_machine,
-                                    create_logon_trigger,
-                                    create_hourly_trigger);
-  }
-
+HRESULT V1ScheduledTasks::InstallScheduledTask(const CString& task_name,
+                                               const CString& task_path,
+                                               const CString& task_parameters,
+                                               const CString& task_comment,
+                                               bool is_machine,
+                                               bool create_logon_trigger,
+                                               bool create_hourly_trigger) {
   if (IsInstalledScheduledTask(task_name)) {
     UninstallScheduledTask(task_name);
   }
@@ -671,17 +501,10 @@ HRESULT InstallScheduledTask(const TCHAR* task_name,
                              task_comment,
                              is_machine,
                              create_logon_trigger,
-                             create_daily_trigger,
                              create_hourly_trigger);
 }
 
-HRESULT UninstallScheduledTask(const TCHAR* task_name) {
-  ASSERT1(task_name && *task_name);
-
-  if (v2::IsTaskScheduler2APIAvailable()) {
-    return v2::UninstallScheduledTask(task_name);
-  }
-
+HRESULT V1ScheduledTasks::UninstallScheduledTask(const CString& task_name) {
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -704,9 +527,7 @@ HRESULT UninstallScheduledTask(const TCHAR* task_name) {
   return S_OK;
 }
 
-HRESULT UninstallScheduledTasks(const TCHAR* task_prefix) {
-  ASSERT1(task_prefix && *task_prefix);
-
+HRESULT V1ScheduledTasks::UninstallScheduledTasks(const CString& task_prefix) {
   CComPtr<ITaskScheduler> scheduler;
   HRESULT hr = scheduler.CoCreateInstance(CLSID_CTaskScheduler,
                                           NULL,
@@ -738,52 +559,15 @@ HRESULT UninstallScheduledTasks(const TCHAR* task_prefix) {
   return S_OK;
 }
 
-// Returns the task name Omaha used to install in Omaha 1.2.x.
-CString GetOmaha1LegacyTaskName(bool is_machine) {
-  const TCHAR* const kLegacyOmaha1TaskNameMachine = _T("GoogleUpdateTask");
-  const TCHAR* const kLegacyOmaha1TaskNameUser = _T("GoogleUpdateTaskUser");
-  return is_machine ? kLegacyOmaha1TaskNameMachine : kLegacyOmaha1TaskNameUser;
+V2ScheduledTasks::V2ScheduledTasks() {
+  CORE_LOG(L1, (_T("[V2ScheduledTasks::V2ScheduledTasks]")));
 }
 
-// Returns the task name Omaha used to install in Omaha 2 before the
-// "GoogleUpdate.exe does not run all the time" refactoring.
-CString GetOmaha2LegacyTaskName(bool is_machine) {
-  const TCHAR* kLegacyOmaha2TaskNameUserPrefix = _T("GoogleUpdateTaskUser");
-  const TCHAR* kLegacyOmaha2TaskNameMachine = _T("GoogleUpdateTaskMachine");
-  if (is_machine) {
-    return kLegacyOmaha2TaskNameMachine;
-  }
-
-  CString task_name_user = kLegacyOmaha2TaskNameUserPrefix;
-  CString user_sid;
-  VERIFY1(SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid)));
-  task_name_user += user_sid;
-  return task_name_user;
+V2ScheduledTasks::~V2ScheduledTasks() {
+  CORE_LOG(L1, (_T("[V2ScheduledTasks::~V2ScheduledTasks]")));
 }
 
-HRESULT WaitForTaskStatus(const TCHAR* task_name, HRESULT status, int time_ms) {
-  int kSleepBetweenRetriesMs = 100;
-  Timer timer(true);
-  while (timer.GetMilliseconds() < time_ms) {
-    if (GetScheduledTaskStatus(task_name) == status) {
-      return status;
-    }
-    ::Sleep(kSleepBetweenRetriesMs);
-  }
-  return GetScheduledTaskStatus(task_name);
-}
-
-namespace v2 {
-
-bool IsTaskScheduler2APIAvailable() {
-  CComPtr<ITaskService> task_service;
-  return SUCCEEDED(task_service.CoCreateInstance(CLSID_TaskScheduler,
-                                                 NULL,
-                                                 CLSCTX_INPROC_SERVER));
-}
-
-HRESULT GetTaskFolder(ITaskFolder** task_folder) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
+HRESULT V2ScheduledTasks::GetTaskFolder(ITaskFolder** task_folder) {
   ASSERT1(task_folder);
 
   CComPtr<ITaskService> task_service;
@@ -813,8 +597,8 @@ HRESULT GetTaskFolder(ITaskFolder** task_folder) {
   return S_OK;
 }
 
-HRESULT GetRegisteredTask(const CString& task_name, IRegisteredTask** task) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
+HRESULT V2ScheduledTasks::GetRegisteredTask(const CString& task_name,
+                                            IRegisteredTask** task) {
   ASSERT1(task);
 
   CComPtr<ITaskFolder> task_folder;
@@ -835,9 +619,7 @@ HRESULT GetRegisteredTask(const CString& task_name, IRegisteredTask** task) {
   return S_OK;
 }
 
-bool IsScheduledTaskRunning(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+bool V2ScheduledTasks::IsScheduledTaskRunning(const CString& task_name) {
   CComPtr<IRegisteredTask> registered_task;
   HRESULT hr = GetRegisteredTask(task_name, &registered_task);
   if (FAILED(hr)) {
@@ -861,9 +643,7 @@ bool IsScheduledTaskRunning(const CString& task_name) {
   return count > 0;
 }
 
-HRESULT StartScheduledTask(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+HRESULT V2ScheduledTasks::StartScheduledTask(const CString& task_name) {
   if (IsScheduledTaskRunning(task_name)) {
     return S_OK;
   }
@@ -883,9 +663,7 @@ HRESULT StartScheduledTask(const CString& task_name) {
   return hr;
 }
 
-HRESULT StopScheduledTask(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+HRESULT V2ScheduledTasks::StopScheduledTask(const CString& task_name) {
   if (!IsScheduledTaskRunning(task_name)) {
     return S_OK;
   }
@@ -932,15 +710,15 @@ HRESULT StopScheduledTask(const CString& task_name) {
   return S_OK;
 }
 
-HRESULT CreateScheduledTaskXml(const CString& task_path,
-                               const CString& task_parameters,
-                               const CString& task_description,
-                               const CString& start_time,
-                               bool is_machine,
-                               bool create_logon_trigger,
-                               bool create_hourly_trigger,
-                               CString* scheduled_task_xml) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
+HRESULT V2ScheduledTasks::CreateScheduledTaskXml(
+                              const CString& task_path,
+                              const CString& task_parameters,
+                              const CString& task_description,
+                              const CString& start_time,
+                              bool is_machine,
+                              bool create_logon_trigger,
+                              bool create_hourly_trigger,
+                              CString* scheduled_task_xml) {
   ASSERT1(!create_logon_trigger || (create_logon_trigger && is_machine));
   ASSERT1(scheduled_task_xml);
 
@@ -1034,15 +812,13 @@ HRESULT CreateScheduledTaskXml(const CString& task_path,
   return S_OK;
 }
 
-HRESULT InstallScheduledTask(const CString& task_name,
-                             const CString& task_path,
-                             const CString& task_parameters,
-                             const CString& task_description,
-                             bool is_machine,
-                             bool create_logon_trigger,
-                             bool create_hourly_trigger) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+HRESULT V2ScheduledTasks::InstallScheduledTask(const CString& task_name,
+                                               const CString& task_path,
+                                               const CString& task_parameters,
+                                               const CString& task_description,
+                                               bool is_machine,
+                                               bool create_logon_trigger,
+                                               bool create_hourly_trigger) {
   CComPtr<ITaskFolder> task_folder;
   HRESULT hr = GetTaskFolder(&task_folder);
   if (FAILED(hr)) {
@@ -1076,9 +852,7 @@ HRESULT InstallScheduledTask(const CString& task_name,
       &registered_task);
 }
 
-HRESULT UninstallScheduledTask(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+HRESULT V2ScheduledTasks::UninstallScheduledTask(const CString& task_name) {
   CComPtr<ITaskFolder> task_folder;
   HRESULT hr = GetTaskFolder(&task_folder);
   if (FAILED(hr)) {
@@ -1095,9 +869,7 @@ HRESULT UninstallScheduledTask(const CString& task_name) {
   return S_OK;
 }
 
-HRESULT UninstallScheduledTasks(const CString& task_prefix) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+HRESULT V2ScheduledTasks::UninstallScheduledTasks(const CString& task_prefix) {
   CComPtr<ITaskFolder> task_folder;
   HRESULT hr = GetTaskFolder(&task_folder);
   if (FAILED(hr)) {
@@ -1143,9 +915,7 @@ HRESULT UninstallScheduledTasks(const CString& task_prefix) {
   return S_OK;
 }
 
-bool IsInstalledScheduledTask(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+bool V2ScheduledTasks::IsInstalledScheduledTask(const CString& task_name) {
   CComPtr<IRegisteredTask> registered_task;
   HRESULT hr = GetRegisteredTask(task_name, &registered_task);
 
@@ -1153,11 +923,10 @@ bool IsInstalledScheduledTask(const CString& task_name) {
   return hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
 }
 
-bool IsDisabledScheduledTask(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+bool V2ScheduledTasks::IsDisabledScheduledTask(const CString& task_name) {
   CComPtr<IRegisteredTask> registered_task;
   HRESULT hr = GetRegisteredTask(task_name, &registered_task);
+
   if (FAILED(hr)) {
     UTIL_LOG(LE, (_T("[GetRegisteredTask failed][0x%x]"), hr));
     return false;
@@ -1174,9 +943,7 @@ bool IsDisabledScheduledTask(const CString& task_name) {
   return !is_enabled;
 }
 
-bool HasScheduledTaskEverRun(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+bool V2ScheduledTasks::HasScheduledTaskEverRun(const CString& task_name) {
   CComPtr<IRegisteredTask> registered_task;
   HRESULT hr = GetRegisteredTask(task_name, &registered_task);
 
@@ -1192,20 +959,16 @@ bool HasScheduledTaskEverRun(const CString& task_name) {
   return hr != SCHED_S_TASK_HAS_NOT_RUN;
 }
 
-HRESULT GetScheduledTaskStatus(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
-  return GetScheduledTaskLastResult(task_name);
+HRESULT V2ScheduledTasks::GetScheduledTaskStatus(const CString& task_name) {
+  return GetScheduledTaskExitCode(task_name);
 }
 
-HRESULT GetScheduledTaskLastResult(const CString& task_name) {
-  ASSERT1(IsTaskScheduler2APIAvailable());
-
+HRESULT V2ScheduledTasks::GetScheduledTaskExitCode(const CString& task_name) {
   CComPtr<IRegisteredTask> registered_task;
   HRESULT hr = GetRegisteredTask(task_name, &registered_task);
 
   if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[GetScheduledTaskLastResult][get failed][0x%x]"), hr));
+    UTIL_LOG(LE, (_T("[GetScheduledTaskExitCode][get failed][0x%x]"), hr));
     return hr;
   }
 
@@ -1216,13 +979,127 @@ HRESULT GetScheduledTaskLastResult(const CString& task_name) {
     return hr;
   }
 
-  UTIL_LOG(L6, (_T("[GetScheduledTaskLastResult][0x%x]"), last_task_result));
+  UTIL_LOG(L6, (_T("[GetScheduledTaskExitCode][0x%x]"), last_task_result));
   return last_task_result;
 }
 
-}  // namespace v2
+ScheduledTasksInterface* const kInvalidInstance =
+    reinterpret_cast<ScheduledTasksInterface* const>(-1);
+ScheduledTasksInterface* instance_ = NULL;
+LLock lock_;
+
+ScheduledTasksInterface& Instance() {
+  __mutexScope(lock_);
+  ASSERT1(instance_ != kInvalidInstance);
+
+  if (!instance_) {
+    if (IsTaskScheduler2APIAvailable()) {
+      instance_ = new V2ScheduledTasks();
+    } else {
+      instance_ = new V1ScheduledTasks();
+    }
+  }
+
+  return *instance_;
+}
+
+CString GetCurrentTaskNameCore(bool is_machine) {
+  UTIL_LOG(L3, (_T("[GetCurrentTaskNameCore][%d]"), is_machine));
+
+  CString default_name(GetDefaultGoopdateTaskName(is_machine,
+                                                  COMMANDLINE_MODE_CORE));
+  return goopdate_utils::GetCurrentVersionedName(is_machine,
+                                                 kRegValueTaskNameC,
+                                                 default_name);
+}
+
+HRESULT CreateAndSetVersionedTaskNameCoreInRegistry(
+    bool is_machine) {
+  UTIL_LOG(L3, (_T("[CreateAndSetVersionedTaskNameCoreInRegistry][%d]"),
+                is_machine));
+
+  CString default_name(GetDefaultGoopdateTaskName(is_machine,
+                                                  COMMANDLINE_MODE_CORE));
+  return goopdate_utils::CreateAndSetVersionedNameInRegistry(
+             is_machine,
+             default_name,
+             kRegValueTaskNameC);
+}
+
+CString GetCurrentTaskNameUA(bool is_machine) {
+  UTIL_LOG(L3, (_T("[GetCurrentTaskNameUA][%d]"), is_machine));
+
+  CString default_name(GetDefaultGoopdateTaskName(is_machine,
+                                                  COMMANDLINE_MODE_UA));
+  return goopdate_utils::GetCurrentVersionedName(is_machine,
+                                                 kRegValueTaskNameUA,
+                                                 default_name);
+}
+
+HRESULT CreateAndSetVersionedTaskNameUAInRegistry(bool machine) {
+  UTIL_LOG(L3, (_T("[CreateAndSetVersionedTaskNameUAInRegistry][%d]"),
+                machine));
+
+  CString default_name(GetDefaultGoopdateTaskName(machine,
+                                                  COMMANDLINE_MODE_UA));
+  return goopdate_utils::CreateAndSetVersionedNameInRegistry(
+             machine,
+             default_name,
+             kRegValueTaskNameUA);
+}
+
+// Returns the task name Omaha used to install in Omaha 1.2.x.
+CString GetOmaha1LegacyTaskName(bool is_machine) {
+  const CString kLegacyOmaha1TaskNameMachine = _T("GoogleUpdateTask");
+  const CString kLegacyOmaha1TaskNameUser = _T("GoogleUpdateTaskUser");
+  return is_machine ? kLegacyOmaha1TaskNameMachine : kLegacyOmaha1TaskNameUser;
+}
+
+// Returns the task name Omaha used to install in Omaha 2 before the
+// "GoogleUpdate.exe does not run all the time" refactoring.
+CString GetOmaha2LegacyTaskName(bool is_machine) {
+  const CString& kLegacyOmaha2TaskNameUserPrefix = _T("GoogleUpdateTaskUser");
+  const CString& kLegacyOmaha2TaskNameMachine = _T("GoogleUpdateTaskMachine");
+  if (is_machine) {
+    return kLegacyOmaha2TaskNameMachine;
+  }
+
+  CString task_name_user = kLegacyOmaha2TaskNameUserPrefix;
+  CString user_sid;
+  VERIFY1(SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid)));
+  task_name_user += user_sid;
+  return task_name_user;
+}
+
+HRESULT WaitForTaskStatus(const CString& task_name,
+                          HRESULT status,
+                          int time_ms) {
+  int kSleepBetweenRetriesMs = 100;
+  Timer timer(true);
+  while (timer.GetMilliseconds() < time_ms) {
+    if (Instance().GetScheduledTaskStatus(task_name) == status) {
+      return status;
+    }
+    ::Sleep(kSleepBetweenRetriesMs);
+  }
+  return Instance().GetScheduledTaskStatus(task_name);
+}
+
+bool IsTaskScheduler2APIAvailable() {
+  CComPtr<ITaskService> task_service;
+  return SUCCEEDED(task_service.CoCreateInstance(CLSID_TaskScheduler,
+                                                 NULL,
+                                                 CLSCTX_INPROC_SERVER));
+}
 
 }  // namespace internal
+
+void DeleteScheduledTasksInstance() {
+  __mutexScope(internal::lock_);
+
+  delete internal::instance_;
+  internal::instance_ = internal::kInvalidInstance;
+}
 
 CString GetDefaultGoopdateTaskName(bool is_machine, CommandLineMode mode) {
   ASSERT1(mode == COMMANDLINE_MODE_CORE || mode == COMMANDLINE_MODE_UA);
@@ -1242,7 +1119,7 @@ CString GetDefaultGoopdateTaskName(bool is_machine, CommandLineMode mode) {
   return task_name;
 }
 
-HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
+HRESULT InstallGoopdateTaskForMode(const CString& task_path,
                                    bool is_machine,
                                    CommandLineMode mode) {
   ASSERT1(mode == COMMANDLINE_MODE_CORE || mode == COMMANDLINE_MODE_UA);
@@ -1261,15 +1138,15 @@ HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
   CString task_name(mode == COMMANDLINE_MODE_CORE ?
                     internal::GetCurrentTaskNameCore(is_machine) :
                     internal::GetCurrentTaskNameUA(is_machine));
-  HRESULT hr = internal::InstallScheduledTask(task_name,
-                                              task_path,
-                                              task_parameters,
-                                              task_description,
-                                              is_machine,
-                                              mode == COMMANDLINE_MODE_CORE &&
-                                              is_machine,
-                                              true,
-                                              mode == COMMANDLINE_MODE_UA);
+  HRESULT hr = internal::Instance().InstallScheduledTask(
+                                        task_name,
+                                        task_path,
+                                        task_parameters,
+                                        task_description,
+                                        is_machine,
+                                        mode == COMMANDLINE_MODE_CORE &&
+                                        is_machine,
+                                        mode == COMMANDLINE_MODE_UA);
 
   if (SUCCEEDED(hr)) {
     return hr;
@@ -1285,20 +1162,20 @@ HRESULT InstallGoopdateTaskForMode(const TCHAR* task_path,
     internal::CreateAndSetVersionedTaskNameUAInRegistry(is_machine)));
     task_name = internal::GetCurrentTaskNameUA(is_machine);
   }
-  ASSERT1(!internal::IsInstalledScheduledTask(task_name));
+  ASSERT1(!internal::Instance().IsInstalledScheduledTask(task_name));
 
-  return internal::InstallScheduledTask(task_name,
-                                        task_path,
-                                        task_parameters,
-                                        task_description,
-                                        is_machine,
-                                        mode == COMMANDLINE_MODE_CORE &&
-                                        is_machine,
-                                        true,
-                                        mode == COMMANDLINE_MODE_UA);
+  return internal::Instance().InstallScheduledTask(
+                                  task_name,
+                                  task_path,
+                                  task_parameters,
+                                  task_description,
+                                  is_machine,
+                                  mode == COMMANDLINE_MODE_CORE &&
+                                  is_machine,
+                                  mode == COMMANDLINE_MODE_UA);
 }
 
-HRESULT InstallGoopdateTasks(const TCHAR* task_path, bool is_machine) {
+HRESULT InstallGoopdateTasks(const CString& task_path, bool is_machine) {
   HRESULT hr = InstallGoopdateTaskForMode(task_path,
                                           is_machine,
                                           COMMANDLINE_MODE_CORE);
@@ -1310,52 +1187,54 @@ HRESULT InstallGoopdateTasks(const TCHAR* task_path, bool is_machine) {
 }
 
 HRESULT UninstallGoopdateTasks(bool is_machine) {
-  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
+  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTask(
       internal::GetCurrentTaskNameCore(is_machine))));
-  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(
+  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTask(
       internal::GetCurrentTaskNameUA(is_machine))));
 
   // Try to uninstall any tasks that we failed to update during a previous
   // overinstall. It is possible that we fail to uninstall these again here.
-  VERIFY1(SUCCEEDED(internal::UninstallScheduledTasks(
-      scheduled_task_utils::GetDefaultGoopdateTaskName(is_machine,
-                                                 COMMANDLINE_MODE_CORE))));
-  VERIFY1(SUCCEEDED(internal::UninstallScheduledTasks(
-      scheduled_task_utils::GetDefaultGoopdateTaskName(is_machine,
-                                                 COMMANDLINE_MODE_UA))));
+  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTasks(
+      scheduled_task_utils::GetDefaultGoopdateTaskName(
+          is_machine, COMMANDLINE_MODE_CORE))));
+  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTasks(
+      scheduled_task_utils::GetDefaultGoopdateTaskName(
+          is_machine, COMMANDLINE_MODE_UA))));
   return S_OK;
 }
 
 HRESULT UninstallLegacyGoopdateTasks(bool is_machine) {
   const CString& legacy_omaha1_task =
       internal::GetOmaha1LegacyTaskName(is_machine);
-  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha1_task)));
+  VERIFY1(SUCCEEDED(
+      internal::Instance().UninstallScheduledTask(legacy_omaha1_task)));
 
   const CString& legacy_omaha2_task =
       internal::GetOmaha2LegacyTaskName(is_machine);
-  VERIFY1(SUCCEEDED(internal::UninstallScheduledTask(legacy_omaha2_task)));
+  VERIFY1(SUCCEEDED(
+      internal::Instance().UninstallScheduledTask(legacy_omaha2_task)));
 
   return S_OK;
 }
 
 HRESULT StartGoopdateTaskCore(bool is_machine) {
-  return internal::StartScheduledTask(
+  return internal::Instance().StartScheduledTask(
              internal::GetCurrentTaskNameCore(is_machine));
 }
 
 bool IsInstalledGoopdateTaskUA(bool is_machine) {
-  return internal::IsInstalledScheduledTask(
-                             internal::GetCurrentTaskNameUA(is_machine));
+  return internal::Instance().IsInstalledScheduledTask(
+                                  internal::GetCurrentTaskNameUA(is_machine));
 }
 
 bool IsDisabledGoopdateTaskUA(bool is_machine) {
   const CString& task_name(internal::GetCurrentTaskNameUA(is_machine));
-  return internal::IsDisabledScheduledTask(task_name);
+  return internal::Instance().IsDisabledScheduledTask(task_name);
 }
 
 HRESULT GetExitCodeGoopdateTaskUA(bool is_machine) {
   const CString& task_name(internal::GetCurrentTaskNameUA(is_machine));
-  return internal::GetScheduledTaskExitCode(task_name);
+  return internal::Instance().GetScheduledTaskExitCode(task_name);
 }
 
 bool IsUATaskHealthy(bool is_machine) {

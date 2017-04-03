@@ -143,6 +143,11 @@ const TCHAR* const kCmdLineUninstall = _T("uninstall");
 // whether it is installed and functioning correctly by returning S_OK.
 const TCHAR* const kCmdLineHealthCheck = _T("healthcheck");
 
+// The "registermsihelper" switch allows installing the MSI Helper in a
+// separate process, isolating any crashes in MSI registration from affecting
+// the rest of the codebase.
+const TCHAR* const kCmdLineRegisterMsiHelper = _T("registermsihelper");
+
 // The "ping" switch makes Omaha send a ping with the specified string. The
 // string is expected to be web safe base64 encoded and it will be decoded
 // before sending it to the server.

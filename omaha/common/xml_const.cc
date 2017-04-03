@@ -130,6 +130,7 @@ const TCHAR* const kStateCancelled = _T("state_cancelled");
 const TCHAR* const kStatus = _T("status");
 const TCHAR* const kSuccessAction = _T("onsuccess");
 const TCHAR* const kSuccessUrl = _T("successurl");
+const TCHAR* const kTargetVersionPrefix = _T("targetversionprefix");
 const TCHAR* const kTestSource = _T("testsource");
 const TCHAR* const kTerminateAllBrowsers = _T("terminateallbrowsers");
 const TCHAR* const kTimeSinceDownloadStart = _T("time_since_download_start_ms");

@@ -34,12 +34,12 @@
 #include "omaha/client/install_self.h"
 #include "omaha/client/client_metrics.h"
 #include "omaha/common/app_registry_utils.h"
+#include "omaha/common/command_line_builder.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/event_logger.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/ping.h"
-#include "omaha/setup/setup_google_update.h"
 
 // Design Notes:
 // Following are the mutexes that are taken by the worker
@@ -111,19 +111,26 @@ HRESULT RegisterMSIHelperIfNeeded(bool is_machine) {
     return S_OK;
   }
 
-  SetupGoogleUpdate setup_google_update(is_machine, false);
-  HRESULT hr = setup_google_update.InstallMsiHelper();
+  CommandLineBuilder builder(COMMANDLINE_MODE_REGISTER_MSI_HELPER);
+  const CString cmd_line = builder.GetCommandLineArgs();
+  scoped_process process;
+  const HRESULT hr(goopdate_utils::StartGoogleUpdateWithArgs(is_machine,
+                                                             cmd_line,
+                                                             address(process)));
   if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[InstallMsiHelper failed][%#x]"), hr));
-    ASSERT1(HRESULT_FROM_WIN32(ERROR_INSTALL_SERVICE_FAILURE) == hr ||
-            HRESULT_FROM_WIN32(ERROR_INSTALL_ALREADY_RUNNING) == hr);
+    SETUP_LOG(LE, (_T("[RegisterMsiHelper mode failed to start][%#x]"), hr));
     return hr;
   }
 
-  VERIFY1(SUCCEEDED(RegKey::SetValue(key_name,
-                                     kRegValueIsMSIHelperRegistered,
-                                     static_cast<DWORD>(1))));
-  return S_OK;
+  const int kMaxWaitForRegisterMsiProcessMs = 30000;
+  const DWORD result(::WaitForSingleObject(get(process),
+                     kMaxWaitForRegisterMsiProcessMs));
+  DWORD exit_code(static_cast<DWORD>(E_UNEXPECTED));
+  VERIFY1(result == WAIT_OBJECT_0 &&
+          ::GetExitCodeProcess(get(process), &exit_code) &&
+          SUCCEEDED(exit_code));
+
+  return exit_code;
 }
 
 // Ensures there is only one instance of /ua per session per Omaha instance.
@@ -161,6 +168,7 @@ bool IsUpdateAppsHourlyJitterDisabled() {
 // In the case where the update check period is not overriden, the function
 // introduces an hourly jitter for 10% of the function calls when the time
 // interval falls in the range: [LastCheckPeriodSec, LastCheckPeriodSec + 1hr).
+// No update check is made if the "updates suppressed" period is in effect.
 bool ShouldCheckForUpdates(bool is_machine) {
   ConfigManager* cm = ConfigManager::Instance();
 
@@ -179,7 +187,10 @@ bool ShouldCheckForUpdates(bool is_machine) {
   const int time_since_last_check = cm->GetTimeSinceLastCheckedSec(is_machine);
 
   bool should_check_for_updates = false;
-  if (time_since_last_check < update_interval) {
+
+  if (ConfigManager::AreUpdatesSuppressedNow()) {
+    should_check_for_updates = false;
+  } else if (time_since_last_check < update_interval) {
     // Too soon.
     should_check_for_updates = false;
   } else if (update_interval <= time_since_last_check &&

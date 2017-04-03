@@ -40,7 +40,7 @@ int get_curr_year() {
 int print_octets(const unsigned char* octets, size_t len, int version) {
   assert(octets);
   assert(len == X962_UNCOMPRESSED_SIZE);
-  
+
   if (len != X962_UNCOMPRESSED_SIZE) {
     return 5;
   }
@@ -81,7 +81,10 @@ int print_octets(const unsigned char* octets, size_t len, int version) {
     }
     printf("0x%02x", (unsigned int) point_octets[i]);
     if (i != point_octets_len - 1) {
-      printf(", ");
+      printf(",");
+      if (i % 8 != 7) {
+        printf(" ");
+      }
     }
   }
   printf("};\n");

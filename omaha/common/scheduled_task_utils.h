@@ -27,11 +27,15 @@ namespace omaha {
 
 namespace scheduled_task_utils {
 
+// Deletes the single instance of the internal Scheduled Tasks interface. The
+// instance is created internally by methods in scheduled_task_utils.
+void DeleteScheduledTasksInstance();
+
 // This method will return the default scheduled task name. This default value
 // is also used as the prefix for generating unique task names.
 CString GetDefaultGoopdateTaskName(bool is_machine, CommandLineMode mode);
 
-HRESULT InstallGoopdateTasks(const TCHAR* task_path, bool is_machine);
+HRESULT InstallGoopdateTasks(const CString& task_path, bool is_machine);
 HRESULT UninstallGoopdateTasks(bool is_machine);
 HRESULT UninstallLegacyGoopdateTasks(bool is_machine);
 HRESULT StartGoopdateTaskCore(bool is_machine);

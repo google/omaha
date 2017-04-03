@@ -17,6 +17,7 @@
 #define OMAHA_COMMON_SCHEDULED_TASK_UTILS_INTERNAL_H_
 
 #include <windows.h>
+#include <mstask.h>
 #include <taskschd.h>
 
 namespace omaha {
@@ -24,6 +25,137 @@ namespace omaha {
 namespace scheduled_task_utils {
 
 namespace internal {
+
+class ScheduledTasksInterface {
+ public:
+  virtual ~ScheduledTasksInterface() {}
+
+  // Installs a scheduled task. The task will run as either as SYSTEM or the
+  // current user. The task will always have a daily trigger. Optional triggers
+  // include logon and hourly triggers.
+  virtual HRESULT InstallScheduledTask(const CString& task_name,
+                                       const CString& task_path,
+                                       const CString& task_parameters,
+                                       const CString& task_comment,
+                                       bool is_machine,
+                                       bool create_logon_trigger,
+                                       bool create_hourly_trigger) = 0;
+  // Deletes a scheduled task.
+  virtual HRESULT UninstallScheduledTask(const CString& task_name) = 0;
+
+  // Deletes all scheduled tasks with the given prefix.
+  virtual HRESULT UninstallScheduledTasks(const CString& task_prefix) = 0;
+
+  // Runs a scheduled task immediately.
+  virtual HRESULT StartScheduledTask(const CString& task_name) = 0;
+
+  // Stops the task if it is already running.
+  virtual HRESULT StopScheduledTask(const CString& task_name) = 0;
+
+  // Returns true if the scheduled task exists.
+  virtual bool IsInstalledScheduledTask(const CString& task_name) = 0;
+
+  // Returns true if the scheduled task is disabled.
+  virtual bool IsDisabledScheduledTask(const CString& task_name) = 0;
+
+  // Returns true if the scheduled task ever ran.
+  virtual bool HasScheduledTaskEverRun(const CString& task_name) = 0;
+
+  // Returns the last task result or status code. List of codes are at
+  // http://msdn.microsoft.com/en-us/library/aa383604.
+  // v2 API: GetScheduledTaskStatus() and GetScheduledTaskExitCode() are
+  // identical.
+  // v1 API: the results correspond to ITask::GetStatus().
+  virtual HRESULT GetScheduledTaskStatus(const CString& task_name) = 0;
+
+  // Returns the last task result or status code. List of codes are at
+  // http://msdn.microsoft.com/en-us/library/aa383604.
+  // v2 API: GetScheduledTaskStatus() and GetScheduledTaskExitCode() are
+  // identical.
+  // v1 API: the results correspond to ITask::GetExitCode().
+  virtual HRESULT GetScheduledTaskExitCode(const CString& task_name) = 0;
+};
+
+class V1ScheduledTasks : public ScheduledTasksInterface {
+ public:
+  V1ScheduledTasks();
+  virtual ~V1ScheduledTasks();
+
+  virtual HRESULT InstallScheduledTask(const CString& task_name,
+                                       const CString& task_path,
+                                       const CString& task_parameters,
+                                       const CString& task_comment,
+                                       bool is_machine,
+                                       bool create_logon_trigger,
+                                       bool create_hourly_trigger);
+  virtual HRESULT UninstallScheduledTask(const CString& task_name);
+  virtual HRESULT UninstallScheduledTasks(const CString& task_prefix);
+  virtual HRESULT StartScheduledTask(const CString& task_name);
+  virtual HRESULT StopScheduledTask(const CString& task_name);
+  virtual bool IsInstalledScheduledTask(const CString& task_name);
+  virtual bool IsDisabledScheduledTask(const CString& task_name);
+  virtual bool HasScheduledTaskEverRun(const CString& task_name);
+  virtual HRESULT GetScheduledTaskStatus(const CString& task_name);
+  virtual HRESULT GetScheduledTaskExitCode(const CString& task_name);
+
+ private:
+  static HRESULT CreateLogonTrigger(ITask* task);
+  static HRESULT CreatePeriodicTrigger(ITask* task, bool create_hourly_trigger);
+  static HRESULT CreateScheduledTask(ITask* task,
+                                     const CString& task_path,
+                                     const CString& task_parameters,
+                                     const CString& task_comment,
+                                     bool is_machine,
+                                     bool create_logon_trigger,
+                                     bool create_hourly_trigger);
+
+  DISALLOW_COPY_AND_ASSIGN(V1ScheduledTasks);
+};
+
+class V2ScheduledTasks : public ScheduledTasksInterface {
+ public:
+  V2ScheduledTasks();
+  virtual ~V2ScheduledTasks();
+
+  virtual HRESULT InstallScheduledTask(const CString& task_name,
+                                       const CString& task_path,
+                                       const CString& task_parameters,
+                                       const CString& task_comment,
+                                       bool is_machine,
+                                       bool create_logon_trigger,
+                                       bool create_hourly_trigger);
+  virtual HRESULT UninstallScheduledTask(const CString& task_name);
+  virtual HRESULT UninstallScheduledTasks(const CString& task_prefix);
+  virtual HRESULT StartScheduledTask(const CString& task_name);
+  virtual HRESULT StopScheduledTask(const CString& task_name);
+  virtual bool IsInstalledScheduledTask(const CString& task_name);
+  virtual bool IsDisabledScheduledTask(const CString& task_name);
+  virtual bool HasScheduledTaskEverRun(const CString& task_name);
+  virtual HRESULT GetScheduledTaskStatus(const CString& task_name);
+  virtual HRESULT GetScheduledTaskExitCode(const CString& task_name);
+
+ private:
+  static HRESULT GetTaskFolder(ITaskFolder** task_folder);
+  static HRESULT GetRegisteredTask(const CString& task_name,
+                                   IRegisteredTask** task);
+  static bool IsScheduledTaskRunning(const CString&  task_name);
+  static HRESULT CreateScheduledTaskXml(const CString& task_path,
+                                        const CString& task_parameters,
+                                        const CString& task_description,
+                                        const CString& start_time,
+                                        bool is_machine,
+                                        bool create_logon_trigger,
+                                        bool create_hourly_trigger,
+                                        CString* scheduled_task_xml);
+
+  friend class ScheduledTaskUtilsV2Test;
+
+  DISALLOW_COPY_AND_ASSIGN(V2ScheduledTasks);
+};
+
+// Returns the single instance of V2ScheduledTasks if the 2.0 API is available,
+// otherwise returns the single instance of V1ScheduledTasks.
+ScheduledTasksInterface& Instance();
 
 // Gets the current name, say "GoogleUpdateTaskMachineCore", of the
 // GoogleUpdateCore scheduled task, either from the registry, or a default
@@ -47,81 +179,15 @@ CString GetCurrentTaskNameUA(bool is_machine);
 // value.
 HRESULT CreateAndSetVersionedTaskNameUAInRegistry(bool machine);
 
-// Installs a scheduled task. The task will run as either as SYSTEM or the
-// current user. The task will be triggered at each user logon, and/or
-// fixed intervals.
-HRESULT InstallScheduledTask(const TCHAR* task_name,
-                             const TCHAR* task_path,
-                             const TCHAR* task_parameters,
-                             const TCHAR* task_comment,
-                             bool is_machine,
-                             bool create_logon_trigger,
-                             bool create_daily_trigger,
-                             bool create_hourly_trigger);
-
-// Deletes a scheduled task.
-HRESULT UninstallScheduledTask(const TCHAR* task_name);
-
-// Deletes all scheduled tasks with the given prefix.
-HRESULT UninstallScheduledTasks(const TCHAR* task_prefix);
-
-// Runs a scheduled task immediately.
-HRESULT StartScheduledTask(const TCHAR* task_name);
-
-// Returns true if the scheduled task exists.
-bool IsInstalledScheduledTask(const TCHAR* task_name);
-
-// Returns true if the scheduled task exists and is disabled, false otherwise.
-bool IsDisabledScheduledTask(const TCHAR* task_name);
-
-// Returns true if the scheduled task ever ran.
-bool HasScheduledTaskEverRun(const TCHAR* task_name);
-
-// Returns a status code on success. List of status codes at
-// http://msdn2.microsoft.com/en-us/library/aa381263.aspx
-HRESULT GetScheduledTaskStatus(const TCHAR* task_name);
-
-// Stops the task if it is already running.
-HRESULT StopScheduledTask(const TCHAR* task_name);
-
 // Waits for the task to change its status to the specified status value and
 // returns the status of the task. If the status did not change within the
 // time, it returns the status of the task at the end of the wait.
-HRESULT WaitForTaskStatus(const TCHAR* task_name, HRESULT status, int time_ms);
+HRESULT WaitForTaskStatus(const CString& task_name,
+                                  HRESULT status,
+                                  int time_ms);
 
-namespace v2 {
-
-// Task Scheduler 2.0 API helpers.
+// Returns true if the 2.0 API is available.
 bool IsTaskScheduler2APIAvailable();
-HRESULT GetTaskFolder(ITaskFolder** task_folder);
-HRESULT GetRegisteredTask(const CString& task_name, IRegisteredTask** task);
-bool IsScheduledTaskRunning(const CString&  task_name);
-HRESULT StartScheduledTask(const CString&  task_name);
-HRESULT StopScheduledTask(const CString&  task_name);
-HRESULT CreateScheduledTaskXml(const CString& task_path,
-                               const CString& task_parameters,
-                               const CString& task_description,
-                               const CString& start_time,
-                               bool is_machine,
-                               bool create_logon_trigger,
-                               bool create_hourly_trigger,
-                               CString* scheduled_task_xml);
-HRESULT InstallScheduledTask(const CString& task_name,
-                             const CString& task_path,
-                             const CString& task_parameters,
-                             const CString& task_description,
-                             bool is_machine,
-                             bool create_logon_trigger,
-                             bool create_hourly_trigger);
-HRESULT UninstallScheduledTask(const CString& task_name);
-HRESULT UninstallScheduledTasks(const CString& task_prefix);
-bool IsInstalledScheduledTask(const CString& task_name);
-bool IsDisabledScheduledTask(const CString& task_name);
-bool HasScheduledTaskEverRun(const CString& task_name);
-HRESULT GetScheduledTaskStatus(const CString& task_name);
-HRESULT GetScheduledTaskLastResult(const CString& task_name);
-
-}  // namespace v2
 
 }  // namespace internal
 

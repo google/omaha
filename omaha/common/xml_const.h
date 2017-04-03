@@ -130,6 +130,7 @@ extern const TCHAR* const kStateCancelled;
 extern const TCHAR* const kStatus;
 extern const TCHAR* const kSuccessAction;
 extern const TCHAR* const kSuccessUrl;
+extern const TCHAR* const kTargetVersionPrefix;
 extern const TCHAR* const kTestSource;
 extern const TCHAR* const kTerminateAllBrowsers;
 extern const TCHAR* const kTimeSinceDownloadStart;

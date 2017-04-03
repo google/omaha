@@ -22,6 +22,7 @@
 #include <wininet.h>
 #include <atlstr.h>
 #include <atlsecurity.h>
+#include <atltime.h>
 #include <math.h>
 #include "base/rand_util.h"
 #include "omaha/base/app_util.h"
@@ -182,6 +183,41 @@ bool GetLastCheckPeriodSecFromRegistry(DWORD* period_sec) {
   }
 
   return false;
+}
+
+bool GetUpdatesSuppressedTimes(DWORD* start_hour,
+                               DWORD* start_min,
+                               DWORD* duration_min) {
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Ignoring group policy]")
+                 _T("[machine is not part of a domain]")));
+    return false;
+  }
+
+  if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                              kRegValueUpdatesSuppressedStartHour,
+                              start_hour)) ||
+      FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                              kRegValueUpdatesSuppressedStartMin,
+                              start_min)) ||
+      FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                              kRegValueUpdatesSuppressedDurationMin,
+                              duration_min))) {
+    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing time][%x][%x][%x]"),
+                *start_hour, *start_min, *duration_min));
+    return false;
+  }
+
+  // UpdatesSuppressedDurationMin is limited to 12 hours.
+  if (*start_hour > 23 || *start_min > 59 || *duration_min > 12 * kMinPerHour) {
+    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Out of bounds][%x][%x][%x]"),
+                *start_hour, *start_min, *duration_min));
+    return false;
+  }
+
+  CORE_LOG(L5, (_T("[GetUpdatesSuppressedTimes][%x][%x][%x]"),
+                *start_hour, *start_min, *duration_min));
+  return true;
 }
 
 }  // namespace
@@ -961,6 +997,50 @@ DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid) {
   }
 
   return effective_policy;
+}
+
+CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) {
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[GetTargetVersionPrefix][Ignoring group policy for %s]")
+                 _T("[machine is not part of a domain]"),
+                 GuidToString(app_guid)));
+    return CString();
+  }
+
+  CString app_value_name(kRegValueTargetVersionPrefix);
+  app_value_name.Append(GuidToString(app_guid));
+
+  CString target_version_prefix;
+  RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                   app_value_name,
+                   &target_version_prefix);
+  return target_version_prefix;
+}
+
+bool ConfigManager::AreUpdatesSuppressedNow() {
+  DWORD start_hour = 0;
+  DWORD start_min = 0;
+  DWORD duration_min = 0;
+  if (!GetUpdatesSuppressedTimes(&start_hour, &start_min, &duration_min)) {
+    return false;
+  }
+
+  CTime now(CTime::GetCurrentTime());
+  tm local = {};
+  now.GetLocalTm(&local);
+
+  // tm_year is relative to 1900. tm_mon is 0-based.
+  CTime start_updates_suppressed(local.tm_year + 1900,
+                                 local.tm_mon + 1,
+                                 local.tm_mday,
+                                 start_hour,
+                                 start_min,
+                                 local.tm_sec,
+                                 local.tm_isdst);
+  CTimeSpan duration_updates_suppressed(0, 0, duration_min, 0);
+  CTime end_updates_suppressed =
+      start_updates_suppressed + duration_updates_suppressed;
+  return now >= start_updates_suppressed && now <= end_updates_suppressed;
 }
 
 bool ConfigManager::CanInstallApp(const GUID& app_guid) const {

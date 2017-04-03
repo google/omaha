@@ -276,6 +276,24 @@ class ConfigManager {
   // kPolicyAutomaticUpdatesOnly.
   static DWORD GetEffectivePolicyForAppUpdates(const GUID& app_guid);
 
+  // Returns the target version prefix for the app, if the machine is joined to
+  // a domain and has the corresponding group policy set.
+  // Examples:
+  // * "" (or not configured): update to latest version available.
+  // * "55.": update to any minor version of 55 (e.g. 55.24.34 or 55.60.2).
+  // * "55.2.": update to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).
+  // * "55.24.34": update to this specific version only.
+  static CString GetTargetVersionPrefix(const GUID& app_guid);
+
+  // For domain-joined machines, checks the current time against the times that
+  // updates are suppressed. Returns true if the current time falls between the
+  // start time and the duration.
+  // The duration does not account for daylight savings time. For instance, if
+  // the start time is 22:00 hours, and with a duration of 8 hours, the updates
+  // will be suppressed for 8 hours regardless of whether daylight savings time
+  // changes happen in between.
+  static bool AreUpdatesSuppressedNow();
+
   static ConfigManager* Instance();
   static void DeleteInstance();
 

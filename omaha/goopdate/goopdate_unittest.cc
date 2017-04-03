@@ -41,7 +41,7 @@ const TCHAR* const kAppMachineClientStateMediumPath =
     _T("\\ClientStateMedium\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 
 // Update this when new modes are added.
-const int kLastMode = COMMANDLINE_MODE_HEALTH_CHECK;
+const int kLastMode = COMMANDLINE_MODE_REGISTER_MSI_HELPER;
 
 }  // namespace
 
@@ -742,6 +742,7 @@ static void EnsureUnitTestUpdatedWithNewModes() {
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
+    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
     //
     // When adding a new mode, be sure to update kLastMode too.
     //
@@ -798,6 +799,7 @@ TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_MachineDirOnly) {
   EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_UNINSTALL));
   EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_PING));
   EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_HEALTH_CHECK));
+  EXPECT_TRUE(FromMachineDirHelper(COMMANDLINE_MODE_REGISTER_MSI_HELPER));
   EXPECT_TRUE(FromMachineDirHelper(
       static_cast<CommandLineMode>(kLastMode + 1)));
 }
@@ -843,6 +845,7 @@ TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_IsLocalSystemOnly) {
   EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_UNINSTALL));
   EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_PING));
   EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_HEALTH_CHECK));
+  EXPECT_FALSE(IsLocalSystemHelper(COMMANDLINE_MODE_REGISTER_MSI_HELPER));
   EXPECT_FALSE(IsLocalSystemHelper(
       static_cast<CommandLineMode>(kLastMode + 1)));
 }
@@ -894,6 +897,7 @@ TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_MachineOverrideOnly) {
   EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_UNINSTALL));
   EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_PING));
   EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_HEALTH_CHECK));
+  EXPECT_FALSE(MachineOverrideHelper(COMMANDLINE_MODE_REGISTER_MSI_HELPER));
   EXPECT_FALSE(MachineOverrideHelper(
       static_cast<CommandLineMode>(kLastMode + 1)));
 }
@@ -933,6 +937,7 @@ TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_NeedsAdminFalseOnly) {
   EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_UNINSTALL));
   EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_PING));
   EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_HEALTH_CHECK));
+  EXPECT_FALSE(NeedsAdminFalseHelper(COMMANDLINE_MODE_REGISTER_MSI_HELPER));
   EXPECT_FALSE(NeedsAdminFalseHelper(
       static_cast<CommandLineMode>(kLastMode + 1)));
 }
@@ -972,6 +977,7 @@ TEST_F(GoopdateIsMachineProcessTest, IsMachineProcess_NeedsAdminTrueOnly) {
   EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_UNINSTALL));
   EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_PING));
   EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_HEALTH_CHECK));
+  EXPECT_FALSE(NeedsAdminTrueHelper(COMMANDLINE_MODE_REGISTER_MSI_HELPER));
   EXPECT_FALSE(NeedsAdminTrueHelper(
       static_cast<CommandLineMode>(kLastMode + 1)));
 }

@@ -1446,6 +1446,16 @@ HRESULT XmlParser::BuildUpdateCheckElement(const request::App& app,
     }
   }
 
+  if (!app.update_check.target_version_prefix.IsEmpty()) {
+    hr = AddXMLAttributeNode(element,
+                             kXmlNamespace,
+                             xml::attribute::kTargetVersionPrefix,
+                             app.update_check.target_version_prefix);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
   hr = parent_node->appendChild(element, NULL);
   if (FAILED(hr)) {
     return hr;

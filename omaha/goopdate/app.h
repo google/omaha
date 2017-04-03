@@ -40,10 +40,6 @@
 
 namespace omaha {
 
-// Number of stages in the Chrome Installer. Keep this value in sync with the
-// InstallerStage enum in chromium/src/chrome/installer/util/util_constants.h.
-const DWORD kChromeInstallerNumStages = 21;
-
 // Stores the error codes associated with a particular error.
 struct ErrorContext {
   ErrorContext() : error_code(S_OK), extra_code1(0) {}
@@ -336,6 +332,10 @@ class App : public ModelObject {
   // disabled by Group Policy.
   HRESULT CheckGroupPolicy() const;
 
+  // Returns the target version prefix for the app, if the machine is joined to
+  // a domain and has the corresponding group policy set.
+  CString App::GetTargetVersionPrefix() const;
+
   // Updates num bytes downloaded by adding newly downloaded bytes.
   void UpdateNumBytesDownloaded(uint64 num_bytes);
 
@@ -398,8 +398,6 @@ class App : public ModelObject {
                               uint64* next_retry_time);
   HRESULT GetInstallProgress(LONG* install_progress_percentage,
                              LONG* install_time_remaining_ms);
-  HRESULT GetInstallProgressChrome(LONG* install_progress_percentage,
-                                   LONG* install_time_remaining_ms);
 
   void ChangeState(fsm::AppState* app_state);
 

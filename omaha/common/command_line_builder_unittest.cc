@@ -513,5 +513,11 @@ TEST(CommandLineBuilder, BuildHealthCheck) {
   EXPECT_STREQ(_T("/healthcheck"), cmd_line);
 }
 
+TEST(CommandLineBuilder, BuildRegisterMsiHelper) {
+  CommandLineBuilder builder(COMMANDLINE_MODE_REGISTER_MSI_HELPER);
+  CString cmd_line = builder.GetCommandLineArgs();
+  EXPECT_STREQ(_T("/registermsihelper"), cmd_line);
+}
+
 }  // namespace omaha
 

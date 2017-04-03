@@ -70,9 +70,16 @@ extern "C" UINT __stdcall ExtractTagInfoFromInstaller(MSIHANDLE msi_handle) {
     const wchar_t* property_name;
     size_t property_size_limit;
   } kSupportedTags[] = {
-    { "brand", L"BRAND", 4 },
-    { "usagestats", L"USAGESTATS", 1 },
+    { "ap", L"AP", 32 },
+    { "appguid", L"APPGUID", 38 },  // 128/4 nybbles + four dashes + two braces.
+    { "appname", L"APPNAME", 512 },
+    { "brand", L"BRAND", 4 },  // A four-character brand code.
+    { "browser", L"BROWSER", 1 },  // A single integer digit BrowserType.
+    { "iid", L"IID", 38 },  // 128/4 nybbles + four dashes + two braces.
     { "installdataindex", L"INSTALLDATAINDEX", 50 },
+    { "lang", L"LANG", 10 },
+    { "needsadmin", L"NEEDSADMIN", 7 },  // false/true/prefers.
+    { "usagestats", L"USAGESTATS", 1 },  // A single integer digit tristate.
   };
 
   for (size_t i = 0; i < arraysize(kSupportedTags); ++i) {

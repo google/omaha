@@ -26,9 +26,15 @@ namespace omaha {
 const TCHAR* const kRegKeyGoopdateGroupPolicy =
     MACHINE_KEY GOOPDATE_POLICIES_RELATIVE;
 
-// Preferences Categroy.
+// Preferences Category.
 const TCHAR* const kRegValueAutoUpdateCheckPeriodOverrideMinutes =
     _T("AutoUpdateCheckPeriodMinutes");
+const TCHAR* const kRegValueUpdatesSuppressedStartHour   =
+    _T("UpdatesSuppressedStartHour");
+const TCHAR* const kRegValueUpdatesSuppressedStartMin    =
+    _T("UpdatesSuppressedStartMin");
+const TCHAR* const kRegValueUpdatesSuppressedDurationMin =
+    _T("UpdatesSuppressedDurationMin");
 
 // This policy specifies what kind of download URLs could be returned to the
 // client in the update response and in which order of priority. The client
@@ -60,6 +66,7 @@ const TCHAR* const kRegValueInstallAppsDefault  = _T("InstallDefault");
 const TCHAR* const kRegValueInstallAppPrefix    = _T("Install");
 const TCHAR* const kRegValueUpdateAppsDefault   = _T("UpdateDefault");
 const TCHAR* const kRegValueUpdateAppPrefix     = _T("Update");
+const TCHAR* const kRegValueTargetVersionPrefix = _T("TargetVersionPrefix");
 
 const int kPolicyDisabled              = 0;
 const int kPolicyEnabled               = 1;

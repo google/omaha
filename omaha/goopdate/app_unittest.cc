@@ -809,7 +809,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
   EXPECT_FALSE(update_request->IsEmpty());
 }
 
-TEST_F(AppInstallTest, InstallProgress_NonChrome_MissingInstallerProgress) {
+TEST_F(AppInstallTest, InstallProgress_MissingInstallerProgress) {
   SetAppStateForUnitTest(app_, new fsm::AppStateInstalling);
   EXPECT_EQ(STATE_INSTALLING, app_->state());
 
@@ -828,7 +828,7 @@ TEST_F(AppInstallTest, InstallProgress_NonChrome_MissingInstallerProgress) {
   EXPECT_EQ(kCurrentStateProgressUnknown, local_percentage);
 }
 
-TEST_F(AppInstallTest, InstallProgress_NonChrome_ValidInstallerProgress) {
+TEST_F(AppInstallTest, InstallProgress_ValidInstallerProgress) {
   SetAppStateForUnitTest(app_, new fsm::AppStateInstalling);
   EXPECT_EQ(STATE_INSTALLING, app_->state());
 
@@ -852,7 +852,7 @@ TEST_F(AppInstallTest, InstallProgress_NonChrome_ValidInstallerProgress) {
   EXPECT_EQ(progress_percent, local_percentage);
 }
 
-TEST_F(AppInstallTest, InstallProgress_NonChrome_InvalidInstallerProgress) {
+TEST_F(AppInstallTest, InstallProgress_InvalidInstallerProgress) {
   SetAppStateForUnitTest(app_, new fsm::AppStateInstalling);
   EXPECT_EQ(STATE_INSTALLING, app_->state());
 
@@ -874,120 +874,6 @@ TEST_F(AppInstallTest, InstallProgress_NonChrome_InvalidInstallerProgress) {
   LONG local_percentage = kCurrentStateProgressUnknown;
   EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
   EXPECT_EQ(100, local_percentage);
-}
-
-TEST_F(AppInstallTest, InstallProgress_Chrome_ValidExtraCode1) {
-  App* chrome_app = NULL;
-  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
-  ASSERT_TRUE(chrome_app);
-
-  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
-  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
-
-  const DWORD expected_extra_code1 = 11;
-  const DWORD expected_installer_progress =
-      expected_extra_code1 * 100 / kChromeInstallerNumStages;
-  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
-                                    kRegValueInstallerExtraCode1,
-                                    expected_extra_code1));
-
-  CComPtr<ICurrentState> icurrent_state;
-  CComPtr<IDispatch> idispatch;
-  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
-  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
-
-  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(
-      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
-  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
-
-  LONG local_percentage = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
-  EXPECT_EQ(expected_installer_progress, local_percentage);
-}
-
-TEST_F(AppInstallTest, InstallProgress_Chrome_InvalidExtraCode1) {
-  App* chrome_app = NULL;
-  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
-  ASSERT_TRUE(chrome_app);
-
-  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
-  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
-
-  const DWORD unexpected_extra_code1 = 11 + kChromeInstallerNumStages + 1;
-  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
-                                    kRegValueInstallerExtraCode1,
-                                    unexpected_extra_code1));
-
-  CComPtr<ICurrentState> icurrent_state;
-  CComPtr<IDispatch> idispatch;
-  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
-  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
-
-  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(
-      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
-  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
-
-  LONG local_percentage = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
-  EXPECT_EQ(100, local_percentage);
-}
-
-TEST_F(AppInstallTest, InstallProgress_Chrome_MissingProgress) {
-  App* chrome_app = NULL;
-  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
-  ASSERT_TRUE(chrome_app);
-
-  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
-  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
-
-  CComPtr<ICurrentState> icurrent_state;
-  CComPtr<IDispatch> idispatch;
-  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
-  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
-
-  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(
-      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
-  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
-
-  LONG local_percentage = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
-  EXPECT_EQ(kCurrentStateProgressUnknown, local_percentage);
-}
-
-TEST_F(AppInstallTest, InstallProgress_Chrome_ValidInstallerProgress) {
-  App* chrome_app = NULL;
-  EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kChromeAppId), &chrome_app));
-  ASSERT_TRUE(chrome_app);
-
-  SetAppStateForUnitTest(chrome_app, new fsm::AppStateInstalling);
-  EXPECT_EQ(STATE_INSTALLING, chrome_app->state());
-
-  const DWORD progress_percent = 11;
-  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
-                                    kRegValueInstallerProgress,
-                                    progress_percent));
-
-  const DWORD unexpected_extra_code1 = 9;
-  EXPECT_SUCCEEDED(RegKey::SetValue(kChromeClientStateKeyPathUser,
-                                    kRegValueInstallerExtraCode1,
-                                    unexpected_extra_code1));
-
-  CComPtr<ICurrentState> icurrent_state;
-  CComPtr<IDispatch> idispatch;
-  EXPECT_SUCCEEDED(chrome_app->get_currentState(&idispatch));
-  EXPECT_SUCCEEDED(idispatch.QueryInterface(&icurrent_state));
-
-  LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(
-      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
-  EXPECT_EQ(kCurrentStateProgressUnknown, local_time_remaining_ms);
-
-  LONG local_percentage = kCurrentStateProgressUnknown;
-  EXPECT_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
-  EXPECT_EQ(progress_percent, local_percentage);
 }
 
 // Tests the interface for accessing experiments labels.

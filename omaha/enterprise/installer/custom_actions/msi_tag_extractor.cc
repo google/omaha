@@ -16,6 +16,8 @@
 #include "omaha/enterprise/installer/custom_actions/msi_tag_extractor.h"
 
 #include <windows.h>
+#include <string.h>
+
 #include <algorithm>
 
 namespace {
@@ -30,10 +32,9 @@ const char kKeyValueDelimeter = '=';
 
 const DWORD kMaxTagStringLengthAllowed = 4096;
 
-// Tag should at least have magic number "Gact" plus tag string length (uint16)
-// and the length of the last integer(uint32).
+// The smallest meaningful tag is 'Gact00', indicating a zero-length payload.
 const DWORD kMinTagLengthAllowed = static_cast<DWORD>(
-    kMagicNumberLength + sizeof(uint16) + sizeof(uint32));  // NOLINT
+    kMagicNumberLength + sizeof(uint16));  // NOLINT
 
 const DWORD kMaxTagLength = kMaxTagStringLengthAllowed + kMinTagLengthAllowed;
 
@@ -63,7 +64,7 @@ bool is_not_valid_value_char(char c) {
   if (isalnum(c)) {
     return false;
   }
-  const char kValidChars[] = "{}[]-% ";
+  const char kValidChars[] = "{}[]-% _";
   return strchr(kValidChars, c) == NULL;
 }
 
@@ -100,43 +101,50 @@ bool MsiTagExtractor::ReadTagFromFile(const wchar_t* filename) {
 bool MsiTagExtractor::ReadTagToBuffer(HANDLE file_handle,
                                       std::vector<char>* tag) const {
   // Assume file doesn't have tag if it is too small.
-  LARGE_INTEGER file_size = {0};
+  LARGE_INTEGER file_size = {};
   if (!::GetFileSizeEx(file_handle, &file_size) ||
-      file_size.LowPart < kMaxTagLength) {
+      file_size.QuadPart < kMinTagLengthAllowed) {
     return false;
   }
 
-  const LONG kSeekOffset = -static_cast<LONG>(kMaxTagLength);
-  DWORD low_ptr = ::SetFilePointer(file_handle, kSeekOffset, NULL, FILE_END);
-  if (low_ptr == INVALID_SET_FILE_POINTER || ::GetLastError() != NO_ERROR) {
-    return false;
+  // Read at most the last 4102 bytes from file.
+  DWORD bytes_to_read = kMaxTagLength;
+  if (file_size.QuadPart > kMaxTagLength) {
+    // The file is big -- seek to the last kMaxTagLength bytes.
+    LARGE_INTEGER seek_offset = {};
+    seek_offset.QuadPart = -static_cast<LONGLONG>(kMaxTagLength);
+    if (!::SetFilePointerEx(file_handle, seek_offset, NULL, FILE_END)) {
+      return false;
+    }
+  } else {
+    // The file is small -- read the whole thing.
+    bytes_to_read = file_size.LowPart;
   }
 
-  // Read the last 4K bytes from file.
-  std::vector<char> buffer;
-  buffer.resize(kMaxTagLength + 1);
+  // Add one extra zero at the end to prevent out-of-bounds reads.
+  std::vector<char> buffer(bytes_to_read + 1);
   DWORD num_bytes_read = 0;
   if (!::ReadFile(file_handle,
                   &buffer[0],
-                  kMaxTagLength,
+                  bytes_to_read,
                   &num_bytes_read,
                   NULL) ||
-      num_bytes_read != kMaxTagLength) {
+      num_bytes_read != bytes_to_read) {
     return false;
   }
 
-  // Search magic number in the loaded buffer.
+  // Search for the magic number in the loaded buffer.
   char* magic_number_pos = std::search(&buffer[0],
-                                       &buffer[kMaxTagLength],
+                                       &buffer[bytes_to_read],
                                        kTagMagicNumber,
                                        kTagMagicNumber + kMagicNumberLength);
   // Make sure we found the magic number, and the buffer after it is no less
   // than the required minimum tag size (kMinTagLengthAllowed).
-  if (magic_number_pos > &buffer[0] + kMaxTagLength - kMinTagLengthAllowed) {
+  if (&buffer[bytes_to_read] - magic_number_pos < kMinTagLengthAllowed) {
     return false;
   }
 
-  tag->assign(magic_number_pos, &buffer[kMaxTagLength]);
+  tag->assign(magic_number_pos, &buffer[bytes_to_read]);
   return true;
 }
 
@@ -156,7 +164,7 @@ bool MsiTagExtractor::ParseTagBuffer(const std::vector<char>& tag_buffer) {
   }
 
   ParseSimpleAsciiStringMap(tag_buffer, &parse_position, tag_length);
-  return ParseTagEndInt(tag_buffer, &parse_position);
+  return true;
 }
 
 bool MsiTagExtractor::ParseMagicNumber(
@@ -189,8 +197,8 @@ void MsiTagExtractor::ParseSimpleAsciiStringMap(
     size_t tag_length) {
   // Construct a string with at most |tag_length| characters, but stop at the
   // first '\0' if it comes before that.
-  std::string tag_string(std::string(&tag_buffer[*parse_position],
-                                     tag_length).c_str());
+  std::string tag_string(&tag_buffer[*parse_position],
+                         strnlen(&tag_buffer[*parse_position], tag_length));
 
   size_t start_pos = 0;
   size_t found = tag_string.find_first_of(kStringMapDelimeter, start_pos);
@@ -224,14 +232,6 @@ bool MsiTagExtractor::GetValue(const char* key, std::string* value) const {
 
   *value = it->second;
   return true;
-}
-
-bool MsiTagExtractor::ParseTagEndInt(
-    const std::vector<char>& tag_buffer, size_t* parse_position) const {
-  uint32 end_int = GetValueFromBuffer<uint32>(&tag_buffer[*parse_position]);
-  *parse_position += sizeof(end_int);
-  // The integer must be 0.
-  return end_int == 0;
 }
 
 }  // namespace custom_action

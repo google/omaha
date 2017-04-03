@@ -28,10 +28,10 @@
 // | Magic number 'Gact'                 | Tag starts
 // | Tag string length                   |
 // | tag string                          |
-// | 4 bytes of 0s.                      |
 // +-------------------------------------+
 
 #include <fstream>  // NOLINT(readability/streams)
+#include <limits>
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/utils.h"
@@ -56,6 +56,11 @@ int WriteMsiTag(
     const TCHAR* in_file,
     const TCHAR* out_file,
     const TCHAR* tag) {
+  int tag_length = lstrlen(tag);
+  if (tag_length > std::numeric_limits<uint16>::max()) {
+    return -1;
+  }
+
   std::ifstream in;
   std::ofstream out;
 
@@ -73,17 +78,11 @@ int WriteMsiTag(
   out.write(kMagicNumber, arraysize(kMagicNumber) - 1);
 
   // Write tag length.
-  int tag_length = lstrlen(tag) + 1;
   write_uint16(&out, static_cast<uint16>(tag_length));
 
   // Actual tag.
-  std::wstring tag_w(tag);
-  std::string tag_ansi(tag_w.begin(), tag_w.end());
+  std::string tag_ansi(tag, tag + tag_length);
   out.write(tag_ansi.data(), tag_length);
-
-  // Fill 4 bytes of 0s at the end.
-  const char kFillBytes[4] = {0};
-  out.write(kFillBytes, arraysize(kFillBytes));
 
   in.close();
   out.close();
