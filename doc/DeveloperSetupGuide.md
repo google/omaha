@@ -12,8 +12,9 @@ The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
   * Microsoft Visual Studio 2015 Update 3. The free Visual Studio Community edition is sufficient to build.
     * The Express Editions are not sufficient - they do not include ATL/MFC headers or libraries, which Omaha requires.
+    * Visual Studio 2015 [requirements](https://www.visualstudio.com/en-us/productinfo/vs2015-sysrequirements-vs).
   * ATL Server headers 
-    * Download from [CodePlex](http://atlserver.codeplex.com) or [GitHub] (if they can't be found at CodePlex). Omaha needs this library for regular expression support.
+    * Download from [CodePlex](http://atlserver.codeplex.com) or [GitHub](https://github.com/gabegundy/atlserver) (if they can't be found at CodePlex). Omaha needs this library for regular expression support.
   * Windows 10 SDK.
     * Download Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
   * Microsoft .NET Framework 2.0
@@ -22,15 +23,15 @@ The following packages are required to build Omaha:
     * Download [here](https://www.microsoft.com/en-us/download/details.aspx?id=19988).
   * The Windows Template Library (WTL)
     * Download WTL [here](http://sourceforge.net/projects/wtl/).
-  * The Windows Install XML (WiX) Toolkit, version 3.0 or later.
+  * The Windows Installer XML (WiX) Toolkit, version 3.0 or later.
     * Download any of the v3 binaries packages [here](http://wix.sourceforge.net/).
   * Python 2.4.x (Be sure to use **2.4**, newer versions currently break the build!)
-    * Download Python [here](http://www.python.org/download/releases/2.4.4/).  It can coexist with newer Python installs on a system.
-    * You'll also need the pywin32 (Python for Windows) extensions for Python 2.4.  It can be downloaded [here](http://sourceforge.net/projects/pywin32/files/pywin32/Build216/pywin32-216.win32-py2.4.exe/download).
+    * Download Python [here](https://www.python.org/download/releases/2.4.6/).  It can coexist with newer Python installs on a system.
+    * You'll also need the pywin32 (Python for Windows) extensions for Python 2.4.  The last version to support Python 2.4.x can be downloaded [here](https://sourceforge.net/projects/pywin32/files/pywin32/Build%20218/pywin32-218.win32-py2.4.exe/download).
   * SCons 1.3.x (Be sure to use **1.3**, the 2.0 series is not backwards-compatible!)
     * Download SCons [here](http://sourceforge.net/projects/scons/files/scons/1.3.1/).
   * Google Software Construction Toolkit
-    * Get the SCT source [here](http://code.google.com/p/swtoolkit/), either via direct download or via SVN checkout.
+    * Get the SCT source from [Google Code](http://code.google.com/p/swtoolkit/), either via direct download or via SVN checkout. Alternitivly, a copy can be found on [GitHub](https://github.com/gabegundy/swtoolkit).
   * The GO programming language
     * Download [here](https://golang.org/dl/) 
   * Third-party dependecies:
