@@ -31,7 +31,7 @@ The following packages are required to build Omaha:
   * SCons 1.3.x (Be sure to use **1.3**, the 2.0 series is not backwards-compatible!)
     * Download SCons [here](http://sourceforge.net/projects/scons/files/scons/1.3.1/).
   * Google Software Construction Toolkit
-    * Get the SCT source from [Google Code](http://code.google.com/p/swtoolkit/), either via direct download or via SVN checkout. Alternitivly, a copy can be found on [GitHub](https://github.com/gabegundy/swtoolkit).
+    * Get the SCT source from [Google Code](http://code.google.com/p/swtoolkit/), either via direct download or via SVN checkout. Alternativly, a copy can be found on [GitHub](https://github.com/gabegundy/swtoolkit).
   * The GO programming language
     * Download [here](https://golang.org/dl/) 
   * Third-party dependecies:
