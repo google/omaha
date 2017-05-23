@@ -6,8 +6,14 @@ allowing it to be used in both scons-based and "standard" python code.
 
 import array
 import base64
+try:
+  # Import _hashlib instead of hashlib, otherwise, when used in an Omaha build,
+  # it collides with the incompatible Scons hashlib hack in:
+  # googleclient/third_party/scons/hammer_version/scons-local/SCons/compat/_scons_hashlib.py
+  import _hashlib
+except ImportError:
+  from third_party.hashlib import _hashlib
 import os
-import sha
 
 
 def GenerateUpdateResponseFile(target, sources, version_list):
@@ -38,8 +44,9 @@ def GenerateUpdateResponseFile(target, sources, version_list):
     installer_file = open(os.path.abspath(binary_path), mode='rb')
     data.fromfile(installer_file, size)
     installer_file.close()
-    s = sha.new(data)
-    hash_value = base64.b64encode(s.digest())
+    sha256 = _hashlib.openssl_sha256()
+    sha256.update(data)
+    hash_value = sha256.hexdigest()
 
     manifest_file = open(os.path.abspath(source_manifest_path))
     manifest_content = manifest_file.read()
@@ -59,7 +66,7 @@ def GenerateUpdateResponseFile(target, sources, version_list):
       raise Exception('GUP file is not in valid response format.')
     resp = manifest_content[response_body_start_index:response_body_end_index]
     resp = resp.replace('${INSTALLER_SIZE}', str(size))
-    resp = resp.replace('${INSTALLER_HASH}', hash_value)
+    resp = resp.replace('${INSTALLER_HASH_SHA256}', hash_value)
     resp = resp.replace('${INSTALLER_VERSION}', version_list[file_index/2])
     manifest_content_list.append(resp)
   manifest_content_list.append(response_footer)

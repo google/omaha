@@ -131,11 +131,6 @@
       Value='[ProductTag]&amp;iid=[IID]'
       Execute='immediate'
       Return='check' />
-    <CustomAction Id='AppendLangToProductTagProperty'
-      Property='ProductTag'
-      Value='[ProductTag]&amp;lang=[LANG]'
-      Execute='immediate'
-      Return='check' />
     <CustomAction Id='AppendBrandToProductTagProperty'
       Property='ProductTag'
       Value='[ProductTag]&amp;brand=[BRAND]'
@@ -264,14 +259,10 @@
         (($ProductClientState>2) OR REINSTALL)
       </Custom>
       <!-- Next add on each of the values extracted from the tag:
-           iid, lang, brand, browser, usagestats, ap, installdataindex -->
+           iid, brand, browser, usagestats, ap, installdataindex -->
       <Custom Action='AppendInstallIdToProductTagProperty'
-              Before='AppendLangToProductTagProperty'>
-        (($ProductClientState>2) OR REINSTALL) AND (IID &lt;&gt; "")
-      </Custom>
-      <Custom Action='AppendLangToProductTagProperty'
               Before='AppendBrandToProductTagProperty'>
-        (($ProductClientState>2) OR REINSTALL) AND (LANG &lt;&gt; "")
+        (($ProductClientState>2) OR REINSTALL) AND (IID &lt;&gt; "")
       </Custom>
       <Custom Action='AppendBrandToProductTagProperty'
               Before='AppendBrowserToProductTagProperty'>

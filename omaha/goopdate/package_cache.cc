@@ -26,6 +26,7 @@
 #include "omaha/base/signaturevalidator.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
+#include "omaha/goopdate/file_hash.h"
 #include "omaha/goopdate/package_cache_internal.h"
 #include "omaha/goopdate/worker_metrics.h"
 
@@ -138,6 +139,10 @@ void SortPackageInfoByTime(std::vector<PackageInfo>* packages_info) {
             PackageSortByTimePredicate);
 }
 
+CString GetHashString(const FileHash& hash) {
+  return hash.sha256.IsEmpty() ? hash.sha1 : hash.sha256;
+}
+
 }  // namespace internal
 
 PackageCache::PackageCache() {
@@ -171,9 +176,9 @@ HRESULT PackageCache::Initialize(const CString& cache_root) {
   return S_OK;
 }
 
-bool PackageCache::IsCached(const Key& key, const CString& hash) const {
+bool PackageCache::IsCached(const Key& key, const FileHash& hash) const {
   CORE_LOG(L3, (_T("[PackageCache::IsCached][key '%s'][hash %s]"),
-                key.ToString(), hash));
+                key.ToString(), internal::GetHashString(hash)));
 
   __mutexScope(cache_lock_);
 
@@ -188,10 +193,10 @@ bool PackageCache::IsCached(const Key& key, const CString& hash) const {
 
 HRESULT PackageCache::Put(const Key& key,
                           const CString& source_file,
-                          const CString& hash) {
+                          const FileHash& hash) {
   ++metric_worker_package_cache_put_total;
   CORE_LOG(L3, (_T("[PackageCache::Put][key '%s'][source_file '%s'][hash %s]"),
-                key.ToString(), source_file, hash));
+                key.ToString(), source_file, internal::GetHashString(hash)));
 
   __mutexScope(cache_lock_);
 
@@ -230,7 +235,7 @@ HRESULT PackageCache::Put(const Key& key,
   if (FAILED(hr)) {
     CORE_LOG(LE,
         (_T("[failed to verify hash for file '%s'][expected hash %s]"),
-        destination_file, hash));
+        destination_file, internal::GetHashString(hash)));
     VERIFY1(::DeleteFile(destination_file));
     return hr;
   }
@@ -241,9 +246,9 @@ HRESULT PackageCache::Put(const Key& key,
 
 HRESULT PackageCache::Get(const Key& key,
                           const CString& destination_file,
-                          const CString& hash) const {
+                          const FileHash& hash) const {
   CORE_LOG(L3, (_T("[PackageCache::Get][key '%s'][dest file '%s'][hash '%s']"),
-      key.ToString(), destination_file, hash));
+      key.ToString(), destination_file, internal::GetHashString(hash)));
 
   __mutexScope(cache_lock_);
 
@@ -266,7 +271,7 @@ HRESULT PackageCache::Get(const Key& key,
   hr = VerifyHash(source_file, hash);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[failed to verify hash for file '%s'][expected hash %s]"),
-        source_file, hash));
+        source_file, internal::GetHashString(hash)));
     return hr;
   }
 
@@ -477,17 +482,19 @@ HRESULT PackageCache::BuildCacheFileName(const CString& app_id,
 }
 
 HRESULT PackageCache::VerifyHash(const CString& filename,
-                                 const CString& expected_hash) {
+                                 const FileHash& expected_hash) {
   CORE_LOG(L3, (_T("[PackageCache::VerifyHash][%s][%s]"),
-           filename, expected_hash));
+           filename, internal::GetHashString(expected_hash)));
   HighresTimer verification_timer;
 
   std::vector<CString> files;
   files.push_back(filename);
-
-  HRESULT hr = VerifyFileHashSha256(files, expected_hash);
+  HRESULT hr = expected_hash.sha256.IsEmpty() ?
+      VerifyFileHash(files, expected_hash.sha1) :
+      VerifyFileHashSha256(files, expected_hash.sha256);
   CORE_LOG(L3, (_T("[PackageCache::VerifyHash completed][0x%08x][%d ms]"),
                 hr, verification_timer.GetElapsedMs()));
+
   return hr;
 }
 

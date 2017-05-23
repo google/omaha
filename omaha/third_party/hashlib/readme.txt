@@ -1,0 +1,1 @@
+Python 2.4 does not have a native hashlib implementation. This hashlib implementation is a stand alone packaging of the hashlib library included with Python 2.5 so that it can be used on Python 2.4. https://pypi.python.org/pypi/hashlib. 

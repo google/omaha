@@ -7,7 +7,7 @@
       </urls>
       <manifest version="${INSTALLER_VERSION}">
         <packages>
-          <package name="test_setup.exe" hash="${INSTALLER_HASH}" size="${INSTALLER_SIZE}" required="true"/>
+          <package name="test_setup.exe" hash_sha256="${INSTALLER_HASH_SHA256}" size="${INSTALLER_SIZE}" required="true"/>
         </packages>
         <actions>
           <action event="install" run="test_setup.exe" arguments="" needsadmin="false"/>

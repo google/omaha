@@ -20,6 +20,7 @@
 #include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
+#include "omaha/goopdate/file_hash.h"
 #include "omaha/goopdate/package_cache.h"
 #include "omaha/testing/unit_test.h"
 
@@ -27,8 +28,10 @@ namespace omaha {
 
 namespace {
 
+const TCHAR* kFile1Sha1Hash = _T("ImV9skETZqGFMjs32vbZTvzAYJU=");
 const TCHAR* kFile1Sha256Hash =
     _T("49b45f78865621b154fa65089f955182345a67f9746841e43e2d6daa288988d0");
+const TCHAR* kFile2Sha1Hash = _T("Igq6bYaeXFJCjH770knXyJ6V53s=");
 const TCHAR* kFile2Sha256Hash =
     _T("f0bbd84d7ec364f6c33161d781b49d840ed792b8b10668c4180b9e6e128d0bc9");
 
@@ -50,14 +53,20 @@ class PackageCacheTest : public testing::TestWithParam<bool> {
         executable_path,
         _T("unittest_support\\download_cache_test\\")
         _T("{89640431-FE64-4da8-9860-1A1085A60E13}\\gears-win32-opt.msi"));
-    hash_file1_ = kFile1Sha256Hash;
+    hash_file1_.sha1 = kFile1Sha1Hash;
+    if (GetParam()) {
+      hash_file1_.sha256 = kFile1Sha256Hash;
+    }
     size_file1_ = 870400;
 
     source_file2_ = ConcatenatePath(
         executable_path,
         _T("unittest_support\\download_cache_test\\")
         _T("{7101D597-3481-4971-AD23-455542964072}\\livelysetup.exe"));
-    hash_file2_ = kFile2Sha256Hash;
+    hash_file2_.sha1 = kFile2Sha1Hash;
+    if (GetParam()) {
+      hash_file2_.sha256 = kFile2Sha256Hash;
+    }
     size_file2_ = 479848;
 
     EXPECT_TRUE(File::Exists(source_file1_));
@@ -110,38 +119,38 @@ class PackageCacheTest : public testing::TestWithParam<bool> {
 
   const CString cache_root_;
   CString source_file1_;
-  CString hash_file1_;
+  FileHash hash_file1_;
   uint64  size_file1_;
 
   CString source_file2_;
-  CString hash_file2_;
+  FileHash hash_file2_;
   uint64  size_file2_;
 
   PackageCache package_cache_;
 };
 
 // Tests the members of key when the constructor arguments are empty strings.
-TEST_F(PackageCacheTest, DefaultVersion) {
+TEST_P(PackageCacheTest, DefaultVersion) {
   Key key(_T(""), _T(""), _T(""));
   EXPECT_STREQ(_T(""), key.app_id());
   EXPECT_STREQ(_T("0.0.0.0"), key.version());
   EXPECT_STREQ(_T(""), key.package_name());
 }
 
-TEST_F(PackageCacheTest, Initialize) {
+TEST_P(PackageCacheTest, Initialize) {
   EXPECT_FALSE(package_cache_.cache_root().IsEmpty());
   EXPECT_STREQ(cache_root_, package_cache_.cache_root());
   EXPECT_EQ(0, package_cache_.Size());
 }
 
-TEST_F(PackageCacheTest, InitializeErrors) {
+TEST_P(PackageCacheTest, InitializeErrors) {
   PackageCache package_cache;
   EXPECT_EQ(E_INVALIDARG, package_cache.Initialize(NULL));
   EXPECT_EQ(E_INVALIDARG, package_cache.Initialize(_T("")));
   EXPECT_EQ(E_INVALIDARG, package_cache.Initialize(_T("foo")));
 }
 
-TEST_F(PackageCacheTest, BuildCacheFileName) {
+TEST_P(PackageCacheTest, BuildCacheFileName) {
   CString actual;
   EXPECT_HRESULT_SUCCEEDED(
       BuildCacheFileNameForKey(Key(_T("1"), _T("2"), _T("3")), &actual));
@@ -159,7 +168,7 @@ TEST_F(PackageCacheTest, BuildCacheFileName) {
 }
 
 // Tests Put, Get, IsCached, and Purge calls.
-TEST_F(PackageCacheTest, BasicTest) {
+TEST_P(PackageCacheTest, BasicTest) {
   EXPECT_HRESULT_SUCCEEDED(package_cache_.PurgeAll());
 
   Key key1(_T("app1"), _T("ver1"), _T("package1"));
@@ -168,7 +177,9 @@ TEST_F(PackageCacheTest, BasicTest) {
   EXPECT_FALSE(package_cache_.IsCached(key1, hash_file1_));
 
   // Cache one file.
-  EXPECT_SUCCEEDED(package_cache_.Put(key1, source_file1_, hash_file1_));
+  EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key1,
+                                              source_file1_,
+                                              hash_file1_));
   EXPECT_EQ(size_file1_, package_cache_.Size());
 
   // Check the file is in the cache.
@@ -182,37 +193,45 @@ TEST_F(PackageCacheTest, BasicTest) {
   EXPECT_FALSE(destination_file.IsEmpty());
 
   // Get the file two times.
-  EXPECT_SUCCEEDED(package_cache_.Get(key1, destination_file, hash_file1_));
+  EXPECT_HRESULT_SUCCEEDED(package_cache_.Get(key1,
+                                              destination_file,
+                                              hash_file1_));
   EXPECT_TRUE(File::Exists(destination_file));
+  EXPECT_HRESULT_SUCCEEDED(PackageCache::VerifyHash(destination_file,
+                                                    hash_file1_));
 
-  EXPECT_SUCCEEDED(PackageCache::VerifyHash(destination_file, hash_file1_));
-
-  EXPECT_SUCCEEDED(package_cache_.Get(key1, destination_file, hash_file1_));
+  EXPECT_HRESULT_SUCCEEDED(package_cache_.Get(key1,
+                                              destination_file,
+                                              hash_file1_));
   EXPECT_TRUE(File::Exists(destination_file));
-
-  EXPECT_SUCCEEDED(PackageCache::VerifyHash(destination_file, hash_file1_));
+  EXPECT_HRESULT_SUCCEEDED(PackageCache::VerifyHash(destination_file,
+                                                    hash_file1_));
 
   EXPECT_TRUE(::DeleteFile(destination_file));
 
   // Cache another file.
   Key key2(_T("app2"), _T("ver2"), _T("package2"));
 
-  EXPECT_SUCCEEDED(package_cache_.Put(key2, source_file2_, hash_file2_));
+  EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key2,
+                                              source_file2_,
+                                              hash_file2_));
   EXPECT_EQ(size_file1_ + size_file2_, package_cache_.Size());
   EXPECT_TRUE(package_cache_.IsCached(key2, hash_file2_));
 
   // Cache the same file again. It should be idempotent.
-  EXPECT_SUCCEEDED(package_cache_.Put(key2, source_file2_, hash_file2_));
+  EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key2,
+                                              source_file2_,
+                                              hash_file2_));
   EXPECT_EQ(size_file1_ + size_file2_, package_cache_.Size());
 
   EXPECT_TRUE(package_cache_.IsCached(key2, hash_file2_));
   EXPECT_TRUE(File::Exists(source_file2_));
 
-  EXPECT_SUCCEEDED(package_cache_.Purge(key1));
+  EXPECT_HRESULT_SUCCEEDED(package_cache_.Purge(key1));
   EXPECT_FALSE(package_cache_.IsCached(key1, hash_file1_));
   EXPECT_EQ(size_file2_, package_cache_.Size());
 
-  EXPECT_SUCCEEDED(package_cache_.Purge(key2));
+  EXPECT_HRESULT_SUCCEEDED(package_cache_.Purge(key2));
   EXPECT_FALSE(package_cache_.IsCached(key2, hash_file2_));
   EXPECT_EQ(0, package_cache_.Size());
 
@@ -228,7 +247,7 @@ TEST_F(PackageCacheTest, BasicTest) {
   EXPECT_FALSE(File::Exists(destination_file));
 }
 
-TEST_F(PackageCacheTest, PutBadHashTest) {
+TEST_P(PackageCacheTest, PutBadHashTest) {
   EXPECT_HRESULT_SUCCEEDED(package_cache_.PurgeAll());
 
   Key key1(_T("app1"), _T("ver1"), _T("package1"));
@@ -236,9 +255,14 @@ TEST_F(PackageCacheTest, PutBadHashTest) {
   // Check the file is not in the cache.
   EXPECT_FALSE(package_cache_.IsCached(key1, hash_file1_));
 
-  // Try caching one file when the hash is not correct.
-  CString bad_hash =
-      _T("0000bad0000364f6c33161d781b49d840ed792b8b10668c4180b9e6e128d0bc9");
+  // Try caching one file when the SHA1 hash is not correct.
+  FileHash bad_hash;
+  if (GetParam()) {
+    bad_hash.sha256 = 
+        _T("0000bad0000364f6c33161d781b49d840ed792b8b10668c4180b9e6e128d0bc9");
+  } else {
+    bad_hash.sha1 = _T("JmV9skETZqGFMjs32vbZTvzAYJU=");
+  }
   EXPECT_EQ(SIGS_E_INVALID_SIGNATURE, package_cache_.Put(key1,
                                                          source_file1_,
                                                          bad_hash));
@@ -248,12 +272,13 @@ TEST_F(PackageCacheTest, PutBadHashTest) {
 
 // The key must include the app id, version, and package name for Put and Get
 // operations. If the version is not provided, "0.0.0.0" is used internally.
-TEST_F(PackageCacheTest, BadKeyTest) {
+TEST_P(PackageCacheTest, BadKeyTest) {
   Key key_empty_app(_T(""), _T("b"), _T("c"));
   Key key_empty_name(_T("a"), _T("b"), _T(""));
 
-  CString bad_hash;
-  bad_hash = _T("b");
+  FileHash bad_hash;
+  bad_hash.sha1 = _T("a");
+  bad_hash.sha256 = _T("b");
   EXPECT_EQ(E_INVALIDARG, package_cache_.Get(key_empty_app, _T("a"), bad_hash));
   EXPECT_EQ(E_INVALIDARG,
       package_cache_.Get(key_empty_name, _T("a"), bad_hash));
@@ -263,7 +288,7 @@ TEST_F(PackageCacheTest, BadKeyTest) {
       package_cache_.Put(key_empty_name, _T("a"), bad_hash));
 }
 
-TEST_F(PackageCacheTest, PurgeVersionTest) {
+TEST_P(PackageCacheTest, PurgeVersionTest) {
   // Cache two files for two versions of the same app.
   Key key11(_T("app1"), _T("ver1"), _T("package1"));
   Key key12(_T("app1"), _T("ver1"), _T("package2"));
@@ -309,7 +334,7 @@ TEST_F(PackageCacheTest, PurgeVersionTest) {
   EXPECT_EQ(0, package_cache_.Size());
 }
 
-TEST_F(PackageCacheTest, PurgeAppTest) {
+TEST_P(PackageCacheTest, PurgeAppTest) {
   // Cache two files for two apps.
   Key key11(_T("app1"), _T("ver1"), _T("package1"));
   Key key12(_T("app1"), _T("ver1"), _T("package2"));
@@ -355,7 +380,7 @@ TEST_F(PackageCacheTest, PurgeAppTest) {
   EXPECT_EQ(0, package_cache_.Size());
 }
 
-TEST_F(PackageCacheTest, PurgeAppLowerVersionsTest) {
+TEST_P(PackageCacheTest, PurgeAppLowerVersionsTest) {
   EXPECT_EQ(E_INVALIDARG, package_cache_.PurgeAppLowerVersions(_T("app1"),
                                                                _T("1")));
 
@@ -403,7 +428,7 @@ TEST_F(PackageCacheTest, PurgeAppLowerVersionsTest) {
   EXPECT_EQ(0, package_cache_.Size());
 }
 
-TEST_F(PackageCacheTest, PurgeAll) {
+TEST_P(PackageCacheTest, PurgeAll) {
   // Cache two files for two apps.
   Key key11(_T("app1"), _T("ver1"), _T("package1"));
   Key key12(_T("app1"), _T("ver1"), _T("package2"));
@@ -440,7 +465,7 @@ TEST_F(PackageCacheTest, PurgeAll) {
   EXPECT_EQ(0, package_cache_.Size());
 }
 
-TEST_F(PackageCacheTest, PurgeOldPackagesIfOverSizeLimit) {
+TEST_P(PackageCacheTest, PurgeOldPackagesIfOverSizeLimit) {
   EXPECT_HRESULT_SUCCEEDED(package_cache_.PurgeAll());
 
   const int kCacheSizeLimitMB = 2;
@@ -484,7 +509,7 @@ TEST_F(PackageCacheTest, PurgeOldPackagesIfOverSizeLimit) {
   EXPECT_LE(package_cache_.Size(), kSizeLimitBytes);
 }
 
-TEST_F(PackageCacheTest, PurgeExpiredCacheFiles) {
+TEST_P(PackageCacheTest, PurgeExpiredCacheFiles) {
   EXPECT_HRESULT_SUCCEEDED(package_cache_.PurgeAll());
 
   const int kCacheLifeLimitDays = 100;
@@ -514,12 +539,14 @@ TEST_F(PackageCacheTest, PurgeExpiredCacheFiles) {
   EXPECT_FALSE(package_cache_.IsCached(key2, hash_file2_));
 }
 
-TEST_F(PackageCacheTest, VerifyHash) {
+TEST_P(PackageCacheTest, VerifyHash) {
   EXPECT_HRESULT_SUCCEEDED(PackageCache::VerifyHash(source_file1_,
                                                     hash_file1_));
   EXPECT_EQ(SIGS_E_INVALID_SIGNATURE,
             PackageCache::VerifyHash(source_file1_, hash_file2_));
 }
+
+INSTANTIATE_TEST_CASE_P(Sha1OrSha256, PackageCacheTest, ::testing::Bool());
 
 }  // namespace omaha
 

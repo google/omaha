@@ -7,7 +7,7 @@
       </urls>
       <manifest>
         <packages>
-          <package name="SaveArguments.exe" hash="${INSTALLER_HASH}" size="${INSTALLER_SIZE}" required="true"/>
+          <package name="SaveArguments.exe" hash_sha256="${INSTALLER_HASH_SHA256}" size="${INSTALLER_SIZE}" required="true"/>
         </packages>
         <actions>
           <action event="install" run="SaveArguments.exe" arguments="standalone installer arguments" needsadmin="true"/>

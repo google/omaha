@@ -7,7 +7,7 @@
       </urls>
       <manifest version="${INSTALLER_VERSION}">
         <packages>
-          <package name="test_foo_v${INSTALLER_VERSION}.msi" hash="${INSTALLER_HASH}" size="${INSTALLER_SIZE}" required="true"/>
+          <package name="test_foo_v${INSTALLER_VERSION}.msi" hash_sha256="${INSTALLER_HASH_SHA256}" size="${INSTALLER_SIZE}" required="true"/>
         </packages>
         <actions>
           <action event="install" run="test_foo_v${INSTALLER_VERSION}.msi" arguments="REGISTER_LAUNCH_COMMAND=1" needsadmin="true"/>
