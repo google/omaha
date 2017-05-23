@@ -1,3 +1,13 @@
+## 2017-05-23 @151628000,156858448
+### Changes
+--------------------------------------------------------------------------------
+Fix build break. Python 2.4 does not have a hashlib implementation, resulting in
+a build break. This change adds a hashlib implementation compatible with
+Python 2.4 from https://pypi.python.org/pypi/hashlib.
+--------------------------------------------------------------------------------
+Omaha Standalone Offline MSI installers not working with Omaha M33.
+--------------------------------------------------------------------------------
+
 ## 2017-04-03 @141381616,151627999
 ### Changes
 --------------------------------------------------------------------------------
