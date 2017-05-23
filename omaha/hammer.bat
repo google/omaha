@@ -2,7 +2,7 @@
 
 :: Hammer does not need this variable but the unit
 :: tests do.
-set OMAHA_PSEXEC_DIR=%ProgramFiles(x86)%
+set OMAHA_PSEXEC_DIR=%ProgramFiles(x86)%\pstools
 
 setlocal
 
