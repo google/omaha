@@ -7,7 +7,7 @@ Version 2 is documented [here](ServerProtocolV2.md). An older description of the
 ## Introduction ##
 The Omaha protocol is designed to facilitate the acquisition, delivery, and metrics of software updates over the Internet. It is an application-layer protocol on top of HTTP.
 
-The client sends requests via HTTP POST with an XML data body. The response is an XML data body. For Omaha Client, the request and response are secured by [CUP](cup.html) or SSL.
+The client sends requests via HTTP POST with an XML data body. The response is an XML data body. For Omaha Client, the request and response are secured by [CUP](ClientUpdateProtocol.md) or SSL.
 
 Diagram of an example request-response pair:
 
