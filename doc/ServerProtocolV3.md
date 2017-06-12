@@ -85,6 +85,9 @@ An Omaha V3 request MUST contain exactly one `<request>` element at the root lev
 #### `<request>` ####
 
 ##### Attributes #####
+  * `acceptformat`: A comma-separated list of strings describing the formats of update payloads that this client accepts. As a special case, the empty string indicates undefined restrictions on the format. Default: "". The following values are supported:
+    * `crx2`: The CRX file format, version 2.
+    * `crx3`: The CRX file format, version 3.
   * `dedup`: Specifies the preferred de-duplication algorithm for this request. Either "" (unknown or no-preference), "cr" (client-regulated) or "uid" (user-id). Default: "". Omaha Client sends "cr" in all cases.
   * `dlpref`: Specifies the preferred download URL behavior. A comma-separated list of values. The first value is the highest priority, further values reflect secondary, tertiary, et cetera priorities. Legal values are "" (in which case the entire list must be empty, indicating unknown or no-preference) or "cacheable" (the server should prioritize sending URLs that are easily cacheable). Default: "".
   * `installsource`: A string specifying the cause of the update flow. For example: "ondemand", or "scheduledtask". Default: "".
