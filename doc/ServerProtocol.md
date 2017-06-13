@@ -494,4 +494,4 @@ If the client elects to use SSL, no further integrity checking is needed.  If CU
   * `Set-Cookie` (HTTP header): (optional)  Encrypted copy of the client's private key, for the client to send in the next request. (Not related to any browser cookie.)
 
 ### Implementation details ###
-The server is expected to return a 400 response when the body of the request is empty. The body of the response will contain the reason for the the 'bad request', for instance, the server could not parse the request.
+The server is expected to return a 400 response when the body of the request is empty. The body of the response will contain the reason for the 'bad request', for instance, the server could not parse the request.

@@ -85,7 +85,7 @@ The directory tree typically looks like this:<br>
             ... the files listed above ...<br>
         Download\		Temp area for installers currently being downloaded.<br>
         Install\		Temp area for installers that are verified and about to be launched.<br>
-        GoogleUpdate.exe	A copy of the the constant shell.  This will look into the registry for<br>
+        GoogleUpdate.exe	A copy of the constant shell.  This will look into the registry for<br>
 				the most recently successfully installed version of Omaha, and<br>
 				use the goopdate.dll there.<br>
 </code></pre>
