@@ -17,6 +17,15 @@
 #define OMAHA_BASE_SECURITY_HASH_INTERNAL_H_
 
 #include <stdint.h>
+#include <stddef.h>
+
+#ifdef LITE_EMULATED_64BIT_OPS
+#define LITE_LShiftU64(a, b) LShiftU64((a), (b))
+#define LITE_RShiftU64(a, b) RShiftU64((a), (b))
+#else
+#define LITE_LShiftU64(a, b) ((a) << (b))
+#define LITE_RShiftU64(a, b) ((a) >> (b))
+#endif  // LITE_EMULATED_64BIT_OPS
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,17 +35,22 @@ struct HASH_CTX;  // forward decl
 
 typedef struct HASH_VTAB {
   void (* const init)(struct HASH_CTX*);
-  void (* const update)(struct HASH_CTX*, const void*, unsigned int);
+  void (* const update)(struct HASH_CTX*, const void*, size_t);
   const uint8_t* (* const final)(struct HASH_CTX*);
-  const uint8_t* (* const hash)(const void*, unsigned int, uint8_t*);
+  const uint8_t* (* const hash)(const void*, size_t, uint8_t*);
   unsigned int size;
 } HASH_VTAB;
 
 typedef struct HASH_CTX {
   const HASH_VTAB * f;
   uint64_t count;
+#ifndef SHA512_SUPPORT
   uint8_t buf[64];
-  uint32_t state[8];  // upto SHA2
+  uint32_t state[8];  // upto SHA2-256
+#else
+  uint8_t buf[128];
+  uint64_t state[8];  // upto SHA2-512
+#endif
 } HASH_CTX;
 
 #define HASH_init(ctx) (ctx)->f->init(ctx)

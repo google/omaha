@@ -71,8 +71,8 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
     # serial=4c40dba5f988fae57a57d6457495f98b
     'unittest_support/Sha1_4c40dba5f988fae57a57d6457495f98b.exe',
 
-	# Omaha and Chrome certificate: sha1 (11/28/2016 to 11/21/2019).
-	# serial=14F8FDD167F92402B1570B5DC495C815
+    # Omaha and Chrome certificate: sha1 (11/28/2016 to 11/21/2019).
+    # serial=14F8FDD167F92402B1570B5DC495C815
     'unittest_support/sha1_14F8FDD167F92402B1570B5DC495C815.sys',
 
     'unittest_support/Sha1_4c40dba5f988fae57a57d6457495f98b_and_sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe',
@@ -87,6 +87,12 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
 
     # PAC file for testing local PAC file support.
     'unittest_support/localproxytest.pac',
+
+    # CRX Verifier test files.
+    'unittest_support/unsigned.crx3',
+    'unittest_support/valid.crx2',
+    'unittest_support/valid_no_publisher.crx3',
+    'unittest_support/valid_publisher.crx3',
 
     # Files used by offline_utils_unittest.
     'unittest_support/{CDABE316-39CD-43BA-8440-6D1E0547AEE6}.v2.gup',
@@ -173,10 +179,12 @@ omaha_unittest_libs = [
     '$LIB_DIR/common.lib',
     '$LIB_DIR/core.lib',
     '$LIB_DIR/crash_handler.lib',
+    '$LIB_DIR/crx_file.lib',
     '$LIB_DIR/gmock.lib',
     '$LIB_DIR/google_update_recovery.lib',
     '$LIB_DIR/goopdate_lib.lib',
     '$LIB_DIR/gtest.lib',
+    '$LIB_DIR/libprotobuf.lib',
     '$LIB_DIR/logging.lib',
     '$LIB_DIR/lzma.lib',
     '$LIB_DIR/net.lib',
@@ -433,6 +441,10 @@ omaha_unittest_inputs = [
     '../core/system_monitor_unittest.cc',
     '../core/google_update_core_unittest.cc',
 
+    # CRX unit tests
+    '../third_party/chrome/files/src/components/crx_file/crx_verifier_unittest.cc',
+    '../third_party/chrome/files/src/components/crx_file/id_util_unittest.cc',
+
     # Google Update unit tests.
     '../google_update/google_update_unittest.cc',
 
@@ -516,8 +528,6 @@ omaha_unittest_inputs = [
     '../third_party/chrome/files/src/base/cpu_unittest.cc',
     '../third_party/chrome/files/src/base/rand_util_unittest.cc',
     '../third_party/chrome/files/src/crypto/rsa_private_key_unittest.cc',
-    '../third_party/chrome/files/src/crypto/signature_creator_unittest.cc',
-    '../third_party/chrome/files/src/crypto/signature_verifier_unittest.cc',
 ]
 
 # Conditionally built unit tests.

@@ -23,35 +23,23 @@ static void determine_k(const p256_int* key,
                         const p256_int* message,
                         char* tweak,
                         p256_int* k) {
-  do {
-    p256_int p1, p2;
+  p256_int p;
 
+  do {
+    // HMAC prng pick until p <= SECP256r1_n - 2,
+    // in a (re)pick and test fashion for a clean distribution.
     LITE_HMAC_CTX hmac;
 
-    // Note: taking the p256_int in-memory representation is not
-    // endian neutral. Signatures with an identical key on identical
-    // messages will differ per host endianness.
-    // This however does not jeopardize the key bits.
-    HMAC_SHA256_init(&hmac, key, P256_NBYTES);
+    p256_to_bin(key, (uint8_t*)&p);  // key as endian neutral bytes.
+    HMAC_SHA256_init(&hmac, &p, P256_NBYTES);
     HMAC_update(&hmac, tweak, 1);
     HMAC_update(&hmac, message, P256_NBYTES);
     ++(*tweak);
-    p256_from_bin(HMAC_final(&hmac), &p1);
+    p256_from_bin(HMAC_final(&hmac), &p);  // p from endian neutral bytes.
+  } while (p256_cmp(&p, &SECP256r1_nMin2) > 0);
 
-    HMAC_SHA256_init(&hmac, key, P256_NBYTES);
-    HMAC_update(&hmac, tweak, 1);
-    HMAC_update(&hmac, message, P256_NBYTES);
-    ++(*tweak);
-    p256_from_bin(HMAC_final(&hmac), &p2);
-
-    // Combine p1 and p2 into well distributed k.
-    p256_modmul(&SECP256r1_n, &p1, 0, &p2, k);
-
-    // (Attempt to) clear stack state.
-    p256_clear(&p1);
-    p256_clear(&p2);
-
-  } while(p256_is_zero(k));
+  p256_add_d(&p, 1, k);  // 0 < k < SECP256r1_n
+  p256_clear(&p);
 }
 
 void p256_ecdsa_sign(const p256_int* key,

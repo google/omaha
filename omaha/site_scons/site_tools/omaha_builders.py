@@ -22,6 +22,7 @@ import os.path
 import SCons.Action
 import SCons.Builder
 import SCons.Tool
+from subprocess import PIPE,Popen
 
 import omaha_version_utils
 
@@ -502,6 +503,33 @@ def ComponentStaticLibraryMultiarch(env, lib_name, *args, **kwargs):
   return nodes32 + nodes64
 
 
+def CompileProtoBuf(env, target, input_proto_file):
+  """Invokes the protocol buffer compiler.
+
+  Args:
+    env: The environment.
+    target: The generated .pb.cc and .pb.h files.
+    input_proto_file: The protocol buffer .proto file.
+
+  Returns:
+    Output node list from env.Command().
+  """
+  proto_compiler_path = '%s/protoc.exe' % os.getenv('OMAHA_PROTOBUF_BIN_DIR')
+  proto_arguments = (' --proto_path=%s --cpp_out=%s %s ' %
+                     (os.path.dirname(input_proto_file[0]),
+                      os.path.dirname(target[0]),
+                      input_proto_file[0]))
+  proto_cmd_line = proto_compiler_path + proto_arguments
+
+  compile_proto_buf = env.Command(
+      target=target,
+      source=input_proto_file,
+      action=proto_cmd_line,
+  )
+
+  return compile_proto_buf
+
+
 # NOTE: SCons requires the use of this name, which fails gpylint.
 def generate(env):  # pylint: disable-msg=C6409
   """SCons entry point for this tool."""
@@ -522,6 +550,7 @@ def generate(env):  # pylint: disable-msg=C6409
   env.AddMethod(CloneAndMake64Bit)
   env.AddMethod(GetMultiarchLibName)
   env.AddMethod(ComponentStaticLibraryMultiarch)
+  env.AddMethod(CompileProtoBuf)
 
   env['MIDLNOPROXYCOM'] = ('$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} '
                            '/h ${TARGETS[1]} /iid ${TARGETS[2]} '

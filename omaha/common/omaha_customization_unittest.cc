@@ -240,8 +240,9 @@ TEST(OmahaCustomizationTest, Constants_BrandCode) {
 TEST(OmahaCustomizationTest, Constants_Addresses) {
   EXPECT_STREQ(_T("www.google.com"), kGoogleHttpServer);
   EXPECT_STREQ(_T("tools.google.com"), kGoopdateServer);
-  EXPECT_STREQ(_T("https://tools.google.com/service/update2"), kUrlUpdateCheck);
-  EXPECT_STREQ(_T("https://tools.google.com/service/update2"), kUrlPing);
+  EXPECT_STREQ(_T("https://update.googleapis.com/service/update2"),
+               kUrlUpdateCheck);
+  EXPECT_STREQ(_T("https://update.googleapis.com/service/update2"), kUrlPing);
   EXPECT_STREQ(_T("https://clients2.google.com/cr/report"), kUrlCrashReport);
   EXPECT_STREQ(_T("https://www.google.com/support/installer/?"), kUrlMoreInfo);
   EXPECT_STREQ(_T("https://clients2.google.com/service/check2"),

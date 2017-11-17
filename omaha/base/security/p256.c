@@ -16,12 +16,11 @@
 #include "p256.h"
 #include <assert.h>
 #include <string.h>
-#include <stdio.h>
 
 const p256_int SECP256r1_n =  // curve order
   {{0xfc632551, 0xf3b9cac2, 0xa7179e84, 0xbce6faad, -1, -1, 0, -1}};
 
-static const p256_int SECP256r1_nMin2 =  // curve order - 2
+const p256_int SECP256r1_nMin2 =  // curve order - 2
   {{0xfc632551 - 2, 0xf3b9cac2, 0xa7179e84, 0xbce6faad, -1, -1, 0, -1}};
 
 const p256_int SECP256r1_p =  // curve field size
@@ -189,7 +188,7 @@ p256_digit p256_shl(const p256_int* a, int n, p256_int* b) {
   }
   P256_DIGIT(b, i) = (P256_DIGIT(a, i) << n);
 
-  top = (p256_digit)((((p256_ddigit)top) << n) >> P256_BITSPERDIGIT);
+  top >>= (P256_BITSPERDIGIT - n);
 
   return top;
 }
@@ -401,6 +400,34 @@ int p256_is_valid_point(const p256_int* x, const p256_int* y) {
   return p256_cmp(&y2, &x3) == 0;
 }
 
+void p256_to_bin(const p256_int* src, uint8_t dst[P256_NBYTES]) {
+  int i;
+  uint8_t* p = &dst[0];
+
+  for (i = P256_NDIGITS - 1; i >= 0; --i) {
+    p256_digit digit = P256_DIGIT(src, i);
+    p[0] = (uint8_t)(digit >> 24);
+    p[1] = (uint8_t)(digit >> 16);
+    p[2] = (uint8_t)(digit >> 8);
+    p[3] = (uint8_t)(digit);
+    p += 4;
+  }
+}
+
+void p256_to_le_bin(const p256_int* src, uint8_t dst[P256_NBYTES]) {
+  int i;
+  uint8_t* p = &dst[0];
+
+  for (i = 0; i < P256_NDIGITS; ++i) {
+    p256_digit digit = P256_DIGIT(src, i);
+    p[0] = (uint8_t)(digit);
+    p[1] = (uint8_t)(digit >> 8);
+    p[2] = (uint8_t)(digit >> 16);
+    p[3] = (uint8_t)(digit >> 24);
+    p += 4;
+  }
+}
+
 void p256_from_bin(const uint8_t src[P256_NBYTES], p256_int* dst) {
   int i;
   const uint8_t* p = &src[0];
@@ -415,16 +442,16 @@ void p256_from_bin(const uint8_t src[P256_NBYTES], p256_int* dst) {
   }
 }
 
-void p256_to_bin(const p256_int* src, uint8_t dst[P256_NBYTES]) {
+void p256_from_le_bin(const uint8_t src[P256_NBYTES], p256_int* dst) {
   int i;
-  uint8_t* p = &dst[0];
+  const uint8_t* p = &src[0];
 
-  for (i = P256_NDIGITS - 1; i >= 0; --i) {
-    p256_digit digit = P256_DIGIT(src, i);
-    p[0] = (uint8_t)(digit >> 24);
-    p[1] = (uint8_t)(digit >> 16);
-    p[2] = (uint8_t)(digit >> 8);
-    p[3] = (uint8_t)(digit);
+  for (i = 0; i < P256_NDIGITS; ++i) {
+    P256_DIGIT(dst, i) =
+        p[0] |
+        (p[1] << 8) |
+        (p[2] << 16) |
+        (p[3] << 24);
     p += 4;
   }
 }

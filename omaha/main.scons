@@ -586,6 +586,9 @@ win_env.AppendUnique(
 
         # for Chromium code.
         'ARCH_CPU_X86_FAMILY',
+
+        # for the CRX Verifier protocol buffers code.
+        'GOOGLE_PROTOBUF_NO_RTTI',
         ],
 
     # Link in some windows libraries.

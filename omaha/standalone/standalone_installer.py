@@ -146,7 +146,8 @@ def _GenerateUpdateResponseFile(target, source, env):
     raise Exception('INSTALLER_VERSIONS is missing from environment.')
 
   standalone.utils.GenerateUpdateResponseFile(
-      str(target[0]), [str(s) for s in source], version_list)
+      str(target[0]), [str(s) for s in source], version_list,
+      has_x64_binaries=False)
 
 
 def BuildOfflineInstaller(

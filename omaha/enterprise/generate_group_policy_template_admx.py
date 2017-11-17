@@ -1,5 +1,3 @@
-#!/usr/bin/python2.4
-#
 # Copyright 2015 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,11 +45,13 @@ ADMX_ENVIRONMENT = '''
           displayName="$(string.Sup_GoogleUpdate1_3_21_81)" />
       <definition name="Sup_GoogleUpdate1_3_26_0"
           displayName="$(string.Sup_GoogleUpdate1_3_26_0)" />
+      <definition name="Sup_GoogleUpdate1_3_33_5"
+          displayName="$(string.Sup_GoogleUpdate1_3_33_5)" />
     </definitions>
   </supportedOn>
 '''
 
-ADMX_CATEGORIES = '''
+ADMX_CATEGORIES = r'''
   <categories>
     <category name="Cat_GoogleUpdate" displayName="$(string.Cat_GoogleUpdate)"
         explainText="$(string.Explain_GoogleUpdate)">
@@ -72,7 +72,7 @@ ADMX_CATEGORIES = '''
   </categories>
 '''
 
-ADMX_POLICIES = '''
+ADMX_POLICIES = r'''
   <policies>
     <policy name="Pol_AutoUpdateCheckPeriod" class="Machine"
         displayName="$(string.Pol_AutoUpdateCheckPeriod)"
@@ -105,6 +105,28 @@ ADMX_POLICIES = '''
             </value>
           </item>
         </enum>
+      </elements>
+    </policy>
+    <policy name="Pol_UpdateCheckSuppressedPeriod" class="Machine"
+        displayName="$(string.Pol_UpdateCheckSuppressedPeriod)"
+        explainText="$(string.Explain_UpdateCheckSuppressedPeriod)"
+        presentation="$(presentation.Pol_UpdateCheckSuppressedPeriod)"
+        key="Software\Policies\Google\Update">
+      <parentCategory ref="Cat_Preferences" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_33_5" />
+      <elements>
+        <decimal id="Part_UpdateCheckSuppressedStartHour"
+            key="Software\Policies\Google\Update"
+            valueName="UpdatesSuppressedStartHour"
+            required="true" minValue="0" maxValue="23" />
+        <decimal id="Part_UpdateCheckSuppressedStartMin"
+            key="Software\Policies\Google\Update"
+            valueName="UpdatesSuppressedStartMin"
+            required="true" minValue="0" maxValue="59" />
+        <decimal id="Part_UpdateCheckSuppressedDurationMin"
+            key="Software\Policies\Google\Update"
+            valueName="UpdatesSuppressedDurationMin"
+            required="true" minValue="1" maxValue="720" />
       </elements>
     </policy>
     <policy name="Pol_ProxyMode" class="Machine"
@@ -259,6 +281,18 @@ ADMX_APP_POLICY_TEMPLATE = '''\
           </item>
         </enum>
       </elements>
+    </policy>
+    <policy name="Pol_TargetVersionPrefix%(AppLegalId)s" class="Machine"
+        displayName="$(string.Pol_TargetVersionPrefix)"
+        explainText="$(string.Explain_TargetVersionPrefix%(AppLegalId)s)"
+        presentation="$(presentation.Pol_TargetVersionPrefix)"
+        key="%(RootPolicyKey)s">
+      <parentCategory ref="Cat_%(AppLegalId)s" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_33_5" />
+      <elements>
+        <text id="Part_TargetVersionPrefix"
+            valueName="TargetVersionPrefix%(AppGuid)s" />
+      </elements>
     </policy>'''
 
 ADMX_FOOTER = '</policyDefinitions>'
@@ -375,11 +409,14 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Sup_GoogleUpdate1_2_145_5', 'At least Google Update 1.2.145.5'),
     ('Sup_GoogleUpdate1_3_21_81', 'At least Google Update 1.3.21.81'),
     ('Sup_GoogleUpdate1_3_26_0', 'At least Google Update 1.3.26.0'),
+    ('Sup_GoogleUpdate1_3_33_5', 'At least Google Update 1.3.33.5'),
     ('Cat_GoogleUpdate', 'Google Update'),
     ('Cat_Preferences', 'Preferences'),
     ('Cat_ProxyServer', 'Proxy Server'),
     ('Cat_Applications', 'Applications'),
     ('Pol_AutoUpdateCheckPeriod', 'Auto-update check period override'),
+    ('Pol_UpdateCheckSuppressedPeriod',
+     'Time period in each day to suppress auto-update check'),
     ('Pol_DownloadPreference', 'Download URL class override'),
     ('DownloadPreference_DropDown', 'Cacheable download URLs'),
     ('Pol_ProxyMode', 'Choose how to specify proxy server settings'),
@@ -389,11 +426,19 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Pol_AllowInstallation', 'Allow installation'),
     ('Pol_DefaultUpdatePolicy', 'Update policy override default'),
     ('Pol_UpdatePolicy', 'Update policy override'),
+    ('Pol_TargetVersionPrefix', 'Target version prefix override'),
     ('Part_AutoUpdateCheckPeriod', 'Minutes between update checks'),
+    ('Part_UpdateCheckSuppressedStartHour',
+     'Hour in a day that start to suppress update check'),
+    ('Part_UpdateCheckSuppressedStartMin',
+     'Minute in hour that starts to suppress update check'),
+    ('Part_UpdateCheckSuppressedDurationMin',
+     'Number of minutes to suppress update check each day'),
     ('Part_ProxyMode', 'Choose how to specify proxy server settings'),
     ('Part_ProxyServer', 'Address or URL of proxy server'),
     ('Part_ProxyPacUrl', 'URL to a proxy .pac file'),
     ('Part_UpdatePolicy', 'Policy'),
+    ('Part_TargetVersionPrefix', 'Target version prefix'),
     ('Name_UpdatesEnabled', 'Always allow updates (recommended)'),
     ('Name_ManualUpdatesOnly', 'Manual updates only'),
     ('Name_AutomaticUpdatesOnly', 'Automatic silent updates only'),
@@ -414,6 +459,13 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Explain_DownloadPreference',
      'If enabled, the Google Update server will attempt to provide '
      'cache-friendly URLs for update payloads in its responses.'),
+    ('Explain_UpdateCheckSuppressedPeriod',
+     'If this setting is enabled, update checks will be suppressed during '
+     'each day starting from Hour:Minute for a period of Duration (in minutes).'
+     ' Duration does not account for daylight savings time. So for instance, '
+     'if the start time is 22:00, and with a duration of 480 minutes, the '
+     'updates will be suppressed for 8 hours regardless of whether daylight '
+     'savings time changes happen in between.'),
     ('Explain_ProxyMode',
      'Allows you to specify the proxy server used by Google Update.\n\n'
      'If you choose to never use a proxy server and always connect directly, '
@@ -475,6 +527,14 @@ ADML_PRESENTATIONS = '''\
         <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="1400"
             spinStep="60">Minutes between update checks</decimalTextBox>
       </presentation>
+      <presentation id="Pol_UpdateCheckSuppressedPeriod">
+        <decimalTextBox refId="Part_UpdateCheckSuppressedStartHour"
+            defaultValue="0" spinStep="1">Hour</decimalTextBox>
+        <decimalTextBox refId="Part_UpdateCheckSuppressedStartMin"
+            defaultValue="0" spinStep="1">Minute</decimalTextBox>
+        <decimalTextBox refId="Part_UpdateCheckSuppressedDurationMin"
+            defaultValue="60">Duration</decimalTextBox>
+      </presentation>
       <presentation id="Pol_DownloadPreference">
         <dropdownList refId="Part_DownloadPreference"
             defaultItem="0">Type of download URL to request</dropdownList>
@@ -506,6 +566,12 @@ ADML_PRESENTATIONS = '''\
         <dropdownList refId="Part_UpdatePolicy"
             defaultItem="0">Policy</dropdownList>
       </presentation>\
+      <presentation id="Pol_TargetVersionPrefix">
+        <textBox refId="Part_TargetVersionPrefix">
+          <label>Target version prefix</label>
+          <defaultValue></defaultValue>
+        </textBox>
+      </presentation>
 '''
 
 ADML_RESOURCE_TABLE_TEMPLATE = '''
@@ -579,6 +645,20 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'for updates and distribute them to users.%s' %
         (app_name, app_additional_help_msg))
     string_definition_list.append(app_auto_update_policy_explanation)
+
+    app_target_version_prefix_explanation = (
+        'Explain_TargetVersionPrefix' + app_legal_id,
+        'Specifies which version %s should be updated to.\n\n'
+        'When this policy is enabled, the app will be updated to the version '
+        'prefixed with this policy value.\n\nSome examples:\n'
+        '1) Not configured: app will be update to latest version available.\n'
+        '2) Policy value is set to "55.", the app will be updated to any minor '
+        'version of 55 (e.g. 55.24.34 or 55.60.2).\n'
+        '3) Policy value is "55.2.", the app will be updated to any minor '
+        'version of 55.2 (e.g. 55.2.34 or 55.2.2).\n'
+        '4) Policy value is "55.24.34", the app will be updated to this '
+        'specific version only.' % app_name)
+    string_definition_list.append(app_target_version_prefix_explanation)
 
   app_resource_strings = []
   for entry in string_definition_list:
