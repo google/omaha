@@ -70,6 +70,9 @@ class EcdsaPublicKey {
 
   void DecodeFromBuffer(const uint8* encoded_pkey_in);
 
+  // Parses a DER-encoded SubjectPublicKeyInfo value holding a P-256 ECDSA key.
+  bool DecodeSubjectPublicKeyInfo(const std::vector<uint8>& spki);
+
   uint8 version() const { return version_; }
   const p256_int* gx() const { return &gx_; }
   const p256_int* gy() const { return &gy_; }

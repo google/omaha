@@ -17,7 +17,6 @@
 
 #include "sha256.h"
 
-#include <stdio.h>
 #include <string.h>
 
 #define ror(value, bits) (((value) >> (bits)) | ((value) << (32 - (bits))))
@@ -120,7 +119,7 @@ void SHA256_init(LITE_SHA256_CTX* ctx) {
 }
 
 
-void SHA256_update(LITE_SHA256_CTX* ctx, const void* data, unsigned int len) {
+void SHA256_update(LITE_SHA256_CTX* ctx, const void* data, size_t len) {
   int i = (int) (ctx->count & 63);
   const uint8_t* p = (const uint8_t*)data;
 
@@ -138,7 +137,7 @@ void SHA256_update(LITE_SHA256_CTX* ctx, const void* data, unsigned int len) {
 
 const uint8_t* SHA256_final(LITE_SHA256_CTX* ctx) {
   uint8_t *p = ctx->buf;
-  uint64_t cnt = ctx->count * 8;
+  uint64_t cnt = LITE_LShiftU64(ctx->count, 3);
   int i;
 
   SHA256_update(ctx, (uint8_t*)"\x80", 1);
@@ -146,7 +145,8 @@ const uint8_t* SHA256_final(LITE_SHA256_CTX* ctx) {
     SHA256_update(ctx, (uint8_t*)"\0", 1);
   }
   for (i = 0; i < 8; ++i) {
-    uint8_t tmp = (uint8_t) (cnt >> ((7 - i) * 8));
+    uint8_t tmp = (uint8_t)LITE_RShiftU64(cnt, 56);
+    cnt = LITE_LShiftU64(cnt, 8);
     SHA256_update(ctx, &tmp, 1);
   }
 
@@ -162,7 +162,7 @@ const uint8_t* SHA256_final(LITE_SHA256_CTX* ctx) {
 }
 
 /* Convenience function */
-const uint8_t* SHA256_hash(const void* data, unsigned int len,
+const uint8_t* SHA256_hash(const void* data, size_t len,
                            uint8_t* digest) {
   LITE_SHA256_CTX ctx;
   SHA256_init(&ctx);

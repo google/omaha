@@ -23,9 +23,7 @@
 // See http://www.imperialviolet.org/2010/12/04/ecc.html ([1]) for background.
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include "p256.h"
 
 typedef uint8_t u8;

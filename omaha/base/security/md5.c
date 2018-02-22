@@ -17,7 +17,6 @@
 
 #include "md5.h"
 
-#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -119,7 +118,7 @@ void MD5_init(LITE_MD5_CTX* ctx) {
 }
 
 
-void MD5_update(LITE_MD5_CTX* ctx, const void* data, unsigned int len) {
+void MD5_update(LITE_MD5_CTX* ctx, const void* data, size_t len) {
   unsigned int i = (unsigned int)(ctx->count & 63);
   const uint8_t* p = (const uint8_t*)data;
 
@@ -137,7 +136,7 @@ void MD5_update(LITE_MD5_CTX* ctx, const void* data, unsigned int len) {
 
 const uint8_t* MD5_final(LITE_MD5_CTX* ctx) {
   uint8_t* p = ctx->buf;
-  uint64_t cnt = ctx->count * 8;
+  uint64_t cnt = LITE_LShiftU64(ctx->count, 3);
   int i;
 
   MD5_update(ctx, (uint8_t*)"\x80", 1);
@@ -145,7 +144,7 @@ const uint8_t* MD5_final(LITE_MD5_CTX* ctx) {
     MD5_update(ctx, (uint8_t*)"\0", 1);
   }
   for (i = 0; i < 8; ++i) {
-    uint8_t tmp = (uint8_t) (cnt >> (i * 8));
+    uint8_t tmp = (uint8_t) LITE_RShiftU64(cnt, i * 8);
     MD5_update(ctx, &tmp, 1);
   }
 
@@ -162,7 +161,7 @@ const uint8_t* MD5_final(LITE_MD5_CTX* ctx) {
 
 
 /* Convenience function */
-const uint8_t* MD5_hash(const void* data, unsigned int len, uint8_t* digest) {
+const uint8_t* MD5_hash(const void* data, size_t len, uint8_t* digest) {
   LITE_MD5_CTX ctx;
   MD5_init(&ctx);
   MD5_update(&ctx, data, len);

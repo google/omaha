@@ -17,6 +17,7 @@
 #define OMAHA_BASE_SECURITY_MD5_H_
 
 #include <stdint.h>
+#include <stddef.h>
 #include "hash-internal.h"
 
 #ifdef __cplusplus
@@ -26,12 +27,12 @@ extern "C" {
 typedef HASH_CTX LITE_MD5_CTX;
 
 void MD5_init(LITE_MD5_CTX* ctx);
-void MD5_update(LITE_MD5_CTX* ctx, const void* data, unsigned int len);
+void MD5_update(LITE_MD5_CTX* ctx, const void* data, size_t len);
 const uint8_t* MD5_final(LITE_MD5_CTX* ctx);
 
 // Convenience method. Returns digest address.
 // NOTE: *digest needs to hold MD5_DIGEST_SIZE bytes.
-const uint8_t* MD5_hash(const void* data, unsigned int len, uint8_t* digest);
+const uint8_t* MD5_hash(const void* data, size_t len, uint8_t* digest);
 
 #define MD5_DIGEST_SIZE 16
 

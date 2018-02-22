@@ -122,21 +122,12 @@ HRESULT CryptAcquireContextWithFallback(DWORD provider_type,
   return hr;
 }
 
-class HashInterface {
- public:
-  virtual ~HashInterface() {}
-
-  virtual void update(const void* data, unsigned int len) = 0;
-  virtual const uint8_t* final() = 0;
-  virtual size_t hash_size() const = 0;
-};
-
 class SHA256Hash : public HashInterface {
  public:
   SHA256Hash() {
     SHA256_init(&ctx2_);
   }
-  virtual ~SHA256Hash() {};
+  virtual ~SHA256Hash() {}
 
   virtual void update(const void* data, unsigned int len) {
     SHA256_update(&ctx2_, data, len);
@@ -161,7 +152,7 @@ class SHA1Hash : public HashInterface {
   SHA1Hash() {
     SHA_init(&ctx_);
   }
-  virtual ~SHA1Hash() {};
+  virtual ~SHA1Hash() {}
 
   virtual void update(const void* data, unsigned int len) {
     SHA_update(&ctx_, data, len);
@@ -1012,7 +1003,7 @@ HRESULT CryptoSignatureVerificationCertificate::GetCSPContextAndKey(
 // the public key from the certificate.
 
 CryptoVerifySignature::CryptoVerifySignature(
-    CryptoSignatureVerificationCertificate& certificate)
+    CryptoSignatureVerificationCertificate& certificate)  // NOLINT
     : certificate_(&certificate) {
 }
 

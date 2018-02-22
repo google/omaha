@@ -15,6 +15,9 @@
 
 Import('env')
 
+import os
+import os.path
+
 env.BuildSConscript('logging')
 env.BuildSConscript('security')
 
@@ -98,7 +101,6 @@ inputs = [
     '../third_party/chrome/files/src/crypto/rsa_private_key.cc',
     '../third_party/chrome/files/src/crypto/rsa_private_key_win.cc',
     '../third_party/chrome/files/src/crypto/signature_creator_win.cc',
-    '../third_party/chrome/files/src/crypto/signature_verifier_win.cc',
     '../third_party/smartany/shared_any.cc',
     ]
 
@@ -107,3 +109,132 @@ local_env.Append(ASFLAGS = ['/safeseh'])
 
 # Build these into a library.
 local_env.ComponentStaticLibraryMultiarch('base', inputs)
+
+""" Build the CRX Verifier libraries."""
+
+Import('env')
+local_env = env.Clone()
+
+crx_file_path = '/third_party/chrome/files/src/components/crx_file/'
+proto_input = [
+    '$MAIN_DIR' + crx_file_path + 'crx3.proto',
+]
+proto_target_path = '$TARGET_ROOT/proto_files' + crx_file_path
+proto_target = [
+    proto_target_path + 'crx3.pb.cc',
+    proto_target_path + 'crx3.pb.h',
+]
+proto_output = local_env.CompileProtoBuf(proto_target, proto_input)
+default_protobuf_src_dir = '$GOOGLE3/third_party/protobuf/src'
+protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR', default_protobuf_src_dir)
+
+local_env.Append(
+    CCFLAGS=[
+        '/wd4100',
+        '/wd4125',
+        '/wd4127',
+        '/wd4146',
+        '/wd4244',
+        '/wd4309',
+        '/wd4577',
+        '/wd4800',
+        '/wd4995',
+        '/wd4996',
+    ],
+    CPPPATH=[
+        protobuf_src_dir,
+        '$TARGET_ROOT/proto_files/',
+    ],
+)
+
+local_inputs = [
+    '../third_party/chrome/files/src/components/crx_file/crx_verifier.cc',
+    '$TARGET_ROOT/proto_files/third_party/chrome/files/src/components/crx_file/crx3.pb.cc',
+    '../third_party/chrome/files/src/components/crx_file/id_util.cc',
+    '../third_party/chrome/files/src/crypto/signature_verifier.cc',
+    '../third_party/chrome/files/src/crypto/secure_util.cc',
+]
+
+obj_files = []
+for cc_file in local_inputs:
+  obj_files.append(local_env.Object(cc_file))
+local_env.Depends(obj_files, proto_output)
+local_env.ComponentStaticLibrary('crx_file', obj_files, use_pch_default=False)
+
+local_env = env.Clone()  # SCons pylint: disable=undefined-variable
+
+protobuf_src_path = os.path.join(protobuf_src_dir, 'google/protobuf/')
+local_env.FilterOut(CCFLAGS=['/W4'])
+local_env.Append(
+    CPPDEFINES=['LIBPROTOBUF_EXPORTS'],
+    CCFLAGS=[
+        '/wd4005',
+        '/wd4018',
+        '/wd4065',
+        '/wd4146',
+        '/wd4244',
+        '/wd4251',
+        '/wd4267',
+        '/wd4305',
+        '/wd4309',
+        '/wd4355',
+        '/wd4506',
+        '/wd4530',
+        '/wd4541',
+        '/wd4577',
+        '/wd4800',
+        '/wd4996',
+    ],
+    CPPPATH=[
+        protobuf_src_dir,
+        protobuf_src_path,
+    ],
+)
+
+protobuf_src_path_dir = local_env.Dir(protobuf_src_path)
+local_env.Dir('protobuf').addRepository(protobuf_src_path_dir)
+cc_files = [
+    'protobuf/compiler/importer.cc',
+    'protobuf/compiler/parser.cc',
+    'protobuf/descriptor.cc',
+    'protobuf/descriptor.pb.cc',
+    'protobuf/descriptor_database.cc',
+    'protobuf/dynamic_message.cc',
+    'protobuf/extension_set.cc',
+    'protobuf/extension_set_heavy.cc',
+    'protobuf/generated_message_reflection.cc',
+    'protobuf/generated_message_util.cc',
+    'protobuf/io/coded_stream.cc',
+    'protobuf/io/printer.cc',
+    'protobuf/io/tokenizer.cc',
+    'protobuf/io/zero_copy_stream.cc',
+    'protobuf/io/zero_copy_stream_impl.cc',
+    'protobuf/io/zero_copy_stream_impl_lite.cc',
+    'protobuf/arena.cc',
+    'protobuf/message.cc',
+    'protobuf/message_lite.cc',
+    'protobuf/reflection_ops.cc',
+    'protobuf/repeated_field.cc',
+    'protobuf/service.cc',
+    'protobuf/stubs/atomicops_internals_x86_msvc.cc',
+    'protobuf/stubs/common.cc',
+    'protobuf/stubs/int128.cc',
+    'protobuf/stubs/once.cc',
+    'protobuf/stubs/status.cc',
+    'protobuf/stubs/stringprintf.cc',
+    'protobuf/stubs/stringpiece.cc',
+    'protobuf/stubs/structurally_valid.cc',
+    'protobuf/stubs/strutil.cc',
+    'protobuf/stubs/substitute.cc',
+    'protobuf/text_format.cc',
+    'protobuf/unknown_field_set.cc',
+    'protobuf/wire_format.cc',
+    'protobuf/wire_format_lite.cc',
+]
+
+obj_files = []
+for cc_file in cc_files:
+  obj_files.append(local_env.Object(cc_file))
+
+local_env.ComponentLibrary('libprotobuf', obj_files, COMPONENT_STATIC=True)
+

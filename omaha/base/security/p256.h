@@ -39,11 +39,16 @@ typedef uint64_t p256_ddigit;
 typedef int64_t p256_sddigit;
 
 // Defining p256_int as struct to leverage struct assigment.
-typedef struct {
+typedef struct
+#ifdef SUPPORT_UNALIGNED
+               __attribute__((packed))
+#endif
+{
   p256_digit a[P256_NDIGITS];
 } p256_int;
 
 extern const p256_int SECP256r1_n;  // Curve order
+extern const p256_int SECP256r1_nMin2;  // Curve order - 2
 extern const p256_int SECP256r1_p;  // Curve prime
 extern const p256_int SECP256r1_b;  // Curve param
 
@@ -137,9 +142,15 @@ int p256_is_valid_point(const p256_int* x, const p256_int* y);
 // Outputs big-endian binary form. No leading zero skips.
 void p256_to_bin(const p256_int* src, uint8_t dst[P256_NBYTES]);
 
+// Outputs little-endian binary form. No leading zero skips.
+void p256_to_le_bin(const p256_int* src, uint8_t dst[P256_NBYTES]);
+
 // Reads from big-endian binary form,
 // thus pre-pad with leading zeros if short.
 void p256_from_bin(const uint8_t src[P256_NBYTES], p256_int* dst);
+
+// Reads from little-endian binary form.
+void p256_from_le_bin(const uint8_t src[P256_NBYTES], p256_int* dst);
 
 #define P256_DIGITS(x) ((x)->a)
 #define P256_DIGIT(x,y) ((x)->a[y])

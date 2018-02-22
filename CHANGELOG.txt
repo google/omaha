@@ -1,14 +1,67 @@
+## 2017-11-16 @156858449,176133948
+
+### Changes
+--------------------------------------------------------------------------------
+Disabling compiler warning 4146 to allow building the 3.5.0 protocol buffer
+sources.
+--------------------------------------------------------------------------------
+Add CRX3 Support into Omaha. This modified CRX Verifier only supports CRX v3,
+and only does ECDSA SHA256 verification. The logic in here needs to be kept in
+sync with https://cs.chromium.org/chromium/src/components/crx_file/.
+--------------------------------------------------------------------------------
+Initializing the CRX Verification code from
+https://cs.chromium.org/chromium/src/components/crx_file/.
+--------------------------------------------------------------------------------
+Add support for parsing a DER-encoded SubjectPublicKeyInfo value
+holding a P-256 ECDSA public key.
+--------------------------------------------------------------------------------
+Update base/security library
+--------------------------------------------------------------------------------
+Implement a command line parser for --, -, and / switches.
+--------------------------------------------------------------------------------
+Adding the ability to build Protocol Buffers into Omaha builders.
+--------------------------------------------------------------------------------
+Suppress uninstalls of the wrapped standalone installer when upgrading and
+downgrading.
+--------------------------------------------------------------------------------
+Update the conditions on the various install and uninstall custom actions so
+that the wrapped standalone installer is properly kept in sync with the
+"ProductClientState" component. Previously, various operations (e.g., running a
+repair with /fvomus on an MSI that wasn't actually installed) would potentially
+run the installer/uninstaller at inappropriate times, resulting in the
+wrapped product being present without the "ProductClientState" component.
+--------------------------------------------------------------------------------
+Added group policy for enterprise version control (TargetVersionPrefix).
+--------------------------------------------------------------------------------
+Fix bug 62728209 RestartBrowser* tests fail with "Browser Internet Explorer was
+not displayed". Since IE now has a multi-process model, sending a WM_CLOSE is
+not sufficient to close down all the iexplore.exe processes. Now we try to use a
+remote thread to terminate, failing which we use ::TerminateProcess as a last
+resort.
+--------------------------------------------------------------------------------
+Generates group policy for enterprise scheduling of updates.
+--------------------------------------------------------------------------------
+Omaha: update the product branding in template configuration.
+
+Replace "Google Apps" with "G Suite".
+--------------------------------------------------------------------------------
+Add "--system-level" since removing it breaks test automation for older
+versions of Chrome.
+--------------------------------------------------------------------------------
+
 ## 2017-05-23 @151628000,156858448
+
 ### Changes
 --------------------------------------------------------------------------------
 Fix build break. Python 2.4 does not have a hashlib implementation, resulting in
-a build break. This change adds a hashlib implementation compatible with
-Python 2.4 from https://pypi.python.org/pypi/hashlib.
+a build break. This change adds a hashlib implementation compatible with Python
+2.4 from https://pypi.python.org/pypi/hashlib.
 --------------------------------------------------------------------------------
 Omaha Standalone Offline MSI installers not working with Omaha M33.
 --------------------------------------------------------------------------------
 
 ## 2017-04-03 @141381616,151627999
+
 ### Changes
 --------------------------------------------------------------------------------
 Omaha hardcodes a kChromeAppId literal in a couple of places. This change
@@ -17,28 +70,24 @@ installer does not use it as of a few versions. The Chrome installer instead
 uses an environment variable that Omaha sets to determine the System install
 --------------------------------------------------------------------------------
 Pass more arguments from the tag on the .msi down to the wrapped standalone
-installer. Specifically:
-- iid, so that the download->install link is made as with ordinary installers
-- lang, so that the language of the dlpage is used by Omaha and Chrome on first
-  run
-- browser, so that we know what browser was used for the download
-- ap, so that we can put statsdef_{0,1} and build a beta msi
+installer. Specifically: - iid, so that the download->install link is made as
+with ordinary installers - lang, so that the language of the dlpage is used by
+Omaha and Chrome on first run - browser, so that we know what browser was used
+for the download - ap, so that we can put statsdef_{0,1} and build a beta msi
 --------------------------------------------------------------------------------
-Update MsiTagger for consistency with dlpage tagger:
-- tag length no longer includes the string terminator
-- trailing zeros are no longer written
+Update MsiTagger for consistency with dlpage tagger: - tag length no longer
+includes the string terminator - trailing zeros are no longer written
 --------------------------------------------------------------------------------
-MSI tag extractor improvements:
-- ignore any/all padding following a tag
-- fix tag extraction from very small and very large files
+MSI tag extractor improvements: - ignore any/all padding following a tag - fix
+tag extraction from very small and very large files
 --------------------------------------------------------------------------------
 Extract more tags for use in enterprise installers.
 --------------------------------------------------------------------------------
-Do not wrap the ProductCustomParams argument value in double quotes.
-Since this command line is not passed through an interpreter, quotes aren't
-needed. In fact, they end up in the property value in the WiX wrapper.
-We end up with, for example, 'appguid={...}&appname=..."&brand=...&ap=..."'.
-Note the extra double-quotes in there.
+Do not wrap the ProductCustomParams argument value in double quotes.  Since this
+command line is not passed through an interpreter, quotes aren't needed. In
+fact, they end up in the property value in the WiX wrapper.  We end up with, for
+example, 'appguid={...}&appname=..."&brand=...&ap=..."'.  Note the extra
+double-quotes in there.
 --------------------------------------------------------------------------------
 This change implements a group policy that allows update checks to be suppressed
 out during the day. A group policy administrator would set
@@ -60,22 +109,20 @@ client will only honor SHA 256 hashes for downloaded files.
 Assert in omaha_unittest when the environment block is too large.
 --------------------------------------------------------------------------------
 For domain-joined machines with TargetVersionPrefix policy values set for any
-apps, the values will be sent as attributes of the <updatecheck>
-elements in update checks that the client makes with the Omaha server.
-Example:
-<o:updatecheck targetversionprefix="55.7" ...
-Example values:
-* "" (or not configured): update to latest version available.
-* "55.": update to any minor version of 55 (e.g. 55.24.34 or 55.60.2).
-* "55.2.": update to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).
-* "55.24.34": update to this specific version only.
+apps, the values will be sent as attributes of the <updatecheck> elements in
+update checks that the client makes with the Omaha server.  Example:
+<o:updatecheck targetversionprefix="55.7" ...  Example values: * "" (or not
+configured): update to latest version available.  * "55.": update to any minor
+version of 55 (e.g. 55.24.34 or 55.60.2).  * "55.2.": update to any minor
+version of 55.2 (e.g. 55.2.34 or 55.2.2).  * "55.24.34": update to this specific
+version only.
 --------------------------------------------------------------------------------
 Lots of crashes in omaha::SetupGoogleUpdate::InstallMsiHelper(). This change
 moves the MSI Helper installation to a separate process, isolating any crashes
 in MSI registration from affecting the rest of the codebase.
 --------------------------------------------------------------------------------
-Fix Chrome installer hooks for Windows 10 upgrades.
-The AppCommandsOnOSUpgrade hooks now run if the OS build number changes.
+Fix Chrome installer hooks for Windows 10 upgrades.  The AppCommandsOnOSUpgrade
+hooks now run if the OS build number changes.
 --------------------------------------------------------------------------------
 
 ## 2016-12-12 @140657335,141381615
@@ -98,67 +145,65 @@ tasks.
 --------------------------------------------------------------------------------
 Enable building true 64-bit MSI installers.
 --------------------------------------------------------------------------------
-Disable a few tests in the ETW tracing code.
-The code is still failing on Windows 10 for no clear reason.
+Disable a few tests in the ETW tracing code.  The code is still failing on
+Windows 10 for no clear reason.
 --------------------------------------------------------------------------------
-Update SaveArguments.exe file.
-The file version is 1.3.32.3, signed on Wednesday, October 26, 2016 6:09:07 PM
+Update SaveArguments.exe file.  The file version is 1.3.32.3, signed on
+Wednesday, October 26, 2016 6:09:07 PM
 --------------------------------------------------------------------------------
-Upgrade to using the Task Scheduler 2.0 API in Omaha.
-Omaha Scheduled Tasks not working as expected on Windows 10 AE.
+Upgrade to using the Task Scheduler 2.0 API in Omaha.  Omaha Scheduled Tasks not
+working as expected on Windows 10 AE.
 --------------------------------------------------------------------------------
 Report build and patch number for Windows.
 --------------------------------------------------------------------------------
-Implement DoS Mitigation Headers.
-* The client sends a X-GoogleUpdate-Interactivity header to indicate whether
-  the current request is foreground or background.
-  A value of "fg" ("foreground") indicates foreground install or on-demand
-  updates. "bg" ("background") indicates silent update traffic.
-* The client sends a X-GoogleUpdate-AppId header to indicate the apps
-  associated with the request. When updating multiple apps, the client
-  specifies a comma-separated list of app ids.
-* The client sends a X-GoogleUpdate-Updater header to indicate the identity of
-  the updater. This is the "updater" version string also present in the
-  request. In the case of Omaha, prepend "Omaha-" to the version string.
+Implement DoS Mitigation Headers.  * The client sends a
+X-GoogleUpdate-Interactivity header to indicate whether the current request is
+foreground or background.  A value of "fg" ("foreground") indicates foreground
+install or on-demand updates. "bg" ("background") indicates silent update
+traffic.  * The client sends a X-GoogleUpdate-AppId header to indicate the apps
+associated with the request. When updating multiple apps, the client specifies a
+comma-separated list of app ids.  * The client sends a X-GoogleUpdate-Updater
+header to indicate the identity of the updater. This is the "updater" version
+string also present in the request. In the case of Omaha, prepend "Omaha-" to
+the version string.
 --------------------------------------------------------------------------------
-Chrome Recovery Component Pings do not include chromrec2extra experiment
-labels. This change adds a RemoveTimestamps() method to the public interface
-for experiment labels, and removes the ability to exclude timestamps in 3 of
-the 4 other public methods. RemoveTimestamps() is only used when the
-experiment labels need to be sent over the wire. In all other cases,
-experiment labels include the timestamps.
---------------------------------------------
-Google Installer shown as a performance bottleneck in Windows 8+. The Run key
-now runs GoogleUpdateCore.exe that checks if the Core "GoogleUpdate.exe /c"
-has run recently, and if not, runs "GoogleUpdate.exe /c". The expectation
-here is that for most people, the Core Scheduled Task will run
-"GoogleUpdate.exe /c", and the Run mechanism is just a backup in case the
-Scheduled Task fails to run. This will greatly reduce the number of instances
-where "GoogleUpdate.exe /c" is run at Startup.
+Chrome Recovery Component Pings do not include chromrec2extra experiment labels.
+This change adds a RemoveTimestamps() method to the public interface for
+experiment labels, and removes the ability to exclude timestamps in 3 of the 4
+other public methods. RemoveTimestamps() is only used when the experiment labels
+need to be sent over the wire. In all other cases, experiment labels include the
+timestamps.  -------------------------------------------- Google Installer shown
+as a performance bottleneck in Windows 8+. The Run key now runs
+GoogleUpdateCore.exe that checks if the Core "GoogleUpdate.exe /c" has run
+recently, and if not, runs "GoogleUpdate.exe /c". The expectation here is that
+for most people, the Core Scheduled Task will run "GoogleUpdate.exe /c", and the
+Run mechanism is just a backup in case the Scheduled Task fails to run. This
+will greatly reduce the number of instances where "GoogleUpdate.exe /c" is run
+at Startup.
 --------------------------------------------------------------------------------
 
 ## 2016-07-21 @123807767,127906166 1.3.31.5
 
+### Changes
 --------------------------------------------------------------------------------
 Build changes for opensource: define shell var OMAHA_WINDOWS_SDK_10_0_VERSION
 --------------------------------------------------------------------------------
 SafeFormatTest.BrokenCStringFormatTruncates crashes and
-TimeTest.TimeToStringTest fails.
-Deleting SafeFormatTest.BrokenCStringFormatTruncates and
-disabling TimeTest.TimeToStringTest.
+TimeTest.TimeToStringTest fails.  Deleting
+SafeFormatTest.BrokenCStringFormatTruncates and disabling
+TimeTest.TimeToStringTest.
 --------------------------------------------------------------------------------
 Changes all CStringT Format/AppendFormat calls to use the safe versions
 SafeCStringFormat/AppendFormat.
 --------------------------------------------------------------------------------
-Change GPA_WRAP to use ::LoadLibrary instead of ::GetModuleHandle. The
-former is needed for cases where the module is not already loaded.
+Change GPA_WRAP to use ::LoadLibrary instead of ::GetModuleHandle. The former is
+needed for cases where the module is not already loaded.
 --------------------------------------------------------------------------------
-Fix bug 29402553 Omaha metainstaller fails silently with Server Core for
-Windows Server 2012 R2. There are dependencies missing in Server Core for
-Windows Server 2012 R2. Server Core is a minimal server installation option for
-Windows Server that provides a low-maintenance server environment with limited
-functionality. I removed the rasapi32/rasman dependency, and the installer
-works on Server Core.
+Fix bug 29402553 Omaha metainstaller fails silently with Server Core for Windows
+Server 2012 R2. There are dependencies missing in Server Core for Windows Server
+2012 R2. Server Core is a minimal server installation option for Windows Server
+that provides a low-maintenance server environment with limited functionality. I
+removed the rasapi32/rasman dependency, and the installer works on Server Core.
 --------------------------------------------------------------------------------
 The Model object is now created in the Worker constructor so that the
 locking/unlocking works correctly.
@@ -167,9 +212,9 @@ Service not shutting down fast enough for a fallback local instance to install.
 This CL moves the Worker initialization (which includes the single instance
 mutex) to method calls on the IGoogleUpdate3 interface. In other words, the
 Worker is only initialized when the Client has a valid IGoogleUpdate3 interface
-pointer and calls a method on it. This change allows the client to reliably
-fall back to the in-proc COM server when the service takes too long to come
-up or if the interfaces are not registered correctly.
+pointer and calls a method on it. This change allows the client to reliably fall
+back to the in-proc COM server when the service takes too long to come up or if
+the interfaces are not registered correctly.
 --------------------------------------------------------------------------------
 Refactor parts of standalone_installer into plain python module.
 --------------------------------------------------------------------------------
@@ -183,8 +228,8 @@ the certificate chain for the first signature and the certificate chain for the
 corresponding timestamp. With the older SaveArguments.exe, the "Symantec Time
 Stamping Services Signer - G4" timestamp had 2 certificates in the certificate
 chain. With the newer SaveArguments.exe, the "COMODO SHA-1 Time Stamping Signer"
-has only a single certificate in the chain. So the total is off by 1.
-Fixing the total to be 3 now.
+has only a single certificate in the chain. So the total is off by 1.  Fixing
+the total to be 3 now.
 
 The code we have in signaturevalidator.cc works for now.
 ExtractAllCertificatesFromSignature() only extracts the first signature in files
@@ -192,31 +237,28 @@ with multiple digital signatures. It turns out that ::CryptQueryObject in
 conjunction with ::CertEnumCertificatesInStore on the returned HCERTSTORE only
 enumerates over the first signature (the SHA1 in this case). If we need to read
 subsequent signatures (the SHA256 for instance), we need to parse the
-unauthenticated attribute OID szOID_NESTED_SIGNATURE. For now, the code that
-we depend on works fine with the SHA1 signature, so I am only fixing the unit
-test.
+unauthenticated attribute OID szOID_NESTED_SIGNATURE. For now, the code that we
+depend on works fine with the SHA1 signature, so I am only fixing the unit test.
 --------------------------------------------------------------------------------
 Bypass signing process for development build.
 --------------------------------------------------------------------------------
 Omaha fonts look bad on hi-dpi windows and fix Chromium Issue 612283 Installer
 text is blurry on Hi-DPI devices. Changing the manifest to specify that the
-Omaha UI is DPI-Aware. Tested with different DPI settings on Windows 8.1,
-the UI works well. More work may be needed on Windows 7, where the progress
-bar is not scaled appropriately.
+Omaha UI is DPI-Aware. Tested with different DPI settings on Windows 8.1, the UI
+works well. More work may be needed on Windows 7, where the progress bar is not
+scaled appropriately.
 --------------------------------------------------------------------------------
-Fix ADMX generation for the UpdateDefault policy.
-Addressing crbug/609145.
+Fix ADMX generation for the UpdateDefault policy.  Addressing crbug/609145.
 --------------------------------------------------------------------------------
 Add support for product downgrades to GoogleChromeStandaloneEnterprise.msi
 wrappers around standalone installers.
 
-Ordinarily, the MSI wrapper prevents product downgrades. This can be
-suppressed by passing ALLOWDOWNGRADE=1 (or any other value) via the
-command line to msiexec. This option can be propagated to app installers
-(mini_installer.exe) via a substitution of the [AllowDowngradeSubstitution]
-property in the app's ProductInstallerData. This property will be 'false'
-under normal circumstances, and 'true' when ALLOWDOWNGRADE=1
-is used.
+Ordinarily, the MSI wrapper prevents product downgrades. This can be suppressed
+by passing ALLOWDOWNGRADE=1 (or any other value) via the command line to
+msiexec. This option can be propagated to app installers (mini_installer.exe)
+via a substitution of the [AllowDowngradeSubstitution] property in the app's
+ProductInstallerData. This property will be 'false' under normal circumstances,
+and 'true' when ALLOWDOWNGRADE=1 is used.
 
 This feature is added in support of Chrome's enterprise installer; see
 http://crbug.com/607592.
@@ -225,8 +267,8 @@ Fix bug 28297220 Experiment Label deltas not being saved correctly for machine
 ping requests.
 --------------------------------------------------------------------------------
 Update service spam to Event Log. Redefining the macro RegisterEventSource to
-evaluate to NULL so that ATL's logging code does nothing.
-Explicitly using ::RegisterEventSourceW in the Omaha codebase.
+evaluate to NULL so that ATL's logging code does nothing.  Explicitly using
+::RegisterEventSourceW in the Omaha codebase.
 --------------------------------------------------------------------------------
 Authenticode timestamping changes. Increasing the timeout between retries of
 signing a single file to 15 seconds as per Comodo's recommendations.
@@ -234,6 +276,7 @@ signing a single file to 15 seconds as per Comodo's recommendations.
 Refactor Experiment Labels. This change reduces the public interface for
 experiment labels down to 4 functions. This makes the calling code less
 error-prone, more readable, and avoids duplicated functionality.
+--------------------------------------------------------------------------------
 
 ## 2016-05-31 @113564071,120560961 1.3.30.3
 
@@ -244,40 +287,41 @@ integrity token. We now persist pings at high integrity in the machine case.
 --------------------------------------------------------------------------------
 Add CUP key 6.
 --------------------------------------------------------------------------------
-Add Google Update configuration and statistics metrics. This change unifies
-the added metrics under a single key that also includes other Omaha metrics.
+Add Google Update configuration and statistics metrics. This change unifies the
+added metrics under a single key that also includes other Omaha metrics.
 --------------------------------------------------------------------------------
-Omaha Client Doesn't Stop Fallbacks on X-Retry-After. The client was trying
-(and failing) to save the RetryAfter value from medium integrity in the Machine
-Omaha case. Now we save it from high integrity.
+Omaha Client Doesn't Stop Fallbacks on X-Retry-After. The client was trying (and
+failing) to save the RetryAfter value from medium integrity in the Machine Omaha
+case. Now we save it from high integrity.
 --------------------------------------------------------------------------------
 x-retry-after is obeyed even on http. The original HTTPS URL was being used
 instead of the actual HTTP URL. Changed variable names to better reflect what
 they represent.
 --------------------------------------------------------------------------------
-Add a <systemrequirements> element for the update <response>. The <systemrequirements>
-element is expected to be added only to offline update response files that ship
-with the standalone and msi installers.
+Add a <systemrequirements> element for the update <response>. The
+<systemrequirements> element is expected to be added only to offline update
+response files that ship with the standalone and msi installers.
 
 The <systemrequirements> element specifies the minimum requirements in terms of
-platform, arch, and version. For systems that do not meet the <systemrequirements>
-specifications, Omaha will error out with GOOPDATE_E_OS_NOT_SUPPORTED.
-The service pack is ignored at the moment.
+platform, arch, and version. For systems that do not meet the
+<systemrequirements> specifications, Omaha will error out with
+GOOPDATE_E_OS_NOT_SUPPORTED.  The service pack is ignored at the moment.
 
-An example <systemrequirements> element is shown below:
-<response protocol="3.0"><systemrequirements platform="win" arch="x86" min_os_version="6.0"/>
+An example <systemrequirements> element is shown below: <response
+protocol="3.0"><systemrequirements platform="win" arch="x86"
+min_os_version="6.0"/>
 
-This sets the system requirements as Windows, x86 (or x64, since x64 systems support
-x86 applications), and a minimum OS version of 6.0.
+This sets the system requirements as Windows, x86 (or x64, since x64 systems
+support x86 applications), and a minimum OS version of 6.0.
 --------------------------------------------------------------------------------
 Retry-After should account for incorrect clock times. To account for clocks that
-get reset to the past, Omaha will retry now if the retry time is more than
-24 hours in the future.
+get reset to the past, Omaha will retry now if the retry time is more than 24
+hours in the future.
 --------------------------------------------------------------------------------
 Omaha UI: Downloading text needs changes.
 --------------------------------------------------------------------------------
-Send cohort data with Omaha self-update pings as well as with exception/debug pings
-such as when Omaha could not install itself or CUP failure pings.
+Send cohort data with Omaha self-update pings as well as with exception/debug
+pings such as when Omaha could not install itself or CUP failure pings.
 --------------------------------------------------------------------------------
 Debug logging change.
 --------------------------------------------------------------------------------
@@ -292,27 +336,28 @@ Integrate changes and delete unused code in base/security
 --------------------------------------------------------------------------------
 
 ## 2016-02-03 @109823444,113564071 1.3.29.5
+
+### Changes
 --------------------------------------------------------------------------------
 Change cacheable URL GPO reg value from "PayloadType" to "DownloadPreference".
 --------------------------------------------------------------------------------
 Change to ::GetModuleHandle() instead of ::LoadLibrary() when getting a resource
 from goopdate.dll. The DLL is already loaded in memory, so LL is not needed.
 --------------------------------------------------------------------------------
-Mitigate DLL highjacking in the Omaha client. We now call ::SetDefaultDllDirectories
-to retrict DLL loads to either full paths or %SYSTEM32%. ::SetDefaultDllDirectories
-is available on Windows 8.1 and above, and on Windows Vista and above
-when KB2533623 is applied.
+Mitigate DLL highjacking in the Omaha client. We now call
+::SetDefaultDllDirectories to retrict DLL loads to either full paths or
+%SYSTEM32%. ::SetDefaultDllDirectories is available on Windows 8.1 and above,
+and on Windows Vista and above when KB2533623 is applied.
 --------------------------------------------------------------------------------
 Update the build files to use the new DualSignedBinary function. This function
 signs binaries with both SHA1 and SHA256 certificates.
 --------------------------------------------------------------------------------
 
 ## 2015-12-09 @109823443,110222497 1.3.29.1
---------------------------------------------------------------------------------
-Fix broken build due to changes in Breakpad.
---------------------------------------------------------------------------------
 
 ### Changes
+--------------------------------------------------------------------------------
+Fix broken build due to changes in Breakpad.
 --------------------------------------------------------------------------------
 Fix Internal compiler error when building with VS2015U1.
 --------------------------------------------------------------------------------
@@ -329,21 +374,21 @@ Fixed wrong printf arguments
 --------------------------------------------------------------------------------
 Create a unit test for ExperimentLabels::SerializeOptions::DEFAULT.
 --------------------------------------------------------------------------------
-Mechanical change to rename a local variable in UpdateRequestUtilsTest.PingFreshness
+Mechanical change to rename a local variable in
+UpdateRequestUtilsTest.PingFreshness
 --------------------------------------------------------------------------------
 Don't send expiration for experiment labels.
 --------------------------------------------------------------------------------
 Indicate registry freshness in updatecheck.
 
-A registry freshness value is saved in the app ClientState
-when user counts are updated, as part of a successfully
-transmitted update request.
+A registry freshness value is saved in the app ClientState when user counts are
+updated, as part of a successfully transmitted update request.
 
-Then, this value is picked up when the app is added to an app bundle,
-and serialized by a subsequent update check as an attribute of the
-<ping> element, along with the user counts. When this update check
-completes successfully, and the user counts are updated, the
-freshness value for this app is updated to another 128-bit value.
+Then, this value is picked up when the app is added to an app bundle, and
+serialized by a subsequent update check as an attribute of the <ping> element,
+along with the user counts. When this update check completes successfully, and
+the user counts are updated, the freshness value for this app is updated to
+another 128-bit value.
 --------------------------------------------------------------------------------
 Update SaveArguments.exe with version 1.3.28.17
 --------------------------------------------------------------------------------
@@ -356,15 +401,13 @@ Fix bug 25426710: Install directory is not cleaned up.
 
 ### Changes
 --------------------------------------------------------------------------------
-Fix unitests:
-* SetupRegistryProtectedUserTest tests are flaky.
-* CoreTest.HasOSUpgraded has a race condition.
+Fix unitests: * SetupRegistryProtectedUserTest tests are flaky.  *
+CoreTest.HasOSUpgraded has a race condition.
 --------------------------------------------------------------------------------
 Integrate the makefile for eckeytool.c
 
-This could be useful for people who want to build this using
-a GNU toolchain, even if Omaha's build script is not
-calling this makefile.
+This could be useful for people who want to build this using a GNU toolchain,
+even if Omaha's build script is not calling this makefile.
 --------------------------------------------------------------------------------
 Remove unused cup_ecdsa_pubkey.4
 --------------------------------------------------------------------------------
@@ -389,767 +432,992 @@ ERROR_INVALID_SID and throws an exception in atlsecurity.h
 ## 2015-08-25 @101487056 1.3.28.13
 
 ### Changes
-
 --------------------------------------------------------------------------------
-Change for bug 22854711 Return UPGRADE_DISABLED_BY_POLICY or UPGRADE_DISABLED_BY_POLICY_MANUAL
-when updates are disabled. With the prior change 100435441, Omaha started sending an empty
-update check. This change fixes this undesired side-effect.
+Change for bug 22854711 Return UPGRADE_DISABLED_BY_POLICY or
+UPGRADE_DISABLED_BY_POLICY_MANUAL when updates are disabled. With the prior
+this undesired side-effect.
 --------------------------------------------------------------------------------
-Fix bug chrome://chrome does not show Install Progress. Adding in an exception for
-the "Google Chrome binaries" {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D} AppID in Omaha code.
-The reason for this bug: For first installs, Chrome uses AppID {8A69D345-D564-463C-AFF1-A69D9E530F96}
-for installing. We have code within Omaha that reads Install Progress from InstallerExtraCode1
-only for that AppId. For updates, Chrome uses {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}, so Omaha
-checks only {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}\ClientState\InstallerProgress (REG_DWORD)
-and does not find it. Eventually Chrome Setup will start writing to
+Fix bug chrome://chrome does not show Install Progress. Adding in an exception
+for the "Google Chrome binaries" {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D} AppID in
+Omaha code.  The reason for this bug: For first installs, Chrome uses AppID
+{8A69D345-D564-463C-AFF1-A69D9E530F96} for installing. We have code within Omaha
+that reads Install Progress from InstallerExtraCode1 only for that AppId. For
+updates, Chrome uses {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}, so Omaha checks
+only {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}\ClientState\InstallerProgress
+(REG_DWORD) and does not find it. Eventually Chrome Setup will start writing to
 {4DC8B4CA-1BDA-483e-B5FA-D3C12E15B62D}\ClientState\InstallerProgress as per
-https://code.google.com/p/chromium/issues/detail?id=458558, and this code will not be needed.
+https://code.google.com/p/chromium/issues/detail?id=458558, and this code will
+not be needed.
 --------------------------------------------------------------------------------
 
 ## 2015-08-18 @100157432,100957192 1.3.28.11
 
 ### Changes
-
 --------------------------------------------------------------------------------
-  Fix unit test to include Windows 10 and fix the string for Window 8.
+Fix unit test to include Windows 10 and fix the string for Window 8.
 --------------------------------------------------------------------------------
-  Improves on the version detection by using RtlGetVersion().
+Improves on the version detection by using RtlGetVersion().
 --------------------------------------------------------------------------------
-  Merge separate unit test binaries into omaha_unittests.exe.
+Merge separate unit test binaries into omaha_unittests.exe.
 --------------------------------------------------------------------------------
-  Set the minimum shell version to be 1.3.26.1, which has the manifest changes to correctly identify the shell as being compatible with Windows 10.
-  Updating users to shell 1.3.26.1 will allow Omaha to also report the correct Windows version in the update checks.
-  In addition, there will be another forthcoming change to improve on the version detection by using RtlGetVersion().
+Set the minimum shell version to be 1.3.26.1, which has the manifest changes to
+correctly identify the shell as being compatible with Windows 10.  Updating
+users to shell 1.3.26.1 will allow Omaha to also report the correct Windows
+version in the update checks.  In addition, there will be another forthcoming
+change to improve on the version detection by using RtlGetVersion().
 --------------------------------------------------------------------------------
-  Fix some static analysis warnings from VS2015.
+Fix some static analysis warnings from VS2015.
 --------------------------------------------------------------------------------
-  Update SaveArguments.exe with version 1.3.28.9
+Update SaveArguments.exe with version 1.3.28.9
 --------------------------------------------------------------------------------
-  Fix bug 23121021 rand_s crashes with EINVAL _invalid_parameter_noinfo.
-  Using code from https://src.chromium.org/svn/trunk/src/base/rand_util_win.cc instead of rand_s for now.
+Fix bug 23121021 rand_s crashes with EINVAL _invalid_parameter_noinfo.  Using
+code from https://src.chromium.org/svn/trunk/src/base/rand_util_win.cc instead
+of rand_s for now.
 --------------------------------------------------------------------------------
-  Update product ID in RepairGoopdate* unit tests.
+Update product ID in RepairGoopdate* unit tests.
 --------------------------------------------------------------------------------
-  Omaha must build without SSE instruction.
+Omaha must build without SSE instruction.
 --------------------------------------------------------------------------------
-  Omaha returns UPGRADE_DISABLED_BY_POLICY_MANUAL for manual/on-demand update checks when updates are disabled.
-  If installs and updates are disabled, Manual installs and Manual update checks do not check for updates with the Omaha server and return right away with GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY and GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY_MANUAL respectively.
-  Automatic update checks continue to work as before. They do an update check with the server, and only in the download phase will the client get a GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY error.
+Omaha returns UPGRADE_DISABLED_BY_POLICY_MANUAL for manual/on-demand update
+checks when updates are disabled.  If installs and updates are disabled, Manual
+installs and Manual update checks do not check for updates with the Omaha server
+and return right away with GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY and
+GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY_MANUAL respectively.  Automatic update
+checks continue to work as before. They do an update check with the server, and
+only in the download phase will the client get a
+GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY error.
+--------------------------------------------------------------------------------
 
 ## 2015-08-15 @96143043,100157431
 
 ### Changes
 --------------------------------------------------------------------------------
-  Build script changes to build with VS2015.
+Build script changes to build with VS2015.
 --------------------------------------------------------------------------------
-  Omaha build sets the wrong minimum version for the x64 Windows subsystem.
+Omaha build sets the wrong minimum version for the x64 Windows subsystem.
 --------------------------------------------------------------------------------
-  On any OS upgrade, major or minor, all AutoRunOnOSUpgrade commands will be called. If the "CommandLine" in the registry includes a "%1", %1 will be replaced with "OLDdwMajorVersion.OLDdwMinorVersion.OLDdwBuildNumber.OLDwServicePackMajor.OLDwServicePackMinor-NEWdwMajorVersion.NEWdwMinorVersion.NEWdwBuildNumber.NEWwServicePackMajor.NEWwServicePackMinor".
-          For example:
-          "C:\Program Files (x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe" --on-os-upgrade=%1 --multi-install --chrome --system-level --verbose-logging
-          will be replaced with something like this:
-          "C:\Program Files (x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe" --on-os-upgrade=5.3.9600.0.0-5.4.0001.0.0 --multi-install --chrome --system-level --verbose-logging
-          where 5.3.9600.0.0 corresponds to the previous Windows OS version being upgraded from, and 5.4.0001.0.0 is the new OS being upgraded to.
+On any OS upgrade, major or minor, all AutoRunOnOSUpgrade commands will be
+called. If the "CommandLine" in the registry includes a "%1", %1 will be
+replaced with
+"OLDdwMajorVersion.OLDdwMinorVersion.OLDdwBuildNumber.OLDwServicePackMajor.OLDwServicePackMinor-NEWdwMajorVersion.NEWdwMinorVersion.NEWdwBuildNumber.NEWwServicePackMajor.NEWwServicePackMinor".
+For example: "C:\Program Files
+(x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe"
+--on-os-upgrade=%1 --multi-install --chrome --system-level --verbose-logging
+will be replaced with something like this: "C:\Program Files
+(x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe"
+--on-os-upgrade=5.3.9600.0.0-5.4.0001.0.0 --multi-install --chrome
+--system-level --verbose-logging where 5.3.9600.0.0 corresponds to the previous
+Windows OS version being upgraded from, and 5.4.0001.0.0 is the new OS being
+upgraded to.
 
-          If the CommandLine parameter does not contain a %1, then the CommandLine will be used unchanged.
-          For example:
-          "C:\Program Files (x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe" --on-os-upgrade --multi-install --chrome --system-level --verbose-logging
-          will be executed as-is on os upgrades.
+If the CommandLine parameter does not contain a %1, then the
+CommandLine will be used unchanged.  For example: "C:\Program Files
+(x86)\Google\Chrome\Application\44.0.2403.130\Installer\setup.exe"
+--on-os-upgrade --multi-install --chrome --system-level
+--verbose-logging will be executed as-is on os upgrades.
 --------------------------------------------------------------------------------
-  Add script to generate ADMX files.
+Add script to generate ADMX files.
 --------------------------------------------------------------------------------
-  Test to verify that AutoRunOnOSUpgrade commands run whether or not they have a %1 format parameter.
+Test to verify that AutoRunOnOSUpgrade commands run whether or not
+they have a %1 format parameter.
 --------------------------------------------------------------------------------
-  Source code changes to build with VS2015.
-  More changes will be needed, including changes in the build scripts.
-  This is just the first batch of changes to C/C++ files.
+Source code changes to build with VS2015.  More changes will be
+needed, including changes in the build scripts.  This is just the
+first batch of changes to C/C++ files.
 --------------------------------------------------------------------------------
-  Replace IsVistaOrLater() with SystemInfo::IsRunningOnVistaOrLater().
-----------------------------------------
+Replace IsVistaOrLater() with SystemInfo::IsRunningOnVistaOrLater().
+--------------------------------------------------------------------------------
 
 ## v1.3.28.1 - 2015-07-21 @54943000,96143042
 
 ### Changes
 --------------------------------------------------------------------------------
-  Standardize on Security Lite and deprecate WinCrypt. Now using SecurityLite instead of WinCrypt in the CryptoHash class.
+Standardize on Security Lite and deprecate WinCrypt. Now using SecurityLite
+instead of WinCrypt in the CryptoHash class.
+--------------------------------------------------------------------------------
+Disable EtwTraceControllerTest.EnableDisable test.  It hangs on Windows 7.
 --------------------------------------------------------------------------------
-  Disable EtwTraceControllerTest.EnableDisable test.
-  It hangs on Windows 7.
+GoogleUpdateRecoveryTest.VerifyFileSignature* tests fail.  SaveArguments.exe
+needs to be updated every 6 months.  Now using the version 1.3.27.5 built on
+5/1/2015.
 --------------------------------------------------------------------------------
-  GoogleUpdateRecoveryTest.VerifyFileSignature* tests fail.
-  SaveArguments.exe needs to be updated every 6 months.
-  Now using the version 1.3.27.5 built on 5/1/2015.
+Running Debug version of Omaha on Win 10 produces an assertion failed error
+OS_WINDOWS_UNKNOWN. The custom OS version detection code is dated. Moving Omaha
+code to using the Version Helper functions that shipped with the Windows 8.1
+SDK.
 --------------------------------------------------------------------------------
-  Running Debug version of Omaha on Win 10 produces an assertion failed error OS_WINDOWS_UNKNOWN. The custom OS version detection code is dated. Moving Omaha code to using the Version Helper functions that shipped with the Windows 8.1 SDK.
+Include the passed in install source for Omaha install ping as well.
 --------------------------------------------------------------------------------
-  Include the passed in install source for Omaha install ping as well.
+Implement support for load shedding based on the priority of requests. The
+client sends a X-GoogleUpdate-Interactivity header to indicate whether the
+current request is foreground or background. A value of "fg" ("foreground")
+indicates foreground install or on-demand updates. "bg" ("background") indicates
+silent update traffic.
 --------------------------------------------------------------------------------
-  Implement support for load shedding based on the priority of requests. The client sends a X-GoogleUpdate-Interactivity header to indicate whether the current request is foreground or background. A value of "fg" ("foreground") indicates foreground install or on-demand updates. "bg" ("background") indicates silent update traffic.
+Fix Cohort attributes not being echoed to the update server in update checks.
+Also added unit tests for the Update Request as well as the Update Response.
 --------------------------------------------------------------------------------
-  Fix Cohort attributes not being echoed to the update server in update checks. Also added unit tests for the Update Request as well as the Update Response.
+Change the Test Omaha Exe Installer to correctly process installerdata. The code
+was not handling quoted paths correctly.
 --------------------------------------------------------------------------------
-  Change the Test Omaha Exe Installer to correctly process installerdata. The code was not handling quoted paths correctly.
+Support Retry-After header.
 --------------------------------------------------------------------------------
-  Support Retry-After header.
+The ping event result for download metrics is incorrect in some cases.  The idea
+here is that the ping event result corresponding to a download metrics should be
+consistent with the error member in the download metrics.
 --------------------------------------------------------------------------------
-  The ping event result for download metrics is incorrect in some cases.
-  The idea here is that the ping event result corresponding to a download metrics should
-  be consistent with the error member in the download metrics.
+Add Installer Progress Reporting to Omaha. This change adds Installer Result API
+InstallerProgress Installer Progress Reporting to Omaha.  Omaha now reads
+installation progress reported as a percentage from 0 to 100 in
+"InstallerProgress" under Google\\Update\\ClientState\\{AppID}, which allows the
+Omaha installation UI to show installation progress of any installer that writes
+the "InstallerProgress" value.  Once this change is in, installers that write
+percentage progress to the "InstallerProgress" value as they progress through
+the installation will allow Omaha to automatically pick it up.
 --------------------------------------------------------------------------------
-  Add Installer Progress Reporting to Omaha. This change adds Installer Result API InstallerProgress Installer Progress Reporting to Omaha.
-  Omaha now reads installation progress reported as a percentage from 0 to 100 in "InstallerProgress" under Google\\Update\\ClientState\\{AppID}, which allows the Omaha installation UI to show installation progress of any installer that writes the "InstallerProgress" value.
-  Once this change is in, installers that write percentage progress to the "InstallerProgress" value as they progress through the installation will allow Omaha to automatically pick it up.
+Check the custom HTTP header first, then check ETag if the former is not present
+or empty.
 --------------------------------------------------------------------------------
-  Check the custom HTTP header first, then check ETag if the former is not present or empty.
+Implement an alt mechanism for ETag in CUP-ECDSA. There is now support for a
+"X-Cup-Server-Proof" custom header that we check first, and then fall back on
+the ETag header if the former is missing. The following formatting variations of
+the ETag/X-Cup-Server-Proof header are supported: * A Strong ETag formatted as
+S:H.  * A Strong ETag formatted as "S:H".  * A Weak ETag formatted as W/S:H.  *
+A Weak ETag formatted as W/"S:H".
 --------------------------------------------------------------------------------
-  Implement an alt mechanism for ETag in CUP-ECDSA. There is now support for a "X-Cup-Server-Proof" custom header that we check first, and then fall back on the ETag header if the former is missing. The following formatting variations of the ETag/X-Cup-Server-Proof header are supported:
-  * A Strong ETag formatted as S:H.
-  * A Strong ETag formatted as "S:H".
-  * A Weak ETag formatted as W/S:H.
-  * A Weak ETag formatted as W/"S:H".
+Add a X-HTTP-Attempts header to outgoing Omaha requests.
 --------------------------------------------------------------------------------
-  Add a X-HTTP-Attempts header to outgoing Omaha requests.
+Adding IJobObserver2 handling for PerformOnDemand.
 --------------------------------------------------------------------------------
-  Adding IJobObserver2 handling for PerformOnDemand.
+Installer progress for the OnDemand API. This change adds a new IJobObserver2
+interface. IJobObserver2 provides a single method, OnInstalling2([in] int
+time_remaining_ms, [in] int pos), that gives installation progress when
+available. If an OnDemand client implements IJobObserver2, then the newer
+OnInstalling2() method will be called instead of IJobObserver::OnInstalling().
+This will enable Chrome to show installation progress within the chrome://chrome
+page.
 --------------------------------------------------------------------------------
-  Installer progress for the OnDemand API. This change adds a new IJobObserver2 interface. IJobObserver2 provides a single method, OnInstalling2([in] int time_remaining_ms, [in] int pos), that gives installation progress when available. If an OnDemand client implements IJobObserver2, then the newer OnInstalling2() method will be called instead of IJobObserver::OnInstalling(). This will enable Chrome to show installation progress within the chrome://chrome page.
+Add Chrome Installer Progress Reporting to Omaha. This change reads Installation
+progress reported in "InstallerExtraCode1" under
+Google\\Update\\ClientState\\{AppID}, and allows the Omaha installation UI to
+show installation progress of the Chrome installer. The Chrome installer writes
+the "InstallerExtraCode1" value as it progresses through the installation.
 --------------------------------------------------------------------------------
-  Add Chrome Installer Progress Reporting to Omaha. This change reads Installation progress reported in "InstallerExtraCode1" under Google\\Update\\ClientState\\{AppID}, and allows the Omaha installation UI to show installation progress of the Chrome installer. The Chrome installer writes the "InstallerExtraCode1" value as it progresses through the installation.
+Implement cohort attributes.
 --------------------------------------------------------------------------------
-  Implement cohort attributes.
+Fix XP-compatibility for the VC 2013 build: * "GoogleUpdateSetup.exe is not a
+valid Win32 application": This is fixed by explicitly targetting Windows XP by
+setting the SUBSYSTEM to 5.01.  * "The procedure entry point
+InitializeCriticalSectionEx could not be located in the dynamic link library
+KERNEL32.dll". ATL uses InitializeCriticalSectionEx unless we build with
+_ATL_XP_TARGETING.
 --------------------------------------------------------------------------------
-  Fix XP-compatibility for the VC 2013 build:
-  * "GoogleUpdateSetup.exe is not a valid Win32 application": This is fixed by explicitly targetting Windows XP by setting the SUBSYSTEM to 5.01.
-  * "The procedure entry point InitializeCriticalSectionEx could not be located in the dynamic link library KERNEL32.dll". ATL uses InitializeCriticalSectionEx unless we build with _ATL_XP_TARGETING.
+Fix the GroupPolicyProxyDetector to work correctly on Domain and Non-Domain
+scenarios.
 --------------------------------------------------------------------------------
-  Fix the GroupPolicyProxyDetector to work correctly on Domain and Non-Domain scenarios.
+Fix UATest Group Policy related test cases to test Domain and Non-Domain
+scenarios.
 --------------------------------------------------------------------------------
-  Fix UATest Group Policy related test cases to test Domain and Non-Domain scenarios.
+Fix UpdateRequest and XmlParser Group Policy related test cases to test Domain
+and Non-Domain scenarios.
 --------------------------------------------------------------------------------
-  Fix UpdateRequest and XmlParser Group Policy related test cases to test Domain and Non-Domain scenarios.
+A SetupGoogleUpdateMachineTest unit test is broken. Changing
+vista_util::IsUACOn() to always reflect 'false' on platforms below Vista.
 --------------------------------------------------------------------------------
-  A SetupGoogleUpdateMachineTest unit test is broken. Changing vista_util::IsUACOn() to always reflect 'false' on platforms below Vista.
+Fix Group-Policy-related test cases to test both Domain and Non-Domain
+scenarios.
 --------------------------------------------------------------------------------
-  Fix Group-Policy-related test cases to test both Domain and Non-Domain scenarios.
+Work around locked-down environments for CSIDL_PROGRAM_FILES and
+CSIDL_LOCAL_APPDATA. Using ::GetEnvironmentVariable when ::SHGetFolderPath
+fails.
 --------------------------------------------------------------------------------
-  Work around locked-down environments for CSIDL_PROGRAM_FILES and CSIDL_LOCAL_APPDATA. Using ::GetEnvironmentVariable when ::SHGetFolderPath fails.
+Adding a new hammer command line switch --suppress_light_validation. This switch
+supresses WiX Linker ICE validation. Useful when building with a non-interactive
+account or a non-Admin account: http://goo.gl/UyDzeP.
 --------------------------------------------------------------------------------
-  Adding a new hammer command line switch --suppress_light_validation. This switch supresses WiX Linker ICE validation. Useful when building with a non-interactive account or a non-Admin account: http://goo.gl/UyDzeP.
+Supress <LGHT0217: Error executing ICE action 'ICE01'> when building on the
+build server. ICE validation needs an interactive account or Admin privileges:
+http://goo.gl/UyDzeP.
 --------------------------------------------------------------------------------
-  Supress <LGHT0217: Error executing ICE action 'ICE01'> when building on the build server. ICE validation needs an interactive account or Admin privileges: http://goo.gl/UyDzeP.
+Adding an UpdateDev override "EnrolledToDomain" that when set makes it look like
+the machine is enrolled to a domain.
 --------------------------------------------------------------------------------
-  Adding an UpdateDev override "EnrolledToDomain" that when set makes it look like the machine is enrolled to a domain.
+Google Update Group Policy settings - change to work only for Domain Users.
 --------------------------------------------------------------------------------
-  Google Update Group Policy settings - change to work only for Domain Users.
+Use OPT_LOG statements in the download manager
 --------------------------------------------------------------------------------
-  Use OPT_LOG statements in the download manager
+Download metrics for simple request don't include the error when a HTTP response
+is available and the response is an HTTP error.
 --------------------------------------------------------------------------------
-  Download metrics for simple request don't include the error
-  when a HTTP response is available and the response is an HTTP error.
+BITS download metrics don't include the error in some cases
 --------------------------------------------------------------------------------
-  BITS download metrics don't include the error in some cases
+Have the OneClick control run GoogleUpdateWebPlugin.exe instead of
+GoogleUpdate.exe.
 --------------------------------------------------------------------------------
-  Have the OneClick control run GoogleUpdateWebPlugin.exe instead of GoogleUpdate.exe.
+Fix time bombs in the experiment_labels_unittest
 --------------------------------------------------------------------------------
-  Fix time bombs in the experiment_labels_unittest
+UI stuck on "Download complete.". STATE_READY_TO_INSTALL was being shown in the
+UI as "Download complete.".
 --------------------------------------------------------------------------------
-  UI stuck on "Download complete.". STATE_READY_TO_INSTALL was being shown in the UI as "Download complete.".
+crash_analyzer_checks.cc warning C6319: Use of the comma-operator in a tested
+expression causes the left argument to be ignored when it has no side-effects.
 --------------------------------------------------------------------------------
-  crash_analyzer_checks.cc warning C6319: Use of the comma-operator in a tested expression causes the left argument to be ignored when it has no side-effects.
+common\scheduled_task_utils.cc(369)warning C6216: Compiler-inserted cast between
+semantically different integral types:
 --------------------------------------------------------------------------------
-  common\scheduled_task_utils.cc(369)warning C6216: Compiler-inserted cast between semantically different integral types:
+popup_menu.cc(170)warning C6316: Incorrect operator: tested expression is
+constant and non-zero.
 --------------------------------------------------------------------------------
-  popup_menu.cc(170)warning C6316: Incorrect operator: tested expression is constant and non-zero.
+base\crash_if_specific_error.cc(29)warning C6230: Implicit cast between
+semantically different integer types:
 --------------------------------------------------------------------------------
-  base\crash_if_specific_error.cc(29)warning C6230: Implicit cast between semantically different integer types:
+net\simple_request.cc(728)warning C6246: Local declaration of 'response_headers'
+hides declaration of the same name in outer scope.
 --------------------------------------------------------------------------------
-  net\simple_request.cc(728)warning C6246: Local declaration of 'response_headers' hides declaration of the same name in outer scope.
+base\command_line_validator.cc(94)warning C6340: Mismatch on sign
 --------------------------------------------------------------------------------
-  base\command_line_validator.cc(94)warning C6340: Mismatch on sign
+base\clipboard.cc(48)warning C6387: 'copy_data' could be '0':
 --------------------------------------------------------------------------------
-  base\clipboard.cc(48)warning C6387: 'copy_data' could be '0':
+Fix static analysis warnings in proxy_auth.h
 --------------------------------------------------------------------------------
-  Fix static analysis warnings in proxy_auth.h
+Disable some static analysis warnings.  For everything, disable: '/wd28159', #
+Consider using 'GetTickCount64' instead of 'GetTickCount'.  '/wd28204', #
+Inconsistent SAL annotations.  '/wd28251', # Inconsistent SAL annotations.  For
+unit tests: # Disable static analysis warnings.  '/wd6326',  # Potential
+comparison of a constant with another constant.
 --------------------------------------------------------------------------------
-  Disable some static analysis warnings.
-  For everything, disable:
-  '/wd28159', # Consider using 'GetTickCount64' instead of 'GetTickCount'.
-  '/wd28204', # Inconsistent SAL annotations.
-  '/wd28251', # Inconsistent SAL annotations.
-  For unit tests:
-  # Disable static analysis warnings.
-  '/wd6326',  # Potential comparison of a constant with another constant.
+utils.h(163)warning C6387: 'module' could be '0'
 --------------------------------------------------------------------------------
-  utils.h(163)warning C6387: 'module' could be '0'
+InstallHandoffUserTest fails for only Vista in 1.3.26.1.
 --------------------------------------------------------------------------------
-  InstallHandoffUserTest fails for only Vista in 1.3.26.1.
+Add better debugging support for optimized code via undocumented switch /d2Zi+.
+The size increase is minimal on the compile run (704 bytes). More information on
+this switch here:
+https://randomascii.wordpress.com/2013/09/11/debugging-optimized-codenew-in-visual-studio-2012/
 --------------------------------------------------------------------------------
-  Add better debugging support for optimized code via undocumented switch /d2Zi+. The size increase is minimal on the compile run (704 bytes). More information on this switch here: https://randomascii.wordpress.com/2013/09/11/debugging-optimized-codenew-in-visual-studio-2012/
+Fix command line errors output for omaha_unittest.exe.  This change avoids the
+--gunit_ --gtest_ differences between the internal and the open source versions
+of gTest.
 --------------------------------------------------------------------------------
-  Fix command line errors output for omaha_unittest.exe.
-  This change avoids the --gunit_ --gtest_ differences between
-  the internal and the open source versions of gTest.
+Create a "prefer cacheable" flag in update requests.
 --------------------------------------------------------------------------------
-  Create a "prefer cacheable" flag in update requests.
+Added more logging to group policy override related functions in ConfigManager.
 --------------------------------------------------------------------------------
-  Added more logging to group policy override related functions in ConfigManager.
+Add a new policy to generated ADMs to select between secure and cacheable URLs
+for payloads.  Will require code support to implement.
 --------------------------------------------------------------------------------
-  Add a new policy to generated ADMs to select between secure and cacheable URLs for payloads.  Will require code support to implement.
+Introduce hourly jitter for update checks.
 --------------------------------------------------------------------------------
-  Introduce hourly jitter for update checks.
+Fix the unit test for OS upgrades to use the correct is_machine value.
 --------------------------------------------------------------------------------
-  Fix the unit test for OS upgrades to use the correct is_machine value.
+Improve existing unit tests by adding the "machine" scenario.  This is another
+mechanical change in preparation for introducing hourly jitter for update
+checks.
 --------------------------------------------------------------------------------
-  Improve existing unit tests by adding the "machine" scenario.
-  This is another mechanical change in preparation for
-  introducing hourly jitter for update checks.
+AutoRunOnOSUpgradeCommands AppCommands now run as fire-and-forget.
 --------------------------------------------------------------------------------
-  AutoRunOnOSUpgradeCommands AppCommands now run as fire-and-forget.
+Implement ping 14 component-updater style for Omaha.
 --------------------------------------------------------------------------------
-  Implement ping 14 component-updater style for Omaha.
+Disable the test CoreTest.HasOSUpgraded
 --------------------------------------------------------------------------------
-  Disable the test CoreTest.HasOSUpgraded
+Reduce the number of retries for downloads from 3 to 1
 --------------------------------------------------------------------------------
-  Reduce the number of retries for downloads from 3 to 1
+Implement ping 14 component-updater style for Omaha
 --------------------------------------------------------------------------------
-  Implement ping 14 component-updater style for Omaha
+Add a unit test for OS upgrades which tests that the Core successfully runs
+corresponding AutoRunOnOSUpgrade AppCommands.
 --------------------------------------------------------------------------------
-  Add a unit test for OS upgrades which tests that the Core successfully runs corresponding AutoRunOnOSUpgrade AppCommands.
+Removed DLL DELAYLOAD linkage flags so that the DLLs will be loaded at process
+start time (and thus eliminate the crash).
 --------------------------------------------------------------------------------
-  Removed DLL DELAYLOAD linkage flags so that the DLLs will be loaded at process start time (and thus eliminate the crash).
+Crash in CComObject<AppCommandCompletionObserver> constructor. Going back to
+adding the ATL Module back in since we do create AppCommand COM objects,
+creating the Core on the heap and leaking the module. The Core now has a DeInit
+method that allows the QueueTimers to shut down.
 --------------------------------------------------------------------------------
-  Crash in CComObject<AppCommandCompletionObserver> constructor. Going back to adding the ATL Module back in since we do create AppCommand COM objects, creating the Core on the heap and leaking the module. The Core now has a DeInit method that allows the QueueTimers to shut down.
+Support sha-256 for download verification.
 --------------------------------------------------------------------------------
-  Support sha-256 for download verification.
+Disable SplashScreenTest.RenderResourceStrings_en, the test takes too long to
+run.
 --------------------------------------------------------------------------------
-  Disable SplashScreenTest.RenderResourceStrings_en, the test takes too long to run.
+Remove duplicated uninstall ping.
 --------------------------------------------------------------------------------
-  Remove duplicated uninstall ping.
+Remove the assert which checks existence "network" reg key. The reg key is
+removed when we removed CUP RSA code.
 --------------------------------------------------------------------------------
-  Remove the assert which checks existence "network" reg key. The reg key is removed when we removed CUP RSA code.
+Removed registry hive redirection which causes GetDir32() fail on XP. Instead,
+the tests now creates and cleans up specific registry keys.
 --------------------------------------------------------------------------------
-  Removed registry hive redirection which causes GetDir32() fail on XP. Instead, the tests now creates and cleans up specific registry keys.
+Wait crash handler to exit before self-install.  No extra code needed to
+shutdown the crash handler because ShutdownHandler in CrashHandler also observes
+the global shutdown event.
 --------------------------------------------------------------------------------
-  Wait crash handler to exit before self-install.
-  No extra code needed to shutdown the crash handler because ShutdownHandler in CrashHandler also observes the global shutdown event.
+Compatibility manifest needs to be updated to make GetVersion(Ex) stop lying on
+Windows 10 Technical Preview.
 --------------------------------------------------------------------------------
-  Compatibility manifest needs to be updated to make GetVersion(Ex) stop lying on Windows 10 Technical Preview.
+Remove CUP RSA code.
 --------------------------------------------------------------------------------
-  Remove CUP RSA code.
+Do not allow test cert in authenticode check.
 --------------------------------------------------------------------------------
-  Do not allow test cert in authenticode check.
+Disabling ScheduledTaskUtilsTest.ScheduledTasksV2 test because we are seeing
+random failures with 0x80070005 on the UninstallScheduledTask call.
 --------------------------------------------------------------------------------
-  Disabling ScheduledTaskUtilsTest.ScheduledTasksV2 test because we are seeing random failures with 0x80070005 on the UninstallScheduledTask call.
+Remove uilib since StaticEx and helpers are not needed anymore.
 --------------------------------------------------------------------------------
-  Remove uilib since StaticEx and helpers are not needed anymore.
+Use Wix version v3_8_1128
 --------------------------------------------------------------------------------
-  Use Wix version v3_8_1128
+Close BITS job right after download.
 --------------------------------------------------------------------------------
-  Close BITS job right after download.
+Remove unused minicrt library.
 --------------------------------------------------------------------------------
-  Remove unused minicrt library.
+Removes dependency of inttypes.h in favor of stdint.h.  This gets rid of
+omaha/third_party/c99/.
 --------------------------------------------------------------------------------
-  Removes dependency of inttypes.h in favor of stdint.h.
-  This gets rid of omaha/third_party/c99/.
+Fix the constant shell version sent out in Update pings to be the installed
+version, not the version that is running the Update Setup code.
 --------------------------------------------------------------------------------
-  Fix the constant shell version sent out in Update pings to be the installed version, not the version that is running the Update Setup code.
+Pass MSI product guid to application installer. The application installer can
+use this to, for example, update entries in the Add/Remove Programs dialog.
 --------------------------------------------------------------------------------
-  Pass MSI product guid to application installer. The application installer can use this to, for example, update entries in the Add/Remove Programs dialog.
+Better fix for C4302 type truncation warning.
 --------------------------------------------------------------------------------
-  Better fix for C4302 type truncation warning.
+Changes required before switching to WTL 9.0.
 --------------------------------------------------------------------------------
-  Changes required before switching to WTL 9.0.
+Remove code that is no longer needed. introduced our own variant of ATL's
+statreg.h.
 --------------------------------------------------------------------------------
-  Remove code that is no longer needed. introduced our own variant of ATL's statreg.h.
+Ship the currently built version of the constant shell GoogleUpdate.exe instead
+of a checked-in version with the Omaha meta-installer. For updates of Omaha, we
+will only update the constant shell if the installed version is below
+kCompatibleMinimumOlderShellVersion (which is 1.3.21.103 as of 07/24/2014). This
+will ensure minimal firewall prompt concerns.
 --------------------------------------------------------------------------------
-  Ship the currently built version of the constant shell GoogleUpdate.exe instead of a checked-in version with the Omaha meta-installer. For updates of Omaha, we will only update the constant shell if the installed version is below kCompatibleMinimumOlderShellVersion (which is 1.3.21.103 as of 07/24/2014). This will ensure minimal firewall prompt concerns.
+Update unit test for the minimum shell version 1.3.21.103.
 --------------------------------------------------------------------------------
-  Update unit test for the minimum shell version 1.3.21.103.
+Omaha 1.3.24.15 causes alerts of Comodo Internet Security's HIPS subsystem.
+Omaha updates itself by running the newer setup (GoogleUpdateSetup.exe) from
+%ProgramFiles%\Google\Update\Install\{UniqueDir}\GoogleUpdateSetup.exe. This
+setup in turn ends up deleting the %ProgramFiles%\Google\Update\Install
+directory including GoogleUpdateSetup.exe. Finally, GoogleUpdateSetup tries to
+cleanup the temp directory that it created under %ProgramFiles%\GUM*. The
+anti-virus program fails to validate the GoogleUpdateSetup.exe executable at
+this point because the underlying disk image has been deleted (or to be more
+accurate, moved via MoveFileEx, since the file is in use otherwise).  The fix is
+to avoid deleting this directory at setup time, because the directory is cleaned
+up by the InstallManager at every Omaha update check.
 --------------------------------------------------------------------------------
-  Omaha 1.3.24.15 causes alerts of Comodo Internet Security's HIPS subsystem. Omaha updates itself by running the newer setup (GoogleUpdateSetup.exe) from %ProgramFiles%\Google\Update\Install\{UniqueDir}\GoogleUpdateSetup.exe. This setup in turn ends up deleting the %ProgramFiles%\Google\Update\Install directory including GoogleUpdateSetup.exe. Finally, GoogleUpdateSetup tries to cleanup the temp directory that it created under %ProgramFiles%\GUM*. The anti-virus program fails to validate the GoogleUpdateSetup.exe executable at this point because the underlying disk image has been deleted (or to be more accurate, moved via MoveFileEx, since the file is in use otherwise).
-  The fix is to avoid deleting this directory at setup time, because the directory is cleaned up by the InstallManager at every Omaha update check.
+[ASSERT][goopdate\install_manager.cc:76]. The install manager cleans up files in
+the Install directory on every initialization. It does this by first deleting
+the directory and contents, and then recreating it. This causes a problem if
+other monitoring or AV software has the Install directory in use. Instead, this
+fix only deletes files under the Install directory, because that is the original
+intent.
 --------------------------------------------------------------------------------
-  [ASSERT][goopdate\install_manager.cc:76]. The install manager cleans up files in the Install directory on every initialization. It does this by first deleting the directory and contents, and then recreating it. This causes a problem if other monitoring or AV software has the Install directory in use. Instead, this fix only deletes files under the Install directory, because that is the original intent.
+Restore Omaha Core and UA tasks on Update or Over-install. This change will
+reinstall the tasks every time Omaha installs or updates itself.
 --------------------------------------------------------------------------------
-  Restore Omaha Core and UA tasks on Update or Over-install. This change will reinstall the tasks every time Omaha installs or updates itself.
+Bug fix: install time is missing from pings.  The buggy code in the
+InstallManager captured the time after the app state transitions and builing the
+pings, therefore the install time was still missing.
 --------------------------------------------------------------------------------
-  Bug fix: install time is missing from pings.
-  The buggy code in the InstallManager captured the time after
-  the app state transitions and builing the pings, therefore
-  the install time was still missing.
+Older constant shells do not have the manifest changes that were made to allow
+GetVersionEx to return Windows 8.1. This change fixes that by detecting Windows
+8.1 and above without updating the constant shell.
 --------------------------------------------------------------------------------
-  Older constant shells do not have the manifest changes that were made to allow GetVersionEx to return Windows 8.1. This change fixes that by detecting Windows 8.1 and above without updating the constant shell.
+Remove Omaha signature checks, including the associated debug pings
 --------------------------------------------------------------------------------
-  Remove Omaha signature checks, including the associated debug pings
+Download and install times must be reported in the completion ping in all cases.
 --------------------------------------------------------------------------------
-  Download and install times must be reported in the completion ping in all cases.
+Increase the installer complete wait time to 30 mins
 --------------------------------------------------------------------------------
-  Increase the installer complete wait time to 30 mins
+For more resilient code, use SafeCStringAFormat() instead of directly calling
+CStringA::Format().
 --------------------------------------------------------------------------------
-  For more resilient code, use SafeCStringAFormat() instead of directly calling CStringA::Format().
+GoogleUpdateSetup.exe size increased by about 35KB in 1.3.24.7 from what it was
+in 1.3.23.9. the increase in the crash handler. This change makes use of ATL's CStringT
+instead.
 --------------------------------------------------------------------------------
-  GoogleUpdateSetup.exe size increased by about 35KB in 1.3.24.7 from what it was in 1.3.23.9. Change 63760550 uses std::stringstream, which is responsible for the increase in the crash handler. This change makes use of ATL's CStringT instead.
+Omaha crash uploader must use "guid" instead of "userid" standard field for
+uploads
 --------------------------------------------------------------------------------
-  Omaha crash uploader must use "guid" instead of "userid" standard field for uploads
+Code red runs does not run after 1 day(or 2 days) but runs after one year. The
+root cause is trying to store a large millisecond value in an int, causing an
+overflow.
 --------------------------------------------------------------------------------
-  Code red runs does not run after 1 day(or 2 days) but runs after one year. The root cause is trying to store a large millisecond value in an int, causing an overflow.
+crash: omaha::WebServicesClient::http_trace()
 --------------------------------------------------------------------------------
-  crash: omaha::WebServicesClient::http_trace()
+Use lax criteria in updating "days-since" registry counters.  This change makes
+the header name lookup case-sensitive and fixes the name of the header string
+literal to match the name the server is returning.
 --------------------------------------------------------------------------------
-  Use lax criteria in updating "days-since" registry counters.
-  This change makes the header name lookup case-sensitive and
-  fixes the name of the header string literal to match the
-  name the server is returning.
+physmem must be rounded to the closest GB
 --------------------------------------------------------------------------------
-  physmem must be rounded to the closest GB
+Translations for the IDS_HW_NOT_SUPPORTED string.
 --------------------------------------------------------------------------------
-  Translations for the IDS_HW_NOT_SUPPORTED string.
+Change the Code Red hostname to clients2.
 --------------------------------------------------------------------------------
-  Change the Code Red hostname to clients2.
+Broken Unit Test: WinHttpAdapter.  The code executed by the broken test was
+illegal to begin with. In some cases, it is possible for the underlying OS stack
+to not be initialized correctly at the time a WinHttpConnect call is made.
 --------------------------------------------------------------------------------
-  Broken Unit Test: WinHttpAdapter.
-  The code executed by the broken test was illegal to begin with. In some
-  cases, it is possible for the underlying OS stack to not be initialized
-  correctly at the time a WinHttpConnect call is made.
+NewUI: On error, top of Help and Close buttons getting clipped.
 --------------------------------------------------------------------------------
-  NewUI: On error, top of Help and Close buttons getting clipped.
+Use the new GetIEPath() helper function in other places where the IE Path needs
+to be determined and currently use the registry directly.
 --------------------------------------------------------------------------------
-  Use the new GetIEPath() helper function in other places where the IE Path needs to be determined and currently use the registry directly.
+Handle the error when the server responds with error-hwnotsupported.
 --------------------------------------------------------------------------------
-  Handle the error when the server responds with error-hwnotsupported.
+Added IDS_HW_NOT_SUPPORTED.
 --------------------------------------------------------------------------------
-  Added IDS_HW_NOT_SUPPORTED.
+Refactor the server response status strings to make it obvious where they are
+coming from. That is in preparation to adding a new status string.
 --------------------------------------------------------------------------------
-  Refactor the server response status strings to make it obvious
-  where they are coming from. That is in preparation to adding
-  a new status string.
+Increase the limit for number of crashes uploaded / day
 --------------------------------------------------------------------------------
-  Increase the limit for number of crashes uploaded / day
+Remove checking the result of ResetCurrentStateKey().
 --------------------------------------------------------------------------------
-  Remove checking the result of ResetCurrentStateKey().
+Reorganize the crash handler into a more sensical structure. split crash worker
+specific methods out of utils into crash_worker.cc
 --------------------------------------------------------------------------------
-  Reorganize the crash handler into a more sensical structure. split crash worker specific methods out of utils into crash_worker.cc
+for Win8: IE is not opening with toolbar when click on restart now button. On
+Win8 64-bit the Wow6432 node has ielowutil.exe instead of iexplore.exe. The
+change is to use iexplore.exe from the same directory containing ielowutil.exe.
 --------------------------------------------------------------------------------
-  for Win8: IE is not opening with toolbar when click on restart now button. On Win8 64-bit the Wow6432 node has ielowutil.exe instead of iexplore.exe. The change is to use iexplore.exe
-  from the same directory containing ielowutil.exe.
+Sandbox MinidumpWriteDump, include user stream information from the crash
+analyzer in minidumps
 --------------------------------------------------------------------------------
-  Sandbox MinidumpWriteDump, include user stream information from the crash analyzer in minidumps
+::GetThreadId API not available on Windows XP, causes build break.
 --------------------------------------------------------------------------------
-  ::GetThreadId API not available on Windows XP, causes build break.
+Possible race condition in AppCommandCompletionObserver. The workaround here is
+to leak the ATL Modules. While this approach is not generally recommended, ATL
+modules are meant to live for the lifetime of the process, and this change makes
+it so. Because of the hybrid modes that Omaha runs under and because ATL relies
+on global structures, we need multiple modules and cannot statically allocate.
 --------------------------------------------------------------------------------
-  Possible race condition in AppCommandCompletionObserver. The workaround here is to leak the ATL Modules. While this approach is not generally recommended, ATL modules are meant to live for the lifetime of the process, and this change makes it so. Because of the hybrid modes that Omaha runs under and because ATL relies on global structures, we need multiple modules and cannot statically allocate.
+Make https the prefered protocol for update checks Not including the downloads,
+Omaha network traffic has been moved to use HTTPS always, with two exceptions.
+The update checks and pings fallback to using HTTP if HTTPS fails.
 --------------------------------------------------------------------------------
-  Make https the prefered protocol for update checks
-  Not including the downloads, Omaha network traffic has been moved to use HTTPS always,
-  with two exceptions. The update checks and pings fallback to using HTTP if HTTPS fails.
+GUpdate and GUpdateM services stuck in "Service starting" instead of "Service
+running".
 --------------------------------------------------------------------------------
-  GUpdate and GUpdateM services stuck in "Service starting" instead of "Service running".
+Security: (MODERATE risk) Add SSL to code red for defense in depth
 --------------------------------------------------------------------------------
-  Security: (MODERATE risk) Add SSL to code red for defense in depth
+Fix broken xml parser unit tests.
 --------------------------------------------------------------------------------
-  Fix broken xml parser unit tests.
+Allow config rule tests for HW platform information, such as SSE2 support.
 --------------------------------------------------------------------------------
-  Allow config rule tests for HW platform information, such as SSE2 support.
+Register a ETW provider also triggers callback if EnableTrace() is called before
+that.
 --------------------------------------------------------------------------------
-  Register a ETW provider also triggers callback if EnableTrace() is called before that.
+Fix crashes in the crash handler.  Disable the nt functions analyzer check. It
+creates too many false positives anyway.
 --------------------------------------------------------------------------------
-  Fix crashes in the crash handler.
-  Disable the nt functions analyzer check. It creates too many false positives anyway.
+BufferToPrintableString can crash when built under VS2010 in dbg.
 --------------------------------------------------------------------------------
-  BufferToPrintableString can crash when built under VS2010 in dbg.
+Check request/response cookie existance only for RSA CUP. Duplicated tests for
+RSA CUP and ECDSA CUP.
 --------------------------------------------------------------------------------
-  Check request/response cookie existance only for RSA CUP. Duplicated tests for RSA CUP and ECDSA CUP.
+Duplicate the reg values necessary for the test to pass on Vista and later.
 --------------------------------------------------------------------------------
-  Duplicate the reg values necessary for the test to pass on Vista and later.
+Add the capability to embed user data streams with additional information about
+a crash analysis result into a minidump Add additional information for the
+postive case in the checks.
 --------------------------------------------------------------------------------
-  Add the capability to embed user data streams with additional information about a crash analysis result into a minidump
-  Add additional information for the postive case in the checks.
+Move Chrome files to make organization compliant with third_party rules
 --------------------------------------------------------------------------------
-  Move Chrome files to make organization compliant with third_party rules
+Add support for detecting processor features.
 --------------------------------------------------------------------------------
-  Add support for detecting processor features.
+Reuse Chromium CPU class for processor features including SSE2 support.  These
+are the original files from Chromium.
 --------------------------------------------------------------------------------
-  Reuse Chromium CPU class for processor features including SSE2 support.
-  These are the original files from Chromium.
+Resolved UT VerifyFileSignature_NonGoogleSignature failure.  Issues resolved: 1)
+Picked the right file for signature check on Vista and later.  2) Expand SYSTEM
+macro before checking file existance.  3) Corrected the expected error code.
 --------------------------------------------------------------------------------
-  Resolved UT VerifyFileSignature_NonGoogleSignature failure.
-  Issues resolved:
-  1) Picked the right file for signature check on Vista and later.
-  2) Expand SYSTEM macro before checking file existance.
-  3) Corrected the expected error code.
+Change extractor_unittest to use the untagged GoogleUpdateSetup_repair.exe
+instead of GoogleUpdateSetup.exe, because the latter is tagged with the omaha
+signature.
 --------------------------------------------------------------------------------
-  Change extractor_unittest to use the untagged GoogleUpdateSetup_repair.exe instead of GoogleUpdateSetup.exe, because the latter is tagged with the omaha signature.
+Fix file length check to be less onerous.
 --------------------------------------------------------------------------------
-  Fix file length check to be less onerous.
+Change install ping attribute "install_day" to "installdate".
 --------------------------------------------------------------------------------
-  Change install ping attribute "install_day" to "installdate".
+Self signing cert has expired and UTs are failing.
 --------------------------------------------------------------------------------
-  Self signing cert has expired and UTs are failing.
+Fixed the build break when building 64-bit performondemand.exe.
 --------------------------------------------------------------------------------
-  Fixed the build break when building 64-bit performondemand.exe.
+Create 64-bit version of performondemand.exe for test.
 --------------------------------------------------------------------------------
-  Create 64-bit version of performondemand.exe for test.
+crash_dump_util's CreateCrashHandlerProcess() misuses
+System::StartProcessWithEnvironment().
 --------------------------------------------------------------------------------
-  crash_dump_util's CreateCrashHandlerProcess() misuses System::StartProcessWithEnvironment().
+Closes minidump file handle before do crash reporting to avoid file open error.
 --------------------------------------------------------------------------------
-  Closes minidump file handle before do crash reporting to avoid file open error.
+Added 64-bit proxy into meta-installer.
 --------------------------------------------------------------------------------
-  Added 64-bit proxy into meta-installer.
+Make copy of build env to avoid unwanted changes made by the building process.
 --------------------------------------------------------------------------------
-  Make copy of build env to avoid unwanted changes made by the building process.
+Make build script generates Omaha IDL proxy for 64-bit platform as well.
 --------------------------------------------------------------------------------
-  Make build script generates Omaha IDL proxy for 64-bit platform as well.
+Update pin list for code signing.  This defines the sha1 cert that replaced the
+sha256 cert, which was briefly in use for 1 day. It updates the unit test to
+check for old and new signatures.
 --------------------------------------------------------------------------------
-  Update pin list for code signing.
-  This defines the sha1 cert that replaced the sha256 cert, which was briefly in use for 1 day. It updates the unit test to check for old and new signatures.
+Update the code signing certificate hash pin list to include the new Chrome code
+signing certificate.  Once we have a sample code signed with the new certs, UT
+must be updated to include the new file.  We will keep the old pin while
+transitioning.
 --------------------------------------------------------------------------------
-  Update the code signing certificate hash pin list to include the new Chrome code signing certificate.
-  Once we have a sample code signed with the new certs, UT must be updated to include the new file.
-  We will keep the old pin while transitioning.
+Do not adjust installage to first day of week for -1.
 --------------------------------------------------------------------------------
-  Do not adjust installage to first day of week for -1.
+Now that CUP-ECDSA is enabled on prod servers, make CUP-ECDSA on by default.
 --------------------------------------------------------------------------------
-  Now that CUP-ECDSA is enabled on prod servers, make CUP-ECDSA on by default.
+Incorrect format string in log statement could cause exception.
 --------------------------------------------------------------------------------
-  Incorrect format string in log statement could cause exception.
+Add UpdateDev regkeys to disable CUP and enable CUP-ECDSA.
 --------------------------------------------------------------------------------
-  Add UpdateDev regkeys to disable CUP and enable CUP-ECDSA.
+Add an ASN.1 DER decoder that is capable of decoding complete ECDSA signatures.
+Prep work for accepting an ASN.1 signature instead of discrete (R,S) integers.
+The motivation for this change is that the Chrome libraries, and pretty much all
+other libraries in the Google codebase, work in terms of complete signatures
+instead of (R,S).  If we're adding CUP-ECDSA to other clients besides the main
+Omaha Client, it makes sense to pick a single signature type that works for the
+majority of them.
 --------------------------------------------------------------------------------
-  Add an ASN.1 DER decoder that is capable of decoding complete ECDSA signatures.  Prep work for accepting an ASN.1 signature instead of discrete (R,S) integers.
-  The motivation for this change is that the Chrome libraries, and pretty much all other libraries in the Google codebase, work in terms of complete signatures instead of (R,S).  If we're adding CUP-ECDSA to other clients besides the main Omaha Client, it makes sense to pick a single signature type that works for the majority of them.
+Ensure that delays aren't moved to a negative amount as a result of jitter.
 --------------------------------------------------------------------------------
-  Ensure that delays aren't moved to a negative amount as a result of jitter.
+Remove temporary registry value that saves xdaynum. Set the value as a property
+of app.
 --------------------------------------------------------------------------------
-  Remove temporary registry value that saves xdaynum. Set the value as a property of app.
+Report install age and active/roll call days based on the daynum in server's
+response.
 --------------------------------------------------------------------------------
-  Report install age and active/roll call days based on the daynum in server's response.
+Changing the placement of the Error Text to match with the original UX spec.
+This requires more changes to strings that are too long. since these are my own
+ad-hoc changes, please carefully review the string changes to concur that the
+new strings make sense.
 --------------------------------------------------------------------------------
-  Changing the placement of the Error Text to match with the original UX spec. This requires more changes to strings that are too long. since these are my own ad-hoc changes, please carefully review the string changes to concur that the new strings make sense.
+Downsize and move the Help button, and integrate new translations.
 --------------------------------------------------------------------------------
-  Downsize and move the Help button, and integrate new translations.
+Broken Unit Test: CoreUtilsTest. Also addresses Make Omaha compatible with
+Windows 8.x.
 --------------------------------------------------------------------------------
-  Broken Unit Test: CoreUtilsTest. Also addresses Make Omaha compatible with Windows 8.x.
+Fixing unit test failures. Also fixing a bug in the formatting of some resource
+strings.
 --------------------------------------------------------------------------------
-  Fixing unit test failures. Also fixing a bug in the formatting of some resource strings.
+Fix the splash screen unit test v2. This was due to my incorrect assumption that
+the animation control would not hold onto the resource handle.
 --------------------------------------------------------------------------------
-  Fix the splash screen unit test v2. This was due to my incorrect assumption that the animation control would not hold onto the resource handle.
+Fix broken unit test. Explicitly loading goopdate.dll now for the UI resources.
 --------------------------------------------------------------------------------
-  Fix broken unit test. Explicitly loading goopdate.dll now for the UI resources.
+Enclosed the Animate_* calls with VERIFY1 for completeness.
 --------------------------------------------------------------------------------
-  Enclosed the Animate_* calls with VERIFY1 for completeness.
+Less verbose strings for the Omaha UI.
 --------------------------------------------------------------------------------
-  Less verbose strings for the Omaha UI.
+Omaha takes up too much disk space after Omaha Visual Refresh. Moving the big
+non-localized resources over to goopdate.dll to fix this issue.
 --------------------------------------------------------------------------------
-  Omaha takes up too much disk space after Omaha Visual Refresh. Moving the big non-localized resources over to goopdate.dll to fix this issue.
+Implement sandbox for omaha crash handler.  This adds the plumbing to deal with
+all the needed files and handles by opening handles ahead of time.  It then
+creates seperate worker process to perform the crash dump and (after opening all
+needed handles) locks down the process by setting the untrusted label on the
+processes access token.
 --------------------------------------------------------------------------------
-  Implement sandbox for omaha crash handler.
-  This adds the plumbing to deal with all the needed files and handles by opening handles ahead of time.
-  It then creates seperate worker process to perform the crash dump and (after opening all needed handles) locks down the process by setting the untrusted label on the processes access token.
+Bits request falls back to direct access when GetProxyForUrl() returns failure.
 --------------------------------------------------------------------------------
-  Bits request falls back to direct access when GetProxyForUrl() returns failure.
+Avoid to kill process not owned by current user.  Increase wait time out during
+process killing to avoid time out error.
 --------------------------------------------------------------------------------
-  Avoid to kill process not owned by current user.
-  Increase wait time out during process killing to avoid time out error.
+Broken Unit Test: GetBundleCompletionMessageTest.
 --------------------------------------------------------------------------------
-  Broken Unit Test: GetBundleCompletionMessageTest.
+Omaha binaries built with VC2010 don't have debugging information.
 --------------------------------------------------------------------------------
-  Omaha binaries built with VC2010 don't have debugging information.
+Do not expand tag length as signed integer.
 --------------------------------------------------------------------------------
-  Do not expand tag length as signed integer.
+Omaha binaries built with VC2010 don't have debugging information.
 --------------------------------------------------------------------------------
-  Omaha binaries built with VC2010 don't have debugging information.
+Update MSI custom action DLLs to comply with server side tag format.
 --------------------------------------------------------------------------------
-  Update MSI custom action DLLs to comply with server side tag format.
+Change the build version on trunk so that is always higher than milestone branch
+builds.  Omaha migrates to a Chrome-model where the milestone is encoded as the
+build number in the major.minor.build.patch scheme.  For example, 1.3.22.1,
+1.3.22.3, 1.3.22.5 mean M22 builds of Omaha, cut on a release branch.  1.3.23.1
+means an M23 build, and so on.
 --------------------------------------------------------------------------------
-  Change the build version on trunk so that is always higher than milestone branch builds.
-  Omaha migrates to a Chrome-model where the milestone is encoded as the build number in the major.minor.build.patch scheme.
-  For example, 1.3.22.1, 1.3.22.3, 1.3.22.5 mean M22 builds of Omaha, cut on a release branch.
-  1.3.23.1 means an M23 build, and so on.
+Make MSI tag format to comply with what server has.
 --------------------------------------------------------------------------------
-  Make MSI tag format to comply with what server has.
+Empty "Offline" directories created for each Omaha install.
 --------------------------------------------------------------------------------
-  Empty "Offline" directories created for each Omaha install.
+Assert when installing using the Avast build. The CurrentState key was not
+created, so the write was failing. Creating/resetting the CurrentState key in
+STATE_INIT now, and always Creating the key before writing.
 --------------------------------------------------------------------------------
-  Assert when installing using the Avast build. The CurrentState key was not created, so the write was failing. Creating/resetting the CurrentState key in STATE_INIT now, and always Creating the key before writing.
+Support reading tag from MSI business installer.
 --------------------------------------------------------------------------------
-  Support reading tag from MSI business installer.
+Define API for Install progress.
 --------------------------------------------------------------------------------
-  Define API for Install progress.
+Omaha download in Avast happen at background priority and take longer than
+needed. Now all installs run at high priority. Even if the install is silent.
+Most install use-cases require the install to complete quickly. For instance,
+Avast launching the Omaha metainstaller with /silent while showing their own UI.
+Updates continue to run at low priority when not interactive (the majority
+use-case).
 --------------------------------------------------------------------------------
-  Omaha download in Avast happen at background priority and take longer than needed. Now all installs run at high priority. Even if the install is silent. Most install use-cases require the install to complete quickly. For instance, Avast launching the Omaha metainstaller with /silent while showing their own UI. Updates continue to run at low priority when not interactive (the majority use-case).
+Resize the Show me help for this issue" button to be large enough to fit text
+for de, ro, nl.
 --------------------------------------------------------------------------------
-  Resize the Show me help for this issue" button to be large enough to fit text for de, ro, nl.
+Ensure module handles are closed after debugging the process.
 --------------------------------------------------------------------------------
-  Ensure module handles are closed after debugging the process.
+Make install result text more compact to the left.
 --------------------------------------------------------------------------------
-  Make install result text more compact to the left.
+Fix static_assert so that it does not conflict with c++11 static_assert.
 --------------------------------------------------------------------------------
-  Fix static_assert so that it does not conflict with c++11 static_assert.
+Branding change to use the Color Chrome logo instead of the monochrome logo.
+Also changing the layout of some controls to better center the progress bar,
+information/error text, and the new logo.
 --------------------------------------------------------------------------------
-  Branding change to use the Color Chrome logo instead of the monochrome logo. Also changing the layout of some controls to better center the progress bar, information/error text, and the new logo.
+Fix issue with window jumping around if the mouse is moved with the left button
+down from outside the title bar and then into it keeping the mouse button down.
+The title bar now only moves the underlying window if it has the mouse capture.
 --------------------------------------------------------------------------------
-  Fix issue with window jumping around if the mouse is moved with the left button down from outside the title bar and then into it keeping the mouse button down. The title bar now only moves the underlying window if it has the mouse capture.
+Fixed the expectations for http_trace(). This function is called different times
+in opt and dbg modes.
 --------------------------------------------------------------------------------
-  Fixed the expectations for http_trace(). This function is called different times in opt and dbg modes.
+Add a usagestat for skipping BITS due to machine case.
 --------------------------------------------------------------------------------
-  Add a usagestat for skipping BITS due to machine case.
+Add unit tests that stress ClientStateMedium experiment label merging.
 --------------------------------------------------------------------------------
-  Add unit tests that stress ClientStateMedium experiment label merging.
+When a update for an app is skipped due to Group Policy, emit that to optlog
+instead of corelog.
 --------------------------------------------------------------------------------
-  When a update for an app is skipped due to Group Policy, emit that to optlog instead of corelog.
+The event log source for Omaha crashes event 2 shows as Update2.
 --------------------------------------------------------------------------------
-  The event log source for Omaha crashes event 2 shows as Update2.
+Turn on crash analysis for non-system crash handlers.
 --------------------------------------------------------------------------------
-  Turn on crash analysis for non-system crash handlers.
+Adjust the height of the installer state text box to accomodate longer messages
+and product names. Also adjusted a couple of other boxes that are not used
+currently but may be used in the future.
 --------------------------------------------------------------------------------
-  Adjust the height of the installer state text box to accomodate longer messages and product names. Also adjusted a couple of other boxes that are not used currently but may be used in the future.
+Fixed the expiration date for the Chrome code signing certificate.
 --------------------------------------------------------------------------------
-  Fixed the expiration date for the Chrome code signing certificate.
+Adjusting the dimensions of the Cancel and the YesNo dialog buttons to look more
+like the spec.
 --------------------------------------------------------------------------------
-  Adjusting the dimensions of the Cancel and the YesNo dialog buttons to look more like the spec.
+Changes to allow the UI to work consistently in XP. Without these changes, the
+XP UI scaled incorrectly.
 --------------------------------------------------------------------------------
-  Changes to allow the UI to work consistently in XP. Without these changes, the XP UI scaled incorrectly.
+Marquee progress bar for showing indeterminate progress during all phases other
+than download. Removing throbber and showing the Chrome icon during most
+installation phases. Color correction for the caption button highlight.
 --------------------------------------------------------------------------------
-  Marquee progress bar for showing indeterminate progress during all phases other than download. Removing throbber and showing the Chrome icon during most installation phases. Color correction for the caption button highlight.
+Broken Unit Test: AppUtilTest.  The issue here is that GetModuleFileName is
+unreliable under WoW64.
 --------------------------------------------------------------------------------
-  Broken Unit Test: AppUtilTest.
-  The issue here is that GetModuleFileName is unreliable under WoW64.
+SimpleRequestTest.HttpGetProxy* tests are broken.  This changelist changes the
+behavior of the SimpleRequest so that a failure to detect a proxy is not
+considered a failure, instead, the code falls back to using direct access.
 --------------------------------------------------------------------------------
-  SimpleRequestTest.HttpGetProxy* tests are broken.
-  This changelist changes the behavior of the SimpleRequest so that a failure to detect a proxy is not considered a failure, instead, the code falls back to using direct access.
+Positioning and sizing more of the controls to account for the changed layout.
 --------------------------------------------------------------------------------
-  Positioning and sizing more of the controls to account for the changed layout.
+Rendering changes to have the Caption Buttons match the UX spec.
 --------------------------------------------------------------------------------
-  Rendering changes to have the Caption Buttons match the UX spec.
+Read from ClientStateMedium when scanning experiment labels.
 --------------------------------------------------------------------------------
-  Read from ClientStateMedium when scanning experiment labels.
+Sizing the caption buttons a bit bigger. Creating brushes once instead of during
+each paint operation.
 --------------------------------------------------------------------------------
-  Sizing the caption buttons a bit bigger. Creating brushes once instead of during each paint operation.
+Reworking progress bar painting logic to better match the revised UX spec.
 --------------------------------------------------------------------------------
-  Reworking progress bar painting logic to better match the revised UX spec.
+Handle errors when calling [Web]SafeBase64Unescape functions
 --------------------------------------------------------------------------------
-  Handle errors when calling [Web]SafeBase64Unescape functions
+Thread pool might time out during cancel and destruction of the Worker.  Raise
+an exception when timeout occurs so at least, the code crashes in a
+deterministic way.
 --------------------------------------------------------------------------------
-  Thread pool might time out during cancel and destruction of the Worker.
-  Raise an exception when timeout occurs so at least, the code crashes in a deterministic way.
+Use rand_s where possible.
 --------------------------------------------------------------------------------
-  Use rand_s where possible.
+Removing the caption buttons from the "Prefers" Yes/No dialog to make it uniform
+with the Cancel dialog. Fixing bug with the completion error image not showing
+up in certain cases.
 --------------------------------------------------------------------------------
-  Removing the caption buttons from the "Prefers" Yes/No dialog to make it uniform with the Cancel dialog. Fixing bug with the completion error image not showing up in certain cases.
+Have a random delay of [0,60) seconds before an update check is made in the case
+of automatic silent update of all apps.
 --------------------------------------------------------------------------------
-  Have a random delay of [0,60) seconds before an update check is made in the case of automatic silent update of all apps.
+* due to sign extending and messing up the bit pattern when the default char
+type changes from unsigned to signed char.  * Remove unused version 4_43 of the
+lzma library.
 --------------------------------------------------------------------------------
-  * due to sign extending and messing up the bit pattern when the default char type changes from unsigned to signed char.
-  * Remove unused version 4_43 of the lzma library.
+Fixed error_illustration.bmp replacing the background to 0xfbfbfb using gimp.
+Reverted chrome.ico to version 1, version 2 does not look as good. Imported
+translations for string id 822209109398822588 "Show me help for this issue" from
+transconsole.
 --------------------------------------------------------------------------------
-  Fixed error_illustration.bmp replacing the background to 0xfbfbfb using gimp. Reverted chrome.ico to version 1, version 2 does not look as good. Imported translations for string id 822209109398822588 "Show me help for this issue" from transconsole.
+Updated comment for AtlAssertTest.
 --------------------------------------------------------------------------------
-  Updated comment for AtlAssertTest.
+Changes to make the code compatible with VS2010. It's minor tweaks to the code,
+good for any toolchain.
 --------------------------------------------------------------------------------
-  Changes to make the code compatible with VS2010. It's minor tweaks to the code, good for any toolchain.
+Dynamically sizing caption buttons now. Adjusting caption button colors to match
+spec.
 --------------------------------------------------------------------------------
-  Dynamically sizing caption buttons now. Adjusting caption button colors to match spec.
+Flat buttons for the new UI.
 --------------------------------------------------------------------------------
-  Flat buttons for the new UI.
+Show the Chrome icon when downloading the Chrome app. For now, this is
+implemented as a resource bundled with goopdate.dll and special-cased for the
+Chrome AppId.
 --------------------------------------------------------------------------------
-  Show the Chrome icon when downloading the Chrome app. For now, this is implemented as a resource bundled with goopdate.dll and special-cased for the Chrome AppId.
+Fix out of bounds read in crash analyzer
 --------------------------------------------------------------------------------
-  Fix out of bounds read in crash analyzer
+Reposition controls to match with UX requirements. Convert Help link to work
+like a button now.
 --------------------------------------------------------------------------------
-  Reposition controls to match with UX requirements. Convert Help link to work like a button now.
+Add the ability to set serverInstallDataIndex via IAppWeb.
 --------------------------------------------------------------------------------
-  Add the ability to set serverInstallDataIndex via IAppWeb.
+Fix a unit test failure. The expectation is no longer true since now client
+always sends the first UID as Old-Uid.
 --------------------------------------------------------------------------------
-  Fix a unit test failure. The expectation is no longer true since now client always sends the first UID as Old-Uid.
+Add UID history info to X-Old-Uid header (uid age, number of rotations etc.)
 --------------------------------------------------------------------------------
-  Add UID history info to X-Old-Uid header (uid age, number of rotations etc.)
+Add Windows 8.1 to the list of versions in SystemInfo.
 --------------------------------------------------------------------------------
-  Add Windows 8.1 to the list of versions in SystemInfo.
+Use relative paths when constructing paths within the ActiveX control so the
+control works under an AppContainer EPM environment.
 --------------------------------------------------------------------------------
-  Use relative paths when constructing paths within the ActiveX control so the control works under an AppContainer EPM environment.
+Truncate installage to (now-daystart). Use that value for installage report
+only. For legacy apps, the value might be missing and will fall back to original
+installage in that case.
 --------------------------------------------------------------------------------
-  Truncate installage to (now-daystart). Use that value for installage report only. For legacy apps, the value might be missing and will fall back to original installage in that case.
+Report user cancel at which state, how long since update is available/since
+download start when cancellation happens.
 --------------------------------------------------------------------------------
-  Report user cancel at which state, how long since update is available/since download start when cancellation happens.
+Register OneClick and Update3Web controls as CATID_AppContainerCompatible for
+compatibility with Enhanced Protected Mode on Windows 8.x.
 --------------------------------------------------------------------------------
-  Register OneClick and Update3Web controls as CATID_AppContainerCompatible for compatibility with Enhanced Protected Mode on Windows 8.x.
+Report which url served installer download.
 --------------------------------------------------------------------------------
-  Report which url served installer download.
+Adding in plumbing for showing App Icon. Updating dialog templates to use Segoe
+UI.
 --------------------------------------------------------------------------------
-  Adding in plumbing for showing App Icon. Updating dialog templates to use Segoe UI.
+Take out flags added in DbgHelp 6.1
 --------------------------------------------------------------------------------
-  Take out flags added in DbgHelp 6.1
+Use correct string arguments for log statement in crash handler util.
 --------------------------------------------------------------------------------
-  Use correct string arguments for log statement in crash handler util.
+If we're impersonating (as in the machine /ua case) when creating a bundle,
+revert to self when creating a global mutex.  Also, don't let an unexpected
+failure to create that global mutex DOS Omaha.
 --------------------------------------------------------------------------------
-  If we're impersonating (as in the machine /ua case) when creating a bundle, revert to self when creating a global mutex.
-  Also, don't let an unexpected failure to create that global mutex DOS Omaha.
+Update the signing date of the code red test file to avoid unit test failures.
 --------------------------------------------------------------------------------
-  Update the signing date of the code red test file to avoid unit test failures.
+install priority
 --------------------------------------------------------------------------------
-  install priority
+Turn on the crash analyzer.  Add a crash analysis key to the custom info map to
+get the result server side.  Add additional info to crash dumps that trigger an
+analysis result.
 --------------------------------------------------------------------------------
-  Turn on the crash analyzer.
-  Add a crash analysis key to the custom info map to get the result server side.
-  Add additional info to crash dumps that trigger an analysis result.
+Add install time to the ping 2s.
 --------------------------------------------------------------------------------
-  Add install time to the ping 2s.
+Expose a global Win32 event that's created when an installed app is added to a
+bundle, and deleted when the bundle is destroyed.  If the event exists prior to
+the app's creation, it cannot be added to the bundle.  This will be used to
+synchronize with external (in-process) product updaters.
 --------------------------------------------------------------------------------
-  Expose a global Win32 event that's created when an installed app is added to a bundle, and deleted when the bundle is destroyed.  If the event exists prior to the app's creation, it cannot be added to the bundle.  This will be used to synchronize with external (in-process) product updaters.
+Add a cache for memory segments read from the debugee. This avoids repeatedly
+calling ReadProcessMemory on the same segment
 --------------------------------------------------------------------------------
-  Add a cache for memory segments read from the debugee. This avoids repeatedly calling ReadProcessMemory on the same segment
+Add more time metrics: app update check time and installation time.
 --------------------------------------------------------------------------------
-  Add more time metrics: app update check time and installation time.
+Hide the throbber on completion.
 --------------------------------------------------------------------------------
-  Hide the throbber on completion.
+Control whether the throbber is shown/hidden based on marquee mode.
 --------------------------------------------------------------------------------
-  Control whether the throbber is shown/hidden based on marquee mode.
+Have StaticEx align text based on the window style, instead of hardcoding
+left-alignment.
 --------------------------------------------------------------------------------
-  Have StaticEx align text based on the window style, instead of hardcoding left-alignment.
+Reduce flicker by only updating the control if the text has changed. There are
+too many OnDownloading notifications, and with the increased font size, this is
+very noticeable.
 --------------------------------------------------------------------------------
-  Reduce flicker by only updating the control if the text has changed. There are too many OnDownloading notifications, and with the increased font size, this is very noticeable.
+Fix issue with throbber not showing when "Waiting to download". Turns out that
+this is because we are at the downloading stage (OnDownloading is being called),
+but showing a "Waiting to download" message instead. Fixing to show the correct
+message.
 --------------------------------------------------------------------------------
-  Fix issue with throbber not showing when "Waiting to download". Turns out that this is because we are at the downloading stage (OnDownloading is being called), but showing a "Waiting to download" message instead. Fixing to show the correct message.
+Add tests for the rest of the crash analyzer cases.
 --------------------------------------------------------------------------------
-  Add tests for the rest of the crash analyzer cases.
+Move download time from ping 1 (download complete) to 2 (install complete) or 3
+(update complete).
 --------------------------------------------------------------------------------
-  Move download time from ping 1 (download complete) to 2 (install complete) or 3 (update complete).
+Integrate translations for the caption button tooltips.
 --------------------------------------------------------------------------------
-  Integrate translations for the caption button tooltips.
+Add several initial unit tests for the crash analyzer. Additionally fix a few
+bugs I found on the way.  - misuse of scoped_array in a few places - a couple of
+places were using different const instances of maps for the begin() and end() of
+loops leading to badness - the initial thread of a process does not generate a
+create thread debug event (it is instead passed in the create process event) so
+I now add that thread to the thread map.
 --------------------------------------------------------------------------------
-  Add several initial unit tests for the crash analyzer. Additionally fix a few bugs I found on the way.
-  - misuse of scoped_array in a few places
-  - a couple of places were using different const instances of maps for the begin() and end() of loops leading to badness
-  - the initial thread of a process does not generate a create thread debug event (it is instead passed in the create process event) so I now add that thread to the thread map.
+Creates a separate process with same privileges as the crashed process to handle
+the crash.
 --------------------------------------------------------------------------------
-  Creates a separate process with same privileges as the crashed process to handle the crash.
+Make customization unit tests can be run from any directory so that
+run_uni_tests.py script can run properly.
 --------------------------------------------------------------------------------
-  Make customization unit tests can be run from any directory so that run_uni_tests.py script can run properly.
+Bigger dialog templates and fonts. Throbber instead of marquee progress bar for
+initialization and installation phases.
 --------------------------------------------------------------------------------
-  Bigger dialog templates and fonts. Throbber instead of marquee progress bar for initialization and installation phases.
+Make custom info population before dump generation as an optional operation.
 --------------------------------------------------------------------------------
-  Make custom info population before dump generation as an optional operation.
+Make the OneClick control more resilient to command injection attacks.
 --------------------------------------------------------------------------------
-  Make the OneClick control more resilient to command injection attacks.
+Update help URL to format changes
 --------------------------------------------------------------------------------
-  Update help URL to format changes
+when escaping strings which prevents some characters from being escaped.
 --------------------------------------------------------------------------------
-  when escaping strings which prevents some characters from being escaped.
+Unit test ProcessTest.GetImagePath because the image path returned by two
+different methods could differ in case, esp. for the drive letter (c: vs. C:).
 --------------------------------------------------------------------------------
-  Unit test ProcessTest.GetImagePath because the image path returned by two different methods could differ in case, esp. for the drive letter (c: vs. C:).
+Test AppUtilTest.GetModule* fails when AppVerifier is turned on with certain
+flags. This because the tests try to find module 'kernel32.dll' by looking for
+::LoadLibrary() which could be redefined by AppVerifier. Switch to a function
+that is not redefined by AppVerifier.
 --------------------------------------------------------------------------------
-  Test AppUtilTest.GetModule* fails when AppVerifier is turned on with certain flags. This because the tests try to find module 'kernel32.dll' by looking for ::LoadLibrary() which could be redefined by AppVerifier. Switch to a function that is not redefined by AppVerifier.
+move the wild stack pointer check to the end. Chrome uses the same check to
+determine whether to trigger a crash report when terminate process is called. In
+cases where the report was only generated because of this condition we are
+already pretty sure something nasty is happening and can gain additional context
+by running the other checks first.
 --------------------------------------------------------------------------------
-  move the wild stack pointer check to the end. Chrome uses the same check to determine whether to trigger a crash report when terminate process is called. In cases where the report was only generated because of this condition we are already pretty sure something nasty is happening and can gain additional context by running the other checks first.
+Adds check for jmp->call->pop sequence of instructions around the crashing
+address.  THis is indicative of shellcode that is trying to determine the
+address where it is located.
 --------------------------------------------------------------------------------
-  Adds check for jmp->call->pop sequence of instructions around the crashing address.
-  THis is indicative of shellcode that is trying to determine the address where it is located.
+Define a new element in the xml protocol for unstrusted data.  Untrusted data in
+a tagged meta-installer should be included in update request.
 --------------------------------------------------------------------------------
-  Define a new element in the xml protocol for unstrusted data.
-  Untrusted data in a tagged meta-installer should be included in update request.
+Add in localization for the caption button tooltips.
 --------------------------------------------------------------------------------
-  Add in localization for the caption button tooltips.
+Add utility functions for reading exception information out of the crashing
+process Add check for access violations on addresses commonly used to defeat
+aslr
 --------------------------------------------------------------------------------
-  Add utility functions for reading exception information out of the crashing process
-  Add check for access violations on addresses commonly used to defeat aslr
+Adding untrusteddata in update request.
 --------------------------------------------------------------------------------
-  Adding untrusteddata in update request.
+Add check for spray patterns which are useful for pivoting a vtable into
+shellcode.
 --------------------------------------------------------------------------------
-  Add check for spray patterns which are useful for pivoting a vtable into shellcode.
+Restructure the CrashAnalyzer class to split analysis into several stages.
 --------------------------------------------------------------------------------
-  Restructure the CrashAnalyzer class to split analysis into several stages.
+Get rid of the module name from ModuleInfo because 1. The debugging APIs do not
+reliably provide this information anyway 2. The names are not really required
+for any of the planned checks 3. This information is already available in the
+crash dumps (so we can get it server side if we decide we need it) 4. This code
+was convoluted and wouldn't work the majority of the time anyway Add the base
+image to the module list Add a check for executable mapping which contain PEs
+that have been loaded without entries in the module list (common late stage
+malware pattern)
 --------------------------------------------------------------------------------
-  Get rid of the module name from ModuleInfo because
-    1. The debugging APIs do not reliably provide this information anyway
-    2. The names are not really required for any of the planned checks
-    3. This information is already available in the crash dumps (so we can get it server side if we decide we need it)
-    4. This code was convoluted and wouldn't work the majority of the time anyway
-  Add the base image to the module list
-  Add a check for executable mapping which contain PEs that have been loaded without entries in the module list (common late stage malware pattern)
+Restore IApp to its original interface and introduce IApp2.
 --------------------------------------------------------------------------------
-  Restore IApp to its original interface and introduce IApp2.
+Fix a bug with FillRgn and RTL/mirroring. Fix a bug with the marquee running
+from a non-min position.
 --------------------------------------------------------------------------------
-  Fix a bug with FillRgn and RTL/mirroring. Fix a bug with the marquee running from a non-min position.
+Add check to scan each thread's stack for pointers to low level functions
+commonly used in ROP chains
 --------------------------------------------------------------------------------
-  Add check to scan each thread's stack for pointers to low level functions commonly used in ROP chains
+Change LPVOID to BYTE* to make pointer math less convoluted.  Add Some utility
+functions to the crash analyzer which various checks will use.  Add a check for
+stack pointers which point outside a thread's actual stack segment.  This
+indicates that either a the stack pointer itself is corrupt or that a stack
+pivot has occurred and stack is now attacker controlled.
 --------------------------------------------------------------------------------
-  Change LPVOID to BYTE* to make pointer math less convoluted.
-  Add Some utility functions to the crash analyzer which various checks will use.
-  Add a check for stack pointers which point outside a thread's actual stack segment.
-  This indicates that either a the stack pointer itself is corrupt or that a stack
-  pivot has occurred and stack is now attacker controlled.
+Fixes an issue with the Marquee mode not moving the progress bar all the way to
+the right.
 --------------------------------------------------------------------------------
-  Fixes an issue with the Marquee mode not moving the progress bar all the way to the right.
+Restructure CrashAnalyzer and add a wrapper class for the individual checks.
+This change also adds one very simple check to demonstrate how this will work.
 --------------------------------------------------------------------------------
-  Restructure CrashAnalyzer and add a wrapper class for the individual checks.
-  This change also adds one very simple check to demonstrate how this will work.
+Custom Progress Bar Control class for the Omaha UI refresh.
 --------------------------------------------------------------------------------
-  Custom Progress Bar Control class for the Omaha UI refresh.
+This change adds functionality for hover and click effects on the caption
+buttons. This change also adds in a bigger delay before the tooltips for the
+caption buttons are shown, similar to how Windows does it.
 --------------------------------------------------------------------------------
-  This change adds functionality for hover and click effects on the caption buttons. This change also adds in a bigger delay before the tooltips for the caption buttons are shown, similar to how Windows does it.
+Fix minimize/restore issues with the owner draw title bar. The popup title bar
+paints too quickly when the main window is being restored resulting in a
+floating title bar for a split-second. To fix this, I am changing the design to
+have the title bar be a child window of the dialog.
 --------------------------------------------------------------------------------
-  Fix minimize/restore issues with the owner draw title bar. The popup title bar paints too quickly when the main window is being restored resulting in a floating title bar for a split-second. To fix this, I am changing the design to have the title bar be a child window of the dialog.
+Add initial stub for a client side crash analyzer to flag crashes that look like
+failed exploit attempts.
 --------------------------------------------------------------------------------
-  Add initial stub for a client side crash analyzer to flag crashes that look like failed exploit attempts.
+* Enable all dialogs for the new look UI.  * Functionality for dynamically
+enabling/disabling caption buttons.  * Functionality for custom dialog
+backgrounds.
 --------------------------------------------------------------------------------
-  * Enable all dialogs for the new look UI.
-  * Functionality for dynamically enabling/disabling caption buttons.
-  * Functionality for custom dialog backgrounds.
+explicit client-regulated counting flag.
 --------------------------------------------------------------------------------
-  explicit client-regulated counting flag.
+Build elliptic cryptography code.  Fix more broken build issues.
 --------------------------------------------------------------------------------
-  Build elliptic cryptography code.
-  Fix more broken build issues.
+Some Base classes for the new Omaha UI. Owner draw Title Bar and Buttons.
 --------------------------------------------------------------------------------
-  Some Base classes for the new Omaha UI. Owner draw Title Bar and Buttons.
+Build elliptic cryptography code.  Added missing unit test file.
 --------------------------------------------------------------------------------
-  Build elliptic cryptography code.
-  Added missing unit test file.
+Build elliptic cryptography code.  * the string code comes almost as-is from
+google3 plus some type changes to deal with warnings regarding conversion from
+size_t to int.  * the ECDSA unit test depends on openssl and it is not part of
+the unit tests at the moment.  * the include directives are somehow inconsistent
+since the original and most of the code integrated before is including just the
+file name, without any relative path to the root of the project.
 --------------------------------------------------------------------------------
-  Build elliptic cryptography code.
-  * the string code comes almost as-is from google3 plus some type changes to deal with warnings regarding conversion from size_t to int.
-  * the ECDSA unit test depends on openssl and it is not part of the unit tests at the moment.
-  * the include directives are somehow inconsistent since the original and most of the code integrated before is including just the file name, without any relative path to the root of the project.
+Stop setting the IsMachine environment variable globally.  Instead, set
+IsMachine on the environment block, when calling installers.
 --------------------------------------------------------------------------------
-  Stop setting the IsMachine environment variable globally.
-  Instead, set IsMachine on the environment block, when calling installers.
+[ASSERT][base\system.cc:509][env_block]
 --------------------------------------------------------------------------------
-  [ASSERT][base\system.cc:509][env_block]
+chrome will not update behind a proxy.  * Log the user account that the network
+stack is authenticating with.
 --------------------------------------------------------------------------------
-  chrome will not update behind a proxy.
-  * Log the user account that the network stack is authenticating with.
+Disable frame pointer optimization.
 --------------------------------------------------------------------------------
-  Disable frame pointer optimization.
+server and client enums for install sources are not in sync.
 --------------------------------------------------------------------------------
-  server and client enums for install sources are not in sync.
+Allow clients to read the text output from application commands.  Define a new
+AppCommand property "CaptureOutput". If true, the client can retrieve the STDOUT
+of the launched process. There is a limit of 64KB.
 --------------------------------------------------------------------------------
-  Allow clients to read the text output from application commands.
-  Define a new AppCommand property "CaptureOutput". If true, the client can retrieve the STDOUT of the launched process. There is a limit of 64KB.
+Add support for UpdateDev\CrashReportUrl override to crash uploading.  Add an
+UpdateDev\MaxCrashUploadsPerDay override as well.
 --------------------------------------------------------------------------------
-  Add support for UpdateDev\CrashReportUrl override to crash uploading.  Add an UpdateDev\MaxCrashUploadsPerDay override as well.
+Define a registry flag that can be used to disable app command executable
+verification for testing purposes.
 --------------------------------------------------------------------------------
-  Define a registry flag that can be used to disable app command executable verification for testing purposes.
+Define a flag that allows system-level app commands to execute as the current
+user rather than as system.  This resolves http://crbug.com/160293 (although
+Chrome setup will have to set the 'RunAsUser' flag too).
 --------------------------------------------------------------------------------
-  Define a flag that allows system-level app commands to execute as the current user rather than as system.
-  This resolves http://crbug.com/160293 (although Chrome setup will have to set the 'RunAsUser' flag too).
+Refactoring code in crash_utils.cc to use EnvironmentBlockModifier.
 --------------------------------------------------------------------------------
-  Refactoring code in crash_utils.cc to use EnvironmentBlockModifier.
+Implementing "untrusted data" tag in Omaha.  This is work-in progress to
+Implement "untrusted data" tag in Omaha.  The "DATA" string is passed to
+GoogleSetup.exe by existing code where it is passed as environment variable to
+the {PRODUCT} installer.  Validation from GoogleSetup.exe for character set and
+length: - Max length is 4096.  - Only printable characters (ASCII [32,126]) is
+allowed, after unescaping.
 --------------------------------------------------------------------------------
-  Implementing "untrusted data" tag in Omaha.
-  This is work-in progress to Implement "untrusted data" tag in Omaha.
-  The "DATA" string is passed to GoogleSetup.exe by existing code
-  where it is passed as environment variable to the {PRODUCT} installer.
-  Validation from GoogleSetup.exe for character set and length:
-  - Max length is 4096.
-  - Only printable characters (ASCII [32,126]) is allowed, after unescaping.
+Assert InitializeUserIdLock in goopdate_utils.cc Line 1610 when /install or
+/ondemand is run.
 --------------------------------------------------------------------------------
-  - Assert InitializeUserIdLock in goopdate_utils.cc Line 1610 when /install or /ondemand is run.
+Remove the CUP optimization of reusing credential for multiple requests.
 --------------------------------------------------------------------------------
-  Remove the CUP optimization of reusing credential for multiple requests.
+Improve flaky SystemMonitor unit test. The SystemMonitor has a race condition
+when creating and deleting keys and values quickly. Changes can be missed. This
+behavior is by design and it can't be easily fixed. I incresed the time interval
+between successive tests. The rest of the refactoring is not essential.
 --------------------------------------------------------------------------------
-  Improve flaky SystemMonitor unit test. The SystemMonitor has a race condition when creating and deleting keys and values quickly. Changes can be missed. This behavior is by design and it can't be easily fixed. I incresed the time interval between successive tests. The rest of the refactoring is not essential.
+Use the HTTPS url to upload crash reports.
 --------------------------------------------------------------------------------
-  Use the HTTPS url to upload crash reports.
---------------------------------------------------------------------------------
-  When experiment labels are specified via a tag for either an app or Omaha, merge them with existing labels in the Registry instead of overwriting entirely.  (If the Registry labels appear to be corrupt, discard them and overwrite.)
+When experiment labels are specified via a tag for either an app or Omaha, merge
+them with existing labels in the Registry instead of overwriting entirely.  (If
+the Registry labels appear to be corrupt, discard them and overwrite.)
 

@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "p256.h"
 
@@ -126,11 +127,43 @@ void test_valid_point() {
   CHECK(p256_is_valid_point(&x, &y) == 1);
 }
 
+void test_bin() {
+  p256_int a = {{1}};
+  p256_int b;
+  uint8_t a_bytes_be[P256_NBYTES];
+  uint8_t a_bytes_le[P256_NBYTES];
+  int i;
+
+  p256_to_bin(&a, a_bytes_be);
+  p256_to_le_bin(&a, a_bytes_le);
+
+  // Check big-endian serialization.
+  for (i = 0; i < P256_NBYTES - 1; ++i) {
+    CHECK(a_bytes_be[i] == 0);
+  }
+  CHECK(a_bytes_be[P256_NBYTES - 1] == 1);
+
+  // Check little-endian serialization.
+  CHECK(a_bytes_le[0] == 1);
+  for (i = 1; i < P256_NBYTES; ++i) {
+    CHECK(a_bytes_le[i] == 0);
+  }
+
+  // Check big-endian parsing.
+  p256_from_bin(a_bytes_be, &b);
+  CHECK(memcmp(&a, &b, sizeof(a)) == 0);
+
+  // Check little-endian parsing.
+  p256_from_le_bin(a_bytes_le, &b);
+  CHECK(memcmp(&a, &b, sizeof(a)) == 0);
+}
+
 int main(int argc, char* argv[]) {
   test_cpu_behavior();
   test_shifts();
   test_add_sub_cmp();
   test_mul_inv();
   test_valid_point();
+  test_bin();
   return 0;
 }
