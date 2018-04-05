@@ -556,7 +556,9 @@ None.
 
 ## HTTP Headers ##
 ### Request Headers ###
-  * `X-GoogleUpdate-Interactivity` -- Either 'fg' or 'bg' when present, 'fg' indicating a user-initiated foreground update. 'bg' indicates that the request is part of a background update. If the server is under extremely high load, it may use this to prioritize 'fg' requests over 'bg' requests.
+  * `X-Goog-Update-Interactivity` -- Either 'fg' or 'bg' when present, 'fg' indicating a user-initiated foreground update. 'bg' indicates that the request is part of a background update. If the server is under extremely high load, it may use this to prioritize 'fg' requests over 'bg' requests.
+  * `X-Goog-Update-AppId`  -- Indicates the apps associated with the request. Clients updating multiple apps should specify a comma-separated list of values.
+  * `X-Goog-Update-Updater` -- Indicates the identity of the updater. This is the "updater" version string also present in the request; in the case of Omaha, prepend "Omaha-" to the version string.
   
 ### Response Headers ###
   * `X-Retry-After` -- When present, a positive integral number of seconds during which the client MUST NOT contact the server again for background updates, including but not limited to retried attempts to connect to the server due to an unparseable response or apparent error. Clients MUST respect this header even if paired with non-successful HTTP response code. Servers SHOULD NOT send a value in excess of 86400 (24 hours), and clients SHOULD treat values greater than 86400 as 86400.
