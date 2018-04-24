@@ -97,9 +97,11 @@ An Omaha V3 request MUST contain exactly one `<request>` element at the root lev
   * `requestid`: A randomly-generated (uniformly distributed) GUID. Each request attempt SHOULD have (with high probability) a unique `requestid`. Default: "".
   * `sessionid`: A randomly-generated (uniformly distributed) GUID. Each single update flow (an update check, update application, event ping sequence) SHOULD have (with high probability) a single unique `sessionid`. Default: "".
   * `testsource`: Either "", "dev", "qa", "prober", "auto", or "ossdev". Any value except "" indicates that the request is a test and should not be counted toward normal metrics. Default: "".
+  * `updater`: A string identifying the updater software itself (e.g. "Omaha", "Keystone", "Chrome"). Default: "0.0.0.0".
   * `updaterchannel`: If present, identifies the distribution channel of the client (e.g. "stable", "beta", "dev", "canary"). Default: "".
+  * `updaterversion`: The version of the updater itself (the entity sending this request). Default: "0.0.0.0".
   * `userid`: A randomly-generated (uniformly distributed) GUID. Each instance of the client SHOULD have (with high probability) either a single unique `userid`, or no `userid` at all (""). Default: "". Omaha Client transmits `userid` only for opt-in users.
-  * `version`: The ID and version number of the client. Default: Undefined - compatible clients MUST always transmit this attribute. The version number MUST be one of the two following forms:
+  * `version`: *DEPRECATED - use `updater` and `updaterversion` instead* The ID and version number of the client. Default: Undefined - compatible clients MUST always transmit this attribute. The version number MUST be one of the two following forms:
     1. "`A-V`" where `A` is a client identifier, and `V` is the version number of client (e.g. "chromiumcrx-31.1.0.112").
     1. "`V`" where `V` is the version number of the client (e.g. "1.3.23.9"). Compatible clients SHOULD NOT use this form, as it is reserved for Omaha Client.
 
