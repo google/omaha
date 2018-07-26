@@ -258,7 +258,7 @@ bool Gate::Wait(DWORD msec) {
 
 // Returns S_OK, and sets selected_gate to zero based index of the gate that
 // was opened
-// Returns E_FAIL if timeout occured or gate was abandoned.
+// Returns E_FAIL if timeout occurred or gate was abandoned.
 HRESULT Gate::WaitAny(Gate const * const *gates,
                       int num_gates,
                       DWORD msec,

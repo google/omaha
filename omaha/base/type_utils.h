@@ -23,7 +23,7 @@ namespace omaha {
 // (Extracted from: Modern C++ Design)
 //
 
-// Evaluates true if U inherites from T publically, or if T and U are same type
+// Evaluates true if U inherites from T publicly, or if T and U are same type
 #define SUPERSUBCLASS(T, U) \
   (ConversionUtil<const U*, const T*>::exists && \
   !ConversionUtil<const T*, const void*>::same_type)

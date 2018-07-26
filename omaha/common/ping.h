@@ -34,7 +34,7 @@
 //   elevated /install process if elevation was successful. The pings will be
 //   split in two different http transactions in the case setup completed
 //   successfully but it failed to handoff.
-// * if the /handoff process launched but an error occured in the handoff
+// * if the /handoff process launched but an error occurred in the handoff
 //   process itself, then the Omaha "2" ping is sent from the /install process
 //   and the apps "2" ping is sent from the /handoff process.
 //   The apps ping is only sent if the handoff code did not proceed far enough

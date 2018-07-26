@@ -439,7 +439,7 @@ class RegKeyWithChangeEvent : public RegKey {
   // for values for notify_filter.
   HRESULT SetupEvent(bool watch_subtree, DWORD notify_filter);
 
-  // Indicates if any changes (that are being monitored) have occured
+  // Indicates if any changes (that are being monitored) have occurred
   bool HasChangeOccurred() const;
 
   // Get the event that is signaled on registry changes.

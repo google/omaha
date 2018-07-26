@@ -278,7 +278,7 @@ void SimpleRequestTest::SimpleGetHostNotFound(const CString& url,
     // proxy auto detect.
     //
     // When a proxy is detected, the proxy server can return some html content
-    // indicating an error has occured. The status codes will be different,
+    // indicating an error has occurred. The status codes will be different,
     // depending on how each proxy is configured. This may be a flaky unit test.
     if (FAILED(hr)) {
       if (IsWpadFailureError(hr)) {
