@@ -294,7 +294,7 @@ TEST_F(UITest, OnMultipleCompletes) {
   FormatWindowTitle(_T("Complete error"));
   progress_wnd_.OnComplete(
       COMPLETION_CODE_ERROR,
-      _T("An error occured while installing Gears: an existing copy of ")
+      _T("An error occurred while installing Gears: an existing copy of ")
       _T("Gears is currently running. Please exit the software and ")
       _T("retry installation. For more information visit the ")
       _T("<a=http://www.google.com/gears/>Gears</a> web site."),

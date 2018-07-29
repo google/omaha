@@ -28,7 +28,7 @@ namespace omaha {
   (ConversionUtil<const U*, const T*>::exists && \
   !ConversionUtil<const T*, const void*>::same_type)
 
-// Evaluates true only if U inherites from T publically
+// Evaluates true only if U inherites from T publicly
 #define SUPERSUBCLASS_STRICT(T, U) \
   (SUPERSUBCLASS(T, U) && \
   !ConversionUtil<const T, const U>::same_type)
