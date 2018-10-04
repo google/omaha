@@ -10,7 +10,7 @@ We are striving to make the code build with the latest Windows toolchain from Mi
 
 The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
-  * Microsoft Visual Studio 2015 Update 3. The free Visual Studion Community edition is sufficient to build.
+  * Microsoft Visual Studio 2015 Update 3. The free Visual Studio Community edition is sufficient to build.
     * The Express Editions are not sufficient - they do not include ATL/MFC headers or libraries, which Omaha requires.
   * ATL Server headers 
     * Download [here](http://atlserver.codeplex.com). Omaha needs this library for regular expression support.
