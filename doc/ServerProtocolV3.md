@@ -167,7 +167,7 @@ Each product that is contained in the request is represented by exactly one `<ap
   * `installsource`: A string indicating the cause of this install or update flow. As examples:  "organic" indicating an organic web download, "scheduler" indicating a scheduled update, "ondemand" indicating a user-prompted update. Default: "".
   * `ismachine`: "0" if the app is installed at the user (non-privileged) level; "1" if the app is installed at the system (privileged) level; "-1" if unknown. Default: "-1"
   * `tag`: An field for a client to transmit arbitrary update parameters in string form. Compatible clients and servers MAY use this attribute to negotiate special update rules. Alternatively, they MAY extend the protocol to represent the information more clearly in another parameter. As an example, Omaha Client uses this field to transmit whether a Google Chrome installation is on the "stable", "dev", or "beta" channel, which affects how the server issues update responses for that installation. Default: "".
-  * `fingerprint`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages\_&\_Fingerprints](#packages--fingerprints).  Default: "".
+  * `fp`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages\_&\_Fingerprints](#packages--fingerprints).  Default: "".
   * `cohort`: A machine-readable string identifying the release cohort (channel) that the app belongs to. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
   * `cohorthint`: An machine-readable enum indicating that the client has a desire to switch to a different release cohort. The exact legal values are app-specific and should be shared between the server and app implementations. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
   * `cohortname`: A stable non-localized human-readable enum indicating which (if any) set of messages the app should display to the user. For example, an app with a cohortname of "beta" might display beta-specific branding to the user. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
@@ -219,7 +219,7 @@ None.
 #### `<package>` (Request) ####
 A `<package>` tag gives information about an installed package.
 ##### Attributes #####
-  * `fingerprint`: The fingerprint identifying the installed package. See [#Packages\_&\_Fingerprints](#pacakges--fingerprints). Default: "".
+  * `fp`: The fingerprint identifying the installed package. See [#Packages\_&\_Fingerprints](#pacakges--fingerprints). Default: "".
 
 ##### Legal Child Elements #####
 None.
