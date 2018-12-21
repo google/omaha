@@ -1,3 +1,54 @@
+## 2018-12-20 @176133949,226393814
+
+### Changes
+--------------------------------------------------------------------------------
+Remove AppCommand accessibility from the ActiveX control.
+--------------------------------------------------------------------------------
+Replace Google Inc with Google LLC.
+--------------------------------------------------------------------------------
+Accept the new SHA256 certificate (11/06/2018 to 11/17/2021).
+
+This change adds a pin for the new certificate.
+It accomodates for different names of the certificates.
+--------------------------------------------------------------------------------
+Update SaveArguments.exe file.
+
+Version 1.2.33.33 signed on 12/03/2018.
+
+Note this version is signed with the new sha256 certificate
+issued to Google LLC.
+--------------------------------------------------------------------------------
+CompileProtoBuf builder improvements.
+
+The builder now:
+- takes a list of input .proto files
+- returns a list of Nodes for the generated .pb.cc output files
+- takes the proto_path and cpp_out args as construction variables in the environment
+
+This makes it easier to compile a protobuf and its dependencies in one invocation.
+
+This change also builds both 32-bit and 64-bit variants of libprotobuf.
+--------------------------------------------------------------------------------
+Remove valueName attributes from <policy> elements that have have it set on a 
+child of an <elements> element.
+
+This allows the policies to work with Microsoft Intune.
+--------------------------------------------------------------------------------
+Replace 1.1.1.1 with 2.2.2.2 in unit tests.
+
+We need an address where ping times out.
+--------------------------------------------------------------------------------
+Change DOS-mitigation header strings (Windows)
+
+X-GoogleUpdate-Interactivity -> X-Goog-Update-Interactivity
+X-GoogleUpdate-AppId       ->  X-Goog-Update-AppId
+X-GoogleUpdate-Updater   ->  X-Goog-Update-Updater
+--------------------------------------------------------------------------------
+Rotate CUP key.
+--------------------------------------------------------------------------------
+Send a boolean to indicate whether the machine is domain joined or not.
+--------------------------------------------------------------------------------
+
 ## 2017-11-16 @156858449,176133948
 
 ### Changes
