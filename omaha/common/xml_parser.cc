@@ -908,7 +908,16 @@ HRESULT XmlParser::BuildRequestElement() {
 
   hr = AddXMLAttributeNode(element,
                            kXmlNamespace,
-                           xml::attribute::kVersion,
+                           xml::attribute::kUpdater,
+                           xml::value::kUpdater);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kUpdaterVersion,
                            request_->omaha_version);
   if (FAILED(hr)) {
     return hr;
@@ -1014,6 +1023,14 @@ HRESULT XmlParser::BuildRequestElement() {
     if (FAILED(hr)) {
       return hr;
     }
+  }
+
+  hr = AddXMLAttributeNode(element,
+                           kXmlNamespace,
+                           xml::attribute::kDomainJoined,
+                           request_->domain_joined ? _T("1") : _T("0"));
+  if (FAILED(hr)) {
+    return hr;
   }
 
   hr = BuildHwElement(element);

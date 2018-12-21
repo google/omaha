@@ -1,5 +1,3 @@
-#!/usr/bin/python2.4
-#
 # Copyright 2009 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +27,7 @@ import sys
 
 
 HORIZONTAL_RULE = ';%s\n' % ('-' * 78)
-MAIN_POLICY_KEY = 'Software\Policies\Google\Update'
+MAIN_POLICY_KEY = r'Software\Policies\Google\Update'
 
 # pylint: disable-msg=C6004
 HEADER = """\
@@ -68,6 +66,34 @@ PREFERENCES = """
             END ACTIONLISTOFF
             VALUEOFF  NUMERIC 0
             VALUEON   NUMERIC 1
+          END PART
+        END POLICY
+
+        POLICY !!Pol_UpdateCheckSuppressedPeriod
+          #if version >= 4
+            SUPPORTED !!Sup_GoogleUpdate1_3_33_5
+          #endif
+          EXPLAIN !!Explain_UpdateCheckSuppressedPeriod
+          PART !!Part_UpdateCheckSuppressedStartHour NUMERIC
+            VALUENAME UpdatesSuppressedStartHour
+            DEFAULT 0
+            MIN 0
+            MAX 23  ; 0-23 hour
+            SPIN 1
+          END PART
+          PART !!Part_UpdateCheckSuppressedStartMin NUMERIC
+            VALUENAME UpdatesSuppressedStartMin
+            DEFAULT 0
+            MIN 0
+            MAX 59  ; 0-59 minute in an hour
+            SPIN 1
+          END PART
+          PART !!Part_UpdateCheckSuppressedDurationMin NUMERIC
+            VALUENAME UpdatesSuppressedDurationMin
+            DEFAULT 60
+            MIN 1
+            MAX 720  ; Maximum duration is 720 minutes = 12 hours
+            SPIN 30
           END PART
         END POLICY
 
@@ -201,6 +227,17 @@ UPDATE_POLICY_ITEMLIST.replace('            ', '              ') + """
             END PART
           END POLICY
 
+          POLICY !!Pol_TargetVersionPrefix
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_3_33_5
+            #endif
+            EXPLAIN !!Explain_TargetVersionPrefix$AppLegalId$
+
+            PART !!Part_TargetVersionPrefix EDITTEXT
+              VALUENAME "TargetVersionPrefix$AppGuid$"
+            END PART
+          END POLICY
+
         END CATEGORY  ; $AppName$
 """)
 
@@ -216,6 +253,7 @@ APPLICATIONS_FOOTER = """
 ALLOW_INSTALLATION_POLICY = 'Allow installation'
 DEFAULT_ALLOW_INSTALLATION_POLICY = ALLOW_INSTALLATION_POLICY + ' default'
 UPDATE_POLICY = 'Update policy override'
+TARGET_VERSION_POLICY = 'Target version override'
 DEFAULT_UPDATE_POLICY = UPDATE_POLICY + ' default'
 
 # Update policy options that are used in multiple locations.
@@ -238,6 +276,7 @@ HORIZONTAL_RULE +
 Sup_GoogleUpdate1_2_145_5=At least Google Update 1.2.145.5
 Sup_GoogleUpdate1_3_21_81=At least Google Update 1.3.21.81
 Sup_GoogleUpdate1_3_26_0=At least Google Update 1.3.26.0
+Sup_GoogleUpdate1_3_33_5=At least Google Update 1.3.33.5
 
 Cat_Google=Google
 Cat_GoogleUpdate=Google Update
@@ -247,6 +286,7 @@ Cat_Applications=""" + APPLICATIONS_CATEGORY + """
 
 Pol_AutoUpdateCheckPeriod=Auto-update check period override
 Pol_DownloadPreference=Download URL class override
+Pol_UpdateCheckSuppressedPeriod=Time period in each day to suppress auto update check
 Pol_ProxyMode=Choose how to specify proxy server settings
 Pol_ProxyServer=Address or URL of proxy server
 Pol_ProxyPacUrl=URL to a proxy .pac file
@@ -254,14 +294,19 @@ Pol_DefaultAllowInstallation=""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """
 Pol_AllowInstallation=""" + ALLOW_INSTALLATION_POLICY + """
 Pol_DefaultUpdatePolicy=""" + DEFAULT_UPDATE_POLICY + """
 Pol_UpdatePolicy=""" + UPDATE_POLICY + """
+Pol_TargetVersionPrefix=""" + TARGET_VERSION_POLICY + """
 
 Part_AutoUpdateCheckPeriod=Minutes between update checks
 Part_DownloadPreference=Type of download URL to request
+Part_UpdateCheckSuppressedStartHour=Hour in a day that start to suppress update check
+Part_UpdateCheckSuppressedStartMin=Minute in hour that starts to suppress update check
+Part_UpdateCheckSuppressedDurationMin=Number of minutes to suppress update check each day
 Part_DisableAllAutoUpdateChecks=Disable all auto-update checks (not recommended)
 Part_ProxyMode=Choose how to specify proxy server settings
 Part_ProxyServer=Address or URL of proxy server
 Part_ProxyPacUrl=URL to a proxy .pac file
 Part_UpdatePolicy=Policy
+Part_TargetVersionPrefix=Target version prefix
 
 Name_UpdatesEnabled=""" + UPDATES_ENABLED + """ (recommended)
 Name_ManualUpdatesOnly=""" + MANUAL_UPDATES_ONLY + """
@@ -305,6 +350,9 @@ HORIZONTAL_RULE + """
 Explain_Preferences=General policies for Google Update.
 
 Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.
+
+Explain_UpdateCheckSuppressedPeriod=If this setting is enabled, update checks will be suppressed during each day starting from Hour:Minute for a period of Duration (in minutes). Duration does not account for daylight savings time. So for instance, if the start time is 22:00, and with a duration of 480 minutes, the updates will be suppressed for 8 hours regardless of whether daylight savings time changes happen in between.
+
 Explain_DownloadPreference=If enabled, the Google Update server will attempt to provide cache-friendly URLs for update payloads in its responses.
 
 Explain_ProxyMode=Allows you to specify the proxy server used by Google Update.\\n\\nIf you choose to never use a proxy server and always connect directly, all other options are ignored.\\n\\nIf you choose to use system proxy settings or auto detect the proxy server, all other options are ignored.\\n\\nIf you choose fixed server proxy mode, you can specify further options in 'Address or URL of proxy server'.\\n\\nIf you choose to use a .pac proxy script, you must specify the URL to the script in 'URL to a proxy .pac file'.
@@ -341,7 +389,15 @@ Explain_Install$AppLegalId$=Specifies whether $AppName$ can be installed using G
     \\n\\nIf this policy is not configured, $AppName$ can be installed as specified by \"""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """\".
 
 Explain_AutoUpdate$AppLegalId$=Specifies how Google Update handles available $AppName$ updates from Google.\\
-    \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" + DEFAULT_UPDATE_POLICY + """\".\\
+    \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" + DEFAULT_UPDATE_POLICY + """\".
+
+Explain_TargetVersionPrefix$AppLegalId$=Specifies which version $AppName$ should be updated to.\\
+    \\n\\nWhen this policy is enabled, the app will be updated to the version prefixed with this policy value.\\
+    \\n\\nSome examples:\\n\\
+    1) Not configured: app will be update to latest version available.\\n\\
+    2) Policy value is set to "55.", the app will be updated to any minor version of 55 (e.g. 55.24.34 or 55.60.2).\\n\\
+    3) Policy value is "55.2.", the app will be updated to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).\\n\\
+    4) Policy value is "55.24.34", the app will be updated to this specific version only.
 """ +
 STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpdateExplainExtra$\n')
 

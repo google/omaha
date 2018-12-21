@@ -59,11 +59,11 @@ TEST(ProcessTest, StartOneProcess) {
 // Dummy process to spin off and then find.  The numeric argument will make
 // ping.exe run until it's killed by the ScopedProcess destructor.
 const TCHAR kTestExecutable[] = _T("ping.exe");
-const TCHAR kTestArguments[] = _T("-w 10000 1.1.1.1");
-const TCHAR kTestExcludeArguments[] = _T("-n 5 -w 20000 1.1.1.1");
-const TCHAR kTestExcludeString[] = _T("20000 1.1.1.1");
-const TCHAR kTestIncludeArguments[] = _T("-n 6 -w 30000 1.1.1.1");
-const TCHAR kTestIncludeString[] = _T("-w 30000 1.1.1.1");
+const TCHAR kTestArguments[] = _T("-w 10000 2.2.2.2");
+const TCHAR kTestExcludeArguments[] = _T("-n 5 -w 20000 2.2.2.2");
+const TCHAR kTestExcludeString[] = _T("20000 2.2.2.2");
+const TCHAR kTestIncludeArguments[] = _T("-n 6 -w 30000 2.2.2.2");
+const TCHAR kTestIncludeString[] = _T("-w 30000 2.2.2.2");
 const int kWaitForProcessStartMs = 500;
 const int kMaxWaitIterations = 10;
 

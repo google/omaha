@@ -87,8 +87,8 @@ class Thread {
   static void __stdcall APCProc(ULONG_PTR dwParam);
 
   Runnable* runner_;     // Interface to work with.
-  HANDLE    thread_;
   DWORD     thread_id_;
+  HANDLE    thread_;
   Gate start_gate_;     // Synchronizes the thread start.
 
   struct ApcInfo {

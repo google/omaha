@@ -17,11 +17,13 @@
 
 """Omaha builders tool for SCons."""
 
+from copy import copy
 from copy import deepcopy
 import os.path
 import SCons.Action
 import SCons.Builder
 import SCons.Tool
+from subprocess import PIPE,Popen
 
 import omaha_version_utils
 
@@ -93,8 +95,7 @@ def SignDotNetManifest(env, target, unsigned_manifest):
     # If signing fails with the following error, the hash may not match any
     # certificates: "Internal error, please try again. Object reference not set
     # to an instance of an object."
-    sign_manifest_cmd += ('-CertHash ' +
-                          env['build_server_certificate_hash'])
+    sign_manifest_cmd += ('-CertHash ' + env['CERTIFICATE_HASH'])
   else:
     sign_manifest_cmd += '-CertFile %s -Password %s' % (
         env.GetOption('authenticode_file'),
@@ -406,6 +407,10 @@ def ConfigureEnvFor64Bit(env):
                                    '$ATLMFC_VC14_0_DIR/lib/amd64',
                                    platform_sdk_lib_dir + '/um/x64',
                                    platform_sdk_lib_dir + '/ucrt/x64',],
+      omaha_version_utils.VC141: [ '$VC14_1_DIR/lib/x64',
+                                   '$ATLMFC_VC14_1_DIR/lib/x64',
+                                   platform_sdk_lib_dir + '/um/x64',
+                                   platform_sdk_lib_dir + '/ucrt/x64',],
       }[env['msc_ver']]
 
   env.Prepend(LIBPATH=lib_paths)
@@ -415,7 +420,8 @@ def ConfigureEnvFor64Bit(env):
       {omaha_version_utils.VC80  : '$VC80_DIR/vc/bin/x86_amd64',
        omaha_version_utils.VC100 : '$VC10_0_DIR/vc/bin/x86_amd64',
        omaha_version_utils.VC120 : '$VC12_0_DIR/vc/bin/x86_amd64',
-       omaha_version_utils.VC140 : '$VC14_0_DIR/vc/bin/x86_amd64'}
+       omaha_version_utils.VC140 : '$VC14_0_DIR/vc/bin/x86_amd64',
+       omaha_version_utils.VC141 : '$VC14_1_DIR/bin/HostX64/x64'}
       [env['msc_ver']]))
 
   # Filter x86 options that are not supported or conflict with x86-x64 options.
@@ -444,7 +450,6 @@ def ConfigureEnvFor64Bit(env):
   # as VSInstr doesn't currently support those.
   if env.IsCoverageBuild():
     env['INSTALL'] = env['PRECOVERAGE_INSTALL']
-
 
 def CloneAndMake64Bit(env):
   """Clones the supplied environment and calls ConfigureEnvFor64Bit()
@@ -491,8 +496,10 @@ def ComponentStaticLibraryMultiarch(env, lib_name, *args, **kwargs):
   """
 
   # ComponentStaticLibrary() will actually modify the input arg lists, so
-  # make a deep copy of both.
-  args64 = deepcopy(args)
+  # make a copy of both. It's only necessary to make a shallow copy of each arg
+  # in |args|, as the modification by ComponentStaticLibrary only adds to one
+  # of the argument lists.
+  args64 = [copy(arg) for arg in args]
   kwargs64 = deepcopy(kwargs)
 
   nodes32 = ComponentStaticLibrary(env.Clone(), lib_name, *args, **kwargs)
@@ -500,6 +507,67 @@ def ComponentStaticLibraryMultiarch(env, lib_name, *args, **kwargs):
                                    '%s_64' % lib_name,
                                    *args64, **kwargs64)
   return nodes32 + nodes64
+
+
+# os.path.relpath is not available in Python 2.4, so make our own.
+def RelativePath(path, start):
+  """Returns a relative path.
+
+  Args:
+    path: Some path.
+    start: A parent of |path|.
+
+  Returns:
+    A relative path from |start| to |path|.
+  """
+  path_list = [x for x in os.path.normpath(path).split(os.path.sep) if x]
+  start_list = [x for x in os.path.normpath(start).split(os.path.sep) if x]
+  i = 0
+  for start_item, path_item in zip(start_list, path_list):
+    if start_item.lower() != path_item.lower():
+      break
+    i += 1
+  rel_list = [os.path.pardir] * (len(start_list)-i) + path_list[i:]
+  if not rel_list:
+    return os.path.curdir
+  return os.path.join(*rel_list)
+
+
+def CompileProtoBuf(env, input_proto_files):
+  """Invokes the protocol buffer compiler.
+
+  Args:
+    env: The environment, which must specify the following construction
+        variables
+        $PROTO_PATH: The "proto path" passed to protoc. This is the base path in
+                     which all .proto files reside.
+        $CPP_OUT: The "output path" passed to protoc. This is the path into
+                  which the generated files are placed, preserving their paths
+                  relative to $PROTO_PATH.
+    input_proto_files: The protocol buffer .proto file(s).
+
+  Returns:
+    Output node list of generated .cc files.
+  """
+  proto_compiler_path = '%s/protoc.exe' % os.getenv('OMAHA_PROTOBUF_BIN_DIR')
+  proto_path = env['PROTO_PATH']
+  cpp_out = env['CPP_OUT']
+  # Generate the list of .pb.cc targets in the cpp_out dir.
+  targets = [os.path.join(cpp_out, os.path.splitext(base)[0] + '.pb.cc')
+             for base in [RelativePath(in_file, proto_path)
+                          for in_file in input_proto_files]]
+  proto_arguments = (' --proto_path=%s --cpp_out=%s %s ' %
+                     (proto_path,
+                      cpp_out,
+                      ' '.join(input_proto_files)))
+  proto_cmd_line = proto_compiler_path + proto_arguments
+  compile_proto_buf = env.Command(
+      target=targets,
+      source=input_proto_files,
+      action=proto_cmd_line,
+  )
+
+  return compile_proto_buf
 
 
 # NOTE: SCons requires the use of this name, which fails gpylint.
@@ -522,6 +590,7 @@ def generate(env):  # pylint: disable-msg=C6409
   env.AddMethod(CloneAndMake64Bit)
   env.AddMethod(GetMultiarchLibName)
   env.AddMethod(ComponentStaticLibraryMultiarch)
+  env.AddMethod(CompileProtoBuf)
 
   env['MIDLNOPROXYCOM'] = ('$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} '
                            '/h ${TARGETS[1]} /iid ${TARGETS[2]} '

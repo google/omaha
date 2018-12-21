@@ -347,7 +347,6 @@ gd_inputs = [
     'model.cc',
     'model_object.cc',
     'ondemand.cc',
-    'oneclick_process_launcher.cc',
     'offline_utils.cc',
     'string_formatter.cc',
     'package.cc',

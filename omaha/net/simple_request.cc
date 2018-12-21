@@ -51,9 +51,9 @@ namespace omaha {
 
 SimpleRequest::TransientRequestState::TransientRequestState()
     : port(0),
+      is_https(false),
       http_status_code(0),
       proxy_authentication_scheme(0),
-      is_https(false),
       content_length(0),
       current_bytes(0),
       request_begin_ms(0),
@@ -64,16 +64,16 @@ SimpleRequest::TransientRequestState::~TransientRequestState() {
 }
 
 SimpleRequest::SimpleRequest()
-    : request_buffer_(NULL),
+    : is_canceled_(false),
+      is_closed_(false),
+      pause_happened_(false),
+      session_handle_(NULL),
+      request_buffer_(NULL),
       request_buffer_length_(0),
       proxy_auth_config_(NULL, CString()),
-      is_canceled_(false),
-      is_closed_(false),
-      session_handle_(NULL),
       low_priority_(false),
       callback_(NULL),
-      download_completed_(false),
-      pause_happened_(false) {
+      download_completed_(false) {
   SafeCStringFormat(&user_agent_, _T("%s;winhttp"),
                     NetworkConfig::GetUserAgent());
 

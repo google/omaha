@@ -25,7 +25,7 @@ namespace omaha {
 // while even after the thread is dead. It can appear as a handle leak in the
 // unit test but in fact it is not.
 
-Thread::Thread() : thread_id_(0), thread_(NULL) {
+Thread::Thread() : runner_(NULL), thread_id_(0), thread_(NULL) {
 }
 
 Thread::~Thread() {

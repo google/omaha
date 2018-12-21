@@ -76,7 +76,7 @@ class ReactorTest
 
   scoped_handle main_thread_;
   LONG cnt_;
-  static const LONG ReactorTest::kMaxCount = 10;
+  static const LONG kMaxCount = 10;
 };
 
 const LONG ReactorTest::kMaxCount;

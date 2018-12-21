@@ -15,10 +15,12 @@ rem -- Set all environment variables used by Hammer and Omaha. --
 :: VS2012/VC11 is 1700 (not supported by the current build).
 :: VS2013/VC12 is 1800.
 :: VS2015/VC14 is 1900.
+:: VS2017/VC14.1 is 1910.
 
 if "%VisualStudioVersion%"=="" goto error_no_vc
 if "%VisualStudioVersion%"=="12.0" goto vc120
 if "%VisualStudioVersion%"=="14.0" goto vc140
+if "%VisualStudioVersion%"=="15.0" goto vc141
 goto error_vc_not_supported
 
 :vc120
@@ -27,6 +29,10 @@ goto set_env_variables
 
 :vc140
 set OMAHA_MSC_VER=1900
+goto set_env_variables
+
+:vc141
+set OMAHA_MSC_VER=1910
 goto set_env_variables
 
 :set_env_variables
@@ -52,6 +58,18 @@ set OMAHA_NET_DIR=%WINDIR%\Microsoft.NET\Framework\v2.0.50727
 :: versions of the .Net framework, then an older version of the Windows SDK
 :: needs to be installed and this environment variable point to that directory.
 set OMAHA_NETFX_TOOLS_DIR=%WindowsSDK_ExecutablePath_x86%
+
+:: This directory is needed to find protoc.exe, which is the protocol buffer
+:: compiler. From the release page https://github.com/google/protobuf/releases,
+:: download the zip file protoc-$VERSION-win32.zip. It contains the protoc
+:: binary. Unzip the contents under C:\protobuf.
+set OMAHA_PROTOBUF_BIN_DIR=C:\protobuf\bin
+
+:: This directory is needed to find the protocol buffer source files. From the
+:: release page https://github.com/google/protobuf/releases, download the zip
+:: file protobuf-cpp-$VERSION.zip. Unzip the "src" sub-directory contents to
+:: C:\protobuf\src.
+set OMAHA_PROTOBUF_SRC_DIR=C:\protobuf\src
 
 :: Directory where Python (python.exe) is installed.
 set OMAHA_PYTHON_DIR=C:\Python24

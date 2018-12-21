@@ -61,7 +61,7 @@ class Shell {
   static HRESULT OpenLinkInNewWindow(const TCHAR* url, UseBrowser use_browser);
 
   // Execute a file
-  static HRESULT Shell::Execute(const TCHAR* file);
+  static HRESULT Execute(const TCHAR* file);
 
   // Get the location of a special folder.  The special folders are identified
   // by a unique integer - see the platform SDK files shfolder.h and

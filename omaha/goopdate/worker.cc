@@ -957,7 +957,9 @@ HRESULT Worker::DoUpdateCheck(AppBundle* app_bundle,
   HighresTimer update_check_timer;
 
   // This is a blocking call on the network.
-  HRESULT hr = app_bundle->update_check_client()->Send(update_request,
+  const bool is_foreground = app_bundle->priority() == INSTALL_PRIORITY_HIGH;
+  HRESULT hr = app_bundle->update_check_client()->Send(is_foreground,
+                                                       update_request,
                                                        update_response);
 
   CORE_LOG(L3, (_T("[Update check HTTP trace][%s]"),

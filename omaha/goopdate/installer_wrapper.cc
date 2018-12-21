@@ -716,8 +716,16 @@ HRESULT InstallerWrapper::DoInstallApp(HANDLE user_token,
   CString command_line;
   InstallerType installer_type = UNKNOWN_INSTALLER;
 
+  // TODO(omaha): Remove when http://b/1443404 is addressed.
+  const TCHAR* const kChromePerMachineArg = _T("--system-level");
+  CString modified_arguments = arguments;
+  if (kChromeAppId == GuidToString(app_guid) && is_machine_) {
+    SafeCStringAppendFormat(&modified_arguments, _T(" %s"),
+                            kChromePerMachineArg);
+  }
+
   HRESULT hr = BuildCommandLineFromFilename(installer_path,
-                                            arguments,
+                                            modified_arguments,
                                             installer_data,
                                             &executable_path,
                                             &command_line,

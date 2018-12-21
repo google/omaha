@@ -511,9 +511,9 @@ class LoggingHelper {
 
  private:
   Logging* logger_;
-  DWORD writer_mask_;
-  LogLevel level_;
   LogCategory category_;
+  LogLevel level_;
+  DWORD writer_mask_;
 
   DISALLOW_EVIL_CONSTRUCTORS(LoggingHelper);
 };

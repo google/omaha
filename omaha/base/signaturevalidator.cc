@@ -347,45 +347,57 @@ bool CertInfo::ExtractPublicKeyHash(const CERT_CONTEXT* cert_context,
 }
 
 void CertList::FindFirstCert(const CertInfo** result_cert_info,
-                             const CString &company_name_to_match,
+                             const std::vector<CString>& company_name_to_match,
                              const CString &orgn_unit_to_match,
                              const CString &trust_authority_to_match,
                              bool allow_test_variant,
                              bool check_cert_is_valid_now) const {
-  if (!result_cert_info)
+  if (!result_cert_info) {
     return;
+  }
+
   (*result_cert_info) = NULL;
 
   for (CertInfoList::const_iterator cert_iter = cert_list_.begin();
        cert_iter != cert_list_.end();
        ++cert_iter) {
-    // If any of the criteria does not match, continue on to next certificate
-    if (!company_name_to_match.IsEmpty()) {
-      const TCHAR* certificate_company_name =
-          (*cert_iter)->issuing_company_name_;
-      bool names_match = company_name_to_match == certificate_company_name;
-      if (!names_match && allow_test_variant) {
-        CString test_variant = company_name_to_match;
-        test_variant += _T(" (TEST)");
-        names_match = test_variant == certificate_company_name;
+      // Find a match between the name of the certificate and one of the
+      // company names provided as a paramer..
+      bool names_match = false;
+      for (size_t i = 0; i != company_name_to_match.size(); ++i) {
+        const TCHAR* certificate_company_name =
+            (*cert_iter)->issuing_company_name_;
+        names_match = company_name_to_match[i] == certificate_company_name;
+        if (!names_match && allow_test_variant) {
+          CString test_variant = company_name_to_match[i];
+          test_variant += _T(" (TEST)");
+          names_match = test_variant == certificate_company_name;
+        }
+        if (names_match) {
+          break;
+        }
       }
-      if (!names_match)
+
+      // If any of the criteria does not match, continue on to next certificate.
+      if (!names_match) {
         continue;
-    }
-    if (!orgn_unit_to_match.IsEmpty() &&
-        orgn_unit_to_match != (*cert_iter)->issuing_dept_name_)
-      continue;
-    if (!trust_authority_to_match.IsEmpty() &&
-        trust_authority_to_match != (*cert_iter)->trust_authority_name_)
-      continue;
-    // All the criteria matched. But, add only if it is a valid certificate.
-    if (!check_cert_is_valid_now || (*cert_iter)->IsValidNow()) {
-      (*result_cert_info) = (*cert_iter);
-      return;
-    }
+      }
+      if (!orgn_unit_to_match.IsEmpty() &&
+          orgn_unit_to_match != (*cert_iter)->issuing_dept_name_) {
+        continue;
+      }
+      if (!trust_authority_to_match.IsEmpty() &&
+          trust_authority_to_match != (*cert_iter)->trust_authority_name_) {
+        continue;
+      }
+
+      // All the criteria matched. But, add only if it is a valid certificate.
+      if (!check_cert_is_valid_now || (*cert_iter)->IsValidNow()) {
+        (*result_cert_info) = (*cert_iter);
+        return;
+      }
   }
 }
-
 
 void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
                                          CertList* cert_list) {
@@ -427,7 +439,7 @@ void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
 // TODO(omaha): implement the valid now check by adding a parameter to
 // VerifyAuthenticodeSignature that adds WTD_LIFETIME_SIGNING_FLAG.
 HRESULT VerifyCertificate(const wchar_t* signed_file,
-                          const wchar_t* subject,
+                          const std::vector<CString>& subject,
                           bool allow_test_variant,
                           bool check_cert_is_valid_now,
                           const std::vector<CString>* expected_hashes) {

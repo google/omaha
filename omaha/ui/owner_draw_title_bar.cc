@@ -1,4 +1,4 @@
-// Copyright 2013 Google Inc.
+  // Copyright 2013 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,10 +24,10 @@ namespace omaha {
 
 CaptionButton::CaptionButton()
     : bk_color_(RGB(0, 0, 0)),
-      is_tracking_mouse_events_(false),
-      is_mouse_hovering_(false),
       foreground_brush_(::CreateSolidBrush(kCaptionForegroundColor)),
-      frame_brush_(::CreateSolidBrush(kCaptionFrameColor)) {
+      frame_brush_(::CreateSolidBrush(kCaptionFrameColor)),
+      is_tracking_mouse_events_(false),
+      is_mouse_hovering_(false) {
 }
 
 CaptionButton::~CaptionButton() {

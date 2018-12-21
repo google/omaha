@@ -26,8 +26,8 @@
 // NOTE: leakage of initial- and subsequent (if any) seed material allows for
 // re-generation of the psuedo random sequence and thus derived key material.
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,8 +36,8 @@ extern "C" {
 #define P256_PRNG_SIZE 32
 
 typedef struct P256_PRNG_CTX {
-  uint32_t Key[P256_PRNG_SIZE];
-  uint32_t V[P256_PRNG_SIZE];
+  uint8_t Key[P256_PRNG_SIZE];
+  uint8_t V[P256_PRNG_SIZE];
   uint64_t instance_count;
   uint64_t call_count;
 } P256_PRNG_CTX;

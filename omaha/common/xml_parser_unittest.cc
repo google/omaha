@@ -72,6 +72,7 @@ TEST_F(XmlParserTest, GenerateRequestWithoutUserId_MachineUpdateRequest) {
   xml_request.omaha_shell_version = _T("1.2.1.1");
   xml_request.test_source = _T("dev");
   xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8383}");
+  xml_request.domain_joined = true;
   xml_request.hw.physmemory = 2;
   xml_request.hw.has_sse = true;
   xml_request.hw.has_sse2 = true;
@@ -124,7 +125,7 @@ TEST_F(XmlParserTest, GenerateRequestWithoutUserId_MachineUpdateRequest) {
   app2.cohort_name = _T("Name2");
   xml_request.apps.push_back(app2);
 
-  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.2.3.4\" shell_version=\"1.2.1.1\" ismachine=\"1\" sessionid=\"unittest_session\" installsource=\"unittest_install\" originurl=\"http://go/foo/&quot;\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8383}\" periodoverridesec=\"100000\" dedup=\"cr\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\" arch=\"x86\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" ap=\"ap_with_update_check\" lang=\"en\" brand=\"\" client=\"\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\"><updatecheck targetversionprefix=\"55.2\"/><data name=\"install\" index=\"verboselogging\"/><data name=\"untrusted\">some untrusted data</data><ping active=\"0\" r=\"5\" rd=\"2535\"/></app><app appid=\"{AD3D0CC0-AD1E-4b1f-B98E-BAA41DCE396C}\" version=\"1.0\" nextversion=\"2.0\" ap=\"ap_with_no_update_check\" lang=\"en\" brand=\"\" client=\"\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\" cohort=\"Cohort2\" cohorthint=\"Hint2\" cohortname=\"Name2\"/></request>");  // NOLINT
+  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.2.3.4\" shell_version=\"1.2.1.1\" ismachine=\"1\" sessionid=\"unittest_session\" installsource=\"unittest_install\" originurl=\"http://go/foo/&quot;\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8383}\" periodoverridesec=\"100000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\" arch=\"x86\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" ap=\"ap_with_update_check\" lang=\"en\" brand=\"\" client=\"\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\"><updatecheck targetversionprefix=\"55.2\"/><data name=\"install\" index=\"verboselogging\"/><data name=\"untrusted\">some untrusted data</data><ping active=\"0\" r=\"5\" rd=\"2535\"/></app><app appid=\"{AD3D0CC0-AD1E-4b1f-B98E-BAA41DCE396C}\" version=\"1.0\" nextversion=\"2.0\" ap=\"ap_with_no_update_check\" lang=\"en\" brand=\"\" client=\"\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\" cohort=\"Cohort2\" cohorthint=\"Hint2\" cohortname=\"Name2\"/></request>");  // NOLINT
 
   CString actual_buffer;
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
@@ -152,6 +153,7 @@ TEST_F(XmlParserTest, GenerateRequestWithUserId_MachineUpdateRequest) {
   xml_request.omaha_shell_version = _T("1.2.3.4");
   xml_request.test_source = _T("dev");
   xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8384}");
+  xml_request.domain_joined = true;
   xml_request.hw.physmemory = 2;
   xml_request.hw.has_sse = true;
   xml_request.hw.has_sse2 = true;
@@ -223,7 +225,7 @@ TEST_F(XmlParserTest, GenerateRequestWithUserId_MachineUpdateRequest) {
 
   xml_request.apps.push_back(app2);
 
-  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"4.3.2.1\" shell_version=\"1.2.3.4\" ismachine=\"1\" sessionid=\"unittest_session\" userid=\"{c5bcb37e-47eb-4331-a544-2f31101951ab}\" installsource=\"unittest_install\" originurl=\"http://go/bar/&quot;\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8384}\" periodoverridesec=\"200000\" dedup=\"cr\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"7.0\" sp=\"Service Pack 2\" arch=\"x64\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F97}\" version=\"\" nextversion=\"\" _signedin=\"3\" _total=\"7\" ap=\"ap_with_update_check\" lang=\"en\" brand=\"\" client=\"\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\"><updatecheck/><data name=\"install\" index=\"verboselogging\"/><ping active=\"0\" r=\"5\" rd=\"2535\"/></app><app appid=\"{AD3D0CC0-AD1E-4b1f-B98E-BAA41DCE396D}\" version=\"1.0\" nextversion=\"2.0\" _foobar=\"BarFoo\" ap=\"ap_with_no_update_check\" lang=\"en\" brand=\"\" client=\"\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\" cohort=\"Cohort2\" cohorthint=\"Hint2\" cohortname=\"Name2\"/></request>");  // NOLINT
+  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"4.3.2.1\" shell_version=\"1.2.3.4\" ismachine=\"1\" sessionid=\"unittest_session\" userid=\"{c5bcb37e-47eb-4331-a544-2f31101951ab}\" installsource=\"unittest_install\" originurl=\"http://go/bar/&quot;\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8384}\" periodoverridesec=\"200000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"7.0\" sp=\"Service Pack 2\" arch=\"x64\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F97}\" version=\"\" nextversion=\"\" _signedin=\"3\" _total=\"7\" ap=\"ap_with_update_check\" lang=\"en\" brand=\"\" client=\"\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\"><updatecheck/><data name=\"install\" index=\"verboselogging\"/><ping active=\"0\" r=\"5\" rd=\"2535\"/></app><app appid=\"{AD3D0CC0-AD1E-4b1f-B98E-BAA41DCE396D}\" version=\"1.0\" nextversion=\"2.0\" _foobar=\"BarFoo\" ap=\"ap_with_no_update_check\" lang=\"en\" brand=\"\" client=\"\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\" cohort=\"Cohort2\" cohorthint=\"Hint2\" cohortname=\"Name2\"/></request>");  // NOLINT
 
   CString actual_buffer;
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
@@ -398,6 +400,7 @@ TEST_F(XmlParserTest, Serialize_WithInvalidXmlCharacters) {
   xml_request.omaha_shell_version = _T("1.2.1.1");
   xml_request.test_source = _T("\"<xml>malicious segement</xml>=\"&");
   xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.domain_joined = true;
   xml_request.hw.physmemory = 2;
   xml_request.hw.has_sse = true;
   xml_request.hw.has_sse2 = true;
@@ -426,7 +429,7 @@ TEST_F(XmlParserTest, Serialize_WithInvalidXmlCharacters) {
   app.data.push_back(data1);
   xml_request.apps.push_back(app);
 
-  const CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"StrangeVersion&quot;#$%{'\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"sid\" installsource=\"is\" originurl=\"http://foo/&quot;\" testsource=\"&quot;&lt;xml&gt;malicious segement&lt;/xml&gt;=&quot;&amp;\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" ap=\"dev&quot;&gt;&lt;o:app appid=&quot;{\" lang=\"BadLang_{&quot;&quot;'\" brand=\"\" client=\"\"><updatecheck/><data name=\"install\" index=\"verboselogging\"/></app></request>");  // NOLINT
+  const CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"StrangeVersion&quot;#$%{'\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"sid\" installsource=\"is\" originurl=\"http://foo/&quot;\" testsource=\"&quot;&lt;xml&gt;malicious segement&lt;/xml&gt;=&quot;&amp;\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" ap=\"dev&quot;&gt;&lt;o:app appid=&quot;{\" lang=\"BadLang_{&quot;&quot;'\" brand=\"\" client=\"\"><updatecheck/><data name=\"install\" index=\"verboselogging\"/></app></request>");  // NOLINT
 
   CString actual_buffer;
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
@@ -444,6 +447,7 @@ TEST_F(XmlParserTest, HwAttributes) {
   xml_request.omaha_shell_version = _T("1.2.1.1");
   xml_request.test_source = _T("dev");
   xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.domain_joined = true;
   xml_request.hw.physmemory = 0;
   xml_request.hw.has_sse = false;
   xml_request.hw.has_sse2 = false;
@@ -459,7 +463,7 @@ TEST_F(XmlParserTest, HwAttributes) {
   xml_request.check_period_sec = 120000;
   xml_request.uid.Empty();
 
-  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
+  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
   CString actual_buffer;
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
                                                        &actual_buffer));
@@ -474,7 +478,7 @@ TEST_F(XmlParserTest, HwAttributes) {
   xml_request.hw.has_sse42 = true;
   xml_request.hw.has_avx = true;
 
-  expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
+  expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
                                                        &actual_buffer));
   EXPECT_STREQ(expected_buffer, actual_buffer);
@@ -498,6 +502,7 @@ TEST_P(XmlParserTest, DlPref) {
   xml_request.omaha_shell_version = _T("1.2.1.1");
   xml_request.test_source = _T("dev");
   xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.domain_joined = true;
   xml_request.hw.physmemory = 0;
   xml_request.hw.has_sse = false;
   xml_request.hw.has_sse2 = false;
@@ -513,7 +518,7 @@ TEST_P(XmlParserTest, DlPref) {
   xml_request.check_period_sec = 120000;
   xml_request.uid.Empty();
 
-  const TCHAR* expected_request_fmt = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"%s><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
+  const TCHAR* expected_request_fmt = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"%s domainjoined=\"1\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
   CString expected_buffer;
   expected_buffer.Format(expected_request_fmt,
                          IsDomain() ? _T(" dlpref=\"cacheable\"") : _T(""));
@@ -545,6 +550,7 @@ TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
   xml_request.omaha_shell_version = _T("1.2.1.1");
   xml_request.test_source = _T("dev");
   xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.domain_joined = true;
   xml_request.hw.physmemory = 0;
   xml_request.hw.has_sse = false;
   xml_request.hw.has_sse2 = false;
@@ -560,7 +566,7 @@ TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
   xml_request.check_period_sec = 120000;
   xml_request.uid.Empty();
 
-  const CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
+  const CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
   CString actual_buffer;
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
                                                        &actual_buffer));
@@ -579,6 +585,7 @@ TEST_F(XmlParserTest, PingFreshness) {
   xml_request.omaha_shell_version = _T("1.2.1.1");
   xml_request.test_source = _T("dev");
   xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.domain_joined = true;
   xml_request.hw.physmemory = 0;
   xml_request.hw.has_sse = false;
   xml_request.hw.has_sse2 = false;
@@ -603,12 +610,52 @@ TEST_F(XmlParserTest, PingFreshness) {
   xml_request.apps[0].ping.ping_freshness =
       _T("{d0d8cb57-ca4a-4e82-8196-84f47c0ca085}");
 
-  const CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" version=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" lang=\"\" brand=\"\" client=\"\"><updatecheck/><ping ping_freshness=\"{d0d8cb57-ca4a-4e82-8196-84f47c0ca085}\"/></app></request>");  // NOLINT
+  const CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" lang=\"\" brand=\"\" client=\"\"><updatecheck/><ping ping_freshness=\"{d0d8cb57-ca4a-4e82-8196-84f47c0ca085}\"/></app></request>");  // NOLINT
   CString actual_buffer;
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
                                                        &actual_buffer));
 
   EXPECT_STREQ(expected_buffer, actual_buffer);
+}
+
+TEST_P(XmlParserTest, DomainJoined) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueIsEnrolledToDomain,
+                                    IsDomain() ? 1UL : 0UL));
+
+  scoped_ptr<UpdateRequest> update_request(
+         UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
+
+  request::Request& xml_request = get_xml_request(update_request.get());
+
+  xml_request.omaha_version = _T("1.3.24.1");
+  xml_request.omaha_shell_version = _T("1.2.1.1");
+  xml_request.test_source = _T("dev");
+  xml_request.request_id = _T("{387E2718-B39C-4458-98CC-24B5293C8385}");
+  xml_request.hw.physmemory = 0;
+  xml_request.hw.has_sse = false;
+  xml_request.hw.has_sse2 = false;
+  xml_request.hw.has_sse3 = false;
+  xml_request.hw.has_ssse3 = false;
+  xml_request.hw.has_sse41 = false;
+  xml_request.hw.has_sse42 = false;
+  xml_request.hw.has_avx = false;
+  xml_request.os.platform = _T("win");
+  xml_request.os.version = _T("9.0");
+  xml_request.os.service_pack = _T("Service Pack 3");
+  xml_request.os.arch = _T("unknown");
+  xml_request.check_period_sec = 120000;
+  xml_request.uid.Empty();
+
+  const CString expected_buffer_fmt = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.3.24.1\" shell_version=\"1.2.1.1\" ismachine=\"0\" sessionid=\"\" installsource=\"is\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8385}\" periodoverridesec=\"120000\" dedup=\"cr\" domainjoined=\"%s\"><hw physmemory=\"0\" sse=\"0\" sse2=\"0\" sse3=\"0\" ssse3=\"0\" sse41=\"0\" sse42=\"0\" avx=\"0\"/><os platform=\"win\" version=\"9.0\" sp=\"Service Pack 3\" arch=\"unknown\"/></request>");  // NOLINT
+  CString expected_buffer;
+  expected_buffer.Format(expected_buffer_fmt, IsDomain() ? _T("1") : _T("0"));
+  CString actual_buffer;
+  EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,
+                                                       &actual_buffer));
+  EXPECT_STREQ(expected_buffer, actual_buffer);
+
+  RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueIsEnrolledToDomain);
 }
 
 }  // namespace xml

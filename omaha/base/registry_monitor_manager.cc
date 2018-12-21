@@ -93,15 +93,15 @@ class ValueWatcher {
   CString GetCurrentValueString();
   DWORD   GetCurrentValueDword();
 
-  CString last_known_value_string_;
-  DWORD last_known_value_dword_;
+  KeyWatcher* key_watcher_;
   bool value_is_valid_;
   RegistryChangeType change_type_;
-  CString value_name_;
-  int value_type_;
-  KeyWatcher* key_watcher_;
   RegistryValueChangeCallback callback_;
   void* callback_param_;
+  CString value_name_;
+  int value_type_;
+  DWORD last_known_value_dword_;
+  CString last_known_value_string_;
 };
 
 

@@ -75,8 +75,8 @@ class IsAppRegisteredFunc
     return S_OK;
   }
  private:
-  CString guid_;
   bool is_registered_;
+  CString guid_;
 };
 
 // Enumerates all sub keys of the key and calls the functor for each of them,

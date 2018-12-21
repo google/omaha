@@ -549,7 +549,7 @@ HRESULT Ping::SendString(bool is_machine,
   }
 
   scoped_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
-  hr = web_service_client.SendString(&request_string, response.get());
+  hr = web_service_client.SendString(false, &request_string, response.get());
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[WebServicesClient::SendString failed][0x%08x]"), hr));
     return hr;

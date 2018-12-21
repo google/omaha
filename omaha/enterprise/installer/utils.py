@@ -5,6 +5,7 @@ functionality, allowing it to be used in both scons and "standard" python code.
 """
 
 import binascii
+from datetime import date
 import md5
 
 
@@ -125,6 +126,7 @@ def GetWixCandleFlags(
     msi_upgradecode_guid=None,
     product_installer_path=None,
     product_installer_data=None,
+    product_icon_path=None,
     product_installer_install_command=None,
     product_installer_disable_update_registration_arg=None,
     product_custom_params=None,
@@ -137,6 +139,7 @@ def GetWixCandleFlags(
       '-dProductNameLegalIdentifier=' + product_name_legal_identifier,
       '-dProductVersion=' + msi_product_version,
       '-dProductOriginalVersionString=' + product_version,
+      '-dProductBuildYear=' + str(date.today().year),
       '-dProductGuid=' + product_guid,
       ]
 
@@ -178,6 +181,9 @@ def GetWixCandleFlags(
     product_installer_data = product_installer_data.replace(
         '==MSI-PRODUCT-ID==', msi_product_id)
     flags.append('-dProductInstallerData=' + product_installer_data)
+
+  if product_icon_path:
+    flags.append('-dProductIcon=' + product_icon_path)
 
   if architecture:
     # Translate some common strings, like from platform.machine().

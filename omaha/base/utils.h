@@ -164,7 +164,8 @@ bool GPA(HMODULE module, const char* function_name, T* function_pointer) {
   *function_pointer = reinterpret_cast<T>(::GetProcAddress(module,
                                                            function_name));
   if (NULL == *function_pointer) {
-    UTIL_LOG(LW, (_T("[GetProcAddress failed %s]"), CA2T(function_name)));
+    UTIL_LOG(LW, (_T("[GetProcAddress failed %s]"),
+        static_cast<LPCTSTR>(CA2T(function_name))));
   }
   return NULL != *function_pointer;
 }

@@ -38,6 +38,7 @@ security_inputs = [
     'p256_prng.c',
     'sha.c',
     'sha256.c',
+    'util.c',
     ]
 
 # Precompiled headers cannot be used with C files.

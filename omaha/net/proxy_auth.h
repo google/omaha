@@ -98,10 +98,10 @@ class ProxyAuth {
   // counts how many times the user has cancelled the authentication prompt.
   uint32 prompt_cancelled_;
 
+  bool proxy_prompt_is_machine_;
+
   // after this many authentication prompt cancellations, stop prompting.
   uint32 cancel_prompt_threshold_;
-
-  bool proxy_prompt_is_machine_;
 
   bool ReadFromIE7(const CString& server);
   bool ReadFromPreIE7(const CString& server);

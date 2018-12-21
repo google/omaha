@@ -156,6 +156,7 @@ void AppStateCheckingForUpdate::HandleUpdateAvailable(App* app,
     VERIFY1(SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION,
                                            &error_message)));
     Error(app, ErrorContext(hr), error_message);
+    return;
   }
 
   const TCHAR* action = app->is_update() ? _T("update") : _T("install");

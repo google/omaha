@@ -44,8 +44,10 @@
 // C4548: expression before comma has no effect
 // C4702: unreachable code
 // C4838: conversion requires a narrowing conversion
+// C4839: non-standard use of class as an argument to a variadic function.
 // C4986: exception specification does not match previous declaration
-#pragma warning(disable : 4265 4302 4350 4365 4548 4702 4838 4986)
+// C5038: data member will be initialized after data member
+#pragma warning(disable : 4265 4302 4350 4365 4548 4702 4838 4839 4986 5038)
 #include <atlbase.h>
 #include <atlstr.h>     // Needs to be in front of atlapp.h
 #include <atlapp.h>

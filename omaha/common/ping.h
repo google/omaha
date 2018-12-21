@@ -144,6 +144,9 @@ class Ping {
   // If the caller is local system and a user is logged on, the function
   // impersonatates that user.
   //
+  // Pings are always sent with a background interactivity, even if they
+  // correspond to on-demand, foreground installs.
+  //
   // The function returns S_OK if the ping was successfully sent using either
   // mechanism.
   HRESULT Send(bool is_fire_and_forget);

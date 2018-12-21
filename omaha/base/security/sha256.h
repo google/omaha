@@ -16,6 +16,7 @@
 #ifndef OMAHA_BASE_SECURITY_SHA256_H_
 #define OMAHA_BASE_SECURITY_SHA256_H_
 
+#include <stddef.h>
 #include <stdint.h>
 #include "hash-internal.h"
 
@@ -26,11 +27,11 @@ extern "C" {
 typedef HASH_CTX LITE_SHA256_CTX;
 
 void SHA256_init(LITE_SHA256_CTX* ctx);
-void SHA256_update(LITE_SHA256_CTX* ctx, const void* data, unsigned int len);
+void SHA256_update(LITE_SHA256_CTX* ctx, const void* data, size_t len);
 const uint8_t* SHA256_final(LITE_SHA256_CTX* ctx);
 
 // Convenience method. Returns digest address.
-const uint8_t* SHA256_hash(const void* data, unsigned int len, uint8_t* digest);
+const uint8_t* SHA256_hash(const void* data, size_t len, uint8_t* digest);
 
 #define SHA256_DIGEST_SIZE 32
 

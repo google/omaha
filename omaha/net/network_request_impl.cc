@@ -84,25 +84,25 @@ void LogFileBytes(const CString& filename, size_t num_bytes) {
 
 NetworkRequestImpl::NetworkRequestImpl(
     const NetworkConfig::Session& network_session)
-      : cur_http_request_(NULL),
-        cur_proxy_config_(NULL),
-        retry_after_seconds_(-1),
-        cur_retry_count_(0),
-        cur_retry_delay_ms_(kDefaultTimeBetweenRetriesMs),
-        http_attempts_(0),
-        last_hr_(S_OK),
-        last_http_status_code_(0),
-        http_status_code_(0),
+      : request_buffer_(NULL),
+        request_buffer_length_(0),
         proxy_auth_config_(NULL, CString()),
         num_retries_(0),
         low_priority_(false),
         initial_retry_delay_ms_(kDefaultTimeBetweenRetriesMs),
         retry_delay_jitter_ms_(kDefaultRetryTimeJitterMs),
-        callback_(NULL),
-        request_buffer_(NULL),
-        request_buffer_length_(0),
+        http_status_code_(0),
         response_(NULL),
         network_session_(network_session),
+        callback_(NULL),
+        cur_http_request_(NULL),
+        cur_proxy_config_(NULL),
+        last_hr_(S_OK),
+        last_http_status_code_(0),
+        retry_after_seconds_(-1),
+        cur_retry_count_(0),
+        cur_retry_delay_ms_(kDefaultTimeBetweenRetriesMs),
+        http_attempts_(0),
         is_canceled_(false) {
   // NetworkConfig::Initialize must be called before using NetworkRequest.
   // If Winhttp cannot be loaded, this handle will be NULL.
@@ -427,7 +427,7 @@ HRESULT NetworkRequestImpl::DoSendWithConfig(
   CString msg;
   SafeCStringFormat(&msg, _T("Trying config: %s"),
                     NetworkConfig::ToString(*cur_proxy_config_));
-  NET_LOG(L3, (_T("[%s]"), msg));
+  OPT_LOG(L3, (_T("[%s]"), msg));
   SafeCStringAppendFormat(&trace_, _T("%s.\r\n"), msg);
 
   HRESULT hr = S_OK;
@@ -610,14 +610,6 @@ CString NetworkRequestImpl::BuildPerRequestHeaders() const {
   SafeCStringAppendFormat(&headers, _T("%s: %d\r\n"),
                                     kHeaderXHTTPAttempts,
                                     http_attempts_);
-
-  SafeCStringAppendFormat(&headers, _T("%s: %s\r\n"),
-                                    kHeaderXInteractive,
-                                    low_priority_ ? _T("bg") : _T("fg"));
-
-  SafeCStringAppendFormat(&headers, _T("%s: Omaha-%s\r\n"),
-                                    kHeaderXUpdater,
-                                    GetVersionString());
 
   NET_LOG(L4, (_T("[BuildPerRequestHeaders][%s]"), headers));
   return headers;

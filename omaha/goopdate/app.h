@@ -334,7 +334,7 @@ class App : public ModelObject {
 
   // Returns the target version prefix for the app, if the machine is joined to
   // a domain and has the corresponding group policy set.
-  CString App::GetTargetVersionPrefix() const;
+  CString GetTargetVersionPrefix() const;
 
   // Updates num bytes downloaded by adding newly downloaded bytes.
   void UpdateNumBytesDownloaded(uint64 num_bytes);
@@ -478,10 +478,6 @@ class App : public ModelObject {
   // server_install_data_index_.
   CString server_install_data_;
 
-  // The packages of the app have been trusted by other means and the
-  // signature verification can be omitted.
-  bool can_skip_signature_verification_;
-
   bool is_canceled_;
   ErrorContext error_context_;
   CString completion_message_;
@@ -512,6 +508,10 @@ class App : public ModelObject {
   // Metrics values.
   uint64 num_bytes_downloaded_;
   uint64 time_metrics_[TIME_METRICS_MAX];
+
+  // The packages of the app have been trusted by other means and the
+  // signature verification can be omitted.
+  bool can_skip_signature_verification_;
 
   DISALLOW_COPY_AND_ASSIGN(App);
 };

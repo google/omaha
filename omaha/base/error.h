@@ -209,6 +209,8 @@ const ULONG kFacilityOmaha = 67;
     MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x606)
 #define GOOPDATE_E_SHUTDOWN_SIGNALED                \
     MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x607)
+#define GOOPDATE_E_PROBE_ALREADY_RUNNING            \
+    MAKE_OMAHA_HRESULT(SEVERITY_ERROR, 0x608)
 
 // Setup and metainstaller custom error codes.
 #define GOOPDATE_E_NONADMIN_INSTALL_ADMIN_APP       \

@@ -52,8 +52,8 @@ namespace omaha {
 
 SplashScreen::SplashScreen(const CString& bundle_name)
     : IDD(IDD_PROGRESS),
-      alpha_index_(0),
-      timer_created_(false) {
+      timer_created_(false),
+      alpha_index_(0) {
   CORE_LOG(L3, (_T("[SplashScreen::SplashScreen]")));
   caption_ = client_utils::GetInstallerDisplayName(bundle_name);
   text_.LoadString(IDS_SPLASH_SCREEN_MESSAGE);

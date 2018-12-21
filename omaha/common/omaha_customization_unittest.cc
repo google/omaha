@@ -45,7 +45,7 @@ TEST(OmahaCustomizationTest, Constants_BuildFiles) {
   // haven't changed.  But, unanticipated changes to most of these
   // would cause build breaks anyways!  Consider deleting them.
 #ifdef GOOGLE_UPDATE_BUILD
-  EXPECT_STREQ("Google Inc.", FULL_COMPANY_NAME_ANSI);
+  EXPECT_STREQ("Google LLC", FULL_COMPANY_NAME_ANSI);
   EXPECT_STREQ("Google", SHORT_COMPANY_NAME_ANSI);
   EXPECT_STREQ("Update", PRODUCT_NAME_ANSI);
 
@@ -97,7 +97,7 @@ TEST(OmahaCustomizationTest, Constants_Names) {
   // haven't changed.  But, unanticipated changes to most of these
   // would cause build breaks anyways!  Consider deleting them.
 #ifdef GOOGLE_UPDATE_BUILD
-  EXPECT_STREQ(_T("Google Inc."), kFullCompanyName);
+  EXPECT_STREQ(_T("Google LLC"), kFullCompanyName);
   EXPECT_STREQ(_T("Google"), SHORT_COMPANY_NAME);
   EXPECT_STREQ(_T("Google"), kShortCompanyName);
   EXPECT_STREQ(_T("Update"), PRODUCT_NAME);

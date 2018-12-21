@@ -43,10 +43,14 @@ class WebServicesClientInterface {
  public:
   virtual ~WebServicesClientInterface() {}
 
-  virtual HRESULT Send(const xml::UpdateRequest* update_request,
+  // |is_foreground| specifies the interactivity level of this request.
+  // True means that the protocol request is part of a session initiated by the
+  // user.
+  virtual HRESULT Send(bool is_foreground,
+                       const xml::UpdateRequest* update_request,
                        xml::UpdateResponse* update_response) = 0;
-
-  virtual HRESULT SendString(const CString* request_buffer,
+  virtual HRESULT SendString(bool is_foreground,
+                             const CString* request_buffer,
                              xml::UpdateResponse* response_buffer) = 0;
 
   virtual void Cancel() = 0;
@@ -102,10 +106,11 @@ class WebServicesClient : public WebServicesClientInterface {
                       const HeadersVector& headers,
                       bool use_cup);
 
-  virtual HRESULT Send(const xml::UpdateRequest* update_request,
+  virtual HRESULT Send(bool is_foreground,
+                       const xml::UpdateRequest* update_request,
                        xml::UpdateResponse* update_response);
-
-  virtual HRESULT SendString(const CString* request_string,
+  virtual HRESULT SendString(bool is_foreground,
+                             const CString* request_string,
                              xml::UpdateResponse* update_response);
 
   virtual void Cancel();
@@ -137,6 +142,7 @@ class WebServicesClient : public WebServicesClientInterface {
   // Returns S_OK if the request is successfully sent, otherwise it returns the
   // error corresponding to the first request sent.
   HRESULT SendStringWithFallback(bool use_encryption,
+                                 bool is_foreground,
                                  const CString* request_string,
                                  xml::UpdateResponse* update_response);
 

@@ -78,6 +78,7 @@ const TCHAR* const kDayOfLastActivity = _T("ad");
 const TCHAR* const kDayOfLastRollCall = _T("rd");
 const TCHAR* const kDedup = _T("dedup");
 const TCHAR* const kDlPref = _T("dlpref");
+const TCHAR* const kDomainJoined = _T("domainjoined");
 const TCHAR* const kDownloaded = _T("downloaded");
 const TCHAR* const kDownloader = _T("downloader");
 const TCHAR* const kDownloadTime = _T("download_time_ms");
@@ -138,8 +139,10 @@ const TCHAR* const kTimeSinceUpdateAvailable =
     _T("time_since_update_available_ms");
 const TCHAR* const kTotal = _T("total");
 const TCHAR* const kTTToken = _T("tttoken");
-const TCHAR* const kUpdateDisabled = _T("updatedisabled");
 const TCHAR* const kUpdateCheckTime= _T("update_check_time_ms");
+const TCHAR* const kUpdateDisabled = _T("updatedisabled");
+const TCHAR* const kUpdater = _T("updater");
+const TCHAR* const kUpdaterVersion = _T("updaterversion");
 const TCHAR* const kUrl = _T("url");
 const TCHAR* const kUserId = _T("userid");
 const TCHAR* const kVersion = _T("version");
@@ -171,6 +174,7 @@ const TCHAR* const kSuccessActionExitSilentlyOnLaunchCmd =
     _T("exitsilentlyonlaunchcmd");
 const TCHAR* const kTrue = _T("true");
 const TCHAR* const kUid = _T("uid");
+const TCHAR* const kUpdater = _T("Omaha");
 const TCHAR* const kUntrusted = _T("untrusted");
 const TCHAR* const kUpdate = _T("update");
 const TCHAR* const kVersion3 = _T("3.0");

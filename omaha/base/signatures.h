@@ -55,6 +55,17 @@ typedef scoped_any<HCRYPTPROV,smart_release_context,null_t>        scoped_crypt_
 typedef scoped_any<PCCERT_CONTEXT,smart_free_certificate,null_t>   scoped_crypt_cert;       // NOLINT
 typedef scoped_any<HCRYPTKEY,smart_destroy_key,null_t>             scoped_crypt_key;        // NOLINT
 
+class HashInterface {
+ public:
+  virtual ~HashInterface() {}
+
+  virtual void update(const void* data, unsigned int len) = 0;
+  virtual const uint8_t* final() = 0;
+  virtual size_t hash_size() const = 0;
+};
+
+HashInterface* CreateHasher(bool use_sha256);
+
 }  // namespace CryptDetails
 
 
@@ -266,7 +277,7 @@ class CryptoSignatureVerificationCertificate {
 class CryptoVerifySignature {
  public:
   explicit CryptoVerifySignature(
-      CryptoSignatureVerificationCertificate& certificate);
+      CryptoSignatureVerificationCertificate& certificate);  // NOLINT
   ~CryptoVerifySignature();
 
   // Validate signature of a file, signature given separately

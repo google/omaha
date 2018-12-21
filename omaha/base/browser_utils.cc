@@ -649,7 +649,9 @@ HRESULT TerminateBrowserProcess(BrowserType type,
   }
 
   DWORD current_session = System::GetCurrentSessionId();
-  uint32 method_mask = ProcessTerminator::KILL_METHOD_1_WINDOW_MESSAGE;
+  uint32 method_mask = ProcessTerminator::KILL_METHOD_1_WINDOW_MESSAGE |
+                       ProcessTerminator::KILL_METHOD_2_THREAD_MESSAGE |
+                       ProcessTerminator::KILL_METHOD_4_TERMINATE_PROCESS;
   ProcessTerminator process(browser_exe_name, sid, current_session);
   hr = process.KillTheProcess(timeout_msec, found, method_mask, true);
   if (FAILED(hr)) {

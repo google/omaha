@@ -83,10 +83,10 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Google Inc."
+            VALUE "CompanyName", "Google LLC"
             VALUE "FileDescription", "test_foo.exe"
             VALUE "FileVersion", VERSION_STRING
-            VALUE "LegalCopyright", "Copyright 2007-2010 Google Inc."
+            VALUE "LegalCopyright", "Copyright 2018 Google LLC"
             VALUE "InternalName", "test_foo.exe"
             VALUE "OriginalFilename", "test_foo.exe"
             VALUE "ProductName", "test_foo.exe"

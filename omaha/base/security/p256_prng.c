@@ -15,8 +15,8 @@
 
 #include <string.h>
 
-#include "p256_prng.h"
 #include "hmac.h"
+#include "p256_prng.h"
 #include "sha256.h"
 
 static void uint64tobin(uint64_t v, uint8_t* t) {

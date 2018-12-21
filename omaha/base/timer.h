@@ -46,11 +46,10 @@ class LowResTimer {
   bool IsRunning() const { return running_; }
 
  private:
-
   bool running_;
-  uint32 start_;
-  uint32 elapsed_;
   uint32 iterations_;
+  uint32 elapsed_;
+  uint32 start_;
 
   DISALLOW_EVIL_CONSTRUCTORS(LowResTimer);
 };
@@ -108,12 +107,12 @@ class Timer {
 #endif
 
  private:
-
   bool running_;
+  uint32 iterations_;
+  time64 elapsed_;
   time64 start_;
   time64 split_;
-  time64 elapsed_;
-  uint32 iterations_;
+
   static time64 count_freq_;
 
   DISALLOW_EVIL_CONSTRUCTORS(Timer);

@@ -16,11 +16,11 @@
 // Optimized for minimal code size.
 
 #include "hmac.h"
+#include "util.h"
 
-#include <memory.h>
 #include <string.h>
-#include "sha.h"
 #include "md5.h"
+#include "sha.h"
 #include "sha256.h"
 
 static void HMAC_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
@@ -70,6 +70,6 @@ const uint8_t* HMAC_final(LITE_HMAC_CTX* ctx) {
   HASH_init(&ctx->hash);
   HASH_update(&ctx->hash, ctx->opad, sizeof(ctx->opad));
   HASH_update(&ctx->hash, digest, HASH_size(&ctx->hash));
-  memset(&ctx->opad[0], 0, sizeof(ctx->opad));  // wipe key
+  always_memset(&ctx->opad[0], 0, sizeof(ctx->opad));  // wipe key
   return HASH_final(&ctx->hash);
 }

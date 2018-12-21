@@ -176,20 +176,20 @@ Logging* GetLogging() {
 
 Logging::Logging()
     : logging_initialized_(false),
+      is_initializing_(false),
       logging_enabled_(true),
       force_show_time_(false),
       show_time_(true),
       log_to_file_(true),
+      log_file_name_(kDefaultLogFileName),
       log_to_debug_out_(true),
       append_to_file_(true),
       logging_shutdown_(false),
+      config_file_path_(GetConfigurationFilePath()),
       num_writers_(0),
       file_log_writer_(NULL),
       debug_out_writer_(NULL),
-      etw_log_writer_(NULL),
-      is_initializing_(false),
-      log_file_name_(kDefaultLogFileName),
-      config_file_path_(GetConfigurationFilePath()) {
+      etw_log_writer_(NULL) {
   g_last_category_check_time = 0;
   for (int i = 0; i < max_writers; ++i) {
     writers_[i] = NULL;
@@ -954,14 +954,14 @@ FileLogWriter* FileLogWriter::Create(const wchar_t* file_name, bool append) {
 }
 
 FileLogWriter::FileLogWriter(const wchar_t* file_name, bool append)
-    : initialized_(false),
+    : max_file_size_(kDefaultMaxLogFileSize),
+      initialized_(false),
       valid_(false),
-      file_name_(file_name),
-      log_file_mutex_(NULL),
-      log_file_(NULL),
       append_(append),
-      max_file_size_(kDefaultMaxLogFileSize),
-      log_file_wide_(kDefaultLogFileWide) {
+      log_file_wide_(kDefaultLogFileWide),
+      log_file_mutex_(NULL),
+      file_name_(file_name),
+      log_file_(NULL) {
   Logging* logger = GetLogging();
   if (logger) {
     CString config_file_path = logger->GetCurrentConfigurationFilePath();

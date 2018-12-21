@@ -338,31 +338,8 @@ HRESULT Update3WebControl::crossInstall(BSTR extra_args) {
   return S_OK;
 }
 
-HRESULT Update3WebControl::launchAppCommand(BSTR guid_string,
-                                            VARIANT_BOOL is_machine,
-                                            BSTR cmd_id) {
-  if (!site_lock_.InApprovedDomain(this)) {
-    return GOOPDATE_E_ONECLICK_HOSTCHECK_FAILED;
-  }
-
-  CORE_LOG(L2, (_T("[Update3WebControl::launchAppCommand]")));
-
-  CComPtr<IOneClickProcessLauncher> process_launcher;
-  HRESULT hr = update3_utils::CoCreateWithProxyBlanket(
-      is_machine ?
-          __uuidof(OneClickMachineProcessLauncherClass) :
-          __uuidof(OneClickUserProcessLauncherClass),
-      &process_launcher);
-
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[Update3WebControl::launchAppCommand]")
-                  _T("[Failed to CoCreate OneClickMachine/User ")
-                  _T("ProcessLauncher implementation: 0x%x"),
-                  hr));
-    return hr;
-  }
-
-  return process_launcher->LaunchAppCommand(guid_string, cmd_id);
+HRESULT Update3WebControl::launchAppCommand(BSTR, VARIANT_BOOL, BSTR) {
+  return E_NOTIMPL;
 }
 
 Update3WebControl::~Update3WebControl() {

@@ -487,8 +487,8 @@ class RegKeyWatcher : public StoreWatcher {
 
   CString reg_key_string_;
   bool watch_subtree_;
-  bool allow_creation_;
   DWORD notify_filter_;
+  bool allow_creation_;
   DISALLOW_EVIL_CONSTRUCTORS(RegKeyWatcher);
 };
 

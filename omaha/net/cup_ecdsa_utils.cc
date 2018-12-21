@@ -279,6 +279,95 @@ void EcdsaPublicKey::DecodeFromBuffer(const uint8* encoded_pkey_in) {
   ASSERT1(p256_is_valid_point(&gx_, &gy_));
 }
 
+// We expect |spki| to contain a DER-encoded SubjectPublicKeyInfo value holding
+// a P-256 ECDSA key (see RFC 5480 https://tools.ietf.org/html/rfc5480):
+//   30 59 30 13 06 07 2A 86  48 CE 3D 02 01 06 08 2A
+//   86 48 CE 3D 03 01 07 03  42 00 04 B4 02 F9 A9 1C
+//   AE E1 0C 84 F8 DC 9B 17  72 98 A5 E0 32 D5 DB 2B
+//   59 D8 49 C0 EF BE E8 6B  F9 F8 62 52 B8 6A 35 53
+//   6C 07 8B 38 D4 FF 9A DD  BC DD F9 BC 48 22 69 CC
+//   2D 6C A1 01 60 B4 51 E3  7B D1 CF
+//
+// Decoded:
+// 0x30 - SEQUENCE
+//  0x59 - length of the sequence (89 bytes)
+//   0x30 - SEQUENCE
+//    0x13 - length of the OBJECT IDENTIFIERS (19 bytes)
+//     0x06 0x07 - start and length of identifier 1:
+//     2A8648CE3D0201 - OBJECT IDENTIFIER 1.2.840.10045.2.1 ecPublicKey
+//     0x06 0x08 - start and length of identifier 2:
+//     2A8648CE3D030107 - OBJECT IDENTIFIER 1.2.840.10045.3.1.7 secp256r1
+// 0x03 - start of the X9.62 uncompressed encoding
+//  0x42 - length of the encoding (66 bytes)
+//   0x00 0x04 - header byte, uncompressed form
+//    B402F9A91CAEE10C84F8DC9B177298A5E032D5DB2B59D849C0EFBEE86BF9F862 -
+//      Gx coordinate, big-endian
+//    52B86A35536C078B38D4FF9ADDBCDDF9BC482269CC2D6CA10160B451E37BD1CF -
+//      Gy coordinate, big-endian
+//
+// This code is hardcoded to the above sequence, and not intended to be a
+// general-purpose ASN.1-DER decoder.
+//
+// Returns true on success, false on failure. The state of EcdsaPublicKey on
+// a false return is indeterminate.
+bool EcdsaPublicKey::DecodeSubjectPublicKeyInfo(
+    const std::vector<uint8>& spki) {
+  ASSERT1(!spki.empty());
+
+  const uint8* const buffer_begin = &spki[0];
+  const uint8* const buffer_end = buffer_begin + spki.size();
+
+  const uint8 tag = buffer_begin[0];
+  if (tag != 0x30) {
+    return false;
+  }
+
+  const uint8 sequence_len = buffer_begin[1];
+  if (static_cast<size_t>(sequence_len) != spki.size() - 2) {
+    return false;
+  }
+  ASSERT1(buffer_begin + sequence_len + 2 == buffer_end);
+
+  const uint8* const object_identifiers_begin = &spki[2];
+
+  const uint8 object_identifier_tag = object_identifiers_begin[0];
+  if (object_identifier_tag != 0x30) {
+    return false;
+  }
+
+  const uint8 object_identifiers_len = object_identifiers_begin[1];
+  if (static_cast<size_t>(object_identifiers_len) + P256_NBYTES * 2 + 8
+      != spki.size()) {
+    return false;
+  }
+
+  const uint8* const pkey_begin =
+      &object_identifiers_begin[2 + object_identifiers_len];
+  const uint8 pkey_tag = pkey_begin[0];
+  if (pkey_tag != 0x03) {
+    return false;
+  }
+
+  const uint8 pkey_len = pkey_begin[1];
+  if (static_cast<size_t>(pkey_len) != P256_NBYTES * 2 + 2) {
+    return false;
+  }
+
+  const uint8* encoded_pkey_in = &pkey_begin[2];
+  if (encoded_pkey_in[0] != 0) {
+    return false;
+  }
+
+  if (encoded_pkey_in[1] != 0x04) {
+    return false;
+  }
+
+  p256_from_bin(&encoded_pkey_in[2], &gx_);
+  p256_from_bin(&encoded_pkey_in[2 + P256_NBYTES], &gy_);
+
+  return !!p256_is_valid_point(&gx_, &gy_);
+}
+
 COMPILE_ASSERT(SHA256_DIGEST_SIZE == P256_NBYTES, sha256_digest_isnt_256_bits);
 
 bool VerifyEcdsaSignature(const EcdsaPublicKey& public_key,

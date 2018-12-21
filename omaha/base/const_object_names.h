@@ -76,6 +76,11 @@ const TCHAR* const kInstallAppSingleInstance =
 const TCHAR* const kGoogleUpdate3SingleInstance =
     _T("{6885AE8E-C070-458d-9711-37B9BEAB65F6}");
 
+// Ensures the recovery probe only runs one instance per machine and one
+// instance per each user session.
+const TCHAR* const kRecoveryProbeSingleInstance =
+    _T("{223EEFB7-D9D4-45C7-99AC-47C0B52B411E}");
+
 // TODO(omaha): Delete Job Object code.
 
 // Base name of job object for Setup phase 1 processes except self updates.

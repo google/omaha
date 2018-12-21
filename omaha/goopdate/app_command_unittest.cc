@@ -42,13 +42,13 @@ const TCHAR* const kCmdLineExit0 = _T("cmd.exe /c \"exit 0\"");
 const TCHAR* const kCmdLineExit3 = _T("cmd.exe /c \"exit 3\"");
 const TCHAR* const kCmdLineExitX = _T("cmd.exe /c \"exit %1\"");
 const TCHAR* const kCmdLineSleep1 =
-    _T("cmd.exe /c \"ping.exe 1.1.1.1 -n 1 -w 1000 >NUL\"");
+    _T("cmd.exe /c \"ping.exe 2.2.2.2 -n 1 -w 1000 >NUL\"");
 const TCHAR* const kCmdLineEchoHelloWorldAscii =
     _T("cmd.exe /a /c \"echo Hello World\"");
 const TCHAR* const kCmdLineEchoHelloWorldUnicode =
     _T("cmd.exe /u /c \"echo Hello World\"");
 const TCHAR* const kCmdLineEchoWithSleep =
-    _T("cmd.exe /c \"echo Hello World& ping.exe 1.1.1.1 -n 1 -w 1000 >NUL & ")
+    _T("cmd.exe /c \"echo Hello World& ping.exe 2.2.2.2 -n 1 -w 1000 >NUL & ")
     _T("echo Goodbye World\"");
 
 const TCHAR* const kCmdId1 = _T("command 1");

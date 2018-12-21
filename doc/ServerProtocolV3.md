@@ -7,7 +7,7 @@ Version 2 is documented [here](ServerProtocolV2.md). An older description of the
 ## Introduction ##
 The Omaha protocol is designed to facilitate the acquisition, delivery, and metrics of software updates over the Internet. It is an application-layer protocol on top of HTTP.
 
-The client sends requests via HTTP POST with an XML data body. The response is an XML data body. For Omaha Client, the request and response are secured by [CUP](cup.html) or SSL.
+The client sends requests via HTTP POST with an XML data body. The response is an XML data body. For Omaha Client, the request and response are secured by [CUP](ClientUpdateProtocol.md) or SSL.
 
 Diagram of an example request-response pair:
 
@@ -85,6 +85,9 @@ An Omaha V3 request MUST contain exactly one `<request>` element at the root lev
 #### `<request>` ####
 
 ##### Attributes #####
+  * `acceptformat`: A comma-separated list of strings describing the formats of update payloads that this client accepts. As a special case, the empty string indicates undefined restrictions on the format. Default: "". The following values are supported:
+    * `crx2`: The CRX file format, version 2.
+    * `crx3`: The CRX file format, version 3.
   * `dedup`: Specifies the preferred de-duplication algorithm for this request. Either "" (unknown or no-preference), "cr" (client-regulated) or "uid" (user-id). Default: "". Omaha Client sends "cr" in all cases.
   * `dlpref`: Specifies the preferred download URL behavior. A comma-separated list of values. The first value is the highest priority, further values reflect secondary, tertiary, et cetera priorities. Legal values are "" (in which case the entire list must be empty, indicating unknown or no-preference) or "cacheable" (the server should prioritize sending URLs that are easily cacheable). Default: "".
   * `installsource`: A string specifying the cause of the update flow. For example: "ondemand", or "scheduledtask". Default: "".
@@ -94,9 +97,11 @@ An Omaha V3 request MUST contain exactly one `<request>` element at the root lev
   * `requestid`: A randomly-generated (uniformly distributed) GUID. Each request attempt SHOULD have (with high probability) a unique `requestid`. Default: "".
   * `sessionid`: A randomly-generated (uniformly distributed) GUID. Each single update flow (an update check, update application, event ping sequence) SHOULD have (with high probability) a single unique `sessionid`. Default: "".
   * `testsource`: Either "", "dev", "qa", "prober", "auto", or "ossdev". Any value except "" indicates that the request is a test and should not be counted toward normal metrics. Default: "".
+  * `updater`: A string identifying the updater software itself (e.g. "Omaha", "Keystone", "Chrome"). Default: "0.0.0.0".
   * `updaterchannel`: If present, identifies the distribution channel of the client (e.g. "stable", "beta", "dev", "canary"). Default: "".
+  * `updaterversion`: The version of the updater itself (the entity sending this request). Default: "0.0.0.0".
   * `userid`: A randomly-generated (uniformly distributed) GUID. Each instance of the client SHOULD have (with high probability) either a single unique `userid`, or no `userid` at all (""). Default: "". Omaha Client transmits `userid` only for opt-in users.
-  * `version`: The ID and version number of the client. Default: Undefined - compatible clients MUST always transmit this attribute. The version number MUST be one of the two following forms:
+  * `version`: *DEPRECATED - use `updater` and `updaterversion` instead* The ID and version number of the client. Default: Undefined - compatible clients MUST always transmit this attribute. The version number MUST be one of the two following forms:
     1. "`A-V`" where `A` is a client identifier, and `V` is the version number of client (e.g. "chromiumcrx-31.1.0.112").
     1. "`V`" where `V` is the version number of the client (e.g. "1.3.23.9"). Compatible clients SHOULD NOT use this form, as it is reserved for Omaha Client.
 
@@ -162,7 +167,7 @@ Each product that is contained in the request is represented by exactly one `<ap
   * `installsource`: A string indicating the cause of this install or update flow. As examples:  "organic" indicating an organic web download, "scheduler" indicating a scheduled update, "ondemand" indicating a user-prompted update. Default: "".
   * `ismachine`: "0" if the app is installed at the user (non-privileged) level; "1" if the app is installed at the system (privileged) level; "-1" if unknown. Default: "-1"
   * `tag`: An field for a client to transmit arbitrary update parameters in string form. Compatible clients and servers MAY use this attribute to negotiate special update rules. Alternatively, they MAY extend the protocol to represent the information more clearly in another parameter. As an example, Omaha Client uses this field to transmit whether a Google Chrome installation is on the "stable", "dev", or "beta" channel, which affects how the server issues update responses for that installation. Default: "".
-  * `fingerprint`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages\_&\_Fingerprints](#packages--fingerprints).  Default: "".
+  * `fp`: If there is only one package, the fingerprint for that package may be transmitted at the `<app>` level. See [#Packages\_&\_Fingerprints](#packages--fingerprints).  Default: "".
   * `cohort`: A machine-readable string identifying the release cohort (channel) that the app belongs to. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
   * `cohorthint`: An machine-readable enum indicating that the client has a desire to switch to a different release cohort. The exact legal values are app-specific and should be shared between the server and app implementations. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
   * `cohortname`: A stable non-localized human-readable enum indicating which (if any) set of messages the app should display to the user. For example, an app with a cohortname of "beta" might display beta-specific branding to the user. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
@@ -214,7 +219,7 @@ None.
 #### `<package>` (Request) ####
 A `<package>` tag gives information about an installed package.
 ##### Attributes #####
-  * `fingerprint`: The fingerprint identifying the installed package. See [#Packages\_&\_Fingerprints](#pacakges--fingerprints). Default: "".
+  * `fp`: The fingerprint identifying the installed package. See [#Packages\_&\_Fingerprints](#pacakges--fingerprints). Default: "".
 
 ##### Legal Child Elements #####
 None.
@@ -295,6 +300,7 @@ Throughout and at the end of an update flow, the client MAY send event reports b
   * `errorcat`: An error category, for use in distinguishing between different classes of error codes, encoded as a signed base-10 integer. Default: "0".
   * `download_time_ms`: For events representing a download, the time elapsed between the start of the download and the end of the download, in milliseconds. For events representing an entire update flow, the sum of all such download times over the course of the update flow. Default: "0". Sent in `<event>`s that have an `eventtype` of "1", "2", "3", and "14" only.
   * `downloaded`: For events representing a download, the number of bytes successfully downloaded. For events representing an entire update flow, the sum of all such successfully downloaded bytes over the course of the update flow. Default: "0". Sent in `<event>`s that have an `eventtype` of "1", "2", "3", and "14" only.
+  * `downloader`: A string identifying the download algorithm / stack. Example values include: "bits", "direct", "winhttp", "p2p". Default: "". Sent in `<event>`s that have an `eventtype` of "14" only.
   * `total`: For events representing a download, the number of bytes expected to be downloaded. For events representing an entire update flow, the sum of all such expeccted bytes over the course of the update flow. Default: "0".
   * `update_check_time_ms`: For events representing an entire update flow, the time elapsed between the start of the update check and the end of the update check, in milliseconds. Default: "0". Sent in `<event>`s that have an `eventtype` of "2" and "3" only.
   * `install_time_ms`: For events representing an install, the time elapsed between the start of the install and the end of the install, in milliseconds. For events representing an entire update flow, the sum of all such durations. Default: "0". Sent in `<event>`s that have an `eventtype` of "2" and "3" only.
@@ -320,7 +326,7 @@ Throughout and at the end of an update flow, the client MAY send event reports b
     * `17`: error
   * `time_since_update_available_ms`: The number of milliseconds that elapsed from when the update was known to be available to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2" Sent in `<event>`s that have an `eventtype` of "2" and "3" only.
   * `time_since_download_start_ms`: The number of milliseconds that elapsed from when the download was begun to when user cancelled the action. "-2" indicates that there was no cancellation. Default: "-2" Sent in `<event>` that have an `eventtype`s of "2" and "3" only.
-  * `url`: The URL from which the download was attempted. Default: ""
+  * `url`: The URL from which the download was attempted. Default: "".  Sent in `<event>`s that have an `eventtype` of "14" only.
   * `nextversion`: The version of the app that the update flow to which this event belongs attempted to reach, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
   * `previousversion`: The version of the app that was present on the machine at the time of the update-check of this update flow, regardless of success or failure of the update operation. See [#Version\_Numbers](#version-numbers). Default: "0.0.0.0".
   * `nextfp`: If the update flow containing this event contained only a single package, the fingerprint that package attempted to reach, regardless of success or failure of the update operation. See [#Packages\_&\_Fingerprints](#packages--fingerprints). Default: "".
@@ -551,6 +557,15 @@ None.
 ---
 
 ## HTTP Headers ##
+### Request Headers ###
+  * `X-Goog-Update-Interactivity` -- Either 'fg' or 'bg' when present, 'fg' indicating a user-initiated foreground update. 'bg' indicates that the request is part of a background update. If the server is under extremely high load, it may use this to prioritize 'fg' requests over 'bg' requests.
+  * `X-Goog-Update-AppId`  -- Indicates the apps associated with the request. Clients updating multiple apps should specify a comma-separated list of values.
+  * `X-Goog-Update-Updater` -- Indicates the identity of the updater. This is the "updater" version string also present in the request; in the case of Omaha, prepend "Omaha-" to the version string.
+  
+### Response Headers ###
+  * `X-Retry-After` -- When present, a positive integral number of seconds during which the client MUST NOT contact the server again for background updates, including but not limited to retried attempts to connect to the server due to an unparseable response or apparent error. Clients MUST respect this header even if paired with non-successful HTTP response code. Servers SHOULD NOT send a value in excess of 86400 (24 hours), and clients SHOULD treat values greater than 86400 as 86400.
+
+### Additional Headers ###
 Compatible clients MAY include additional headers in requests to the server. Such headers are purely advisory in nature, and their presence and content MUST NOT be required in order to provide responses to update checks. Compatible servers MUST be able to tolerate unexpected headers.
 
 Compatible servers MAY include additional headers in responses to the client. Compatible clients MUST be able to tolerate unexpected headers.
@@ -562,7 +577,6 @@ Omaha Client uses additional headers in the request and response to implement [C
   * `X-Proxy-Retry-Count`: On a retry, contains the number of times an HTTP 407 status code was received.
   * `X-Retry-Count`: The total number of times that this network request has been retried (e.g. using different proxy settings, different DNS servers, or simple retries).
   * `X-Request-Age`: The presence of this header indicates that this request originally failed to send, and was persisted and later retried. The value of the header is the time interval in seconds between the client's current time and the client time at which the request was originally attempted.
-  * `X-GoogleUpdate-Interactivity` -- Either 'fg' or 'bg' when present, 'fg' indicating a user-initiated foreground update. 'bg' indicates that the request is part of a background update. If the server is under extremely high load, it may use this to prioritize 'fg' requests over 'bg' requests.
 
 Omaha Client uses CUP to secure the request and response. The following request headers are used to implement CUP:
   * If-Match: A signature that proves that the client knows the client's private key.

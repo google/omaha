@@ -51,10 +51,10 @@ const int kMaxCmdLineLengthBytes = 4096;
 // Constructor
 Process::Process(const TCHAR* name,
                  const TCHAR* window_class_name)
-    : process_id_(0),
-      exit_code_(0),
-      number_of_restarts_(static_cast<uint32>(-1)),
+    : number_of_restarts_(static_cast<uint32>(-1)),
       name_(name),
+      process_id_(0),
+      exit_code_(0),
       shutdown_event_(NULL) {
   ASSERT1(name);
   command_line_ = name;
@@ -63,10 +63,10 @@ Process::Process(const TCHAR* name,
 
 // Constructor
 Process::Process(uint32 process_id)
-    : process_id_(process_id),
-      exit_code_(0),
-      number_of_restarts_(static_cast<uint32>(-1)),
+    : number_of_restarts_(static_cast<uint32>(-1)),
       name_(itostr(static_cast<uint32>(process_id))),
+      process_id_(process_id),
+      exit_code_(0),
       shutdown_event_(NULL) {
   reset(process_, ::OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
                                 false,

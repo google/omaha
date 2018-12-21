@@ -203,7 +203,7 @@ int load_and_print_pubkey(FILE* pemFile, int version) {
     return 1;
   }
 
-  if (EVP_PKEY_type(pubkey->type) != EVP_PKEY_EC) {
+  if (EVP_PKEY_base_id(pubkey) != EVP_PKEY_EC) {
     fprintf(stderr, "error: PEM does not contain an EC key.\n");
     EVP_PKEY_free(pubkey);
     return 1;

@@ -38,8 +38,8 @@
 namespace omaha {
 
 ProcessTerminator::ProcessTerminator(const CString& process_name)
-    : recursion_level_(0),
-      process_name_(process_name),
+    : process_name_(process_name),
+      recursion_level_(0),
       flash_window_(false),
       session_id_(INVALID_SESSION_ID) {
   MakeLowerCString(process_name_);
@@ -47,9 +47,9 @@ ProcessTerminator::ProcessTerminator(const CString& process_name)
 
 ProcessTerminator::ProcessTerminator(const CString& process_name,
                                      const CString& user_sid)
-    : recursion_level_(0),
+    : process_name_(process_name),
+      recursion_level_(0),
       user_sid_(user_sid),
-      process_name_(process_name),
       flash_window_(false),
       session_id_(INVALID_SESSION_ID) {
   MakeLowerCString(process_name_);
@@ -58,11 +58,11 @@ ProcessTerminator::ProcessTerminator(const CString& process_name,
 ProcessTerminator::ProcessTerminator(const CString& process_name,
                                      const CString& user_sid,
                                      int session_id)
-    : recursion_level_(0),
+    : process_name_(process_name),
+      recursion_level_(0),
       user_sid_(user_sid),
-      session_id_(session_id),
-      process_name_(process_name),
-      flash_window_(false) {
+      flash_window_(false),
+      session_id_(session_id) {
   MakeLowerCString(process_name_);
 }
 

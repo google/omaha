@@ -30,19 +30,19 @@ namespace omaha {
 // The company and organization names expected in the code
 // signing certificates which are trusted.
 const TCHAR* const kCertificateSubjectName = _T("Google Inc");
-const TCHAR* const kSha256CertificateSubjectName = _T("Google Inc");
+const TCHAR* const kSha256CertificateSubjectName = _T("Google LLC");
 
 // The Omaha certificate thumbprint. Used by unit tests.
 const TCHAR* const kCertificateThumbprint =
     _T("1a6ac0549a4a44264deb6ff003391da2f285b19f");
 const TCHAR* const kSha256CertificateThumbprint =
-    _T("5a9272ce76a9415a4a3a5002a2589a049312aa40");
+    _T("cb7e84887f3c6015fe7edfb4f8f36df7dc10590e");
 
 // The SHA256 hash of the Omaha certificate RSA public key.
 const TCHAR* const kCertificatePublicKeyHash =
     _T("d49de35a2e9fdbed09e2b9a6c1243df414d6aac13690ab221b0017a5cbe1351f");
 const TCHAR* const kSha256CertificatePublicKeyHash =
-    _T("cd623b2bf2c06940bd480b6bcf4a5c9e1cbe94626fbfa127d001bf19ae5ba9fe");
+    _T("03e27c19d222043a8f0c64181c23c9339cc84a7ec4ebff8a19adb7caefb0c709");
 
 // The hash of public keys that we pin the code signing certificates to.
 // For quick identification, the date and thumbprint of the certificates are
@@ -71,16 +71,22 @@ _T("4365c47f17727f2da65892b1f34c0cf418b0138b519b6864dd17300f21aa3144"),
 // SHA1 Fingerprint=26:4E:38:57:0F:88:2E:5A:02:72:42:37:57:74:12:33:A6:61:B5:53
 _T("309bae1b466c4235e1daea9fe0e373b3415807ac667202f704d030ef33b519d6"),
 
+// Omaha and Chrome certificate: sha256 (12/15/2015 to 12/16/2018).
+// thumbprint=5a9272ce76a9415a4a3a5002a2589a049312aa40
+// serial=2a9c21acaaa63a3c58a7b9322bee948d
+// SHA1 Fingerprint=5A:92:72:CE:76:A9:41:5A:4A:3A:50:02:A2:58:9A:04:93:12:AA:40
+_T("cd623b2bf2c06940bd480b6bcf4a5c9e1cbe94626fbfa127d001bf19ae5ba9fe"),
+
 // Omaha and Chrome certificate: sha1 (11/28/2016 to 11/21/2019).
 // thumbprint=1a6ac0549a4a44264deb6ff003391da2f285b19f
 // serial=14F8FDD167F92402B1570B5DC495C815
 // SHA1 Fingerprint=1A:6A:C0:54:9A:4A:44:26:4D:EB:6F:F0:03:39:1D:A2:F2:85:B1:9F
 kCertificatePublicKeyHash,
 
-// Omaha and Chrome certificate: sha256 (12/15/2015 to 12/16/2018).
-// thumbprint=5a9272ce76a9415a4a3a5002a2589a049312aa40
-// serial=2a9c21acaaa63a3c58a7b9322bee948d
-// SHA1 Fingerprint=5A:92:72:CE:76:A9:41:5A:4A:3A:50:02:A2:58:9A:04:93:12:AA:40
+// Omaha and Chrome certificate: sha256 (11/06/2018 to 11/17/2021).
+// thumbprint=cb7e84887f3c6015fe7edfb4f8f36df7dc10590e
+// serial=0c15be4a15bb0903c901b1d6c265302f
+// SHA1 Fingerprint=CB:7E:84:88:7F:3C:60:15:FE:7E:DF:B4:F8:F3:6D:F7:DC:10:59:0E
 kSha256CertificatePublicKeyHash,
 };
 

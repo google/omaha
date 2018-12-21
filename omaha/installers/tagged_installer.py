@@ -28,19 +28,10 @@ def TagOneBundle(env, bundle, untagged_binary_path, output_dir):
   indx = bundle.output_file_name.find('installers')
   relative_filepath = bundle.output_file_name[indx+len('installers')+1:]
 
-  tag_exe = '$TESTS_DIR/ApplyTag.exe'
-
-  tag_output = env.Command(
+  return env.OmahaTagExe(
       target='%s/%s' % (output_dir, relative_filepath),
       source=untagged_binary_path,
-      action='%s $SOURCES $TARGET %s append' % (
-          env.File(tag_exe).abspath, tag_str)
-  )
-
-  # Add extra (hidden) dependency plus a dependency on the tag executable.
-  env.Depends(tag_output, [bundle.installers_txt_filename, tag_exe])
-
-  return tag_output
+      tag=tag_str)
 
 
 def _ReadAllBundleInstallerFiles(installers_txt_files_path):

@@ -16,7 +16,7 @@ except ImportError:
 import os
 
 
-def GenerateUpdateResponseFile(target, sources, version_list):
+def GenerateUpdateResponseFile(target, sources, version_list, has_x64_binaries):
   """Generate GUP file based on a list of sources.
 
   Args:
@@ -27,6 +27,8 @@ def GenerateUpdateResponseFile(target, sources, version_list):
       can be applied properly.
     version_list: A list of versions for corresponding binaries in sources and
       should be in same order.
+    has_x64_binaries: Sets the 'ARCH_REQUIREMENT' replacement to 'x64' rather
+      than 'x86' if True.
 
   Raises:
     Exception: When build encounters error.
@@ -34,6 +36,9 @@ def GenerateUpdateResponseFile(target, sources, version_list):
   xml_header = '<?xml version="1.0" encoding="UTF-8"?>\n'
   response_header = '<response protocol="3.0">'
   response_footer = '</response>'
+  arch_requirement = 'x86'
+  if has_x64_binaries:
+    arch_requirement = 'x64'
 
   manifest_content_list = [xml_header, response_header]
   for file_index in xrange(0, len(sources), 2):
@@ -68,6 +73,7 @@ def GenerateUpdateResponseFile(target, sources, version_list):
     resp = resp.replace('${INSTALLER_SIZE}', str(size))
     resp = resp.replace('${INSTALLER_HASH_SHA256}', hash_value)
     resp = resp.replace('${INSTALLER_VERSION}', version_list[file_index/2])
+    resp = resp.replace('${ARCH_REQUIREMENT}', arch_requirement)
     manifest_content_list.append(resp)
   manifest_content_list.append(response_footer)
 
