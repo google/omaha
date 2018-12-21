@@ -769,18 +769,6 @@ interface IProcessLauncher2 : IProcessLauncher {
                           [out] ULONG_PTR* stdout_handle);
 };
 
-[
-  object,
-  oleautomation,
-  uuid(4d3a05b9-5ef2-46f9-a4fe-81b01637ed47),
-  helpstring("Google Update IOneClickProcessLauncher Interface"),
-  pointer_default(unique)
-]
-interface IOneClickProcessLauncher : IUnknown {
-  HRESULT LaunchAppCommand([in, string] const WCHAR* app_guid,
-                           [in, string] const WCHAR* cmd_id);
-};
-
 typedef enum {
   COMPLETION_CODE_SUCCESS = 1,
   COMPLETION_CODE_SUCCESS_CLOSE_UI,
@@ -852,6 +840,9 @@ interface IJobObserver : IUnknown {
   pointer_default(unique)
 ]
 interface IJobObserver2 : IUnknown {
+  // @param time_remaining_ms Remaining install time.
+  // @param pos Current install progress in percentage from 0 to 100. -1
+  //     indicates unknown.
   HRESULT OnInstalling2([in] int time_remaining_ms, [in] int pos);
 };
 
@@ -1041,23 +1032,7 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(bb42bfd1-b0eb-449c-8882-fb810c2738d0),
-    helpstring("OneClickUserProcessLauncherClass Class")
-  ]
-  coclass OneClickUserProcessLauncherClass {
-    [default] interface IOneClickProcessLauncher;
-  }
-
-  [
     uuid(5457eff7-c0b3-4672-a6b4-58f93951f1e0),
-    helpstring("OneClickMachineProcessLauncherClass Class")
-  ]
-  coclass OneClickMachineProcessLauncherClass {
-    [default] interface IOneClickProcessLauncher;
-  }
-
-  [
-    uuid(660baf72-a9ef-4fb1-81ae-9395ca6c39cf),
     helpstring("OnDemand updates for per-user applications.")
   ]
   coclass OnDemandUserAppsClass {

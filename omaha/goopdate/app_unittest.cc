@@ -68,11 +68,13 @@ class AppTest : public AppTestBaseWithRegistryOverride {
     update_response_.reset(xml::UpdateResponse::Create());
   }
 
-  void AddAppResponse(const CString& status) {
+  void AddAppResponse(const CString& status,
+                      const std::vector<xml::response::Data>& data) {
     xml::response::App app;
     app.status = xml::response::kStatusOkValue;
     app.appid = kAppId1;
     app.update_check.status = status;
+    app.data = data;
 
     xml::response::Response response;
 
@@ -245,7 +247,8 @@ TEST_P(AppAutoUpdateTest, CheckGroupPolicy_ManualUpdatesDisabled) {
 
 TEST_F(AppInstallTest, PostUpdateCheck_NoUpdate) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusNoUpdate);
+  AddAppResponse(xml::response::kStatusNoUpdate,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_ERROR, app_->state());
@@ -254,7 +257,8 @@ TEST_F(AppInstallTest, PostUpdateCheck_NoUpdate) {
 
 TEST_F(AppInstallTest, PostUpdateCheck_UpdateAvailable) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -265,7 +269,8 @@ TEST_F(AppInstallTest, PostUpdateCheck_UpdateAvailable) {
 TEST_P(AppInstallTest, PostUpdateCheck_UpdateAvailable_InstallDisabled) {
   SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -274,7 +279,8 @@ TEST_P(AppInstallTest, PostUpdateCheck_UpdateAvailable_InstallDisabled) {
 
 TEST_F(AppManualUpdateTest, PostUpdateCheck_NoUpdate) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusNoUpdate);
+  AddAppResponse(xml::response::kStatusNoUpdate,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_NO_UPDATE, app_->state());
@@ -283,7 +289,8 @@ TEST_F(AppManualUpdateTest, PostUpdateCheck_NoUpdate) {
 
 TEST_F(AppManualUpdateTest, PostUpdateCheck_UpdateAvailable) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -295,7 +302,8 @@ TEST_P(AppManualUpdateTest,
        PostUpdateCheck_UpdateAvailable_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -304,7 +312,8 @@ TEST_P(AppManualUpdateTest,
 
 TEST_F(AppAutoUpdateTest, PostUpdateCheck_NoUpdate) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusNoUpdate);
+  AddAppResponse(xml::response::kStatusNoUpdate,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_NO_UPDATE, app_->state());
@@ -313,7 +322,8 @@ TEST_F(AppAutoUpdateTest, PostUpdateCheck_NoUpdate) {
 
 TEST_F(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable) {
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue,
+                 std::vector<xml::response::Data>());
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
@@ -324,7 +334,42 @@ TEST_F(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable) {
 TEST_P(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable_AllUpdatesDisabled) {
   SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
-  AddAppResponse(xml::response::kStatusOkValue);
+  AddAppResponse(xml::response::kStatusOkValue,
+                 std::vector<xml::response::Data>());
+
+  app_->PostUpdateCheck(S_OK, update_response_.get());
+  EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());
+  EXPECT_EQ(S_OK, app_->error_code());
+}
+
+TEST_F(AppAutoUpdateTest,
+       PostUpdateCheck_UpdateAvailable_NonExistentInstallDataIndex) {
+  SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
+  AddAppResponse(xml::response::kStatusOkValue,
+                 std::vector<xml::response::Data>());
+  app_->put_serverInstallDataIndex(CComBSTR(_T("NonExistent")));
+
+  // Supress the Assert because the XML parser creation fails at
+  // App::PostUpdateCheck() due to registry redirection.
+  ExpectAsserts expect_asserts;
+  app_->PostUpdateCheck(S_OK, update_response_.get());
+
+  EXPECT_EQ(STATE_ERROR, app_->state());
+  EXPECT_EQ(GOOPDATE_E_INVALID_INSTALL_DATA_INDEX, app_->error_code());
+}
+
+TEST_F(AppAutoUpdateTest,
+       PostUpdateCheck_UpdateAvailable_ExistingInstallDataIndex) {
+  SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
+  std::vector<xml::response::Data> datas;
+  xml::response::Data data;
+  data.status = _T("ok");
+  data.name = _T("install");
+  data.install_data_index = _T("Existing");
+  data.install_data = _T("{}");
+  datas.push_back(data);
+  AddAppResponse(xml::response::kStatusOkValue, datas);
+  app_->put_serverInstallDataIndex(CComBSTR(_T("Existing")));
 
   app_->PostUpdateCheck(S_OK, update_response_.get());
   EXPECT_EQ(STATE_UPDATE_AVAILABLE, app_->state());

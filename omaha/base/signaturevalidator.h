@@ -169,7 +169,7 @@ class CertList {
   // criteria. If allow_test_variant is true, the company name will also be
   // deemed valid if it equals company_name_to_match + " (TEST)".
   void FindFirstCert(const CertInfo** result_cert_info,
-                     const CString &company_name_to_match,
+                     const std::vector<CString>& company_name_to_match,
                      const CString &orgn_unit_to_match,
                      const CString &trust_authority_to_match,
                      bool allow_test_variant,
@@ -200,7 +200,7 @@ void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
 // The function can verify that the certificate is valid at the time of the
 // call.
 HRESULT VerifyCertificate(const wchar_t* signed_file,
-                          const wchar_t* subject,
+                          const std::vector<CString>& subject,
                           bool allow_test_variant,
                           bool check_cert_is_valid_now,
                           const std::vector<CString>* expected_hashes);

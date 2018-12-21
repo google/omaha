@@ -8,9 +8,9 @@
 
     <PatchInformation
       Description="Patches Google Update"
-      Comments="Copyright 2007-2010 Google Inc."
+      Comments="Copyright 2018 Google LLC"
       Keywords="Installer"
-      Manufacturer="Google Inc."
+      Manufacturer="Google LLC"
       ShortNames="no"
       Languages="1033"
       Compressed="no"
@@ -21,7 +21,7 @@
       Description="Patches Google Update"
       DisplayName="Google Update patch"
       TargetProductName="Google Update"
-      ManufacturerName="Google Inc."
+      ManufacturerName="Google LLC"
       MoreInfoURL="http://www.google.com/support/installer/?patch"
       Classification="Service Pack"
       AllowRemoval="yes" />

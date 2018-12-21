@@ -17,8 +17,8 @@
 
 #include "sha.h"
 
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
 
 #define rol(bits, value) (((value) << (bits)) | ((value) >> (32 - (bits))))
 

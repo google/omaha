@@ -16,8 +16,8 @@
 #ifndef OMAHA_BASE_SECURITY_HASH_INTERNAL_H_
 #define OMAHA_BASE_SECURITY_HASH_INTERNAL_H_
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef LITE_EMULATED_64BIT_OPS
 #define LITE_LShiftU64(a, b) LShiftU64((a), (b))

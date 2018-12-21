@@ -72,6 +72,8 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
 
   request.dlpref = cm->GetDownloadPreferenceGroupPolicy();
 
+  request.domain_joined = IsEnrolledToDomain();
+
   // Hardware platform attributes.
   //
   // The amount of memory available to the operating system can be less than

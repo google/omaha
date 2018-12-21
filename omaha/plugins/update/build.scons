@@ -49,6 +49,7 @@ update_env.Append(
         '/wd4548',  # expression before comma has no effect; expected expression
                     # with side-effect
         '/wd4986',  # exception spec does not match previous declaration
+        '/wd5038',  # data member will be initialized after data member
     ],
     CPPPATH = [
         '$OBJ_ROOT',  # Needed for generated files.

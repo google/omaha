@@ -98,7 +98,6 @@ p256_digit p256_shl(const p256_int* a, int n, p256_int* b);
 void p256_shr(const p256_int* a, int n, p256_int* b);
 
 int p256_is_zero(const p256_int* a);
-int p256_is_odd(const p256_int* a);
 int p256_is_even(const p256_int* a);
 
 // Returns -1, 0 or 1.

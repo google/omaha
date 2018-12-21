@@ -19,8 +19,8 @@
 #include "util.h"
 
 #include <string.h>
-#include "sha.h"
 #include "md5.h"
+#include "sha.h"
 #include "sha256.h"
 
 static void HMAC_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {

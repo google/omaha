@@ -153,7 +153,7 @@ struct App {
 };
 
 struct Request {
-  Request() : is_machine(false), check_period_sec(-1) {
+  Request() : is_machine(false), check_period_sec(-1), domain_joined(false) {
     memset(&hw, 0, sizeof(hw));
   }
 
@@ -191,6 +191,9 @@ struct Request {
   // This data member is controlled by a group policy settings.
   // The only group policy value supported so far is "cacheable".
   CString dlpref;
+
+  // True if this machine is part of a managed enterprise domain.
+  bool domain_joined;
 
   Hw hw;
 

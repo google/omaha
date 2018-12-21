@@ -15,6 +15,7 @@
 
 #include "omaha/common/web_services_client.h"
 #include <atlstr.h>
+#include "omaha/base/omaha_version.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -101,7 +102,8 @@ HRESULT WebServicesClient::CreateRequest() {
   return S_OK;
 }
 
-HRESULT WebServicesClient::Send(const xml::UpdateRequest* update_request,
+HRESULT WebServicesClient::Send(bool is_foreground,
+                                const xml::UpdateRequest* update_request,
                                 xml::UpdateResponse* update_response) {
   CORE_LOG(L3, (_T("[WebServicesClient::Send]")));
   ASSERT1(update_request);
@@ -133,27 +135,46 @@ HRESULT WebServicesClient::Send(const xml::UpdateRequest* update_request,
   const bool use_encryption = update_request->has_tt_token();
 
   return SendStringWithFallback(use_encryption,
+                                is_foreground,
                                 &request_string,
                                 update_response);
 }
 
-HRESULT WebServicesClient::SendString(const CString* request_string,
+HRESULT WebServicesClient::SendString(bool is_foreground,
+                                      const CString* request_string,
                                       xml::UpdateResponse* update_response) {
   CORE_LOG(L3, (_T("[WebServicesClient::SendString]")));
   ASSERT1(request_string);
   ASSERT1(update_response);
 
-  return SendStringWithFallback(false, request_string, update_response);
+  __mutexBlock(lock_) {
+    update_request_headers_.clear();
+  }
+
+  return SendStringWithFallback(false,
+                                is_foreground,
+                                request_string,
+                                update_response);
 }
 
 HRESULT WebServicesClient::SendStringWithFallback(
     bool use_encryption,
+    bool is_foreground,
     const CString* request_string,
     xml::UpdateResponse* update_response) {
   CORE_LOG(L3, (_T("[WebServicesClient::SendStringWithFallback]")));
 
   ASSERT1(request_string);
   ASSERT1(update_response);
+
+  __mutexBlock(lock_) {
+    update_request_headers_.push_back(
+          std::make_pair(kHeaderXUpdater,
+                         CString("Omaha-") + GetVersionString()));
+    update_request_headers_.push_back(
+          std::make_pair(kHeaderXInteractive,
+                         is_foreground ? _T("fg") : _T("bg")));
+  }
 
   const CStringA utf8_request_string(WideToUtf8(*request_string));
   CORE_LOG(L3, (_T("[sending web services request as UTF-8][%S]"),

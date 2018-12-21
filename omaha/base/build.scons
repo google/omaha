@@ -116,15 +116,12 @@ Import('env')
 local_env = env.Clone()
 
 crx_file_path = '/third_party/chrome/files/src/components/crx_file/'
-proto_input = [
-    '$MAIN_DIR' + crx_file_path + 'crx3.proto',
+local_env.Append(PROTO_PATH = '$MAIN_DIR' + crx_file_path)
+local_env.Append(CPP_OUT = '$TARGET_ROOT/proto_files' + crx_file_path)
+proto_sources = [
+    '$MAIN_DIR' + crx_file_path + 'crx3.proto'
 ]
-proto_target_path = '$TARGET_ROOT/proto_files' + crx_file_path
-proto_target = [
-    proto_target_path + 'crx3.pb.cc',
-    proto_target_path + 'crx3.pb.h',
-]
-proto_output = local_env.CompileProtoBuf(proto_target, proto_input)
+proto_output = local_env.CompileProtoBuf(proto_sources)
 default_protobuf_src_dir = '$GOOGLE3/third_party/protobuf/src'
 protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR', default_protobuf_src_dir)
 
@@ -142,6 +139,7 @@ local_env.Append(
         '/wd4996',
     ],
     CPPPATH=[
+        '$GOOGLE3',
         protobuf_src_dir,
         '$TARGET_ROOT/proto_files/',
     ],
@@ -149,11 +147,10 @@ local_env.Append(
 
 local_inputs = [
     '../third_party/chrome/files/src/components/crx_file/crx_verifier.cc',
-    '$TARGET_ROOT/proto_files/third_party/chrome/files/src/components/crx_file/crx3.pb.cc',
     '../third_party/chrome/files/src/components/crx_file/id_util.cc',
     '../third_party/chrome/files/src/crypto/signature_verifier.cc',
     '../third_party/chrome/files/src/crypto/secure_util.cc',
-]
+] + proto_output
 
 obj_files = []
 for cc_file in local_inputs:
@@ -186,6 +183,7 @@ local_env.Append(
         '/wd4996',
     ],
     CPPPATH=[
+        '$GOOGLE3',
         protobuf_src_dir,
         protobuf_src_path,
     ],
@@ -204,6 +202,7 @@ cc_files = [
     'protobuf/extension_set_heavy.cc',
     'protobuf/generated_message_reflection.cc',
     'protobuf/generated_message_util.cc',
+    'protobuf/implicit_weak_message.cc',
     'protobuf/io/coded_stream.cc',
     'protobuf/io/printer.cc',
     'protobuf/io/tokenizer.cc',
@@ -216,10 +215,8 @@ cc_files = [
     'protobuf/reflection_ops.cc',
     'protobuf/repeated_field.cc',
     'protobuf/service.cc',
-    'protobuf/stubs/atomicops_internals_x86_msvc.cc',
     'protobuf/stubs/common.cc',
     'protobuf/stubs/int128.cc',
-    'protobuf/stubs/once.cc',
     'protobuf/stubs/status.cc',
     'protobuf/stubs/stringprintf.cc',
     'protobuf/stubs/stringpiece.cc',
@@ -232,9 +229,5 @@ cc_files = [
     'protobuf/wire_format_lite.cc',
 ]
 
-obj_files = []
-for cc_file in cc_files:
-  obj_files.append(local_env.Object(cc_file))
-
-local_env.ComponentLibrary('libprotobuf', obj_files, COMPONENT_STATIC=True)
-
+local_env.ComponentStaticLibraryMultiarch(
+    'libprotobuf', cc_files, COMPONENT_STATIC=True, use_pch_default=False)

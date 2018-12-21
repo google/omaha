@@ -54,13 +54,8 @@ breakpad_env.ComponentStaticLibraryMultiarch(target_name, breakpad_inputs)
 #
 gtest_env = env.Clone()
 
-if gtest_env.Bit('is_google_update_build'):
-  _gtest_repository = '$THIRD_PARTY/gtest'
-else:
-  _gtest_repository ='$THIRD_PARTY/googletest/googletest'
-
+_gtest_repository ='$THIRD_PARTY/googletest/googletest'
 gtest_env.Dir('gtest').addRepository(env.Dir(_gtest_repository))
-
 gtest_env.Append(
     CCFLAGS = [
         '/wd4061',  # enumerator in switch is not handled by a case label
@@ -93,13 +88,9 @@ gtest_env.ComponentLibrary(
 #
 gmock_env = env.Clone()
 
-if gmock_env.Bit('is_google_update_build'):
-  _gmock_repository = '$THIRD_PARTY/gmock'
-else:
-  _gmock_repository ='$THIRD_PARTY/googletest/googlemock'
 
+_gmock_repository ='$THIRD_PARTY/googletest/googlemock'
 gmock_env.Dir('gmock').addRepository(env.Dir(_gmock_repository))
-
 gmock_env.Append(
     CCFLAGS = [
         '/wd4061',  # enumerator is not explicitly handled by a case label

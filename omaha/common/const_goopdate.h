@@ -353,11 +353,6 @@ const TCHAR* const kProgIDGoogleUpdateCoreMachine =
 const TCHAR* const kProgIDProcessLauncher =
     APP_NAME_IDENTIFIER _T(".ProcessLauncher");
 
-const TCHAR* const kProgIDOneClickProcessLauncherUser =
-    _T(SHORT_COMPANY_NAME_ANSI) _T(".OneClickProcessLauncherUser");
-const TCHAR* const kProgIDOneClickProcessLauncherMachine =
-    _T(SHORT_COMPANY_NAME_ANSI) _T(".OneClickProcessLauncherMachine");
-
 const TCHAR* const kProgIDCoCreateAsync =
     APP_NAME_IDENTIFIER _T(".CoCreateAsync");
 

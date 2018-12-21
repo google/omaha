@@ -14,8 +14,8 @@
 // ========================================================================
 
 #include "p256_ecdsa.h"
-#include "p256.h"
 #include "hmac.h"
+#include "p256.h"
 #include "sha256.h"
 
 // Compute k based on given {key, message} pair, 0 < k < n.

@@ -45,7 +45,7 @@ namespace omaha {
 // not build values in other source files by concatenating preprocessor defines.
 
 // Full company name.
-// FULL_COMPANY_NAME == "Google Inc."
+// FULL_COMPANY_NAME == "Google LLC"
 const TCHAR* const kFullCompanyName = _T(FULL_COMPANY_NAME_ANSI);
 
 // Short company name (for use in paths and messages and to combine with product
@@ -537,21 +537,21 @@ const TCHAR kHeaderXHTTPAttempts[]       = _T("X-HTTP-Attempts");
 // previous UID.
 const TCHAR kHeaderXOldUserId[]          = _T("X-Old-UID");
 
-// The client sends a X-GoogleUpdate-Interactivity header to indicate whether
+// The client sends a X-Goog-Update-Interactivity header to indicate whether
 // the current request is foreground or background.
 // A value of "fg" ("foreground") indicates foreground install or on-demand
 // updates. "bg" ("background") indicates silent update traffic.
-const TCHAR kHeaderXInteractive[] = _T("X-GoogleUpdate-Interactivity");
+const TCHAR kHeaderXInteractive[] = _T("X-Goog-Update-Interactivity");
 
-// The client sends a X-GoogleUpdate-AppId header to indicate the apps
+// The client sends a X-Goog-Update-AppId header to indicate the apps
 // associated with the request. When updating multiple apps, the client
 // specifies a comma-separated list of app ids.
-const TCHAR kHeaderXAppId[]       = _T("X-GoogleUpdate-AppId");
+const TCHAR kHeaderXAppId[]       = _T("X-Goog-Update-AppId");
 
-// The client sends a X-GoogleUpdate-Updater header to indicate the identity of
+// The client sends a X-Goog-Update-Updater header to indicate the identity of
 // the updater. This is the "updater" version string also present in the
 // request. In the case of Omaha, prepend "Omaha-" to the version string.
-const TCHAR kHeaderXUpdater[]     = _T("X-GoogleUpdate-Updater");
+const TCHAR kHeaderXUpdater[]     = _T("X-Goog-Update-Updater");
 
 // ***                                                                      ***
 // *** Custom HTTP request headers that may be in an Omaha server response. ***

@@ -75,7 +75,7 @@ STDMETHODIMP OneClickControl::Install(BSTR cmd_line_args,
   }
 
   CORE_LOG(L2, (_T("[OneClickControl::Install][cmd_line \"%s\"]"),
-                CW2CT(cmd_line_args)));
+                static_cast<LPCTSTR>(CW2CT(cmd_line_args))));
 
   // We trim cmd_line_args to just the extra args and thunk to Install2().
   CString extra_args(cmd_line_args);
@@ -109,7 +109,7 @@ STDMETHODIMP OneClickControl::Install2(BSTR extra_args) {
   }
 
   CORE_LOG(L2, (_T("[OneClickControl::Install2][extra_args \"%s\"]"),
-                CW2CT(extra_args)));
+                static_cast<LPCTSTR>(CW2CT(extra_args))));
 
   CString browser_url;
   HRESULT hr = site_lock_.GetCurrentBrowserUrl(this, &browser_url);
@@ -193,31 +193,8 @@ STDMETHODIMP OneClickControl::GetOneClickVersion(long* version) {  // NOLINT
   return S_OK;
 }
 
-STDMETHODIMP OneClickControl::LaunchAppCommand(BSTR app_guid,
-                                               VARIANT_BOOL is_machine,
-                                               BSTR cmd_id) {
-  if (!site_lock_.InApprovedDomain(this)) {
-    return GOOPDATE_E_ONECLICK_HOSTCHECK_FAILED;
-  }
-
-  CORE_LOG(L2, (_T("[OneClickControl::LaunchAppCommand]")));
-
-  CComPtr<IOneClickProcessLauncher> process_launcher;
-  HRESULT hr = update3_utils::CoCreateWithProxyBlanket(
-      is_machine ?
-          __uuidof(OneClickMachineProcessLauncherClass) :
-          __uuidof(OneClickUserProcessLauncherClass),
-      &process_launcher);
-
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[OneClickControl::LaunchAppCommand]")
-                  _T("[Failed to CoCreate OneClickMachine/User ")
-                  _T("ProcessLauncher implementation: 0x%x"),
-                  hr));
-    return hr;
-  }
-
-  return process_launcher->LaunchAppCommand(app_guid, cmd_id);
+STDMETHODIMP OneClickControl::LaunchAppCommand(BSTR, VARIANT_BOOL, BSTR) {
+  return E_NOTIMPL;
 }
 
 HRESULT OneClickControl::DoGetInstalledVersion(const TCHAR* guid_string,

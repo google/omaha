@@ -81,6 +81,14 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
     # serial=2a9c21acaaa63a3c58a7b9322bee948d
     'unittest_support/sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe',
 
+    # Omaha and Chrome certificate: sha256 (11/06/2018 to 11/17/2021).
+    # serial=0c15be4a15bb0903c901b1d6c265302f
+    'unittest_support/sha2_0c15be4a15bb0903c901b1d6c265302f.msi',
+
+    # The actual Chrome setup signed with sha256 (11/06/2018 to 11/17/2021).
+    # serial=0c15be4a15bb0903c901b1d6c265302f
+    'unittest_support/chrome_setup.exe',
+
     # Minidump file for the crash unit test.
     'unittest_support/minidump.dmp',
     'unittest_support/minidump.txt',
@@ -250,10 +258,11 @@ omaha_unittest_libs += omaha_unittest_env.GetAllInOneUnittestLibs()
 omaha_unittest_env.Append(
     CPPPATH = [
         '$OBJ_ROOT',                        # Needed for the generated files
-        '$THIRD_PARTY/gmock/include',
-        '$THIRD_PARTY/gtest/include',
+        '$THIRD_PARTY/googletest/googlemock/include',
+        '$THIRD_PARTY/googletest/googletest/include',
         ],
     CCFLAGS = [
+        '/wd4100',  # unreferenced formal parameter
         '/wd4388',  # signed/unsigned mismatch
         '/wd4389',  # signed/unsigned mismatch
         '/wd4826',  # Conversion from 'type_1' to 'type_2' is sign-extended.

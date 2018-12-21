@@ -138,8 +138,8 @@ class ExpectAsserts {
     }
   }
 
-  int old_assert_count_;
   UseAssertFunction inner_;
+  int old_assert_count_;
   DISALLOW_EVIL_CONSTRUCTORS(ExpectAsserts);
 };
 

@@ -31,7 +31,6 @@
 #include "omaha/goopdate/google_update3.h"
 #include "omaha/goopdate/omaha3_idl_datax.h"
 #include "omaha/goopdate/ondemand.h"
-#include "omaha/goopdate/oneclick_process_launcher.h"
 #include "omaha/goopdate/process_launcher.h"
 #include "omaha/goopdate/update3web.h"
 #include "omaha/goopdate/worker.h"
@@ -53,16 +52,12 @@ BEGIN_OBJECT_MAP(object_map_broker_machine_mode)
   OBJECT_ENTRY(__uuidof(OnDemandMachineAppsClass), OnDemandMachineBroker)
   OBJECT_ENTRY(__uuidof(GoogleUpdate3WebMachineClass), Update3WebMachineBroker)
   OBJECT_ENTRY(__uuidof(CoCreateAsyncClass), CoCreateAsync)
-  OBJECT_ENTRY(__uuidof(OneClickMachineProcessLauncherClass),
-                        OneClickProcessLauncher)
 END_OBJECT_MAP()
 
 BEGIN_OBJECT_MAP(object_map_ondemand_user_mode)
   OBJECT_ENTRY(__uuidof(GoogleUpdate3WebUserClass), Update3WebUser)
   OBJECT_ENTRY(__uuidof(OnDemandUserAppsClass), OnDemandUser)
   OBJECT_ENTRY(__uuidof(CredentialDialogUserClass), CredentialDialogUser)
-  OBJECT_ENTRY(__uuidof(OneClickUserProcessLauncherClass),
-                        OneClickProcessLauncher)
 END_OBJECT_MAP()
 
 BEGIN_OBJECT_MAP(object_map_ondemand_machine_mode)

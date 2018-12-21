@@ -59,11 +59,11 @@ App::App(const GUID& app_guid, bool is_update, AppBundle* app_bundle)
       installer_result_code_(0),
       installer_result_extra_code1_(0),
       post_install_action_(POST_INSTALL_ACTION_DEFAULT),
-      can_skip_signature_verification_(false),
+      source_url_index_(-1),
+      state_cancelled_(STATE_ERROR),
       previous_total_download_bytes_(0),
       num_bytes_downloaded_(0),
-      source_url_index_(-1),
-      state_cancelled_(STATE_ERROR) {
+      can_skip_signature_verification_(false) {
   ASSERT1(!::IsEqualGUID(GUID_NULL, app_guid_));
 
   current_version_.reset(new AppVersion(this));

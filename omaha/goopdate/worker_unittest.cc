@@ -93,6 +93,7 @@ void SetAppStateReadyToInstall(App* app) {
 }
 
 typedef HRESULT WebServiceClientSendMethod(
+    bool is_foreground,
     const xml::UpdateRequest* update_request,
     xml::UpdateResponse* update_response);
 
@@ -102,7 +103,7 @@ class WebServiceClientSendAction
     : public ::testing::ActionInterface<WebServiceClientSendMethod> {
  public:
   virtual HRESULT Perform(const ArgumentTuple& args) {
-    xml::UpdateResponse* response = std::tr1::get<1>(args);
+    xml::UpdateResponse* response = std::tr1::get<2>(args);
     xml::response::Response r;
 
     // Omaha expects |elapsed_days| to be in range. So set it to a valid
@@ -119,11 +120,13 @@ class WebServiceClientSendAction
 
 class MockWebServicesClient : public WebServicesClientInterface {
  public:
-  MOCK_METHOD2(Send,
-      HRESULT(const xml::UpdateRequest* update_request,
+  MOCK_METHOD3(Send,
+      HRESULT(bool is_foreground,
+              const xml::UpdateRequest* update_request,
               xml::UpdateResponse* update_response));
-  MOCK_METHOD2(SendString,
-      HRESULT(const CString* request_string,
+  MOCK_METHOD3(SendString,
+      HRESULT(bool is_foreground,
+              const CString* request_string,
               xml::UpdateResponse* update_response));
   MOCK_METHOD0(Cancel,
       void());
@@ -387,7 +390,7 @@ class WorkerMockedManagersTest : public WorkerWithTwoAppsTest {
 };
 
 TEST_F(WorkerMockedManagersTest, CheckForUpdateAsync) {
-  EXPECT_CALL(*mock_web_services_client_, Send(_, _))
+  EXPECT_CALL(*mock_web_services_client_, Send(_, _, _))
       .Times(1).WillOnce(WebServiceClientSend());
   ON_CALL(*mock_web_services_client_, http_trace())
       .WillByDefault(Return(_T("")));
@@ -565,7 +568,7 @@ TEST_F(WorkerMockedManagersTest, DownloadAsync_Then_DownloadAndInstallAsync) {
 }
 
 TEST_F(WorkerMockedManagersTest, UpdateAllAppsAsync) {
-  EXPECT_CALL(*mock_web_services_client_, Send(_, _))
+  EXPECT_CALL(*mock_web_services_client_, Send(_, _, _))
       .Times(1).WillOnce(WebServiceClientSend());
   ON_CALL(*mock_web_services_client_, http_trace())
       .WillByDefault(Return(_T("")));

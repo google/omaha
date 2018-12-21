@@ -173,7 +173,6 @@ void p256_modmul(const p256_int* MOD,
   memcpy(c, tmp, P256_NBYTES);
 }
 
-int p256_is_odd(const p256_int* a) { return P256_DIGIT(a, 0) & 1; }
 int p256_is_even(const p256_int* a) { return !(P256_DIGIT(a, 0) & 1); }
 
 p256_digit p256_shl(const p256_int* a, int n, p256_int* b) {

@@ -16,8 +16,8 @@
 #ifndef OMAHA_BASE_SECURITY_SHA256_H_
 #define OMAHA_BASE_SECURITY_SHA256_H_
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "hash-internal.h"
 
 #ifdef __cplusplus

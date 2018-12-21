@@ -95,8 +95,8 @@ class GoogleUpdate : public CAtlExeModuleT<GoogleUpdate> {
   HRESULT RegisterOrUnregisterExe(bool is_register);
   static HRESULT RegisterOrUnregisterExe(void* data, bool is_register);
 
-  ComServerMode mode_;
   bool is_machine_;
+  ComServerMode mode_;
 
   DISALLOW_EVIL_CONSTRUCTORS(GoogleUpdate);
 };

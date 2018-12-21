@@ -509,42 +509,6 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 }
 
 TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
-              OneClickUserProcessLauncherClass) {
-  EXPECT_GU_ID_EQ(_T("{51F9E8EF-59D7-475b-A106-C7EA6F30C119}"),
-                  __uuidof(OneClickUserProcessLauncherClass));
-
-  EXPECT_SUCCEEDED(GetDocumentation(_T("OneClickUserProcessLauncherClass")));
-  EXPECT_STREQ(_T("OneClickUserProcessLauncherClass Class"),
-               item_doc_string_);
-  EXPECT_EQ(0, help_context_);
-  EXPECT_TRUE(!help_file_);
-}
-
-TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
-              IOneClickProcessLauncher) {
-  EXPECT_GU_ID_EQ(_T("{5CCCB0EF-7073-4516-8028-4C628D0C8AAB}"),
-                  __uuidof(IOneClickProcessLauncher));
-
-  EXPECT_SUCCEEDED(GetDocumentation(_T("IOneClickProcessLauncher")));
-  EXPECT_STREQ(_T("Google Update IOneClickProcessLauncher Interface"),
-               item_doc_string_);
-  EXPECT_EQ(0, help_context_);
-  EXPECT_TRUE(!help_file_);
-}
-
-TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
-              OneClickMachineProcessLauncherClass) {
-  EXPECT_GU_ID_EQ(_T("{AAD4AE2E-D834-46d4-8B09-490FAC9C722B}"),
-                  __uuidof(OneClickMachineProcessLauncherClass));
-
-  EXPECT_SUCCEEDED(GetDocumentation(_T("OneClickMachineProcessLauncherClass")));
-  EXPECT_STREQ(_T("OneClickMachineProcessLauncherClass Class"),
-               item_doc_string_);
-  EXPECT_EQ(0, help_context_);
-  EXPECT_TRUE(!help_file_);
-}
-
-TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
               OnDemandUserAppsClass) {
   EXPECT_GU_ID_EQ(_T("{2F0E2680-9FF5-43c0-B76E-114A56E93598}"),
                   __uuidof(OnDemandUserAppsClass));
@@ -616,7 +580,7 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 
 // Verifies there are no new interfaces in the TypeLib.
 TEST_F(OmahaCustomizationGoopdateComInterfaceTest, VerifyNoNewInterfaces) {
-  EXPECT_EQ(39, type_lib_->GetTypeInfoCount())
+  EXPECT_EQ(36, type_lib_->GetTypeInfoCount())
       << _T("A new interface may have been added. If so, add the interface to ")
       << _T("to kIIDsToRegister, and add test(s) for new interface(s).");
 }

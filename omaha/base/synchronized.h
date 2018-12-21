@@ -53,7 +53,6 @@ struct Lockable {
 // during destruction. Very convinient to use
 // with the macros __mutexScope and __mutexBlock
 class AutoSync {
-  bool first_time_;
  public:
   explicit AutoSync(const Lockable *pLock);
   explicit AutoSync(const Lockable &rLock);
@@ -63,6 +62,7 @@ class AutoSync {
   bool FirstTime();
  private:
   const Lockable * lock_;
+  bool first_time_;
   DISALLOW_EVIL_CONSTRUCTORS(AutoSync);
 };
 

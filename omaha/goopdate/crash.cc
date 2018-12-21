@@ -254,8 +254,8 @@ HRESULT CrashReporter::UploadCrash(bool is_out_of_process,
     std::wstring report_code;
     CrashReportSender sender(checkpoint_file_.GetString());
     sender.set_max_reports_per_day(max_reports_per_day_);
-    CORE_LOG(L2, (_T("[Uploading crash report]")
-                  _T("[%s][%s]"), crash_report_url_, crash_filename));
+    OPT_LOG(L2, (_T("[Uploading crash report]")
+                 _T("[%s][%s]"), crash_report_url_, crash_filename));
     ASSERT1(!crash_report_url_.IsEmpty());
     std::map<std::wstring, std::wstring> crash_files;
     crash_files[L"upload_file_minidump"] = crash_filename.GetString();
@@ -286,7 +286,7 @@ HRESULT CrashReporter::UploadCrash(bool is_out_of_process,
       default:
         hr = E_FAIL;
         break;
-    };
+    }
 
     // Continue the retry loop only when it could not contact the server.
     if (res != google_breakpad::RESULT_FAILED) {
@@ -294,7 +294,7 @@ HRESULT CrashReporter::UploadCrash(bool is_out_of_process,
     }
   }
 
-  CORE_LOG(L2, (_T("[crash report code = %s]"), *report_id));
+  OPT_LOG(L2, (_T("[crash report code = %s]"), *report_id));
 
   CString product_name = GetProductNameForEventLogging(parameters);
 

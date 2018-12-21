@@ -1055,7 +1055,6 @@ HRESULT CryptoVerifySignature::Validate(const std::vector<byte>& buffer_in,
                   L"[could not create hash], err 0x%08lx", err));
     return HRESULT_FROM_WIN32(err);
   }
-  UTIL_LOG(L3, (L"CryptoVerifySignature::Validate new hash 0x%08lx", hash));
 
   b = ::CryptHashData(get(hash),
                       &buffer_in.front(),

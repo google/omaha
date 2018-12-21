@@ -46,7 +46,8 @@ HRESULT QueryHttpInfo(IWinInetHttpInfo* http_info, DWORD query, CString* info) {
     return hr;
   }
 
-  CORE_LOG(L3, (_T("[QueryHttpInfo success][%d][%s]"), query, CA2T(buf)));
+  CORE_LOG(L3, (_T("[QueryHttpInfo success][%d][%s]"), query,
+      static_cast<LPCTSTR>(CA2T(buf))));
   *info = buf;
   return S_OK;
 }

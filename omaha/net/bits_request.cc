@@ -88,9 +88,9 @@ BitsRequest::BitsRequest()
       minimum_retry_delay_(-1),
       no_progress_timeout_(-1),
       current_auth_scheme_(0),
+      creds_set_scheme_unknown_(false),
       bits_request_callback_(NULL),
-      last_progress_report_tick_(0),
-      creds_set_scheme_unknown_(false) {
+      last_progress_report_tick_(0) {
   GetBitsManager(&bits_manager_);
 
   // Creates a auto-reset event for BITS job change notifications.

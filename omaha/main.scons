@@ -74,10 +74,10 @@ _MAIN_EXE_BASE_NAME = 'GoogleUpdate'
 # TODO(omaha): Use this throughout the build files where goopdate and
 # goopdateres are referenced.
 _MAIN_DLL_BASE_NAME = 'goopdate'
-# "Google Inc." must not be removed from the copyright string. This literal also
+# "Google LLC" must not be removed from the copyright string. This literal also
 # appears as LegalCopyright in the VERSIONINFO section of .rc files.
 # TODO(omaha): Use this variable in .wxs files, etc.
-_OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2007-2010 Google Inc.'
+_OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2018 Google LLC'
 
 
 # TODO(omaha): Allow open source Omaha to be built without the Recovery MSI,
@@ -90,8 +90,8 @@ _OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2007-2010 Google Inc.'
 
 # The hash comes from the Thumbprint item in the Details tab of the file
 # properties for the public key .cer file.
-# Omaha and Chrome certificate: sha256 (12/15/2015 to 12/16/2018).
-_BUILD_SERVER_CERTIFICATE_HASH = '5a9272ce76a9415a4a3a5002a2589a049312aa40'
+# Omaha and Chrome certificate: sha256 (11/06/2018 to 11/17/2021).
+_BUILD_SERVER_CERTIFICATE_HASH = 'CB7E84887F3C6015FE7EDFB4F8F36DF7DC10590E'
 
 #
 # End vendor-specific constants.
@@ -103,7 +103,8 @@ _BUILD_SERVER_CERTIFICATE_HASH = '5a9272ce76a9415a4a3a5002a2589a049312aa40'
 _msc_ver = int(os.getenv('OMAHA_MSC_VER', "1900"))
 
 _default_sdk_dir = ('$THIRD_PARTY/%s/files' %
-    {omaha_version_utils.VC140:'windows_sdk/windows_sdk_10',
+    {omaha_version_utils.VC141:'windows_sdk/windows_sdk_10',
+     omaha_version_utils.VC140:'windows_sdk/windows_sdk_10',
      omaha_version_utils.VC120:'windows_sdk_8_1',
      omaha_version_utils.VC100:'platformsdk_vc_10_0',
      omaha_version_utils.VC80:'platformsdk/v6_1' }[_msc_ver])
@@ -130,13 +131,15 @@ win_env = Environment(
     tools=[
         'component_setup',
         'target_platform_windows',
-        { omaha_version_utils.VC140:'windows_vc14_0',
+        { omaha_version_utils.VC141:'windows_vc14_1',
+          omaha_version_utils.VC140:'windows_vc14_0',
           omaha_version_utils.VC120:'windows_vc12_0',
           omaha_version_utils.VC100:'windows_vc10_0',
           omaha_version_utils.VC80:'target_platform_windows' }[_msc_ver],
         'masm',         # Use 'masm' to override the 'as' tool currently
                         # used by default in 'target_platform_windows'
-        { omaha_version_utils.VC140:'atlmfc_vc14_0',
+        { omaha_version_utils.VC141:'atlmfc_vc14_1',
+          omaha_version_utils.VC140:'atlmfc_vc14_0',
           omaha_version_utils.VC120:'atlmfc_vc12_0',
           omaha_version_utils.VC100:'atlmfc_vc10_0',
           omaha_version_utils.VC80:'atlmfc_vc80' }[_msc_ver],
@@ -461,6 +464,7 @@ win_env.AppendUnique(
         #
         # Disable the pedantic warnings below.
         #
+        '/wd4091',  # 'typedef': ignored on left of when no variable is declared
         '/wd4191',  # unsafe conversion from 'type of expression' to
                     # 'type required'
         '/wd4217',  # member template functions cannot be used for
@@ -474,6 +478,8 @@ win_env.AppendUnique(
         '/wd4512',  # assignment operator could not be generated
         '/wd4514',  # unreferenced inline function has been removed
         '/wd4555',  # expression has no effect
+        '/wd4577',  # 'noexcept' used with no exception handling mode specified;
+                    # termination on exception is not guaranteed.
         '/wd4605',  # '...' specified on current command line, but was not
                     # specified when precompiled header was built.
         '/wd4610',  # struct can never be instantiated
@@ -489,13 +495,17 @@ win_env.AppendUnique(
         '/wd4755',  # Conversion rules for arithmetic operations in the
                     # comparison at mean that one branch cannot be executed
                     # in an inlined function.
+        '/wd4774',  # format string expected in argument is not a string literal
         '/wd4777',  # format string 'requires an argument of type...
         '/wd4820',  # bytes padding added after construct 'member_name'
-        '/wd4091',  # 'typedef': ignored on left of when no variable is declared
+        '/wd4840',  # non-portable use of class as an arg to a variadic function
+        '/wd4986',  # exception specification doesn't match previous declaration
         '/wd4987',  # nonstandard extension used: 'throw (...)
         '/wd4995',  # name was marked as #pragma deprecated
         '/wd4996',  # 'function': was declared deprecated
-
+        '/wd5042',  # function declarations at block scope cannot be specified
+                    # 'inline' in standard C++
+        '/wd5045',  # Compiler will insert Spectre mitigation for memory load
         #
         # Disable static analysis warnings.
         #

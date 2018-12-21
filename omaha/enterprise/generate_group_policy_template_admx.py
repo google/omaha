@@ -78,8 +78,7 @@ ADMX_POLICIES = r'''
         displayName="$(string.Pol_AutoUpdateCheckPeriod)"
         explainText="$(string.Explain_AutoUpdateCheckPeriod)"
         presentation="$(presentation.Pol_AutoUpdateCheckPeriod)"
-        key="%(RootPolicyKey)s"
-        valueName="AutoUpdateCheckPeriodMinutes">
+        key="%(RootPolicyKey)s">
       <parentCategory ref="Cat_Preferences" />
       <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
       <elements>
@@ -133,7 +132,7 @@ ADMX_POLICIES = r'''
         displayName="$(string.Pol_ProxyMode)"
         explainText="$(string.Explain_ProxyMode)"
         presentation="$(presentation.Pol_ProxyMode)"
-        key="%(RootPolicyKey)s" valueName="ProxyMode">
+        key="%(RootPolicyKey)s">
       <parentCategory ref="Cat_ProxyServer" />
       <supportedOn ref="Sup_GoogleUpdate1_3_21_81" />
       <elements>

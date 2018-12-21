@@ -34,7 +34,9 @@ namespace omaha {
 
 // TODO(omaha): test the machine case.
 
-class WebServicesClientTest : public testing::Test {
+// This test is parameterized for foreground/background boolean.
+class WebServicesClientTest : public testing::Test,
+                              public ::testing::WithParamInterface<bool> {
  protected:
   virtual void SetUp() {
     EXPECT_HRESULT_SUCCEEDED(
@@ -75,13 +77,17 @@ class WebServicesClientTest : public testing::Test {
   DWORD ecdsa_enabled_;
 };
 
+
+INSTANTIATE_TEST_CASE_P(IsForeground, WebServicesClientTest, ::testing::Bool());
+
 TEST_F(WebServicesClientTest, Send) {
   EXPECT_HRESULT_SUCCEEDED(web_service_client_->Initialize(update_check_url_,
                                                            HeadersVector(),
                                                            false));
 
   // Test sending a user update check request.
-  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(update_request_.get(),
+  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(false,
+                                                     update_request_.get(),
                                                      update_response_.get()));
   EXPECT_TRUE(web_service_client_->is_http_success());
 
@@ -103,7 +109,7 @@ TEST_F(WebServicesClientTest, Send) {
   EXPECT_TRUE(etag.IsEmpty());
 }
 
-TEST_F(WebServicesClientTest, SendUsingCup) {
+TEST_P(WebServicesClientTest, SendUsingCup) {
   EXPECT_HRESULT_SUCCEEDED(web_service_client_->Initialize(update_check_url_,
                                                            HeadersVector(),
                                                            true));
@@ -113,7 +119,8 @@ TEST_F(WebServicesClientTest, SendUsingCup) {
   EXPECT_EQ(-1, web_service_client_->http_xdaynum_header_value());
 
   // Test sending a user update check request.
-  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(update_request_.get(),
+  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(GetParam(),
+                                                     update_request_.get(),
                                                      update_response_.get()));
   EXPECT_TRUE(web_service_client_->is_http_success());
 
@@ -136,7 +143,7 @@ TEST_F(WebServicesClientTest, SendUsingCup) {
       kHeaderXInteractive,
       &interactive_header);
 
-  EXPECT_STREQ(_T("fg"), interactive_header);
+  EXPECT_STREQ(GetParam() ? _T("fg") : _T("bg"), interactive_header);
 
   CString app_ids_header;
   network_request->QueryHeadersString(
@@ -212,8 +219,9 @@ TEST_F(WebServicesClientTest, SendForcingHttps) {
   EXPECT_FALSE(update_request_->IsEmpty());
   EXPECT_TRUE(update_request_->has_tt_token());
 
-  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(update_request_.get(),
-                                                    update_response_.get()));
+  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(false,
+                                                     update_request_.get(),
+                                                     update_response_.get()));
   EXPECT_TRUE(web_service_client_->is_http_success());
 
   NetworkRequest* network_request(network_request());
@@ -244,7 +252,8 @@ TEST_F(WebServicesClientTest, SendWithCustomHeader) {
                                                            headers,
                                                            true));
 
-  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(update_request_.get(),
+  EXPECT_HRESULT_SUCCEEDED(web_service_client_->Send(false,
+                                                     update_request_.get(),
                                                      update_response_.get()));
   EXPECT_TRUE(web_service_client_->is_http_success());
 
@@ -262,7 +271,7 @@ TEST_F(WebServicesClientTest, SendWithCustomHeader) {
   EXPECT_STREQ(_T("200"), request_age_header);
 }
 
-TEST_F(WebServicesClientTest, SendString) {
+TEST_P(WebServicesClientTest, SendString) {
   EXPECT_HRESULT_SUCCEEDED(web_service_client_->Initialize(update_check_url_,
                                                            HeadersVector(),
                                                            false));
@@ -272,9 +281,30 @@ TEST_F(WebServicesClientTest, SendString) {
     _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     _T("<request protocol=\"3.0\" testsource=\"dev\"></request>");
   scoped_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
-  EXPECT_HRESULT_SUCCEEDED(web_service_client_->SendString(&request_string,
+  EXPECT_HRESULT_SUCCEEDED(web_service_client_->SendString(GetParam(),
+                                                           &request_string,
                                                            response.get()));
   EXPECT_TRUE(web_service_client_->is_http_success());
+
+  NetworkRequest* network_request(network_request());
+
+  CString interactive_header;
+  network_request->QueryHeadersString(
+      WINHTTP_QUERY_CUSTOM | WINHTTP_QUERY_FLAG_REQUEST_HEADERS,
+      kHeaderXInteractive,
+      &interactive_header);
+  EXPECT_STREQ(GetParam() ? _T("fg") : _T("bg"), interactive_header);
+
+  CString updater_header;
+  network_request->QueryHeadersString(
+      WINHTTP_QUERY_CUSTOM | WINHTTP_QUERY_FLAG_REQUEST_HEADERS,
+      kHeaderXUpdater,
+      &updater_header);
+
+  CString expected_updater_header;
+  SafeCStringAppendFormat(&expected_updater_header, _T("Omaha-%s"),
+                                                    GetVersionString());
+  EXPECT_STREQ(expected_updater_header, updater_header);
 }
 
 TEST_F(WebServicesClientTest, SendStringWithCustomHeader) {
@@ -290,7 +320,8 @@ TEST_F(WebServicesClientTest, SendStringWithCustomHeader) {
     _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     _T("<request protocol=\"3.0\" testsource=\"dev\"></request>");
   scoped_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
-  EXPECT_HRESULT_SUCCEEDED(web_service_client_->SendString(&request_string,
+  EXPECT_HRESULT_SUCCEEDED(web_service_client_->SendString(false,
+                                                           &request_string,
                                                            response.get()));
   EXPECT_TRUE(web_service_client_->is_http_success());
 

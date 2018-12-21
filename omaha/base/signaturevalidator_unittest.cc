@@ -28,9 +28,12 @@ namespace omaha {
 namespace {
 
 bool VerifySigneeIsGoogle(const wchar_t* signed_file) {
+  std::vector<CString> subject;
+  subject.push_back(kSha256CertificateSubjectName);
+  subject.push_back(kCertificateSubjectName);
   return SUCCEEDED(
     VerifyCertificate(signed_file,
-                      kCertificateSubjectName,
+                      subject,
                       true,   // Allow test variant.
                       false,  // Check certificate is valid now.
                       NULL));
@@ -38,6 +41,7 @@ bool VerifySigneeIsGoogle(const wchar_t* signed_file) {
 
 }  // namespace
 
+// Checks Omaha Thawte certificate sha1 (11/28/2016 to 11/21/2019).
 TEST(CertInfoTest, CertInfo) {
   const TCHAR kRelativePath[] =
       _T("unittest_support\\sha1_14F8FDD167F92402B1570B5DC495C815.sys");
@@ -64,8 +68,10 @@ TEST(CertInfoTest, CertInfo) {
   EXPECT_EQ(3, cert_list.size());
 
   const CertInfo* cert_info = NULL;
+  std::vector<CString> subject;
+  subject.push_back(kCertificateSubjectName);
   cert_list.FindFirstCert(&cert_info,
-                          kCertificateSubjectName,
+                          subject,
                           CString(),
                           CString(),
                           false,      // Do not allow test variant.
@@ -77,9 +83,10 @@ TEST(CertInfoTest, CertInfo) {
   EXPECT_STREQ(kCertificatePublicKeyHash, cert_info->public_key_hash_);
 }
 
+// Checks Chrome certificate sha256 (11/06/2018 to 11/17/2021).
 TEST(CertInfoTest, CertInfo_Sha256) {
   const TCHAR kRelativePath[] =
-      _T("unittest_support\\sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe");
+      _T("unittest_support\\chrome_setup.exe");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
   ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
@@ -89,11 +96,20 @@ TEST(CertInfoTest, CertInfo_Sha256) {
   CertList cert_list;
   ExtractAllCertificatesFromSignature(executable_full_path, &cert_list);
 
-  EXPECT_EQ(4, cert_list.size());
+  // For some reason, extracting all certificates from the file only yields
+  // the code signing certificates but skips the time stamping certificates.
+  // In the case of chrome_setup.exe the following certs are picked up:
+  // * Dummy certificate.
+  // * DigiCert SHA2 Assured ID Code Signing CA
+  //   hash 92c1588e85af2201ce7915e8538b492f605b80c6
+  // * Google LLC hash cb7e84887f3c6015fe7edfb4f8f36df7dc10590e
+  EXPECT_EQ(3, cert_list.size());
 
   const CertInfo* cert_info = NULL;
+  std::vector<CString> subject;
+  subject.push_back(kSha256CertificateSubjectName);
   cert_list.FindFirstCert(&cert_info,
-                          kSha256CertificateSubjectName,
+                          subject,
                           CString(),
                           CString(),
                           false,      // Do not allow test variant.
@@ -161,6 +177,12 @@ TEST(SignatureValidatorTest, VerifySigneeIsGoogle_Sha256) {
                            kRelativePath));
   ASSERT_TRUE(File::Exists(executable_full_path));
   EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
+
+  executable_full_path = app_util::GetCurrentModuleDirectory();
+  ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
+                           _T("unittest_support\\chrome_setup.exe")));
+  ASSERT_TRUE(File::Exists(executable_full_path));
+  EXPECT_TRUE(VerifySigneeIsGoogle(executable_full_path));
 }
 
 TEST(SignatureValidatorTest, VerifySigneeIsGoogle_DualSigned_Sha1AndSha256) {
@@ -213,12 +235,16 @@ TEST(SignatureValidatorTest, VerifyAuthenticodeSignature) {
     _T("GoogleUpdate_now_expired_cert.exe"),
     _T("GoogleUpdate_old_signature.exe"),
     _T("SaveArguments.exe"),
+    _T("chrome_setup.exe"),
+    _T("sha2_0c15be4a15bb0903c901b1d6c265302f.msi"),
     _T("SaveArguments_OmahaTestSigned.exe"),
     _T("Sha1_4c40dba5f988fae57a57d6457495f98b_and_sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe"),  // NOLINT
     _T("SaveArguments_unsigned_wrong_markup_value.exe"),
     _T("SaveArguments_wrong_cn.exe"),
   };
   const HRESULT kExpectedResult[] = {
+    S_OK,
+    S_OK,
     S_OK,
     S_OK,
     S_OK,

@@ -32,7 +32,7 @@ class SystemInfo {
   // Find out if the OS is at least Windows 2000
   // Service pack 4. If OS version is less than that
   // will return false, all other cases true.
-  static bool SystemInfo::OSWin2KSP4OrLater() {
+  static bool OSWin2KSP4OrLater() {
     return ::IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WIN2K),
                                        LOBYTE(_WIN32_WINNT_WIN2K),
                                        4);
