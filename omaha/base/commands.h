@@ -72,7 +72,7 @@ class CommandParsingSimple {
   // in quotes. For instance, earlier versions of Google Desktop
   // used to have an "Uninstall" string of the form:
   // C:\Program Files\Google\Google Toolbar\GoogleToolbarSetup.exe -uninstall
-  // This function is meant to accomodate such cases.
+  // This function is meant to accommodate such cases.
   static HRESULT SplitExeAndArgsGuess(const TCHAR* cmd_line,
                                       CString* exe,
                                       CString* args);

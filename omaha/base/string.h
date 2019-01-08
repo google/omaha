@@ -63,7 +63,7 @@ CString ElideIfNeeded (const CString & input_string, int max_len, int min_len);
 // XML is the HTML replacements, and a few more
 #define kSanXml (kSanHtml | 0x2)
 
-// Javascript has a seperate set of encodings [which is a superset of HTML replacements]
+// Javascript has a separate set of encodings [which is a superset of HTML replacements]
 #define kSanJs (kSanHtml | 0x4)
 
 // For input fields on HTML documents

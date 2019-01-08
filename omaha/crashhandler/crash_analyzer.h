@@ -39,7 +39,7 @@ enum CrashAnalysisResult {
   // The process has a suspicious number of executable memory mappings.
   // This is likely the result of a spray.
   ANALYSIS_EXCESSIVE_EXEC_MEM,
-  // Crash occured near an instruction sequence that modifies the stack
+  // Crash occurred near an instruction sequence that modifies the stack
   // pointer.
   ANALYSIS_STACK_PIVOT,
   // The crashing instruction sequence looks like a bad dereference of

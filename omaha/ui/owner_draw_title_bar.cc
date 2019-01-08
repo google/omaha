@@ -700,7 +700,7 @@ LRESULT CustomProgressBarCtrl::OnPaint(UINT,
   left_highlight_rect.right = left_highlight_rect.left + 1;
   dc.FillSolidRect(left_highlight_rect, kProgressLeftHighlightColor);
 
-  // Adjust progress bar rectangle to accomodate the highlight and shadow.
+  // Adjust progress bar rectangle to accommodate the highlight and shadow.
   // Then draw the outer and inner frames.
   // Then fill in the bar.
   progress_bar_rect.DeflateRect(1, 0, 0, 2);

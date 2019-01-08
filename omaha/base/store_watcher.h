@@ -36,7 +36,7 @@ class StoreWatcher {
   // event using change_event().
   virtual HRESULT EnsureEventSetup() = 0;
 
-  // Indicates if any changes have occured
+  // Indicates if any changes have occurred
   bool HasChangeOccurred() const {
     return IsHandleSignaled(change_event());
   }
