@@ -661,9 +661,9 @@ omaha_unittest_env.Depends(test, '$STAGING_DIR/GoogleUpdateSetup_repair.exe')
 omaha_unittest_env.Depends(test, '$TESTS_DIR/goopdate.dll')
 
 # Customization test uses update plugin DLL (npGoogleUpdate3.dll) for TypeLib.
-omaha_unittest_env.Depends(
-    test,
-    '$STAGING_DIR/%s' % env['omaha_versions_info'][0].update_plugin_filename)
+#omaha_unittest_env.Depends(
+#    test,
+#    '$STAGING_DIR/%s' % env['omaha_versions_info'][0].update_plugin_filename)
 
 if env.Bit('all'):
   save_args_env = env.Clone()

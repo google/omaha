@@ -126,12 +126,12 @@ def _GetMetainstallerPayloadFilenames(prefix,
       'GoogleUpdate.exe',
       '%s.exe' % _CRASH_HANDLER_NAME,
       '%sgoopdate.dll' % (prefix),
-      plugin_dll_name,
+      #plugin_dll_name,
       'GoogleUpdateHelper.msi',
       'GoogleUpdateBroker.exe',
       'GoogleUpdateOnDemand.exe',
       'GoogleUpdateComRegisterShell64.exe',
-      'GoogleUpdateWebPlugin.exe',
+      #'GoogleUpdateWebPlugin.exe',
       '%spsmachine.dll' % (prefix),
       '%spsmachine_64.dll' % (prefix),
       '%spsuser.dll' % (prefix),
@@ -139,7 +139,7 @@ def _GetMetainstallerPayloadFilenames(prefix,
       ]
 
   if _IsSupportedOmaha2Version(omaha_version):
-    payload_files.remove(plugin_dll_name)
+    #payload_files.remove(plugin_dll_name)
     payload_files.remove('GoogleUpdateBroker.exe')
     payload_files.remove('GoogleUpdateOnDemand.exe')
     payload_files.remove('GoogleUpdateComRegisterShell64.exe')
