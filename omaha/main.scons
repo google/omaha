@@ -527,7 +527,9 @@ win_env.AppendUnique(
     # Defines for windows environment.
     CPPDEFINES = [
         'PSAPI_VERSION=1',
-        'WINVER=0X0500',
+        # Use _WIN32_WINNT_WS03 (0x0502)
+        'WINVER=0x0502',
+        '_WIN32_WINNT=0x0502',
         'WIN32', '_WINDOWS',
         'UNICODE', '_UNICODE',
         'WIN32_LEAN_AND_MEAN',
@@ -558,7 +560,8 @@ win_env.AppendUnique(
         # Windows XP. Therefore, the code needs to gracefully handle the
         # cases where some of the functionality enabled by the platform SDK
         # headers is not available.
-        'NTDDI_VERSION=NTDDI_WINXPSP3',
+        # Use NTDDI_WINXPSP3 (0x05010300)
+        'NTDDI_VERSION=0x05010300',
 
         # don't define min and max in windef.h
         'NOMINMAX',
