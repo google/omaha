@@ -30,7 +30,16 @@
 #undef RegisterEventSource
 #define RegisterEventSource(x, ...) NULL
 
+#if (_MSC_VER == 1916)
+#pragma warning(push)
+#pragma warning(disable:5031) // Suppress warning C5031: #pragma warning(pop): likely mismatch, popping warning state pushed in different file
+#endif
 #include <winioctl.h>
+#if (_MSC_VER == 1916)
+#pragma warning(pop) // Works around problem in winioctl.h introduced with VS 2017 15.9
+#pragma warning(pop) // #pragma warning(disable:5031)
+#endif
+
 #include <wtypes.h>
 #include <tchar.h>
 #include <strsafe.h>

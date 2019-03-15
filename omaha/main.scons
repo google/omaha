@@ -162,8 +162,7 @@ win_env['ENV']['GOROOT'] = os.getenv('GOROOT',
                                      '\\..\\third_party\\go\\files')
 
 # Append paths for supporting tools such as uuidgen.exe and mage.exe.
-win_env.AppendENVPath('PATH', (_sdk_dir + '\\bin\\' +
-    ('', 'x86')[_msc_ver >= omaha_version_utils.VC120]))
+win_env.AppendENVPath('PATH', (os.environ['WindowsSdkVerBinPath'] + '\\x86\\'))
 win_env.AppendENVPath('PATH', os.getenv('OMAHA_NETFX_TOOLS_DIR'))
 
 # Remove this value because it conflicts with a #define
@@ -527,9 +526,9 @@ win_env.AppendUnique(
     # Defines for windows environment.
     CPPDEFINES = [
         'PSAPI_VERSION=1',
-        # Use _WIN32_WINNT_WS03 (0x0502)
-        'WINVER=0x0502',
-        '_WIN32_WINNT=0x0502',
+        # Use _WIN32_WINNT_WIN7 (0x0601)
+        'WINVER=0x0601',
+        '_WIN32_WINNT=0x0601',
         'WIN32', '_WINDOWS',
         'UNICODE', '_UNICODE',
         'WIN32_LEAN_AND_MEAN',
@@ -560,8 +559,8 @@ win_env.AppendUnique(
         # Windows XP. Therefore, the code needs to gracefully handle the
         # cases where some of the functionality enabled by the platform SDK
         # headers is not available.
-        # Use NTDDI_WINXPSP3 (0x05010300)
-        'NTDDI_VERSION=0x05010300',
+        # Use NTDDI_WIN7 (0x06010000)
+        'NTDDI_VERSION=0x06010000',
 
         # don't define min and max in windef.h
         'NOMINMAX',

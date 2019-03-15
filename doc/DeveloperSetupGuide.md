@@ -10,9 +10,9 @@ We are striving to make the code build with the latest Windows toolchain from Mi
 
 The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
-  * Microsoft Visual Studio 2015 Update 3. The free Visual Studio Community edition is sufficient to build.
-    * The Express Editions are not sufficient - they do not include ATL/MFC headers or libraries, which Omaha requires.
-  * ATL Server headers 
+  * Microsoft Visual Studio 2017. The free Visual Studio Community edition is sufficient to build.
+    * Download [here](https://visualstudio.microsoft.com/downloads)
+  * ATL Server headers
     * Download [here](http://atlserver.codeplex.com). Omaha needs this library for regular expression support.
   * Windows 10 SDK.
     * Download Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
@@ -60,7 +60,7 @@ To run the unit tests, one more package is needed. Download the Windows Sysinter
       d---rwx---+ 1 sorin Domain Users   0 Jun 30 17:58 common
       d---rwx---+ 1 sorin Domain Users   0 Jul 15 11:34 omaha
       d---rwx---+ 1 sorin Domain Users   0 Jun 30 17:58 third_party
-      
+
       d:\src\omahaopensource\omaha>ls -l third_party
       total 16
       d---rwx---+ 1 sorin          Domain Users 0 Jul 14 12:52 breakpad
