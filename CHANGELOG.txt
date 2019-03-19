@@ -1071,7 +1071,7 @@ non-localized resources over to goopdate.dll to fix this issue.
 --------------------------------------------------------------------------------
 Implement sandbox for omaha crash handler.  This adds the plumbing to deal with
 all the needed files and handles by opening handles ahead of time.  It then
-creates seperate worker process to perform the crash dump and (after opening all
+creates separate worker process to perform the crash dump and (after opening all
 needed handles) locks down the process by setting the untrusted label on the
 processes access token.
 --------------------------------------------------------------------------------
@@ -1146,7 +1146,7 @@ The event log source for Omaha crashes event 2 shows as Update2.
 --------------------------------------------------------------------------------
 Turn on crash analysis for non-system crash handlers.
 --------------------------------------------------------------------------------
-Adjust the height of the installer state text box to accomodate longer messages
+Adjust the height of the installer state text box to accommodate longer messages
 and product names. Also adjusted a couple of other boxes that are not used
 currently but may be used in the future.
 --------------------------------------------------------------------------------

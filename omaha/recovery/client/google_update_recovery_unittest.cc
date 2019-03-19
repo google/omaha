@@ -81,6 +81,8 @@ const HRESULT kDummyNoFileError = 0x80041234;
 
 const TCHAR kArgumentSavingExecutableRelativePath[] =
     _T("unittest_support\\SaveArguments.exe");
+const TCHAR kArgumentSavingExecutableCrx3RelativePath[] =
+    _T("unittest_support\\CodeRed.crx3");
 const TCHAR kSavedArgumentsFileName[] = _T("saved_arguments.txt");
 const TCHAR* const kInvalidFileUrl = _T("http://www.google.com/robots.txt");
 
@@ -93,7 +95,7 @@ const TCHAR* const kInvalidFileUrl = _T("http://www.google.com/robots.txt");
 const TCHAR kRegistryHiveOverrideRoot[] =
     _T("HKCU\\Software\\Google\\Update\\UnitTest\\");
 
-const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("https://clients2.google.com/service/check2?appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
+const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("https://clients2.google.com/service/check2?crx3=true&appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
 const int kExpectedUrlForDummyAppAndNoOmahaValuesLength =
     arraysize(kExpectedUrlForDummyAppAndNoOmahaValues) - 1;
 
@@ -224,27 +226,14 @@ class GoogleUpdateRecoveryTest : public testing::Test {
     EXPECT_STREQ(expected_string, buffer);
   }
 
-  void VerifyExpectedSavedFilePath(const CString& expected_temp_directory) {
-    const int kMaxUniqueChars = 4;
-    const CString expected_path_part_a = expected_temp_directory + _T("\\GUR");
-    const CString expected_path_part_b = _T(".exe");
-    EXPECT_STREQ(expected_path_part_a,
-                 saved_file_path_.Left(expected_path_part_a.GetLength()));
-    EXPECT_STREQ(expected_path_part_b,
-                 saved_file_path_.Right(expected_path_part_b.GetLength()));
-    const int constant_chars = expected_path_part_a.GetLength() +
-                               expected_path_part_b.GetLength();
-    EXPECT_GT(saved_file_path_.GetLength(), constant_chars);
-    EXPECT_LE(saved_file_path_.GetLength(), constant_chars + kMaxUniqueChars);
-  }
-
   static CString saved_url_;
   static CString saved_file_path_;
   static void* saved_context_;
 
  protected:
-  // Copies SaveArguments.exe to the specified location.
-  static HRESULT DownloadArgumentSavingFile(const TCHAR* url,
+  // Copies the Crx3 containing the argument saving executable to the specified
+  // location.
+  static HRESULT DownloadArgumentSavingCrx3(const TCHAR* url,
                                             const TCHAR* file_path,
                                             void* context) {
     ASSERT1(url);
@@ -254,11 +243,11 @@ class GoogleUpdateRecoveryTest : public testing::Test {
     GoogleUpdateRecoveryTest::set_saved_file_path(file_path);
     GoogleUpdateRecoveryTest::set_saved_context(context);
 
-    CString executable_full_path(app_util::GetCurrentModuleDirectory());
-    VERIFY1(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
-                         kArgumentSavingExecutableRelativePath));
+    CString crx_full_path(app_util::GetCurrentModuleDirectory());
+    VERIFY1(::PathAppend(CStrBuf(crx_full_path, MAX_PATH),
+                         kArgumentSavingExecutableCrx3RelativePath));
 
-    if (!::CopyFile(executable_full_path, file_path, false)) {
+    if (!::CopyFile(crx_full_path, file_path, false)) {
       HRESULT hr = HRESULTFromLastError();
       return hr;
     }
@@ -409,7 +398,7 @@ class GoogleUpdateRecoveryRegistryProtectedTest
 //
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_UseRealHttpClient) {
-  EXPECT_EQ(TRUST_E_SUBJECT_FORM_UNKNOWN,
+  EXPECT_EQ(CRYPT_E_NO_MATCH,
             FixGoogleUpdate(kDummyAppGuid,
                             kDummyAppVersion,
                             kDummyAppLang,
@@ -419,55 +408,35 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_UseRealHttpClient) {
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_Machine) {
-  CString saved_arguments_path = ConcatenatePath(app_util::GetTempDir(),
-                                                 kSavedArgumentsFileName);
-
-  ::DeleteFile(saved_arguments_path);
-  EXPECT_FALSE(File::Exists(saved_arguments_path));
-
   CString context_string(_T("some context"));
   EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
                                            kDummyAppVersion,
                                            kDummyAppLang,
                                            true,
-                                           DownloadArgumentSavingFile,
+                                           DownloadArgumentSavingCrx3,
                                            &context_string));
 
   EXPECT_EQ(&context_string, saved_context_);
   EXPECT_STREQ(_T("some context"), *static_cast<CString*>(saved_context_));
 
   ::Sleep(200);
-  EXPECT_TRUE(File::Exists(saved_file_path_));
   VerifySavedArgumentsFile(_T("/recover /machine"));
-
-  EXPECT_TRUE(::DeleteFile(saved_file_path_));
-  EXPECT_TRUE(::DeleteFile(saved_arguments_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_User) {
-  CString saved_arguments_path = ConcatenatePath(app_util::GetTempDir(),
-                                                 kSavedArgumentsFileName);
-
-  ::DeleteFile(saved_arguments_path);
-  EXPECT_FALSE(File::Exists(saved_arguments_path));
-
   CString context_string(_T("more context"));
   EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
                                            kDummyAppVersion,
                                            kDummyAppLang,
                                            false,
-                                           DownloadArgumentSavingFile,
+                                           DownloadArgumentSavingCrx3,
                                            &context_string));
 
   EXPECT_EQ(&context_string, saved_context_);
   EXPECT_STREQ(_T("more context"), *static_cast<CString*>(saved_context_));
 
   ::Sleep(200);
-  EXPECT_TRUE(File::Exists(saved_file_path_));
   VerifySavedArgumentsFile(_T("/recover"));
-
-  EXPECT_TRUE(::DeleteFile(saved_file_path_));
-  EXPECT_TRUE(::DeleteFile(saved_arguments_path));
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_Machine) {
@@ -480,11 +449,6 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_Machine) {
 
   EXPECT_EQ(static_cast<void*>(NULL), saved_context_);
   EXPECT_FALSE(File::Exists(saved_file_path_));
-
-  TCHAR temp_dir[MAX_PATH] = {0};
-  EXPECT_TRUE(::GetEnvironmentVariable(_T("TMP"), temp_dir, MAX_PATH));
-  EXPECT_TRUE(File::Exists(temp_dir))
-      << _T("The temp directory was deleted or not created.");
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_User) {
@@ -497,11 +461,6 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_User) {
 
   EXPECT_EQ(static_cast<void*>(NULL), saved_context_);
   EXPECT_FALSE(File::Exists(saved_file_path_));
-
-  TCHAR temp_dir[MAX_PATH] = {0};
-  EXPECT_TRUE(::GetEnvironmentVariable(_T("TMP"), temp_dir, MAX_PATH));
-  EXPECT_TRUE(File::Exists(temp_dir))
-      << _T("The temp directory was deleted or not created.");
 }
 
 INSTANTIATE_TEST_CASE_P(IsDomain,
@@ -510,10 +469,7 @@ INSTANTIATE_TEST_CASE_P(IsDomain,
 
 TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AllValues_MachineApp) {
-  const TCHAR kExpectedUrlFormat[] = _T("https://clients2.google.com/service/check2?appid=%%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=5.6.78.1&userid=%s&osversion=");  // NOLINT
-
-  const CString prev_tmp = GetTmp();
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
+  const TCHAR kExpectedUrlFormat[] = _T("https://clients2.google.com/service/check2?crx3=true&appid=%%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=5.6.78.1&userid=%s&osversion=");  // NOLINT
 
   EnableUsageStats(true);
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullMachineOmahaClientKeyPath,
@@ -531,17 +487,11 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
   expected_url.Format(kExpectedUrlFormat, GetEscapedUserId(true));
   EXPECT_STREQ(expected_url, saved_url_.Left(expected_url.GetLength()));
   CheckSavedUrlOSFragment();
-  VerifyExpectedSavedFilePath(kTempDirectory);
-
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), prev_tmp));
 }
 
 TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AllValues_UserApp) {
-  const TCHAR kExpectedUrlFormat[] = _T("https://clients2.google.com/service/check2?appid=%%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%%7D&appversion=3.4.5.6&applang=en-us&machine=0&version=5.6.78.1&userid=%s&osversion=");  // NOLINT
-
-  const CString prev_tmp = GetTmp();
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
+  const TCHAR kExpectedUrlFormat[] = _T("https://clients2.google.com/service/check2?crx3=true&appid=%%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%%7D&appversion=3.4.5.6&applang=en-us&machine=0&version=5.6.78.1&userid=%s&osversion=");  // NOLINT
 
   EnableUsageStats(true);
   EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kFullUserOmahaClientKeyPath,
@@ -559,9 +509,6 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
   expected_url.Format(kExpectedUrlFormat, GetEscapedUserId(false));
   EXPECT_STREQ(expected_url, saved_url_.Left(expected_url.GetLength()));
   CheckSavedUrlOSFragment();
-  VerifyExpectedSavedFilePath(kTempDirectory);
-
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), prev_tmp));
 }
 
 TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
@@ -579,7 +526,7 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
 
 TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_EmptyAppInfo) {
-  const TCHAR kExpectedUrl[] = _T("https://clients2.google.com/service/check2?appid=&appversion=&applang=&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
+  const TCHAR kExpectedUrl[] = _T("https://clients2.google.com/service/check2?crx3=true&appid=&appversion=&applang=&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
 
   EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(_T(""),
                                                _T(""),
@@ -765,45 +712,15 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
   CheckSavedUrlOSFragment();
 }
 
-// Verifies that the file is saved even if the temp directory doesn't exist.
-TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_SaveToNonExistantDirectory) {
-  const TCHAR kNonExistantDirectory[] = _T("c:\\directory_does_not_exist");
-  DeleteDirectory(kNonExistantDirectory);
-  EXPECT_FALSE(File::Exists(kNonExistantDirectory));
-
-  const CString prev_tmp = GetTmp();
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kNonExistantDirectory));
-
-  EXPECT_EQ(TRUST_E_SUBJECT_FORM_UNKNOWN,
-            FixGoogleUpdate(kDummyAppGuid,
-                            kDummyAppVersion,
-                            kDummyAppLang,
-                            true,
-                            DownloadFileInvalidFile,
-                            NULL));
-
-  VerifyExpectedSavedFilePath(kNonExistantDirectory);
-
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), prev_tmp));
-  EXPECT_HRESULT_SUCCEEDED(DeleteDirectory(kNonExistantDirectory));
-}
-
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
-  const CString prev_tmp = GetTmp();
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), kTempDirectory));
-
-  CString saved_arguments_path = ConcatenatePath(app_util::GetTempDir(),
-                                                 kSavedArgumentsFileName);
-
   EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
                                            kDummyAppVersion,
                                            kDummyAppLang,
                                            false,
-                                           DownloadArgumentSavingFile,
+                                           DownloadArgumentSavingCrx3,
                                            NULL));
 
   EXPECT_TRUE(File::Exists(saved_file_path_));
-  VerifyExpectedSavedFilePath(kTempDirectory);
 
   CString first_saved_file_path = saved_file_path_;
 
@@ -815,10 +732,9 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
                                            kDummyAppVersion,
                                            kDummyAppLang,
                                            false,
-                                           DownloadArgumentSavingFile,
+                                           DownloadArgumentSavingCrx3,
                                            NULL));
   EXPECT_TRUE(File::Exists(saved_file_path_));
-  VerifyExpectedSavedFilePath(kTempDirectory);
 
   EXPECT_STRNE(first_saved_file_path, saved_file_path_);
 
@@ -832,9 +748,6 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
   EXPECT_TRUE(is_deleted);
 
   EXPECT_TRUE(::DeleteFile(first_saved_file_path));
-  EXPECT_TRUE(::DeleteFile(saved_arguments_path));
-
-  EXPECT_TRUE(::SetEnvironmentVariable(_T("TMP"), prev_tmp));
 }
 
 //

@@ -41,7 +41,6 @@
 namespace omaha {
 
 const ALG_ID kHashAlgorithm    = CALG_SHA1;
-const ALG_ID kHash256Algorithm = CALG_SHA_256;
 const DWORD kEncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
 const DWORD kCertificateNameType = CERT_NAME_SIMPLE_DISPLAY_TYPE;
 const DWORD kKeyPairType = AT_SIGNATURE;

@@ -266,7 +266,7 @@ bool ProcessTerminator::PrepareToKill(uint32 method_mask) {
   }
   // We already handled the case when we don't have enough privileges to open
   // the process. So if we have less handles than process ids -> some of the
-  // processes have died since we made a snapshot untill the time we tried to
+  // processes have died since we made a snapshot until the time we tried to
   // open handles. We need to do another snapshot and try to open handles one
   // more time. We need number of handles and number of ids to be equal.
   // We can do it with recursion. The idea is: make the next snapshot and open

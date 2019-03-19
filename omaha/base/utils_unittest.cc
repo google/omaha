@@ -18,13 +18,14 @@
 #include <atlwin.h>
 #include <map>
 #include <vector>
+#include "base/rand_util.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/atl_regexp.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
-#include "base/rand_util.h"
+#include "omaha/base/reg_key.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
@@ -630,45 +631,66 @@ TEST(UtilsTest, AddAllowedAce) {
   EXPECT_TRUE(AtlGetDacl(test_file_path, SE_FILE_OBJECT, &dacl));
   EXPECT_EQ(original_ace_count + 2, dacl.GetAceCount());
 
-  // TODO(omaha): An assert occurs because the ACE flags are being used on a
-  // file object. Add a new test to use a registry key.
-  ExpectAsserts expect_asserts;
+  EXPECT_SUCCEEDED(File::Remove(test_file_path));
+}
+
+TEST(UtilsTest, AddAllowedAceRegistry) {
+  const CString object_name =
+      _T("CURRENT_USER\\SOFTWARE\\Google\\Update\\AddAllowedAceRegistryTest");
+
+  // The registry and DACL security APIs expect different prefixes for the
+  // registry hives.
+  CString registry_key_name = object_name;
+  registry_key_name.Replace(_T("CURRENT_USER"), _T("HKCU"));
+  EXPECT_SUCCEEDED(RegKey::CreateKey(registry_key_name));
+
+  CDacl dacl;
+  EXPECT_TRUE(AtlGetDacl(object_name, SE_REGISTRY_KEY, &dacl));
+  const int original_ace_count = dacl.GetAceCount();
+
+  // Add more access. An ACE is added.
+  EXPECT_SUCCEEDED(AddAllowedAce(object_name,
+                                 SE_REGISTRY_KEY,
+                                 Sids::Dialup(),
+                                 KEY_ALL_ACCESS,
+                                 0));
+  dacl.SetEmpty();
+  EXPECT_TRUE(AtlGetDacl(object_name, SE_REGISTRY_KEY, &dacl));
+  EXPECT_EQ(original_ace_count + 1, dacl.GetAceCount());
 
   // Different ACE flags. An ACE is added.
   const BYTE kTestAce = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE;
   const BYTE kTestAceSubset = CONTAINER_INHERIT_ACE;
-  EXPECT_SUCCEEDED(AddAllowedAce(test_file_path,
-                                 SE_FILE_OBJECT,
+  EXPECT_SUCCEEDED(AddAllowedAce(object_name,
+                                 SE_REGISTRY_KEY,
                                  Sids::Dialup(),
-                                 FILE_ALL_ACCESS,
+                                 KEY_ALL_ACCESS,
                                  kTestAce));
   dacl.SetEmpty();
-  EXPECT_TRUE(AtlGetDacl(test_file_path, SE_FILE_OBJECT, &dacl));
-  EXPECT_EQ(original_ace_count + 3, dacl.GetAceCount());
+  EXPECT_TRUE(AtlGetDacl(object_name, SE_REGISTRY_KEY, &dacl));
+  EXPECT_EQ(original_ace_count + 2, dacl.GetAceCount());
 
   // Subset of existing ACE flags. An ACE is added because flags must be exact.
-  EXPECT_SUCCEEDED(AddAllowedAce(test_file_path,
-                                 SE_FILE_OBJECT,
+  EXPECT_SUCCEEDED(AddAllowedAce(object_name,
+                                 SE_REGISTRY_KEY,
                                  Sids::Dialup(),
-                                 FILE_ALL_ACCESS,
+                                 KEY_ALL_ACCESS,
                                  kTestAceSubset));
   dacl.SetEmpty();
-  EXPECT_TRUE(AtlGetDacl(test_file_path, SE_FILE_OBJECT, &dacl));
-  EXPECT_EQ(original_ace_count + 4, dacl.GetAceCount());
+  EXPECT_TRUE(AtlGetDacl(object_name, SE_REGISTRY_KEY, &dacl));
+  EXPECT_EQ(original_ace_count + 3, dacl.GetAceCount());
 
   // Same flags. An ACE should not be added because all values match.
-  // TODO(omaha): This does not work, possibly because the object is a file.
-  // Try the test using a registry key.
-  EXPECT_SUCCEEDED(AddAllowedAce(test_file_path,
-                                 SE_FILE_OBJECT,
+  EXPECT_SUCCEEDED(AddAllowedAce(object_name,
+                                 SE_REGISTRY_KEY,
                                  Sids::Dialup(),
-                                 FILE_ALL_ACCESS,
+                                 KEY_ALL_ACCESS,
                                  kTestAceSubset));
   dacl.SetEmpty();
-  EXPECT_TRUE(AtlGetDacl(test_file_path, SE_FILE_OBJECT, &dacl));
-  EXPECT_EQ(original_ace_count + 5, dacl.GetAceCount());
+  EXPECT_TRUE(AtlGetDacl(object_name, SE_REGISTRY_KEY, &dacl));
+  EXPECT_EQ(original_ace_count + 3, dacl.GetAceCount());
 
-  EXPECT_SUCCEEDED(File::Remove(test_file_path));
+  EXPECT_SUCCEEDED(RegKey::DeleteKey(registry_key_name));
 }
 
 TEST(UtilsTest, CreateForegroundParentWindowForUAC) {

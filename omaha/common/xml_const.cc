@@ -114,6 +114,7 @@ const TCHAR* const kPlatform = _T("platform");
 const TCHAR* const kProtocol = _T("protocol");
 const TCHAR* const kRequestId = _T("requestid");
 const TCHAR* const kRequired = _T("required");
+const TCHAR* const kRollbackAllowed = _T("rollback_allowed");
 const TCHAR* const kRun = _T("run");
 const TCHAR* const kServicePack = _T("sp");
 const TCHAR* const kSessionId = _T("sessionid");

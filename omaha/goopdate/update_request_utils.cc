@@ -90,6 +90,8 @@ void BuildRequest(const App* app,
     request_app.update_check.is_update_disabled =
         FAILED(app->CheckGroupPolicy());
     request_app.update_check.tt_token = app->tt_token();
+    request_app.update_check.is_rollback_allowed =
+        app->IsRollbackToTargetVersionAllowed();
     request_app.update_check.target_version_prefix =
         app->GetTargetVersionPrefix();
   }

@@ -82,7 +82,7 @@ HANDLE CreateEventWithSyncAccess(const TCHAR* name,
   EnsureCreateEx();
   if (create_event_ex_function) {
     return create_event_ex_function(event_attributes, name,
-                                    CREATE_EVENT_MANUAL_RESET,
+                                    0x00000001, // CREATE_EVENT_MANUAL_RESET
                                     SYNCHRONIZE |
                                     EVENT_MODIFY_STATE);  // for Set/Reset, etc.
   }
@@ -258,7 +258,7 @@ bool Gate::Wait(DWORD msec) {
 
 // Returns S_OK, and sets selected_gate to zero based index of the gate that
 // was opened
-// Returns E_FAIL if timeout occured or gate was abandoned.
+// Returns E_FAIL if timeout occurred or gate was abandoned.
 HRESULT Gate::WaitAny(Gate const * const *gates,
                       int num_gates,
                       DWORD msec,

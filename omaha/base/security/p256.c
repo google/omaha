@@ -447,10 +447,10 @@ void p256_from_le_bin(const uint8_t src[P256_NBYTES], p256_int* dst) {
 
   for (i = 0; i < P256_NDIGITS; ++i) {
     P256_DIGIT(dst, i) =
-        p[0] |
-        (p[1] << 8) |
-        (p[2] << 16) |
-        (p[3] << 24);
+        (uint32_t)p[0] |
+        ((uint32_t)p[1] << 8) |
+        ((uint32_t)p[2] << 16) |
+        ((uint32_t)p[3] << 24);
     p += 4;
   }
 }

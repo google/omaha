@@ -190,6 +190,8 @@ LRESULT ProgressWnd::OnInitDialog(UINT message,
 
   InitializeDialog();
 
+  VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
+
   CString state_text;
   VERIFY1(state_text.LoadString(IDS_INITIALIZING));
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), state_text));
@@ -498,7 +500,9 @@ void ProgressWnd::OnDownloading(const CString& app_id,
   // the user has no indication something is still going on.
   // TODO(omaha): when resuming an incomplete download this will not work.
   VERIFY1(SUCCEEDED(SetMarqueeMode(pos == 0)));
-  SendDlgItemMessage(IDC_PROGRESS, PBM_SETPOS, pos, 0);
+  if (pos > 0) {
+    SendDlgItemMessage(IDC_PROGRESS, PBM_SETPOS, pos, 0);
+  }
 }
 
 void ProgressWnd::OnWaitingRetryDownload(const CString& app_id,
@@ -838,13 +842,15 @@ HRESULT ProgressWnd::ChangeControlState() {
 }
 
 HRESULT ProgressWnd::SetMarqueeMode(bool is_marquee) {
+  CWindow progress_bar = GetDlgItem(IDC_PROGRESS);
+  LONG_PTR style = progress_bar.GetWindowLongPtr(GWL_STYLE);
   if (is_marquee) {
-    GetDlgItem(IDC_MARQUEE).ShowWindow(SW_SHOW);
-    GetDlgItem(IDC_PROGRESS).ShowWindow(SW_HIDE);
+    style |= PBS_MARQUEE;
   } else {
-    GetDlgItem(IDC_MARQUEE).ShowWindow(SW_HIDE);
-    GetDlgItem(IDC_PROGRESS).ShowWindow(SW_SHOW);
+    style &= ~PBS_MARQUEE;
   }
+  progress_bar.SetWindowLongPtr(GWL_STYLE, style);
+  progress_bar.SendMessage(PBM_SETMARQUEE, !!is_marquee, 0);
 
   return S_OK;
 }

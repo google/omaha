@@ -162,8 +162,7 @@ win_env['ENV']['GOROOT'] = os.getenv('GOROOT',
                                      '\\..\\third_party\\go\\files')
 
 # Append paths for supporting tools such as uuidgen.exe and mage.exe.
-win_env.AppendENVPath('PATH', (_sdk_dir + '\\bin\\' +
-    ('', 'x86')[_msc_ver >= omaha_version_utils.VC120]))
+win_env.AppendENVPath('PATH', (os.environ['WindowsSdkVerBinPath'] + '\\x86\\'))
 win_env.AppendENVPath('PATH', os.getenv('OMAHA_NETFX_TOOLS_DIR'))
 
 # Remove this value because it conflicts with a #define
@@ -432,8 +431,9 @@ if _msc_ver >= omaha_version_utils.VC120:
 # VS2015 has a set of new libraries as part of the universal CRT.
 win_env['crt_libs'] = (['libcmt', 'libcpmt'], ['libcmtd', 'libcpmtd'])
 if _msc_ver >= omaha_version_utils.VC140:
-    win_env['crt_libs'] = (['libcmt', 'libcpmt', 'libvcruntime', 'libucrt'],
-                           ['libcmtd', 'libcpmtd', 'libvcruntimed', 'libucrtd'])
+    win_env['crt_libs'] = (
+        ['libconcrt', 'libcmt', 'libcpmt', 'libvcruntime', 'libucrt'],
+        ['libconcrtd', 'libcmtd', 'libcpmtd', 'libvcruntimed', 'libucrtd'])
 
 win_env.AppendUnique(
     # Add windows specific compiler flags.
@@ -522,12 +522,15 @@ win_env.AppendUnique(
         '$MAIN_DIR',
         '$MAIN_DIR/third_party/chrome/files/src',
         '$THIRD_PARTY/breakpad/src',
+        '$THIRD_PARTY/libzip/lib',
     ],
 
     # Defines for windows environment.
     CPPDEFINES = [
         'PSAPI_VERSION=1',
-        'WINVER=0X0500',
+        # Use _WIN32_WINNT_WIN7 (0x0601)
+        'WINVER=0x0601',
+        '_WIN32_WINNT=0x0601',
         'WIN32', '_WINDOWS',
         'UNICODE', '_UNICODE',
         'WIN32_LEAN_AND_MEAN',
@@ -547,6 +550,7 @@ win_env.AppendUnique(
         '_ATL_XP_TARGETING',
         '_SECURE_ATL=1',
         '_WTL_NO_CSTRING',  # WTL uses ATL CString instead.
+        'ZIP_STATIC',
 
         # '_ATL_NO_CONNECTION_POINTS',
         # '_ATL_NO_DOCHOSTUIHANDLER',
@@ -558,7 +562,8 @@ win_env.AppendUnique(
         # Windows XP. Therefore, the code needs to gracefully handle the
         # cases where some of the functionality enabled by the platform SDK
         # headers is not available.
-        'DNTDDI_VERSION=NTDDI_WINXPSP3',
+        # Use NTDDI_WIN7 (0x06010000)
+        'NTDDI_VERSION=0x06010000',
 
         # don't define min and max in windef.h
         'NOMINMAX',

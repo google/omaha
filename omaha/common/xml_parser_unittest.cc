@@ -99,6 +99,7 @@ TEST_F(XmlParserTest, GenerateRequestWithoutUserId_MachineUpdateRequest) {
   app1.iid = GuidToString(GUID_NULL);  // Prevents assert.
   app1.ap = _T("ap_with_update_check");
   app1.update_check.is_valid = true;
+  app1.update_check.is_rollback_allowed = true;
   app1.update_check.target_version_prefix = "55.2";
   app1.data.push_back(data1);
   app1.data.push_back(data2);
@@ -125,7 +126,7 @@ TEST_F(XmlParserTest, GenerateRequestWithoutUserId_MachineUpdateRequest) {
   app2.cohort_name = _T("Name2");
   xml_request.apps.push_back(app2);
 
-  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.2.3.4\" shell_version=\"1.2.1.1\" ismachine=\"1\" sessionid=\"unittest_session\" installsource=\"unittest_install\" originurl=\"http://go/foo/&quot;\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8383}\" periodoverridesec=\"100000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\" arch=\"x86\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" ap=\"ap_with_update_check\" lang=\"en\" brand=\"\" client=\"\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\"><updatecheck targetversionprefix=\"55.2\"/><data name=\"install\" index=\"verboselogging\"/><data name=\"untrusted\">some untrusted data</data><ping active=\"0\" r=\"5\" rd=\"2535\"/></app><app appid=\"{AD3D0CC0-AD1E-4b1f-B98E-BAA41DCE396C}\" version=\"1.0\" nextversion=\"2.0\" ap=\"ap_with_no_update_check\" lang=\"en\" brand=\"\" client=\"\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\" cohort=\"Cohort2\" cohorthint=\"Hint2\" cohortname=\"Name2\"/></request>");  // NOLINT
+  CString expected_buffer = _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request protocol=\"3.0\" updater=\"Omaha\" updaterversion=\"1.2.3.4\" shell_version=\"1.2.1.1\" ismachine=\"1\" sessionid=\"unittest_session\" installsource=\"unittest_install\" originurl=\"http://go/foo/&quot;\" testsource=\"dev\" requestid=\"{387E2718-B39C-4458-98CC-24B5293C8383}\" periodoverridesec=\"100000\" dedup=\"cr\" domainjoined=\"1\"><hw physmemory=\"2\" sse=\"1\" sse2=\"1\" sse3=\"1\" ssse3=\"1\" sse41=\"1\" sse42=\"1\" avx=\"1\"/><os platform=\"win\" version=\"6.0\" sp=\"Service Pack 1\" arch=\"x86\"/><app appid=\"{8A69D345-D564-463C-AFF1-A69D9E530F96}\" version=\"\" nextversion=\"\" ap=\"ap_with_update_check\" lang=\"en\" brand=\"\" client=\"\" cohort=\"Cohort1\" cohorthint=\"Hint1\" cohortname=\"Name1\"><updatecheck rollback_allowed=\"true\" targetversionprefix=\"55.2\"/><data name=\"install\" index=\"verboselogging\"/><data name=\"untrusted\">some untrusted data</data><ping active=\"0\" r=\"5\" rd=\"2535\"/></app><app appid=\"{AD3D0CC0-AD1E-4b1f-B98E-BAA41DCE396C}\" version=\"1.0\" nextversion=\"2.0\" ap=\"ap_with_no_update_check\" lang=\"en\" brand=\"\" client=\"\" experiments=\"url_exp_2=a|Fri, 14 Aug 2015 16:13:03 GMT\" cohort=\"Cohort2\" cohorthint=\"Hint2\" cohortname=\"Name2\"/></request>");  // NOLINT
 
   CString actual_buffer;
   EXPECT_HRESULT_SUCCEEDED(XmlParser::SerializeRequest(*update_request,

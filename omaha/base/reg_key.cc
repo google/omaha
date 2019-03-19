@@ -1240,7 +1240,7 @@ HRESULT RegKeyWithChangeEvent::SetupEvent(bool watch_subtree,
   return HRESULT_FROM_WIN32(res);
 }
 
-// Indicates if any changes (that are being monitored have occured)
+// Indicates if any changes (that are being monitored have occurred)
 bool RegKeyWithChangeEvent::HasChangeOccurred() const {
   return IsHandleSignaled(get(change_event_));
 }

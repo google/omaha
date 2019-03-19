@@ -22,6 +22,7 @@
 #include <atlcom.h>
 #include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
+#include "omaha/base/xml_utils.h"
 #include "omaha/common/const_group_policy.h"
 #include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/app_bundle_state_initialized.h"
@@ -140,6 +141,13 @@ class AppTestBaseWithRegistryOverride
   // TODO(omaha3): Ideally we would not send pings from tests: http://b/2911608.
   virtual void SetUp() {
     AppTestBase::SetUp();
+
+    // Registry redirection impacts the creation of the COM XML parser.
+    // This code instantiates the parser before registry redirection occurs.
+    {
+      CComPtr<IXMLDOMDocument> document;
+      EXPECT_SUCCEEDED(CoCreateSafeDOMDocument(&document));
+    }
 
     RegKey::DeleteKey(hive_override_key_name_);
     OverrideRegistryHives(hive_override_key_name_);

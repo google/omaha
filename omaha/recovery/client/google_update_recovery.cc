@@ -22,6 +22,7 @@
 #include <shellapi.h>
 #include <wininet.h>
 #include <atlstr.h>
+#include "components/crx_file/crx_verifier.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/error.h"
@@ -45,7 +46,7 @@ const TCHAR* const kUserRepairArgs = _T("/recover");
 // TODO(omaha): Add a Code Red lib version that is manually updated when
 // we check in the lib.
 const TCHAR* const kQueryStringFormat =
-    _T("?appid=%s&appversion=%s&applang=%s&machine=%u")
+    _T("&appid=%s&appversion=%s&applang=%s&machine=%u")
     _T("&version=%s&userid=%s&osversion=%s&servicepack=%s");
 
 // Information about where to obtain Omaha info.
@@ -58,6 +59,18 @@ const TCHAR* const kRelativeClientsGoopdateRegPath =
 
 // The UpdateDev registry value to override the Code Red url.
 const TCHAR* const kRegValueNameCodeRedUrl = _T("CodeRedUrl");
+
+// The hard-coded Recovery subdirectory where the CRX is unpacked and executed.
+const TCHAR* const kRecoveryDirectory = _T("Recovery");
+
+// The hard-coded SHA256 of the SubjectPublicKeyInfo used to sign the Recovery
+// CRX which contains GoogleUpdateRecovery.exe.
+std::vector<uint8_t> GetRecoveryCRXHash() {
+  return std::vector<uint8_t>{0x5f, 0x94, 0xe0, 0x3c, 0x64, 0x30, 0x9f, 0xbc,
+                              0xfe, 0x00, 0x9a, 0x27, 0x3e, 0x52, 0xbf, 0xa5,
+                              0x84, 0xb9, 0xb3, 0x75, 0x07, 0x29, 0xde, 0xfa,
+                              0x32, 0x76, 0xd9, 0x93, 0xb5, 0xa3, 0xce, 0x02};
+}
 
 // Starts another process via ::CreateProcess.
 HRESULT StartProcess(const TCHAR* process_name, TCHAR* command_line) {
@@ -166,38 +179,69 @@ HRESULT CreateDir(const CString& dir) {
   return S_OK;
 }
 
-HRESULT GetAndCreateTempDir(CString* temp_path) {
-  if (!temp_path) {
-    return E_INVALIDARG;
-  }
+// Create a unique temporary file under the provided parent directory and
+// returns the full path.
+HRESULT CreateUniqueTempFile(const CPath& parent_dir,
+                             CPath* unique_temp_file_path) {
+  ASSERT1(parent_dir.IsDirectory());
+  ASSERT1(unique_temp_file_path);
 
-  *temp_path = app_util::GetTempDir();
-  if (temp_path->IsEmpty()) {
-    HRESULT hr = HRESULTFromLastError();
-    if (SUCCEEDED(hr)) {
-      hr = E_FAIL;
-    }
+  *unique_temp_file_path = CPath(GetTempFilenameAt(parent_dir, _T("GUR")));
+  return unique_temp_file_path->FileExists() ? S_OK : HRESULTFromLastError();
+}
+
+// Create a unique temporary directory under the provided parent directory and
+// returns the full path.
+HRESULT CreateUniqueTempDir(const CPath& parent_dir, CPath* unique_temp_dir) {
+  *unique_temp_dir = NULL;
+
+  CPath temp_dir;
+  HRESULT hr = CreateUniqueTempFile(parent_dir, &temp_dir);
+  if (FAILED(hr)) {
     return hr;
   }
 
-  // Create this dir if it doesn't already exist.
-  return CreateDir(*temp_path);
-}
-
-
-// Create a unique temporary file and returns the full path.
-HRESULT CreateUniqueTempFile(const CString& user_temp_dir,
-                             CString* unique_temp_file_path) {
-  if (user_temp_dir.IsEmpty() || !unique_temp_file_path) {
-    return E_INVALIDARG;
+  ::DeleteFile(temp_dir);
+  hr = CreateDir(temp_dir);
+  if (FAILED(hr)) {
+    return hr;
   }
 
-  *unique_temp_file_path = GetTempFilenameAt(user_temp_dir, _T("GUR"));
-  if (unique_temp_file_path->IsEmpty()) {
+  *unique_temp_dir += temp_dir;
+  return S_OK;
+}
+
+// Resets and returns the Recovery directory under the currently executing
+// module directory. For machine installs, this directory is under
+// %ProgramFiles%. If the directory does not exist, it is created.
+HRESULT ResetRecoveryDir(CPath* recovery_dir) {
+  ASSERT1(recovery_dir);
+
+  CString module_dir = app_util::GetCurrentModuleDirectory();
+  if (module_dir.IsEmpty()) {
     return HRESULTFromLastError();
   }
 
-  return S_OK;
+  *recovery_dir = CPath(module_dir);
+  *recovery_dir += kRecoveryDirectory;
+
+  if (recovery_dir->IsDirectory()) {
+    VERIFY1(SUCCEEDED(DeleteDirectoryContents(*recovery_dir)));
+    return S_OK;
+  }
+
+  return CreateDir(*recovery_dir);
+}
+
+// Resets the Recovery directory and creates a temporary directory under the
+// Recovery directory. For machine installs, this directory is under
+// %ProgramFiles%.
+HRESULT ResetRecoveryTempDir(CPath* temp_dir) {
+  ASSERT1(temp_dir);
+
+  CPath recovery_dir;
+  HRESULT hr = ResetRecoveryDir(&recovery_dir);
+  return SUCCEEDED(hr) ? CreateUniqueTempDir(recovery_dir, temp_dir) : hr;
 }
 
 // Obtains the OS version and service pack.
@@ -378,36 +422,21 @@ HRESULT BuildUrlQueryPortion(const CString& app_guid,
   return S_OK;
 }
 
-// Returns the full path to save the downloaded file to.
-// The path is based on a unique temporary filename to avoid a conflict
-// between multiple apps downloading to the same location.
-// The path to this file is also returned. The caller is responsible for
-// deleting the temporary file after using the download target path.
-// If it cannot create the unique directory, it attempts to use the user's
-// temporary directory and a constant filename.
-HRESULT GetDownloadTargetPath(CString* download_target_path,
-                              CString* temp_file_path) {
-  if (!download_target_path || !temp_file_path) {
+// Returns the full path to save the downloaded file to and the corresponding
+// parent directory.
+HRESULT GetDownloadTargetPath(CPath* download_target_path,
+                              CPath* parent_dir) {
+  if (!download_target_path || !parent_dir) {
     return E_INVALIDARG;
   }
 
-  CString user_temp_dir;
-  HRESULT hr = GetAndCreateTempDir(&user_temp_dir);
+  HRESULT hr = ResetRecoveryTempDir(parent_dir);
   if (FAILED(hr)) {
     return hr;
   }
 
-  hr = CreateUniqueTempFile(user_temp_dir, temp_file_path);
-  if (SUCCEEDED(hr) && !temp_file_path->IsEmpty()) {
-    *download_target_path = *temp_file_path;
-    // Ignore the return value. A .tmp filename is better than none.
-    download_target_path->Replace(_T(".tmp"), _T(".exe"));
-  } else {
-    // Try a static filename in the temp directory as a fallback.
-    *download_target_path = user_temp_dir + _T("GoogleUpdateSetup.exe");
-    *temp_file_path = _T("");
-  }
-
+  *download_target_path = *parent_dir;
+  *download_target_path += _T("GoogleUpdateSetup.crx3");
   return S_OK;
 }
 
@@ -564,6 +593,40 @@ HRESULT VerifyIsValidRepairFile(const CString& filename) {
   return VerifyRepairFileMarkup(filename);
 }
 
+// Validates the provided CRX using the |crx_hash|, and if validation succeeds,
+// unpacks the CRX under |unpack_under_path|. Returns the unpacked EXE in
+// |unpacked_exe|.
+HRESULT ValidateAndUnpackCRX(const CPath& from_crx_path,
+                             const crx_file::VerifierFormat& crx_format,
+                             const std::vector<uint8_t>& crx_hash,
+                             const CPath& unpack_under_path,
+                             CPath* unpacked_exe) {
+  ASSERT1(unpacked_exe);
+
+  std::string public_key;
+  if (crx_file::Verify(std::string(CT2A(from_crx_path)),
+                       crx_format,
+                       {crx_hash},
+                       {},
+                       &public_key,
+                       NULL) != crx_file::VerifierResult::OK_FULL) {
+    return CRYPT_E_NO_MATCH;
+  }
+
+  if (!crx_file::Crx3Unzip(from_crx_path, unpack_under_path)) {
+    return E_UNEXPECTED;
+  }
+
+  CPath exe = unpack_under_path;
+  exe += _T("GoogleUpdateSetup.exe");
+  if (!exe.FileExists()) {
+    return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+  }
+
+  *unpacked_exe = exe;
+  return S_OK;
+}
+
 }  // namespace omaha
 
 // If a repair file is run, the file will not be deleted until reboot. Delete
@@ -593,19 +656,14 @@ HRESULT FixGoogleUpdate(const TCHAR* app_guid,
     }
   }
 
-  CString download_target_path;
-  CString temp_file_path;
+  CPath download_target_path;
+  CPath parent_dir;
   HRESULT hr = omaha::GetDownloadTargetPath(&download_target_path,
-                                            &temp_file_path);
+                                            &parent_dir);
   if (FAILED(hr)) {
     return hr;
   }
-  if (download_target_path.IsEmpty()) {
-      return E_FAIL;
-  }
 
-  // After calling DownloadRepairFile, don't return until the repair file and
-  // temp file have been deleted.
   hr = omaha::DownloadRepairFile(download_target_path,
                                  app_guid,
                                  app_version,
@@ -614,19 +672,20 @@ HRESULT FixGoogleUpdate(const TCHAR* app_guid,
                                  download_callback,
                                  context);
 
-  if (SUCCEEDED(hr)) {
-    hr = omaha::VerifyIsValidRepairFile(download_target_path);
-  }
-
   if (FAILED(hr)) {
-    ::DeleteFile(download_target_path);
-    ::DeleteFile(temp_file_path);
     return hr;
   }
 
-  hr = omaha::RunRepairFile(download_target_path, is_machine_app);
-  ::MoveFileEx(download_target_path, NULL, MOVEFILE_DELAY_UNTIL_REBOOT);
-  ::DeleteFile(temp_file_path);
+  CPath unpacked_exe;
+  hr = omaha::ValidateAndUnpackCRX(
+           CPath(download_target_path),
+           crx_file::VerifierFormat::CRX3_WITH_PUBLISHER_PROOF,
+           omaha::GetRecoveryCRXHash(),
+           parent_dir,
+           &unpacked_exe);
+  if (FAILED(hr)) {
+    return hr;
+  }
 
-  return hr;
+  return omaha::RunRepairFile(unpacked_exe, is_machine_app);
 }

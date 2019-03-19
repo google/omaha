@@ -949,9 +949,9 @@ HRESULT Setup::GetPidsToWaitForUsingCommandLine(Pids* pids) const {
   // * "/registerproduct" - same as for /install.
   std::vector<CString> command_lines;
   CString switch_to_exclude;
-  SafeCStringFormat(&switch_to_exclude, _T("/%s"), kCmdLineInstall);
+  SafeCStringFormat(&switch_to_exclude, _T(" /%s "), kCmdLineInstall);
   command_lines.push_back(switch_to_exclude);
-  SafeCStringFormat(&switch_to_exclude, _T("/%s"), kCmdLineRegisterProduct);
+  SafeCStringFormat(&switch_to_exclude, _T(" /%s "), kCmdLineRegisterProduct);
   command_lines.push_back(switch_to_exclude);
 
   CString user_sid;

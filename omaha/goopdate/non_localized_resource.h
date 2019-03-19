@@ -24,6 +24,5 @@
 #define IDR_GOOGLE_UPDATE3_SERVICE_APPID  2009
 
 #define IDB_CHROME                        2100
-#define IDR_MARQUEE                       2102
 
 #endif  // OMAHA_GOOPDATE_NON_LOCALIZED_RESOURCE_H_

@@ -208,8 +208,8 @@ bool GetUpdatesSuppressedTimes(DWORD* start_hour,
     return false;
   }
 
-  // UpdatesSuppressedDurationMin is limited to 12 hours.
-  if (*start_hour > 23 || *start_min > 59 || *duration_min > 12 * kMinPerHour) {
+  // UpdatesSuppressedDurationMin is limited to 16 hours.
+  if (*start_hour > 23 || *start_min > 59 || *duration_min > 16 * kMinPerHour) {
     OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Out of bounds][%x][%x][%x]"),
                 *start_hour, *start_min, *duration_min));
     return false;
@@ -1015,6 +1015,24 @@ CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) {
                    app_value_name,
                    &target_version_prefix);
   return target_version_prefix;
+}
+
+bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid) {
+  if (!IsEnrolledToDomain()) {
+    OPT_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][false][%s]")
+                 _T("[machine is not part of a domain]"),
+                 GuidToString(app_guid)));
+    return false;
+  }
+
+  CString app_value_name(kRegValueRollbackToTargetVersion);
+  app_value_name.Append(GuidToString(app_guid));
+
+  DWORD is_rollback_allowed = 0;
+  RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                   app_value_name,
+                   &is_rollback_allowed);
+  return !!is_rollback_allowed;
 }
 
 bool ConfigManager::AreUpdatesSuppressedNow() {

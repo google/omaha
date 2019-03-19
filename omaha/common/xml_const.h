@@ -114,6 +114,7 @@ extern const TCHAR* const kPlatform;
 extern const TCHAR* const kProtocol;
 extern const TCHAR* const kRequestId;
 extern const TCHAR* const kRequired;
+extern const TCHAR* const kRollbackAllowed;
 extern const TCHAR* const kRun;
 extern const TCHAR* const kServicePack;
 extern const TCHAR* const kSessionId;

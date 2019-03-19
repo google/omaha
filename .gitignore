@@ -19,6 +19,8 @@ omaha/common/omaha_customization_proxy_clsid.h
 omaha/proxy_clsids.txt
 omaha/*.idb
 omaha/scons-out/**
+third_party/libzip/**
+third_party/zlib/**
 
 # Ignore compiled Python files.
 *.pyc

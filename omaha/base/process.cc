@@ -593,7 +593,7 @@ HRESULT Process::GetAllDescendantProcesses(
   ASSERT1(descendant_processes);
 
   // Take a snapshot
-  // Note that we do not have a seperate scoped_* type defined to wrap the
+  // Note that we do not have a separate scoped_* type defined to wrap the
   // handle returned by CreateToolhelp32Snapshot. So scoped_hfile with similar
   // behavior is used.
   scoped_hfile process_snap(::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0));

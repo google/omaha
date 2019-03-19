@@ -381,7 +381,6 @@ HRESULT DoInstallApps(BundleInstaller* installer,
                       IAppBundle* app_bundle,
                       bool is_machine,
                       bool is_interactive,
-                      bool is_update_all_apps,
                       BrowserType browser_type,
                       bool* has_ui_been_displayed) {
   CORE_LOG(L2, (_T("[DoInstallApps]")));
@@ -390,7 +389,6 @@ HRESULT DoInstallApps(BundleInstaller* installer,
 
   scoped_ptr<InstallProgressObserver> observer;
   scoped_ptr<OmahaWndEvents> ui_sink;
-  bool listen_to_shutdown_event = false;
 
   CComPtr<IAppBundle> app_bundle_ptr;
   app_bundle_ptr.Attach(app_bundle);
@@ -410,13 +408,10 @@ HRESULT DoInstallApps(BundleInstaller* installer,
     *has_ui_been_displayed = true;
   } else {
     observer.reset(new SilentProgressObserver(installer));
-    if (is_update_all_apps) {
-      listen_to_shutdown_event = true;
-    }
   }
 
   hr = installer->InstallBundle(is_machine,
-                                listen_to_shutdown_event,
+                                false,
                                 app_bundle_ptr.Detach(),
                                 observer.get());
 
@@ -632,7 +627,6 @@ HRESULT InstallApps(bool is_machine,
                                  app_bundle.Detach(),
                                  is_machine,
                                  is_interactive,
-                                 false,  // Is not update all apps.
                                  extra_args.browser_type,
                                  has_ui_been_displayed);
 }
@@ -680,7 +674,6 @@ HRESULT UpdateAllApps(bool is_machine,
                                  app_bundle.Detach(),
                                  is_machine,
                                  is_interactive,
-                                 true,        // Is update all apps.
                                  BROWSER_UNKNOWN,
                                  has_ui_been_displayed);
 }

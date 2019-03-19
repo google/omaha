@@ -92,7 +92,7 @@ PREFERENCES = """
             VALUENAME UpdatesSuppressedDurationMin
             DEFAULT 60
             MIN 1
-            MAX 720  ; Maximum duration is 720 minutes = 12 hours
+            MAX 960  ; Maximum duration is 960 minutes = 16 hours
             SPIN 30
           END PART
         END POLICY
@@ -238,6 +238,16 @@ UPDATE_POLICY_ITEMLIST.replace('            ', '              ') + """
             END PART
           END POLICY
 
+          POLICY !!Pol_RollbackToTargetVersion
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_3_34_3
+            #endif
+            EXPLAIN !!Explain_RollbackToTargetVersion$AppLegalId$
+            VALUENAME RollbackToTargetVersion$AppGuid$
+            VALUEOFF  NUMERIC 0
+            VALUEON   NUMERIC 1
+          END POLICY
+
         END CATEGORY  ; $AppName$
 """)
 
@@ -254,6 +264,7 @@ ALLOW_INSTALLATION_POLICY = 'Allow installation'
 DEFAULT_ALLOW_INSTALLATION_POLICY = ALLOW_INSTALLATION_POLICY + ' default'
 UPDATE_POLICY = 'Update policy override'
 TARGET_VERSION_POLICY = 'Target version override'
+ROLLBACK_VERSION_POLICY = 'Rollback version override'
 DEFAULT_UPDATE_POLICY = UPDATE_POLICY + ' default'
 
 # Update policy options that are used in multiple locations.
@@ -277,6 +288,7 @@ Sup_GoogleUpdate1_2_145_5=At least Google Update 1.2.145.5
 Sup_GoogleUpdate1_3_21_81=At least Google Update 1.3.21.81
 Sup_GoogleUpdate1_3_26_0=At least Google Update 1.3.26.0
 Sup_GoogleUpdate1_3_33_5=At least Google Update 1.3.33.5
+Sup_GoogleUpdate1_3_34_3=At least Google Update 1.3.34.3
 
 Cat_Google=Google
 Cat_GoogleUpdate=Google Update
@@ -295,6 +307,7 @@ Pol_AllowInstallation=""" + ALLOW_INSTALLATION_POLICY + """
 Pol_DefaultUpdatePolicy=""" + DEFAULT_UPDATE_POLICY + """
 Pol_UpdatePolicy=""" + UPDATE_POLICY + """
 Pol_TargetVersionPrefix=""" + TARGET_VERSION_POLICY + """
+Pol_RollbackToTargetVersion=""" + ROLLBACK_VERSION_POLICY + """
 
 Part_AutoUpdateCheckPeriod=Minutes between update checks
 Part_DownloadPreference=Type of download URL to request
@@ -398,6 +411,12 @@ Explain_TargetVersionPrefix$AppLegalId$=Specifies which version $AppName$ should
     2) Policy value is set to "55.", the app will be updated to any minor version of 55 (e.g. 55.24.34 or 55.60.2).\\n\\
     3) Policy value is "55.2.", the app will be updated to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).\\n\\
     4) Policy value is "55.24.34", the app will be updated to this specific version only.
+
+Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should roll installations of $AppName$ back to the version indicated by \"""" + TARGET_VERSION_POLICY + """\".
+    \\n\\nThis policy setting has no effect unless \"""" + TARGET_VERSION_POLICY + """\" is set.\\
+    \\n\\nIf this policy is not configured or is disabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be left as-is.\\
+    \\n\\nIf this policy is enabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be downgraded to the highest available version that matches the target version.\\
+    \\n\\nThis policy is meant to serve as temporary measure when Enterprise Administrators need to downgrade for business reasons. To ensure users are protected by the latest security updates, the most recent version should be used. When versions are downgraded to older versions, there could be incompatibilities.\\n\\
 """ +
 STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpdateExplainExtra$\n')
 

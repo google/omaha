@@ -245,7 +245,7 @@ TEST(OmahaCustomizationTest, Constants_Addresses) {
   EXPECT_STREQ(_T("https://update.googleapis.com/service/update2"), kUrlPing);
   EXPECT_STREQ(_T("https://clients2.google.com/cr/report"), kUrlCrashReport);
   EXPECT_STREQ(_T("https://www.google.com/support/installer/?"), kUrlMoreInfo);
-  EXPECT_STREQ(_T("https://clients2.google.com/service/check2"),
+  EXPECT_STREQ(_T("https://clients2.google.com/service/check2?crx3=true"),
                kUrlCodeRedCheck);
   EXPECT_STREQ(_T("https://clients5.google.com/tbproxy/usagestats"),
                kUrlUsageStatsReport);

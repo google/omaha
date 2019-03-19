@@ -51,11 +51,13 @@ dll_env.Append(
         dll_env['crt_libs'][dll_env.Bit('debug')],
         '$LIB_DIR/base.lib',
         '$LIB_DIR/common.lib',
+        '$LIB_DIR/crx_file.lib',
         '$LIB_DIR/google_update_recovery.lib',
         '$LIB_DIR/repair_goopdate.lib',
         '$LIB_DIR/security.lib',
         'crypt32.lib',
         'msi.lib',
+        '$LIB_DIR/net.lib',
         'wintrust.lib',
 
         # These are required by base.lib

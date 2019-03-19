@@ -20,6 +20,7 @@
 #ifndef OMAHA_THIRD_PARTY_CHROME_FILES_SRC_COMPONENTS_CRX_FILE_CRX_VERIFIER_H_
 #define OMAHA_THIRD_PARTY_CHROME_FILES_SRC_COMPONENTS_CRX_FILE_CRX_VERIFIER_H_
 
+#include <atlpath.h>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -67,6 +68,9 @@ VerifierResult Verify(
     const std::vector<uint8_t>& required_file_hash,
     std::string* public_key,
     std::string* crx_id);
+
+// Unzips the given crx file |crx_path| into the directory |to_dir|.
+bool Crx3Unzip(const CPath& crx_path, const CPath& to_dir);
 
 }  // namespace crx_file
 

@@ -398,6 +398,7 @@ for omaha_version_info in env['omaha_versions_info']:
           '$LIB_DIR/client.lib',
           '$LIB_DIR/common.lib',
           '$LIB_DIR/core.lib',
+          '$LIB_DIR/crx_file.lib',
           '$LIB_DIR/google_update_recovery.lib',
           '$LIB_DIR/goopdate_lib.lib',
           '$LIB_DIR/logging.lib',

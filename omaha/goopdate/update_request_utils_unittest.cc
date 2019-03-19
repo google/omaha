@@ -172,6 +172,31 @@ TEST_P(UpdateRequestUtilsTest,
                update_check.target_version_prefix);
 }
 
+TEST_P(UpdateRequestUtilsTest,
+       BuildRequest_UpdateCheck_GroupPolicy_RollbackToTargetVersion) {
+  EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueIsEnrolledToDomain,
+                                    IsDomain() ? 1UL : 0UL));
+
+  const TCHAR* const kRollbackToTargetVersionApp1 =
+      _T("RollbackToTargetVersion") APP_ID1;
+  RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                   kRollbackToTargetVersionApp1,
+                   1UL);
+
+  BuildRequest(app_, true, update_request_.get());
+
+  const xml::request::Request& request = update_request_->request();
+  ASSERT_EQ(1, request.apps.size());
+
+  const xml::request::App& app = request.apps[0];
+  const xml::request::UpdateCheck& update_check = app.update_check;
+  EXPECT_TRUE(update_check.is_valid);
+  EXPECT_EQ(IsDomain() ? true : false, update_check.is_rollback_allowed);
+}
+
 TEST_F(UpdateRequestUtilsTest,
        BuildRequest_DoNotPickUpDidRunValueWhenNotDoingUpdateCheck) {
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
