@@ -37,10 +37,12 @@ The following packages are required to build Omaha:
     * Download [here](https://golang.org/dl/) 
   * Google Protocol Buffers (3.6.0 or higher) [here](https://github.com/google/protobuf/releases).
     * From the [release page](https://github.com/google/protobuf/releases), download the zip file protoc-$VERSION-win32.zip. It contains the protoc binary. Unzip the contents under C:\protobuf. After that, download the zip file protobuf-cpp-$VERSION.zip. Unzip the "src" sub-directory contents to C:\protobuf\src. If other directory is used, please edit the environment variables in the hammer.bat, specifically, OMAHA_PROTOBUF_BIN_DIR and OMAHA_PROTOBUF_SRC_DIR.
-  * Third-party dependecies:
+  * Third-party dependencies:
     * breakpad. Source code [here](https://code.google.com/p/google-breakpad/source/checkout)
     * googletest. Source code [here](https://github.com/google/googletest). This includes both gtest and gmock frameworks.
     * Use git clone, git svn clone, or other way to get the source code for these projects into the third_party directory in the root of this repository.
+    * libzip 1.3.0. Source code [here](https://libzip.org/download/libzip-1.3.0.tar.gz). Unzip the contents of libzip-1.3.0.tar.gz\libzip-1.3.0.tar\libzip-1.3.0\ into the directory googleclient\third_party\libzip.
+    * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\ into the directory googleclient\third_party\zlib\v1_2_11.       
 
 To run the unit tests, one more package is needed. Download the Windows Sysinternals PSTools suite [here](https://technet.microsoft.com/en-us/sysinternals/bb897553) and save psexec.exe somewhere. Then, set a system environment variable named OMAHA_PSEXEC_DIR to the directory containing psexec.exe.
 
