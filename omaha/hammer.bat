@@ -72,7 +72,7 @@ set OMAHA_PROTOBUF_BIN_DIR=C:\protobuf\bin
 set OMAHA_PROTOBUF_SRC_DIR=C:\protobuf\src
 
 :: Directory where Python (python.exe) is installed.
-set OMAHA_PYTHON_DIR=C:\Python24
+set OMAHA_PYTHON_DIR=C:\Python27
 
 :: Directory in WiX where candle.exe and light.exe are installed.
 set OMAHA_WIX_DIR=%ProgramFiles(x86)%\WiX Toolset v3.10\bin
@@ -88,7 +88,7 @@ set OMAHA_SIGNTOOL_SDK_DIR=%WindowsSdkDir%\bin\x86
 set PYTHONPATH=%OMAHA_PYTHON_DIR%
 
 :: Directory of Scons (http://www.scons.org/).
-set SCONS_DIR=C:\Python24\Lib\site-packages\scons-1.3.1
+set SCONS_DIR=C:\Python27\Lib\site-packages\scons-1.3.1
 
 :: Directory of the Google's Software Construction Toolkit.
 set SCT_DIR=C:\swtoolkit
@@ -96,9 +96,8 @@ set SCT_DIR=C:\swtoolkit
 set PROXY_CLSID_TARGET=%~dp0proxy_clsids.txt
 set CUSTOMIZATION_UT_TARGET=%~dp0common\omaha_customization_proxy_clsid.h
 
-rem Force Hammer to use Python 2.4.  (The default of Python 2.6 exposes some
-rem bugs in Scons 1.2, which we currently use.)
-set PYTHON_TO_USE=python_24
+rem Force Hammer to use Python 2.7
+set PYTHON_TO_USE=python_27
 call "%SCT_DIR%\hammer.bat" %*
 
 if /i {%1} == {-c} (
