@@ -1,3 +1,94 @@
+## 2018-12-20 @226393815,239101811
+
+### Changes
+--------------------------------------------------------------------------------
+Fix bug 127373943 Omaha fails on Windows XP SP2 due to 
+GetLogicalProcessorInformation not located in KERNEL32.dll.
+
+This change uses std::atomic_llong and ::GetCurrentThreadId() as a 
+replacement for std::thread::id, if GOOGLE_PROTOBUF_SUPPORT_WINDOWS_XP is 
+defined. std::thread does not work on Windows XP SP2 with the latest VC++ 
+libraries, because it utilizes the Concurrency Runtime that 
+uses ::GetLogicalProcessorInformation which is only supported on 
+Windows XP SP3 and above.
+--------------------------------------------------------------------------------
+The RollbackToTargetVersion feature is not working as expected because the 
+client is sending "rollbackallowed" instead of "rollback_allowed".
+
+  <updatecheck rollbackallowed="true" targetversionprefix="72"/>
+--------------------------------------------------------------------------------
+Fix generated policy templates for Pol_RollbackToTargetVersion.
+
+The opening <policy> element in the ADMX file had an errant "/" before the 
+closing ">", making it appear to be an empty element. This change also adds 
+the missing string for "At least Google Update 1.3.34.3" to both the ADM and 
+ADMX templates.
+--------------------------------------------------------------------------------
+Fix bug 127843407 Increase UpdatesSuppressedDurationMin to a max of 16 hours 
+for Enterprise Scheduling of updates.
+--------------------------------------------------------------------------------
+Fix Deadlock in shutdown of UA process.
+--------------------------------------------------------------------------------
+Check explicitly for a full match of the command lines to exclude in Omaha 
+Setup.
+--------------------------------------------------------------------------------
+Fix build break: Disable warning C4628 digraphs not supported with -Ze.
+--------------------------------------------------------------------------------
+Fix bug 122987550 Implement the RollbackToTargetVersion policy for domain-joined
+machines. This policy setting has no effect unless a "Target version override" 
+is set via the TargetVersionPrefix policy for the app as well. 
+The RollbackToTargetVersion value will be sent as an attribute of the 
+<updatecheck> element in update checks that the client makes with the 
+Omaha server.
+
+Example:
+<o:updatecheck rollbackallowed="true" targetversionprefix="55.7" ...
+--------------------------------------------------------------------------------
+Change the Close button to be a single 4x4 rectangular center and criss-crossing
+ 2x2 overlapping rectangles, and the Minimize button is now a 2 x width sizing. 
+This makes it align correctly with caption sizes on other Win32 windows.
+--------------------------------------------------------------------------------
+Pass PBM_SETPOS and PBM_SETMARQUEE to the underlying Progress Bar Win32 control,
+ to enable accessibility to show the correct progress values.
+--------------------------------------------------------------------------------
+Adjust the contrast a bit on the download and install progress bars to make them 
+ a bit lighter and still have sufficient contrast with the background.
+-------------------------------------------------------------------------------- 
+Change the minimize and close buttons on the installer UI to be broader and 
+contrast with the background sufficiently.
+
+Change the download and install progress bars to contrast sufficiently with 
+the background.
+--------------------------------------------------------------------------------
+This change has fixes to the Owner Draw progress bar control, and changes to 
+use the owner Draw Progress Bar control for all progress renderings within 
+Omaha. This change also removes the SysAnimate32 control.
+--------------------------------------------------------------------------------
+Fix Test BrowserUtilsTest.GetBrowserImagePath_AllSupportedBrowsers fails for 
+Firefox and Chrome Beta.
+
+Also added a macro that expands to SHGetKnownFolderPath which is recommended 
+over SHGetFolderPath.
+--------------------------------------------------------------------------------
+Fix UtilsTest.AddAllowedAce
+--------------------------------------------------------------------------------
+Improves the security of Code Red using Omaha signing. The final change that 
+puts together the pieces to make Code Red more secure.
+--------------------------------------------------------------------------------
+Fix 
+AppAutoUpdateTest.PostUpdateCheck_UpdateAvailable_NonExistentInstallDataIndex
+--------------------------------------------------------------------------------
+Fix OmahaCustomizationGoopdateComInterfaceTest.VerifyNoNewInterfaces
+--------------------------------------------------------------------------------
+Add missing net.lib dependency to RecoveryTest_smallest.exe.
+--------------------------------------------------------------------------------
+Add crx_file.lib to the libs when building RecoveryTest_smallest.exe.
+--------------------------------------------------------------------------------
+Add enabling code and build changes to allow for downloading the Code Red 
+Recovery in a secure CRX3 format.
+--------------------------------------------------------------------------------
+Adding Unzip support to the CRX Verification codebase.
+
 ## 2018-12-20 @176133949,226393814
 
 ### Changes
