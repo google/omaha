@@ -487,7 +487,7 @@ const TCHAR* const kCustomClientInfoGroup = _T("ClientCustomData");
 const COLORREF kTextColor = RGB(0x29, 0x29, 0x29);
 const COLORREF kBkColor = RGB(0XFB, 0XFB, 0XFB);
 
-const COLORREF kCaptionForegroundColor = RGB(0x82, 0x82, 0x82);
+const COLORREF kCaptionForegroundColor = RGB(0x00, 0x00, 0x00);
 const COLORREF kCaptionBkHover = RGB(0xE9, 0xE9, 0xE9);
 const COLORREF kCaptionFrameColor = RGB(0xC1, 0xC1, 0xC1);
 
@@ -497,11 +497,11 @@ const COLORREF kProgressInnerFrameLight = RGB(0x6e, 0xc2, 0xfe);
 const COLORREF kProgressInnerFrameDark = RGB(0x44, 0x90, 0xfc);
 const COLORREF kProgressBarLightColor = RGB(0x4d, 0xa4, 0xfd);
 const COLORREF kProgressBarDarkColor = RGB(0x40, 0x86, 0xfd);
-const COLORREF kProgressEmptyFillColor = RGB(230, 230, 230);
-const COLORREF kProgressEmptyFrameColor = RGB(0xdd, 0xdd, 0xdd);
-const COLORREF kProgressShadowLightColor = RGB(0xed, 0xed, 0xed);
-const COLORREF kProgressShadowDarkColor = RGB(0xd5, 0xd5, 0xd5);
-const COLORREF kProgressLeftHighlightColor = RGB(0xed, 0xed, 0xed);
+const COLORREF kProgressEmptyFillColor = RGB(0xb6, 0xb6, 0xb6);
+const COLORREF kProgressEmptyFrameColor = RGB(0xad, 0xad, 0xad);
+const COLORREF kProgressShadowLightColor = RGB(0xbd, 0xbd, 0xbd);
+const COLORREF kProgressShadowDarkColor = RGB(0xa5, 0xa5, 0xa5);
+const COLORREF kProgressLeftHighlightColor = RGB(0xbd, 0xbd, 0xbd);
 
 // ***                                                       ***
 // *** Custom HTTP request headers sent by the Omaha Client. ***

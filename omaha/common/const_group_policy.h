@@ -67,6 +67,8 @@ const TCHAR* const kRegValueInstallAppPrefix    = _T("Install");
 const TCHAR* const kRegValueUpdateAppsDefault   = _T("UpdateDefault");
 const TCHAR* const kRegValueUpdateAppPrefix     = _T("Update");
 const TCHAR* const kRegValueTargetVersionPrefix = _T("TargetVersionPrefix");
+const TCHAR* const kRegValueRollbackToTargetVersion
+    = _T("RollbackToTargetVersion");
 
 const int kPolicyDisabled              = 0;
 const int kPolicyEnabled               = 1;

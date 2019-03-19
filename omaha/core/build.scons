@@ -76,6 +76,7 @@ core_env.Append(
         core_env.GetMultiarchLibName('common'),
         core_env.GetMultiarchLibName('core'),
         core_env.GetMultiarchLibName('crash_handler'),
+        core_env.GetMultiarchLibName('crx_file'),
         core_env.GetMultiarchLibName('google_update_recovery'),
         core_env.GetMultiarchLibName('goopdate_lib'),
         core_env.GetMultiarchLibName('logging'),

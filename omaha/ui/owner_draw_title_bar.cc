@@ -211,7 +211,9 @@ MinimizeButton::MinimizeButton() {
 
 HRGN MinimizeButton::GetButtonRgn(int rgn_width, int rgn_height) {
   // The Minimize button is a single rectangle.
-  const RECT minimize_button_rect = {0, rgn_height - 2, rgn_width, rgn_height};
+  CRect minimize_button_rect(0, 0, rgn_width, 2);
+  int center_point = rgn_height / 2;
+  minimize_button_rect.OffsetRect(0, center_point - 1);
 
   return ::CreateRectRgnIndirect(&minimize_button_rect);
 }
@@ -573,7 +575,8 @@ CustomProgressBarCtrl::CustomProgressBarCtrl()
     : kMinPosition(0),
       kMaxPosition(100),
       kMarqueeWidth(20),
-      kMarqueeTimerId(1),
+      kMarqueeTimerId(111),
+      is_marquee_mode_(false),
       current_position_(kMinPosition),
       bar_color_light_(kProgressBarLightColor),
       bar_color_dark_(kProgressBarDarkColor),
@@ -700,7 +703,7 @@ LRESULT CustomProgressBarCtrl::OnPaint(UINT,
   left_highlight_rect.right = left_highlight_rect.left + 1;
   dc.FillSolidRect(left_highlight_rect, kProgressLeftHighlightColor);
 
-  // Adjust progress bar rectangle to accommodate the highlight and shadow.
+  // Adjust progress bar rectangle to accomodate the highlight and shadow.
   // Then draw the outer and inner frames.
   // Then fill in the bar.
   progress_bar_rect.DeflateRect(1, 0, 0, 2);
@@ -727,7 +730,12 @@ LRESULT CustomProgressBarCtrl::OnTimer(UINT,
                                        BOOL& handled) {  // NOLINT
   handled = TRUE;
 
-  VERIFY1(event_id == kMarqueeTimerId);
+  // We only handle the timer with ID kMarqueeTimerId.
+  if (event_id != kMarqueeTimerId) {
+    handled = FALSE;
+    return 0;
+  }
+
   ::SendMessage(m_hWnd, PBM_SETPOS, 0, 0L);
   return 0;
 }
@@ -736,7 +744,9 @@ LRESULT CustomProgressBarCtrl::OnSetPos(UINT,
                                         WPARAM new_position,
                                         LPARAM,
                                         BOOL& handled) {  // NOLINT
-  handled = TRUE;
+  // To allow accessibility to show the correct progress values, we pass
+  // PBM_SETPOS to the underlying Win32 control.
+  handled = FALSE;
 
   int old_position = current_position_;
 
@@ -792,13 +802,17 @@ LRESULT CustomProgressBarCtrl::OnSetMarquee(UINT,
                                             WPARAM is_set_marquee,
                                             LPARAM update_msec,
                                             BOOL& handled) {  // NOLINT
-  handled = TRUE;
+  // To allow accessibility to show the correct progress values, we pass
+  // PBM_SETMARQUEE to the underlying Win32 control.
+  handled = FALSE;
 
-  if (is_set_marquee) {
+  if (is_set_marquee && !is_marquee_mode_) {
     current_position_ = kMinPosition;
     VERIFY1(SetTimer(kMarqueeTimerId, static_cast<UINT>(update_msec)));
-  } else {
+    is_marquee_mode_ = true;
+  } else if (!is_set_marquee && is_marquee_mode_) {
     VERIFY1(KillTimer(kMarqueeTimerId));
+    is_marquee_mode_ = false;
   }
 
   VERIFY1(RedrawWindow());

@@ -111,11 +111,6 @@ void OmahaWnd::InitializeDialog() {    // NOLINT
   VERIFY1(error_font_.CreatePointFont(110, _T("Segoe UI")));
   GetDlgItem(IDC_ERROR_TEXT).SetFont(error_font_);
 
-  VERIFY1(Animate_OpenEx(GetDlgItem(IDC_MARQUEE),
-                         app_util::GetCurrentModuleHandle(),
-                         MAKEINTRESOURCE(IDR_MARQUEE)));
-  VERIFY1(Animate_Play(GetDlgItem(IDC_MARQUEE), 0, -1, -1));
-
   CreateOwnerDrawTitleBar(m_hWnd, GetDlgItem(IDC_TITLE_BAR_SPACER), kBkColor);
   SetCustomDlgColors(kTextColor, kBkColor);
 
@@ -136,8 +131,6 @@ LRESULT OmahaWnd::OnClose(UINT,
 }
 
 HRESULT OmahaWnd::CloseWindow() {
-  VERIFY1(Animate_Stop(GetDlgItem(IDC_MARQUEE)));
-
   HRESULT hr = DestroyWindow() ? S_OK : HRESULTFromLastError();
   if (events_sink_) {
     events_sink_->DoClose();

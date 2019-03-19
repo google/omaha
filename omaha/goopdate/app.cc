@@ -937,6 +937,12 @@ HRESULT App::CheckGroupPolicy() const {
   return S_OK;
 }
 
+bool App::IsRollbackToTargetVersionAllowed() const {
+  __mutexScope(model()->lock());
+
+  return ConfigManager::IsRollbackToTargetVersionAllowed(app_guid_);
+}
+
 CString App::GetTargetVersionPrefix() const {
   __mutexScope(model()->lock());
 

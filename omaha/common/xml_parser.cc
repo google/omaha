@@ -1464,6 +1464,17 @@ HRESULT XmlParser::BuildUpdateCheckElement(const request::App& app,
   }
 
   if (!app.update_check.target_version_prefix.IsEmpty()) {
+    // RollbackToTargetVersion only applies if the TargetVersionPrefix is set.
+    if (app.update_check.is_rollback_allowed) {
+      hr = AddXMLAttributeNode(element,
+                               kXmlNamespace,
+                               xml::attribute::kRollbackAllowed,
+                               xml::value::kTrue);
+      if (FAILED(hr)) {
+        return hr;
+      }
+    }
+
     hr = AddXMLAttributeNode(element,
                              kXmlNamespace,
                              xml::attribute::kTargetVersionPrefix,

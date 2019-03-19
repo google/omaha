@@ -160,20 +160,6 @@ HRESULT SplashScreen::Initialize() {
 
   (EnableFlatButtons(m_hWnd));
 
-  // ::GetModuleHandle(kOmahaDllName) is needed to allow the Splash Screen unit
-  // test to work, since it runs under omaha_unittest.exe. In production, since
-  // this code runs from goopdate.dll, the ::GetModuleHandle(kOmahaDllName) is
-  // unnecessary, and even if ::GetModuleHandle(kOmahaDllName) returns NULL, the
-  // code will work as expected since Animate_OpenEx will get the resource from
-  // the current module.
-  const HMODULE module_omaha_dll(::GetModuleHandle(kOmahaDllName));
-  VERIFY1(Animate_OpenEx(GetDlgItem(IDC_MARQUEE),
-                         module_omaha_dll,
-                         MAKEINTRESOURCE(IDR_MARQUEE)));
-  VERIFY1(Animate_Play(GetDlgItem(IDC_MARQUEE), 0, -1, -1));
-
-  GetDlgItem(IDC_MARQUEE).ShowWindow(SW_SHOW);
-
   SwitchToState(STATE_INITIALIZED);
   return S_OK;
 }
@@ -198,11 +184,10 @@ void SplashScreen::EnableSystemButtons(bool enable) {
 void SplashScreen::InitProgressBar() {
   progress_bar_.SubclassWindow(GetDlgItem(IDC_PROGRESS));
 
-  const LONG kStyle = WS_CHILD | WS_VISIBLE | PBS_SMOOTH;
-
-  CWindow progress_bar = GetDlgItem(IDC_PROGRESS);
-  LONG style = progress_bar.GetWindowLong(GWL_STYLE) | kStyle;
-  progress_bar.SetWindowLong(GWL_STYLE, style);
+  LONG_PTR style = progress_bar_.GetWindowLongPtr(GWL_STYLE);
+  style |= PBS_MARQUEE | WS_CHILD | WS_VISIBLE;
+  progress_bar_.SetWindowLongPtr(GWL_STYLE, style);
+  progress_bar_.SendMessage(PBM_SETMARQUEE, true, 0);
 }
 
 LRESULT SplashScreen::OnTimer(UINT message,
@@ -236,10 +221,6 @@ LRESULT SplashScreen::OnClose(UINT message,
   UNREFERENCED_PARAMETER(message);
   UNREFERENCED_PARAMETER(wparam);
   UNREFERENCED_PARAMETER(lparam);
-
-  GetDlgItem(IDC_MARQUEE).ShowWindow(SW_HIDE);
-
-  VERIFY1(Animate_Stop(GetDlgItem(IDC_MARQUEE)));
 
   DestroyWindow();
   handled = TRUE;

@@ -20,21 +20,28 @@
 #include "components/crx_file/crx_verifier.h"
 
 #include <atlconv.h>
+#include <atlpath.h>
 
 #include "omaha/base/app_util.h"
+#include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/string.h"
+#include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 
 namespace {
 
 using omaha::ConcatenatePath;
 
+CPath TestFileCPath(const CString& file) {
+  return CPath(ConcatenatePath(ConcatenatePath(
+                                   omaha::app_util::GetCurrentModuleDirectory(),
+                                   _T("unittest_support")),
+                                   file));
+}
+
 std::string TestFile(const std::string& file) {
-  const CString base_path = ConcatenatePath(
-                                omaha::app_util::GetCurrentModuleDirectory(),
-                                _T("unittest_support"));
-  return std::string(CT2A(ConcatenatePath(base_path, CString(file.c_str()))));
+  return std::string(CT2A(TestFileCPath(CString(file.c_str()))));
 }
 
 const char kOjjHash[] = "ojjgnpkioondelmggbekfhllhdaimnho";
@@ -197,6 +204,21 @@ TEST_F(CrxVerifierTest, RequiresDeveloperKey) {
                    keys, hash, &public_key, &crx_id));
   EXPECT_EQ("UNSET", crx_id);
   EXPECT_EQ("UNSET", public_key);
+}
+
+TEST(CrxVerifierTest, Crx3Unzip) {
+  const CPath to_dir(omaha::GetUniqueTempDirectoryName());
+  EXPECT_TRUE(Crx3Unzip(TestFileCPath(_T("valid_publisher.crx3")), to_dir));
+
+  EXPECT_TRUE(omaha::File::Exists(
+      ConcatenatePath(to_dir, _T("manifest.json"))));
+  EXPECT_TRUE(omaha::File::Exists(
+      ConcatenatePath(to_dir, _T("_metadata\\verified_contents.json"))));
+  EXPECT_TRUE(omaha::File::Exists(
+      ConcatenatePath(to_dir, _T("_platform_specific\\all\\sths\\0301")
+      _T("9df3fd85a69a8ebd1facc6da9ba73e469774fe77f579fc5a08b8328c1d6b.sth"))));
+
+  EXPECT_SUCCEEDED(omaha::DeleteDirectory(to_dir));
 }
 
 }  // namespace crx_file

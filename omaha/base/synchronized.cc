@@ -82,7 +82,7 @@ HANDLE CreateEventWithSyncAccess(const TCHAR* name,
   EnsureCreateEx();
   if (create_event_ex_function) {
     return create_event_ex_function(event_attributes, name,
-                                    CREATE_EVENT_MANUAL_RESET,
+                                    0x00000001, // CREATE_EVENT_MANUAL_RESET
                                     SYNCHRONIZE |
                                     EVENT_MODIFY_STATE);  // for Set/Reset, etc.
   }

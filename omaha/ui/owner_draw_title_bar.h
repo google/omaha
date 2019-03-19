@@ -353,6 +353,7 @@ class CustomProgressBarCtrl : public CWindowImpl<CustomProgressBarCtrl> {
   const int kMarqueeWidth;
   const UINT_PTR kMarqueeTimerId;
 
+  bool is_marquee_mode_;
   int current_position_;
 
   COLORREF  bar_color_light_;

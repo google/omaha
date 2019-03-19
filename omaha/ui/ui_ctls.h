@@ -28,28 +28,12 @@ const ProgressWnd::ControlState ProgressWnd::ctls_[] = {
     // The struct values are:
     // is_ignore_entry, is_visible, is_enabled, is_button, is_default
   { IDC_PROGRESS,
-    { { false, false, false, false, false },  // STATE_INIT
-      { false, false, false, false, false },  // STATE_CHECKING_FOR_UPDATE
-      { false, false, false, false, false },  // STATE_WAITING_TO_DOWNLOAD
-      { true,  false, false, false, false },  // STATE_DOWNLOADING
-      { false, false, false, false, false },  // STATE_WAITING_TO_INSTALL
-      { false, false, false, false, false },  // STATE_INSTALLING
-      { false, false, false, false, false },  // STATE_PAUSED
-      { false, false, false, false, false },  // STATE_COMPLETE_SUCCESS
-      { false, false, false, false, false },  // STATE_COMPLETE_ERROR
-      { false, false, false, false, false },  // STATE_COMPLETE_RESTART_BROWSER
-      { false, false, false, false, false },  // COMPLETE_RESTART_ALL_BROWSERS
-      { false, false, false, false, false },  // STATE_COMPLETE_REBOOT
-      { false, false, false, false, false },  // STATE_END
-    },
-  },
-  { IDC_MARQUEE,
-    { { false, true,  false, false, false },  // STATE_INIT
-      { false, true,  false, false, false },  // STATE_CHECKING_FOR_UPDATE
-      { false, true,  false, false, false },  // STATE_WAITING_TO_DOWNLOAD
-      { true,  false, false, false, false },  // STATE_DOWNLOADING
-      { false, true,  false, false, false },  // STATE_WAITING_TO_INSTALL
-      { true,  false, false, false, false },  // STATE_INSTALLING
+    { { false, true, false, false, false },  // STATE_INIT
+      { false, true, false, false, false },  // STATE_CHECKING_FOR_UPDATE
+      { false, true, false, false, false },  // STATE_WAITING_TO_DOWNLOAD
+      { false, true, false, false, false },  // STATE_DOWNLOADING
+      { false, true, false, false, false },  // STATE_WAITING_TO_INSTALL
+      { false, true, false, false, false },  // STATE_INSTALLING
       { false, false, false, false, false },  // STATE_PAUSED
       { false, false, false, false, false },  // STATE_COMPLETE_SUCCESS
       { false, false, false, false, false },  // STATE_COMPLETE_ERROR

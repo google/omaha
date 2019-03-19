@@ -48,10 +48,10 @@ static void SHA256_Transform(LITE_SHA256_CTX* ctx) {
   int t;
 
   for(t = 0; t < 16; ++t) {
-    uint32_t tmp =  *p++ << 24;
-    tmp |= *p++ << 16;
-    tmp |= *p++ << 8;
-    tmp |= *p++;
+    uint32_t tmp =  (uint32_t)*p++ << 24;
+    tmp |= (uint32_t)*p++ << 16;
+    tmp |= (uint32_t)*p++ << 8;
+    tmp |= (uint32_t)*p++;
     W[t] = tmp;
   }
 

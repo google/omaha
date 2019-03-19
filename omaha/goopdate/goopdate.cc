@@ -952,6 +952,7 @@ bool GoopdateImpl::ShouldCheckShutdownEvent(CommandLineMode mode) {
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
     case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
+    case COMMANDLINE_MODE_UA:
       return false;
 
     // Modes that should honor shutdown.
@@ -964,7 +965,6 @@ bool GoopdateImpl::ShouldCheckShutdownEvent(CommandLineMode mode) {
     case COMMANDLINE_MODE_MEDIUM_SERVICE:
 
     case COMMANDLINE_MODE_HANDOFF_INSTALL:
-    case COMMANDLINE_MODE_UA:
     case COMMANDLINE_MODE_UNINSTALL:
       return true;
 

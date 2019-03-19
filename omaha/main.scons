@@ -432,8 +432,9 @@ if _msc_ver >= omaha_version_utils.VC120:
 # VS2015 has a set of new libraries as part of the universal CRT.
 win_env['crt_libs'] = (['libcmt', 'libcpmt'], ['libcmtd', 'libcpmtd'])
 if _msc_ver >= omaha_version_utils.VC140:
-    win_env['crt_libs'] = (['libcmt', 'libcpmt', 'libvcruntime', 'libucrt'],
-                           ['libcmtd', 'libcpmtd', 'libvcruntimed', 'libucrtd'])
+    win_env['crt_libs'] = (
+        ['libconcrt', 'libcmt', 'libcpmt', 'libvcruntime', 'libucrt'],
+        ['libconcrtd', 'libcmtd', 'libcpmtd', 'libvcruntimed', 'libucrtd'])
 
 win_env.AppendUnique(
     # Add windows specific compiler flags.
@@ -522,6 +523,7 @@ win_env.AppendUnique(
         '$MAIN_DIR',
         '$MAIN_DIR/third_party/chrome/files/src',
         '$THIRD_PARTY/breakpad/src',
+        '$THIRD_PARTY/libzip/lib',
     ],
 
     # Defines for windows environment.
@@ -547,6 +549,7 @@ win_env.AppendUnique(
         '_ATL_XP_TARGETING',
         '_SECURE_ATL=1',
         '_WTL_NO_CSTRING',  # WTL uses ATL CString instead.
+        'ZIP_STATIC',
 
         # '_ATL_NO_CONNECTION_POINTS',
         # '_ATL_NO_DOCHOSTUIHANDLER',

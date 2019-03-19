@@ -235,6 +235,15 @@ GPA_WRAP(kernel32.dll,
          HANDLE,
          NULL);
 
+// SHGetKnownFolderPath is only available in Vista and above.
+GPA_WRAP(shell32.dll,
+         SHGetKnownFolderPath,
+         (REFKNOWNFOLDERID rfid, DWORD flags, HANDLE token, PWSTR* path),
+         (rfid, flags, token, path),
+         WINAPI,
+         HRESULT,
+         HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND));
+
 bool IsPrivateNamespaceAvailable();
 
 

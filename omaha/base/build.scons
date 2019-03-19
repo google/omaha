@@ -15,6 +15,7 @@
 
 Import('env')
 
+import glob
 import os
 import os.path
 
@@ -121,7 +122,8 @@ local_env.Append(CPP_OUT = '$TARGET_ROOT/proto_files' + crx_file_path)
 proto_sources = [
     '$MAIN_DIR' + crx_file_path + 'crx3.proto'
 ]
-proto_output = local_env.CompileProtoBuf(proto_sources)
+cc_files = local_env.CompileProtoBuf(proto_sources)
+
 default_protobuf_src_dir = '$GOOGLE3/third_party/protobuf/src'
 protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR', default_protobuf_src_dir)
 
@@ -145,20 +147,14 @@ local_env.Append(
     ],
 )
 
-local_inputs = [
+cc_files += [
     '../third_party/chrome/files/src/components/crx_file/crx_verifier.cc',
     '../third_party/chrome/files/src/components/crx_file/id_util.cc',
     '../third_party/chrome/files/src/crypto/signature_verifier.cc',
     '../third_party/chrome/files/src/crypto/secure_util.cc',
-] + proto_output
+]
 
-obj_files = []
-for cc_file in local_inputs:
-  obj_files.append(local_env.Object(cc_file))
-local_env.Depends(obj_files, proto_output)
-local_env.ComponentStaticLibrary('crx_file', obj_files, use_pch_default=False)
-
-local_env = env.Clone()  # SCons pylint: disable=undefined-variable
+""" Add protobuf library files."""
 
 protobuf_src_path = os.path.join(protobuf_src_dir, 'google/protobuf/')
 local_env.FilterOut(CCFLAGS=['/W4'])
@@ -191,7 +187,7 @@ local_env.Append(
 
 protobuf_src_path_dir = local_env.Dir(protobuf_src_path)
 local_env.Dir('protobuf').addRepository(protobuf_src_path_dir)
-cc_files = [
+cc_files += [
     'protobuf/compiler/importer.cc',
     'protobuf/compiler/parser.cc',
     'protobuf/descriptor.cc',
@@ -206,6 +202,7 @@ cc_files = [
     'protobuf/io/coded_stream.cc',
     'protobuf/io/printer.cc',
     'protobuf/io/tokenizer.cc',
+    'protobuf/io/strtod.cc',
     'protobuf/io/zero_copy_stream.cc',
     'protobuf/io/zero_copy_stream_impl.cc',
     'protobuf/io/zero_copy_stream_impl_lite.cc',
@@ -229,5 +226,47 @@ cc_files = [
     'protobuf/wire_format_lite.cc',
 ]
 
+""" Add zlib library files."""
+
+local_env.FilterOut(CCFLAGS=['/WX'])
+zlib_src_path = '$THIRD_PARTY/zlib/v1_2_11/'
+zlib_src_path_dir = local_env.Dir(zlib_src_path)
+local_env.Dir('zlib').addRepository(zlib_src_path_dir)
+cc_files += ['zlib/' +
+             os.path.basename(x) for x in
+             glob.glob(zlib_src_path_dir.path + os.sep + '*.c')]
+
+""" Add libzip library files."""
+
+libzip_src_path = '$THIRD_PARTY/libzip/lib/'
+libzip_src_path_dir = local_env.Dir(libzip_src_path)
+local_env.Dir('libzip').addRepository(libzip_src_path_dir)
+libzip_gladman_src_path = '$THIRD_PARTY/libzip/lib/gladman-fcrypt'
+
+local_env.Append(
+    CPPDEFINES=[
+        'HAVE_CONFIG_H',
+    ],
+    CPPPATH=[
+        'libzip/',
+        libzip_gladman_src_path,
+        libzip_src_path,
+        zlib_src_path,
+    ],
+    CCFLAGS=[
+        '/wd4005',
+        '/wd4244',
+    ],
+)
+
+cc_files += ['libzip/' + os.path.basename(x) for x in list(
+    set(glob.glob(libzip_src_path_dir.path + os.sep + '*.c')) -
+    set(glob.glob(libzip_src_path_dir.path + os.sep + '*unix*.c')) -
+    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_crypto_[cgo]*.c')) -
+    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_source_file.c')) -
+    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_random_uwp.c')) -
+    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_winzip_aes.c')) -
+    set(glob.glob(libzip_src_path_dir.path + os.sep + '*bzip2.c')))]
+
 local_env.ComponentStaticLibraryMultiarch(
-    'libprotobuf', cc_files, COMPONENT_STATIC=True, use_pch_default=False)
+    'crx_file', cc_files, COMPONENT_STATIC=True, use_pch_default=False)

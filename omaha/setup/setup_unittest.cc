@@ -238,7 +238,7 @@ class SetupTest : public testing::Test {
 
     // /install is always ignored.
     LaunchProcess(not_listening_exe_path_,
-                  _T("/install"),
+                  _T("/install foobar"),
                   is_machine_,
                   address(install_process));
     ASSERT_TRUE(install_process);

@@ -60,6 +60,7 @@ gtest_env.Append(
     CCFLAGS = [
         '/wd4061',  # enumerator in switch is not handled by a case label
         '/wd4100',  # unreferenced formal parameter
+        '/wd4628',  # digraphs not supported with -Ze
         '/wd4640',  # construction of local static object is not thread-safe
         '/wd4505',  # unreferenced local function has been removed
         '/wd4548',  # expression before comma has no effect

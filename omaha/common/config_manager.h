@@ -285,6 +285,11 @@ class ConfigManager {
   // * "55.24.34": update to this specific version only.
   static CString GetTargetVersionPrefix(const GUID& app_guid);
 
+  // Returns whether the RollbackToTargetVersion policy has been set for the
+  // app. If RollbackToTargetVersion is set, the TargetVersionPrefix policy
+  // governs the version to rollback clients with higher versions to.
+  static bool IsRollbackToTargetVersionAllowed(const GUID& app_guid);
+
   // For domain-joined machines, checks the current time against the times that
   // updates are suppressed. Returns true if the current time falls between the
   // start time and the duration.

@@ -51,6 +51,7 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
     'unittest_support/chrome_certificate_09E28B26DB593EC4E73286B66499C370.dll',
     # Chrome certificate: sha1 (01/28/2014 to 01/29/2016)
     'unittest_support/chrome_certificate_2912C70C9A2B8A3EF6F6074662D68B8D.dll',
+    'unittest_support/CodeRed.crx3',
     'unittest_support/GoogleUpdate_corrupted.exe',
     'unittest_support/GoogleUpdate_now_expired_cert.exe',
     'unittest_support/GoogleUpdate_old_signature.exe',
@@ -192,7 +193,6 @@ omaha_unittest_libs = [
     '$LIB_DIR/google_update_recovery.lib',
     '$LIB_DIR/goopdate_lib.lib',
     '$LIB_DIR/gtest.lib',
-    '$LIB_DIR/libprotobuf.lib',
     '$LIB_DIR/logging.lib',
     '$LIB_DIR/lzma.lib',
     '$LIB_DIR/net.lib',
@@ -265,6 +265,7 @@ omaha_unittest_env.Append(
         '/wd4100',  # unreferenced formal parameter
         '/wd4388',  # signed/unsigned mismatch
         '/wd4389',  # signed/unsigned mismatch
+        '/wd4628',  # digraphs not supported with -Ze
         '/wd4826',  # Conversion from 'type_1' to 'type_2' is sign-extended.
 
         # Disable static analysis warnings.

@@ -77,7 +77,7 @@ const TCHAR* const kUrlMoreInfo =
 
 // Code Red check url.
 const TCHAR* const kUrlCodeRedCheck =
-    _T("https://clients2.") COMPANY_DOMAIN _T("/service/check2");
+    _T("https://clients2.") COMPANY_DOMAIN _T("/service/check2?crx3=true");
 
 // Usage stats url.
 const TCHAR* const kUrlUsageStatsReport =

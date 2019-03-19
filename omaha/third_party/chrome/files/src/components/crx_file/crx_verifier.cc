@@ -35,11 +35,14 @@
 #include "crypto/signature_verifier.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/file.h"
+#include "omaha/base/scope_guard.h"
 #include "omaha/base/security/sha256.h"
 #include "omaha/base/signatures.h"
+#include "omaha/base/utils.h"
 #include "omaha/net/cup_ecdsa_utils.h"
 #include "third_party/bar/shared_ptr.h"
 #include "third_party/chrome/files/src/components/crx_file/crx3.pb.h"
+#include "third_party/libzip/lib/zip.h"
 
 namespace crx_file {
 
@@ -253,6 +256,165 @@ VerifierResult VerifyCrx3(
   return VerifierResult::OK_FULL;
 }
 
+int ReadBuffer(uint8_t* buffer, int length, omaha::File* file) {
+  ASSERT1(sizeof(byte) == sizeof(uint8_t));
+  uint32 bytes_read = 0;
+  HRESULT hr = file->Read(length, reinterpret_cast<byte*>(buffer), &bytes_read);
+  if (FAILED(hr)) {
+    return -1;
+  }
+
+  return bytes_read;
+}
+
+uint32_t ReadLittleEndianUInt32(omaha::File* file) {
+  uint8_t buffer[4] = {};
+  if (ReadBuffer(buffer, 4, file) != 4) {
+    return UINT32_MAX;
+  }
+  return buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0];
+}
+
+HRESULT ReadArchiveAndWrite(omaha::File* file, const CPath& write_to) {
+  omaha::File write_to_file;
+  HRESULT hr = write_to_file.Open(write_to, true, false);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  uint8_t buffer[1 << 12] = {};
+  size_t len = 0;
+  while ((len = ReadBuffer(buffer, arraysize(buffer), file)) > 0) {
+    uint32 bytes_written(0);
+    HRESULT hr = write_to_file.Write(buffer, len, &bytes_written);
+    if (FAILED(hr) || bytes_written != len) {
+      return hr;
+    }
+  }
+
+  return S_OK;
+}
+
+// Reduces a Crx3 file into a corresponding Zip file sans the Crx3 headers.
+bool Crx3ToZip(const CPath& crx_path, const CPath& zip_path) {
+  if (!omaha::File::Exists(crx_path)) {
+    return false;
+  }
+
+  omaha::File file;
+  HRESULT hr = file.Open(crx_path, false, false);
+  if (FAILED(hr)) {
+    return false;
+  }
+
+  char buffer[kCrx2FileHeaderMagicSize] = {};
+  uint32 bytes_read = 0;
+  if (FAILED(file.Read(kCrx2FileHeaderMagicSize,
+                       reinterpret_cast<byte *>(buffer),
+                       &bytes_read)) ||
+      bytes_read != kCrx2FileHeaderMagicSize) {
+    return false;
+  }
+
+  if (strncmp(buffer, kCrxDiffFileHeaderMagic, kCrx2FileHeaderMagicSize) &&
+      strncmp(buffer, kCrx2FileHeaderMagic, kCrx2FileHeaderMagicSize)) {
+    return false;
+  }
+
+  const uint32_t version = ReadLittleEndianUInt32(&file);
+  if (version != 3) {
+    return false;
+  }
+
+  const uint32_t header_size = ReadLittleEndianUInt32(&file);
+  if (header_size > kMaxHeaderSize) {
+    return false;
+  }
+
+  // Skip the crx header which contains the following:
+  //   [crx-magic] + [version] + [header-size] + [header].
+  hr = file.SeekFromBegin(12 + header_size);
+  if (FAILED(hr)) {
+    return false;
+  }
+
+  if (FAILED(ReadArchiveAndWrite(&file, zip_path))) {
+    return false;
+  }
+
+  return true;
+}
+
+// Unzips the given zip file |zip_file_path| into the directory |to_dir|.
+bool Unzip(const CPath& zip_file_path, const CPath& to_dir) {
+  HRESULT hr = omaha::CreateDir(to_dir, NULL);
+  if (FAILED(hr)) {
+    return false;
+  }
+
+  struct zip* zip_archive = zip_open(CT2A(zip_file_path), 0, NULL);
+  if (!zip_archive) {
+    return false;
+  }
+  omaha::ScopeGuard zip_close_guard = omaha::MakeGuard(zip_close, zip_archive);
+
+  const zip_int64_t num_entries = zip_get_num_entries(zip_archive, 0);
+  for (zip_int64_t i = 0; i < num_entries; ++i) {
+    struct zip_stat zip_entry_information = {};
+    if (zip_stat_index(zip_archive, i, 0, &zip_entry_information)) {
+      continue;
+    }
+
+    size_t len = strlen(zip_entry_information.name);
+    if (!len) {
+      return false;
+    }
+
+    if (zip_entry_information.name[len - 1] == '/' ||
+        zip_entry_information.name[len - 1] == '\\') {
+      CPathA sub_directory = CT2A(to_dir);
+      sub_directory += zip_entry_information.name;
+      omaha::CreateDir(CA2T(sub_directory), NULL);
+
+      continue;
+    }
+
+    struct zip_file* zip_entry_file = zip_fopen_index(zip_archive, i, 0);
+    if (!zip_entry_file) {
+      return false;
+    }
+    omaha::ScopeGuard zip_fclose_guard =
+        omaha::MakeGuard(zip_fclose, zip_entry_file);
+
+    CPathA output_file = CT2A(to_dir);
+    output_file += zip_entry_information.name;
+
+    omaha::File file;
+    HRESULT hr = file.Open(CString(output_file), true, false);
+    if (FAILED(hr)) {
+      return false;
+    }
+
+    for (zip_uint64_t sum = 0; sum != zip_entry_information.size;) {
+      byte buf[100] = {};
+      zip_int64_t read_len = zip_fread(zip_entry_file, buf, arraysize(buf));
+      if (read_len < 0) {
+        return false;
+      }
+
+      uint32 bytes_written = 0;
+      if (FAILED(file.Write(buf, read_len, &bytes_written)) ||
+          bytes_written != read_len) {
+        return false;
+      }
+
+      sum += read_len;
+    }
+  }
+
+  return true;
+}
+
 }  // namespace
 
 VerifierResult Verify(
@@ -330,6 +492,21 @@ VerifierResult Verify(
     *crx_id = crx_id_local;
   }
   return diff ? VerifierResult::OK_DELTA : VerifierResult::OK_FULL;
+}
+
+bool Crx3Unzip(const CPath& crx_path, const CPath& to_dir) {
+  HRESULT hr = omaha::CreateDir(to_dir, NULL);
+  if (FAILED(hr)) {
+    return false;
+  }
+
+  const CString zip = omaha::GetTempFilenameAt(to_dir, _T("C3U"));
+  if (zip.IsEmpty()) {
+    return false;
+  }
+
+  const CPath zip_path = zip;
+  return Crx3ToZip(crx_path, zip_path) ? Unzip(zip_path, to_dir) : false;
 }
 
 }  // namespace crx_file

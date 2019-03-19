@@ -47,6 +47,8 @@ ADMX_ENVIRONMENT = '''
           displayName="$(string.Sup_GoogleUpdate1_3_26_0)" />
       <definition name="Sup_GoogleUpdate1_3_33_5"
           displayName="$(string.Sup_GoogleUpdate1_3_33_5)" />
+      <definition name="Sup_GoogleUpdate1_3_34_3"
+          displayName="$(string.Sup_GoogleUpdate1_3_34_3)" />
     </definitions>
   </supportedOn>
 '''
@@ -125,7 +127,7 @@ ADMX_POLICIES = r'''
         <decimal id="Part_UpdateCheckSuppressedDurationMin"
             key="Software\Policies\Google\Update"
             valueName="UpdatesSuppressedDurationMin"
-            required="true" minValue="1" maxValue="720" />
+            required="true" minValue="1" maxValue="960" />
       </elements>
     </policy>
     <policy name="Pol_ProxyMode" class="Machine"
@@ -292,6 +294,17 @@ ADMX_APP_POLICY_TEMPLATE = '''\
         <text id="Part_TargetVersionPrefix"
             valueName="TargetVersionPrefix%(AppGuid)s" />
       </elements>
+    </policy>
+    <policy name="Pol_RollbackToTargetVersion%(AppLegalId)s" class="Machine"
+        displayName="$(string.Pol_RollbackToTargetVersion)"
+        explainText="$(string.Explain_RollbackToTargetVersion%(AppLegalId)s)"
+        presentation="$(presentation.Pol_RollbackToTargetVersion)"
+        key="%(RootPolicyKey)s"
+        valueName="RollbackToTargetVersion%(AppGuid)s">
+      <parentCategory ref="Cat_%(AppLegalId)s" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_34_3" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
     </policy>'''
 
 ADMX_FOOTER = '</policyDefinitions>'
@@ -409,6 +422,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Sup_GoogleUpdate1_3_21_81', 'At least Google Update 1.3.21.81'),
     ('Sup_GoogleUpdate1_3_26_0', 'At least Google Update 1.3.26.0'),
     ('Sup_GoogleUpdate1_3_33_5', 'At least Google Update 1.3.33.5'),
+    ('Sup_GoogleUpdate1_3_34_3', 'At least Google Update 1.3.34.3'),
     ('Cat_GoogleUpdate', 'Google Update'),
     ('Cat_Preferences', 'Preferences'),
     ('Cat_ProxyServer', 'Proxy Server'),
@@ -426,6 +440,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Pol_DefaultUpdatePolicy', 'Update policy override default'),
     ('Pol_UpdatePolicy', 'Update policy override'),
     ('Pol_TargetVersionPrefix', 'Target version prefix override'),
+    ('Pol_RollbackToTargetVersion', 'Rollback to Target version override'),
     ('Part_AutoUpdateCheckPeriod', 'Minutes between update checks'),
     ('Part_UpdateCheckSuppressedStartHour',
      'Hour in a day that start to suppress update check'),
@@ -571,6 +586,7 @@ ADML_PRESENTATIONS = '''\
           <defaultValue></defaultValue>
         </textBox>
       </presentation>
+      <presentation id="Pol_RollbackToTargetVersion" />
 '''
 
 ADML_RESOURCE_TABLE_TEMPLATE = '''
@@ -658,6 +674,25 @@ def GenerateGroupPolicyTemplateAdml(apps):
         '4) Policy value is "55.24.34", the app will be updated to this '
         'specific version only.' % app_name)
     string_definition_list.append(app_target_version_prefix_explanation)
+
+    app_rollback_to_target_version_explanation = (
+        'Explain_RollbackToTargetVersion' + app_legal_id,
+        'Specifies that Google Update should roll installations of %s back to '
+        'the version indicated by "Target version override".\n\n'
+        'This policy setting has no effect unless "Target version override" is '
+        'set.\n\n'
+        'If this policy is not configured or is disabled, installs that have a '
+        'version higher than that specified by "Target version override" will '
+        'be left as-is.\n\n'
+        'If this policy is enabled, installs that have a version higher than '
+        'that specified by "Target version override" will be downgraded to the '
+        'highest available version that matches the target version.\n\n'
+        'This policy is meant to serve as temporary measure when Enterprise '
+        'Administrators need to downgrade for business reasons. To ensure '
+        'users are protected by the latest security updates, the most recent '
+        'version should be used. When versions are downgraded to older '
+        'versions, there could be incompatibilities.\n' % app_name)
+    string_definition_list.append(app_rollback_to_target_version_explanation)
 
   app_resource_strings = []
   for entry in string_definition_list:

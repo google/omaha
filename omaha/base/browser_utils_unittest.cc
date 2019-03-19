@@ -18,6 +18,7 @@
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
+#include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 
@@ -223,15 +224,13 @@ TEST(BrowserUtilsTest, GetBrowserImagePath_AllSupportedBrowsers) {
     return;
   }
 
-  CString program_files_path;
-  EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES | CSIDL_FLAG_DONT_VERIFY,
-                                 &program_files_path));
   CString path;
 
   HRESULT hr = GetBrowserImagePath(BROWSER_IE, &path);
   if (SUCCEEDED(hr)) {
-    EXPECT_EQ(0, path.CompareNoCase(program_files_path +
-                                    _T("\\Internet Explorer\\iexplore.exe")))
+    EXPECT_TRUE(File::Exists(path));
+    EXPECT_TRUE(
+        String_EndsWith(path, _T("\\Internet Explorer\\iexplore.exe"), true))
         << _T("Actual path: ") << path.GetString();
   } else {
     EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), hr);
@@ -239,13 +238,12 @@ TEST(BrowserUtilsTest, GetBrowserImagePath_AllSupportedBrowsers) {
 
   hr = GetBrowserImagePath(BROWSER_FIREFOX, &path);
   if (SUCCEEDED(hr)) {
+    EXPECT_TRUE(File::Exists(path));
     EXPECT_TRUE(
-        0 == path.CompareNoCase(program_files_path +
-                                _T("\\Mozilla Firefox\\firefox.exe")) ||
+        String_EndsWith(path, _T("\\Mozilla Firefox\\firefox.exe"), true) ||
         0 == path.CompareNoCase(
                                 _T("C:\\PROGRA~1\\MOZILL~1\\FIREFOX.EXE")) ||
-        0 == path.CompareNoCase(program_files_path +
-                                _T("\\Minefield\\FIREFOX.EXE")))  // Trunk build
+        String_EndsWith(path, _T("\\Minefield\\FIREFOX.EXE"), true))
         << _T("Actual path: ") << path.GetString();
   } else {
     EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), hr);
@@ -253,12 +251,8 @@ TEST(BrowserUtilsTest, GetBrowserImagePath_AllSupportedBrowsers) {
 
   hr = GetBrowserImagePath(BROWSER_CHROME, &path);
   if (SUCCEEDED(hr)) {
-    EXPECT_TRUE(
-        0 == path.CompareNoCase(program_files_path +
-                            _T("\\Google\\Chrome\\Application\\chrome.exe")) ||
-        0 == path.CompareNoCase(
-            GetLocalAppDataPath() +
-            _T("Google\\Chrome\\Application\\chrome.exe")))
+    EXPECT_TRUE(File::Exists(path));
+    EXPECT_TRUE(String_EndsWith(path, _T("\\Application\\chrome.exe"), true))
         << _T("Actual path: ") << path.GetString();
   } else {
     EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), hr);

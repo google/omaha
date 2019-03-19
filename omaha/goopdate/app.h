@@ -332,6 +332,10 @@ class App : public ModelObject {
   // disabled by Group Policy.
   HRESULT CheckGroupPolicy() const;
 
+  // Returns whether the RollbackToTargetVersion policy has been set for the
+  // app.
+  bool IsRollbackToTargetVersionAllowed() const;
+
   // Returns the target version prefix for the app, if the machine is joined to
   // a domain and has the corresponding group policy set.
   CString GetTargetVersionPrefix() const;

@@ -71,7 +71,6 @@ HRESULT DoInstallApps(BundleInstaller* installer,
                       IAppBundle* app_bundle,
                       bool is_machine,
                       bool is_interactive,
-                      bool is_update_all_apps,
                       BrowserType browser_type,
                       bool* has_ui_been_displayed);
 

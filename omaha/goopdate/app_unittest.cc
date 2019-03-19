@@ -349,11 +349,7 @@ TEST_F(AppAutoUpdateTest,
                  std::vector<xml::response::Data>());
   app_->put_serverInstallDataIndex(CComBSTR(_T("NonExistent")));
 
-  // Supress the Assert because the XML parser creation fails at
-  // App::PostUpdateCheck() due to registry redirection.
-  ExpectAsserts expect_asserts;
   app_->PostUpdateCheck(S_OK, update_response_.get());
-
   EXPECT_EQ(STATE_ERROR, app_->state());
   EXPECT_EQ(GOOPDATE_E_INVALID_INSTALL_DATA_INDEX, app_->error_code());
 }
@@ -471,7 +467,7 @@ TEST_P(AppManualUpdateTest, QueueDownload_InstallDisabled) {
   EXPECT_EQ(S_OK, app_->error_code());
 }
 
-TEST_F(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled_NoPolicy) {
+TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled_NoPolicy) {
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
