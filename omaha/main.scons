@@ -101,15 +101,15 @@ _BUILD_SERVER_CERTIFICATE_HASH = 'CB7E84887F3C6015FE7EDFB4F8F36DF7DC10590E'
 # The set of expected values are in omaha_version_utils.
 # Defaults to VC140 if the environment variable is not specified.
 _msc_ver = int(os.getenv('OMAHA_MSC_VER', "1900"))
-
-_default_sdk_dir = ('$THIRD_PARTY/%s/files' %
-    {omaha_version_utils.VC141:'windows_sdk/windows_sdk_10',
+_sdk_dir = os.getenv('WindowsSdkDir', os.getenv('OMAHA_PLATFORM_SDK_DIR'))
+if (_sdk_dir is None):
+    _sdk_dir = ('$THIRD_PARTY/%s/files' %
+   { omaha_version_utils.VC160:'windows_sdk/windows_sdk_10',
+     omaha_version_utils.VC141:'windows_sdk/windows_sdk_10',
      omaha_version_utils.VC140:'windows_sdk/windows_sdk_10',
      omaha_version_utils.VC120:'windows_sdk_8_1',
      omaha_version_utils.VC100:'platformsdk_vc_10_0',
      omaha_version_utils.VC80:'platformsdk/v6_1' }[_msc_ver])
-
-_sdk_dir = os.getenv('OMAHA_PLATFORM_SDK_DIR', _default_sdk_dir)
 
 _sdk_version = os.getenv('OMAHA_WINDOWS_SDK_10_0_VERSION', None)
 
@@ -131,14 +131,16 @@ win_env = Environment(
     tools=[
         'component_setup',
         'target_platform_windows',
-        { omaha_version_utils.VC141:'windows_vc14_1',
+        { omaha_version_utils.VC160:'windows_vc16_0',
+          omaha_version_utils.VC141:'windows_vc14_1',
           omaha_version_utils.VC140:'windows_vc14_0',
           omaha_version_utils.VC120:'windows_vc12_0',
           omaha_version_utils.VC100:'windows_vc10_0',
           omaha_version_utils.VC80:'target_platform_windows' }[_msc_ver],
         'masm',         # Use 'masm' to override the 'as' tool currently
                         # used by default in 'target_platform_windows'
-        { omaha_version_utils.VC141:'atlmfc_vc14_1',
+        { omaha_version_utils.VC160:'atlmfc_vc16_0',
+          omaha_version_utils.VC141:'atlmfc_vc14_1',
           omaha_version_utils.VC140:'atlmfc_vc14_0',
           omaha_version_utils.VC120:'atlmfc_vc12_0',
           omaha_version_utils.VC100:'atlmfc_vc10_0',
