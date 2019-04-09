@@ -29,7 +29,6 @@ local_env.Append(
 )
 
 inputs = [
-    'bind_status_callback.cc',
     'bits_request.cc',
     'bits_job_callback.cc',
     'bits_utils.cc',
