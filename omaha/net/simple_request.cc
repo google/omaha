@@ -300,8 +300,9 @@ HRESULT SimpleRequest::DoSend() {
 }
 
 HRESULT SimpleRequest::Connect() {
+  // Crack the url without decoding already escaped characters.
   HRESULT hr = winhttp_adapter_->CrackUrl(url_,
-                                          ICU_DECODE,
+                                          0,
                                           &request_state_->scheme,
                                           &request_state_->server,
                                           &request_state_->port,
