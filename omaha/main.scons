@@ -523,7 +523,6 @@ win_env.AppendUnique(
         '$MAIN_DIR/third_party/chrome/files/src',
         '$THIRD_PARTY/breakpad/src',
         '$THIRD_PARTY/libzip/lib',
-        '$THIRD_PARTY/libzip/xcode',
     ],
 
     # Defines for windows environment.
