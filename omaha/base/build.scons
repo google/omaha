@@ -239,6 +239,7 @@ cc_files += ['zlib/' +
 """ Add libzip library files."""
 
 libzip_src_path = '$THIRD_PARTY/libzip/lib/'
+libzip_src_xcode_path = '$THIRD_PARTY/libzip/xcode'
 libzip_src_path_dir = local_env.Dir(libzip_src_path)
 local_env.Dir('libzip').addRepository(libzip_src_path_dir)
 libzip_gladman_src_path = '$THIRD_PARTY/libzip/lib/gladman-fcrypt'
@@ -251,6 +252,7 @@ local_env.Append(
         'libzip/',
         libzip_gladman_src_path,
         libzip_src_path,
+        libzip_src_xcode_path,
         zlib_src_path,
     ],
     CCFLAGS=[
