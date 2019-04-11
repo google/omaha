@@ -15,7 +15,9 @@
 
 Import('env')
 
+import functools
 import glob
+import operator
 import os
 import os.path
 
@@ -259,14 +261,19 @@ local_env.Append(
     ],
 )
 
+cc_files_exclusions = [
+    '*unix*.c',
+    'zip_crypto_[cgmo]*.c',
+    'zip_source_file.c',
+    'zip_random_uwp.c',
+    'zip_winzip_aes.c',
+    '*bzip2.c',
+    'zip_source_winzip_aes_*.c'
+]
 cc_files += ['libzip/' + os.path.basename(x) for x in list(
-    set(glob.glob(libzip_src_path_dir.path + os.sep + '*.c')) -
-    set(glob.glob(libzip_src_path_dir.path + os.sep + '*unix*.c')) -
-    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_crypto_[cgo]*.c')) -
-    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_source_file.c')) -
-    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_random_uwp.c')) -
-    set(glob.glob(libzip_src_path_dir.path + os.sep + 'zip_winzip_aes.c')) -
-    set(glob.glob(libzip_src_path_dir.path + os.sep + '*bzip2.c')))]
+    set(glob.glob(os.sep.join([libzip_src_path_dir.path, '*.c']))) -
+    set(reduce(operator.concat, map (lambda x : glob.glob(
+      os.sep.join([libzip_src_path_dir.path, x])), cc_files_exclusions))))]
 
 local_env.ComponentStaticLibraryMultiarch(
     'crx_file', cc_files, COMPONENT_STATIC=True, use_pch_default=False)
