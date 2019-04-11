@@ -1,3 +1,29 @@
+## 2019-04-11 @239101812,243143382
+
+### Changes
+--------------------------------------------------------------------------------
+Fix spelling error s/accomodate/accommodate.
+--------------------------------------------------------------------------------
+Fix hardcoded Google company name in UtilsTest.AddAllowedAceRegistry.
+--------------------------------------------------------------------------------
+Update SaveArguments.exe to fix broken daily unit tests.
+--------------------------------------------------------------------------------
+Assorted Google Update policy template fixes.
+- Fix a line ending issue preventing all but the first sentence in the
+RollbackToTargetVersion .adm documentation from appearing in the policy editor.
+- .adm template now calls the TargetVersionPrefix policy "Target version
+prefix override" (matches .adml).
+- Both templates now call the RollbackToTargetVersion policy "Rollback to
+Target version" (rather than "Rollback version override" (.adm) or
+"Rollback to Target version override" (.admx)).
+- Minor typographical tweaks to the TargetVersionPrefix examples.
+- Fix a regression introduced in cl/159509609 whereby part of the per-app
+Update policy documentation was accidentally moved to the TargetVersionPrefix
+documentation.
+--------------------------------------------------------------------------------
+Delete unused file marquee.avi.
+--------------------------------------------------------------------------------
+
 ## 2019-03-19 @226393815,239101811
 
 ### Changes
