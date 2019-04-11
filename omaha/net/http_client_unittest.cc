@@ -227,6 +227,45 @@ TEST_F(HttpClientTest, CrackUrl) {
   ASSERT_STREQ(path, _T("/path"));
   ASSERT_STREQ(query, _T("?query"));
 
+  CString url = _T("http://host/path/oper?P1=11&P2=22%2b33%3d%3d");
+  ASSERT_SUCCEEDED(http_client_->CrackUrl(url,
+                                          ICU_DECODE,
+                                          &scheme,
+                                          &server,
+                                          &port,
+                                          &path,
+                                          &query));
+  ASSERT_STREQ(scheme, _T("http"));
+  ASSERT_STREQ(server, _T("host"));
+  ASSERT_EQ(port, INTERNET_DEFAULT_HTTP_PORT);
+  ASSERT_STREQ(path, _T("/path/oper"));
+  ASSERT_STREQ(query, _T("?P1=11&P2=22+33=="));
+
+  ASSERT_SUCCEEDED(http_client_->CrackUrl(url,
+                                          0,
+                                          &scheme,
+                                          &server,
+                                          &port,
+                                          &path,
+                                          &query));
+  ASSERT_STREQ(scheme, _T("http"));
+  ASSERT_STREQ(server, _T("host"));
+  ASSERT_EQ(port, INTERNET_DEFAULT_HTTP_PORT);
+  ASSERT_STREQ(path, _T("/path/oper"));
+  ASSERT_STREQ(query, _T("?P1=11&P2=22%2b33%3d%3d"));
+
+  ASSERT_SUCCEEDED(http_client_->CrackUrl(url,
+                                          0,
+                                          &scheme,
+                                          &server,
+                                          &port,
+                                          &path,
+                                          NULL));
+  ASSERT_STREQ(scheme, _T("http"));
+  ASSERT_STREQ(server, _T("host"));
+  ASSERT_EQ(port, INTERNET_DEFAULT_HTTP_PORT);
+  ASSERT_STREQ(path, _T("/path/oper?P1=11&P2=22%2b33%3d%3d"));
+
   ASSERT_SUCCEEDED(http_client_->CrackUrl(_T("http://host"),
                                           0,
                                           NULL,
