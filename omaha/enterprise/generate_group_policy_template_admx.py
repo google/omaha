@@ -440,7 +440,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Pol_DefaultUpdatePolicy', 'Update policy override default'),
     ('Pol_UpdatePolicy', 'Update policy override'),
     ('Pol_TargetVersionPrefix', 'Target version prefix override'),
-    ('Pol_RollbackToTargetVersion', 'Rollback to Target version override'),
+    ('Pol_RollbackToTargetVersion', 'Rollback to Target version'),
     ('Part_AutoUpdateCheckPeriod', 'Minutes between update checks'),
     ('Part_UpdateCheckSuppressedStartHour',
      'Hour in a day that start to suppress update check'),
@@ -666,27 +666,28 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'Specifies which version %s should be updated to.\n\n'
         'When this policy is enabled, the app will be updated to the version '
         'prefixed with this policy value.\n\nSome examples:\n'
-        '1) Not configured: app will be update to latest version available.\n'
-        '2) Policy value is set to "55.", the app will be updated to any minor '
-        'version of 55 (e.g. 55.24.34 or 55.60.2).\n'
-        '3) Policy value is "55.2.", the app will be updated to any minor '
-        'version of 55.2 (e.g. 55.2.34 or 55.2.2).\n'
-        '4) Policy value is "55.24.34", the app will be updated to this '
+        '1) Not configured: app will be updated to the latest version '
+        'available.\n'
+        '2) Policy value is set to "55.": the app will be updated to any minor '
+        'version of 55 (e.g., 55.24.34 or 55.60.2).\n'
+        '3) Policy value is "55.2.": the app will be updated to any minor '
+        'version of 55.2 (e.g., 55.2.34 or 55.2.2).\n'
+        '4) Policy value is "55.24.34": the app will be updated to this '
         'specific version only.' % app_name)
     string_definition_list.append(app_target_version_prefix_explanation)
 
     app_rollback_to_target_version_explanation = (
         'Explain_RollbackToTargetVersion' + app_legal_id,
         'Specifies that Google Update should roll installations of %s back to '
-        'the version indicated by "Target version override".\n\n'
-        'This policy setting has no effect unless "Target version override" is '
-        'set.\n\n'
+        'the version indicated by "Target version prefix override".\n\n'
+        'This policy setting has no effect unless "Target version prefix '
+        'override" is set.\n\n'
         'If this policy is not configured or is disabled, installs that have a '
-        'version higher than that specified by "Target version override" will '
-        'be left as-is.\n\n'
+        'version higher than that specified by "Target version prefix '
+        'override" will be left as-is.\n\n'
         'If this policy is enabled, installs that have a version higher than '
-        'that specified by "Target version override" will be downgraded to the '
-        'highest available version that matches the target version.\n\n'
+        'that specified by "Target version prefix override" will be downgraded '
+        'to the highest available version that matches the target version.\n\n'
         'This policy is meant to serve as temporary measure when Enterprise '
         'Administrators need to downgrade for business reasons. To ensure '
         'users are protected by the latest security updates, the most recent '

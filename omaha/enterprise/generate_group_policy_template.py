@@ -263,8 +263,8 @@ APPLICATIONS_FOOTER = """
 ALLOW_INSTALLATION_POLICY = 'Allow installation'
 DEFAULT_ALLOW_INSTALLATION_POLICY = ALLOW_INSTALLATION_POLICY + ' default'
 UPDATE_POLICY = 'Update policy override'
-TARGET_VERSION_POLICY = 'Target version override'
-ROLLBACK_VERSION_POLICY = 'Rollback version override'
+TARGET_VERSION_POLICY = 'Target version prefix override'
+ROLLBACK_VERSION_POLICY = 'Rollback to Target version'
 DEFAULT_UPDATE_POLICY = UPDATE_POLICY + ' default'
 
 # Update policy options that are used in multiple locations.
@@ -343,7 +343,7 @@ Cat_$AppLegalId$=$AppName$
 # pylint: disable-msg=C6310
 # pylint: disable-msg=C6013
 
-# "application's" should be preceeded by a different word in different contexts.
+# "application's" should be preceded by a different word in different contexts.
 # The word is specified by replacing the $PreApplicationWord$ token.
 STRINGS_UPDATE_POLICY_OPTIONS = """\
     \\n\\nOptions:\\
@@ -402,23 +402,24 @@ Explain_Install$AppLegalId$=Specifies whether $AppName$ can be installed using G
     \\n\\nIf this policy is not configured, $AppName$ can be installed as specified by \"""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """\".
 
 Explain_AutoUpdate$AppLegalId$=Specifies how Google Update handles available $AppName$ updates from Google.\\
-    \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" + DEFAULT_UPDATE_POLICY + """\".
+    \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" + DEFAULT_UPDATE_POLICY + """\".\\
+""" +
+STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpdateExplainExtra$') + """
 
 Explain_TargetVersionPrefix$AppLegalId$=Specifies which version $AppName$ should be updated to.\\
     \\n\\nWhen this policy is enabled, the app will be updated to the version prefixed with this policy value.\\
     \\n\\nSome examples:\\n\\
-    1) Not configured: app will be update to latest version available.\\n\\
-    2) Policy value is set to "55.", the app will be updated to any minor version of 55 (e.g. 55.24.34 or 55.60.2).\\n\\
-    3) Policy value is "55.2.", the app will be updated to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).\\n\\
-    4) Policy value is "55.24.34", the app will be updated to this specific version only.
+    1) Not configured: app will be updated to the latest version available.\\n\\
+    2) Policy value is set to "55.": the app will be updated to any minor version of 55 (e.g., 55.24.34 or 55.60.2).\\n\\
+    3) Policy value is "55.2.": the app will be updated to any minor version of 55.2 (e.g., 55.2.34 or 55.2.2).\\n\\
+    4) Policy value is "55.24.34": the app will be updated to this specific version only.
 
-Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should roll installations of $AppName$ back to the version indicated by \"""" + TARGET_VERSION_POLICY + """\".
+Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should roll installations of $AppName$ back to the version indicated by \"""" + TARGET_VERSION_POLICY + """\".\\
     \\n\\nThis policy setting has no effect unless \"""" + TARGET_VERSION_POLICY + """\" is set.\\
     \\n\\nIf this policy is not configured or is disabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be left as-is.\\
     \\n\\nIf this policy is enabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be downgraded to the highest available version that matches the target version.\\
-    \\n\\nThis policy is meant to serve as temporary measure when Enterprise Administrators need to downgrade for business reasons. To ensure users are protected by the latest security updates, the most recent version should be used. When versions are downgraded to older versions, there could be incompatibilities.\\n\\
-""" +
-STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpdateExplainExtra$\n')
+    \\n\\nThis policy is meant to serve as temporary measure when Enterprise Administrators need to downgrade for business reasons. To ensure users are protected by the latest security updates, the most recent version should be used. When versions are downgraded to older versions, there could be incompatibilities.
+"""
 
 # pylint: enable-msg=C6013
 # pylint: enable-msg=C6310

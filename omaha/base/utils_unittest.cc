@@ -635,8 +635,8 @@ TEST(UtilsTest, AddAllowedAce) {
 }
 
 TEST(UtilsTest, AddAllowedAceRegistry) {
-  const CString object_name =
-      _T("CURRENT_USER\\SOFTWARE\\Google\\Update\\AddAllowedAceRegistryTest");
+  const CString object_name = _T("CURRENT_USER\\SOFTWARE\\") GOOPDATE_MAIN_KEY
+      _T("AddAllowedAceRegistryTest");
 
   // The registry and DACL security APIs expect different prefixes for the
   // registry hives.
