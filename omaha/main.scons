@@ -684,7 +684,7 @@ if _msc_ver >= omaha_version_utils.VC120 and not win_env.Bit('build_server'):
   win_env.AppendUnique(
       # Forces writes to the program database (PDB) file to allow otherwise,
       # for some reason, optimized builds fail when run with -j option.
-      CCFLAGS = ['/FS', '/MP']
+      CCFLAGS = ['/FS']
   )
 
 # Allow verification of these settings in the build log.
@@ -850,7 +850,6 @@ windows_optimized_env.AppendUnique(
         '/O1',        # Optimize for small size.
         '/Oy-',       # Disable frame pointer omission.
         '/GS',
-        '/FD',
         '/GL',        # Global optimization goes with link flag '/LTCG'
         '/MT',
         ],
