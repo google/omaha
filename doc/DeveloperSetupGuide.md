@@ -4,7 +4,7 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2017 Update 15.9.11 and Windows SDK 10.0.17763.0.####
+#### Currently, the supported toolchain is Visual Studio 2017 Update 15.9.11 and Windows SDK 10.0.17763.0. ####
 
 # Required Downloads/Tools #
 
