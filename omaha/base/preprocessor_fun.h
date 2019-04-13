@@ -14,23 +14,8 @@
 // ========================================================================
 
 // PP_STRINGIZE - expands arguments before stringizing
-// PP_STRINGIZE(PP_CAT(a,b)) => "ab"
 
 #define PP_STRINGIZE(text)   PP_STRINGIZE_A((text))
 #define PP_STRINGIZE_A(arg)  PP_STRINGIZE_B ## (arg)
 #define PP_STRINGIZE_B(arg)  PP_STRINGIZE_I ## arg
 #define PP_STRINGIZE_I(text) #text
-
-// T_PP_STRINGIZE - expands arguments before stringizing
-// T_PP_STRINGIZE(PP_CAT(a,b)) => _T("ab")
-
-#define T_PP_STRINGIZE(text)   T_PP_STRINGIZE_A((text))
-#define T_PP_STRINGIZE_A(arg)  T_PP_STRINGIZE_B ## (arg)
-#define T_PP_STRINGIZE_B(arg)  T_PP_STRINGIZE_I ## arg
-#define T_PP_STRINGIZE_I(text) _T(#text)
-
-// PP_CAT - concatenates arguments after they have been expanded
-// PP_CAT(x, PP_CAT(y,z)) => xyz
-#define PP_CAT(a,b)   PP_CAT_I(a,b)
-#define PP_CAT_I(a,b) PP_CAT_J(a##b)
-#define PP_CAT_J(arg) arg

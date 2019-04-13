@@ -70,10 +70,6 @@ const TCHAR* const kRegValueIEAutoConfigURL = _T("AutoConfigURL");
 #define kRegKeyFirefox \
     _T("HKCR\\Applications\\FIREFOX.EXE\\shell\\open\\command")
 #define kRegValueFirefox        _T("")
-#define kFullRegKeyFirefox      _T("HKLM\\SOFTWARE\\Mozilla\\Mozilla Firefox")
-#define kRegKeyFirefoxPlugins   _T("plugins")
-#define kFirefoxCurrentVersion  _T("CurrentVersion")
-#define kFirefoxInstallDir      _T("Install Directory")
 
 // Chrome.
 #define kRegKeyChrome _T("HKCR\\Applications\\chrome.exe\\shell\\open\\command")
