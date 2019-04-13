@@ -1913,33 +1913,6 @@ bool IsClickOnceDisabled() {
   return policy == URLPOLICY_DISALLOW;
 }
 
-// This function only uses kernel32, and it is safe to call from DllMain.
-HRESULT PinModuleIntoProcess(const CString& module_name) {
-  ASSERT1(!module_name.IsEmpty());
-  static HMODULE module_handle = NULL;
-  typedef BOOL (WINAPI *Fun)(DWORD flags,
-                             LPCWSTR module_name,
-                             HMODULE* module_handle);
-
-  HINSTANCE kernel_instance = ::GetModuleHandle(_T("kernel32.dll"));
-  ASSERT1(kernel_instance);
-  Fun pfn = NULL;
-  if (GPA(kernel_instance, "GetModuleHandleExW", &pfn)) {
-    if ((*pfn)(GET_MODULE_HANDLE_EX_FLAG_PIN, module_name, &module_handle)) {
-      return S_OK;
-    }
-    ASSERT(false, (_T("GetModuleHandleExW() failed: %d"), ::GetLastError()));
-  }
-
-  module_handle = ::LoadLibrary(module_name);
-  ASSERT(NULL != module_handle, (_T("LoadLibrary fail: %d"), ::GetLastError()));
-  if (NULL == module_handle) {
-    return HRESULTFromLastError();
-  }
-
-  return S_OK;
-}
-
 bool ShellExecuteExEnsureParent(LPSHELLEXECUTEINFO shell_exec_info) {
   UTIL_LOG(L3, (_T("[ShellExecuteExEnsureParent]")));
 
