@@ -53,17 +53,6 @@ class System {
                                      uint64 *total_bytes_current_user,
                                      uint64 *free_bytes_all_users);
 
-    enum Priority {
-        LOW,
-        HIGH,
-        NORMAL,
-        IDLE
-    };
-
-    // functions to alter process/thread priority.
-    static HRESULT SetThreadPriority(enum Priority priority);
-    static HRESULT SetProcessPriority(enum Priority priority);
-
     // The three functions below start background processes via ::CreateProcess.
     // Use the ShellExecuteProcessXXX functions when starting foreground
     // processes.
@@ -95,14 +84,6 @@ class System {
         BOOL inherit_handles,
         PROCESS_INFORMATION* pi);
 
-    // Start the process with the provided token, in the specified desktop of
-    // the token's session. The caller needs to be SYSTEM.
-    static HRESULT StartProcessAsUser(HANDLE user_token,
-                                      const CString& executable_path,
-                                      const CString& parameters,
-                                      LPWSTR desktop,
-                                      PROCESS_INFORMATION* pi);
-
     // This function is similar with the function above, and it allows an
     // optional environment block to be passed as an argument.
     // When provided, the environment block should match the user which
@@ -125,17 +106,7 @@ class System {
                                        HWND hwnd,
                                        HANDLE* process_handle);
 
-    // start another process painlessly via ::ShellExecuteEx. Use this method
-    // instead of the StartProcessXXX methods that use ::CreateProcess where
-    // possible, since ::ShellExecuteEx has better behavior on Vista.
-    static HRESULT ShellExecuteCommandLine(const TCHAR* command_line_to_execute,
-                                           HWND hwnd,
-                                           HANDLE* process_handle);
-
     // memory statistics.
-
-    // max amount of memory that can be allocated without paging.
-    static HRESULT MaxPhysicalMemoryAvailable(uint64 *max_bytes);
 
     // global memory stats
     static HRESULT GetGlobalMemoryStatistics(
@@ -165,37 +136,9 @@ class System {
     // when a component is about to go idle for "awhile".
     static HRESULT EmptyProcessWorkingSet();
 
-    // returns the number of ms the system has had no user input.
-    static int GetUserIdleTime();
-
     // from ntddk.h, used as a parameter to get the process handle count.
     static const int kProcessHandleCount = 20;
     static uint32 GetProcessHandleCount();
-    static uint32 GetProcessHandleCountOld();
-
-    static void GetGuiObjectCount(uint32 *gdi, uint32 *user);
-
-    static bool IsUserIdle();
-    static bool IsUserBusy();
-    static bool IsScreensaverRunning();
-    static bool IsWorkstationLocked();
-    static bool IsUserAway();
-
-    // Is the system requiring reboot.
-    static bool IsRebooted(const TCHAR* base_file);
-
-    // Mark the system as reboot required.
-    static HRESULT MarkAsRebootRequired(const TCHAR* base_file);
-
-    // Unmark the system as reboot required.
-    static HRESULT UnmarkAsRebootRequired(const TCHAR* base_file);
-
-    // Restart the computer.
-    static HRESULT RestartComputer();
-
-    // Get the full path name of the screen saver program currently selected.
-    // If no screen saver is selected then "fileName" is empty.
-    static HRESULT GetCurrentScreenSaver(CString* fileName);
 
     // Create an instance of a COM Local Server class using either plain vanilla
     // CoCreateInstance, or using the Elevation moniker if Vista or later and
@@ -208,9 +151,6 @@ class System {
     // Attempts to adjust current process privileges.
     // Only process running with administrator privileges will succeed.
     static HRESULT AdjustPrivilege(const TCHAR* privilege, bool enable);
-
-    // Checks if the given privilege is enabled for the current process.
-    static HRESULT IsPrivilegeEnabled(const TCHAR* privilege, bool* present);
 
     // Dynamically links and calls ::WTSGetActiveConsoleSessionId(). Returns
     // kInvalidSessionId if it cannot find the export in kernel32.dll.
@@ -226,13 +166,6 @@ class System {
     // Is there a user logged on and active in the specified session?
     static bool IsSessionActive(DWORD session_id);
 
-    // Is the current process running under WinSta0.
-    static bool IsCurrentProcessInteractive();
-
-    // is the current process running under WinSta0 for the currently active
-    // session.
-    static bool IsCurrentProcessActiveAndInteractive();
-
     // Returns true if a system battery is detected and the AC line
     // status is 'offline', otherwise it returns false.
     static bool IsRunningOnBatteries();
@@ -242,8 +175,6 @@ class System {
     static HRESULT CreateChildOutputPipe(HANDLE* read, HANDLE* write);
 
   private:
-    static HRESULT GetRebootCheckDummyFileName(const TCHAR* base_file,
-                                               CString* dummy_file);
     DISALLOW_EVIL_CONSTRUCTORS(System);
 };
 

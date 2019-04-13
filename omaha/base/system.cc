@@ -17,7 +17,7 @@
 
 #include <objidl.h>
 #include <psapi.h>
-#include <winioctl.h>
+#include <winternl.h>
 #include <wtsapi32.h>
 #include "omaha/base/app_util.h"
 #include "omaha/base/commands.h"
@@ -31,7 +31,6 @@
 #include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
@@ -146,26 +145,6 @@ HRESULT System::GetProcessMemoryStatistics(uint64 *current_working_set,
   return hr;
 }
 
-HRESULT System::MaxPhysicalMemoryAvailable(uint64* max_bytes) {
-  ASSERT1(max_bytes);
-
-  *max_bytes = 0;
-
-  uint32 memory_load_percentage = 0;
-  uint64 free_physical_memory = 0;
-
-  RET_IF_FAILED(System::GetGlobalMemoryStatistics(&memory_load_percentage,
-    &free_physical_memory, NULL, NULL, NULL, NULL, NULL));
-
-  UTIL_LOG(L4, (_T("mem load %u max physical memory available %s"),
-                memory_load_percentage,
-                String_Int64ToString(free_physical_memory, 10)));
-
-  *max_bytes = free_physical_memory;
-
-  return S_OK;
-}
-
 HRESULT System::GetGlobalMemoryStatistics(uint32 *memory_load_percentage,
                                           uint64 *free_physical_memory,
                                           uint64 *total_physical_memory,
@@ -201,52 +180,6 @@ HRESULT System::EmptyProcessWorkingSet() {
                                       static_cast<SIZE_T>(-1),
                                       static_cast<SIZE_T>(-1))) {
     return HRESULTFromLastError();
-  }
-
-  return S_OK;
-}
-
-HRESULT System::SetThreadPriority(enum Priority priority) {
-  int pri;
-
-  switch (priority) {
-    case LOW: pri = THREAD_PRIORITY_BELOW_NORMAL; break;
-    case HIGH: pri = THREAD_PRIORITY_HIGHEST; break;
-    case NORMAL: pri = THREAD_PRIORITY_NORMAL; break;
-    case IDLE: pri = THREAD_PRIORITY_IDLE; break;
-    default: return E_FAIL;
-  }
-
-  if (::SetThreadPriority(GetCurrentThread(), pri)) {
-    return S_OK;
-  } else {
-    return E_FAIL;
-  }
-}
-
-HRESULT System::SetProcessPriority(enum Priority priority) {
-  DWORD pri = 0;
-  switch (priority) {
-    case LOW: pri = BELOW_NORMAL_PRIORITY_CLASS; break;
-    case HIGH: pri = ABOVE_NORMAL_PRIORITY_CLASS; break;
-    case NORMAL: pri = NORMAL_PRIORITY_CLASS; break;
-    case IDLE: return E_INVALIDARG;
-    default: return E_INVALIDARG;
-  }
-
-  DWORD pid = ::GetCurrentProcessId();
-
-  scoped_handle handle(::OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid));
-  if (!valid(handle)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[::OpenProcess failed][%u][0x%x]"), pid, hr));
-    return hr;
-  }
-
-  if (!::SetPriorityClass(get(handle), pri)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LE, (_T("[::SetPriorityClass failed][%u][0x%x]"), pid, hr));
-    return hr;
   }
 
   return S_OK;
@@ -396,28 +329,6 @@ HRESULT System::StartCommandLine(const TCHAR* command_line_to_execute) {
   return hr;
 }
 
-// Adaptor for System::StartProcessAsUserWithEnvironment().
-HRESULT System::StartProcessAsUser(HANDLE user_token,
-                                   const CString& executable_path,
-                                   const CString& parameters,
-                                   LPWSTR desktop,
-                                   PROCESS_INFORMATION* pi) {
-  void* env_block(NULL);
-  if (!::CreateEnvironmentBlock(&env_block, user_token, TRUE)) {
-    HRESULT hr = HRESULTFromLastError();
-    ASSERT(false, (_T("[::CreateEnvironmentBlock failed][0x%x]"), hr));
-    return hr;
-  }
-  ON_SCOPE_EXIT(::DestroyEnvironmentBlock, env_block);
-  return System::StartProcessAsUserWithEnvironment(
-      user_token,
-      executable_path,
-      parameters,
-      desktop,
-      env_block,
-      pi);
-}
-
 // TODO(omaha3): Unit test this method.
 HRESULT System::StartProcessAsUserWithEnvironment(
     HANDLE user_token,
@@ -513,120 +424,17 @@ HRESULT System::ShellExecuteProcess(const TCHAR* file_name_to_execute,
   return S_OK;
 }
 
-// start another process painlessly via ::ShellExecuteEx. Use this method
-// instead of the StartProcessXXX methods that use ::CreateProcess where
-// possible, since ::ShellExecuteEx has better behavior on Windows Vista.
-HRESULT System::ShellExecuteCommandLine(const TCHAR* command_line_to_execute,
-                                        HWND hwnd,
-                                        HANDLE* process_handle) {
-  ASSERT1(command_line_to_execute);
-
-  CString exe;
-  CString args;
-
-  HRESULT hr = CommandParsingSimple::SplitExeAndArgs(command_line_to_execute,
-                                                     &exe,
-                                                     &args);
-
-  if (SUCCEEDED(hr)) {
-    hr = System::ShellExecuteProcess(exe, args, hwnd, process_handle);
-    if (FAILED(hr)) {
-      UTIL_LOG(LEVEL_ERROR, (_T("[System::ShellExecuteProcess failed]")
-                             _T("[%s][%s][0x%08x]"), exe, args, hr));
-    }
-  }
-
-  return hr;
-}
-
-// returns the number of ms the system has had no user input
-int System::GetUserIdleTime() {
-  LASTINPUTINFO last_input_info;
-  last_input_info.cbSize = sizeof(LASTINPUTINFO);
-  // get time in windows ticks since system start of last activity
-  BOOL b = GetLastInputInfo(&last_input_info);
-  if (b == TRUE) {
-    return (GetTickCount()-last_input_info.dwTime);  // compute idle time
-  }
-  return 0;
-}
-
-bool System::IsUserIdle() {
-  // Only notify when the user has been idle less than this time
-  static int user_idle_threshold_ms = kUserIdleThresholdMs;
-
-  bool is_user_idle = (GetUserIdleTime() > user_idle_threshold_ms);
-  UTIL_LOG(L2, (_T("System::IsUserIdle() %s; user_idle_threshold_ms = %d"),
-                is_user_idle ? _T("TRUE") : _T("FALSE"),
-                user_idle_threshold_ms));
-  return is_user_idle;
-}
-
-bool System::IsUserBusy() {
-  // The user is busy typing or interacting with another application
-  // if the user is below the minimum threshold:
-  static int user_idle_min_threshold_ms = kUserIdleMinThresholdMs;
-  // The user is probably not paying attention
-  // if the user is above the maximum threshold:
-  static int user_idle_max_threshold_ms = kUserIdleMaxThresholdMs;
-
-  int user_idle_time = GetUserIdleTime();
-  bool is_user_busy = user_idle_time < user_idle_min_threshold_ms ||
-    user_idle_time > user_idle_max_threshold_ms;
-  UTIL_LOG(L2, (_T("[System::IsUserBusy() %s][user_idle_time = %d]")
-                _T("[user_idle_min_threshold_ms = %d]")
-                _T("[user_idle_max_threshold_ms = %d]"),
-                is_user_busy? _T("TRUE") : _T("FALSE"),
-                user_idle_time,
-                user_idle_min_threshold_ms,
-                user_idle_max_threshold_ms));
-  return is_user_busy;
-}
-
-bool System::IsScreensaverRunning() {
-  // NT 4.0 and below require testing OpenDesktop("screen-saver")
-  // We require W2K or better so we have an easier way
-  DWORD result = 0;
-  ::SystemParametersInfo(SPI_GETSCREENSAVERRUNNING, 0, &result, 0);
-  bool is_screensaver_running = (result != FALSE);
-  UTIL_LOG(L2, (_T("System::IsScreensaverRunning() %s"),
-                is_screensaver_running? _T("TRUE") : _T("FALSE")));
-  return is_screensaver_running;
-}
-
-bool System::IsWorkstationLocked() {
-  bool is_workstation_locked = true;
-  HDESK inputdesk = ::OpenInputDesktop(0, 0, GENERIC_READ);
-  if (NULL != inputdesk)  {
-    TCHAR name[256];
-    DWORD needed = arraysize(name);
-    BOOL ok = ::GetUserObjectInformation(inputdesk,
-                                         UOI_NAME,
-                                         name,
-                                         sizeof(name),
-                                         &needed);
-    ::CloseDesktop(inputdesk);
-    if (ok) {
-      is_workstation_locked = (0 != lstrcmpi(name, NOTRANSL(_T("default"))));
-    }
-  }
-
-  UTIL_LOG(L2, (_T("System::IsWorkstationLocked() %s"),
-                is_workstation_locked? _T("TRUE") : _T("FALSE")));
-  return is_workstation_locked;
-}
-
-bool System::IsUserAway() {
-  return IsScreensaverRunning() || IsWorkstationLocked();
-}
-
 uint32 System::GetProcessHandleCount() {
   typedef LONG (CALLBACK *Fun)(HANDLE, int32, PVOID, ULONG, PULONG);
 
   // This new version of getting the number of open handles works on win2k.
-  HMODULE h = GetModuleHandle(_T("ntdll.dll"));
+  HMODULE module = GetModuleHandle(_T("ntdll.dll"));
+  if (!module) {
+    return 0;
+  }
   Fun NtQueryInformationProcess =
-      reinterpret_cast<Fun>(::GetProcAddress(h, "NtQueryInformationProcess"));
+      reinterpret_cast<Fun>(::GetProcAddress(module,
+                                             "NtQueryInformationProcess"));
 
   if (!NtQueryInformationProcess) {
     UTIL_LOG(LEVEL_ERROR, (_T("[NtQueryInformationProcess failed][0x%x]"),
@@ -640,145 +448,7 @@ uint32 System::GetProcessHandleCount() {
                                    &count,
                                    sizeof(count),
                                    NULL) >= 0, (L""));
-
   return count;
-}
-
-uint32 System::GetProcessHandleCountOld() {
-  typedef BOOL (CALLBACK * Fun)(HANDLE, PDWORD);
-
-  // GetProcessHandleCount not available on win2k
-  HMODULE handle = GetModuleHandle(_T("kernel32"));
-  Fun f = reinterpret_cast<Fun>(GetProcAddress(handle,
-                                               "GetProcessHandleCount"));
-
-  if (!f) return 0;
-
-  DWORD count = 0;
-  VERIFY((*f)(GetCurrentProcess(), &count), (L""));
-  return count;
-
-  //  DWORD GetGuiResources (HANDLE hProcess, DWORD uiFlags);
-  //  Parameters, hProcess
-  //  [in] Handle to the process. The handle must have the
-  //  PROCESS_QUERY_INFORMATION access right. For more information, see Process
-  //  Security and Access Rights.
-  //  uiFlags
-  //  [in] GUI object type. This parameter can be one of the following values.
-  //  Value          Meaning
-  //  GR_GDIOBJECTS  Return the count of GDI objects.
-  //  GR_USEROBJECTS Return the count of USER objects.
-}
-
-void System::GetGuiObjectCount(uint32 *gdi, uint32 *user) {
-  if (gdi) {
-    *gdi = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
-  }
-  if (user) {
-    *user = GetGuiResources(GetCurrentProcess(), GR_USEROBJECTS);
-  }
-}
-
-HRESULT System::GetRebootCheckDummyFileName(const TCHAR* base_file,
-                                            CString* dummy_file) {
-  ASSERT1(dummy_file);
-
-  if (base_file && *base_file) {
-    ASSERT1(File::Exists(base_file));
-    dummy_file->SetString(base_file);
-  } else {
-    *dummy_file = app_util::GetModulePath(NULL);
-    if (dummy_file->IsEmpty()) {
-      return HRESULTFromLastError();
-    }
-  }
-  dummy_file->Append(_T(".needreboot"));
-  return S_OK;
-}
-
-// Is the system being rebooted?
-bool System::IsRebooted(const TCHAR* base_file) {
-  CString dummy_file;
-  if (SUCCEEDED(GetRebootCheckDummyFileName(base_file, &dummy_file))) {
-    if (File::Exists(dummy_file)) {
-      // If the file exists but it is not found in the
-      // PendingFileRenameOperations, (probably becaused that this key is messed
-      // up and thus the system restart fails to delete the file), re-add it
-      if (!File::AreMovesPendingReboot(dummy_file, true)) {
-        File::MoveAfterReboot(dummy_file, NULL);
-      }
-      return false;
-    } else {
-      return true;
-    }
-  }
-  return false;
-}
-
-// Mark the system as reboot required
-HRESULT System::MarkAsRebootRequired(const TCHAR* base_file) {
-  // Create a dummy file if needed
-  CString dummy_file;
-  RET_IF_FAILED(GetRebootCheckDummyFileName(base_file, &dummy_file));
-  if (File::Exists(dummy_file)) {
-    return S_OK;
-  }
-
-  File file;
-  RET_IF_FAILED(file.Open(dummy_file, true, false));
-  RET_IF_FAILED(file.Close());
-
-  // Hide it
-  DWORD file_attr = ::GetFileAttributes(dummy_file);
-  if (file_attr == INVALID_FILE_ATTRIBUTES ||
-      !::SetFileAttributes(dummy_file, file_attr | FILE_ATTRIBUTE_HIDDEN)) {
-    return HRESULTFromLastError();
-  }
-
-  // Mark it as being deleted after reboot
-  return File::MoveAfterReboot(dummy_file, NULL);
-}
-
-// Unmark the system as reboot required
-HRESULT System::UnmarkAsRebootRequired(const TCHAR* base_file) {
-  CString dummy_file;
-  RET_IF_FAILED(GetRebootCheckDummyFileName(base_file, &dummy_file));
-
-  return File::RemoveFromMovesPendingReboot(dummy_file, false);
-}
-
-// Restart the computer
-HRESULT System::RestartComputer() {
-  RET_IF_FAILED(AdjustPrivilege(SE_SHUTDOWN_NAME, true));
-
-  if (!::ExitWindowsEx(EWX_REBOOT, SHTDN_REASON_MAJOR_APPLICATION |
-                       SHTDN_REASON_MINOR_INSTALLATION |
-                       SHTDN_REASON_FLAG_PLANNED)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LEVEL_ERROR, (_T("[System::RestartComputer - failed to")
-                           _T(" ExitWindowsEx][0x%x]"), hr));
-    return hr;
-  }
-
-  return S_OK;
-}
-
-// The implementation works on all Windows versions. On NT and XP the screen
-// saver is actually stored in registry at
-// HKEY_CURRENT_USER\Control Panel\Desktop\SCRNSAVE.EXE but the
-// GetPrivateProfileString call is automatically mapped to the registry
-HRESULT System::GetCurrentScreenSaver(CString* fileName) {
-  if (!fileName) return E_POINTER;
-
-  DWORD nChars = ::GetPrivateProfileString(_T("boot"),
-                                           _T("SCRNSAVE.EXE"),
-                                           _T(""),
-                                           fileName->GetBuffer(MAX_PATH),
-                                           MAX_PATH,
-                                           _T("system.ini"));
-  fileName->ReleaseBufferSetLength(nChars);
-
-  return S_OK;
 }
 
 HRESULT System::CoCreateInstanceAsAdmin(HWND hwnd,
@@ -807,50 +477,6 @@ HRESULT System::CoCreateInstanceAsAdmin(HWND hwnd,
   return ::CoGetObject(moniker_name, &bo, riid, ppv);
 }
 
-HRESULT System::IsPrivilegeEnabled(const TCHAR* privilege, bool* present) {
-  ASSERT1(privilege);
-  ASSERT1(present);
-
-  *present = false;
-
-  scoped_handle token;
-  if (!::OpenProcessToken(::GetCurrentProcess(),
-                          TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
-                          address(token))) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LEVEL_ERROR, (_T("[System::IsPrivilegeEnabled - failed to ")
-                           _T("OpenProcessToken][0x%x]"), hr));
-    return hr;
-  }
-
-  LUID luid = {0};
-  if (!::LookupPrivilegeValue(NULL, privilege, &luid)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LEVEL_ERROR, (_T("[System::IsPrivilegeEnabled - failed to")
-                           _T("LookupPrivilegeValue][0x%x]"), hr));
-    return hr;
-  }
-
-  PRIVILEGE_SET required_privilege = {0};
-  required_privilege.PrivilegeCount = 1;
-  required_privilege.Control = PRIVILEGE_SET_ALL_NECESSARY;
-  required_privilege.Privilege[0].Luid = luid;
-
-  BOOL result = FALSE;
-  if (!::PrivilegeCheck(get(token), &required_privilege, &result)) {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LEVEL_ERROR, (_T("[System::IsPrivilegeEnabled - failed to")
-                           _T("PrivilegeCheck][0x%x]"), hr));
-    return hr;
-  }
-
-  if (required_privilege.Privilege[0].Attributes &
-      SE_PRIVILEGE_USED_FOR_ACCESS) {
-    *present = true;
-  }
-
-  return S_OK;
-}
 
 // Attempts to adjust current process privileges.
 // Only process running with administrator privileges will succeed.
@@ -1018,46 +644,6 @@ bool System::IsSessionActive(DWORD session_id) {
   UTIL_LOG(LE, (_T("[WTSQuerySessionInformation failed][0x%x]"),
                 ::GetLastError()));
   return false;
-}
-
-// Is the current process running under WinSta0
-bool System::IsCurrentProcessInteractive() {
-  // Use a non-scoped handle, since a handle retrieved via
-  // ::GetProcessWindowStation() should not be closed.
-  HWINSTA handle_window_station(::GetProcessWindowStation());
-  DWORD len = 0;
-  CString str_window_station;
-
-  if (!handle_window_station || handle_window_station == INVALID_HANDLE_VALUE) {
-    UTIL_LOG(LEVEL_ERROR,
-             (_T("[System::IsCurrentProcessInteractive - ")
-              _T("::GetProcessWindowStation() failed (%d)]"),
-              ::GetLastError()));
-    return false;
-  }
-
-  if (!::GetUserObjectInformation(handle_window_station,
-                                  UOI_NAME,
-                                  CStrBuf(str_window_station, MAX_PATH),
-                                  MAX_PATH,
-                                  &len)) {
-    UTIL_LOG(LEVEL_ERROR,
-             (_T("[System::IsCurrentProcessInteractive - ")
-              _T("::GetUserObjectInfoformation(hWinSta) failed (%d)]"),
-              ::GetLastError()));
-    return false;
-  }
-
-  UTIL_LOG(L6, (_T("[System::IsCurrentProcessInteractive]")
-                _T("[WindowStation name][%s]"),
-                str_window_station));
-  return (str_window_station == _T("WinSta0"));
-}
-
-// is the current process running under WinSta0 for the currently active session
-bool System::IsCurrentProcessActiveAndInteractive() {
-  return IsSessionActive(GetCurrentSessionId()) &&
-         IsCurrentProcessInteractive();
 }
 
 bool System::IsRunningOnBatteries() {
