@@ -23,20 +23,8 @@
 
 namespace omaha {
 
-// Get the starting path from the command string
-CString GetStartingPathFromString(const CString& s);
-
-// Get the trailing path from the command string
-CString GetTrailingPathFromString(const CString& s);
-
-// Get the file from the command string
-HRESULT GetFileFromCommandString(const TCHAR* s, CString* file);
-
 // Expands the string with embedded special folder variables
 HRESULT ExpandStringWithSpecialFolders(CString* str);
-
-// Normalize a path
-HRESULT NormalizePath(const TCHAR* path, CString* normalized_path);
 
 // Concatenate two paths together
 CString ConcatenatePath(const CString& path1, const CString& path2);
@@ -70,16 +58,6 @@ CString EnclosePathIfExe(const CString& module_path);
 
 // remove any double quotation masks from an enclosed path
 void UnenclosePath(CString* path);
-
-// Removes a trailing double quote from a path. ::CommandLineToArgvW() has some
-// strange treatment for quotation marks and backslashes, as detailed here:
-// http://blogs.msdn.com/b/oldnewthing/archive/2010/09/17/10063629.aspx
-//
-// So an argument containing a directory path with a trailing backslash:
-// <<prog.exe /dir "c:\a dir\">>
-// is incorrectly parsed with a double-quote at the end:
-// <<c:\a dir">>.
-void RemoveMismatchedEndQuoteInDirectoryPath(CString* directory_path);
 
 // Converts the short path name to long name.
 HRESULT ShortPathToLongPath(const CString& short_path, CString* long_path);

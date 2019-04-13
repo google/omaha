@@ -86,130 +86,6 @@ HRESULT FindFilesEx(const CString& dir,
 
 }  // namespace detail.
 
-// Get the starting path from the command string
-CString GetStartingPathFromString(const CString& s) {
-  CString path;
-  CString str(s);
-  TrimCString(str);
-
-  int len = str.GetLength();
-  if (len > 0) {
-    if (str[0] == _T('"')) {
-      // For something like:  "c:\Program Files\...\" ...
-      int idx = String_FindChar(str.GetString() + 1, _T('"'));
-      if (idx != -1)
-        path.SetString(str.GetString() + 1, idx);
-    } else {
-      // For something like:  c:\PRGRA~1\... ...
-      int idx = String_FindChar(str, _T(' '));
-      path.SetString(str, idx == -1 ? len : idx);
-    }
-  }
-
-  return path;
-}
-
-// Get the trailing path from the command string
-CString GetTrailingPathFromString(const CString& s) {
-  CString path;
-  CString str(s);
-  TrimCString(str);
-
-  int len = str.GetLength();
-  if (len > 0) {
-    if (str[len - 1] == _T('"')) {
-      // For something like:  regsvr32 /u /s "c:\Program Files\..."
-      str.Truncate(len - 1);
-      int idx = String_ReverseFindChar(str, _T('"'));
-      if (idx != -1)
-        path.SetString(str.GetString() + idx + 1, len - idx - 1);
-    } else {
-      // For something like:  regsvr32 /u /s c:\PRGRA~1\...
-      int idx = String_ReverseFindChar(str, _T(' '));
-      if (idx != -1)
-        path.SetString(str.GetString() + idx + 1, len - idx - 1);
-    }
-  }
-
-  return path;
-}
-
-// Get the file from the command string
-HRESULT GetFileFromCommandString(const TCHAR* s, CString* file) {
-  ASSERT1(file);
-
-  if (!s || !*s) {
-    return E_INVALIDARG;
-  }
-
-  CString str(s);
-  TrimCString(str);
-
-  // Handle the string starting with quotation mark
-  // For example: "C:\Program Files\WinZip\WINZIP32.EXE" /uninstall
-  if (str[0] == _T('"')) {
-    int idx_quote = str.Find(_T('"'), 1);
-    if (idx_quote != -1) {
-      file->SetString(str.GetString() + 1, idx_quote - 1);
-      return S_OK;
-    } else {
-      return E_FAIL;
-    }
-  }
-
-  // Handle the string starting with "regsvr32"
-  // For example: regsvr32 /u /s "c:\program files\google\googletoolbar3.dll"
-  if (String_StartsWith(str, kRegSvr32Cmd1, true) ||
-      String_StartsWith(str, kRegSvr32Cmd2, true)) {
-    file->SetString(GetTrailingPathFromString(str));
-    return S_OK;
-  }
-
-  // Handle the string starting with "rundll32"
-  // For example: "rundll32.exe setupapi.dll,InstallHinfSection DefaultUninstall 132 C:\WINDOWS\INF\PCHealth.inf"  // NOLINT
-  if (String_StartsWith(str, kRunDll32Cmd1, true) ||
-      String_StartsWith(str, kRunDll32Cmd2, true)) {
-    int idx_space = str.Find(_T(' '));
-    ASSERT1(idx_space != -1);
-    int idx_comma = str.Find(_T(','), idx_space + 1);
-    if (idx_comma != -1) {
-      file->SetString(str.GetString() + idx_space + 1,
-                      idx_comma - idx_space - 1);
-      TrimCString(*file);
-      return S_OK;
-    } else {
-      return E_FAIL;
-    }
-  }
-
-  // Handle the string starting with "msiexec"
-  // For example: MsiExec.exe /I{25A13826-8E4A-4FBF-AD2B-776447FE9646}
-  if (String_StartsWith(str, kMsiExecCmd1, true) ||
-      String_StartsWith(str, kMsiExecCmd2, true)) {
-    return E_FAIL;
-  }
-
-  // Otherwise, try to find the file till reaching ".exe"
-  // For example: "C:\Program Files\Google\Google Desktop Search\GoogleDesktopSetup.exe -uninstall"  // NOLINT
-  const int dot_exe_length = static_cast<int>(_tcslen(kDotExe));
-  for (int i = 0; i < str.GetLength(); ++i) {
-    if (String_StartsWith(str.GetString() + i, kDotExe, true)) {
-      file->SetString(str, i + dot_exe_length);
-      return S_OK;
-    }
-  }
-
-  // As last resort, return the part from the beginning to first space found.
-  int idx = str.Find(_T(' '));
-  if (idx == -1) {
-    file->SetString(str);
-  } else {
-    file->SetString(str, idx);
-  }
-
-  return S_OK;
-}
-
 // Expands the string with embedded special folder variables.
 // TODO(omaha): This function seems to have a very specific purpose, which
 // is not used in our code base. Consider removing it.
@@ -234,53 +110,6 @@ HRESULT ExpandStringWithSpecialFolders(CString* str) {
   str->SetString(expanded_str);
 
   return S_OK;
-}
-
-// Internal helper method for normalizing a path
-HRESULT NormalizePathInternal(const TCHAR* path, CString* normalized_path) {
-  // We use '|' to separate fields
-  CString field;
-  int bar_idx = String_FindChar(path, _T('|'));
-  if (bar_idx == -1)
-    field = path;
-  else
-    field.SetString(path, bar_idx);
-
-  if (IsRegistryPath(field)) {
-    CString key_name, value_name;
-    RET_IF_FAILED(RegSplitKeyvalueName(field, &key_name, &value_name));
-
-    CString reg_value;
-    RET_IF_FAILED(RegKey::GetValue(key_name, value_name, &reg_value));
-    normalized_path->Append(reg_value);
-  } else {
-    RET_IF_FAILED(ExpandStringWithSpecialFolders(&field));
-    normalized_path->Append(field);
-  }
-
-  if (bar_idx != -1)
-    return NormalizePathInternal(path + bar_idx + 1, normalized_path);
-  else
-    return S_OK;
-}
-
-// Normalize a path
-HRESULT NormalizePath(const TCHAR* path, CString* normalized_path) {
-  ASSERT1(normalized_path);
-
-  normalized_path->Empty();
-
-  if (path) {
-    HRESULT hr = NormalizePathInternal(path, normalized_path);
-    if (FAILED(hr)) {
-      normalized_path->Empty();
-      UTIL_LOG(LE, (_T("[NormalizePath - unable to normalize path][%s][0x%x]"),
-                    path, hr));
-    }
-    return hr;
-  } else {
-    return S_OK;
-  }
 }
 
 CString ConcatenatePath(const CString& path1, const CString& path2) {
@@ -388,19 +217,6 @@ void UnenclosePath(CString* path) {
       path->Delete(0);
       path->Truncate(path->GetLength() - 1);
     }
-  }
-}
-
-void RemoveMismatchedEndQuoteInDirectoryPath(CString* directory_path) {
-  ASSERT1(directory_path);
-
-  if (directory_path->GetLength() <= 1) {
-    return;
-  }
-
-  ASSERT1(directory_path->GetAt(0) != _T('"'));
-  if (directory_path->GetAt(directory_path->GetLength() - 1) == _T('"')) {
-    directory_path->Truncate(directory_path->GetLength() - 1);
   }
 }
 
