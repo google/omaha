@@ -1464,55 +1464,6 @@ TEST(GoopdateUtilsTest, ReadNameValuePairsFromFileTest_ReadManyPairs) {
   ValidateStringMapEquality(pairs_write, pairs_read);
 }
 
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_LegacyVersions) {
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.0.0.0")));
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.1.103.9")));
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.1.65535.65535")));
-}
-
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_Omaha2AndLater) {
-  EXPECT_TRUE(IsGoogleUpdate2OrLater(_T("1.2.0.0")));
-  EXPECT_TRUE(IsGoogleUpdate2OrLater(_T("1.2.0111.2222")));
-  EXPECT_TRUE(IsGoogleUpdate2OrLater(_T("1.3.456.7890")));
-  EXPECT_TRUE(IsGoogleUpdate2OrLater(_T("2.0.0.0")));
-}
-
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_VersionZero) {
-  ExpectAsserts expect_asserts;
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("0.0.0.0")));
-}
-
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_VersionUpperLimits) {
-  EXPECT_TRUE(IsGoogleUpdate2OrLater(_T("65535.65535.65535.65535")));
-
-  ExpectAsserts expect_asserts;
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("65536.65536.65536.65536")));
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.2.65536.65536")));
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.1.65536.65536")));
-}
-
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_TooFewElements) {
-  ExpectAsserts expect_asserts;
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.1.1")));
-}
-
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_ExtraPeriod) {
-  ExpectAsserts expect_asserts;
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.1.2.3.")));
-}
-
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_TooManyElements) {
-  ExpectAsserts expect_asserts;
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.1.2.3.4")));
-}
-
-TEST(GoopdateUtilsTest, IsGoogleUpdate2OrLater_Char) {
-  ExpectAsserts expect_asserts;
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.B.3.4")));
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.2.3.B")));
-  EXPECT_FALSE(IsGoogleUpdate2OrLater(_T("1.2.3.9B")));
-}
-
 TEST(GoopdateUtilsTest, WriteInstallerDataToTempFile) {
   CStringA utf8_bom;
   utf8_bom.Format("%c%c%c", 0xEF, 0xBB, 0xBF);
