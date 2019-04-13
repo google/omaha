@@ -142,42 +142,6 @@ inline time64 Timer::Get100Nanoseconds() const {
   return (time64) GetNanoseconds() / 100;
 }
 
-// Helper class which starts the timer in its constructor and stops it
-// in its destructor.  This prevents accidentally leaving the timer running
-// if a function has an early exit.
-//
-// Usage:
-//
-// class A {
-//   Timer timer_;
-//
-//   void foo(){
-//     TimerScope (timer_);
-//   ......
-//   }  // end foo
-//
-// Everything is timed till the end of the function or when it returns
-// from any place.
-
-class TimerScope {
- public:
-  explicit TimerScope(Timer *timer) : timer_(timer) {
-    if (timer_) {
-      timer_->Start();
-    }
-  }
-
-  ~TimerScope() {
-    if (timer_ && timer_->IsRunning()) {
-      timer_->Stop();
-    }
-  }
-
- private:
-  Timer *timer_;
-  DISALLOW_EVIL_CONSTRUCTORS(TimerScope);
-};
-
 }  // namespace omaha
 
 #endif  // OMAHA_BASE_TIMER_H_
