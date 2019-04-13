@@ -24,7 +24,6 @@
 #include "omaha/base/commontypes.h"
 #include "omaha/base/const_config.h"
 #include "omaha/base/debug.h"
-#include "omaha/base/disk.h"
 #include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
@@ -40,118 +39,28 @@
 
 namespace omaha {
 
-// Constant
-const TCHAR kNeedRebootHiddenFileSuffix[] = _T(".needreboot");
+namespace {
 
-HRESULT System::WaitForDiskActivity(const uint32 max_delay_milliseconds,
-                                    const uint32 sleep_time_ms,
-                                    uint32 *time_waited) {
-  ASSERT(time_waited, (L""));
-  uint32 sleep_time = sleep_time_ms;
-  if (sleep_time < 20) { sleep_time = 20; }
-  else if (sleep_time > 1000) { sleep_time = 1000; }
-  HRESULT r;
-  *time_waited = 0;
-  uint64 writes = 0;
-  uint64 new_writes = 0;
-  // get current counters
-  if (FAILED(r=GetDiskActivityCounters(NULL, &writes, NULL, NULL))) {
-    return r;
+// Disables critical error dialogs on the current thread.
+// The system does not display the critical-error-handler message box.
+// Instead, the system returns the error to the calling process.
+class DisableThreadErrorUI {
+ public:
+  DisableThreadErrorUI() {
+    // Set the error mode
+    prev_mode_ = SetErrorMode(SEM_FAILCRITICALERRORS);
   }
 
-  // wait until a write - reads may be cached
-  while (1) {
-    if (FAILED(r=GetDiskActivityCounters(NULL, &new_writes, NULL, NULL))) {
-      return r;
-    }
-    if (new_writes > writes) { return S_OK; }
-    if (*time_waited > max_delay_milliseconds) { return E_FAIL; }
-    SleepEx(sleep_time, TRUE);
-    *time_waited += sleep_time;
-  }
-}
-
-HRESULT System::GetDiskActivityCounters(uint64* reads,
-                                        uint64* writes,
-                                        uint64* bytes_read,
-                                        uint64* bytes_written) {
-  if (reads) {
-    *reads = 0;
+  ~DisableThreadErrorUI() {
+    // Restore the error mode
+    SetErrorMode(prev_mode_);
   }
 
-  if (writes) {
-    *writes = 0;
-  }
+ protected:
+  UINT prev_mode_;
+};
 
-  if (bytes_read) {
-    *bytes_read = 0;
-  }
-
-  if (bytes_written) {
-    *bytes_written = 0;
-  }
-
-  // Don't want to risk displaying UI errors here
-  DisableThreadErrorUI disable_error_dialog_box;
-
-  // for all drives
-  for (int drive = 0; ; drive++) {
-    struct _DISK_PERFORMANCE perf_data;
-    const int max_device_len = 50;
-
-    // check whether we can access this device
-    CString device_name;
-    SafeCStringFormat(&device_name, _T("\\\\.\\PhysicalDrive%d"), drive);
-    scoped_handle device(::CreateFile(device_name, 0,
-                                      FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                      NULL, OPEN_EXISTING, 0, NULL));
-
-    if (get(device) == INVALID_HANDLE_VALUE) {
-      if (!drive) {
-        UTIL_LOG(LEVEL_ERROR, (_T("[Failed to access drive %i][0x%x]"),
-                               drive,
-                               HRESULTFromLastError()));
-      }
-      break;
-    }
-
-    // disk performance counters must be on (diskperf -y on older machines;
-    // defaults to on on newer windows)
-    DWORD size = 0;
-    if (::DeviceIoControl(get(device),
-                          IOCTL_DISK_PERFORMANCE,
-                          NULL,
-                          0,
-                          &perf_data,
-                          sizeof(_DISK_PERFORMANCE),
-                          &size,
-                          NULL)) {
-      if (reads) {
-        *reads += perf_data.ReadCount;
-      }
-
-      if (writes) {
-        *writes += perf_data.WriteCount;
-      }
-
-      if (bytes_read) {
-        *bytes_read += perf_data.BytesRead.QuadPart;
-      }
-
-      if (bytes_written) {
-        *bytes_written += perf_data.BytesWritten.QuadPart;
-      }
-    } else {
-      HRESULT hr = HRESULTFromLastError();
-      UTIL_LOG(LEVEL_ERROR,
-               (_T("[System::GetDiskActivityCounters - failed to ")
-                _T("DeviceIoControl][0x%x]"), hr));
-      return hr;
-    }
-  }
-
-  return S_OK;
-}
+}  // namespace
 
 HRESULT System::GetDiskStatistics(const TCHAR* path,
                                   uint64 *free_bytes_current_user,

@@ -25,9 +25,6 @@
 namespace omaha {
 
 TEST(SystemTest, System) {
-    uint32 time_waited = 0;
-    ASSERT_SUCCEEDED(System::WaitForDiskActivity(10000, 25, &time_waited));
-
     uint64 free_bytes_current_user = 0;
     uint64 total_bytes_current_user = 0;
     uint64 free_bytes_all_users = 0;

@@ -42,19 +42,6 @@ const DWORD kInvalidSessionId = 0xFFFFFFFF;
 
 class System {
   public:
-    // disk activity.
-
-    // waits up to specified time for disk activity to occur; sleeps in
-    // increments of sleep_time.
-    static HRESULT WaitForDiskActivity(uint32 max_delay_milliseconds,
-                                       uint32 sleep_time_ms,
-                                       uint32 *time_waited);
-    // disk activity counters; may require admin on some machines? should return
-    // E_FAIL if so.
-    static HRESULT GetDiskActivityCounters(uint64 *reads,
-                                           uint64 *writes,
-                                           uint64 *bytes_read,
-                                           uint64 *bytes_written);
 
     // disk statistics.
 
