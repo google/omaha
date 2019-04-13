@@ -136,34 +136,6 @@ CString ConvertTimeToGMTString(const FILETIME *ft) {
   return s;
 }
 
-time64 ConvertTime16ToTime64(uint16 time16) {
-  return time16 * kTimeGranularity + kStart100NsTime;
-}
-
-uint16 ConvertTime64ToTime16(time64 time) {
-  ASSERT1(time >= kStart100NsTime);
-
-  time64 t64 = (time - kStart100NsTime) / kTimeGranularity;
-  ASSERT1(t64 <= kTime16Max);
-
-  return static_cast<uint16>(t64);
-}
-
-time64 TimeTToTime64(const time_t& old_value) {
-  FILETIME file_time;
-  TimeTToFileTime(old_value, &file_time);
-  return FileTimeToTime64(file_time);
-}
-
-#ifdef _DEBUG
-void ComputeStartTime() {
-    SYSTEMTIME start_system_time = kStartSystemTime;
-    time64 start_100ns_time = SystemTimeToTime64(&start_system_time);
-    UTIL_LOG(L1, (_T("posting list starting time = %s\n"),
-                  String_Int64ToString(start_100ns_time, 10)));
-}
-#endif
-
 // Time management
 
 // Allow the unittest to override.

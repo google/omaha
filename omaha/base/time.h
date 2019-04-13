@@ -48,12 +48,6 @@ namespace omaha {
 typedef uint16 time16;
 typedef uint64 time64;
 
-time64 ConvertTime16ToTime64(uint16 time16);
-uint16 ConvertTime64ToTime16(time64 time);
-
-#ifdef _DEBUG
-void ComputeStartTime();
-#endif
 
 // Returns the current system time as a 64-bit value representing the
 // number of 100-nanosecond intervals since January 1, 1601 (UTC).
@@ -71,7 +65,6 @@ time64 SystemTimeToTime64(const SYSTEMTIME *sys_time);
 int32  SystemTimeToInt32(const SYSTEMTIME *sys_time);
 int32  Time64ToInt32(const time64 & time);
 time64 Int32ToTime64(const int32 & time);
-time64 TimeTToTime64(const time_t& old_value);
 
 // Returns the system time in GMT
 SYSTEMTIME Time64ToSystemTime(const time64 & time);
