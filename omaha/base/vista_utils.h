@@ -42,15 +42,6 @@ bool IsProcessProtected();
 // error value.
 HRESULT AllowProtectedProcessAccessToSharedObject(const TCHAR* name);
 
-// Restarts IEUser process if we can. This is to allow for
-// IEUser.exe to refresh it's ElevationPolicy cache. Due to a bug
-// within IE7, IEUser.exe does not refresh it's cache unless it
-// is restarted in the manner below. If the cache is not refreshed
-// IEUser does not respect any new ElevationPolicies that a fresh
-// setup program installs for an ActiveX control or BHO. This code
-// is adapted from Toolbar.
-HRESULT RestartIEUser();
-
 // TODO(Omaha): Move these to a different utils file, since these are not
 // Vista-specific.
 // TODO(Omaha): rename for consistency with
@@ -59,9 +50,6 @@ HRESULT RestartIEUser();
 // Gets current user's explorer.exe pid. If that fails, gets the pid of any
 // explorer.exe running in the current session.
 HRESULT GetExplorerPidForCurrentUserOrSession(uint32* pid);
-
-// Returns the TOKEN of the explorer process of any user that is logged in.
-HRESULT GetExplorerTokenForLoggedInUser(HANDLE* token);
 
 // Retrieves a primary token for one of the logged on users. The logged on
 // user is either the current user or a user logged on in the same session as
@@ -87,10 +75,6 @@ HRESULT GetPidsInSession(const TCHAR* exe_name,
 // session.
 HRESULT GetProcessPidsForActiveUserOrSession(const TCHAR* exe_name,
                                              std::vector<uint32>* pids);
-
-// Starts process with the token obtained from the specified process.
-HRESULT StartProcessWithTokenOfProcess(uint32 pid,
-                                       const CString& command_line);
 
 // Runs the command on behalf of the current user. Creates a fresh environment
 // block based on the user's token. If |process| and/or |child_stdout| are not

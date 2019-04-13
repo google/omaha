@@ -185,104 +185,6 @@ HRESULT RunAsCurrentUser(const CString& command_line,
                    child_stdout, process);
 }
 
-static HRESULT StartInternetExplorerAsUser(HANDLE user_token,
-                                           const CString& options) {
-  // Internet Explorer path
-  CString ie_file_path;
-  HRESULT result = GetIEPath(&ie_file_path);
-  ASSERT1(SUCCEEDED(result));
-
-  if (SUCCEEDED(result)) {
-    CString command_line(ie_file_path);
-    command_line += _T(' ');
-    command_line += options;
-    UTIL_LOG(L5, (_T("[StartInternetExplorerAsUser]")
-                  _T("[Running IExplore with command line][%s]"),
-                  command_line));
-    result = RunAsUser(command_line, user_token, false, NULL, NULL);
-  }
-  return result;
-}
-
-//
-// Constants used by RestartIEUser()
-//
-// The IEUser executable name
-const TCHAR* kIEUser = _T("IEUSER.EXE");
-
-// The maximum number of simultaneous
-// logged on users in FUS that we support
-const int kMaximumUsers = 16;
-
-
-// Restart IEUser processs. This is to allow for
-// IEUser.exe to refresh it's ElevationPolicy cache. Due to a bug
-// within IE7, IEUser.exe does not refresh it's cache unless it
-// is restarted in the manner below. If the cache is not refreshed
-// IEUser does not respect any new ElevationPolicies that a fresh
-// setup program installs for an ActiveX control or BHO. This code
-// is adapted from Toolbar.
-HRESULT RestartIEUser() {
-  // Use the service to restart IEUser.
-  // This allows us to restart IEUser for:
-  //   (a) Multiple users for the first-install case
-  //       (we currently only restart IEUser for the current interactive user)
-  //   (b) Even if we are started in an elevated mode
-
-  if (!SystemInfo::IsRunningOnVistaOrLater()) {
-    UTIL_LOG(L5, (_T("[RestartIEUser - not running on Vista - Exiting]")));
-    return S_OK;
-  }
-
-  // The restart should be attempted from the system account
-  bool is_system_process = false;
-  if (FAILED(IsSystemProcess(&is_system_process)) || !is_system_process) {
-    ASSERT1(false);
-    return E_ACCESSDENIED;
-  }
-
-  // Get the list of users currently running IEUser.exe processes.
-  scoped_handle ieuser_users[kMaximumUsers];
-  int number_of_users = 0;
-  Process::GetUsersOfProcesses(kIEUser, kMaximumUsers, ieuser_users,
-                               &number_of_users);
-
-  UTIL_LOG(L5, (_T("[RestartIEUser]")
-                _T("[number_of_users running IEUser %d]"), number_of_users));
-
-  if (!number_of_users) {
-    UTIL_LOG(L5, (_T("[RestartIEUser][No IEUser processes running]")));
-    return S_OK;
-  }
-
-  // Kill current IEUser processes.
-  ProcessTerminator pt(kIEUser);
-  const int kKillWaitTimeoutMs = 5000;
-  bool found = false;
-  const int kill_method = (ProcessTerminator::KILL_METHOD_4_TERMINATE_PROCESS);
-
-  RET_IF_FAILED(pt.KillTheProcess(kKillWaitTimeoutMs,
-                                  &found,
-                                  kill_method,
-                                  false));
-
-  // Restart them.
-  HRESULT result = S_OK;
-  for (int i = 0; i < number_of_users; i++) {
-    // To start a new ieuser.exe, simply start iexplore.exe as a normal user
-    // The -embedding prevents IE from opening a window
-    HRESULT restart_result = StartInternetExplorerAsUser(get(ieuser_users[i]),
-                                                         _T("-embedding"));
-    if (FAILED(restart_result)) {
-      UTIL_LOG(LEVEL_ERROR, (_T("[StartInternetExplorerAsUser failed][0x%x]"),
-                             restart_result));
-      result = restart_result;
-    }
-  }
-
-  return result;
-}
-
 HRESULT GetExplorerPidForCurrentUserOrSession(uint32* pid) {
   ASSERT1(pid);
   std::vector<uint32> pids;
@@ -296,65 +198,6 @@ HRESULT GetExplorerPidForCurrentUserOrSession(uint32* pid) {
 
   *pid = pids[0];   // Return only the first instance of explorer.exe.
   return S_OK;
-}
-
-HRESULT GetExplorerTokenForLoggedInUser(HANDLE* token) {
-  UTIL_LOG(L3, (_T("[GetExplorerTokenForLoggedInUser]")));
-  ASSERT1(token);
-
-  // TODO(omaha): One can set the windows shell to be other than
-  // explorer.exe, handle this case. One way to handle this is to
-  // read the regkey
-  // HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon
-  // The only problem with this is it can be overriden with the user reg keys.
-  // Need to figure out a method to do this.
-  // Also consider using the interactive user before picking the first explorer
-  // process i.e. the active user.
-  std::vector<uint32> processes;
-  DWORD flags = EXCLUDE_CURRENT_PROCESS;
-  std::vector<CString> command_lines;
-  CString explorer_file_name(kExplorer);
-  CString user_sid;
-
-  HRESULT hr = Process::FindProcesses(flags,
-                                      explorer_file_name,
-                                      true,
-                                      user_sid,
-                                      command_lines,
-                                      &processes);
-  if (FAILED(hr)) {
-    CORE_LOG(LEVEL_ERROR, (_T("[FindProcesses failed][0x%08x]"), hr));
-    return hr;
-  }
-
-  std::vector<uint32>::const_iterator iter = processes.begin();
-  for (; iter != processes.end(); ++iter) {
-    uint32 explorer_pid = *iter;
-    scoped_handle exp(::OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
-                                    false,
-                                    explorer_pid));
-    if (exp) {
-      if (::OpenProcessToken(get(exp),
-                             TOKEN_DUPLICATE | TOKEN_QUERY | TOKEN_IMPERSONATE,
-                             token)) {
-        // TODO(omaha): Consider using the GetWindowsAccountDomainSid
-        // method here. This method returns the domain SID associated
-        // with the passed in SID. This allows us to detect if the user is a
-        // domain user. We should prefer domain users over normal users,
-        // as in corporate environments, these users will be more likely to
-        // allow to be tunneled through a proxy.
-        return S_OK;
-      } else {
-        hr = HRESULTFromLastError();
-        CORE_LOG(LEVEL_WARNING, (_T("[OpenProcessToken failed][0x%08x]"), hr));
-      }
-    } else {
-      hr = HRESULTFromLastError();
-      CORE_LOG(LEVEL_WARNING, (_T("[OpenProcess failed][0x%08x]"), hr));
-    }
-  }
-
-  return hr;
 }
 
 HRESULT GetPidsInSession(const TCHAR* exe_name,
@@ -422,35 +265,6 @@ HRESULT GetProcessPidsForActiveUserOrSession(const TCHAR* exe_name,
   }
 
   return S_OK;
-}
-
-
-
-HRESULT StartProcessWithTokenOfProcess(uint32 pid,
-                                       const CString& command_line) {
-  UTIL_LOG(L5, (_T("[StartProcessWithTokenOfProcess]")
-                _T("[pid %u][command_line '%s']"), pid, command_line));
-
-  // Get the token from process.
-  scoped_handle user_token;
-  HRESULT hr = Process::GetImpersonationToken(pid, address(user_token));
-  if (FAILED(hr)) {
-    CORE_LOG(LEVEL_ERROR, (_T("[GetImpersonationToken failed][0x%08x]"), hr));
-    return hr;
-  }
-
-  // Start process using the token.
-  UTIL_LOG(L5, (_T("[StartProcessWithTokenOfProcess][Running process %s]"),
-                command_line));
-  hr = RunAsUser(command_line, get(user_token), false, NULL, NULL);
-
-  if (FAILED(hr)) {
-    UTIL_LOG(LEVEL_ERROR,
-      (_T("[Vista::StartProcessWithTokenOfProcess - RunAsUser failed][0x%x]"),
-      hr));
-  }
-
-  return hr;
 }
 
 HRESULT GetLoggedOnUserToken(HANDLE* token) {
