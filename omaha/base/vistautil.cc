@@ -34,9 +34,10 @@ namespace omaha {
 
 namespace vista_util {
 
+namespace {
+
 static SID_IDENTIFIER_AUTHORITY mandatory_label_auth =
     SECURITY_MANDATORY_LABEL_AUTHORITY;
-
 
 static HRESULT GetSidIntegrityLevel(PSID sid, MANDATORY_LEVEL* level) {
   if (!IsValidSid(sid))
@@ -50,11 +51,11 @@ static HRESULT GetSidIntegrityLevel(PSID sid, MANDATORY_LEVEL* level) {
       sizeof(SID_IDENTIFIER_AUTHORITY)))
     return E_FAIL;
 
-  PUCHAR count = GetSidSubAuthorityCount(sid);
+  PUCHAR count = ::GetSidSubAuthorityCount(sid);
   if (!count || *count != 1)
     return E_FAIL;
 
-  DWORD* rid = GetSidSubAuthority(sid, 0);
+  DWORD* rid = ::GetSidSubAuthority(sid, 0);
   if (!rid)
     return E_FAIL;
 
@@ -65,43 +66,47 @@ static HRESULT GetSidIntegrityLevel(PSID sid, MANDATORY_LEVEL* level) {
   return S_OK;
 }
 
-// Will return S_FALSE and MandatoryLevelMedium if the acl is NULL
-static HRESULT GetAclIntegrityLevel(PACL acl, MANDATORY_LEVEL* level,
-    bool* and_children) {
-  *level = MandatoryLevelMedium;
-  if (and_children)
-    *and_children = false;
-  if (!acl) {
-    // This is the default label value if the acl was empty
-    return S_FALSE;
+// Determine the mandatory level of a process
+//   processID, the process to query, or (0) to use the current process
+//   On Vista, level should alwys be filled in with either
+//     MandatoryLevelLow (IE)
+//     MandatoryLevelMedium(user), or
+//     MandatoryLevelHigh( Elevated Admin)
+//   On error, level remains unchanged
+HRESULT GetProcessIntegrityLevel(DWORD process_id, MANDATORY_LEVEL* level) {
+  if (!IsVistaOrLater())
+    return E_NOTIMPL;
+
+  if (process_id == 0)
+    process_id = ::GetCurrentProcessId();
+
+  HRESULT result = E_FAIL;
+  HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, process_id);
+  if (process != NULL) {
+    HANDLE current_token;
+    if (OpenProcessToken(process,
+                         TOKEN_QUERY | TOKEN_QUERY_SOURCE,
+                         &current_token)) {
+      DWORD label_size = 0;
+      TOKEN_MANDATORY_LABEL* label;
+      GetTokenInformation(current_token, TokenIntegrityLevel,
+          NULL, 0, &label_size);
+      if (label_size && (label = reinterpret_cast<TOKEN_MANDATORY_LABEL*>
+          (LocalAlloc(LPTR, label_size))) != NULL) {
+        if (GetTokenInformation(current_token, TokenIntegrityLevel,
+            label, label_size, &label_size)) {
+          result = GetSidIntegrityLevel(label->Label.Sid, level);
+        }
+        LocalFree(label);
+      }
+      CloseHandle(current_token);
+    }
+    CloseHandle(process);
   }
-
-  SYSTEM_MANDATORY_LABEL_ACE* mandatory_label_ace;
-  if (!GetAce(acl, 0, reinterpret_cast<void**>(&mandatory_label_ace)))
-    return S_FALSE;
-
-  if (mandatory_label_ace->Header.AceType != SYSTEM_MANDATORY_LABEL_ACE_TYPE)
-    return S_FALSE;
-
-  if (!(mandatory_label_ace->Mask & SYSTEM_MANDATORY_LABEL_NO_WRITE_UP)) {
-    // I have found that if this flag is not set, a low integrity label doesn't
-    // prevent writes from being virtualized.  MS provides zero documentation.
-    // I just did an MSDN search, a Google search, and a search of the Beta
-    // Vista SDKs, and no docs. TODO(omaha): Check docs again periodically.
-    // For now, act as if no label was set, and default to medium.
-    return S_FALSE;
-  }
-
-  if (and_children) {
-    *and_children = ((mandatory_label_ace->Header.AceFlags &
-        (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE))
-        == (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE));
-  }
-
-  return GetSidIntegrityLevel(reinterpret_cast<SID*>(&mandatory_label_ace->
-      SidStart), level);
+  return result;
 }
 
+}  // namespace
 
 // If successful, the caller needs to free the ACL using free().
 // On failure, returns NULL.
@@ -143,37 +148,6 @@ static ACL* CreateMandatoryLabelAcl(MANDATORY_LEVEL level, bool and_children) {
 
   return acl.release();
 }
-
-
-TCHAR* AllocFullRegPath(HKEY root, const TCHAR* subkey) {
-  if (!subkey)
-    return NULL;
-
-  const TCHAR* root_string;
-
-  if (root == HKEY_CURRENT_USER)
-    root_string = _T("CURRENT_USER\\");
-  else if (root == HKEY_LOCAL_MACHINE)
-    root_string = _T("MACHINE\\");
-  else if (root == HKEY_CLASSES_ROOT)
-    root_string = _T("CLASSES_ROOT\\");
-  else if (root == HKEY_USERS)
-    root_string = _T("USERS\\");
-  else
-    return NULL;
-
-  size_t root_size = _tcslen(root_string);
-  size_t size = root_size + _tcslen(subkey) + 1;
-  TCHAR* result = reinterpret_cast<TCHAR*>(LocalAlloc(LPTR,
-      size * sizeof(TCHAR)));
-  if (!result)
-    return NULL;
-
-  memcpy(result, root_string, size * sizeof(TCHAR));
-  memcpy(result + root_size, subkey, (1 + size - root_size) * sizeof(TCHAR));
-  return result;
-}
-
 
 bool IsUserNonElevatedAdmin() {
   // If pre-Vista return false;
@@ -285,7 +259,7 @@ HRESULT IsUACOn(bool* is_uac_on) {
   }
 
   MANDATORY_LEVEL integrity_level = MandatoryLevelUntrusted;
-  hr = vista_util::GetProcessIntegrityLevel(pid, &integrity_level);
+  hr = GetProcessIntegrityLevel(pid, &integrity_level);
   ASSERT(SUCCEEDED(hr), (_T("[%#x]"), hr));
   if (FAILED(hr)) {
     return hr;
@@ -364,188 +338,6 @@ HRESULT RunElevated(const TCHAR* file_path,
   }
 
   return S_OK;
-}
-
-
-HRESULT GetProcessIntegrityLevel(DWORD process_id, MANDATORY_LEVEL* level) {
-  if (!IsVistaOrLater())
-    return E_NOTIMPL;
-
-  if (process_id == 0)
-    process_id = ::GetCurrentProcessId();
-
-  HRESULT result = E_FAIL;
-  HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, process_id);
-  if (process != NULL) {
-    HANDLE current_token;
-    if (OpenProcessToken(process,
-                         TOKEN_QUERY | TOKEN_QUERY_SOURCE,
-                         &current_token)) {
-      DWORD label_size = 0;
-      TOKEN_MANDATORY_LABEL* label;
-      GetTokenInformation(current_token, TokenIntegrityLevel,
-          NULL, 0, &label_size);
-      if (label_size && (label = reinterpret_cast<TOKEN_MANDATORY_LABEL*>
-          (LocalAlloc(LPTR, label_size))) != NULL) {
-        if (GetTokenInformation(current_token, TokenIntegrityLevel,
-            label, label_size, &label_size)) {
-          result = GetSidIntegrityLevel(label->Label.Sid, level);
-        }
-        LocalFree(label);
-      }
-      CloseHandle(current_token);
-    }
-    CloseHandle(process);
-  }
-  return result;
-}
-
-
-HRESULT GetFileOrFolderIntegrityLevel(const TCHAR* file,
-    MANDATORY_LEVEL* level, bool* and_children) {
-  if (!IsVistaOrLater())
-    return E_NOTIMPL;
-
-  PSECURITY_DESCRIPTOR descriptor;
-  PACL acl = NULL;
-
-  DWORD result = GetNamedSecurityInfo(const_cast<TCHAR*>(file), SE_FILE_OBJECT,
-      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, &acl, &descriptor);
-  if (result != ERROR_SUCCESS)
-    return HRESULT_FROM_WIN32(result);
-
-  HRESULT hr = GetAclIntegrityLevel(acl, level, and_children);
-  LocalFree(descriptor);
-  return hr;
-}
-
-
-HRESULT SetFileOrFolderIntegrityLevel(const TCHAR* file,
-    MANDATORY_LEVEL level, bool and_children) {
-  if (!IsVistaOrLater())
-    return E_NOTIMPL;
-
-  scoped_ptr_malloc<ACL> acl(CreateMandatoryLabelAcl(level, and_children));
-  if (!acl.get()) {
-    return HRESULTFromLastError();
-  }
-
-  DWORD result = SetNamedSecurityInfo(const_cast<TCHAR*>(file), SE_FILE_OBJECT,
-      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, acl.get());
-  return HRESULT_FROM_WIN32(result);
-}
-
-
-HRESULT GetRegKeyIntegrityLevel(HKEY root, const TCHAR* subkey,
-    MANDATORY_LEVEL* level, bool* and_children) {
-  if (!IsVistaOrLater())
-    return E_NOTIMPL;
-
-  TCHAR* reg_path = AllocFullRegPath(root, subkey);
-  if (!reg_path)
-    return E_FAIL;
-
-  PSECURITY_DESCRIPTOR descriptor;
-  PACL acl = NULL;
-
-  DWORD result = GetNamedSecurityInfo(reg_path, SE_REGISTRY_KEY,
-      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, &acl, &descriptor);
-  if (result != ERROR_SUCCESS) {
-    LocalFree(reg_path);
-    return HRESULT_FROM_WIN32(result);
-  }
-
-  HRESULT hr = GetAclIntegrityLevel(acl, level, and_children);
-  LocalFree(descriptor);
-  LocalFree(reg_path);
-  return hr;
-}
-
-
-HRESULT SetRegKeyIntegrityLevel(HKEY root, const TCHAR* subkey,
-    MANDATORY_LEVEL level, bool and_children) {
-  if (!IsVistaOrLater())
-    return E_NOTIMPL;
-
-  TCHAR* reg_path = AllocFullRegPath(root, subkey);
-  if (!reg_path)
-    return E_FAIL;
-
-  scoped_ptr_malloc<ACL> acl(CreateMandatoryLabelAcl(level, and_children));
-  if (!acl.get()) {
-    HRESULT hr = HRESULTFromLastError();
-    LocalFree(reg_path);
-    return hr;
-  }
-
-  DWORD result = SetNamedSecurityInfo(reg_path, SE_REGISTRY_KEY,
-      LABEL_SECURITY_INFORMATION, NULL, NULL, NULL, acl.get());
-  LocalFree(reg_path);
-  return HRESULT_FROM_WIN32(result);
-}
-
-
-CSecurityDesc* BuildSecurityDescriptor(MANDATORY_LEVEL level,
-                                       ACCESS_MASK mask) {
-  if (!IsVistaOrLater()) {
-    return NULL;
-  }
-
-  scoped_ptr<CSecurityDesc> security_descriptor(new CSecurityDesc);
-  HRESULT hr = vista_util::SetMandatorySacl(level, security_descriptor.get());
-  if (FAILED(hr)) {
-    return NULL;
-  }
-
-
-  // Fill out the rest of the security descriptor from the process token.
-  CAccessToken token;
-  if (!token.GetProcessToken(TOKEN_QUERY)) {
-    return NULL;
-  }
-
-  // The owner.
-  CSid sid_owner;
-  if (!token.GetOwner(&sid_owner)) {
-    return NULL;
-  }
-  security_descriptor->SetOwner(sid_owner);
-
-  // The group.
-  CSid sid_group;
-  if (!token.GetPrimaryGroup(&sid_group)) {
-    return NULL;
-  }
-  security_descriptor->SetGroup(sid_group);
-
-  // The discretionary access control list.
-  CDacl dacl;
-  if (!token.GetDefaultDacl(&dacl)) {
-    return NULL;
-  }
-
-  // Add an access control entry mask for the current user.
-  // This is what grants this user access from lower integrity levels.
-  CSid sid_user;
-  if (!token.GetUser(&sid_user)) {
-    return NULL;
-  }
-
-  if (!dacl.AddAllowedAce(sid_user, mask)) {
-    return NULL;
-  }
-
-  // Lastly, save the dacl to this descriptor.
-  security_descriptor->SetDacl(dacl);
-  return security_descriptor.release();
-}
-
-CSecurityDesc* CreateLowIntegritySecurityDesc(ACCESS_MASK mask) {
-  return BuildSecurityDescriptor(MandatoryLevelLow, mask);
-}
-
-CSecurityDesc* CreateMediumIntegritySecurityDesc(ACCESS_MASK mask) {
-  return BuildSecurityDescriptor(MandatoryLevelMedium, mask);
 }
 
 HRESULT SetMandatorySacl(MANDATORY_LEVEL level, CSecurityDesc* sd) {
