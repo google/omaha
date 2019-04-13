@@ -172,36 +172,6 @@ HRESULT Shell::GetSpecialFolderKeywordsMapping(
   return S_OK;
 }
 
-HRESULT Shell::DeleteDirectory(const TCHAR* dir) {
-  ASSERT1(dir && *dir);
-
-  if (!SafeDirectoryNameForDeletion(dir)) {
-    return E_INVALIDARG;
-  }
-
-  uint32 dir_len = lstrlen(dir);
-  if (dir_len >= MAX_PATH) {
-    return E_INVALIDARG;
-  }
-
-  // the 'from' must be double-terminated with 0. Reserve space for one more
-  // zero at the end
-  TCHAR from[MAX_PATH + 1] = {0};
-  lstrcpyn(from, dir, MAX_PATH);
-  from[1 + dir_len] = 0;    // the second zero terminator.
-
-  SHFILEOPSTRUCT file_op = {0};
-
-  file_op.hwnd   = 0;
-  file_op.wFunc  = FO_DELETE;
-  file_op.pFrom  = from;
-  file_op.pTo    = 0;
-  file_op.fFlags = FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT;
-
-  // ::SHFileOperation returns non-zero on errors
-  return ::SHFileOperation(&file_op) ? HRESULTFromLastError() : S_OK;
-}
-
 HRESULT Shell::GetApplicationExecutablePath(const CString& exe,
                                             CString* path) {
   ASSERT1(path);

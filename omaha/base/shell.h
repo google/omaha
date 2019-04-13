@@ -58,9 +58,6 @@ class Shell {
   static HRESULT GetSpecialFolderKeywordsMapping(
       std::map<CString, CString>* special_folders_map);
 
-  // Recursively delete a directory including its files.
-  static HRESULT DeleteDirectory(const TCHAR* dir);
-
   // Reads the application executable path from
   // HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths.
   static HRESULT GetApplicationExecutablePath(const CString& exe,
