@@ -1822,9 +1822,9 @@ HRESULT XmlParser::VisitElement(IXMLDOMNode* node) {
   CORE_LOG(L4, (_T("[element name][%s:%s]"), node_name.uri, node_name.base));
 
   // Ignore elements not understood.
-  ElementHandler* element_handler =
-      element_handler_factory_.CreateObject(node_name.base);
-  if (element_handler) {
+  scoped_ptr<ElementHandler> element_handler;
+  element_handler.reset(element_handler_factory_.CreateObject(node_name.base));
+  if (element_handler.get()) {
     return element_handler->Handle(node, response_);
   } else {
     CORE_LOG(LW, (_T("[VisitElement: don't know how to handle %s:%s]"),
