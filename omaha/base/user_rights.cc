@@ -28,27 +28,12 @@
 
 namespace omaha {
 
-bool UserRights::TokenIsAdmin(HANDLE token) {
-  return BelongsToGroup(token, DOMAIN_ALIAS_RID_ADMINS);
-}
+namespace {
 
-bool UserRights::UserIsAdmin() {
-  return BelongsToGroup(NULL, DOMAIN_ALIAS_RID_ADMINS);
-}
-
-bool UserRights::UserIsUser() {
-  return BelongsToGroup(NULL, DOMAIN_ALIAS_RID_USERS);
-}
-
-bool UserRights::UserIsPowerUser() {
-  return BelongsToGroup(NULL, DOMAIN_ALIAS_RID_POWER_USERS);
-}
-
-bool UserRights::UserIsGuest() {
-  return BelongsToGroup(NULL, DOMAIN_ALIAS_RID_GUESTS);
-}
-
-bool UserRights::BelongsToGroup(HANDLE token, int group_id) {
+// Returns true if the owner of the current process is the primary logon token
+// for the current interactive session: console, terminal services, or fast
+// user switching.
+static bool BelongsToGroup(HANDLE token, int group_id) {
   SID_IDENTIFIER_AUTHORITY nt_authority = SECURITY_NT_AUTHORITY;
   PSID group = NULL;
 
@@ -72,28 +57,10 @@ bool UserRights::BelongsToGroup(HANDLE token, int group_id) {
   return !!check;
 }
 
-bool UserRights::UserIsRestricted() {
-  scoped_handle token;
-  if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, address(token))) {
-    UTIL_LOG(LE, (_T("[UserRights::UserIsRestricted - OpenProcessToken failed]")
-                  _T("[0x%08x]"), HRESULTFromLastError()));
-    return true;
-  }
+}  // namespace
 
-  return !!::IsTokenRestricted(get(token));
-}
-
-bool UserRights::UserIsLowOrUntrustedIntegrity() {
-  if (SystemInfo::IsRunningOnVistaOrLater()) {
-    MANDATORY_LEVEL integrity_level = MandatoryLevelUntrusted;
-    if (FAILED(vista_util::GetProcessIntegrityLevel(0, &integrity_level)) ||
-        integrity_level == MandatoryLevelUntrusted ||
-        integrity_level == MandatoryLevelLow) {
-      return true;
-    }
-  }
-
-  return false;
+bool UserRights::TokenIsAdmin(HANDLE token) {
+  return BelongsToGroup(token, DOMAIN_ALIAS_RID_ADMINS);
 }
 
 HRESULT UserRights::UserIsLoggedOnInteractively(bool* is_logged_on) {

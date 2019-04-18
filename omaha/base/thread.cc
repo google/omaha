@@ -124,36 +124,6 @@ bool Thread::Running() const {
   return WAIT_TIMEOUT == WaitForSingleObject(thread_, 0);
 }
 
-// Executes an APC request.
-void __stdcall Thread::APCProc(ULONG_PTR param) {
-  ApcInfo* pInfo = reinterpret_cast<ApcInfo*>(param);
-  if (pInfo) {
-    if (pInfo->receiver_) {
-      pInfo->receiver_->OnApc(pInfo->param_);
-    }
-    // Deallocates what was allocated in QueueApc.
-    delete pInfo;
-  }
-}
-
-// ApcReceiver wants to execute its OnApc function in the
-// context of this thread.
-bool Thread::QueueApc(ApcReceiver* receiver, ULONG_PTR param) {
-  ASSERT1(receiver);
-  if (!Running()) {
-    // No reason to queue anything to not running thread.
-    return true;
-  }
-
-  // This allocation will be freed in Thread::APCProc
-  ApcInfo* pInfo = new ApcInfo();
-  pInfo->receiver_ = receiver;
-  pInfo->param_    = param;
-  return 0 != QueueUserAPC(&Thread::APCProc,
-                           thread_,
-                           reinterpret_cast<ULONG_PTR>(pInfo));
-}
-
 bool Thread::PostMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
   return TRUE == PostThreadMessage(thread_id_, msg, wparam, lparam);
 }

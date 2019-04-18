@@ -1378,19 +1378,6 @@ bool IsAppInstallWorkerRunning(bool is_machine) {
   return !processes.empty();
 }
 
-// Returns true if the version does not begin with "1.0." or "1.1.".
-bool IsGoogleUpdate2OrLater(const CString& version) {
-  const ULONGLONG kFirstOmaha2Version = MAKEDLLVERULL(1, 2, 0, 0);
-  ULONGLONG version_number = VersionFromString(version);
-  ASSERT1(0 != version_number);
-
-  if (kFirstOmaha2Version <= version_number) {
-    return true;
-  }
-
-  return false;
-}
-
 HRESULT WriteInstallerDataToTempFile(const CString& installer_data,
                                      CString* installer_data_file_path) {
   ASSERT1(installer_data_file_path);

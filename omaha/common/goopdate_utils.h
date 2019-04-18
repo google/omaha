@@ -242,9 +242,6 @@ HRESULT WriteNameValuePairsToHandle(const HANDLE file_handle,
 // Returns true is any of the install workers is running.
 bool IsAppInstallWorkerRunning(bool is_machine);
 
-// Returns whether the version is an "Omaha 2" version or later.
-bool IsGoogleUpdate2OrLater(const CString& version);
-
 // Converts the installer_data value to UTF8. Then writes this UTF8 data
 // prefixed with the UTF8 BOM of EF BB BF to a temp file. Returns the path to
 // temp file that was created.  The returned path will be quote-enclosed by

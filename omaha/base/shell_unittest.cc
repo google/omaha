@@ -28,36 +28,6 @@
 
 namespace omaha {
 
-TEST(ShellTest, ShellLink) {
-  if (IsTestRunByLocalSystem()) {
-    return;
-  }
-
-  CString desktop;
-  EXPECT_SUCCEEDED(GetFolderPath(CSIDL_DESKTOP, &desktop));
-  CString link(desktop + _T("\\Shell Unittest.lnk"));
-  Shell::RemoveLink(link);
-  ASSERT_FALSE(File::Exists(link));
-
-  CString install_dir;
-  ASSERT_SUCCEEDED(Shell::GetSpecialFolder(CSIDL_PROGRAM_FILES,
-                                           true,
-                                           &install_dir));
-  install_dir += _T("\\Shell Unittest");
-  CString exe = install_dir + _T("\\foo.bar.exe");
-  ASSERT_SUCCEEDED(Shell::CreateLink(exe,
-                                     link,
-                                     install_dir,
-                                     _T(""),
-                                     _T("Google Update Unit Test"),
-                                     'W',
-                                     HOTKEYF_ALT | HOTKEYF_CONTROL,
-                                     NULL));
-  ASSERT_TRUE(File::Exists(link));
-  ASSERT_SUCCEEDED(Shell::RemoveLink(link));
-  ASSERT_FALSE(File::Exists(link));
-}
-
 struct Folders {
     DWORD csidl;
     CString name;

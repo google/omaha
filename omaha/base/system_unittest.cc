@@ -20,14 +20,39 @@
 // added
 
 #include "omaha/base/system.h"
+
+#include <windows.h>
+
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
 
-TEST(SystemTest, System) {
-    uint32 time_waited = 0;
-    ASSERT_SUCCEEDED(System::WaitForDiskActivity(10000, 25, &time_waited));
+namespace {
 
+uint32 GetProcessHandleCountOld() {
+  // GetProcessHandleCount not available on win2k
+  HMODULE module = ::GetModuleHandle(_T("kernel32"));
+  if (!module) {
+    return 0;
+  }
+
+  decltype(&::GetProcessHandleCount) get_proccess_handle_count = nullptr;
+  get_proccess_handle_count =
+    reinterpret_cast<decltype(&::GetProcessHandleCount)>(
+      GetProcAddress(module, "GetProcessHandleCount"));
+
+  if (!get_proccess_handle_count) {
+    return 0;
+  }
+
+  DWORD count = 0;
+  VERIFY(get_proccess_handle_count(GetCurrentProcess(), &count), (L""));
+  return count;
+}
+
+}  // namespace
+
+TEST(SystemTest, System) {
     uint64 free_bytes_current_user = 0;
     uint64 total_bytes_current_user = 0;
     uint64 free_bytes_all_users = 0;
@@ -36,8 +61,7 @@ TEST(SystemTest, System) {
                                                &total_bytes_current_user,
                                                &free_bytes_all_users));
 
-    ASSERT_EQ(System::GetProcessHandleCount(),
-              System::GetProcessHandleCountOld());
+    ASSERT_EQ(System::GetProcessHandleCount(), GetProcessHandleCountOld());
 }
 
 // Assume the workstations and PULSE are not running on batteries. The test

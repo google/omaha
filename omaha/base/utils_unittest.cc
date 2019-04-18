@@ -453,31 +453,6 @@ TEST(UtilsTest, InvalidPath) {
   EXPECT_TRUE(exe_path.IsEmpty());
 }
 
-TEST(UtilsTest, PinModuleIntoProcess) {
-  const TCHAR module_name[] = _T("icmp.dll");
-  const void* kNullModule = NULL;
-
-  // The module should not be loaded at this time.
-  EXPECT_EQ(kNullModule, ::GetModuleHandle(module_name));
-
-  // Loads and unloads the module.
-  {
-    scoped_library module(::LoadLibrary(module_name));
-    EXPECT_TRUE(module);
-    EXPECT_NE(kNullModule, ::GetModuleHandle(module_name));
-  }
-  EXPECT_EQ(kNullModule, ::GetModuleHandle(module_name));
-
-  // Loads, pins, and unloads the module.
-  {
-    scoped_library module(::LoadLibrary(module_name));
-    EXPECT_TRUE(module);
-    EXPECT_NE(kNullModule, ::GetModuleHandle(module_name));
-    PinModuleIntoProcess(module_name);
-  }
-  EXPECT_NE(kNullModule, ::GetModuleHandle(module_name));
-}
-
 // Assumes Windows is installed on the C: drive.
 TEST(UtilsTest, GetEnvironmentVariableAsString) {
   EXPECT_STREQ(_T("C:"), GetEnvironmentVariableAsString(_T("SystemDrive")));

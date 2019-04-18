@@ -31,25 +31,6 @@ class UserRights {
   // Returns true if token is a member of the local Administrators group.
   static bool TokenIsAdmin(HANDLE token);
 
-  // Returns true if the user belongs to the local Administrators group.
-  static bool UserIsAdmin();
-
-  // Returns true if the user belongs to the Users group.
-  static bool UserIsUser();
-
-  // Returns true if the user belongs to the Power User group.
-  static bool UserIsPowerUser();
-
-  // Returns true if the user is a Guest.
-  static bool UserIsGuest();
-
-  // Returns true if the owner of the current process has a restricted token.
-  static bool UserIsRestricted();
-
-  // Returns true if the owner of the current process runs under low or
-  // untrusted integrity on Vista.
-  static bool UserIsLowOrUntrustedIntegrity();
-
   // Returns true if the owner of the current process has an interactive
   // session: console, terminal services, or fast user switching.
   static HRESULT UserIsLoggedOnInteractively(bool* is_logged_on);
@@ -61,11 +42,6 @@ class UserRights {
   static bool VerifyCallerIsAdmin();
 
   static bool VerifyCallerIsSystem();
-
-  // Returns true if the owner of the current process is the primary logon token
-  // for the current interactive session: console, terminal services, or fast
-  // user switching.
-  static bool BelongsToGroup(HANDLE token, int group_id);
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(UserRights);

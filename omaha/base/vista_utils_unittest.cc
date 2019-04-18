@@ -27,31 +27,6 @@ namespace omaha {
 
 namespace vista {
 
-// Exercises RunAsUser() with explorer token. For Vista, the call to
-// StartProcessWithTokenOfProcess() will succeed only if the caller is SYSTEM.
-TEST(VistaUtilsTest, StartProcessWithExplorerTokenTest) {
-  CString path = ConcatenatePath(app_util::GetSystemDir(), _T("cmd.exe"));
-  EnclosePath(&path);
-  path += _T(" /c exit 702");
-  uint32 pid(0);
-  EXPECT_SUCCEEDED(GetExplorerPidForCurrentUserOrSession(&pid));
-
-  HRESULT hr = StartProcessWithTokenOfProcess(pid, path);
-  if (!vista_util::IsVistaOrLater()) {
-    EXPECT_SUCCEEDED(hr);
-    return;
-  }
-
-  bool is_system = false;
-  EXPECT_SUCCEEDED(IsSystemProcess(&is_system));
-  if (is_system) {
-    EXPECT_SUCCEEDED(hr);
-    return;
-  }
-
-  EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_PRIVILEGE_NOT_HELD), hr);
-}
-
 // Exercises RunAsUser() with current user token.
 TEST(VistaUtilsTest, RunAsCurrentUserTest) {
   CString cmd_path = ConcatenatePath(app_util::GetSystemDir(), _T("cmd.exe"));

@@ -39,27 +39,6 @@ enum UseBrowser {
 
 class Shell {
  public:
-
-  // create and store a shortcut link
-  // note that icon can be NULL if no icon is required
-  // note that we always pick the 0th icon for now, this can be changed later
-  // [relevant with EXE and compound icons]
-  static HRESULT CreateLink(const TCHAR *source,
-                            const TCHAR *destination,
-                            const TCHAR *working_dir,
-                            const TCHAR *arguments,
-                            const TCHAR *description,
-                            WORD hotkey_virtual_key_code,
-                            WORD hotkey_modifiers,
-                            const TCHAR *icon);
-  // For information on hotkey modifiers see MSDN IShellLink::GetHotKey method.
-
-  // Delete a shortcut link
-  static HRESULT RemoveLink(const TCHAR *link);
-
-  // Open a URL in a new browser window
-  static HRESULT OpenLinkInNewWindow(const TCHAR* url, UseBrowser use_browser);
-
   // Execute a file
   static HRESULT Execute(const TCHAR* file);
 
@@ -78,9 +57,6 @@ class Shell {
   // WINDOWS.
   static HRESULT GetSpecialFolderKeywordsMapping(
       std::map<CString, CString>* special_folders_map);
-
-  // Recursively delete a directory including its files.
-  static HRESULT DeleteDirectory(const TCHAR* dir);
 
   // Reads the application executable path from
   // HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths.

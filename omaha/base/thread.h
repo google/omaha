@@ -77,24 +77,15 @@ class Thread {
   // Waits until thread exits.
   bool WaitTillExit(DWORD msec) const;
 
-  // Queues an APC to the ApcReceiver.
-  bool QueueApc(ApcReceiver* receiver, ULONG_PTR param);
-
   // Posts message to a thread.
   bool PostMessage(UINT msg, WPARAM wparam, LPARAM lparam);
  private:
   static DWORD __stdcall Prepare(void* thisPointer);      // Thread proc.
-  static void __stdcall APCProc(ULONG_PTR dwParam);
 
   Runnable* runner_;     // Interface to work with.
   DWORD     thread_id_;
   HANDLE    thread_;
   Gate start_gate_;     // Synchronizes the thread start.
-
-  struct ApcInfo {
-    ApcReceiver* receiver_;
-    ULONG_PTR    param_;
-  };
 
   DISALLOW_EVIL_CONSTRUCTORS(Thread);
 };

@@ -246,9 +246,6 @@ GPA_WRAP(shell32.dll,
 
 bool IsPrivateNamespaceAvailable();
 
-
-HRESULT PinModuleIntoProcess(const CString& module_name);
-
 // Creates a directory with default security.
 //   S_OK:    Created directory
 //   S_FALSE: Directory already existed
