@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/common/xml_parser.h"
+#include <memory>
 #include <stdlib.h>
 #include <vector>
 #include "base/basictypes.h"

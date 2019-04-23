@@ -32,14 +32,15 @@
 
 // Suppress warning "C5031: #pragma warning(pop): likely mismatch, popping
 // warning state pushed in different file." This works around a problem
-// in winioctl.h introduced with VS 2017 15.9.
-#if (_MSC_VER == 1916)
+// in winioctl.h in the Windows SDK since somewhere between 10.0.15063
+// and 10.0.16399.  See #20584780.
+#if (_MSC_VER >= 1916)
 #pragma warning(push)
 #pragma warning(disable:5031)
 #endif
 #include <winioctl.h>
-#if (_MSC_VER == 1916)
-#pragma warning(pop)
+#if (_MSC_VER >= 1916)
+#pragma warning(pop) // See above; winsdk workaround
 #pragma warning(pop) // #pragma warning(disable:5031)
 #endif
 

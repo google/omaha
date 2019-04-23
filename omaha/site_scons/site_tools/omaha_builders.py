@@ -411,6 +411,10 @@ def ConfigureEnvFor64Bit(env):
                                    '$ATLMFC_VC14_1_DIR/lib/x64',
                                    platform_sdk_lib_dir + '/um/x64',
                                    platform_sdk_lib_dir + '/ucrt/x64',],
+      omaha_version_utils.VC160: [ '$VC16_0_DIR/lib/x64',
+                                   '$ATLMFC_VC16_0_DIR/lib/x64',
+                                   platform_sdk_lib_dir + '/um/x64',
+                                   platform_sdk_lib_dir + '/ucrt/x64',],
       }[env['msc_ver']]
 
   env.Prepend(LIBPATH=lib_paths)
@@ -421,7 +425,8 @@ def ConfigureEnvFor64Bit(env):
        omaha_version_utils.VC100 : '$VC10_0_DIR/vc/bin/x86_amd64',
        omaha_version_utils.VC120 : '$VC12_0_DIR/vc/bin/x86_amd64',
        omaha_version_utils.VC140 : '$VC14_0_DIR/vc/bin/x86_amd64',
-       omaha_version_utils.VC141 : '$VC14_1_DIR/bin/HostX64/x64'}
+       omaha_version_utils.VC141 : '$VC14_1_DIR/bin/HostX64/x64',
+       omaha_version_utils.VC160 : '$VC16_0_DIR/bin/HostX64/x64'}
       [env['msc_ver']]))
 
   # Filter x86 options that are not supported or conflict with x86-x64 options.

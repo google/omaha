@@ -194,7 +194,7 @@ inline T get( scoped_any<T,close_policy,invalid_value,unique> const & t )
 template<typename T,class close_policy,class invalid_value,int unique>
 inline bool valid( scoped_any<T,close_policy,invalid_value,unique> const & t )
 {
-    return t;
+    return static_cast<bool>(t);
 }
 
 // return wrapped resource and give up ownership

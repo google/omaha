@@ -17,6 +17,7 @@
 #define OMAHA_BASE_STRING_H_
 
 #include <windows.h>
+#include <string>
 #include <vector>
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"

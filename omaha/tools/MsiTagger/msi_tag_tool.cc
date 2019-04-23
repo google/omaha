@@ -32,6 +32,7 @@
 
 #include <fstream>  // NOLINT(readability/streams)
 #include <limits>
+#include <string>
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/utils.h"
@@ -81,7 +82,24 @@ int WriteMsiTag(
   write_uint16(&out, static_cast<uint16>(tag_length));
 
   // Actual tag.
-  std::string tag_ansi(tag, tag + tag_length);
+  // Formerly: std::string tag_ansi(tag, tag + tag_length);
+
+  // That code converted UTF-16 to iso-8859-1 (Latin1) via blindly
+  // chopping all but the lowest eight bits.  This is not utf-8; it's
+  // Latin1, with garbage for anything outside that repertoire.  Newer
+  // compilers rightly complain about data loss.  Apparently that is
+  // fine though, so we do exactly as above, but more explicitly, and
+  // raising an assertion if we actually hit anything outside
+  // US-ASCII.
+  std::string tag_ansi;
+  tag_ansi.reserve(static_cast<size_t>(tag_length));
+  for (auto it=tag, itend=static_cast<const TCHAR*>(tag + tag_length);
+       it != itend;
+       ++it) {
+    ASSERT1(*it < 128);
+    tag_ansi += static_cast<const char>(*it);
+  }
+
   out.write(tag_ansi.data(), tag_length);
 
   in.close();

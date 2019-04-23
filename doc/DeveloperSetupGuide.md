@@ -6,11 +6,13 @@ We are striving to make the code build with the latest Windows toolchain from Mi
 
 #### Currently, the supported toolchain is Visual Studio 2017 Update 15.9.11 and Windows SDK 10.0.17763.0. ####
 
+But VS2019 should now work.
+
 # Required Downloads/Tools #
 
 The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
-  * Microsoft Visual Studio 2017. The free Visual Studio Community edition is sufficient to build.
+  * Microsoft Visual Studio 2017 or 2019. The free Visual Studio Community edition is sufficient to build.
     * Download [here](https://visualstudio.microsoft.com/downloads)
   * ATL Server headers
     * Download [here](http://atlserver.codeplex.com). Omaha needs this library for regular expression support.
