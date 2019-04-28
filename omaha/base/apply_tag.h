@@ -86,7 +86,7 @@ class ApplyTag {
   // data with the tagged information.
   std::vector<byte> buffer_data_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(ApplyTag);
+  DISALLOW_COPY_AND_ASSIGN(ApplyTag);
 };
 
 }  // namespace omaha

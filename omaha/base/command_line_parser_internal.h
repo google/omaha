@@ -67,7 +67,7 @@ class CommandLineParserArgs {
  private:
   SwitchAndArgumentsMap switch_arguments_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(CommandLineParserArgs);
+  DISALLOW_COPY_AND_ASSIGN(CommandLineParserArgs);
 };
 
 }  // namespace internal

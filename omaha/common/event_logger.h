@@ -142,7 +142,7 @@ class GoogleUpdateLogEvent {
   int id_;
   bool is_machine_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(GoogleUpdateLogEvent);
+  DISALLOW_COPY_AND_ASSIGN(GoogleUpdateLogEvent);
 };
 
 }  // namespace omaha

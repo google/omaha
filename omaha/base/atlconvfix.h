@@ -21,10 +21,10 @@
 #ifndef OMAHA_COMMON_ATLCONVFIX_H_
 #define OMAHA_COMMON_ATLCONVFIX_H_
 
-#ifndef DISALLOW_EVIL_CONSTRUCTORS
+#ifndef DISALLOW_COPY_AND_ASSIGN
 // A macro to disallow the evil copy constructor and operator= functions
 // This should be used in the private: declarations for a class
-#define DISALLOW_EVIL_CONSTRUCTORS(TypeName)    \
+#define DISALLOW_COPY_AND_ASSIGN(TypeName)    \
   TypeName(const TypeName&);                    \
   void operator=(const TypeName&)
 #endif
@@ -64,7 +64,7 @@ class DestroyBuffer : public ConversionClass<buffer_length> {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(DestroyBuffer);
+  DISALLOW_COPY_AND_ASSIGN(DestroyBuffer);
 };
 
 #define DECLARED_DESTROY_NAME(base_type) DestroyBuffer##base_type
@@ -82,7 +82,7 @@ class DestroyBuffer : public ConversionClass<buffer_length> {
                                                                code_page) { \
     } \
    private: \
-    DISALLOW_EVIL_CONSTRUCTORS(DECLARED_DESTROY_NAME(base_type##EX)); \
+    DISALLOW_COPY_AND_ASSIGN(DECLARED_DESTROY_NAME(base_type##EX)); \
   }; \
   typedef DECLARED_DESTROY_NAME(base_type##EX)<> \
       DECLARED_DESTROY_NAME(base_type)

@@ -35,7 +35,7 @@ namespace omaha {
     bool CheckSingleInstance();
     CString mutex_name_;
     auto_mutex mutex_;
-    DISALLOW_EVIL_CONSTRUCTORS(ProgramInstance);
+    DISALLOW_COPY_AND_ASSIGN(ProgramInstance);
   };
 
 }  // namespace omaha

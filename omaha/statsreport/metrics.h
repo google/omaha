@@ -166,7 +166,7 @@ protected:
   MetricCollectionBase *const coll_;
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(MetricBase);
+  DISALLOW_COPY_AND_ASSIGN(MetricBase);
 };
 
 /// Must be a POD
@@ -212,7 +212,7 @@ private:
   using MetricCollectionBase::initialized_;
   using MetricCollectionBase::first_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(MetricCollection);
+  DISALLOW_COPY_AND_ASSIGN(MetricCollection);
 
   /// MetricBase is intimate with us
   friend class MetricBase;
@@ -296,7 +296,7 @@ protected:
   int64 value_;
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(IntegerMetricBase);
+  DISALLOW_COPY_AND_ASSIGN(IntegerMetricBase);
 };
 
 /// A count metric is a cumulative counter of events.
@@ -314,7 +314,7 @@ public:
   int64 Reset();
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(CountMetric);
+  DISALLOW_COPY_AND_ASSIGN(CountMetric);
 };
 
 class TimingMetric: public MetricBase {
@@ -362,7 +362,7 @@ public:
   TimingData Reset();
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(TimingMetric);
+  DISALLOW_COPY_AND_ASSIGN(TimingMetric);
 
   void Clear();
 
@@ -414,7 +414,7 @@ private:
   /// The item count we divide the captured time by
   uint32 count_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(TimingSample);
+  DISALLOW_COPY_AND_ASSIGN(TimingSample);
 };
 
 /// An integer metric is used to sample values that vary over time.
@@ -436,7 +436,7 @@ public:
   void operator -= (int64 sub)    { Subtract(sub); }
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(IntegerMetric);
+  DISALLOW_COPY_AND_ASSIGN(IntegerMetric);
 };
 
 /// A bool metric is tri-state, and can be:
@@ -486,7 +486,7 @@ public:
   TristateBoolValue value() const { return value_; };
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(BoolMetric);
+  DISALLOW_COPY_AND_ASSIGN(BoolMetric);
 
   TristateBoolValue value_;
 };

@@ -420,7 +420,7 @@ class RegKey {
   // the HKEY for the current key
   HKEY h_key_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(RegKey);
+  DISALLOW_COPY_AND_ASSIGN(RegKey);
 };
 
 // Provides all the functionality of RegKey plus
@@ -455,7 +455,7 @@ class RegKeyWithChangeEvent : public RegKey {
 
  private:
   scoped_handle change_event_;
-  DISALLOW_EVIL_CONSTRUCTORS(RegKeyWithChangeEvent);
+  DISALLOW_COPY_AND_ASSIGN(RegKeyWithChangeEvent);
 };
 
 // Does the common things necessary for watching
@@ -489,7 +489,7 @@ class RegKeyWatcher : public StoreWatcher {
   bool watch_subtree_;
   DWORD notify_filter_;
   bool allow_creation_;
-  DISALLOW_EVIL_CONSTRUCTORS(RegKeyWatcher);
+  DISALLOW_COPY_AND_ASSIGN(RegKeyWatcher);
 };
 
 

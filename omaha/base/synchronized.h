@@ -63,7 +63,7 @@ class AutoSync {
  private:
   const Lockable * lock_;
   bool first_time_;
-  DISALLOW_EVIL_CONSTRUCTORS(AutoSync);
+  DISALLOW_COPY_AND_ASSIGN(AutoSync);
 };
 
 // the usaage:
@@ -127,7 +127,7 @@ class GLock : public Lockable {
   CString name_;
 #endif
   mutable HANDLE mutex_;
-  DISALLOW_EVIL_CONSTRUCTORS(GLock);
+  DISALLOW_COPY_AND_ASSIGN(GLock);
 };
 
 // FakeGLock looks like a GLock, but none of its methods do anything.
@@ -146,7 +146,7 @@ class FakeGLock : public Lockable {
   virtual bool Unlock() const { return true; }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(FakeGLock);
+  DISALLOW_COPY_AND_ASSIGN(FakeGLock);
 };
 
 // LLock stands for local lock.
@@ -166,7 +166,7 @@ class LLock : public Lockable {
 
  private:
   mutable CRITICAL_SECTION        critical_section_;
-  DISALLOW_EVIL_CONSTRUCTORS(LLock);
+  DISALLOW_COPY_AND_ASSIGN(LLock);
 };
 
 // A gate is a synchronization object used to either stop all
@@ -213,7 +213,7 @@ class Gate {
                                     int *selected_gate,
                                     bool wait_all);
   HANDLE gate_;
-  DISALLOW_EVIL_CONSTRUCTORS(Gate);
+  DISALLOW_COPY_AND_ASSIGN(Gate);
 };
 
 bool WaitAllowRepaint(const Gate& gate, DWORD msec);
@@ -228,7 +228,7 @@ class AutoGateKeeper {
   }
  private:
   Gate *gate_;
-  DISALLOW_EVIL_CONSTRUCTORS(AutoGateKeeper);
+  DISALLOW_COPY_AND_ASSIGN(AutoGateKeeper);
 };
 
 // A very simple rather fast lock - if uncontested.  USE ONLY AS A GLOBAL OBJECT
@@ -263,7 +263,7 @@ class AutoSimpleLock {
   ~AutoSimpleLock() { lock_.Unlock(); }
  private:
   const SimpleLock& lock_;
-  DISALLOW_EVIL_CONSTRUCTORS(AutoSimpleLock);
+  DISALLOW_COPY_AND_ASSIGN(AutoSimpleLock);
 };
 
 class AutoSimpleLockWithDelay {
@@ -273,7 +273,7 @@ class AutoSimpleLockWithDelay {
   ~AutoSimpleLockWithDelay() { lock_.Unlock(); }
  private:
   const SimpleLockWithDelay& lock_;
-  DISALLOW_EVIL_CONSTRUCTORS(AutoSimpleLockWithDelay);
+  DISALLOW_COPY_AND_ASSIGN(AutoSimpleLockWithDelay);
 };
 
 
@@ -290,7 +290,7 @@ class CriticalSection {
   CRITICAL_SECTION critical_section_;
   uint32 number_entries_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(CriticalSection);
+  DISALLOW_COPY_AND_ASSIGN(CriticalSection);
 };
 
 // A class that manages a CriticalSection with its lifetime, you pass
@@ -314,7 +314,7 @@ class SingleLock {
  private:
   CriticalSection * critical_section_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(SingleLock);
+  DISALLOW_COPY_AND_ASSIGN(SingleLock);
 };
 
 // Encapsulation for kernel Event. Initializes and destroys with it's lifetime
@@ -331,7 +331,7 @@ class EventObj {
  private:
   HANDLE h_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(EventObj);
+  DISALLOW_COPY_AND_ASSIGN(EventObj);
 };
 
 // Is the given handle signaled?

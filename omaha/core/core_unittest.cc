@@ -53,7 +53,7 @@ class CoreRunner : public Runnable {
   }
 
   bool is_machine_;
-  DISALLOW_EVIL_CONSTRUCTORS(CoreRunner);
+  DISALLOW_COPY_AND_ASSIGN(CoreRunner);
 };
 
 }  // namespace

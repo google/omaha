@@ -111,7 +111,7 @@ class DownloadManager : public DownloadManagerInterface {
 
     scoped_ptr<NetworkRequest> network_request_;
 
-    DISALLOW_EVIL_CONSTRUCTORS(State);
+    DISALLOW_COPY_AND_ASSIGN(State);
   };
 
   // Creates a download state corresponding to the app. The state object is
@@ -154,7 +154,7 @@ class DownloadManager : public DownloadManagerInterface {
   scoped_ptr<PackageCache> package_cache_;
 
   friend class DownloadManagerTest;
-  DISALLOW_EVIL_CONSTRUCTORS(DownloadManager);
+  DISALLOW_COPY_AND_ASSIGN(DownloadManager);
 };
 
 }  // namespace omaha

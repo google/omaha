@@ -57,7 +57,7 @@ class MockProcessMonitorCallback : public ProcessMonitorCallbackInterface {
   std::vector<DWORD> process_ids_added_;
   std::vector<DWORD> process_ids_removed_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(MockProcessMonitorCallback);
+  DISALLOW_COPY_AND_ASSIGN(MockProcessMonitorCallback);
 };
 
 TEST(GoopdumpProcessMonitorTest, TestStartStopNoop) {

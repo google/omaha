@@ -236,7 +236,7 @@ class LogWriter {
   bool Unregister();
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(LogWriter);
+  DISALLOW_COPY_AND_ASSIGN(LogWriter);
 };
 
 // A LogWriter that writes to a named file.
@@ -281,7 +281,7 @@ class FileLogWriter : public LogWriter {
 
   friend class FileLogWriterTest;
 
-  DISALLOW_EVIL_CONSTRUCTORS(FileLogWriter);
+  DISALLOW_COPY_AND_ASSIGN(FileLogWriter);
 };
 
 // A LogWriter that uses OutputDebugString() to write messages.
@@ -293,7 +293,7 @@ class OutputDebugStringLogWriter : public LogWriter {
   static OutputDebugStringLogWriter* Create();
   virtual void OutputMessage(const OutputInfo* info);
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(OutputDebugStringLogWriter);
+  DISALLOW_COPY_AND_ASSIGN(OutputDebugStringLogWriter);
 };
 
 // A LogWriter that overrides the settings in trconfig.ini and sends messages
@@ -314,7 +314,7 @@ class OverrideConfigLogWriter : public LogWriter {
   LogLevel level_;
   LogWriter* log_writer_;
   bool force_logging_enabled_;
-  DISALLOW_EVIL_CONSTRUCTORS(OverrideConfigLogWriter);
+  DISALLOW_COPY_AND_ASSIGN(OverrideConfigLogWriter);
 };
 
 // This log writer outputs to Event Tracing for Windows.
@@ -478,7 +478,7 @@ class Logging {
 
   friend class HistoryTest;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Logging);
+  DISALLOW_COPY_AND_ASSIGN(Logging);
 };
 
 // In order to make the logging macro LC_LOG work out we need to pass a
@@ -515,7 +515,7 @@ class LoggingHelper {
   LogLevel level_;
   DWORD writer_mask_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(LoggingHelper);
+  DISALLOW_COPY_AND_ASSIGN(LoggingHelper);
 };
 
 // Getter for the Logging singleton class.

@@ -56,7 +56,7 @@ class Goopdump {
   GoopdumpCmdLineArgs args_;
   DumpLog dump_log_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Goopdump);
+  DISALLOW_COPY_AND_ASSIGN(Goopdump);
 };
 
 }  // namespace omaha

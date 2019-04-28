@@ -40,7 +40,7 @@ class Runnable {
   virtual ~Runnable() {}
   virtual void Run() = 0;
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(Runnable);
+  DISALLOW_COPY_AND_ASSIGN(Runnable);
 };
 
 // Any class devived from this one will be able to call
@@ -54,7 +54,7 @@ class ApcReceiver {
   virtual ~ApcReceiver() {}
   virtual void OnApc(ULONG_PTR param) = 0;
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(ApcReceiver);
+  DISALLOW_COPY_AND_ASSIGN(ApcReceiver);
 };
 
 // This class encapsulates win32 thread management functions.
@@ -87,7 +87,7 @@ class Thread {
   HANDLE    thread_;
   Gate start_gate_;     // Synchronizes the thread start.
 
-  DISALLOW_EVIL_CONSTRUCTORS(Thread);
+  DISALLOW_COPY_AND_ASSIGN(Thread);
 };
 
 }  // namespace omaha

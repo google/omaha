@@ -65,7 +65,7 @@ class FileVer {
   // language charset
   DWORD   lang_charset_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(FileVer);
+  DISALLOW_COPY_AND_ASSIGN(FileVer);
 };
 
 }  // namespace omaha

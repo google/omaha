@@ -83,7 +83,7 @@ class RegistryMonitor {
  private:
   scoped_ptr<detail::RegistryMonitorImpl> impl_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(RegistryMonitor);
+  DISALLOW_COPY_AND_ASSIGN(RegistryMonitor);
 };
 
 }  // namespace omaha

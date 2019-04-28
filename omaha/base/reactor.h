@@ -84,7 +84,7 @@ class Reactor {
   CRITICAL_SECTION cs_;
   std::vector<RegistrationState*> handlers_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Reactor);
+  DISALLOW_COPY_AND_ASSIGN(Reactor);
 };
 
 }  // namespace omaha

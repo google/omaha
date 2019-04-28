@@ -306,7 +306,7 @@ class GoopdateImpl {
 
   Goopdate* goopdate_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(GoopdateImpl);
+  DISALLOW_COPY_AND_ASSIGN(GoopdateImpl);
 };
 
 GoopdateImpl::GoopdateImpl(Goopdate* goopdate, bool is_local_system)

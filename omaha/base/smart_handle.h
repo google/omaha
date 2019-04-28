@@ -44,7 +44,7 @@ class BaseHandleTraitsT {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(BaseHandleTraitsT);
+  DISALLOW_COPY_AND_ASSIGN(BaseHandleTraitsT);
 };
 
 /**
@@ -122,7 +122,7 @@ class HandleT {
   T h_;
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HandleT);
+  DISALLOW_COPY_AND_ASSIGN(HandleT);
 };
 
 
@@ -147,7 +147,7 @@ class HandleTraitsWin32Handle : public BaseHandleTraitsT<HANDLE> {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HandleTraitsWin32Handle);
+  DISALLOW_COPY_AND_ASSIGN(HandleTraitsWin32Handle);
 };
 
 /*
@@ -166,7 +166,7 @@ class HandleTraitsFindHandle : public BaseHandleTraitsT<HANDLE> {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HandleTraitsFindHandle);
+  DISALLOW_COPY_AND_ASSIGN(HandleTraitsFindHandle);
 };
 
 /*
@@ -180,7 +180,7 @@ class HandleTraitsHMenu : public BaseHandleTraitsT<HMENU> {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HandleTraitsHMenu);
+  DISALLOW_COPY_AND_ASSIGN(HandleTraitsHMenu);
 };
 
 /*
@@ -193,7 +193,7 @@ class HandleTraitsHCryptKey : public BaseHandleTraitsT<HCRYPTKEY> {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HandleTraitsHCryptKey);
+  DISALLOW_COPY_AND_ASSIGN(HandleTraitsHCryptKey);
 };
 
 /*
@@ -206,7 +206,7 @@ class HandleTraitsHCryptHash : public BaseHandleTraitsT<HCRYPTHASH> {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HandleTraitsHCryptHash);
+  DISALLOW_COPY_AND_ASSIGN(HandleTraitsHCryptHash);
 };
 
 /*
@@ -219,7 +219,7 @@ class HandleTraitsLibrary : public BaseHandleTraitsT<HMODULE> {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HandleTraitsLibrary);
+  DISALLOW_COPY_AND_ASSIGN(HandleTraitsLibrary);
 };
 
 

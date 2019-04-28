@@ -135,7 +135,7 @@ class ReadingFilesTest : public testing::Test {
 
   CString temp_file_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(ReadingFilesTest);
+  DISALLOW_COPY_AND_ASSIGN(ReadingFilesTest);
 };
 
 

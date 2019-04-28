@@ -52,7 +52,7 @@ class UseAssertFunction {
 
  private:
   DebugAssertFunctionType *old_function_;
-  DISALLOW_EVIL_CONSTRUCTORS(UseAssertFunction);
+  DISALLOW_COPY_AND_ASSIGN(UseAssertFunction);
 };
 
 
@@ -78,7 +78,7 @@ class FailOnAssert {
 
  private:
   UseAssertFunction inner_;
-  DISALLOW_EVIL_CONSTRUCTORS(FailOnAssert);
+  DISALLOW_COPY_AND_ASSIGN(FailOnAssert);
 };
 
 // A class with no methods which will cause asserts to be ignored;
@@ -102,7 +102,7 @@ class IgnoreAsserts {
 
  private:
   UseAssertFunction inner_;
-  DISALLOW_EVIL_CONSTRUCTORS(IgnoreAsserts);
+  DISALLOW_COPY_AND_ASSIGN(IgnoreAsserts);
 };
 
 // A class with no methods which will cause asserts to be counted but otherwise
@@ -140,7 +140,7 @@ class ExpectAsserts {
 
   UseAssertFunction inner_;
   int old_assert_count_;
-  DISALLOW_EVIL_CONSTRUCTORS(ExpectAsserts);
+  DISALLOW_COPY_AND_ASSIGN(ExpectAsserts);
 };
 
 }  // namespace omaha

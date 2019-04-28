@@ -80,7 +80,7 @@ class CompleteWnd : public OmahaWnd {
   CompleteWndEvents* events_sink_;
   const DWORD control_classes_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(CompleteWnd);
+  DISALLOW_COPY_AND_ASSIGN(CompleteWnd);
 };
 
 }  // namespace omaha

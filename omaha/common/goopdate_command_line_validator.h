@@ -89,7 +89,7 @@ class GoopdateCommandLineValidator {
   scoped_ptr<CommandLineValidator> validator_;
   MapScenarioHandlers scenario_handlers_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(GoopdateCommandLineValidator);
+  DISALLOW_COPY_AND_ASSIGN(GoopdateCommandLineValidator);
 };
 
 }  // namespace omaha

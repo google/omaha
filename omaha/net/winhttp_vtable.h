@@ -140,7 +140,7 @@ class WinHttpVTable {
 
   HINSTANCE library_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(WinHttpVTable);
+  DISALLOW_COPY_AND_ASSIGN(WinHttpVTable);
 };
 
 #define PROTECT_WRAP(function, proto, call, result_type, result_error_value)  \

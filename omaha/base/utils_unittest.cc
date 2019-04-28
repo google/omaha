@@ -377,7 +377,7 @@ class Counter {
   static int instance_count() { return instance_count_; }
  private:
   static int instance_count_;
-  DISALLOW_EVIL_CONSTRUCTORS(Counter);
+  DISALLOW_COPY_AND_ASSIGN(Counter);
 };
 
 int Counter::instance_count_ = 0;

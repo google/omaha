@@ -33,7 +33,7 @@ class DumpLogHandler {
   virtual void WriteLine(const TCHAR* line) = 0;
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(DumpLogHandler);
+  DISALLOW_COPY_AND_ASSIGN(DumpLogHandler);
 };
 
 class ConsoleDumpLogHandler : public DumpLogHandler {
@@ -44,7 +44,7 @@ class ConsoleDumpLogHandler : public DumpLogHandler {
   virtual void WriteLine(const TCHAR* line);
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(ConsoleDumpLogHandler);
+  DISALLOW_COPY_AND_ASSIGN(ConsoleDumpLogHandler);
 };
 
 class DebugDumpLogHandler : public DumpLogHandler {
@@ -55,7 +55,7 @@ class DebugDumpLogHandler : public DumpLogHandler {
   virtual void WriteLine(const TCHAR* line);
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(DebugDumpLogHandler);
+  DISALLOW_COPY_AND_ASSIGN(DebugDumpLogHandler);
 };
 
 class FileDumpLogHandler : public DumpLogHandler {
@@ -70,7 +70,7 @@ class FileDumpLogHandler : public DumpLogHandler {
   void WriteBufToFile(const void* buf, DWORD num_bytes_to_write);
 
   CString filename_;
-  DISALLOW_EVIL_CONSTRUCTORS(FileDumpLogHandler);
+  DISALLOW_COPY_AND_ASSIGN(FileDumpLogHandler);
 };
 
 
@@ -103,7 +103,7 @@ class DumpLog {
   ConsoleDumpLogHandler console_handler_;
   DebugDumpLogHandler debug_handler_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(DumpLog);
+  DISALLOW_COPY_AND_ASSIGN(DumpLog);
 };
 
 }  // namespace omaha

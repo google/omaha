@@ -153,7 +153,7 @@ class KeyWatcher {
   RegistryKeyChangeCallback callback_;
   void* callback_param_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(KeyWatcher);
+  DISALLOW_COPY_AND_ASSIGN(KeyWatcher);
 };
 
 class RegistryMonitorImpl : public Runnable {
@@ -188,7 +188,7 @@ class RegistryMonitorImpl : public Runnable {
   Thread thread_;
   scoped_ptr<Gate> start_monitoring_gate_;
   scoped_event stop_monitoring_;
-  DISALLOW_EVIL_CONSTRUCTORS(RegistryMonitorImpl);
+  DISALLOW_COPY_AND_ASSIGN(RegistryMonitorImpl);
 };
 
 

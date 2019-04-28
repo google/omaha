@@ -37,7 +37,7 @@ class StringFormatter {
  private:
   CString language_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(StringFormatter);
+  DISALLOW_COPY_AND_ASSIGN(StringFormatter);
 };
 
 }  // namespace omaha

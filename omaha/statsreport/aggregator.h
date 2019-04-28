@@ -50,7 +50,7 @@ protected:
   virtual void Aggregate(BoolMetric &metric) = 0;
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(MetricsAggregator);
+  DISALLOW_COPY_AND_ASSIGN(MetricsAggregator);
 
   const MetricCollection &coll_;
 };

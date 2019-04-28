@@ -50,7 +50,7 @@ public:
 
 private:
   MetricBase const *const metric_;
-  DISALLOW_EVIL_CONSTRUCTORS(MetricBase::ObjectLock);
+  DISALLOW_COPY_AND_ASSIGN(MetricBase::ObjectLock);
 };
 
 void MetricBase::Lock() const {

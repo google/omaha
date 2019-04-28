@@ -958,7 +958,7 @@ class SprintfCleaner {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(SprintfCleaner);
+  DISALLOW_COPY_AND_ASSIGN(SprintfCleaner);
 };
 
 static SprintfCleaner cleaner;

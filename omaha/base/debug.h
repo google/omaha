@@ -134,7 +134,7 @@ class ReportIds : public GLock {
   bool LoadReportData(ReportData **data);
   void SaveReportData(ReportData *data);
 
-  DISALLOW_EVIL_CONSTRUCTORS(ReportIds);
+  DISALLOW_COPY_AND_ASSIGN(ReportIds);
 };
 
 #if defined(_DEBUG) || defined(ASSERT_IN_RELEASE)
@@ -257,7 +257,7 @@ class ReportSummaryGenerator {
   // get text summary of reports
   // caller is responsible for deleting the string returned
   TCHAR *GetReportSummary();
-  DISALLOW_EVIL_CONSTRUCTORS(ReportSummaryGenerator);
+  DISALLOW_COPY_AND_ASSIGN(ReportSummaryGenerator);
 };
 
 extern ReportSummaryGenerator g_report_summary_generator;

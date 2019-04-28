@@ -43,7 +43,7 @@ class UserWorkItem {
   // and shutdown correctly. This event is set when the thread pool is closing.
   // Do not close this event as is owned by the thread pool.
   HANDLE shutdown_event_;
-  DISALLOW_EVIL_CONSTRUCTORS(UserWorkItem);
+  DISALLOW_COPY_AND_ASSIGN(UserWorkItem);
 };
 
 class ThreadPool {
@@ -81,7 +81,7 @@ class ThreadPool {
   // the thread pool is shutting down. The shutdown delay resolution is ~10ms.
   int shutdown_delay_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(ThreadPool);
+  DISALLOW_COPY_AND_ASSIGN(ThreadPool);
 };
 
 }  // namespace omaha

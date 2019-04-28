@@ -266,7 +266,7 @@ class BitsRequest : public HttpRequestInterface {
   // BitsRequest.
   static const int kJobProgressReportMinimumIntervalMs = 200;
 
-  DISALLOW_EVIL_CONSTRUCTORS(BitsRequest);
+  DISALLOW_COPY_AND_ASSIGN(BitsRequest);
 };
 
 }   // namespace omaha

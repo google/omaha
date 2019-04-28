@@ -194,7 +194,7 @@ class Setup {
 
   friend class SetupTest;
   friend class SetupOfflineInstallerTest;
-  DISALLOW_EVIL_CONSTRUCTORS(Setup);
+  DISALLOW_COPY_AND_ASSIGN(Setup);
 };
 
 }  // namespace omaha

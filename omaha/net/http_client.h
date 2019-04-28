@@ -351,7 +351,7 @@ class HttpClient {
   }
 
   static Factory* factory_;
-  DISALLOW_EVIL_CONSTRUCTORS(HttpClient);
+  DISALLOW_COPY_AND_ASSIGN(HttpClient);
 };
 
 // Creates an http client, depending on what is available on the platform.

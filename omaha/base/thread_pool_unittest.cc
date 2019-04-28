@@ -33,7 +33,7 @@ class MyJob1 : public UserWorkItem {
  private:
   virtual void DoProcess() { ::InterlockedExchangeAdd(&g_completed_count, 1); }
 
-  DISALLOW_EVIL_CONSTRUCTORS(MyJob1);
+  DISALLOW_COPY_AND_ASSIGN(MyJob1);
 };
 
 // Increments the global count by 2.
@@ -44,7 +44,7 @@ class MyJob2 : public UserWorkItem {
  private:
   virtual void DoProcess() { ::InterlockedExchangeAdd(&g_completed_count, 2); }
 
-  DISALLOW_EVIL_CONSTRUCTORS(MyJob2);
+  DISALLOW_COPY_AND_ASSIGN(MyJob2);
 };
 
 // Increments the global count by 3.
@@ -55,7 +55,7 @@ class MyJob3 : public UserWorkItem {
  private:
   virtual void DoProcess() { ::InterlockedExchangeAdd(&g_completed_count, 3); }
 
-  DISALLOW_EVIL_CONSTRUCTORS(MyJob3);
+  DISALLOW_COPY_AND_ASSIGN(MyJob3);
 };
 
 // ThreadPool COM initialization test class. The class tests that the thread

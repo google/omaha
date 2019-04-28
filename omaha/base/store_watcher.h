@@ -51,7 +51,7 @@ class StoreWatcher {
   virtual HANDLE change_event() const = 0;
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(StoreWatcher);
+  DISALLOW_COPY_AND_ASSIGN(StoreWatcher);
 };
 
 }  // namespace omaha

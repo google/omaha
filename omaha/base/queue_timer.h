@@ -74,7 +74,7 @@ class QueueTimer {
     HANDLE timer_queue_;
     Callback callback_;
 
-    DISALLOW_EVIL_CONSTRUCTORS(QueueTimer);
+    DISALLOW_COPY_AND_ASSIGN(QueueTimer);
 };
 
 }  // namespace omaha

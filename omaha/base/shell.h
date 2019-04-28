@@ -67,7 +67,7 @@ class Shell {
 
   static HRESULT BasicGetSpecialFolder(DWORD csidl, CString* folder_path);
 
-  DISALLOW_EVIL_CONSTRUCTORS(Shell);
+  DISALLOW_COPY_AND_ASSIGN(Shell);
 };
 
 }  // namespace omaha

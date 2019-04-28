@@ -174,7 +174,7 @@ class OmahaWnd
 
   CustomProgressBarCtrl progress_bar_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(OmahaWnd);
+  DISALLOW_COPY_AND_ASSIGN(OmahaWnd);
 };
 
 // Registers the specified common control classes from the common control DLL.

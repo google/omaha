@@ -95,7 +95,7 @@ class ATL_NO_VTABLE ProcessLauncher
                              ULONG_PTR* stdout_handle);
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(ProcessLauncher);
+  DISALLOW_COPY_AND_ASSIGN(ProcessLauncher);
 };
 
 }  // namespace omaha
