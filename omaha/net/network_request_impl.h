@@ -227,7 +227,7 @@ class NetworkRequestImpl {
   static const int kTimeBetweenRetriesMultiplier     = 2;
   static const int kDefaultRetryTimeJitterMs         = 3000;    // +- 3 seconds.
 
-  DISALLOW_EVIL_CONSTRUCTORS(NetworkRequestImpl);
+  DISALLOW_COPY_AND_ASSIGN(NetworkRequestImpl);
 };
 
 

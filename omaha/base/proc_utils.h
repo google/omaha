@@ -134,7 +134,7 @@ class ProcessTerminator {
   int session_id_;
 
   // Disable copy constructor and assignment operator.
-  DISALLOW_EVIL_CONSTRUCTORS(ProcessTerminator);
+  DISALLOW_COPY_AND_ASSIGN(ProcessTerminator);
 };
 
 // Application calling this function will be shut down

@@ -143,7 +143,7 @@ class AtlRE : public RE {
 
  private:
   mutable AtlRegExp re_;
-  DISALLOW_EVIL_CONSTRUCTORS(AtlRE);
+  DISALLOW_COPY_AND_ASSIGN(AtlRE);
 };
 
 }  // namespace omaha

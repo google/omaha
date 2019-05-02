@@ -44,7 +44,7 @@ class CommandLineValidator {
     size_t num_required_parameters_;
 
    private:
-    DISALLOW_EVIL_CONSTRUCTORS(ScenarioParameter);
+    DISALLOW_COPY_AND_ASSIGN(ScenarioParameter);
   };
 
   typedef std::vector<ScenarioParameter*> ScenarioParameterVector;
@@ -97,7 +97,7 @@ class CommandLineValidator {
 
   size_t scenario_sequence_number_;
   MapScenarios scenarios_;
-  DISALLOW_EVIL_CONSTRUCTORS(CommandLineValidator);
+  DISALLOW_COPY_AND_ASSIGN(CommandLineValidator);
 };
 
 }  // namespace omaha

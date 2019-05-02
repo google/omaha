@@ -111,7 +111,7 @@ class SetupGoogleUpdate {
   friend class SetupGoogleUpdateTest;
   friend class AppManagerTestBase;
 
-  DISALLOW_EVIL_CONSTRUCTORS(SetupGoogleUpdate);
+  DISALLOW_COPY_AND_ASSIGN(SetupGoogleUpdate);
 };
 
 }  // namespace omaha

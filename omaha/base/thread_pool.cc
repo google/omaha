@@ -46,7 +46,7 @@ class Context {
   UserWorkItem* work_item_;
   const DWORD   coinit_flags_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Context);
+  DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
 }   // namespace

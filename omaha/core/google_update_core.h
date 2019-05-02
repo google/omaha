@@ -62,7 +62,7 @@ class ATL_NO_VTABLE GoogleUpdateCoreBase
 
   friend class GoogleUpdateCoreTest;
 
-  DISALLOW_EVIL_CONSTRUCTORS(GoogleUpdateCoreBase);
+  DISALLOW_COPY_AND_ASSIGN(GoogleUpdateCoreBase);
 };
 
 template <bool is_service>
@@ -93,8 +93,7 @@ class ATL_NO_VTABLE GoogleUpdateCore
   END_REGISTRY_MAP()
 
  private:
-
-  DISALLOW_EVIL_CONSTRUCTORS(GoogleUpdateCore);
+  DISALLOW_COPY_AND_ASSIGN(GoogleUpdateCore);
 };
 
 typedef GoogleUpdateCore<false> GoogleUpdateCoreMachine;

@@ -52,7 +52,7 @@ class DataDumperGoopdate : public DataDumper {
                         int num_tail_lines);
 
 
-  DISALLOW_EVIL_CONSTRUCTORS(DataDumperGoopdate);
+  DISALLOW_COPY_AND_ASSIGN(DataDumperGoopdate);
 };
 
 }  // namespace omaha

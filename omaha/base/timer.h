@@ -51,7 +51,7 @@ class LowResTimer {
   uint32 elapsed_;
   uint32 start_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(LowResTimer);
+  DISALLOW_COPY_AND_ASSIGN(LowResTimer);
 };
 
 inline double LowResTimer::GetSeconds() const {
@@ -115,7 +115,7 @@ class Timer {
 
   static time64 count_freq_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Timer);
+  DISALLOW_COPY_AND_ASSIGN(Timer);
 };
 
 // lint -e{31}   Redefinition of symbol

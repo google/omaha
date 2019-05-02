@@ -462,7 +462,7 @@ class LogMessage {
   LogSeverity severity_;
   std::ostrstream stream_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(LogMessage);
+  DISALLOW_COPY_AND_ASSIGN(LogMessage);
 };
 
 // A non-macro interface to the log facility; (useful

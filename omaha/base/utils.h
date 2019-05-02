@@ -561,7 +561,7 @@ class BasicMessageHandler : public MessageHandlerInterface {
   BasicMessageHandler() {}
   virtual void Process(MSG* msg);
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(BasicMessageHandler);
+  DISALLOW_COPY_AND_ASSIGN(BasicMessageHandler);
 };
 
 // An internal detail (used to handle messages
@@ -648,7 +648,7 @@ class MessageLoopWithWait : public MessageLoopInterface,
 
   // What to call when a handle is signaled.
   std::vector<WaitCallbackInterface*> callbacks_;
-  DISALLOW_EVIL_CONSTRUCTORS(MessageLoopWithWait);
+  DISALLOW_COPY_AND_ASSIGN(MessageLoopWithWait);
 };
 
 // This function calls ::SetDefaultDllDirectories to retrict DLL loads to either
@@ -795,7 +795,7 @@ class CallInterceptor {
 
  private:
   R* interceptor_;
-  DISALLOW_EVIL_CONSTRUCTORS(CallInterceptor);
+  DISALLOW_COPY_AND_ASSIGN(CallInterceptor);
 };
 
 // Gets a handle of the current process. The handle is a real handle

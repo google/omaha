@@ -175,7 +175,7 @@ class System {
     static HRESULT CreateChildOutputPipe(HANDLE* read, HANDLE* write);
 
   private:
-    DISALLOW_EVIL_CONSTRUCTORS(System);
+    DISALLOW_COPY_AND_ASSIGN(System);
 };
 
 }  // namespace omaha

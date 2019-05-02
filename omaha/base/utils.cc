@@ -1038,7 +1038,7 @@ class BasicMessageHandlerInternal : public BasicMessageHandler,
     BasicMessageHandler::Process(msg);
   }
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(BasicMessageHandlerInternal);
+  DISALLOW_COPY_AND_ASSIGN(BasicMessageHandlerInternal);
 };
 
 

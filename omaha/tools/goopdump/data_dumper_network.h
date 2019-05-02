@@ -35,7 +35,7 @@ class DataDumperNetwork : public DataDumper {
  private:
   void DumpNetworkConfig(const DumpLog& dump_log);
 
-  DISALLOW_EVIL_CONSTRUCTORS(DataDumperNetwork);
+  DISALLOW_COPY_AND_ASSIGN(DataDumperNetwork);
 };
 
 }  // namespace omaha

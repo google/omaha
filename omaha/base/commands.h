@@ -105,7 +105,7 @@ class CommandParsingSimple {
 
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(CommandParsingSimple);
+  DISALLOW_COPY_AND_ASSIGN(CommandParsingSimple);
 };
 
 
@@ -151,7 +151,7 @@ class CommandParsing : public CommandParsingSimple {
   int options_count_;                 // Count of command-line options
   bool as_name_value_pair_;           // Parse as name-value-pair
 
-  DISALLOW_EVIL_CONSTRUCTORS(CommandParsing);
+  DISALLOW_COPY_AND_ASSIGN(CommandParsing);
 };
 
 }  // namespace omaha

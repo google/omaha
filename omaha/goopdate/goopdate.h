@@ -61,7 +61,7 @@ class Goopdate {
   // Uses pimpl idiom to minimize dependencies on implementation details.
   scoped_ptr<detail::GoopdateImpl> impl_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Goopdate);
+  DISALLOW_COPY_AND_ASSIGN(Goopdate);
 };
 
 }  // namespace omaha

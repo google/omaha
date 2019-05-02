@@ -36,7 +36,7 @@ class DataDumperOneClick : public DataDumper {
  private:
   void DumpOneClickDataForVersion(const DumpLog& dump_log, int plugin_version);
 
-  DISALLOW_EVIL_CONSTRUCTORS(DataDumperOneClick);
+  DISALLOW_COPY_AND_ASSIGN(DataDumperOneClick);
 };
 
 }  // namespace omaha

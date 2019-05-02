@@ -105,7 +105,7 @@ class CommandLineParser {
   scoped_ptr<internal::CommandLineParserArgs> required_args_;
   scoped_ptr<internal::CommandLineParserArgs> optional_args_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(CommandLineParser);
+  DISALLOW_COPY_AND_ASSIGN(CommandLineParser);
 };
 
 }  // namespace omaha

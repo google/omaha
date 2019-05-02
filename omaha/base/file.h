@@ -187,7 +187,7 @@ class File {
 
     static const int kMaxFileSize = kint32max;
 
-    DISALLOW_EVIL_CONSTRUCTORS(File);
+    DISALLOW_COPY_AND_ASSIGN(File);
 };
 
 // File lock
@@ -211,7 +211,7 @@ class FileLock {
  private:
   std::vector<HANDLE> handles_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(FileLock);
+  DISALLOW_COPY_AND_ASSIGN(FileLock);
 };
 
 
@@ -241,7 +241,7 @@ class FileWatcher : public StoreWatcher {
   bool watch_subtree_;
   DWORD notify_filter_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(FileWatcher);
+  DISALLOW_COPY_AND_ASSIGN(FileWatcher);
 };
 
 }  // namespace omaha

@@ -123,7 +123,7 @@ class Core
 
   friend class CoreUtilsTest;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Core);
+  DISALLOW_COPY_AND_ASSIGN(Core);
 };
 
 }  // namespace omaha

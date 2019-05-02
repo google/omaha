@@ -81,7 +81,7 @@ class DownloadAppWorkItem : public UserWorkItem {
   DownloadManager* download_manager_;
   App* app_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(DownloadAppWorkItem);
+  DISALLOW_COPY_AND_ASSIGN(DownloadAppWorkItem);
 };
 
 bool FileHashesEqual(const FileHash& hash1, const FileHash& hash2) {

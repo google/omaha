@@ -85,7 +85,7 @@ class ResourceManager {
 
   friend class ResourceManagerTest;
 
-  DISALLOW_EVIL_CONSTRUCTORS(ResourceManager);
+  DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
 
 }  // namespace omaha

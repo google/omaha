@@ -38,7 +38,7 @@ class Kernel32 {
   static BOOL WINAPI IsWow64Process(HANDLE hProcess, PBOOL Wow64Process);
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(Kernel32);
+  DISALLOW_COPY_AND_ASSIGN(Kernel32);
 };
 
 }  // namespace omaha

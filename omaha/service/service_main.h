@@ -505,7 +505,7 @@ class ServiceModule
   // Time to wait before performing the specified action.
   static const DWORD kActionDelayMs       = 1000L * 60 * 15;  // 15 minutes.
 
-  DISALLOW_EVIL_CONSTRUCTORS(ServiceModule);
+  DISALLOW_COPY_AND_ASSIGN(ServiceModule);
 };
 
 #pragma warning(pop)

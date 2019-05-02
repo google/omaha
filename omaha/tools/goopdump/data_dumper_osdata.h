@@ -34,7 +34,7 @@ class DataDumperOSData : public DataDumper {
 
  private:
   HRESULT GetSystemUptime(CString* uptime);
-  DISALLOW_EVIL_CONSTRUCTORS(DataDumperOSData);
+  DISALLOW_COPY_AND_ASSIGN(DataDumperOSData);
 };
 
 }  // namespace omaha

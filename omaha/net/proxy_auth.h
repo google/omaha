@@ -107,7 +107,7 @@ class ProxyAuth {
   bool ReadFromPreIE7(const CString& server);
   bool PromptUser(const CString& server, const ProxyAuthConfig& config);
 
-  DISALLOW_EVIL_CONSTRUCTORS(ProxyAuth);
+  DISALLOW_COPY_AND_ASSIGN(ProxyAuth);
 };
 
 }  // namespace omaha

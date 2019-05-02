@@ -55,7 +55,7 @@ class GoopdateProcessMonitorCallback : public ProcessMonitorCallbackInterface {
  private:
   const DumpLog& dump_log_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(GoopdateProcessMonitorCallback);
+  DISALLOW_COPY_AND_ASSIGN(GoopdateProcessMonitorCallback);
 };
 
 

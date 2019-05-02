@@ -89,7 +89,7 @@ class SystemMonitor
   bool is_machine_;
   SystemMonitorObserver* observer_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(SystemMonitor);
+  DISALLOW_COPY_AND_ASSIGN(SystemMonitor);
 };
 
 }  // namespace omaha

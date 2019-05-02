@@ -77,7 +77,7 @@ class ApplicationUsageData {
   bool check_low_integrity_;   // Whether to check the low integrity registry
                                // location.
 
-  DISALLOW_EVIL_CONSTRUCTORS(ApplicationUsageData);
+  DISALLOW_COPY_AND_ASSIGN(ApplicationUsageData);
 };
 
 }  // namespace omaha

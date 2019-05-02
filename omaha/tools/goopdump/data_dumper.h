@@ -53,7 +53,7 @@ class DataDumper {
                                 RegKey* key,
                                 const int indent);
 
-  DISALLOW_EVIL_CONSTRUCTORS(DataDumper);
+  DISALLOW_COPY_AND_ASSIGN(DataDumper);
 };
 
 class DumpHeader {
@@ -63,7 +63,7 @@ class DumpHeader {
 
  private:
   const DumpLog& dump_log_;
-  DISALLOW_EVIL_CONSTRUCTORS(DumpHeader);
+  DISALLOW_COPY_AND_ASSIGN(DumpHeader);
 };
 
 }  // namespace omaha

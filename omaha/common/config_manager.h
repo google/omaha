@@ -311,7 +311,7 @@ class ConfigManager {
   bool is_running_from_official_user_dir_;
   bool is_running_from_official_machine_dir_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(ConfigManager);
+  DISALLOW_COPY_AND_ASSIGN(ConfigManager);
 };
 
 }  // namespace omaha

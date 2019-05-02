@@ -98,7 +98,7 @@ class GoogleUpdate : public CAtlExeModuleT<GoogleUpdate> {
   bool is_machine_;
   ComServerMode mode_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(GoogleUpdate);
+  DISALLOW_COPY_AND_ASSIGN(GoogleUpdate);
 };
 
 }  // namespace omaha

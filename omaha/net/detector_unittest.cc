@@ -85,7 +85,7 @@ class FirefoxProxyDetectorTest : public testing::Test {
   scoped_ptr<FirefoxProxyDetector> detector_;
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(FirefoxProxyDetectorTest);
+  DISALLOW_COPY_AND_ASSIGN(FirefoxProxyDetectorTest);
 };
 
 bool FirefoxProxyDetectorTest::BuildPrefsFile(const CString& type,
@@ -357,7 +357,7 @@ class GroupPolicyProxyDetectorTest : public testing::TestWithParam<bool>  {
   scoped_ptr<GroupPolicyProxyDetector> detector_;
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(GroupPolicyProxyDetectorTest);
+  DISALLOW_COPY_AND_ASSIGN(GroupPolicyProxyDetectorTest);
 };
 
 const TCHAR kGpoSourceString[] = _T("GroupPolicy");

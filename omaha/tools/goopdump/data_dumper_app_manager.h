@@ -39,7 +39,7 @@ class DataDumperAppManager : public DataDumper {
                           const AppManager& app_manager);
   void DumpRawRegistryData(const DumpLog& dump_log, bool is_machine);
 
-  DISALLOW_EVIL_CONSTRUCTORS(DataDumperAppManager);
+  DISALLOW_COPY_AND_ASSIGN(DataDumperAppManager);
 };
 
 }  // namespace omaha

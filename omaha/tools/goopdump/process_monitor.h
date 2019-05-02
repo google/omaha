@@ -46,7 +46,7 @@ class ProcessMonitorCallbackInterface {
   virtual void OnProcessRemoved(DWORD process_id) = 0;
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(ProcessMonitorCallbackInterface);
+  DISALLOW_COPY_AND_ASSIGN(ProcessMonitorCallbackInterface);
 };
 
 // This class creates a thread to monitor running processes for particular
@@ -101,7 +101,7 @@ class ProcessMonitor {
   scoped_handle event_thread_exit_;   // Signal to exit monitor_thread_.
   scoped_handle monitor_thread_;      // Handle to the monitoring thread.
 
-  DISALLOW_EVIL_CONSTRUCTORS(ProcessMonitor);
+  DISALLOW_COPY_AND_ASSIGN(ProcessMonitor);
 };
 
 }  // namespace omaha

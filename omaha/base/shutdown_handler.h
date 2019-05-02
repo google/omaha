@@ -43,7 +43,7 @@ class ShutdownHandler : public EventHandler {
   scoped_event shutdown_event_;
   ShutdownCallback* shutdown_callback_;
   bool is_machine_;
-  DISALLOW_EVIL_CONSTRUCTORS(ShutdownHandler);
+  DISALLOW_COPY_AND_ASSIGN(ShutdownHandler);
 };
 
 }  // namespace omaha

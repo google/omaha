@@ -49,7 +49,7 @@ class ExtraArgsParser {
   CommandLineAppArgs cur_extra_app_args_;
   bool first_app_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(ExtraArgsParser);
+  DISALLOW_COPY_AND_ASSIGN(ExtraArgsParser);
 };
 
 }  // namespace omaha

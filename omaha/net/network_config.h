@@ -272,7 +272,7 @@ class NetworkConfig {
   ProxyAuth proxy_auth_;
 
   friend class NetworkConfigManager;
-  DISALLOW_EVIL_CONSTRUCTORS(NetworkConfig);
+  DISALLOW_COPY_AND_ASSIGN(NetworkConfig);
 };
 
 class NetworkConfigManager {
@@ -307,7 +307,7 @@ class NetworkConfigManager {
   static LLock instance_lock_;
   static bool is_machine_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(NetworkConfigManager);
+  DISALLOW_COPY_AND_ASSIGN(NetworkConfigManager);
 };
 
 }   // namespace omaha

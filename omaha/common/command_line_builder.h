@@ -146,7 +146,7 @@ class CommandLineBuilder {
   CString offline_dir_name_;
   CString session_id_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(CommandLineBuilder);
+  DISALLOW_COPY_AND_ASSIGN(CommandLineBuilder);
 };
 
 }  // namespace omaha

@@ -187,7 +187,7 @@ class NetworkRequest {
  private:
   // Uses pimpl idiom to minimize dependencies on implementation details.
   scoped_ptr<internal::NetworkRequestImpl> impl_;
-  DISALLOW_EVIL_CONSTRUCTORS(NetworkRequest);
+  DISALLOW_COPY_AND_ASSIGN(NetworkRequest);
 };
 
 }   // namespace omaha

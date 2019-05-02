@@ -88,7 +88,7 @@ class SetupFiles {
 
   friend class SetupFilesTest;
 
-  DISALLOW_EVIL_CONSTRUCTORS(SetupFiles);
+  DISALLOW_COPY_AND_ASSIGN(SetupFiles);
 };
 
 }  // namespace omaha

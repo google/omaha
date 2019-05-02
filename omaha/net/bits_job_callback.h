@@ -57,7 +57,7 @@ class ATL_NO_VTABLE BitsJobCallback
   BitsRequest* bits_request_;
   LLock lock_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(BitsJobCallback);
+  DISALLOW_COPY_AND_ASSIGN(BitsJobCallback);
 };
 
 }   // namespace omaha

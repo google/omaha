@@ -58,7 +58,7 @@ class Factory {
   typedef std::map<TypeId, ProductCreator> Map;
   Map id_to_creators_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Factory);
+  DISALLOW_COPY_AND_ASSIGN(Factory);
 };
 
 }  // namespace omaha

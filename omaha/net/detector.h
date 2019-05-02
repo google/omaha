@@ -43,7 +43,7 @@ class RegistryOverrideProxyDetector : public ProxyDetectorInterface {
   virtual const TCHAR* source() { return _T("RegistryOverride"); }
  private:
   CString reg_path_;
-  DISALLOW_EVIL_CONSTRUCTORS(RegistryOverrideProxyDetector);
+  DISALLOW_COPY_AND_ASSIGN(RegistryOverrideProxyDetector);
 };
 
 class UpdateDevProxyDetector : public ProxyDetectorInterface {
@@ -55,7 +55,7 @@ class UpdateDevProxyDetector : public ProxyDetectorInterface {
   virtual const TCHAR* source() { return _T("UpdateDev"); }
  private:
   RegistryOverrideProxyDetector registry_detector_;
-  DISALLOW_EVIL_CONSTRUCTORS(UpdateDevProxyDetector);
+  DISALLOW_COPY_AND_ASSIGN(UpdateDevProxyDetector);
 };
 
 // A version that picks up proxy override from a group policy.
@@ -78,7 +78,7 @@ class DefaultProxyDetector : public ProxyDetectorInterface {
   virtual HRESULT Detect(ProxyConfig* config);
   virtual const TCHAR* source() { return _T("winhttp"); }
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(DefaultProxyDetector);
+  DISALLOW_COPY_AND_ASSIGN(DefaultProxyDetector);
 };
 
 // Detects proxy information for Firefox.
@@ -126,7 +126,7 @@ class FirefoxProxyDetector : public ProxyDetectorInterface {
   scoped_ptr<ProxyConfig> cached_config_;
 
   friend class FirefoxProxyDetectorTest;
-  DISALLOW_EVIL_CONSTRUCTORS(FirefoxProxyDetector);
+  DISALLOW_COPY_AND_ASSIGN(FirefoxProxyDetector);
 };
 
 namespace internal {
@@ -140,7 +140,7 @@ class IEProxyDetector : public ProxyDetectorInterface {
   virtual HRESULT Detect(ProxyConfig* config);
   virtual const TCHAR* source() { return _T("IE"); }
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(IEProxyDetector);
+  DISALLOW_COPY_AND_ASSIGN(IEProxyDetector);
 };
 
 }  // namespace internal

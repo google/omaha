@@ -78,7 +78,7 @@ private:
   /// Specifies HKLM or HKCU, respectively.
   bool is_machine_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(MetricsAggregatorWin32);
+  DISALLOW_COPY_AND_ASSIGN(MetricsAggregatorWin32);
 };
 
 } // namespace stats_report

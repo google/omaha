@@ -56,7 +56,7 @@ class WmiQuery {
   CComPtr<IWbemClassObject> obj_;
   bool at_end_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(WmiQuery);
+  DISALLOW_COPY_AND_ASSIGN(WmiQuery);
 };
 
 }  // namespace omaha

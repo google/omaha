@@ -140,7 +140,7 @@ class WinHttp : public HttpClient {
   static WinHttpVTable winhttp_;
   static LLock lock_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(WinHttp);
+  DISALLOW_COPY_AND_ASSIGN(WinHttp);
 };
 
 WinHttpVTable WinHttp::winhttp_;

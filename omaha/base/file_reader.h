@@ -52,7 +52,7 @@ class FileReader {
                                         // in on each read.
   bool is_unicode_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(FileReader);
+  DISALLOW_COPY_AND_ASSIGN(FileReader);
 };
 
 }  // namespace omaha

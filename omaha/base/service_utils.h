@@ -79,7 +79,7 @@ class ScmDatabase {
   static bool IsServiceMarkedDeleted(SC_HANDLE service);
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(ScmDatabase);
+  DISALLOW_COPY_AND_ASSIGN(ScmDatabase);
 };
 
 // Utility functions for the service's installation, overinstall etc.

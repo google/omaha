@@ -54,7 +54,7 @@ class Scheduler {
   // the value of the timer is read when the alarm goes off.
   scoped_ptr<HighresTimer> cr_debug_timer_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(Scheduler);
+  DISALLOW_COPY_AND_ASSIGN(Scheduler);
 };
 
 }  // namespace omaha

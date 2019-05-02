@@ -50,7 +50,7 @@ public:
   const char *output() { output_ << std::ends; return output_.str(); }
 
 private:
-  DISALLOW_EVIL_CONSTRUCTORS(Formatter);
+  DISALLOW_COPY_AND_ASSIGN(Formatter);
 
   mutable std::strstream output_;
 };

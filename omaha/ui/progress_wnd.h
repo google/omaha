@@ -103,7 +103,7 @@ class InstallStoppedWnd
 
   CFont default_font_;
 
-  DISALLOW_EVIL_CONSTRUCTORS(InstallStoppedWnd);
+  DISALLOW_COPY_AND_ASSIGN(InstallStoppedWnd);
 };
 
 
@@ -231,7 +231,7 @@ class ProgressWnd
   static const int kMarqueeModeUpdatesMs = 75;
 
   friend class UITest;
-  DISALLOW_EVIL_CONSTRUCTORS(ProgressWnd);
+  DISALLOW_COPY_AND_ASSIGN(ProgressWnd);
 };
 
 }  // namespace omaha

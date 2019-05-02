@@ -311,7 +311,7 @@ class Process {
 #if !SHIPPING
   CString debug_info_;
 #endif
-  DISALLOW_EVIL_CONSTRUCTORS(Process);
+  DISALLOW_COPY_AND_ASSIGN(Process);
 };
 
 }  // namespace omaha
