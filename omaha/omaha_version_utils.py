@@ -19,7 +19,6 @@
 
 _ONECLICK_PLUGIN_NAME = 'npGoogleOneClick'
 _UPDATE_PLUGIN_NAME = 'npGoogleUpdate'
-_BHO_NAME = 'GoopdateBho'
 _CRASH_HANDLER_NAME = 'GoogleCrashHandler'
 
 # List of languages that are fully supported in the current build.
@@ -111,12 +110,10 @@ def _IsSupportedOmaha2Version(omaha_version):
 # languages, so the omaha_version_info parameter is unused.
 def _GetMetainstallerPayloadFilenames(prefix,
                                       update_plugin_filename,
-                                      bho_filename,
                                       languages,
                                       omaha_version):
   """Returns list of metainstaller payload files for specified Omaha version."""
   plugin_dll_name = '%s%s' % (prefix, update_plugin_filename)
-  bho_dll_name = '%s%s' % (prefix, bho_filename)
 
   # The list of files below needs to be kept in sync with the list in
   # SetupFiles::BuildFileLists().
@@ -130,7 +127,6 @@ def _GetMetainstallerPayloadFilenames(prefix,
       '%s.exe' % _CRASH_HANDLER_NAME,
       '%sgoopdate.dll' % (prefix),
       plugin_dll_name,
-      bho_dll_name,
       'GoogleUpdateHelper.msi',
       'GoogleUpdateBroker.exe',
       'GoogleUpdateOnDemand.exe',
@@ -142,12 +138,7 @@ def _GetMetainstallerPayloadFilenames(prefix,
       '%spsuser_64.dll' % (prefix),
       ]
 
-  if (omaha_version[0] >= 1 and
-      omaha_version[1] >= 3 and
-      omaha_version[2] >= 13):
-    # The BHO is not built yet.
-    payload_files.remove(bho_dll_name)
-  elif _IsSupportedOmaha2Version(omaha_version):
+  if _IsSupportedOmaha2Version(omaha_version):
     payload_files.remove(plugin_dll_name)
     payload_files.remove('GoogleUpdateBroker.exe')
     payload_files.remove('GoogleUpdateOnDemand.exe')
@@ -156,7 +147,9 @@ def _GetMetainstallerPayloadFilenames(prefix,
     payload_files.remove('psmachine_64.dll')
     payload_files.remove('psuser.dll')
     payload_files.remove('psuser_64.dll')
-  else:
+  elif (omaha_version[0] <= 1 and
+        omaha_version[1] <= 3 and
+        omaha_version[2] < 13):
     raise Exception('Unsupported version: ' +
                     ConvertVersionToString(omaha_version))
 
@@ -192,11 +185,6 @@ def GetONECLICK_PLUGIN_NAME():  # pylint: disable-msg=C6409
 def GetUPDATE_PLUGIN_NAME():  # pylint: disable-msg=C6409
   """Returns the value of the UPDATE_PLUGIN_NAME define for the C++ code."""
   return _UPDATE_PLUGIN_NAME
-
-
-def GetBHO_NAME():  # pylint: disable-msg=C6409
-  """Returns the value of the BHO_NAME define for the C++ code."""
-  return _BHO_NAME
 
 
 def GetCRASH_HANDLER_NAME():  # pylint: disable-msg=C6409
@@ -252,11 +240,8 @@ class OmahaVersionInfo(object):
     oneclick_plugin_filename: Name of the signed OneClick DLL.
     update_plugin_version: Version of the Omaha 3 plug-in.
     update_plugin_filename: Name of the signed Omaha 3 plug-in DLL.
-    bho_filename:  Name of the signed BHO DLL.
     crash_handler_filename: Name of the Crash Handler EXE.
     oneclick_signed_file_info: SignedFileInfo object for the OneClick DLL.
-    bho_signed_file_info: SignedFileInfo object for the BHO DLL.
-
   """
 
   def __init__(self, version_file):
@@ -274,13 +259,11 @@ class OmahaVersionInfo(object):
         _UPDATE_PLUGIN_NAME,
         'dll',
         self.update_plugin_version)
-    self.bho_signed_file_info = SignedFileInfo(_BHO_NAME, 'dll')
 
     # Simple properties for callers that only need the final filename. Not
     # affected by internal build changes.
     self.oneclick_plugin_filename = self.oneclick_signed_file_info.filename
     self.update_plugin_filename = self.plugin_signed_file_info.filename
-    self.bho_filename = self.bho_signed_file_info.filename
     self.crash_handler_filename = _CRASH_HANDLER_NAME
 
   def _ReadFile(self, version_file):
@@ -355,7 +338,6 @@ class OmahaVersionInfo(object):
     """Returns list of metainstaller payload files for this version of Omaha."""
     return _GetMetainstallerPayloadFilenames(self.filename_prefix,
                                              self.update_plugin_filename,
-                                             self.bho_filename,
                                              self.GetSupportedLanguages(),
                                              self.GetVersion())
 

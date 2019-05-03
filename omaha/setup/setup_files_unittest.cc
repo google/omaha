@@ -73,10 +73,6 @@ void CopyGoopdateFiles(const CString& omaha_path, const CString& version) {
                           kOmahaBrokerFileName,
                           kOmahaOnDemandFileName,
                           kOmahaWebPluginFileName,
-// TODO(omaha3): Enable once this is being built.
-#if 0
-                          _T("GoopdateBho.dll"),
-#endif
                           UPDATE_PLUGIN_FILENAME,
                           kPSFileNameMachine,
                           kPSFileNameMachine64,
@@ -191,10 +187,6 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(kOmahaMetainstallerFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaWebPluginFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaDllName, files[file_index++]);
-// TODO(omaha3): Enable as this is built.
-#if 0
-    EXPECT_STREQ(_T("GoopdateBho.dll"), files[file_index++]);
-#endif
     EXPECT_STREQ(_T("goopdateres_am.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_ar.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_bg.dll"), files[file_index++]);
