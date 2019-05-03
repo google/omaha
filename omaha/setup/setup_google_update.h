@@ -96,7 +96,6 @@ class SetupGoogleUpdate {
   // the following:
   //   * Delete all sub-directories under Google\\Update, except the running
   //     version's directory and the cache directory.
-  //   * Uninstall the BHO, so IE does not load it in the future.
   HRESULT UninstallPreviousVersions();
 
   const bool is_machine_;

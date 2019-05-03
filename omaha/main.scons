@@ -596,8 +596,6 @@ win_env.AppendUnique(
             omaha_version_info.update_plugin_version),
         'UPDATE_PLUGIN_FILENAME=_T(\\"%s\\")' % (
             omaha_version_info.update_plugin_filename),
-        'BHO_NAME=_T(\\"%s\\")' % omaha_version_utils.GetBHO_NAME(),
-        'BHO_FILENAME=_T(\\"%s\\")' % omaha_version_info.bho_filename,
         'CRASH_HANDLER_NAME=_T(\\"%s\\")' %
             omaha_version_utils.GetCRASH_HANDLER_NAME(),
 

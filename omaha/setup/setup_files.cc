@@ -328,10 +328,6 @@ HRESULT SetupFiles::BuildFileLists() {
 
   // Machine-specific files are always installed, to support cross installs from
   // user to machine and machine to user.
-  // TODO(omaha3): Enable once it is being built.
-#if 0
-  optional_files_.push_back(BHO_FILENAME);
-#endif
 
   return S_OK;
 }

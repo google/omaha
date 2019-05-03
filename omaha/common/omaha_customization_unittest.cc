@@ -78,7 +78,6 @@ TEST(OmahaCustomizationTest, Constants_BuildFiles) {
   // Primary omaha_version_utils values.
   EXPECT_STREQ(_T("npGoogleOneClick"), ONECLICK_PLUGIN_NAME);
   EXPECT_STREQ(_T("npGoogleUpdate"), UPDATE_PLUGIN_NAME);
-  EXPECT_STREQ(_T("GoopdateBho"), BHO_NAME);
 
   // Filenames from omaha_version_utils.
   EXPECT_STREQ(
@@ -86,7 +85,6 @@ TEST(OmahaCustomizationTest, Constants_BuildFiles) {
       ONECLICK_PLUGIN_FILENAME);
   EXPECT_STREQ(_T("npGoogleUpdate") _T(UPDATE_PLUGIN_VERSION_ANSI) _T(".dll"),
                UPDATE_PLUGIN_FILENAME);
-  EXPECT_STREQ(_T("GoopdateBho.dll"), BHO_FILENAME);
 }
 
 TEST(OmahaCustomizationTest, Constants_Names) {

@@ -621,19 +621,6 @@ HRESULT SetupGoogleUpdate::InstallBrowserPlugins() {
     SETUP_LOG(L1, (_T("[Register plugin DLL failed][0x%08x]"), hr));
   }
 
-// TODO(omaha): Enable when we ship the BHO.
-#if 0
-  // Only install the BHO for machine installs. There is no corresponding HKCU
-  // registration for BHOs.
-  if (is_machine_) {
-    CString goopdate_bho_proxy_path = BuildSupportFileInstallPath(BHO_FILENAME);
-    hr = RegisterDll(goopdate_bho_proxy_path);
-    if (FAILED(hr)) {
-      SETUP_LOG(L1, (_T("[Register bho_proxy DLL failed][0x%08x]"), hr));
-    }
-  }
-#endif
-
   return hr;
 }
 
@@ -648,17 +635,6 @@ HRESULT SetupGoogleUpdate::UninstallBrowserPlugins() {
   if (FAILED(hr)) {
     SETUP_LOG(L1, (_T("[Unregister plugin DLL failed][0x%08x]"), hr));
   }
-
-// TODO(omaha): Enable when we ship the BHO.
-#if 0
-  if (is_machine_) {
-    CString goopdate_bho_proxy_path = BuildSupportFileInstallPath(BHO_FILENAME);
-    hr = UnregisterDll(goopdate_bho_proxy_path);
-    if (FAILED(hr)) {
-      SETUP_LOG(L1, (_T("[Unregister bho_proxy DLL failed][0x%08x]"), hr));
-    }
-  }
-#endif
 
   return hr;
 }
@@ -764,21 +740,6 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
         VERIFY1(SUCCEEDED(UnregisterDll(old_plugin_file)));
       }
 
-
-      if (is_machine_) {
-        // TODO(omaha): Enable when we ship the BHO.
-        /*
-        // BHO is only installed for the machine case.
-        // Unregister the previous version BHO if it exists. Ignore failures.
-        CPath old_bho_dll(file_or_directory);
-        VERIFY1(old_bho_dll.Append(BHO_FILENAME));
-        if (File::Exists(old_bho_dll)) {
-          if (FAILED(UnregisterDll(old_bho_dll))) {
-            SETUP_LOG(LW, (L"[UnregisterDll() failed][%s]", old_bho_dll));
-          }
-        }
-        */
-      }
       // Delete entire sub-directory.
       DeleteBeforeOrAfterReboot(file_or_directory);
     }
