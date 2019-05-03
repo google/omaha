@@ -16,6 +16,7 @@
 *.idb
 *.pdb
 *.pyc
+.vscode/
 omaha/common/omaha_customization_proxy_clsid.h
 omaha/proxy_clsids.txt
 omaha/scons-out/**
