@@ -102,6 +102,30 @@ local_env.Append(ASFLAGS = ['/safeseh'])
 # Build these into a library.
 local_env.ComponentStaticLibraryMultiarch('base', inputs)
 
+if 'OMAHA_PROTOBUF_BIN_DIR' not in os.environ:
+  """ Build the Protocol Buffer Compiler executable protoc.exe."""
+  Import('env')
+  local_env = env.Clone()
+
+  protoc_gyp_dir = '$GOOGLE3/net/proto2/contrib/portable/gyp/'
+
+  # gyp.
+  gyprun = Builder(action =
+      '$GOOGLECLIENT\\third_party\\gyp\\files\\gyp.bat $SOURCE')
+  local_env.Append( BUILDERS = {'GYPRun' : gyprun})
+  local_env.GYPRun(
+    target=protoc_gyp_dir + 'protoc.sln',
+    source=protoc_gyp_dir + 'protoc.gyp')
+
+  # VCBuild.
+  vcbld = Builder(action =
+      '$GOOGLECLIENT\\third_party\\vc_80\\files\\vc\\vcpackages\\vcbuild.exe' +
+      ' /useenv $SOURCE "Default|Win32"')
+  local_env.Append( BUILDERS = {'VCBuild' : vcbld})
+  local_env.VCBuild(
+    target = protoc_gyp_dir + 'Default/protoc.exe',
+    source=protoc_gyp_dir + 'protoc.sln')
+
 """ Build the CRX Verifier libraries."""
 
 Import('env')

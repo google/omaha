@@ -554,7 +554,8 @@ def CompileProtoBuf(env, input_proto_files):
   Returns:
     Output node list of generated .cc files.
   """
-  proto_compiler_path = '%s/protoc.exe' % os.getenv('OMAHA_PROTOBUF_BIN_DIR')
+  proto_compiler_path = '%s/protoc.exe' % os.getenv('OMAHA_PROTOBUF_BIN_DIR',
+                        '$GOOGLE3/net/proto2/contrib/portable/gyp/Default')
   proto_path = env['PROTO_PATH']
   cpp_out = env['CPP_OUT']
   # Generate the list of .pb.cc targets in the cpp_out dir.
@@ -571,6 +572,8 @@ def CompileProtoBuf(env, input_proto_files):
       source=input_proto_files,
       action=proto_cmd_line,
   )
+
+  env.Depends(compile_proto_buf, proto_compiler_path)
 
   return compile_proto_buf
 
