@@ -555,13 +555,14 @@ def CompileProtoBuf(env, input_proto_files):
     Output node list of generated .cc files.
   """
   proto_compiler_path = '%s/protoc.exe' % os.getenv('OMAHA_PROTOBUF_BIN_DIR',
-                        '$GOOGLE3/net/proto2/contrib/portable/gyp/Default')
+                                                    '$OBJ_ROOT/base/Default')
   proto_path = env['PROTO_PATH']
   cpp_out = env['CPP_OUT']
-  # Generate the list of .pb.cc targets in the cpp_out dir.
-  targets = [os.path.join(cpp_out, os.path.splitext(base)[0] + '.pb.cc')
+  # Generate the list of .pb.cc and .pb.h targets in the cpp_out dir.
+  targets = [os.path.join(cpp_out, os.path.splitext(base)[0] + ext)
              for base in [RelativePath(in_file, proto_path)
-                          for in_file in input_proto_files]]
+                          for in_file in input_proto_files]
+             for ext in ('.pb.cc', '.pb.h')]
   proto_arguments = (' --proto_path=%s --cpp_out=%s %s ' %
                      (proto_path,
                       cpp_out,
@@ -573,9 +574,11 @@ def CompileProtoBuf(env, input_proto_files):
       action=proto_cmd_line,
   )
 
-  env.Depends(compile_proto_buf, proto_compiler_path)
+  if 'OMAHA_PROTOBUF_BIN_DIR' not in os.environ:
+    env.Depends(compile_proto_buf, proto_compiler_path)
 
-  return compile_proto_buf
+  # Return only the generated .pb.cc files for convenience.
+  return [node for node in compile_proto_buf if node.name.endswith('.cc')]
 
 
 # NOTE: SCons requires the use of this name, which fails gpylint.

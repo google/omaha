@@ -104,27 +104,68 @@ local_env.ComponentStaticLibraryMultiarch('base', inputs)
 
 if 'OMAHA_PROTOBUF_BIN_DIR' not in os.environ:
   """ Build the Protocol Buffer Compiler executable protoc.exe."""
+
+  def GenerateGYPRunAction(source, target, env, for_signature):
+    """This Generator creates a command line that when executed runs gyp on the
+       specified source file to generate the specified target file.
+
+       * We explicitly change to the directory of the
+       source file before running gyp. Not doing this confuses some of the gyp
+       generators, especially the msvs generator.
+       * The |--generator-output| option is needed to generate the target in the
+       target directory. Without |--generator-output|, the target is generated
+       in the source directory, which is not desirable especially if the source
+       directory is read-only. Explicitly generating the target in a different
+       output directory also avoids other warnings.
+       * |--generator-output| needs to be specified as a
+       path relative to the source file path to be compatible with the gyp
+       generators.
+
+    Args:
+      source: A List containing a single .gyp file path.
+      target: A List containing a single target file path.
+      env: The Environment in which to build.
+      for_signature: We ignore this parameter. It indicates to the generator to
+                     just generate the command and not actually run it.
+
+    Returns:
+      A valid command line that when executed runs gyp on the specified source
+      file to generate the specified target file.
+    """
+
+    # We use the googleclient gyp since the google3 gyp does not work well with
+    # python 2.7.
+    gyp_bat_file = '$GOOGLECLIENT\\third_party\\gyp\\files\\gyp.bat'
+
+    # Explicitly using 'cd', since using the chdir option to env.Command() is
+    # not compatible with parallel builds using the -j option.
+    gyprun_action = 'cd %s' % source[0].dir.abspath
+    gyprun_action += ' && '  # Chaining the gyp generation to the 'cd' command.
+    gyprun_action += '%s %s --generator-output=%s -G msvs_version=2005' % (
+        env.File(gyp_bat_file).abspath,
+        source[0].name,
+        os.path.relpath(target[0].dir.abspath, source[0].dir.abspath))
+
+    return gyprun_action
+
   Import('env')
   local_env = env.Clone()
 
-  protoc_gyp_dir = '$GOOGLE3/net/proto2/contrib/portable/gyp/'
-
+  # Use gyp to generate protoc.sln, which in turn is fed to VCBuild to generate
+  # protoc.exe.
   # gyp.
-  gyprun = Builder(action =
-      '$GOOGLECLIENT\\third_party\\gyp\\files\\gyp.bat $SOURCE')
+  gyprun = Builder(generator = GenerateGYPRunAction)
   local_env.Append( BUILDERS = {'GYPRun' : gyprun})
-  local_env.GYPRun(
-    target=protoc_gyp_dir + 'protoc.sln',
-    source=protoc_gyp_dir + 'protoc.gyp')
+  protoc_sln = local_env.GYPRun(
+    target='protoc.sln',
+    source='$GOOGLE3/net/proto2/contrib/portable/gyp/protoc.gyp')
 
   # VCBuild.
   vcbld = Builder(action =
       '$GOOGLECLIENT\\third_party\\vc_80\\files\\vc\\vcpackages\\vcbuild.exe' +
       ' /useenv $SOURCE "Default|Win32"')
   local_env.Append( BUILDERS = {'VCBuild' : vcbld})
-  local_env.VCBuild(
-    target = protoc_gyp_dir + 'Default/protoc.exe',
-    source=protoc_gyp_dir + 'protoc.sln')
+  local_env.VCBuild(target='Default/protoc.exe', source=protoc_sln)
 
 """ Build libprotobuf. """
 
