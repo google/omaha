@@ -27,18 +27,19 @@
 
 // The bulk of Omaha is designed to run as 32-bit only.  However, the crash
 // handler is compiled in a 64-bit form, and it needs to access the 32-bit
-// registry view.  For now, we use the ADDWOW64() macro to map all registry
-// accesses performed through the RegKey class to the 32-bit view; if we ever
-// ship a native 64-bit Omaha, we will have to start planning which registry
-// views should be used at a higher levels (i.e. ConfigManager).
-
-#ifdef _WIN64
-#define ADDWOW64(x) ((x) | KEY_WOW64_32KEY)
-#else
-#define ADDWOW64(x) (x)
-#endif
+// registry view. KEY_WOW64_32KEY is used by default for all registry access.
 
 namespace omaha {
+
+namespace {
+
+// Returns the registry access mask |sam_desired| with the WoW view override
+// indicated by |wow_override|.
+REGSAM ApplyWoWOverride(REGSAM sam_desired, RegKey::WoWOverride wow_override) {
+  return sam_desired | static_cast<REGSAM>(wow_override);
+}
+
+}  // namespace
 
 HRESULT RegKey::Close() {
   HRESULT hr = S_OK;
@@ -46,6 +47,7 @@ HRESULT RegKey::Close() {
     LONG res = RegCloseKey(h_key_);
     hr = HRESULT_FROM_WIN32(res);
     h_key_ = NULL;
+    wow_override_ = k32BitView;
   }
   return hr;
 }
@@ -60,14 +62,21 @@ HRESULT RegKey::Create(HKEY hKeyParent,
   // lpszClass may be NULL
   ASSERT1(key_name);
   ASSERT1(hKeyParent != NULL);
+  ASSERT1((sam_desired & (KEY_WOW64_64KEY | KEY_WOW64_32KEY)) !=
+          (KEY_WOW64_64KEY | KEY_WOW64_32KEY));
   DWORD dw;
   HKEY hKey = NULL;
+  WoWOverride wow_override = k32BitView;
+  if ((sam_desired & KEY_WOW64_64KEY) != 0)
+    wow_override = k64BitView;
+  else
+    sam_desired |= KEY_WOW64_32KEY;
   LONG res = ::RegCreateKeyEx(hKeyParent,
                               key_name,
                               0,
                               lpszClass,
                               options,
-                              ADDWOW64(sam_desired),
+                              sam_desired,
                               lpSecAttr,
                               &hKey,
                               &dw);
@@ -81,6 +90,7 @@ HRESULT RegKey::Create(HKEY hKeyParent,
     hr = Close();
     ASSERT1(hr == S_OK);
     h_key_ = hKey;
+    wow_override_ = wow_override;
   }
   return hr;
 }
@@ -92,16 +102,19 @@ HRESULT RegKey::Create(const TCHAR * full_key_name,
                        LPDWORD lpdwDisposition) {
   // lpszClass may be NULL
   ASSERT1(full_key_name);
+  ASSERT1((sam_desired & (KEY_WOW64_64KEY | KEY_WOW64_32KEY)) !=
+          (KEY_WOW64_64KEY | KEY_WOW64_32KEY));
   CString key_name(full_key_name);
 
-  HKEY parent_key = RegKey::GetRootKeyInfo(&key_name);
-  if (!parent_key) {
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
+  if (!info.key) {
     ASSERT(false, (_T("unable to get root key location %s"), full_key_name));
     return HRESULT_FROM_WIN32(ERROR_KEY_NOT_FOUND);
   }
 
-  return Create(parent_key, key_name, lpszClass,
-    options, sam_desired, lpSecAttr, lpdwDisposition);
+  return Create(info.key, key_name, lpszClass, options,
+                ApplyWoWOverride(sam_desired, info.wow_override), lpSecAttr,
+                lpdwDisposition);
 }
 
 HRESULT RegKey::CreateKeys(const TCHAR* keys_to_create[],
@@ -148,9 +161,16 @@ HRESULT RegKey::Open(HKEY hKeyParent,
                      REGSAM sam_desired) {
   ASSERT1(key_name);
   ASSERT1(hKeyParent != NULL);
+  ASSERT1((sam_desired & (KEY_WOW64_64KEY | KEY_WOW64_32KEY)) !=
+          (KEY_WOW64_64KEY | KEY_WOW64_32KEY));
   HKEY hKey = NULL;
+  WoWOverride wow_override = k32BitView;
+  if ((sam_desired & KEY_WOW64_64KEY) != 0)
+    wow_override = k64BitView;
+  else
+    sam_desired |= KEY_WOW64_32KEY;
   LONG res = ::RegOpenKeyEx(hKeyParent, key_name, 0,
-                            ADDWOW64(sam_desired), &hKey);
+                            sam_desired, &hKey);
   HRESULT hr = HRESULT_FROM_WIN32(res);
 
   // we have to close the currently opened key
@@ -160,6 +180,7 @@ HRESULT RegKey::Open(HKEY hKeyParent,
     hr = Close();
     ASSERT1(hr == S_OK);
     h_key_ = hKey;
+    wow_override_ = wow_override;
   }
   return hr;
 }
@@ -168,13 +189,14 @@ HRESULT RegKey::Open(const TCHAR * full_key_name, REGSAM sam_desired) {
   ASSERT1(full_key_name);
   CString key_name(full_key_name);
 
-  HKEY parent_key = RegKey::GetRootKeyInfo(&key_name);
-  if (!parent_key) {
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
+  if (!info.key) {
     ASSERT(false, (_T("unable to get root key for %s"), full_key_name));
     return HRESULT_FROM_WIN32(ERROR_KEY_NOT_FOUND);
   }
 
-  return Open(parent_key, key_name, sam_desired);
+  return Open(info.key, key_name,
+              ApplyWoWOverride(sam_desired, info.wow_override));
 }
 
 // save the key and all of its subkeys and values to a file
@@ -183,13 +205,14 @@ HRESULT RegKey::Save(const TCHAR* full_key_name, const TCHAR* file_name) {
   ASSERT1(file_name);
 
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
-  if (!h_key) {
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
+  if (!info.key) {
     return E_FAIL;
   }
 
   RegKey key;
-  HRESULT hr = key.Open(h_key, key_name, KEY_READ);
+  HRESULT hr = key.Open(info.key, key_name,
+                        ApplyWoWOverride(KEY_READ, info.wow_override));
   if (FAILED(hr)) {
     return hr;
   }
@@ -207,13 +230,14 @@ HRESULT RegKey::Restore(const TCHAR* full_key_name, const TCHAR* file_name) {
   ASSERT1(file_name);
 
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
-  if (!h_key) {
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
+  if (!info.key) {
     return E_FAIL;
   }
 
   RegKey key;
-  HRESULT hr = key.Open(h_key, key_name, KEY_WRITE);
+  HRESULT hr = key.Open(info.key, key_name,
+                        ApplyWoWOverride(KEY_WRITE, info.wow_override));
   if (FAILED(hr)) {
     return hr;
   }
@@ -231,7 +255,8 @@ bool RegKey::HasSubkey(const TCHAR * key_name) const {
   ASSERT1(h_key_);
 
   RegKey key;
-  HRESULT hr = key.Open(h_key_, key_name, KEY_READ);
+  HRESULT hr = key.Open(h_key_, key_name,
+                        ApplyWoWOverride(KEY_READ, wow_override_));
   key.Close();
   return S_OK == hr;
 }
@@ -243,7 +268,7 @@ HRESULT RegKey::FlushKey(const TCHAR * full_key_name) {
   HRESULT hr = HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
   // get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  HKEY h_key = GetRootKeyInfo(&key_name).key;
 
   if (h_key != NULL) {
     LONG res = RegFlushKey(h_key);
@@ -264,11 +289,13 @@ HRESULT RegKey::SetValueStaticHelper(const TCHAR * full_key_name,
   HRESULT hr = HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
   // get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
-  if (h_key != NULL) {
+  if (info.key != NULL) {
     RegKey key;
-    hr = key.Create(h_key, key_name.GetString());
+    hr = key.Create(info.key, key_name.GetString(), NULL,
+                    REG_OPTION_NON_VOLATILE,
+                    ApplyWoWOverride(KEY_ALL_ACCESS, info.wow_override));
     if (hr == S_OK) {
       switch (type) {
         case REG_DWORD:
@@ -360,11 +387,12 @@ HRESULT RegKey::GetValueStaticHelper(const TCHAR * full_key_name,
   HRESULT hr = HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
   // get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
-  if (h_key != NULL) {
+  if (info.key != NULL) {
     RegKey key;
-    hr = key.Open(h_key, key_name.GetString(), KEY_READ);
+    hr = key.Open(info.key, key_name.GetString(),
+                  ApplyWoWOverride(KEY_READ, info.wow_override));
     if (hr == S_OK) {
       switch (type) {
         case REG_DWORD:
@@ -817,11 +845,12 @@ bool RegKey::HasKeyHelper(const TCHAR * full_key_name, DWORD sam_flags) {
 
   // get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
-  if (h_key != NULL) {
+  if (info.key != NULL) {
     RegKey key;
-    HRESULT hr = key.Open(h_key, key_name.GetString(), sam_flags);
+    HRESULT hr = key.Open(info.key, key_name.GetString(),
+                          ApplyWoWOverride(sam_flags, info.wow_override));
     key.Close();
     return S_OK == hr;
   }
@@ -865,11 +894,12 @@ bool RegKey::HasValue(const TCHAR * full_key_name, const TCHAR * value_name) {
   bool has_value = false;
   // get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
-  if (h_key != NULL) {
+  if (info.key != NULL) {
     RegKey key;
-    if (key.Open(h_key, key_name.GetString(), KEY_READ) == S_OK) {
+    if (key.Open(info.key, key_name.GetString(),
+                 ApplyWoWOverride(KEY_READ, info.wow_override)) == S_OK) {
       has_value = key.HasValue(value_name);
       key.Close();
     }
@@ -887,10 +917,11 @@ HRESULT RegKey::GetValueType(const TCHAR* full_key_name,
   *value_type = REG_NONE;
 
   CString key_name(full_key_name);
-  HKEY root_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
   RegKey key;
-  HRESULT hr = key.Open(root_key, key_name, KEY_READ);
+  HRESULT hr = key.Open(info.key, key_name,
+                        ApplyWoWOverride(KEY_READ, info.wow_override));
   if (FAILED(hr)) {
     return hr;
   }
@@ -909,13 +940,14 @@ HRESULT RegKey::DeleteKey(const TCHAR* full_key_name, bool recursively) {
   // need to open the parent key first
   // get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
   // get the parent key
   CString parent_key(GetParentKeyInfo(&key_name));
 
   RegKey key;
-  HRESULT hr = key.Open(h_key, parent_key);
+  HRESULT hr = key.Open(info.key, parent_key,
+                        ApplyWoWOverride(KEY_ALL_ACCESS, info.wow_override));
 
   if (hr == S_OK) {
     hr = recursively ? key.RecurseDeleteSubKey(key_name) :
@@ -937,11 +969,12 @@ HRESULT RegKey::DeleteValue(const TCHAR * full_key_name,
   HRESULT hr = HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
   // get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
-  if (h_key != NULL) {
+  if (info.key != NULL) {
     RegKey key;
-    hr = key.Open(h_key, key_name.GetString());
+    hr = key.Open(info.key, key_name.GetString(),
+                  ApplyWoWOverride(KEY_ALL_ACCESS, info.wow_override));
     if (hr == S_OK) {
       hr = key.DeleteValue(value_name);
       key.Close();
@@ -955,7 +988,8 @@ HRESULT RegKey::RecurseDeleteSubKey(const TCHAR * key_name) {
   ASSERT1(h_key_);
 
   RegKey key;
-  HRESULT hr = key.Open(h_key_, key_name);
+  HRESULT hr = key.Open(h_key_, key_name,
+                        ApplyWoWOverride(KEY_ALL_ACCESS, wow_override_));
   if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) ||
       hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) {
     hr = S_FALSE;
@@ -992,10 +1026,12 @@ HRESULT RegKey::RecurseDeleteSubKey(const TCHAR * key_name) {
   return DeleteSubKey(key_name);
 }
 
-HKEY RegKey::GetRootKeyInfo(CString * full_key_name) {
+RegKey::RootKeyInfo RegKey::GetRootKeyInfo(CString* full_key_name) {
   ASSERT1(full_key_name);
 
-  HKEY h_key = NULL;
+  // All accesses go to the 32-bit view of the registry unless overridden.
+  RootKeyInfo result = {NULL, k32BitView};
+
   // get the root HKEY
   int index = String_FindChar(*(full_key_name), '\\');
   CString root_key;
@@ -1010,19 +1046,23 @@ HKEY RegKey::GetRootKeyInfo(CString * full_key_name) {
   }
 
   if (!root_key.CompareNoCase(_T("HKLM")) ||
-      !root_key.CompareNoCase(_T("HKEY_LOCAL_MACHINE")))
-    h_key = HKEY_LOCAL_MACHINE;
-  else if (!root_key.CompareNoCase(_T("HKCU")) ||
-           !root_key.CompareNoCase(_T("HKEY_CURRENT_USER")))
-    h_key = HKEY_CURRENT_USER;
-  else if (!root_key.CompareNoCase(_T("HKU")) ||
-           !root_key.CompareNoCase(_T("HKEY_USERS")))
-    h_key = HKEY_USERS;
-  else if (!root_key.CompareNoCase(_T("HKCR")) ||
-           !root_key.CompareNoCase(_T("HKEY_CLASSES_ROOT")))
-    h_key = HKEY_CLASSES_ROOT;
+      !root_key.CompareNoCase(_T("HKEY_LOCAL_MACHINE"))) {
+    result.key = HKEY_LOCAL_MACHINE;
+  } else if (!root_key.CompareNoCase(_T("HKCU")) ||
+             !root_key.CompareNoCase(_T("HKEY_CURRENT_USER"))) {
+    result.key = HKEY_CURRENT_USER;
+  } else if (!root_key.CompareNoCase(_T("HKU")) ||
+             !root_key.CompareNoCase(_T("HKEY_USERS"))) {
+    result.key = HKEY_USERS;
+  } else if (!root_key.CompareNoCase(_T("HKCR")) ||
+             !root_key.CompareNoCase(_T("HKEY_CLASSES_ROOT"))) {
+    result.key = HKEY_CLASSES_ROOT;
+  } else if (!root_key.CompareNoCase(_T("HKLM[64]"))) {
+    result.key = HKEY_LOCAL_MACHINE;
+    result.wow_override = k64BitView;
+  }
 
-  return h_key;
+  return result;
 }
 
 
@@ -1032,7 +1072,7 @@ bool RegKey::SafeKeyNameForDeletion(const wchar_t *key_name) {
   ASSERT1(key_name);
   CString key(key_name);
 
-  HKEY root_key = GetRootKeyInfo(&key);
+  HKEY root_key = GetRootKeyInfo(&key).key;
 
   if ( !root_key ) {
     key = key_name;
@@ -1174,12 +1214,13 @@ bool RegKey::IsKeyEmpty(const TCHAR* full_key_name) {
 
   // Get the root HKEY
   CString key_name(full_key_name);
-  HKEY h_key = GetRootKeyInfo(&key_name);
+  RootKeyInfo info = GetRootKeyInfo(&key_name);
 
   // Open the key to check
-  if (h_key != NULL) {
+  if (info.key != NULL) {
     RegKey key;
-    HRESULT hr = key.Open(h_key, key_name.GetString(), KEY_READ);
+    HRESULT hr = key.Open(info.key, key_name.GetString(),
+                          ApplyWoWOverride(KEY_READ, info.wow_override));
     if (SUCCEEDED(hr)) {
       is_empty = key.GetSubkeyCount() == 0 && key.GetValueCount() == 0;
       key.Close();

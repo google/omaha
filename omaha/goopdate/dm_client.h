@@ -1,0 +1,67 @@
+// Copyright 2019 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef OMAHA_GOOPDATE_DM_CLIENT_H__
+#define OMAHA_GOOPDATE_DM_CLIENT_H__
+
+#include <utility>
+#include <vector>
+
+namespace omaha {
+
+class DmStorage;
+class HttpRequestInterface;
+
+namespace dm_client {
+
+enum RegistrationState {
+  // This client appears to not be managed. In particular, neither a device
+  // management token nor an enrollment token can be found.
+  kNotManaged,
+
+  // This client has an enrollment token available, but is not yet registered
+  // for device management (i.e., no device management token can be found).
+  kRegistrationPending,
+
+  // This client is registered for cloud management.
+  kRegistered,
+};
+
+// Returns the registration state for the machine.
+RegistrationState GetRegistrationState(DmStorage* dm_storage);
+
+// Returns S_OK if registration takes place and succeeds, S_FALSE if
+// registration was not needed (either it has already been done, or no
+// enrollment token is found), or a failure HRESULT in case of error.
+HRESULT RegisterIfNeeded(DmStorage* dm_storage);
+
+namespace internal {
+
+HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
+                            const CString& enrollment_token,
+                            const CString& device_id,
+                            CStringA* dm_token);
+CString GetAgent();
+CString GetPlatform();
+CStringA GetOsVersion();
+HRESULT AppendQueryParamsToUrl(
+    const std::vector<std::pair<CString,CString>>& query_params,
+    CString* url);
+CString FormatEnrollmentTokenAuthorizationHeader(const CString& token);
+
+}  // namespace internal
+}  // namespace dm_client
+}  // namespace omaha
+
+#endif  // OMAHA_GOOPDATE_DM_CLIENT_H__

@@ -87,6 +87,15 @@ const TCHAR* const kRegKeyNetworkCards =
     _T("HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\NetworkCards");
 const TCHAR* const kRegValueAdapterServiceName = _T("ServiceName");
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+// Windows machine GUID (found in the 64-bit view of the registry).
+const TCHAR* const kRegKeyCryptography =
+    _T("HKLM[64]\\SOFTWARE\\Microsoft\\Cryptography\\");
+const TCHAR* const kRegValueMachineGuid = _T("MachineGuid");
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
 }  // namespace omaha
 
 #endif  // OMAHA_BASE_CONST_UTILS_H_

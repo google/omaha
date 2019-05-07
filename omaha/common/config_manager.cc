@@ -508,6 +508,24 @@ HRESULT ConfigManager::GetUsageStatsReportUrl(CString* url) const {
   return S_OK;
 }
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+HRESULT ConfigManager::GetDeviceManagementUrl(CString* url) const {
+  ASSERT1(url);
+
+  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                                 kRegValueNameDeviceManagementUrl,
+                                 url))) {
+    CORE_LOG(L5, (_T("['device management url' override %s]"), *url));
+    return S_OK;
+  }
+
+  *url = kUrlDeviceManagement;
+  return S_OK;
+}
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
 // Returns the override from the registry locations if present. Otherwise,
 // returns the default value.
 // Default value is different value for internal users to make update checks
@@ -1131,5 +1149,23 @@ CString ConfigManager::GetDownloadPreferenceGroupPolicy() const {
 
   return CString();
 }
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+CString ConfigManager::GetCloudManagementEnrollmentToken() const {
+  CString enrollment_token;
+  HRESULT hr = RegKey::GetValue(kRegKeyCloudManagementGroupPolicy,
+                                kRegValueEnrollmentToken, &enrollment_token);
+  return SUCCEEDED(hr) ? enrollment_token : CString();
+}
+
+bool ConfigManager::IsCloudManagementEnrollmentMandatory() const {
+  DWORD is_mandatory = 0;
+  HRESULT hr = RegKey::GetValue(kRegKeyCloudManagementGroupPolicy,
+                                kRegValueEnrollmentMandatory, &is_mandatory);
+  return SUCCEEDED(hr) && is_mandatory != 0;
+}
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 }  // namespace omaha

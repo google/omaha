@@ -301,6 +301,8 @@ DeclareBit('no-tests', 'Do not build the unit tests')
 DeclareBit('x64', 'Build 64 bit code')
 DeclareBit('analysis', 'Turns on static analysis')
 DeclareBit('suppress_light_validation', 'Suppress WiX Linker ICE validation')
+DeclareBit('has_device_management',
+           'True if including cloud-based device management')
 
 # Build official installers if --official_installers is on the command line.
 win_env.SetBitFromOption('official_installers', False)
@@ -329,6 +331,10 @@ win_env.SetBitFromOption('no-tests', False)
 # Set if this is a Google build, otherwise, it is an open source build.
 if _is_google_update_build:
   win_env.SetBits('is_google_update_build')
+  # Ordinarily, presence of device management integration is only for Google
+  # Update builds. It can be configured independently in case a forker wishes
+  # to provide their own device management server.
+  win_env.SetBits('has_device_management')
 
 # Build all directories and two versions if this is the build server.
 if win_env.Bit('build_server'):
@@ -420,6 +426,17 @@ if _is_google_update_build:
         CPPDEFINES = ['GOOGLE_UPDATE_BUILD'],
         RCFLAGS = ['/DGOOGLE_UPDATE_BUILD=1'],
     )
+
+if win_env.Bit('has_device_management'):
+    win_env.Append(
+        CPPDEFINES = ['HAS_DEVICE_MANAGEMENT'],
+    )
+    if _is_google_update_build:
+        # Google Update includes integration specific to Google Chrome, which
+        # should not be present in other forks of Omaha.
+        win_env.Append(
+            CPPDEFINES = ['HAS_LEGACY_DM_CLIENT'],
+        )
 
 # Make sure python.exe can be located.
 win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])

@@ -17,6 +17,7 @@
 
 
 import omaha_version_utils
+import os
 
 Import('env')
 
@@ -112,6 +113,14 @@ def BuildCOMRegisterShell64():
           'wtsapi32.lib',
       ],
   )
+  if env.Bit('has_device_management'):
+    com_register_shell_env.Append(
+        LIBS=[
+            '$LIB_DIR/dm_proto_64.lib',
+            '$LIB_DIR/libprotobuf_64.lib',
+        ],
+    )
+
   unsigned_exe = com_register_shell_env.ComponentProgram(
       prog_name='GoogleUpdateComRegisterShell64_unsigned',
       source= [
@@ -210,6 +219,14 @@ def BuildGoogleUpdateHandlerDll(handler_env,
           'wtsapi32.lib',
       ],
   )
+  if handler_env.Bit('has_device_management'):
+    handler_env.Append(
+        LIBS = [
+            handler_env.GetMultiarchLibName('dm_proto'),
+            handler_env.GetMultiarchLibName('libprotobuf'),
+        ],
+    )
+
   version_string = omaha_version_info.GetVersionString()
   prefix = omaha_version_info.filename_prefix
 
@@ -283,6 +300,46 @@ for omaha_version_info in env['omaha_versions_info']:
                               omaha_version_info, 0, 'psuser')
   BuildGoogleUpdateHandlerDll(handler_env.CloneAndMake64Bit(),
                               omaha_version_info, 0, 'psuser')
+
+if env.Bit('has_device_management'):
+  # Compile the device management server protobufs.
+  proto_env = env.Clone()
+  proto_env.Append(PROTO_PATH = '$GOOGLE3')
+  proto_env.Append(CPP_OUT = '$TARGET_ROOT/proto_files')
+  proto_sources = [
+      '$GOOGLE3/logs/proto/logs_annotations/logs_annotations.proto',
+      '$GOOGLE3/wireless/android/enterprise/devicemanagement/proto/' +
+          'dm_api.proto',
+      '$GOOGLE3/net/proto2/proto/descriptor.proto',
+      ]
+  proto_outputs = proto_env.CompileProtoBuf(proto_sources)
+
+  # Build the device management messages and protobuf library.
+  protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR',
+                               '$GOOGLE3/third_party/protobuf/src')
+  proto_env.Append(
+      CCFLAGS=[
+          '/wd4100',
+          '/wd4125',
+          '/wd4127',
+          '/wd4146',
+          '/wd4244',
+          '/wd4309',
+          '/wd4577',
+          '/wd4800',
+          '/wd4995',
+          '/wd4996',
+          ],
+      CPPPATH=[
+          '$GOOGLE3',
+          protobuf_src_dir,
+          '$TARGET_ROOT/proto_files',
+      ],
+   )
+  dm_proto_lib = proto_env.ComponentStaticLibraryMultiarch(
+      'dm_proto',
+      proto_outputs + ['dm_messages.cc'],
+      use_pch_default=False)
 
 gd_env = env.Clone()
 
@@ -362,6 +419,12 @@ gd_inputs = [
     'worker_metrics.cc',
     ]
 
+if gd_env.Bit('has_device_management'):
+  gd_inputs += [
+      'dm_client.cc',
+      'dm_storage.cc',
+      ]
+
 # Compile the library.
 gd_env.ComponentStaticLibraryMultiarch(target_name, gd_inputs)
 
@@ -401,6 +464,7 @@ for omaha_version_info in env['omaha_versions_info']:
           '$LIB_DIR/crx_file.lib',
           '$LIB_DIR/google_update_recovery.lib',
           '$LIB_DIR/goopdate_lib.lib',
+          '$LIB_DIR/libprotobuf.lib',
           '$LIB_DIR/logging.lib',
           '$LIB_DIR/net.lib',
           '$LIB_DIR/omaha3_idl.lib',
@@ -453,6 +517,12 @@ for omaha_version_info in env['omaha_versions_info']:
           '/DLANGUAGE_STRING=\\"en\\"',
           ],
   )
+  if temp_env.Bit('has_device_management'):
+    temp_env.Append(
+        LIBS = [
+          '$LIB_DIR/dm_proto.lib',
+        ],
+    )
 
   resource_res = temp_env.RES(
       target=prefix + 'goopdate.res',

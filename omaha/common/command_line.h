@@ -103,6 +103,9 @@ struct CommandLineExtraArgs {
   CString experiment_labels;
   CString referral_id;
   CString language;
+#if defined(HAS_DEVICE_MANAGEMENT)
+  CString enrollment_token;
+#endif
   BrowserType browser_type;
   Tristate usage_stats_enable;
   bool runtime_only;

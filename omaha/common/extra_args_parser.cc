@@ -271,6 +271,13 @@ HRESULT ExtraArgsParser::HandleToken(const CString& token,
       return E_INVALIDARG;
     }
     args->runtime_only = true;
+#if defined(HAS_DEVICE_MANAGEMENT)
+  } else if (name.CompareNoCase(kExtraArgEnrollmentToken) == 0) {
+    if (value.GetLength() > kEnrollmentTokenMaxLength) {
+      return E_INVALIDARG;
+    }
+    args->enrollment_token = value;
+#endif
 
   // The following args are per-app.
   } else if (name.CompareNoCase(kExtraArgAdditionalParameters) == 0) {

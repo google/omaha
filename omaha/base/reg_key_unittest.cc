@@ -109,59 +109,90 @@ TEST_F(RegKeyTestClass, Init) {
 TEST_F(RegKeyTestClass, Helper) {
   // Dud items cause NULL
   CString temp_key;
+  RegKey::RootKeyInfo info;
 
   // RegKey::GetRootKeyInfo turns a string into the HKEY and subtree value
 
   // Try out some dud values
   temp_key = _T("");
-  ASSERT_TRUE(RegKey::GetRootKeyInfo(&temp_key) == NULL);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_TRUE(info.key == NULL);
   ASSERT_STREQ(temp_key, _T(""));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("a");
-  ASSERT_TRUE(RegKey::GetRootKeyInfo(&temp_key) == NULL);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_TRUE(info.key == NULL);
   ASSERT_STREQ(temp_key, _T(""));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   // The basics
   temp_key = _T("HKLM\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_LOCAL_MACHINE);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_LOCAL_MACHINE);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("HKEY_LOCAL_MACHINE\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_LOCAL_MACHINE);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_LOCAL_MACHINE);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
+
+  temp_key = _T("HKLM[64]\\a");
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_LOCAL_MACHINE);
+  ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k64BitView);
 
   temp_key = _T("HKCU\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_CURRENT_USER);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_CURRENT_USER);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("HKEY_CURRENT_USER\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_CURRENT_USER);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_CURRENT_USER);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("HKU\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_USERS);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_USERS);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("HKEY_USERS\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_USERS);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_USERS);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("HKCR\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_CLASSES_ROOT);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_CLASSES_ROOT);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("HKEY_CLASSES_ROOT\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_CLASSES_ROOT);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_CLASSES_ROOT);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   // Make sure it is case insensitive
   temp_key = _T("hkcr\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_CLASSES_ROOT);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_CLASSES_ROOT);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   temp_key = _T("hkey_CLASSES_ROOT\\a");
-  ASSERT_EQ(RegKey::GetRootKeyInfo(&temp_key), HKEY_CLASSES_ROOT);
+  info = RegKey::GetRootKeyInfo(&temp_key);
+  ASSERT_EQ(info.key, HKEY_CLASSES_ROOT);
   ASSERT_STREQ(temp_key, _T("a"));
+  ASSERT_EQ(info.wow_override, RegKey::k32BitView);
 
   // Test out temp_GetParentKeyInfo
 

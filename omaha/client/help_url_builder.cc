@@ -26,45 +26,11 @@
 #include "omaha/base/vistautil.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/goopdate_utils.h"
+#include "omaha/common/url_utils.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/net/http_client.h"
 
 namespace omaha {
-
-namespace {
-
-// Query element name-value pair.
-typedef std::pair<CString, CString> QueryElement;
-
-// Builds a query string from the provided name-value pairs.
-// The string does not begin or end in a pair separator.
-HRESULT BuildQueryString(const std::vector<QueryElement>& elements,
-                         CString* query) {
-  ASSERT1(query);
-
-  query->Empty();
-
-  for (size_t i = 0; i < elements.size(); ++i) {
-    CString escaped_str;
-    HRESULT hr = StringEscape(elements[i].second, false, &escaped_str);
-    if (FAILED(hr)) {
-      CORE_LOG(LEVEL_WARNING, (_T("[StringEscape failed][0x%08x]"), hr));
-      return hr;
-    }
-
-    CString element;
-    element.FormatMessage(_T("%1=%2"), elements[i].first, escaped_str);
-
-    if (0 < i) {
-      query->Append(_T("&"));
-    }
-    query->Append(element);
-  }
-
-  return S_OK;
-}
-
-}   // namespace
 
 HRESULT HelpUrlBuilder::BuildUrl(const std::vector<AppResult>& app_results,
                                  CString* help_url) const {

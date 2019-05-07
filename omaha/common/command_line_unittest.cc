@@ -110,6 +110,9 @@ void VerifyCommandLineExtraArgs(const CommandLineExtraArgs& expected_val,
                actual_val.experiment_labels);
   EXPECT_STREQ(expected_val.referral_id, actual_val.referral_id);
   EXPECT_STREQ(expected_val.language, actual_val.language);
+#if defined(HAS_DEVICE_MANAGEMENT)
+  EXPECT_STREQ(expected_val.enrollment_token, actual_val.enrollment_token);
+#endif
   EXPECT_EQ(expected_val.browser_type, actual_val.browser_type);
   EXPECT_EQ(expected_val.usage_stats_enable, actual_val.usage_stats_enable);
   EXPECT_EQ(expected_val.runtime_only, actual_val.runtime_only);
@@ -283,7 +286,8 @@ TEST_F(CommandLineTest, ParseCommandLine_Install) {
       _T("\"appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
       _T("appname=YouTubeUploader&needsadmin=False&")
       _T("appguid={C7A9A2F5-C4F9-42d3-8A8B-55086A205468}&")
-      _T("appname=TestApp&needsadmin=true&lang=en\"");
+      _T("appname=TestApp&needsadmin=true&lang=en%");
+      _T("etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2\"");
   EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
 
   expected_.mode = COMMANDLINE_MODE_INSTALL;
@@ -293,7 +297,8 @@ TEST_F(CommandLineTest, ParseCommandLine_Install) {
                              _T("appname=YouTubeUploader&needsadmin=False&")
                              _T("appguid=")
                              _T("{C7A9A2F5-C4F9-42d3-8A8B-55086A205468}&")
-                             _T("appname=TestApp&needsadmin=true&lang=en");
+                             _T("appname=TestApp&needsadmin=true&lang=en%");
+                             _T("etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2");
   CommandLineAppArgs app_args;
   const GUID expected_guid = {0xA4F7B07B, 0xB9BD, 0x4A33,
                               {0xB1, 0x36, 0x96, 0xD2, 0xAD, 0xFB, 0x60, 0xCB}};
@@ -311,6 +316,9 @@ TEST_F(CommandLineTest, ParseCommandLine_Install) {
 
   expected_.extra.bundle_name = _T("YouTubeUploader");
   expected_.extra.language = _T("en");
+#if defined(HAS_DEVICE_MANAGEMENT)
+  expected_.extra.enrollment_token = _T("f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2");
+#endif
 
   VerifyCommandLineArgs(expected_, args_);
 

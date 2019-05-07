@@ -26,6 +26,21 @@ namespace omaha {
 const TCHAR* const kRegKeyGoopdateGroupPolicy =
     MACHINE_KEY GOOPDATE_POLICIES_RELATIVE;
 
+// Key containing Cloud Management Group Policy settings. All policies are in
+// HKLM.
+const TCHAR* const kRegKeyCloudManagementGroupPolicy =
+    MACHINE_KEY CLOUD_MANAGEMENT_POLICIES_RELATIVE;
+
+#if defined(HAS_LEGACY_DM_CLIENT)
+
+// The location where Google Chrome looks for an enrollment token. This will be
+// phased out once registration via Google Update is fully deployed and the
+// admin panel is delivering .reg files using the location below.
+const TCHAR* const kRegKeyLegacyGroupPolicy =
+    MACHINE_KEY COMPANY_POLICIES_MAIN_KEY LEGACY_DM_CLIENT_APP _T("\\");
+
+#endif  // defined(HAS_LEGACY_DM_CLIENT)
+
 // Preferences Category.
 const TCHAR* const kRegValueAutoUpdateCheckPeriodOverrideMinutes =
     _T("AutoUpdateCheckPeriodMinutes");
@@ -46,6 +61,32 @@ const TCHAR* const kRegValueDownloadPreference = _T("DownloadPreference");
 
 // Specifies that urls that can be cached by proxies are preferred.
 const TCHAR* const kDownloadPreferenceCacheable = _T("cacheable");
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+// The name of the policy holding a token used to enroll in cloud-based
+// device management.
+const TCHAR* const kRegValueEnrollmentToken = _T("EnrollmentToken");
+
+// The name of the policy indicating that enrollment in cloud-based device
+// management is mandatory.
+const TCHAR* const kRegValueEnrollmentMandatory = _T("EnrollmentMandatory");
+
+#if defined(HAS_LEGACY_DM_CLIENT)
+
+// The name of the Google Chrome policy holding a token used to enroll in
+// cloud-based device management.
+const TCHAR* const kRegValueCloudManagementEnrollmentTokenPolicy =
+    _T("CloudManagementEnrollmentToken");
+
+// The name of the old Google Chrome policy holding a token used to enroll in
+// cloud-based device management.
+const TCHAR* const kRegValueMachineLevelUserCloudPolicyEnrollmentToken =
+    _T("MachineLevelUserCloudPolicyEnrollmentToken");
+
+#endif  // defined(HAS_LEGACY_DM_CLIENT)
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 // Proxy Server Category.  (The registry keys used, and the values of ProxyMode,
 // directly mirror that of Chrome.  However, we omit ProxyBypassList, as the

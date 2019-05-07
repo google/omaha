@@ -70,6 +70,23 @@ HRESULT SetPolicyString(const TCHAR* policy_name, const CString& value) {
   return RegKey::SetValue(kPolicyKey, policy_name, value);
 }
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+const TCHAR* const kCloudManagementPolicyKey =
+    _T("HKLM\\Software\\Policies\\") SHORT_COMPANY_NAME
+    _T("\\CloudManagement\\");
+
+HRESULT SetCloudManagementPolicy(const TCHAR* policy_name, DWORD value) {
+  return RegKey::SetValue(kCloudManagementPolicyKey, policy_name, value);
+}
+
+HRESULT SetCloudManagementPolicyString(const TCHAR* policy_name,
+                                       const CString& value) {
+  return RegKey::SetValue(kCloudManagementPolicyKey, policy_name, value);
+}
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
 // DeleteDirectory can fail with ERROR_PATH_NOT_FOUND if the parent directory
 // does not exist. Consider this a success for testing purposes.
 HRESULT DeleteTestDirectory(const TCHAR* dir) {
@@ -2000,5 +2017,23 @@ TEST_P(ConfigManagerTest, GetDownloadPreferenceGroupPolicy) {
   EXPECT_STREQ(IsDomain() ? kDownloadPreferenceCacheable : _T(""),
                cm_->GetDownloadPreferenceGroupPolicy());
 }
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+TEST_P(ConfigManagerTest, GetCloudManagementEnrollmentToken) {
+  const CString token_value = _T("f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2");
+  EXPECT_STREQ(cm_->GetCloudManagementEnrollmentToken(), _T(""));
+  EXPECT_SUCCEEDED(SetCloudManagementPolicyString(
+      kRegValueEnrollmentToken, token_value));
+  EXPECT_STREQ(cm_->GetCloudManagementEnrollmentToken(), token_value);
+}
+
+TEST_P(ConfigManagerTest, IsCloudManagementEnrollmentMandatory) {
+  EXPECT_FALSE(cm_->IsCloudManagementEnrollmentMandatory());
+  EXPECT_SUCCEEDED(SetCloudManagementPolicy(kRegValueEnrollmentMandatory, 1U));
+  EXPECT_TRUE(cm_->IsCloudManagementEnrollmentMandatory());
+}
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 }  // namespace omaha
