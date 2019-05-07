@@ -243,4 +243,7 @@ void CreateFiles(const TCHAR* parent_dir,
     UNREFERENCED_PARAMETER(arg8); \
     UNREFERENCED_PARAMETER(arg9)
 
+// Teach Google Test how to print a CString.
+std::ostream& operator<<(std::ostream& os, const CString& str);
+
 #endif  // OMAHA_TESTING_UNIT_TEST_H_

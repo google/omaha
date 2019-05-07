@@ -193,6 +193,7 @@ omaha_unittest_libs = [
     '$LIB_DIR/google_update_recovery.lib',
     '$LIB_DIR/goopdate_lib.lib',
     '$LIB_DIR/gtest.lib',
+    '$LIB_DIR/libprotobuf.lib',
     '$LIB_DIR/logging.lib',
     '$LIB_DIR/lzma.lib',
     '$LIB_DIR/net.lib',
@@ -232,6 +233,17 @@ omaha_unittest_libs = [
     'ws2_32.lib',
     'wtsapi32.lib',
 ]
+if omaha_unittest_env.Bit('has_device_management'):
+  protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR',
+                               '$GOOGLE3/third_party/protobuf/src')
+  omaha_unittest_libs.append('$LIB_DIR/dm_proto.lib')
+  omaha_unittest_env.Append(
+      CPPPATH = [
+          '$GOOGLE3',
+          protobuf_src_dir,
+          '$TARGET_ROOT/proto_files',
+      ],
+  )
 
 # Add conditional lib dependencies.
 if omaha_unittest_env.IsBuildingModule('mi_exe_stub'):
@@ -263,10 +275,14 @@ omaha_unittest_env.Append(
         ],
     CCFLAGS = [
         '/wd4100',  # unreferenced formal parameter
+        '/wd4244',  # possible loss of data
         '/wd4388',  # signed/unsigned mismatch
         '/wd4389',  # signed/unsigned mismatch
         '/wd4628',  # digraphs not supported with -Ze
+        '/wd4647',  # behavior change: __is_pod(type) has different value
+        '/wd4800',  # forcing value to bool 'true' or 'false'
         '/wd4826',  # Conversion from 'type_1' to 'type_2' is sign-extended.
+        '/wd4946',  # reinterpret_cast used between related classes
 
         # Disable static analysis warnings.
         '/wd6326',  # Potential comparison of a constant with another constant.
@@ -433,6 +449,7 @@ omaha_unittest_inputs = [
     '../common/scheduled_task_utils_unittest.cc',
     '../common/stats_uploader_unittest.cc',
     '../common/update_request_unittest.cc',
+    '../common/url_utils_unittest.cc',
     '../common/webplugin_utils_unittest.cc',
     '../common/web_services_client_unittest.cc',
     '../common/xml_parser_unittest.cc',
@@ -533,6 +550,13 @@ omaha_unittest_inputs = [
     '../third_party/chrome/files/src/base/rand_util_unittest.cc',
     '../third_party/chrome/files/src/crypto/rsa_private_key_unittest.cc',
 ]
+
+if omaha_unittest_env.Bit('has_device_management'):
+  omaha_unittest_inputs += [
+      '../goopdate/dm_client_unittest.cc',
+      '../goopdate/dm_storage_test_utils.cc',
+      '../goopdate/dm_storage_unittest.cc',
+  ]
 
 # Conditionally built unit tests.
 if omaha_unittest_env.IsBuildingModule('mi_exe_stub'):

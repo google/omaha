@@ -83,6 +83,14 @@ const TCHAR* const kUrlCodeRedCheck =
 const TCHAR* const kUrlUsageStatsReport =
     _T("https://clients5.") COMPANY_DOMAIN _T("/tbproxy/usagestats");
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+// Device Management API url.
+const TCHAR* const kUrlDeviceManagement =
+    _T("https://m.") COMPANY_DOMAIN _T("/devicemanagement/data/api");
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
 }  // namespace omaha
 
 #endif  // OMAHA_BASE_CONST_ADDRESSES_H_

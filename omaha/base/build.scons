@@ -126,54 +126,15 @@ if 'OMAHA_PROTOBUF_BIN_DIR' not in os.environ:
     target = protoc_gyp_dir + 'Default/protoc.exe',
     source=protoc_gyp_dir + 'protoc.sln')
 
-""" Build the CRX Verifier libraries."""
-
-Import('env')
-local_env = env.Clone()
-
-crx_file_path = '/third_party/chrome/files/src/components/crx_file/'
-local_env.Append(PROTO_PATH = '$MAIN_DIR' + crx_file_path)
-local_env.Append(CPP_OUT = '$TARGET_ROOT/proto_files' + crx_file_path)
-proto_sources = [
-    '$MAIN_DIR' + crx_file_path + 'crx3.proto'
-]
-cc_files = local_env.CompileProtoBuf(proto_sources)
+""" Build libprotobuf. """
 
 default_protobuf_src_dir = '$GOOGLE3/third_party/protobuf/src'
 protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR', default_protobuf_src_dir)
 
-local_env.Append(
-    CCFLAGS=[
-        '/wd4100',
-        '/wd4125',
-        '/wd4127',
-        '/wd4146',
-        '/wd4244',
-        '/wd4309',
-        '/wd4577',
-        '/wd4800',
-        '/wd4995',
-        '/wd4996',
-    ],
-    CPPPATH=[
-        '$GOOGLE3',
-        protobuf_src_dir,
-        '$TARGET_ROOT/proto_files/',
-    ],
-)
-
-cc_files += [
-    '../third_party/chrome/files/src/components/crx_file/crx_verifier.cc',
-    '../third_party/chrome/files/src/components/crx_file/id_util.cc',
-    '../third_party/chrome/files/src/crypto/signature_verifier.cc',
-    '../third_party/chrome/files/src/crypto/secure_util.cc',
-]
-
-""" Add protobuf library files."""
-
+proto_env = env.Clone()
 protobuf_src_path = os.path.join(protobuf_src_dir, 'google/protobuf/')
-local_env.FilterOut(CCFLAGS=['/W4'])
-local_env.Append(
+proto_env.FilterOut(CCFLAGS=['/W4'])
+proto_env.Append(
     CPPDEFINES=['LIBPROTOBUF_EXPORTS'],
     CCFLAGS=[
         '/wd4005',
@@ -200,11 +161,12 @@ local_env.Append(
     ],
 )
 
-protobuf_src_path_dir = local_env.Dir(protobuf_src_path)
-local_env.Dir('protobuf').addRepository(protobuf_src_path_dir)
-cc_files += [
+protobuf_src_path_dir = proto_env.Dir(protobuf_src_path)
+proto_env.Dir('protobuf').addRepository(protobuf_src_path_dir)
+cc_files = [
     'protobuf/compiler/importer.cc',
     'protobuf/compiler/parser.cc',
+    'protobuf/any.cc',
     'protobuf/descriptor.cc',
     'protobuf/descriptor.pb.cc',
     'protobuf/descriptor_database.cc',
@@ -216,12 +178,14 @@ cc_files += [
     'protobuf/implicit_weak_message.cc',
     'protobuf/io/coded_stream.cc',
     'protobuf/io/printer.cc',
+    'protobuf/io/strtod.cc',
     'protobuf/io/tokenizer.cc',
     'protobuf/io/strtod.cc',
     'protobuf/io/zero_copy_stream.cc',
     'protobuf/io/zero_copy_stream_impl.cc',
     'protobuf/io/zero_copy_stream_impl_lite.cc',
     'protobuf/arena.cc',
+    'protobuf/map_field.cc',
     'protobuf/message.cc',
     'protobuf/message_lite.cc',
     'protobuf/reflection_ops.cc',
@@ -239,6 +203,50 @@ cc_files += [
     'protobuf/unknown_field_set.cc',
     'protobuf/wire_format.cc',
     'protobuf/wire_format_lite.cc',
+]
+
+proto_env.ComponentStaticLibraryMultiarch(
+    'libprotobuf', cc_files, COMPONENT_STATIC=True, use_pch_default=False)
+
+""" Build the CRX Verifier libraries."""
+
+Import('env')
+local_env = env.Clone()
+
+crx_file_path = '/third_party/chrome/files/src/components/crx_file/'
+local_env.Append(PROTO_PATH = '$MAIN_DIR' + crx_file_path)
+local_env.Append(CPP_OUT = '$TARGET_ROOT/proto_files' + crx_file_path)
+proto_sources = [
+    '$MAIN_DIR' + crx_file_path + 'crx3.proto'
+]
+cc_files = local_env.CompileProtoBuf(proto_sources)
+
+local_env.FilterOut(CCFLAGS=['/W4'])
+local_env.Append(
+    CCFLAGS=[
+        '/wd4100',
+        '/wd4125',
+        '/wd4127',
+        '/wd4146',
+        '/wd4244',
+        '/wd4309',
+        '/wd4577',
+        '/wd4800',
+        '/wd4995',
+        '/wd4996',
+    ],
+    CPPPATH=[
+        '$GOOGLE3',
+        protobuf_src_dir,
+        '$TARGET_ROOT/proto_files/',
+    ],
+)
+
+cc_files += [
+    '../third_party/chrome/files/src/components/crx_file/crx_verifier.cc',
+    '../third_party/chrome/files/src/components/crx_file/id_util.cc',
+    '../third_party/chrome/files/src/crypto/signature_verifier.cc',
+    '../third_party/chrome/files/src/crypto/secure_util.cc',
 ]
 
 """ Add zlib library files."""

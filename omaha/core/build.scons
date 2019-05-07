@@ -79,6 +79,7 @@ core_env.Append(
         core_env.GetMultiarchLibName('crx_file'),
         core_env.GetMultiarchLibName('google_update_recovery'),
         core_env.GetMultiarchLibName('goopdate_lib'),
+        core_env.GetMultiarchLibName('libprotobuf'),
         core_env.GetMultiarchLibName('logging'),
         core_env.GetMultiarchLibName('net'),
         core_env.GetMultiarchLibName('omaha3_idl'),
@@ -97,6 +98,13 @@ core_env.Append(
           omaha_version_info.GetVersionString()),
       ],
 )
+
+if core_env.Bit('has_device_management'):
+  core_env.Append(
+      LIBS = [
+          core_env.GetMultiarchLibName('dm_proto'),
+      ],
+  )
 
 google_core_res_target = 'resource.res'
 google_core_res = core_env.RES(source = 'resource.rc',

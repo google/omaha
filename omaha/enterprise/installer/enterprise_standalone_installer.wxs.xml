@@ -141,6 +141,11 @@
       Value='[ProductTag]&amp;browser=[BROWSER]'
       Execute='immediate'
       Return='check' />
+    <CustomAction Id='AppendEnrollmentTokenToProductTagProperty'
+      Property='ProductTag'
+      Value='[ProductTag]&amp;etoken=[ETOKEN]'
+      Execute='immediate'
+      Return='check' />
     <CustomAction Id='AppendUsageStatsToProductTagProperty'
       Property='ProductTag'
       Value='[ProductTag]&amp;usagestats=[USAGESTATS]'
@@ -268,8 +273,12 @@
         (((?ProductClientState=2) AND ($ProductClientState=3)) OR ((?ProductClientState=3) AND REINSTALL)) AND (IID &lt;&gt; "")
       </Custom>
       <Custom Action='AppendBrandToProductTagProperty'
-              Before='AppendBrowserToProductTagProperty'>
+              Before='AppendEnrollmentTokenToProductTagProperty'>
         (((?ProductClientState=2) AND ($ProductClientState=3)) OR ((?ProductClientState=3) AND REINSTALL)) AND (BRAND &lt;&gt; "")
+      </Custom>
+      <Custom Action='AppendEnrollmentTokenToProductTagProperty'
+              Before='AppendBrowserToProductTagProperty'>
+        (((?ProductClientState=2) AND ($ProductClientState=3)) OR ((?ProductClientState=3) AND REINSTALL)) AND (ETOKEN &lt;&gt; "")
       </Custom>
       <Custom Action='AppendBrowserToProductTagProperty'
               Before='AppendUsageStatsToProductTagProperty'>

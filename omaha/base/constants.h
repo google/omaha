@@ -164,6 +164,17 @@ const GUID kGoopdateGuid = {0x430FD4D0, 0xB729, 0x4F61,
 #define CHROME_APP_ID _T("{8A69D345-D564-463C-AFF1-A69D9E530F96}")
 const TCHAR* const kChromeAppId = CHROME_APP_ID;
 
+#if defined(HAS_DEVICE_MANAGEMENT) && defined(HAS_LEGACY_DM_CLIENT)
+
+//
+// Cloud-based device management
+//
+
+// The name of the legacy client application.
+#define LEGACY_DM_CLIENT_APP _T("Chrome")
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT) && defined(HAS_LEGACY_DM_CLIENT)
+
 //
 // Directory names
 //
@@ -189,6 +200,7 @@ const TCHAR* const kChromeAppId = CHROME_APP_ID;
 //
 #define MACHINE_KEY_NAME _T("HKLM")
 #define MACHINE_KEY MACHINE_KEY_NAME _T("\\")
+#define MACHINE_KEY_64 MACHINE_KEY_NAME _T("[64]\\")
 #define USER_KEY_NAME _T("HKCU")
 #define USER_KEY USER_KEY_NAME _T("\\")
 #define USERS_KEY _T("HKU\\")
@@ -202,6 +214,8 @@ const TCHAR* const kChromeAppId = CHROME_APP_ID;
     _T("Software\\Policies\\") SHORT_COMPANY_NAME _T("\\")
 #define GOOPDATE_POLICIES_RELATIVE COMPANY_POLICIES_MAIN_KEY \
     PRODUCT_NAME _T("\\")
+#define CLOUD_MANAGEMENT_POLICIES_RELATIVE COMPANY_POLICIES_MAIN_KEY \
+    _T("CloudManagement\\")
 
 #define USER_LOCAL USER_KEY _T("Software\\Classes\\Local Settings\\")
 #define USER_LOCAL_REG_UPDATE USER_LOCAL GOOPDATE_MAIN_KEY
@@ -279,6 +293,10 @@ const TCHAR* const kRegValueAutoUpdateJitterMs      = _T("AutoUpdateJitterMs");
 const TCHAR* const kRegValueProxyHost               = _T("ProxyHost");
 const TCHAR* const kRegValueProxyPort               = _T("ProxyPort");
 const TCHAR* const kRegValueMID                     = _T("mid");
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+const TCHAR* const kRegValueNameDeviceManagementUrl = _T("DeviceManagementUrl");
+#endif
 
 // The values below can be overriden in unofficial builds.
 const TCHAR* const kRegValueNameWindowsInstalling = _T("WindowsInstalling");
@@ -390,6 +408,13 @@ const TCHAR* const kDefaultCountryCode = _T("us");
 
 // the max length of the extra info we can store inside the install stubs.
 const int kExtraMaxLength = 64 * 1024;  // 64 KB
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+// The maximum length of an enrollment token.
+const int kEnrollmentTokenMaxLength = 1024;
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 // Default brand code value when one is not specified.
 // This has been specifically assigned to Omaha.

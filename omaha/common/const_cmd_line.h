@@ -303,6 +303,15 @@ const TCHAR* const kExtraArgBrowserType = _T("browser");
 // applications via that API after the meta-installer exits.
 const TCHAR* const kExtraArgRuntime = _T("runtime");
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+// "etoken" extra argument gives Omaha an enrollment token. Omaha will use this
+// for per-machine installs to register the machine with Google's device
+// management server.
+const TCHAR* const kExtraArgEnrollmentToken = _T("etoken");
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
 // The list of arguments that are needed for a meta-installer, to
 // indicate which application is being installed. These are stamped
 // inside the meta-installer binary.

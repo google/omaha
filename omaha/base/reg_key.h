@@ -44,12 +44,27 @@ namespace omaha {
 
 class RegKey {
  public:
+  // Registry access mask values for specifying the 32-bit or 64-bit view of the
+  // registry.
+  enum WoWOverride {
+    k32BitView = KEY_WOW64_32KEY,
+    k64BitView = KEY_WOW64_64KEY,
+  };
+
+  // A root key and WoW registry view extracted from a full key name; see
+  // GetRootKeyInfo.
+  struct RootKeyInfo {
+    HKEY key;
+    WoWOverride wow_override;
+  };
+
   RegKey();
   virtual ~RegKey();
 
-  // create a reg key
+  // create a reg key. If |sam_desired| does not specify KEY_WOW64_64KEY,
+  // KEY_WOW64_32KEY is used.
   HRESULT Create(HKEY hKeyParent, const TCHAR * key_name,
-        TCHAR * reg_class = REG_NONE, DWORD options = REG_OPTION_NON_VOLATILE,
+        TCHAR * reg_class = NULL, DWORD options = REG_OPTION_NON_VOLATILE,
         REGSAM sam_desired = KEY_ALL_ACCESS,
         LPSECURITY_ATTRIBUTES lp_sec_attr = NULL,
         LPDWORD lp_disposition = NULL);
@@ -57,7 +72,7 @@ class RegKey {
   // create a reg key, given the full key name, including the HKEY root
   // (say for example, "HKLM\\Software")
   HRESULT Create(const TCHAR * full_key_name,
-        TCHAR * reg_class = REG_NONE, DWORD options = REG_OPTION_NON_VOLATILE,
+        TCHAR * reg_class = NULL, DWORD options = REG_OPTION_NON_VOLATILE,
         REGSAM sam_desired = KEY_ALL_ACCESS,
         LPSECURITY_ATTRIBUTES lp_sec_attr = NULL,
         LPDWORD lp_disposition = NULL);
@@ -67,13 +82,13 @@ class RegKey {
   // (say for example, "HKLM\\Software")
   static HRESULT CreateKeys(const TCHAR* keys_to_create[],
                             DWORD number_of_keys,
-                            TCHAR* reg_class = REG_NONE,
+                            TCHAR* reg_class = NULL,
                             DWORD options = REG_OPTION_NON_VOLATILE,
                             LPSECURITY_ATTRIBUTES lp_sec_attr = NULL);
 
   // Static method to create a single key.
   static HRESULT CreateKey(const TCHAR * full_key_name,
-                           TCHAR * reg_class = REG_NONE,
+                           TCHAR * reg_class = NULL,
                            DWORD options = REG_OPTION_NON_VOLATILE,
                            LPSECURITY_ATTRIBUTES lp_sec_attr = NULL);
 
@@ -355,10 +370,11 @@ class RegKey {
   friend class RegKeyTestClass;
 
   // helper function to get the HKEY and the root key from a string
-  // representation modifies the argument in place and returns the key name
-  // e.g. HKLM\\Software\\Google\... returns HKLM, "Software\\Google\..."
-  // Necessary for the static versions that use the full name of the reg key
-  static HKEY GetRootKeyInfo(CString * full_key_name);
+  // representation modifies the argument in place and returns the root key and
+  // registry view; e.g., HKLM\\Software\\Google\... returns HKLM,
+  // "Software\\Google\..."
+  // Necessary for the static versions that use the full name of the reg key.
+  static RootKeyInfo GetRootKeyInfo(CString* full_key_name);
 
   // Returns true if this key name is 'safe' for deletion (doesn't specify
   // a key root)
@@ -420,6 +436,8 @@ class RegKey {
   // the HKEY for the current key
   HKEY h_key_;
 
+  WoWOverride wow_override_;
+
   DISALLOW_COPY_AND_ASSIGN(RegKey);
 };
 
@@ -439,7 +457,7 @@ class RegKeyWithChangeEvent : public RegKey {
   // for values for notify_filter.
   HRESULT SetupEvent(bool watch_subtree, DWORD notify_filter);
 
-  // Indicates if any changes (that are being monitored) have occurred
+  // Indicates if any changes (that are being monitored) have occured
   bool HasChangeOccurred() const;
 
   // Get the event that is signaled on registry changes.
@@ -493,7 +511,7 @@ class RegKeyWatcher : public StoreWatcher {
 };
 
 
-inline RegKey::RegKey() { h_key_ = NULL; }
+inline RegKey::RegKey() : h_key_(NULL), wow_override_(k32BitView) {}
 
 inline RegKey::~RegKey() { Close(); }
 

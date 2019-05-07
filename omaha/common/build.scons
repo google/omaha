@@ -45,6 +45,7 @@ def BuildCommonLib(env):
       'update3_utils.cc',
       'update_request.cc',
       'update_response.cc',
+      'url_utils.cc',
       'webplugin_utils.cc',
       'web_services_client.cc',
       'xml_const.cc',

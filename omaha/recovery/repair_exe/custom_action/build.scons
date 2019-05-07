@@ -53,6 +53,7 @@ dll_env.Append(
         '$LIB_DIR/common.lib',
         '$LIB_DIR/crx_file.lib',
         '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/libprotobuf.lib',
         '$LIB_DIR/repair_goopdate.lib',
         '$LIB_DIR/security.lib',
         'crypt32.lib',

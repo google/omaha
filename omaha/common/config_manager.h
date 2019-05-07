@@ -172,6 +172,11 @@ class ConfigManager {
   // Returns the service endpoint where the usage stats requests are sent.
   HRESULT GetUsageStatsReportUrl(CString* url) const;
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+  // Returns the Device Management API url.
+  HRESULT GetDeviceManagementUrl(CString* url) const;
+#endif
+
   // Returns the time interval between update checks in seconds.
   // 0 indicates updates are disabled.
   int GetLastCheckPeriodSec(bool* is_overridden) const;
@@ -256,6 +261,18 @@ class ConfigManager {
   // empty string if the group policy does not exist, the policy is unknown, or
   // an error happened.
   CString GetDownloadPreferenceGroupPolicy() const;
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+  // Returns the value of the "CloudManagementEnrollmentToken" group policy or
+  // an empty string if the policy is not set or in case of error.
+  CString GetCloudManagementEnrollmentToken() const;
+
+  // Returns the value of the "CloudManagementEnrollmentMandatory" group policy
+  // or false if the policy is not set or in case of error.
+  bool IsCloudManagementEnrollmentMandatory() const;
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
   // Returns the network configuration override as a string.
   static HRESULT GetNetConfig(CString* configuration_override);

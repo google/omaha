@@ -367,3 +367,8 @@ void CreateFiles(const TCHAR* parent_dir,
 }
 
 }  // namespace omaha
+
+std::ostream& operator<<(std::ostream& os, const CString& str) {
+  ::testing::internal::UniversalPrint(str.GetString(), &os);
+  return os;
+}

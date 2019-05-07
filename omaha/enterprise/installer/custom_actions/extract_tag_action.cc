@@ -75,6 +75,7 @@ extern "C" UINT __stdcall ExtractTagInfoFromInstaller(MSIHANDLE msi_handle) {
     { "appname", L"APPNAME", 512 },
     { "brand", L"BRAND", 4 },  // A four-character brand code.
     { "browser", L"BROWSER", 1 },  // A single integer digit BrowserType.
+    { "etoken", L"ETOKEN", 1024 },  // Limit set by DMServer.
     { "iid", L"IID", 38 },  // 128/4 nybbles + four dashes + two braces.
     { "installdataindex", L"INSTALLDATAINDEX", 50 },
     { "lang", L"LANG", 10 },

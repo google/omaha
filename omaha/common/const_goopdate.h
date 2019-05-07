@@ -266,6 +266,33 @@ const TCHAR* const kRegValueDataLegacyUserId      = _T("; legacy");
 const TCHAR* const kHeaderValueNumUidRotation     = _T("cnt");
 const TCHAR* const kHeaderValueUidAge             = _T("age");
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+// The full path of the registry key where Omaha persists state related to
+// cloud-based device management.
+const TCHAR kRegKeyCompanyEnrollment[] =
+    MACHINE_KEY COMPANY_MAIN_KEY _T("Enrollment\\");
+
+#if defined(HAS_LEGACY_DM_CLIENT)
+
+// The full path of the registry key where Google Chrome stored the DM token
+// when it was solely responsible for registration and use.
+const TCHAR kRegKeyLegacyEnrollment[] =
+    MACHINE_KEY_64 COMPANY_MAIN_KEY LEGACY_DM_CLIENT_APP _T("\\Enrollment\\");
+
+#endif  // defined(HAS_LEGACY_DM_CLIENT)
+
+// The name of the registry value, within an "Enrollment" key above, holding a
+// device management token.
+const TCHAR kRegValueDmToken[] = _T("dmtoken");
+
+// The name of the registry value, within Omaha's ClientState key, where an
+// install's enrollment token is stored.
+const TCHAR kRegValueCloudManagementEnrollmentToken[] =
+    _T("CloudManagementEnrollmentToken");
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
 // TODO(omaha3): Consider moving all "gupdate" values to the customization file.
 // Use a non-gupdate name for the new medium service.
 const TCHAR* const kServicePrefix               = _T("omaha");
@@ -301,6 +328,10 @@ const int kDownloadEventId           = 15;
 
 // Network Request events.
 const int kNetworkRequestEventId     = 20;
+
+// Device management events.
+const int kEnrollmentFailedEventId = 30;
+const int kEnrollmentRequiresNetworkEventId = 31;
 
 // Maximum value the server can respond for elapsed_seconds attribute in
 // <daystart ...> element. The value is one day plus an hour ("fall back"

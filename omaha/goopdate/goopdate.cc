@@ -96,6 +96,12 @@
 #include "third_party/breakpad/src/client/windows/sender/crash_report_sender.h"
 #include "third_party/breakpad/src/client/windows/handler/exception_handler.h"
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+#include "omaha/common/event_logger.h"
+#include "omaha/goopdate/dm_client.h"
+#include "omaha/goopdate/dm_storage.h"
+#endif
+
 using google_breakpad::CustomInfoEntry;
 
 namespace omaha {
@@ -172,6 +178,28 @@ bool CheckRegisteredVersion(const CString& version,
   }
 }
 #endif
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+// Writes an error event to the Windows event log with the given |event_id| and
+// |description| and |hresult| in the event text.
+void LogErrorWithHResult(int event_id,
+                         const CString& description,
+                         HRESULT hresult) {
+  GoogleUpdateLogEvent log_event(EVENTLOG_ERROR_TYPE, event_id,
+                                 true /* is_machine */);
+  log_event.set_event_desc(description);
+
+  // |hresult| may be S_OK for cases where no external error instigated the
+  // logging of this event.
+  CString text;
+  SafeCStringFormat(&text, _T("HRESULT = %#x"), hresult);
+  log_event.set_event_text(text);
+
+  log_event.WriteEvent();
+}
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 }  // namespace
 
@@ -279,6 +307,16 @@ class GoopdateImpl {
 
   HRESULT InstallExceptionHandler();
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+  // Returns a success HRESULT on noop, success, or non-fatal failure. Returns
+  // a failure HRESULT if registration was mandatory and failed.
+  HRESULT RegisterForDeviceManagement();
+
+  DmStorage* GetDmStorage();
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
   // Called by operator new or operator new[] when they cannot satisfy
   // a request for additional storage.
   static void OutOfMemoryHandler();
@@ -303,6 +341,10 @@ class GoopdateImpl {
 
   scoped_ptr<OmahaExceptionHandler> exception_handler_;
   scoped_ptr<ThreadPool> thread_pool_;
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+  scoped_ptr<DmStorage> dm_storage_;
+#endif
 
   Goopdate* goopdate_;
 
@@ -828,6 +870,10 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
               return DoHandoff(has_ui_been_displayed);
 
             case COMMANDLINE_MODE_UA:
+              // TODO(b/117412382): Consider performing registration during /ua
+              // processing in case best-effor registration failed during
+              // install, or if an enrollment token was provisioned to the
+              // machine post-install.
               return DoUpdateAllApps(has_ui_been_displayed);
 
             case COMMANDLINE_MODE_CRASH:
@@ -1132,6 +1178,15 @@ HRESULT GoopdateImpl::DoInstall(bool* has_ui_been_displayed) {
   }
 
   HRESULT hr = S_OK;
+#if defined(HAS_DEVICE_MANAGEMENT)
+  if (is_machine_) {
+    hr = RegisterForDeviceManagement();
+    if (FAILED(hr)) {
+      return hr;  // Mandatory registration failed.
+    }
+  }
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
   if (args_.is_oem_set) {
     hr = OemInstall(!args_.is_silent_set,       // is_interactive
                     !args_.extra.runtime_only,  // is_app_install
@@ -1534,6 +1589,78 @@ HRESULT GoopdateImpl::InstallExceptionHandler() {
                                        custom_info_map,
                                        address(exception_handler_));
 }
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+
+HRESULT GoopdateImpl::RegisterForDeviceManagement() {
+  ASSERT1(is_machine_);
+
+  if (args_.is_oem_set) {
+    // TODO(b/117412382): Consider storing an enrollment token provided via
+    // extra args (DmStorage::StoreEnrollmentTokenForInstall) so that
+    // registration can take place when the OEM ping is sent.
+    return S_FALSE;
+  }
+
+  DmStorage* const dm_storage = GetDmStorage();
+
+  if (args_.is_enterprise_set &&
+      dm_client::GetRegistrationState(dm_storage) ==
+          dm_client::kRegistrationPending) {
+    // TODO(b/117412382): Consider storing an enrollment token provided via
+    // extra args (DmStorage::StoreEnrollmentTokenForInstall) so that
+    // registration can take place at some point post-install.
+    LogErrorWithHResult(kEnrollmentRequiresNetworkEventId,
+                        _T("Device management enrollment incompatible with ")
+                        _T("NOGOOGLEUPDATEPING"),
+                        S_OK);
+    return ConfigManager::Instance()->IsCloudManagementEnrollmentMandatory() ?
+        E_FAIL : S_FALSE;
+  }
+
+  HRESULT hr = dm_client::RegisterIfNeeded(dm_storage);
+
+  // Exit early if no work was needed.
+  if (hr == S_FALSE) {
+    return hr;
+  }
+
+  // If the enrollment token was provided via extra args, write the token to the
+  // registry for use in subsequent registration attempts.
+  if (dm_storage->enrollment_token_source() ==
+      DmStorage::kETokenSourceRuntime) {
+    HRESULT store_hr = dm_storage->StoreEnrollmentTokenForInstall();
+    if (FAILED(store_hr)) {
+      OPT_LOG(LE, (_T("[StoreEnrollmentTokenForInstall failed][%#x]"),
+                   store_hr));
+    }
+  }
+
+  if (SUCCEEDED(hr)) {
+    return hr;
+  }
+  OPT_LOG(LE, (_T("[Registration failed][%#x]"), hr));
+
+  // Emit to the Event Log. The entry will include details by way of
+  // logging at the LC_REPORT category within dm_client.
+  LogErrorWithHResult(kEnrollmentFailedEventId,
+                      _T("Device management enrollment failed"),
+                      hr);
+
+  // Bubble the failure HRESULT up if enrollment was mandatory.
+  return ConfigManager::Instance()->IsCloudManagementEnrollmentMandatory() ?
+      hr : S_FALSE;
+}
+
+DmStorage* GoopdateImpl::GetDmStorage() {
+  ASSERT1(is_machine_);
+  if (!dm_storage_.get()) {
+    dm_storage_.reset(new DmStorage(args_.extra.enrollment_token));
+  }
+  return dm_storage_.get();
+}
+
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 void GoopdateImpl::OutOfMemoryHandler() {
   ::RaiseException(EXCEPTION_ACCESS_VIOLATION,

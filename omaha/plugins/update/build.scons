@@ -62,6 +62,7 @@ update_env.Append(
         '$LIB_DIR/crx_file.lib',
         '$LIB_DIR/google_update_recovery.lib',
         '$LIB_DIR/goopdate_lib.lib',
+        '$LIB_DIR/libprotobuf.lib',
         '$LIB_DIR/logging.lib',
         '$LIB_DIR/net.lib',
         '$LIB_DIR/omaha3_idl.lib',
@@ -95,7 +96,12 @@ update_env.Append(
         '/NXCOMPAT',      # Enable NX support.
     ],
 )
-
+if update_env.Bit('has_device_management'):
+  update_env.Append(
+      LIBS = [
+          '$LIB_DIR/dm_proto.lib',
+      ],
+  )
 
 # COM stuff.
 midl_env = env.Clone()
