@@ -16,6 +16,8 @@
 // Constants for Win32 stats aggregation and uploading
 #include "const-win32.h"
 
+#include <tchar.h>
+
 namespace stats_report {
 
 const wchar_t kTimingsKeyName[] = L"Timings";

@@ -33,11 +33,14 @@
 // wtl_atlapp_wrapper.h as a project-specific header and is unhappy with the
 // header order. Hence all the NOLINT for the atl/wtl headers.
 #include "omaha/base/wtl_atlapp_wrapper.h"
-#include <atlbase.h>  // NOLINT
+#include <atlbase.h>   // NOLINT
 #include <atlctrls.h>  // NOLINT
 #include <atlframe.h>  // NOLINT
-#include <atlstr.h>  // NOLINT
-#include <atlwin.h>  // NOLINT
+#include <atlstr.h>    // NOLINT
+#include <atltypes.h>  // NOLINT
+#include <atlwin.h>    // NOLINT
+
+#include "base\basictypes.h"
 
 namespace omaha {
 

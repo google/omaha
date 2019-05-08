@@ -24,8 +24,10 @@ local_env.Append(
         '/we4018',
         '/we4365',
 
-        # enumerator in switch is not explicitly handled by a case label
-        '/wd4061',
+
+        '/wd4061', # enumerator in switch is not explicitly handled by a
+                   # case label
+        '/wd4365', #conversion from '' to '', signed/unsigned mismatch
         ],
 )
 

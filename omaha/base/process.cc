@@ -23,6 +23,8 @@
 #include <psapi.h>
 #include <stierr.h>
 #include <tlhelp32.h>
+
+#include <algorithm>
 #include <vector>
 
 #ifndef NT_SUCCESS

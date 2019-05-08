@@ -15,7 +15,9 @@
 
 #ifndef OMAHA_BASE_CRASH_IF_SPECIFIC_ERROR_H_
 #define OMAHA_BASE_CRASH_IF_SPECIFIC_ERROR_H_
+
 #include <windows.h>
+#include <strsafe.h>
 
 #if defined __cplusplus
 

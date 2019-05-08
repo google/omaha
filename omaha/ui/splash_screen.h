@@ -16,6 +16,8 @@
 #ifndef OMAHA_UI_SPLASH_SCREEN_H_
 #define OMAHA_UI_SPLASH_SCREEN_H_
 
+#include <windows.h>
+
 #include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/smart_handle.h"

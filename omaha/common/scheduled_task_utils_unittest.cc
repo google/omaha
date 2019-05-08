@@ -15,7 +15,9 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <atltime.h>
 #include <mstask.h>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"

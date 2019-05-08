@@ -15,6 +15,8 @@
 #ifndef OMAHA_GOOPDATE_DM_CLIENT_H__
 #define OMAHA_GOOPDATE_DM_CLIENT_H__
 
+#include <windows.h>
+#include <atlstr.h>
 #include <utility>
 #include <vector>
 

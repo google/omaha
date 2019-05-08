@@ -50,8 +50,6 @@ target_name = 'CrashHandlerClient'
 inputs = [
     'crash_handler_client_tool.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  inputs += local_env.EnablePrecompile(target_name)
 
 local_env.ComponentTestProgram(
     prog_name=target_name,

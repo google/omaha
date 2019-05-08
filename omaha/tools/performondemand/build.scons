@@ -64,9 +64,6 @@ def BuildPerformOnDemand(local_env):
   else:
     inputs.append('$OBJ_ROOT/goopdate/omaha3_idl_i.obj')
 
-  if local_env.Bit('use_precompiled_headers'):
-    inputs += local_env.EnablePrecompile(target_name)
-
   local_env.ComponentTestProgram(
       prog_name=target_name,
       source=inputs,

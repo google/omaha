@@ -26,8 +26,7 @@ inputs = [
     'repair_goopdate.cc',
     ]
 
-repair_goopdate_lib = local_env.ComponentStaticLibrary('repair_goopdate',
-                                                       inputs)
+repair_goopdate_lib = local_env.ComponentLibrary('repair_goopdate', inputs)
 subdirs = [
     'custom_action',
     'msp',

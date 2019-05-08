@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ========================================================================
-//
-// Header files to precompile for the installer.
 
 #ifndef  OMAHA_RECOVERY_REPAIR_EXE_CUSTOM_ACTION_EXECUTECUSTOMACTION_H__
 #define  OMAHA_RECOVERY_REPAIR_EXE_CUSTOM_ACTION_EXECUTECUSTOMACTION_H__

@@ -16,6 +16,8 @@
 // Implementation of Win32 metrics aggregator.
 #include "omaha/statsreport/aggregator-win32.h"
 
+#include <algorithm>
+
 #include "omaha/base/safe_format.h"
 #include "omaha/statsreport/const-win32.h"
 #include "omaha/statsreport/util-win32.h"

@@ -41,8 +41,6 @@ lib_inputs = [
     'process_commandline.cc',
     'process_monitor.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  lib_inputs += lib_env.EnablePrecompile(target_name)
 
 lib_env.ComponentLibrary(
     lib_name=target_name,
@@ -126,8 +124,6 @@ exe_inputs = [
     'goopdump_main.cc',
     exe_env.RES('resource.rc'),
     ]
-if env.Bit('use_precompiled_headers'):
-  exe_inputs += exe_env.EnablePrecompile(target_name)
 
 exe_env.ComponentTestProgram(
     prog_name=target_name,

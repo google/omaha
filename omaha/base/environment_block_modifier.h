@@ -24,6 +24,7 @@
 #include <atlstr.h>
 #include <map>
 #include <vector>
+#include "base/basictypes.h"
 
 namespace omaha {
 

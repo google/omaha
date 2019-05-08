@@ -13,8 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
-#include <exdisp.h>
 #include "omaha/base/browser_utils.h"
+
+#include <exdisp.h>
+
 #include "base/basictypes.h"
 #include "omaha/base/commands.h"
 #include "omaha/base/const_utils.h"

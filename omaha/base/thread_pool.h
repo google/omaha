@@ -17,6 +17,8 @@
 #define OMAHA_BASE_THREAD_POOL_H_
 
 #include <windows.h>
+#include <objbase.h>
+
 #include "base/basictypes.h"
 #include "omaha/base/scoped_any.h"
 

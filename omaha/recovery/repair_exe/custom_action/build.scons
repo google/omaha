@@ -30,8 +30,6 @@ lib_env = env.Clone()
 lib_inputs = [
     'execute_repair_file.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  lib_inputs += lib_env.EnablePrecompile(lib_target_name)
 
 lib_output = lib_env.ComponentLibrary(
     lib_name=lib_target_name,
@@ -80,8 +78,6 @@ dll_inputs = [
     'executecustomaction.cc',
     'executecustomaction.def',
     ]
-if env.Bit('use_precompiled_headers'):
-  dll_inputs += dll_env.EnablePrecompile(dll_target_name)
 
 dll_env.ComponentLibrary(
     lib_name=dll_target_name,
@@ -120,8 +116,6 @@ target_name = 'testelevateusingmsp'
 test_inputs = [
     'testelevateusingmsp.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  test_inputs += test_env.EnablePrecompile(target_name)
 
 # This test requires arguments, so do not create a run alias.
 test_env.ComponentTestProgram(

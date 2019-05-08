@@ -13,6 +13,7 @@
 // limitations under the License.
 // ========================================================================
 
+#include <windows.h>
 #include <wincred.h>
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"

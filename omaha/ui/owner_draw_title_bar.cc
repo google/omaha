@@ -16,6 +16,9 @@
 // Classes that help creating a owner-drawn Titlebar.
 
 #include "omaha/ui/owner_draw_title_bar.h"
+
+#include <vector>
+
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/client/resource.h"

@@ -27,53 +27,6 @@ from subprocess import PIPE,Popen
 
 import omaha_version_utils
 
-def EnablePrecompile(env, target_name):
-  """Enable use of precompiled headers for target_name.
-
-  Args:
-    env: The environment.
-    target_name: Name of component.
-
-  Returns:
-    The pch .obj file.
-  """
-  if env.Bit('use_precompiled_headers'):
-    # We enable all warnings on all levels. The goal is to fix the code that
-    # we have written and to programmatically disable the warnings for the
-    # code we do not control. This list of warnings should shrink as the code
-    # gets fixed.
-    env.FilterOut(CCFLAGS=['/W3'])
-    env.Append(
-        CCFLAGS=[
-            '/W4',
-            '/Wall',
-            ],
-        INCLUDES=[
-            '$MAIN_DIR/precompile/precompile.h'
-            ],
-    )
-
-    env['PCHSTOP'] = '$MAIN_DIR/precompile/precompile.h'
-
-    pch_env = env.Clone()
-    # Must manually force-include the header, as the precompilation step does
-    # not evaluate $INCLUDES
-    pch_env.Append(CCFLAGS=['/FI$MAIN_DIR/precompile/precompile.h'])
-    # Append '_pch' to the target base name to prevent target name collisions.
-    # One case where this might have occurred is when a .cc file has the same
-    # base name as the target program/library.
-    pch_output = pch_env.PCH(
-        target=target_name.replace('.', '_') + '_pch' + '.pch',
-        source='$MAIN_DIR/precompile/precompile.cc',
-    )
-
-    env['PCH'] = pch_output[0]
-
-    # Return the pch .obj file that is created, so it can be
-    # included with the inputs of a module
-    return [pch_output[1]]
-
-
 def SignDotNetManifest(env, target, unsigned_manifest):
   """Signs a .NET manifest.
 
@@ -163,51 +116,9 @@ def OmahaTagExe(env, target, source, tag):
 #
 # Custom Library and Program builders.
 #
-# These builders have additional cababilities, including enabling precompiled
-# headers when appropriate and signing DLLs and EXEs.
-#
-
-# TODO(omaha): Make all build files use these builders instead of Hammer's.
-# This will eliminate many lines in build.scons files related to enabling
-# precompiled header and signing binaries.
-
-
-def _ConditionallyEnablePrecompile(env, target_name, *args, **kwargs):
-  """Enables precompiled headers for target_name when appropriate.
-
-  Enables precompiled headers if they are enabled for the build unless
-  use_pch_default = False. This requires that the source files are specified in
-  sources or in a list as the first argument after target_name.
-
-  Args:
-    env: Environment in which we were called.
-    target_name: Name of the build target.
-    args: Positional arguments.
-    kwargs: Keyword arguments.
-  """
-  use_pch_default = kwargs.get('use_pch_default', True)
-
-  if use_pch_default and env.Bit('use_precompiled_headers'):
-    pch_output = env.EnablePrecompile(target_name)
-
-    # Search the keyworded list first.
-    for key in ['source', 'sources', 'input', 'inputs']:
-      if key in kwargs:
-        kwargs[key] += pch_output
-        return
-
-    # If the keyword was not found, assume the sources are the first argument in
-    # the non-keyworded list.
-    if args:
-      args[0].append(pch_output[0])
-
 
 def ComponentStaticLibrary(env, lib_name, *args, **kwargs):
   """Pseudo-builder for static library.
-
-  Enables precompiled headers if they are enabled for the build unless
-  use_pch_default = False. This requires that the source files are specified in
-  sources or in a list as the first argument after lib_name.
 
   Args:
     env: Environment in which we were called.
@@ -218,78 +129,7 @@ def ComponentStaticLibrary(env, lib_name, *args, **kwargs):
   Returns:
     Output node list from env.ComponentLibrary().
   """
-  _ConditionallyEnablePrecompile(env, lib_name, *args, **kwargs)
-
   return env.ComponentLibrary(lib_name, *args, **kwargs)
-
-
-# TODO(omaha): Add signing.
-def ComponentDll(env, lib_name, *args, **kwargs):
-  """Pseudo-builder for DLL.
-
-  Enables precompiled headers if they are enabled for the build unless
-  use_pch_default = False. This requires that the source files are specified in
-  sources or in a list as the first argument after lib_name.
-
-  Args:
-    env: Environment in which we were called.
-    lib_name: DLL name.
-    args: Positional arguments.
-    kwargs: Keyword arguments.
-
-  Returns:
-    Output node list from env.ComponentLibrary().
-  """
-  env.Append(COMPONENT_STATIC=False)
-
-  _ConditionallyEnablePrecompile(env, lib_name, *args, **kwargs)
-
-  return env.ComponentLibrary(lib_name, *args, **kwargs)
-
-
-# TODO(omaha): Add signing.
-def ComponentSignedProgram(env, prog_name, *args, **kwargs):
-  """Pseudo-builder for signed EXEs.
-
-  Enables precompiled headers if they are enabled for the build unless
-  use_pch_default = False. This requires that the source files are specified in
-  sources or in a list as the first argument after prog_name.
-
-  Args:
-    env: Environment in which we were called.
-    prog_name: Executable name.
-    args: Positional arguments.
-    kwargs: Keyword arguments.
-
-  Returns:
-    Output node list from env.ComponentProgram().
-  """
-  _ConditionallyEnablePrecompile(env, prog_name, *args, **kwargs)
-
-  return env.ComponentProgram(prog_name, *args, **kwargs)
-
-
-# TODO(omaha): Put these in a tools/ directory instead of staging.
-def ComponentTool(env, prog_name, *args, **kwargs):
-  """Pseudo-builder for utility programs that do not need to be signed.
-
-  Enables precompiled headers if they are enabled for the build unless
-  use_pch_default = False. This requires that the source files are specified in
-  sources or in a list as the first argument after prog_name.
-
-  Args:
-    env: Environment in which we were called.
-    prog_name: Executable name.
-    args: Positional arguments.
-    kwargs: Keyword arguments.
-
-  Returns:
-    Output node list from env.ComponentProgram().
-  """
-  _ConditionallyEnablePrecompile(env, prog_name, *args, **kwargs)
-
-  return env.ComponentProgram(prog_name, *args, **kwargs)
-
 
 #
 # Unit Test Builders
@@ -583,14 +423,9 @@ def CompileProtoBuf(env, input_proto_files):
 # NOTE: SCons requires the use of this name, which fails gpylint.
 def generate(env):  # pylint: disable-msg=C6409
   """SCons entry point for this tool."""
-  env.AddMethod(EnablePrecompile)
   env.AddMethod(SignDotNetManifest)
   env.AddMethod(OmahaCertificateTagExe)
   env.AddMethod(OmahaTagExe)
-  env.AddMethod(ComponentStaticLibrary)
-  env.AddMethod(ComponentDll)
-  env.AddMethod(ComponentSignedProgram)
-  env.AddMethod(ComponentTool)
   env.AddMethod(IsBuildingModule)
   env.AddMethod(GetAllInOneUnittestSources)
   env.AddMethod(GetAllInOneUnittestLibs)

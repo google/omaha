@@ -20,7 +20,10 @@
 #ifndef OMAHA_COMMON_CRASH_UTILS_H_
 #define OMAHA_COMMON_CRASH_UTILS_H_
 
+#include <windows.h>
+#include <atlsecurity.h>
 #include <atlstr.h>
+
 #include <map>
 
 namespace google_breakpad {

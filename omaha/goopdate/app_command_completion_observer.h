@@ -17,6 +17,7 @@
 #define OMAHA_GOOPDATE_APP_COMMAND_COMPLETION_OBSERVER_H__
 
 #include <windows.h>
+#include <atlbase.h>
 #include <atlcom.h>
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"

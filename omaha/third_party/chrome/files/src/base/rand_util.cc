@@ -40,7 +40,7 @@ bool RandBytes(void* output, size_t output_length) {
   return true;
 }
 
-bool RandUint32(uint32* number) {
+bool RandUint32(uint32_t* number) {
   ASSERT1(number);
 
   return RandBytes(number, sizeof(*number));

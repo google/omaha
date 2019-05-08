@@ -14,9 +14,12 @@
 // ========================================================================
 
 #include "omaha/common/google_signaturevalidator.h"
+
 #include <windows.h>
 #include <atlstr.h>
 #include <vector>
+
+#include "base/basictypes.h"
 #include "omaha/base/const_code_signing.h"
 #include "omaha/base/signaturevalidator.h"
 

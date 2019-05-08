@@ -35,7 +35,7 @@ local_env['CPPPATH'] += ['$OBJ_ROOT']
 
 
 # Build these into a static library.
-local_env.ComponentStaticLibrary('ui', inputs)
+local_env.ComponentLibrary('ui', inputs)
 
 ui_test_env = env.Clone()
 ui_test_env.Append(

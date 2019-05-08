@@ -58,7 +58,7 @@ def BuildCommonLib(env):
   lib_name = 'common%s' % ('', '_64')[local_env.Bit('x64')]
 
   # Build these into a library.
-  local_env.ComponentStaticLibrary(lib_name, inputs)
+  local_env.ComponentLibrary(lib_name, inputs)
 
 BuildCommonLib(env)
 BuildCommonLib(env.CloneAndMake64Bit())

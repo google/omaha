@@ -32,7 +32,7 @@ local_env['CPPPATH'] += [
     '$OBJ_ROOT',
     ]
 
-local_env.ComponentStaticLibrary('core', inputs)
+local_env.ComponentLibrary('core', inputs)
 
 core_env = env.Clone()
 omaha_version_info = core_env['omaha_versions_info'][0]

@@ -55,8 +55,6 @@ def BuildCrashHandler(local_env):
           ]
   )
   lib_name = 'crash_handler%s' % ('', '_64')[lib_env.Bit('x64')]
-  if env.Bit('use_precompiled_headers'):
-    lib_inputs += lib_env.EnablePrecompile(lib_name)
   library_crash_handler = lib_env.ComponentLibrary(
       lib_name,
       lib_inputs
@@ -115,10 +113,6 @@ def BuildCrashHandler(local_env):
   # Change the name of the executable based on the architecture, and
   # change the names of the objects to prevent collisions.
   exe_name = 'GoogleCrashHandler%s' % ('', '64')[gch_env.Bit('x64')]
-
-  if env.Bit('use_precompiled_headers'):
-    gch_inputs += gch_env.EnablePrecompile(exe_name)
-
   unsigned_crash_handler = gch_env.ComponentProgram(
       prog_name='%s_unsigned.exe' % exe_name,
       source=gch_inputs,

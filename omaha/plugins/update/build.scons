@@ -35,10 +35,6 @@ update_env.Append(
         '_ATL_FREE_THREADED',
     ],
     CPPFLAGS = [
-        # TODO(omaha): use PCH so we get /Wall. Need to figure out why half of
-        # the old plugin builds with PCH, and the other half of it builds
-        # without...
-        '/Wall',
         '/wd4263',  # member function does not override any base class virtual
                     # member function
         '/wd4264',  # no override available for virtual member function;
@@ -126,12 +122,9 @@ npapi_testing_midl_env.Tool('midl')
 npapi_testing_midl_env['MIDLFLAGS'] += [ '/Oicf', ]
 
 midl_env.TypeLibrary('activex/update_control_idl.idl')
-
-# Generate the GUIDs with no precompile option set, otherwise we get an error.
-update_control_idl_guids_lib = env.ComponentStaticLibrary(
+update_control_idl_guids_lib = env.ComponentLibrary(
     lib_name='update_control_idl_guids_lib',
     source='$OBJ_ROOT/plugins/update/activex/update_control_idl_i.c',
-    use_pch_default=False,
 )
 
 # Built as library to enable unit testing.
@@ -146,10 +139,9 @@ inputs = [
     'config.cc',
     'site_lock.cc',
     ]
-update_lib = update_env.ComponentStaticLibrary(
+update_lib = update_env.ComponentLibrary(
     lib_name='update',
     source=inputs,
-    use_pch_default=False,
 )
 
 
@@ -203,7 +195,6 @@ def BuildNpGoogleUpdateDll(omaha_version_info):
   unsigned_dll = plugin_env.ComponentLibrary(
       lib_name=target_name,
       source=inputs,
-      use_pch_default=False,
   )
 
   signed_dll = plugin_env.DualSignedBinary(
@@ -226,7 +217,7 @@ for omaha_version_info in env['omaha_versions_info']:
 
 # NPAPI unit test helper library
 npapi_testing_midl_env.TypeLibrary('npapi/testing/dispatch_host_test_idl.idl')
-update_env.ComponentStaticLibrary(
+update_env.ComponentLibrary(
     lib_name = 'update_test_helpers',
     source = [
         'npapi/testing/dispatch_host_test_interface.cc',

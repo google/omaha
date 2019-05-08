@@ -23,6 +23,7 @@
 #include <windows.h>
 #include <versionhelpers.h>
 #include <tchar.h>
+#include <atlstr.h>
 
 namespace omaha {
 

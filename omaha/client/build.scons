@@ -35,4 +35,4 @@ inputs = [
     ]
 
 # Build these into a library.
-local_env.ComponentStaticLibrary('client', inputs)
+local_env.ComponentLibrary('client', inputs)

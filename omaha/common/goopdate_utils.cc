@@ -14,8 +14,11 @@
 // ========================================================================
 
 #include "omaha/common/goopdate_utils.h"
+
 #include <ntddndis.h>
+#include <winioctl.h>
 #include <atlsecurity.h>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/const_object_names.h"

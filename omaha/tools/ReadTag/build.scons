@@ -46,8 +46,6 @@ target_name = 'ReadTag'
 inputs = [
     'read_tag.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  inputs += local_env.EnablePrecompile(target_name)
 
 local_env.ComponentTestProgram(
     prog_name=target_name,
