@@ -206,9 +206,6 @@ class RegKey {
   // Check if a key exists.
   static bool HasKey(const TCHAR * full_key_name);
 
-  // Check if a key exists in the native (i.e. non-redirected) registry.
-  static bool HasNativeKey(const TCHAR * full_key_name);
-
   // check if the key has a specified value
   static bool HasValue(const TCHAR * full_key_name, const TCHAR * value_name);
 
@@ -391,7 +388,6 @@ class RegKey {
   static bool IsKeyEmpty(const TCHAR* full_key_name);
 
  private:
-
   // Helper function to check if a key exists, using the sam flags specified.
   // Note: KEY_READ must be included in sam_flags.
   static bool HasKeyHelper(const TCHAR * full_key_name, DWORD sam_flags);
@@ -457,7 +453,7 @@ class RegKeyWithChangeEvent : public RegKey {
   // for values for notify_filter.
   HRESULT SetupEvent(bool watch_subtree, DWORD notify_filter);
 
-  // Indicates if any changes (that are being monitored) have occured
+  // Indicates if any changes (that are being monitored) have occurred
   bool HasChangeOccurred() const;
 
   // Get the event that is signaled on registry changes.

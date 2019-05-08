@@ -52,7 +52,7 @@ void WriteFailureValues() {
 
 }  // namespace
 
-int wmain(int argc, wchar_t* argv[]) {
+int wmain(int /*argc*/, wchar_t* /*argv[]*/) {
   WriteFailureValues();
   return 1;
 }

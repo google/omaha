@@ -17,8 +17,10 @@
 #define OMAHA_BASE_STRING_H_
 
 #include <windows.h>
-#include <string>
+#include <stdint.h>
+#include <limits>
 #include <vector>
+#include <string>
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
@@ -64,7 +66,7 @@ CString ElideIfNeeded (const CString & input_string, int max_len, int min_len);
 // XML is the HTML replacements, and a few more
 #define kSanXml (kSanHtml | 0x2)
 
-// Javascript has a separate set of encodings [which is a superset of HTML replacements]
+// JavaScript has a separate set of encodings [which is a superset of HTML replacements]
 #define kSanJs (kSanHtml | 0x4)
 
 // For input fields on HTML documents
@@ -397,7 +399,7 @@ void String_EndWithChar(TCHAR *str, TCHAR c);
 // do not use this function if that is a possibility
 
 // The maximum number of replacements to perform. Essentially infinite
-const unsigned int kRepMax = kuint32max;
+const unsigned int kRepMax = std::numeric_limits<uint32_t>::max();
 int ReplaceCString (CString & src, const TCHAR *from, unsigned int from_len,
                                    const TCHAR *to, unsigned int to_len,
                                    unsigned int max_matches);

@@ -17,7 +17,9 @@ Import('env')
 
 # Build plugin base.
 plugin_base_env = env.Clone()
-plugin_base_env['CCFLAGS']
+plugin_base_env['CCFLAGS'] = [
+    '/wd4100',
+],
 plugin_base_env.ComponentLibrary(
     lib_name='plugin_base',
     source=[

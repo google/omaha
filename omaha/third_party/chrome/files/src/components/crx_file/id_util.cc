@@ -45,6 +45,12 @@ static void ConvertHexadecimalToIDAlphabet(std::string* id) {
   }
 }
 
+// ASCII-specific tolower.  The standard library's tolower is locale sensitive,
+// so we don't want to use it here.
+char ToLowerChar(char c) {
+  return (c >= 'A' && c <= 'Z') ? (c + ('a' - 'A')) : c;
+}
+
 }  // namespace
 
 namespace crx_file {
@@ -69,7 +75,7 @@ std::string HexEncode(const void* bytes, size_t size) {
 
 std::string ToLowerASCII(const std::string& s) {
   std::string ret(s.size(), '\0');
-  std::transform(s.begin(), s.end(), ret.begin(), std::tolower);
+  std::transform(s.begin(), s.end(), ret.begin(), ToLowerChar);
   return ret;
 }
 

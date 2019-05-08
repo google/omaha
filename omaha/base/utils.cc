@@ -22,6 +22,8 @@
 #include <ATLComTime.h>
 #include <atlpath.h>
 #include <intsafe.h>
+#include <stdint.h>
+#include <limits>
 #include <map>
 #include <vector>
 #include "base/basictypes.h"
@@ -136,7 +138,7 @@ ULONGLONG VersionFromString(const CString& s) {
 
     quad[i] = static_cast<unsigned int>(quad_value);
 
-    if (kuint16max < quad[i]) {
+    if (std::numeric_limits<uint16_t>::max() < quad[i]) {
       return 0;
     }
   }
@@ -1044,7 +1046,7 @@ class BasicMessageHandlerInternal : public BasicMessageHandler,
 
 bool WaitWithMessageLoopAny(const std::vector<HANDLE>& handles, uint32* pos) {
   BasicMessageHandlerInternal msg_handler;
-  ASSERT1(handles.size() <= kuint32max);
+  ASSERT1(handles.size() <= std::numeric_limits<uint32_t>::max());
   return WaitWithMessageLoopAnyInternal(&handles.front(),
                                         static_cast<uint32>(handles.size()),
                                         pos,
@@ -1110,7 +1112,7 @@ void MessageLoopWithWait::set_message_handler(
 HRESULT MessageLoopWithWait::Process() {
   while (true) {
     ASSERT1(callback_handles_.size() == callbacks_.size());
-    ASSERT1(callback_handles_.size() <= kuint32max);
+    ASSERT1(callback_handles_.size() <= std::numeric_limits<uint32_t>::max());
 
     // The implementation allows for an empty array of handles. Taking the
     // address of elements in an empty container is not allowed so we must
@@ -1152,7 +1154,7 @@ void MessageLoopWithWait::Process(MSG* msg, const HANDLE** handles,
 
   // Set the handles and count again because they may have changed
   // while processing the message.
-  ASSERT1(callback_handles_.size() <= kuint32max);
+  ASSERT1(callback_handles_.size() <= std::numeric_limits<uint32_t>::max());
 
   *handles = callback_handles_.empty() ? NULL : &callback_handles_.front();
   *cnt = static_cast<uint32>(callback_handles_.size());
@@ -1392,7 +1394,7 @@ HRESULT WriteEntireFile(const TCHAR * filepath,
                         const std::vector<byte>& buffer_in) {
   ASSERT1(filepath);
 
-  if (buffer_in.size() > kuint32max) {
+  if (buffer_in.size() > std::numeric_limits<uint32_t>::max()) {
     return E_INVALIDARG;
   }
 

@@ -73,7 +73,8 @@ HRESULT GetEnvironmentVariableToBuffer(const TCHAR* name,
                                    env_value_char.GetLength(),
                                    static_cast<char*>(value_out),
                                    static_cast<int>(value_buffer_size));
-  if (result_size < 0 || value_buffer_size != result_size) {
+  if (result_size < 0 ||
+      value_buffer_size != static_cast<size_t>(result_size)) {
     CORE_LOG(LE, (_T("[Failed to decode value][%s=%s]"), name, env_value));
     return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
   }

@@ -26,7 +26,7 @@ def BuildCOMForwarder(cmd_line_switch,
                       should_append_cmd_line):
   com_forwarder_env = env.Clone()
 
-  com_forwarder_env.FilterOut(CCFLAGS=['/GL', '/RTC1', '/GS'])
+  com_forwarder_env.FilterOut(CCFLAGS=['/GL', '/RTC1',])
   com_forwarder_env.FilterOut(LINKFLAGS=['/LTCG'])
 
   should_append_string = 'FALSE'
@@ -35,7 +35,6 @@ def BuildCOMForwarder(cmd_line_switch,
 
   com_forwarder_env.Append(
       CCFLAGS=[
-          '/GS-',
           '/Zl',
       ],
       CPPDEFINES = [
@@ -81,12 +80,11 @@ BuildCOMForwarder('/pi', 'GoogleUpdateWebPlugin', True)
 
 def BuildCOMRegisterShell64():
   com_register_shell_env = env.CloneAndMake64Bit()
-  com_register_shell_env.FilterOut(CCFLAGS=['/GL', '/RTC1', '/GS'])
+  com_register_shell_env.FilterOut(CCFLAGS=['/GL', '/RTC1',])
   com_register_shell_env.FilterOut(LINKFLAGS=['/LTCG'])
 
   com_register_shell_env.Append(
       CCFLAGS=[
-          '/GS-',
           '/Zl',
       ],
       LINKFLAGS=[
@@ -167,6 +165,7 @@ def BuildGoogleUpdateCOMProxy(midl_env, generated_idl):
     midl_env.Command(target_idl, 'omaha3_idl.idl', Copy('$TARGET', '$SOURCE'))
     midl_env.TypeLibrary(target_idl)
   else:
+    midl_env['MIDLFLAGS'] += [ '/win32' ]
     midl_outputs = midl_env.TypeLibrary('omaha3_idl.idl')
 
     # Save the .idl and the produced .tlb and .h files so we can provide
@@ -201,6 +200,13 @@ def BuildGoogleUpdateHandlerDll(handler_env,
           '_ATL_FREE_THREADED',
           '_USRDLL',
           '_WINDLL',
+      ],
+      CCFLAGS = [
+        '/wd4263',
+        '/wd4264',
+        '/wd4255',
+        '/wd4426',
+        '/wd5038',
       ],
       CPPPATH = [
           '$OBJ_ROOT',  # Needed for generated files.
@@ -275,7 +281,6 @@ def BuildGoogleUpdateHandlerDll(handler_env,
                                '$OBJ_ROOT/goopdate/google_update_ps.cc')
   inputs += handler_env.Object('omaha3_idl_datax_%s%s.obj' % (psname, suffix),
                                '$OBJ_ROOT/goopdate/omaha3_idl_datax.c')
-
   unsigned_dll = handler_env.ComponentLibrary(
       lib_name=target_name,
       source=inputs,
@@ -323,10 +328,14 @@ if env.Bit('has_device_management'):
           '/wd4125',
           '/wd4127',
           '/wd4146',
+          '/wd4242',
           '/wd4244',
           '/wd4309',
+          '/wd4548',
           '/wd4577',
+          '/wd4647',
           '/wd4800',
+          '/wd4946',
           '/wd4995',
           '/wd4996',
           ],

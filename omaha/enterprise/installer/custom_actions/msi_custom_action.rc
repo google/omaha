@@ -15,7 +15,7 @@
 //
 // This file contains the unlocalized show_error_action resources.
 
-#include <afxres.h>
+#include <winres.h>
 
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 

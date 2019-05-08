@@ -102,8 +102,8 @@ int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR cmd_line, int) {
     return E_INVALIDARG;
   }
 
-  CPath data_file =
-      GetInstallerDataFilename(argument_list[argument_count - 1]);
+  CPath data_file(
+      GetInstallerDataFilename(argument_list[argument_count - 1]));
   data_file.UnquoteSpaces();
 
   CPath bat_file;

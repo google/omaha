@@ -14,6 +14,8 @@
 // ========================================================================
 
 #include "omaha/goopdate/current_state.h"
+#include <stdint.h>
+#include <limits>
 #include <atlsafe.h>
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
@@ -117,7 +119,8 @@ STDMETHODIMP CurrentAppState::get_bytesDownloaded(ULONG* bytes_downloaded) {
   ASSERT1(bytes_downloaded);
 
   // Firefox does not support uint32...
-  if (bytes_downloaded_ > kint32max) {
+  if (bytes_downloaded_ >
+      static_cast<ULONGLONG>(std::numeric_limits<int32_t>::max())) {
     return HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW);
   }
   *bytes_downloaded = static_cast<ULONG>(bytes_downloaded_);
@@ -129,7 +132,8 @@ STDMETHODIMP CurrentAppState::get_totalBytesToDownload(
   ASSERT1(total_bytes_to_download);
 
   // Firefox does not support uint32...
-  if (total_bytes_to_download_ > kint32max) {
+  if (total_bytes_to_download_ >
+      static_cast<ULONGLONG>(std::numeric_limits<int32_t>::max())) {
     return HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW);
   }
   *total_bytes_to_download = static_cast<ULONG>(total_bytes_to_download_);

@@ -163,6 +163,8 @@ HRESULT GenerateMinidump(bool is_system,
   ASSERT1(client_info.pid() != 0);
   ASSERT1(client_info.process_handle());
 
+  UNREFERENCED_PARAMETER(is_system);
+
   // We have to get the address of EXCEPTION_INFORMATION from
   // the client process address space.
   EXCEPTION_POINTERS* client_ex_info = NULL;
@@ -231,6 +233,7 @@ HRESULT WriteCustomMapFile(DWORD crash_id,
                            bool* is_uploaded_deferral_requested,
                            HANDLE custom_info_file_handle,
                            CrashAnalysisResult analysis_result) {
+  UNREFERENCED_PARAMETER(crash_id);
   if (!client_info->PopulateCustomInfo()) {
     CORE_LOG(LE, (_T("[CrashHandler][PopulateCustomInfo failed]")));
     return E_FAIL;

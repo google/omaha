@@ -17,6 +17,8 @@
 #include "omaha/common/event_logger.h"
 #include <sddl.h>
 #include <intsafe.h>
+#include <stdint.h>
+#include <limits>
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -30,7 +32,7 @@ namespace omaha {
 
 void LogEventHelper(WORD type, DWORD id, size_t count, const TCHAR** strings,
                     const TCHAR* ctx) {
-  ASSERT1(count <= kint16max);
+  ASSERT1(count <= static_cast<size_t>(std::numeric_limits<int16_t>::max()));
   if (!ConfigManager::Instance()->CanLogEvents(type)) {
     return;
   }

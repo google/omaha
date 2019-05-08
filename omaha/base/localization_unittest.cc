@@ -17,6 +17,8 @@
 //
 // Unit test functions for Localization
 
+#include <stdint.h>
+#include <limits>
 #include "omaha/base/localization.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
@@ -126,9 +128,10 @@ void LocalizationNumberTest() {
 
   // Try some extremes
   ASSERT_STREQ(Show(0), _T("0"));
-  ASSERT_STREQ(Show(kint32max), _T("2,147,483,647"));
-  ASSERT_STREQ(Show(-kint32max), _T("-2,147,483,647"));
-  ASSERT_STREQ(Show(kuint32max), _T("4,294,967,295"));
+  ASSERT_STREQ(Show(std::numeric_limits<int32_t>::max()), _T("2,147,483,647"));
+  ASSERT_STREQ(Show(-std::numeric_limits<int32_t>::max()),
+                    _T("-2,147,483,647"));
+  ASSERT_STREQ(Show(std::numeric_limits<uint32_t>::max()), _T("4,294,967,295"));
 
   // Try some doubles
   ASSERT_STREQ(Show(0.3, 0), _T("0"));

@@ -29,8 +29,10 @@
 
 #pragma warning(push)
 // C4917: a GUID can only be associated with a class, interface or namespace.
-#pragma warning(disable : 4917)
+// C5038: data member '' will be initialized after data member ''
+#pragma warning(disable : 4917 5038)
 #include <shlobj.h>
+#include <atlstr.h>
 #pragma warning(pop)
 
 #include <shlwapi.h>
@@ -38,7 +40,6 @@
 #include <strsafe.h>
 #include <atlpath.h>
 #include <atlsimpcoll.h>
-#include <atlstr.h>
 
 #pragma warning(push)
 // C4310: cast truncates constant value

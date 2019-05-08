@@ -42,9 +42,10 @@ shell_languages = omaha_version_utils.GetShellLanguagesForVersion(
 # TODO(omaha): While there is a precompile.h, it does not actually use PCH.
 exe_env.Append(
     CCFLAGS = [
+        '/wd4265',
         '/wd4548',
         '/wd4917',
-        '/wd4265',
+        '/wd5038',
         '/FIgoogle_update/precompile.h',
         ],
     LIBS = [
@@ -72,7 +73,6 @@ exe_env.Append(
             omaha_version_info.GetVersionString()),
         ],
 )
-
 
 exe_res = exe_env.RES('resource.rc')
 exe_env.Depends(exe_res, 'GoogleUpdate.manifest')

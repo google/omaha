@@ -88,24 +88,20 @@ _OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2018 Google LLC'
 # TODO(omaha3): Allow open source Omaha to be built without support for
 # Omaha 2's COM APIs.
 
-# The hash comes from the Thumbprint item in the Details tab of the file
-# properties for the public key .cer file.
-# Omaha and Chrome certificate: sha256 (11/06/2018 to 11/17/2021).
-_BUILD_SERVER_CERTIFICATE_HASH = 'CB7E84887F3C6015FE7EDFB4F8F36DF7DC10590E'
-
 #
 # End vendor-specific constants.
 #
 
 # Reads the value of OMAHA_MSC_VER to determine which compiler/toolchain to use.
 # The set of expected values are in omaha_version_utils.
-# Defaults to VC140 if the environment variable is not specified.
-_msc_ver = int(os.getenv('OMAHA_MSC_VER', "1900"))
+# Defaults to VC150 (Visual Studio 2017) if the environment variable is not
+# specified.
+_msc_ver = int(os.getenv('OMAHA_MSC_VER', "1910"))
 _sdk_dir = os.getenv('WindowsSdkDir', os.getenv('OMAHA_PLATFORM_SDK_DIR'))
 if (_sdk_dir is None):
     _sdk_dir = ('$THIRD_PARTY/%s/files' %
    { omaha_version_utils.VC160:'windows_sdk/windows_sdk_10',
-     omaha_version_utils.VC141:'windows_sdk/windows_sdk_10',
+     omaha_version_utils.VC150:'windows_sdk/windows_sdk_10',
      omaha_version_utils.VC140:'windows_sdk/windows_sdk_10',
      omaha_version_utils.VC120:'windows_sdk_8_1',
      omaha_version_utils.VC100:'platformsdk_vc_10_0',
@@ -132,7 +128,7 @@ win_env = Environment(
         'component_setup',
         'target_platform_windows',
         { omaha_version_utils.VC160:'windows_vc16_0',
-          omaha_version_utils.VC141:'windows_vc14_1',
+          omaha_version_utils.VC150:'windows_vc15_0_host64_x86',
           omaha_version_utils.VC140:'windows_vc14_0',
           omaha_version_utils.VC120:'windows_vc12_0',
           omaha_version_utils.VC100:'windows_vc10_0',
@@ -140,7 +136,7 @@ win_env = Environment(
         'masm',         # Use 'masm' to override the 'as' tool currently
                         # used by default in 'target_platform_windows'
         { omaha_version_utils.VC160:'atlmfc_vc16_0',
-          omaha_version_utils.VC141:'atlmfc_vc14_1',
+          omaha_version_utils.VC150:'atlmfc_vc15_0',
           omaha_version_utils.VC140:'atlmfc_vc14_0',
           omaha_version_utils.VC120:'atlmfc_vc12_0',
           omaha_version_utils.VC100:'atlmfc_vc10_0',
@@ -150,7 +146,6 @@ win_env = Environment(
         'omaha_builders',
     ],
     msc_ver = _msc_ver,
-    build_server_certificate_hash = _BUILD_SERVER_CERTIFICATE_HASH,
 
     # Visual Studio 2008 does not ship the sign tool. Use the sign tool from
     # the Platform SDK. This must come after the 'code_signing' tool is used.
@@ -454,8 +449,10 @@ if _msc_ver >= omaha_version_utils.VC140:
         ['libconcrt', 'libcmt', 'libcpmt', 'libvcruntime', 'libucrt'],
         ['libconcrtd', 'libcmtd', 'libcpmtd', 'libvcruntimed', 'libucrtd'])
 
+win_env.FilterOut(CCFLAGS=['/W3'])
+
 win_env.AppendUnique(
-    # Add windows specific compiler flags.
+    # Add Windows specific compiler flags.
     CCFLAGS = [
         '/arch:IA32',
         ('', '/analyze:WX-')[win_env.Bit('analysis')],
@@ -467,9 +464,13 @@ win_env.AppendUnique(
         '/DCOMPILER_MSVC',
         '/DSTL_MSVC',
         '/GR-',
+        '/GS',
+        '/D_USING_V110_SDK71_',
         '/D_CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1',
         '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1',
+        '/W4',
+        '/Wall',
         '/WX',      # warnings as errors
         '/d2Zi+',   # better debugging support for optimized code
 
@@ -514,6 +515,8 @@ win_env.AppendUnique(
         '/wd4755',  # Conversion rules for arithmetic operations in the
                     # comparison at mean that one branch cannot be executed
                     # in an inlined function.
+        '/wd4768',  # __declspec attributes before linkage specification are
+                    # ignored
         '/wd4774',  # format string expected in argument is not a string literal
         '/wd4777',  # format string 'requires an argument of type...
         '/wd4820',  # bytes padding added after construct 'member_name'
@@ -541,6 +544,8 @@ win_env.AppendUnique(
         '$MAIN_DIR',
         '$MAIN_DIR/third_party/chrome/files/src',
         '$THIRD_PARTY/breakpad/src',
+        '$THIRD_PARTY/googletest/googlemock/include',
+        '$THIRD_PARTY/googletest/googletest/include',
         '$THIRD_PARTY/libzip/lib',
     ],
 
@@ -621,6 +626,7 @@ win_env.AppendUnique(
 
         # for the CRX Verifier protocol buffers code.
         'GOOGLE_PROTOBUF_NO_RTTI',
+        'GOOGLE_PROTOBUF_SUPPORT_WINDOWS_XP',
         ],
 
     # Link in some windows libraries.
@@ -662,17 +668,6 @@ win_env.AppendUnique(
         ],
 )
 
-if _is_google_update_build:
-    win_env.AppendUnique(CPPPATH = [
-        '$THIRD_PARTY/gmock/include',
-        '$THIRD_PARTY/gtest/include',
-    ])
-else:
-    win_env.AppendUnique(CPPPATH = [
-        '$THIRD_PARTY/googletest/googlemock/include',
-        '$THIRD_PARTY/googletest/googletest/include',
-    ])
-
 if _msc_ver >= omaha_version_utils.VC140:
   win_env.AppendUnique(
       CCFLAGS = [
@@ -701,7 +696,7 @@ if _msc_ver >= omaha_version_utils.VC120 and not win_env.Bit('build_server'):
   win_env.AppendUnique(
       # Forces writes to the program database (PDB) file to allow otherwise,
       # for some reason, optimized builds fail when run with -j option.
-      CCFLAGS = ['/FS']
+      CCFLAGS = ['/FS', ]
   )
 
 # Allow verification of these settings in the build log.
@@ -866,7 +861,6 @@ windows_optimized_env.AppendUnique(
     CCFLAGS = [
         '/O1',        # Optimize for small size.
         '/Oy-',       # Disable frame pointer omission.
-        '/GS',
         '/GL',        # Global optimization goes with link flag '/LTCG'
         '/MT',
         ],

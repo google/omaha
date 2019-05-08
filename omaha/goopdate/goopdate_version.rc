@@ -15,7 +15,7 @@
 //
 // This file contains the unlocalized goopdate DLL version resources.
 
-#include <afxres.h>
+#include <winres.h>
 
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 

@@ -16,8 +16,6 @@
 // This file contains the unlocalized metainstaller resources.
 
 #include <winres.h>
-#include <winresrc.h>
-#include <afxres.h>
 #include "resource.h"
 
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US

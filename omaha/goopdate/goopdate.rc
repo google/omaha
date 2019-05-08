@@ -16,7 +16,7 @@
 // TODO(omaha3): Figure out what category of resources this file includes and
 // rename it and non_localized_resource.h. Is it DLL resources?
 
-#include <afxres.h>
+#include <winres.h>
 #include "omaha/goopdate/non_localized_resource.h"
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT

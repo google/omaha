@@ -286,8 +286,11 @@ TEST_F(CommandLineTest, ParseCommandLine_Install) {
       _T("\"appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
       _T("appname=YouTubeUploader&needsadmin=False&")
       _T("appguid={C7A9A2F5-C4F9-42d3-8A8B-55086A205468}&")
-      _T("appname=TestApp&needsadmin=true&lang=en%");
-      _T("etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2\"");
+      _T("appname=TestApp&needsadmin=true&lang=en")
+#if defined(HAS_DEVICE_MANAGEMENT)
+      _T("&etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2")
+#endif
+      _T("\"");
   EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
 
   expected_.mode = COMMANDLINE_MODE_INSTALL;
@@ -297,8 +300,11 @@ TEST_F(CommandLineTest, ParseCommandLine_Install) {
                              _T("appname=YouTubeUploader&needsadmin=False&")
                              _T("appguid=")
                              _T("{C7A9A2F5-C4F9-42d3-8A8B-55086A205468}&")
-                             _T("appname=TestApp&needsadmin=true&lang=en%");
-                             _T("etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2");
+                             _T("appname=TestApp&needsadmin=true&lang=en")
+#if defined(HAS_DEVICE_MANAGEMENT)
+                            _T("&etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2")
+#endif
+                             ;
   CommandLineAppArgs app_args;
   const GUID expected_guid = {0xA4F7B07B, 0xB9BD, 0x4A33,
                               {0xB1, 0x36, 0x96, 0xD2, 0xAD, 0xFB, 0x60, 0xCB}};

@@ -65,19 +65,6 @@ typedef unsigned long long uint64;
 // and it should always be the signed version of whatever int32 is.)
 typedef signed int         char32;
 
-const uint8  kuint8max  = (( uint8) 0xFF);
-const uint16 kuint16max = ((uint16) 0xFFFF);
-const uint32 kuint32max = ((uint32) 0xFFFFFFFF);
-const uint64 kuint64max = ((uint64) GG_LONGLONG(0xFFFFFFFFFFFFFFFF));
-const  int8  kint8min   = ((  int8) 0x80);
-const  int8  kint8max   = ((  int8) 0x7F);
-const  int16 kint16min  = (( int16) 0x8000);
-const  int16 kint16max  = (( int16) 0x7FFF);
-const  int32 kint32min  = (( int32) 0x80000000);
-const  int32 kint32max  = (( int32) 0x7FFFFFFF);
-const  int64 kint64min  = (( int64) GG_LONGLONG(0x8000000000000000));
-const  int64 kint64max  = (( int64) GG_LONGLONG(0x7FFFFFFFFFFFFFFF));
-
 // A macro to disallow the copy constructor and operator= functions
 // This should be used in the private: declarations for a class
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \

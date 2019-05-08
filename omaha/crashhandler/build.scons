@@ -55,6 +55,8 @@ def BuildCrashHandler(local_env):
           ]
   )
   lib_name = 'crash_handler%s' % ('', '_64')[lib_env.Bit('x64')]
+  if env.Bit('use_precompiled_headers'):
+    lib_inputs += lib_env.EnablePrecompile(lib_name)
   library_crash_handler = lib_env.ComponentLibrary(
       lib_name,
       lib_inputs
@@ -63,6 +65,9 @@ def BuildCrashHandler(local_env):
   gch_env = local_env.Clone()
   omaha_version_info = gch_env['omaha_versions_info'][0]
   gch_env.Append(
+      CCFLAGS = [
+        '/wd5038',
+      ],
       LIBS = [
           'advapi32.lib',
           'crypt32.lib',
@@ -107,18 +112,12 @@ def BuildCrashHandler(local_env):
       gch_res,
       ]
 
-  # We disable runtime stack check to avoid increasing the code size.
-  # There is a compiler pragma to programmatically disable the stack checks
-  # but for some reason it did not work.
-  gch_env.FilterOut(CPPFLAGS = ['/GS'])
-
-  # Disable stack checks for VC80. Stack checks are on by default.
-  if gch_env['msc_ver'] >= 1400:
-    gch_env['CCFLAGS'] += ['/GS-']
-
   # Change the name of the executable based on the architecture, and
   # change the names of the objects to prevent collisions.
   exe_name = 'GoogleCrashHandler%s' % ('', '64')[gch_env.Bit('x64')]
+
+  if env.Bit('use_precompiled_headers'):
+    gch_inputs += gch_env.EnablePrecompile(exe_name)
 
   unsigned_crash_handler = gch_env.ComponentProgram(
       prog_name='%s_unsigned.exe' % exe_name,
@@ -153,15 +152,6 @@ def BuildCrashAnalysisTest(local_env):
   )
 
   td_inputs = ['crash_analyzer_debugee_test.cc']
-
-  # We disable runtime stack check to avoid increasing the code size.
-  # There is a compiler pragma to programmatically disable the stack checks
-  # but for some reason it did not work.
-  td_env.FilterOut(CPPFLAGS = ['/GS'])
-
-  # Disable stack checks for VC80. Stack checks are on by default.
-  if td_env['msc_ver'] >= 1400:
-    td_env['CCFLAGS'] += ['/GS-']
 
   test_debugee = td_env.ComponentProgram(
       prog_name='CrashHandlerTestDebugee.exe',

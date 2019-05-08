@@ -37,7 +37,7 @@ namespace omaha {
 
 // Note: For some reason, the product ID GUIDs are swizzled in the registry.
 extern const TCHAR kMsiProductPatchesKey[] =
-    _T("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\")
+    _T("HKEY_LOCAL_MACHINE[64]\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\")
     _T("Installer\\UserData\\S-1-5-18\\Products\\")
     _T("93BAD29AC2E44034A96BCB446EB8552E\\Patches");
 
@@ -172,10 +172,9 @@ TEST_F(RepairGoopdateWithMsiInstalledTest,
     }
 
     // Verify that no patch is installed.
-    EXPECT_TRUE(RegKey::HasNativeKey(kMsiProductPatchesKey));
+    EXPECT_TRUE(RegKey::HasKey(kMsiProductPatchesKey));
     RegKey product_patches_key;
-    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey,
-                                              KEY_READ | KEY_WOW64_64KEY));
+    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey, KEY_READ));
     EXPECT_EQ(0, product_patches_key.GetSubkeyCount());
 
     HANDLE process = NULL;
@@ -186,8 +185,7 @@ TEST_F(RepairGoopdateWithMsiInstalledTest,
 
     // Verify that patch was uninstalled.
     // GetSubkeyCount fails if we don't re-open the key.
-    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey,
-                                              KEY_READ | KEY_WOW64_64KEY));
+    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey, KEY_READ));
     EXPECT_EQ(0, product_patches_key.GetSubkeyCount());
 
     bool is_found = false;

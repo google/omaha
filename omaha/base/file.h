@@ -20,6 +20,8 @@
 #define OMAHA_BASE_FILE_H_
 
 #include <windows.h>
+#include <stdint.h>
+#include <limits>
 #include <vector>
 #include "base/basictypes.h"
 #include "omaha/base/scoped_any.h"
@@ -185,7 +187,7 @@ class File {
     uint32 encryption_seed_;
     uint32 sequence_id_;
 
-    static const int kMaxFileSize = kint32max;
+    static const int kMaxFileSize = std::numeric_limits<int32_t>::max();
 
     DISALLOW_COPY_AND_ASSIGN(File);
 };

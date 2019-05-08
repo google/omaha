@@ -13,7 +13,7 @@
 // limitations under the License.
 // ========================================================================
 
-#include <afxres.h>
+#include <winres.h>
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 #ifdef _WIN32
