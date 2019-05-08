@@ -15,6 +15,8 @@
 
 #include "omaha/base/environment_block_modifier.h"
 
+#include <userenv.h>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/environment_utils.h"
 

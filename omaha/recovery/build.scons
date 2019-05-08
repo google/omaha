@@ -35,9 +35,6 @@ rec_env.Append(
         ],
 )
 
-if env.Bit('use_precompiled_headers'):
-  recovery_inputs += rec_env.EnablePrecompile('google_update_recovery')
-
 # Need to add custom suffix to avoid target conflict with
 # common/signaturevalidator.obj
 rec_env['OBJSUFFIX'] = '_rec' + rec_env['OBJSUFFIX']
@@ -96,8 +93,6 @@ target_name = 'RecoveryTest'
 test_inputs = [
     'recovery_test.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  test_inputs += test_env.EnablePrecompile(target_name)
 
 # TODO(omaha): This test asserts when run so we cannot include it in
 # run_all_tests. Fix it and consider adding to run_all_tests.

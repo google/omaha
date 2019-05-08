@@ -99,8 +99,6 @@ inputs = [
     '../../worker/progresswnd_unittest.cc',
     unittest_res,
     ]
-if env.Bit('use_precompiled_headers'):
-  inputs += local_env.EnablePrecompile(target_name)
 
 local_env.ComponentTestProgram(
     prog_name=target_name,

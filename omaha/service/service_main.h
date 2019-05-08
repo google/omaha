@@ -40,6 +40,14 @@
 #ifndef OMAHA_SERVICE_SERVICE_MAIN_H_
 #define OMAHA_SERVICE_SERVICE_MAIN_H_
 
+#include <windows.h>
+
+// Redefining the macro RegisterEventSource to evaluate to NULL so that
+// CAtlServiceModuleT::LogEvent() code does not log to the event log. Doing this
+// avoids duplicating the CAtlServiceModuleT code.
+#undef RegisterEventSource
+#define RegisterEventSource(x, ...) NULL
+
 #include <atlbase.h>
 #include <atlcom.h>
 #include "base/basictypes.h"

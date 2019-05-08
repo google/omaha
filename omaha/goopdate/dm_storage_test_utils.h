@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <tchar.h>
+
 namespace omaha {
 
 // Test helper functions for writing enrollment and device management tokens
@@ -28,4 +30,4 @@ void WriteOldLegacyPolicyToken(const TCHAR* enrollment_token);
 void WriteLegacyDmToken(const char* dm_token);
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
 
-}  // namespace
+}  // namespace omaha

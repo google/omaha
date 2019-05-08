@@ -17,6 +17,8 @@
 
 #include "omaha/base/disk.h"
 
+#include <algorithm>
+
 #include "omaha/base/commontypes.h"
 #include "omaha/base/const_config.h"
 #include "omaha/base/error.h"

@@ -45,7 +45,7 @@ bin_env.Append(
     ],
 )
 
-bin_env.ComponentTool(
+bin_env.ComponentProgram(
     prog_name='bcj',
     source=[
         'bcj.cc',
@@ -56,7 +56,7 @@ bjc2_env = bin_env.Clone()
 bjc2_env.Append(
     LIBS=[ bcj2_lib ],
 )
-bjc2_env.ComponentTool(
+bjc2_env.ComponentProgram(
     prog_name='bcj2',
     source=[
         'bcj2.cc',

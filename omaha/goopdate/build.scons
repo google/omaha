@@ -181,10 +181,9 @@ def BuildGoogleUpdateCOMProxy(midl_env, generated_idl):
       'omaha3_idl%s_i.c' % suffix,
       ]
 
-  midl_env.ComponentStaticLibrary(
+  midl_env.ComponentLibrary(
       'omaha3_idl%s' % suffix,
       midl_lib_inputs,
-      use_pch_default=False
   )
 
 generated_omaha3_idl = GenerateOmaha3IDLFile()
@@ -348,7 +347,7 @@ if env.Bit('has_device_management'):
   dm_proto_lib = proto_env.ComponentStaticLibraryMultiarch(
       'dm_proto',
       proto_outputs + ['dm_messages.cc'],
-      use_pch_default=False)
+  )
 
 gd_env = env.Clone()
 
@@ -560,8 +559,6 @@ for omaha_version_info in env['omaha_versions_info']:
       resource_res,
       version_res,
       ]
-  if env.Bit('use_precompiled_headers'):
-    inputs += temp_env.EnablePrecompile(target_name)
 
   for language in translated_languages:
     lang_base_name = 'goopdate_dll/generated_resources_' + language
@@ -606,7 +603,6 @@ test_installer_env = env.Clone()
 test_installer_env.Append(
   CCFLAGS = [
       '/wd4995',
-      '/FIgoogle_update/precompile.h',
       ],
   LIBS = [
       'delayimp.lib',

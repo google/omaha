@@ -5,13 +5,16 @@
 #ifndef BASE_RAND_UTIL_H_
 #define BASE_RAND_UTIL_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
 namespace omaha {
 
 // Fills |output_length| bytes of |output| with random data.
 bool RandBytes(void* output, size_t output_length);
 
 // Returns a random number in range [0, kuint32max]. Thread-safe.
-bool RandUint32(uint32* number);
+bool RandUint32(uint32_t* number);
 
 }  // namespace omaha
 

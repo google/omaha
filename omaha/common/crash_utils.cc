@@ -15,7 +15,6 @@
 
 #include "omaha/common/crash_utils.h"
 
-#include <windows.h>
 #include <atlbase.h>
 #include <atlsecurity.h>
 #include <atlstr.h>

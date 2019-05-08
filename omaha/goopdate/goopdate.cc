@@ -43,8 +43,10 @@
 //      -Embedding
 
 #include "omaha/goopdate/goopdate.h"
+
 #include <atlstr.h>
 #include <new>
+
 #include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"

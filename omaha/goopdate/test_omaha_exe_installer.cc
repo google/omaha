@@ -51,10 +51,12 @@
 // directory in the Omaha server config, and the Omaha metainstaller should be
 // tagged with the "installdataindex" that corresponding to that .bat file.
 
+#include <windows.h>
 #include <shellapi.h>
 #include <tchar.h>
-#include <windows.h>
+
 #include <atlpath.h>
+
 #include "base/basictypes.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/file.h"

@@ -16,6 +16,8 @@
 #ifndef OMAHA_UI_YES_NO_DIALOG_H_
 #define OMAHA_UI_YES_NO_DIALOG_H_
 
+#include <windows.h>
+
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
 #include "omaha/client/resource.h"

@@ -15,6 +15,10 @@
 #ifndef OMAHA_GOOPDATE_DM_STORAGE_H__
 #define OMAHA_GOOPDATE_DM_STORAGE_H__
 
+#include <windows.h>
+#include <atlstr.h>
+
+#include "base/basictypes.h"
 #include "omaha/base/constants.h"
 
 namespace omaha {

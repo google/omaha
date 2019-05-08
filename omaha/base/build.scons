@@ -198,6 +198,7 @@ proto_env.Append(
         '/wd4702',
         '/wd4703',
         '/wd4798',
+        '/wd4800',
         '/wd4946',
     ],
     CPPPATH=[
@@ -252,7 +253,7 @@ cc_files = [
 ]
 
 proto_env.ComponentStaticLibraryMultiarch(
-    'libprotobuf', cc_files, COMPONENT_STATIC=True, use_pch_default=False)
+    'libprotobuf', cc_files, COMPONENT_STATIC=True)
 
 """ Build the CRX Verifier libraries."""
 
@@ -342,4 +343,4 @@ cc_files += ['libzip/' + os.path.basename(x) for x in list(
       os.sep.join([libzip_src_path_dir.path, x])), cc_files_exclusions))))]
 
 local_env.ComponentStaticLibraryMultiarch(
-    'crx_file', cc_files, COMPONENT_STATIC=True, use_pch_default=False)
+    'crx_file', cc_files, COMPONENT_STATIC=True)

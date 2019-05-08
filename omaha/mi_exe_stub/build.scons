@@ -94,8 +94,4 @@ local_inputs = [
     '../base/extractor.cc',
 ]
 
-# Precompiled headers cannot be used because debug builds must link against
-# base.lib due to base/ inclusions in precompile.h.
-local_env.ComponentStaticLibrary('mi_exe_stub_lib',
-                                 local_inputs,
-                                 use_pch_default=False)
+local_env.ComponentLibrary('mi_exe_stub_lib', local_inputs)

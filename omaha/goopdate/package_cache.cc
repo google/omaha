@@ -14,8 +14,11 @@
 // ========================================================================
 
 #include "omaha/goopdate/package_cache.h"
+
 #include <shlwapi.h>
+#include <algorithm>
 #include <vector>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"

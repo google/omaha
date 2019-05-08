@@ -13,8 +13,6 @@
 // limitations under the License.
 // ========================================================================
 
-// TODO(omaha): namespaces
-
 #ifndef OMAHA_BASE_BROWSER_UTILS_H_
 #define OMAHA_BASE_BROWSER_UTILS_H_
 

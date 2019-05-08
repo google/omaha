@@ -39,14 +39,12 @@ omaha_version_info = exe_env['omaha_versions_info'][0]
 shell_languages = omaha_version_utils.GetShellLanguagesForVersion(
     omaha_version_info.GetVersion())
 
-# TODO(omaha): While there is a precompile.h, it does not actually use PCH.
 exe_env.Append(
     CCFLAGS = [
         '/wd4265',
         '/wd4548',
         '/wd4917',
         '/wd5038',
-        '/FIgoogle_update/precompile.h',
         ],
     LIBS = [
         'delayimp.lib',

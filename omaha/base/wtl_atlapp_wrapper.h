@@ -30,6 +30,7 @@ using std::max;
 // 4265: class has virtual functions, but destructor is not virtual
 // 4996: 'function' was declared deprecated
 
+#include <atlbase.h>
 #include <atlapp.h>
 
 #pragma warning(pop)

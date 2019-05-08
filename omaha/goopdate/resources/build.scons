@@ -18,8 +18,6 @@ Import('env')
 
 
 local_env = env.Clone(
-    PRECOMPILE_STOPFILE = '',
-    PRECOMPILE_BUILDER  = '',
     COMPONENT_STATIC = False,
 )
 

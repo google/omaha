@@ -51,9 +51,6 @@ target_name = 'SetShutDownEvent'
 inputs = [
     'signal_shutdown.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  inputs += local_env.EnablePrecompile(target_name)
-
 
 local_env.ComponentTestProgram(
     prog_name=target_name,

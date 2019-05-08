@@ -18,7 +18,10 @@
 #ifndef OMAHA_COMMON_SMART_HANDLE_H_
 #define OMAHA_COMMON_SMART_HANDLE_H_
 
+#include <windows.h>
 #include <wincrypt.h>
+
+#include "base/basictypes.h"
 
 namespace omaha {
 

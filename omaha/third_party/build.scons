@@ -76,9 +76,6 @@ gtest_env.Append(
 
 target_name = 'gtest'
 gtest_inputs = [ 'gtest/src/gtest-all.cc' ]
-if env.Bit('use_precompiled_headers'):
-  gtest_inputs += gtest_env.EnablePrecompile(target_name)
-
 gtest_env.ComponentLibrary(
     lib_name=target_name,
     source=gtest_inputs,
@@ -108,10 +105,6 @@ gmock_env.Append(
 
 target_name = 'gmock'
 gmock_inputs = [ 'gmock/src/gmock-all.cc' ]
-
-if env.Bit('use_precompiled_headers'):
-    gmock_inputs += gmock_env.EnablePrecompile(target_name)
-
 gmock_env.ComponentLibrary(
     lib_name=target_name,
     source=gmock_inputs,
@@ -137,4 +130,3 @@ lzma_env.ComponentLibrary(
         'lzma/files/C/LzmaDec.c',
     ],
 )
-

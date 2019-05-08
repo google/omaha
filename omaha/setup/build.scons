@@ -30,6 +30,5 @@ inputs = [
 # TODO(omaha): It would be nice to eliminate references to COM files from setup.
 local_env['CPPPATH'] += ['$OBJ_ROOT']
 
-
 # Build these into a static library.
-local_env.ComponentStaticLibrary('setup', inputs)
+local_env.ComponentLibrary('setup', inputs)

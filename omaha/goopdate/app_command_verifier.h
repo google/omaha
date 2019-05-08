@@ -16,7 +16,8 @@
 #ifndef OMAHA_GOOPDATE_APP_COMMAND_VERIFIER_H__
 #define OMAHA_GOOPDATE_APP_COMMAND_VERIFIER_H__
 
-#include <atlbase.h>
+#include <windows.h>
+#include <atlstr.h>
 #include "base/basictypes.h"
 
 namespace omaha {

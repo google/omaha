@@ -19,8 +19,9 @@
 #include <windows.h>
 #include <stdint.h>
 #include <limits>
-#include <vector>
 #include <string>
+#include <vector>
+
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"

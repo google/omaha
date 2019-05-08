@@ -49,8 +49,6 @@ target_name = 'MsiTagger'
 inputs = [
     'msi_tag_tool.cc',
     ]
-if env.Bit('use_precompiled_headers'):
-  inputs += local_env.EnablePrecompile(target_name)
 
 local_env.ComponentTestProgram(
     prog_name=target_name,

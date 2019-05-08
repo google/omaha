@@ -323,12 +323,12 @@ unittest_base_env.Append(
     ],
 )
 
-unittest_base_env.ComponentStaticLibrary(
+unittest_base_env.ComponentLibrary(
   'unittest_base',
   [ 'omaha_unittest.cc', 'unit_test.cc', ]
 )
 
-unittest_base_env.ComponentStaticLibrary(
+unittest_base_env.ComponentLibrary(
     'unittest_base_large_with_network',
     [ 'unittest_base.lib',
       'omaha_unittest_main.cc',
@@ -336,12 +336,12 @@ unittest_base_env.ComponentStaticLibrary(
     ]
 )
 
-unittest_base_env.ComponentStaticLibrary(
+unittest_base_env.ComponentLibrary(
     'unittest_base_small',
     [ 'unittest_base.lib', 'omaha_unittest_main_small_tests.cc', ]
 )
 
-unittest_base_env.ComponentStaticLibrary(
+unittest_base_env.ComponentLibrary(
     'unittest_base_small_with_resources',
     [ 'unittest_base.lib',
       'omaha_unittest_main_small_tests_with_resources.cc',
@@ -608,9 +608,6 @@ omaha_unittest_env['OBJPREFIX'] = omaha_unittest_env['OBJPREFIX'] + 'testing/'
 
 target_name = 'omaha_unittest'
 
-if env.Bit('use_precompiled_headers'):
-  omaha_unittest_inputs += omaha_unittest_env.EnablePrecompile(target_name)
-
 # omaha_unittest can be built as a test program in 'tests\' or a normal program
 # in 'staging\'.
 # TODO(omaha3): Switch entirely to the former.
@@ -709,9 +706,6 @@ if env.Bit('all'):
   save_args_env.Depends('$OBJ_ROOT/testing/save_arguments_version.res',
                         '$MAIN_DIR/VERSION'
   )
-
-  if env.Bit('use_precompiled_headers'):
-    unsigned_inputs += save_args_env.EnablePrecompile(target_name)
 
   # Build the *unsigned* executeable
   unsigned_output = save_args_env.ComponentTestProgram(
