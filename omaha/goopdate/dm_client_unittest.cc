@@ -66,7 +66,7 @@ class IsValidRequestUrlMatcher
     }
 
     // Extract the query params from the URL.
-    std::map<CString,CString> query_params;
+    std::map<CString, CString> query_params;
     CString param = arg.Tokenize(_T("&"), scan);
     while (!param.IsEmpty()) {
       int eq = param.Find('=', 0);
@@ -262,7 +262,8 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
 
   // Expect the proper URL with query params.
   EXPECT_CALL(*mock_http_request,
-              set_url(IsValidRequestUrl(_T("register_browser"), kDeviceId)));
+              set_url(IsValidRequestUrl(_T("register_policy_agent"),
+                                        kDeviceId)));
 
   // Expect that the request headers contain the enrollment token.
   EXPECT_CALL(*mock_http_request,
@@ -328,7 +329,7 @@ TEST(DmClientTest, GetOsVersion) {
 
 TEST(DmClientTest, AppendQueryParamsToUrl) {
   static const TCHAR kUrl[] = _T("https://some.net/endpoint");
-  std::vector<std::pair<CString,CString>> params;
+  std::vector<std::pair<CString, CString>> params;
   params.push_back(std::make_pair(_T("one"), _T("1")));
   params.push_back(std::make_pair(_T("2"), _T("two")));
   CString url(kUrl);

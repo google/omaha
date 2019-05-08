@@ -47,13 +47,13 @@ class RangeEncoder {
   void set_range(uint32 range) { range_ = range; }
 
  private:
+  std::string* output_;
+
   uint8 cache_;
   uint32 cache_size_;
 
   uint64 low_;
   uint32 range_;
-
-  std::string* output_;
 
   DISALLOW_COPY_AND_ASSIGN(RangeEncoder);
 };

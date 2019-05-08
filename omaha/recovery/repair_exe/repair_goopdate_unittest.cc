@@ -87,10 +87,9 @@ TEST_F(RepairGoopdateTest,
     InstallMsi();
 
     // Verify that no patch is installed.
-    EXPECT_TRUE(RegKey::HasNativeKey(kMsiProductPatchesKey));
+    EXPECT_TRUE(RegKey::HasKey(kMsiProductPatchesKey));
     RegKey product_patches_key;
-    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey,
-                                              KEY_READ | KEY_WOW64_64KEY));
+    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey, KEY_READ));
     EXPECT_EQ(0, product_patches_key.GetSubkeyCount());
 
     HRESULT hr = E_FAIL;
@@ -99,8 +98,7 @@ TEST_F(RepairGoopdateTest,
 
     // Verify that patch was uninstalled.
     // GetSubkeyCount fails if we don't re-open the key.
-    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey,
-                                              KEY_READ | KEY_WOW64_64KEY));
+    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey, KEY_READ));
     EXPECT_EQ(0, product_patches_key.GetSubkeyCount());
 
     bool is_found = false;
@@ -172,10 +170,9 @@ TEST_F(RepairGoopdateTest,
     InstallMsi();
 
     // Verify that no patch is installed.
-    EXPECT_TRUE(RegKey::HasNativeKey(kMsiProductPatchesKey));
+    EXPECT_TRUE(RegKey::HasKey(kMsiProductPatchesKey));
     RegKey product_patches_key;
-    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey,
-                                              KEY_READ | KEY_WOW64_64KEY));
+    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey, KEY_READ));
     EXPECT_EQ(0, product_patches_key.GetSubkeyCount());
 
     HRESULT hr = E_FAIL;
@@ -187,8 +184,7 @@ TEST_F(RepairGoopdateTest,
 
     // Verify that patch was uninstalled.
     // GetSubkeyCount fails if we don't re-open the key.
-    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey,
-                                              KEY_READ | KEY_WOW64_64KEY));
+    EXPECT_SUCCEEDED(product_patches_key.Open(kMsiProductPatchesKey, KEY_READ));
     EXPECT_EQ(0, product_patches_key.GetSubkeyCount());
 
     RemoveMsi();

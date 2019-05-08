@@ -15,8 +15,9 @@
 //
 // Time unittest
 
+#include <stdint.h>
+#include <limits>
 #include <atltime.h>
-
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
@@ -183,7 +184,7 @@ TEST(TimeTest, FileTimeToInt64) {
 
   {
   FILETIME file_time = {ULONG_MAX, LONG_MAX};
-  EXPECT_EQ(kint64max, FileTimeToInt64(file_time));
+  EXPECT_EQ(std::numeric_limits<int64_t>::max(), FileTimeToInt64(file_time));
   }
 
   {

@@ -65,8 +65,8 @@ class Tar {
   bool ExtractToDir();
 
  private:
-  HANDLE file_handle_;
   CString target_directory_name_;
+  HANDLE file_handle_;
   bool delete_when_done_;
   CSimpleArray<CString> files_to_delete_;
   TarFileCallback callback_;

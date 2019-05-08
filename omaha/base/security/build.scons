@@ -26,6 +26,7 @@ security_env.Append(
     CCFLAGS = [
         '/wd4242',  # conversion from 'type1' to 'type2', possible loss of data
         '/wd4244',  # conversion from 'type1' to 'type2', possible loss of data
+        '/wd4245',  # initializing': conversion from/to signed/unsigned mismatch
         ],
 )
 

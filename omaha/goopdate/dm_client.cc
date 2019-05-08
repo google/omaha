@@ -237,7 +237,7 @@ CStringA GetOsVersion() {
 }
 
 HRESULT AppendQueryParamsToUrl(
-    const std::vector<std::pair<CString,CString>>& query_params,
+    const std::vector<std::pair<CString, CString>>& query_params,
     CString* url) {
   ASSERT1(url);
   CString query;

@@ -106,10 +106,6 @@ bool ReadHashAndVerifyArchive(omaha::File* file,
     }
   }
 
-  if (len < 0) {
-    return false;
-  }
-
   for (Verifiers::const_iterator verifier = verifiers.begin();
        verifier != verifiers.end();
        ++verifier) {
@@ -200,7 +196,7 @@ VerifierResult VerifyCrx3(
        proof_type != proof_types.end();
        ++proof_type) {
     const RepeatedProof& repeated_proof = (header.*proof_type->first)();
-    for (RepeatedProof::const_iterator& proof = repeated_proof.begin();
+    for (RepeatedProof::const_iterator proof = repeated_proof.begin();
          proof != repeated_proof.end();
          ++proof) {
       const std::string& key = proof->public_key();
@@ -286,7 +282,7 @@ HRESULT ReadArchiveAndWrite(omaha::File* file, const CPath& write_to) {
   size_t len = 0;
   while ((len = ReadBuffer(buffer, arraysize(buffer), file)) > 0) {
     uint32 bytes_written(0);
-    HRESULT hr = write_to_file.Write(buffer, len, &bytes_written);
+    hr = write_to_file.Write(buffer, len, &bytes_written);
     if (FAILED(hr) || bytes_written != len) {
       return hr;
     }
@@ -372,7 +368,7 @@ bool Unzip(const CPath& zip_file_path, const CPath& to_dir) {
 
     if (zip_entry_information.name[len - 1] == '/' ||
         zip_entry_information.name[len - 1] == '\\') {
-      CPathA sub_directory = CT2A(to_dir);
+      CPathA sub_directory = static_cast<const char*>(CT2A(to_dir));
       sub_directory += zip_entry_information.name;
       omaha::CreateDir(CA2T(sub_directory), NULL);
 
@@ -386,11 +382,11 @@ bool Unzip(const CPath& zip_file_path, const CPath& to_dir) {
     omaha::ScopeGuard zip_fclose_guard =
         omaha::MakeGuard(zip_fclose, zip_entry_file);
 
-    CPathA output_file = CT2A(to_dir);
+    CPathA output_file = static_cast<const char*>(CT2A(to_dir));
     output_file += zip_entry_information.name;
 
     omaha::File file;
-    HRESULT hr = file.Open(CString(output_file), true, false);
+    hr = file.Open(CString(output_file), true, false);
     if (FAILED(hr)) {
       return false;
     }
@@ -505,7 +501,7 @@ bool Crx3Unzip(const CPath& crx_path, const CPath& to_dir) {
     return false;
   }
 
-  const CPath zip_path = zip;
+  const CPath zip_path(zip);
   return Crx3ToZip(crx_path, zip_path) ? Unzip(zip_path, to_dir) : false;
 }
 

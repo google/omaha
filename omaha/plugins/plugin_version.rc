@@ -15,7 +15,7 @@
 //
 // This file contains the unlocalized plugin version resources.
 
-#include <afxres.h>
+#include <windows.h>
 
 // The "040904e4" block (for codepage 1252 Ansi Latin) is required for
 // the Netscape Plugin stuff to see the MIMETYPE value in the resource block.

@@ -23,16 +23,6 @@ local_env = env.Clone(
     COMPONENT_STATIC = False,
 )
 
-# We disable runtime stack check to avoid increasing the code size.
-# There is a compiler pragma to programmatically disable the stack checks
-# but for some reason it did not work.
-local_env.FilterOut(CPPFLAGS = ['/GS'])
-
-# Disable stack checks for VC80. Stack checks are on by default.
-if local_env['msc_ver'] >= 1400:
-  local_env['CCFLAGS'] += ['/GS-']
-
-
 for omaha_version_info in local_env['omaha_versions_info']:
   prefix = omaha_version_info.filename_prefix
 
@@ -52,11 +42,13 @@ for omaha_version_info in local_env['omaha_versions_info']:
             '$OBJ_ROOT/goopdate',  # Needed for the tlb
             ],
         LINKFLAGS = [
-            '/NODEFAULTLIB',
             '/ENTRY:DllEntry',
             '/MERGE:.rdata=.text',
             '/BASE:0x19000000',
             ],
+        LIBS = [
+          lang_env['crt_libs'][lang_env.Bit('debug')],
+        ]
     )
 
     # Avoid conflicts in obj targets

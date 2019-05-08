@@ -174,26 +174,31 @@ protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR', default_protobuf_src_dir)
 
 proto_env = env.Clone()
 protobuf_src_path = os.path.join(protobuf_src_dir, 'google/protobuf/')
-proto_env.FilterOut(CCFLAGS=['/W4'])
 proto_env.Append(
     CPPDEFINES=['LIBPROTOBUF_EXPORTS'],
     CCFLAGS=[
         '/wd4005',
         '/wd4018',
         '/wd4065',
+        '/wd4100',
+        '/wd4125',
         '/wd4146',
+        '/wd4242',
         '/wd4244',
-        '/wd4251',
         '/wd4267',
-        '/wd4305',
-        '/wd4309',
+        '/wd4310',
         '/wd4355',
+        '/wd4388',
+        '/wd4389',
+        '/wd4456',
         '/wd4506',
-        '/wd4530',
-        '/wd4541',
-        '/wd4577',
-        '/wd4800',
-        '/wd4996',
+        '/wd4548',
+        '/wd4647',
+        '/wd4701',
+        '/wd4702',
+        '/wd4703',
+        '/wd4798',
+        '/wd4946',
     ],
     CPPPATH=[
         '$GOOGLE3',
@@ -261,21 +266,7 @@ proto_sources = [
     '$MAIN_DIR' + crx_file_path + 'crx3.proto'
 ]
 cc_files = local_env.CompileProtoBuf(proto_sources)
-
-local_env.FilterOut(CCFLAGS=['/W4'])
 local_env.Append(
-    CCFLAGS=[
-        '/wd4100',
-        '/wd4125',
-        '/wd4127',
-        '/wd4146',
-        '/wd4244',
-        '/wd4309',
-        '/wd4577',
-        '/wd4800',
-        '/wd4995',
-        '/wd4996',
-    ],
     CPPPATH=[
         '$GOOGLE3',
         protobuf_src_dir,
@@ -291,8 +282,6 @@ cc_files += [
 ]
 
 """ Add zlib library files."""
-
-local_env.FilterOut(CCFLAGS=['/WX'])
 zlib_src_path = '$THIRD_PARTY/zlib/v1_2_11/'
 zlib_src_path_dir = local_env.Dir(zlib_src_path)
 local_env.Dir('zlib').addRepository(zlib_src_path_dir)
@@ -319,7 +308,22 @@ local_env.Append(
     ],
     CCFLAGS=[
         '/wd4005',
+        '/wd4100',
+        '/wd4013',
+        '/wd4047',
+        '/wd4131',
+        '/wd4132',
+        '/wd4242',
         '/wd4244',
+        '/wd4245',
+        '/wd4255',
+        '/wd4267',
+        '/wd4310',
+        '/wd4312',
+        '/wd4388',
+        '/wd4389',
+        '/wd4647',
+        '/wd4548',
     ],
 )
 

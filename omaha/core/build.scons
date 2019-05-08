@@ -40,6 +40,9 @@ core_env['CPPPATH'] += [
     '$OBJ_ROOT',
     ]
 core_env.Append(
+    CCFLAGS = [
+      '/wd5038',
+    ],
     LIBS = [
         'advapi32.lib',
         'bits.lib',
@@ -115,10 +118,6 @@ google_core_inputs = [
     'winmain.cc',
     google_core_res,
     ]
-
-# Disable stack checks for VC80.
-if core_env['msc_ver'] >= 1400:
-  core_env['CCFLAGS'] += ['/GS-']
 
 exe_name = 'GoogleUpdateCore'
 

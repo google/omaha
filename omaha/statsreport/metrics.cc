@@ -15,6 +15,8 @@
 //
 // Implements metrics and metrics collections
 #include "omaha/statsreport/metrics.h"
+#include <stdint.h>
+#include <limits>
 #include "omaha/base/synchronized.h"
 
 namespace stats_report {
@@ -202,8 +204,7 @@ void TimingMetric::AddSamples(int64 count, int64 total_time_ms) {
       data_.maximum = time_ms;
   }
 
-  // TODO(omaha): truncation from 64 to 32 may occur here.
-  DCHECK_LE(count, kuint32max);
+  DCHECK_LE(count, std::numeric_limits<uint32_t>::max());
   data_.count += static_cast<uint32>(count);
   data_.sum += total_time_ms;
 }

@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc.
+# Copyright 2019 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +13,7 @@
 # limitations under the License.
 # ========================================================================
 
-"""Windows ATL MFC for VC14 (Visual Studio 2015) tool for SCons.
-
-Note that ATL MFC requires the commercial (non-free) version of Visual Studio
-2015.
-"""
+# Windows ATL MFC for VC15 (Visual Studio 2017) tool for SCons.
 
 import os
 
@@ -39,8 +35,8 @@ def generate(env):
   # NOTE: SCons requires the use of this name, which fails gpylint.
   """SCons entry point for this tool."""
 
-  if not env.get('ATLMFC_VC14_0_DIR'):
-    env['ATLMFC_VC14_1_DIR'] = _FindLocalInstall()
+  if not env.get('ATLMFC_VC15_0_DIR'):
+    env['ATLMFC_VC15_0_DIR'] = _FindLocalInstall()
 
-  env.AppendENVPath('INCLUDE', env.Dir('$ATLMFC_VC14_1_DIR/include').abspath)
-  env.AppendENVPath('LIB', env.Dir('$ATLMFC_VC14_1_DIR/lib/x86').abspath)
+  env.AppendENVPath('INCLUDE', env.Dir('$ATLMFC_VC15_0_DIR/include').abspath)
+  env.AppendENVPath('LIB', env.Dir('$ATLMFC_VC15_0_DIR/lib/x86').abspath)

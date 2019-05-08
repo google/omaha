@@ -408,6 +408,7 @@ void CrashHandler::BreakpadClientConnected(
   ASSERT1(client_info);
 
   UNREFERENCED_PARAMETER(context);
+  UNREFERENCED_PARAMETER(client_info);
   CORE_LOG(L1, (_T("[CrashHandler][Client connected][%d-bit][pid %d]"),
                EXE_ARCH, client_info->pid()));
 }
@@ -497,7 +498,7 @@ void CrashHandler::BreakpadClientCrashed(
   } else {
     CString custom_info_filename;
     crash_utils::GetCustomInfoFilePath(dump_file_path, &custom_info_filename);
-    HRESULT hr = handler->StartCrashUploader(dump_file_path,
+    hr = handler->StartCrashUploader(dump_file_path,
                                              custom_info_filename);
     if (FAILED(hr)) {
       OPT_LOG(LE, (_T("[StartCrashUploader() failed][0x%08x]"), hr));
@@ -575,6 +576,7 @@ void CrashHandler::BreakpadClientDisconnected(
   ASSERT1(client_info);
 
   UNREFERENCED_PARAMETER(context);
+  UNREFERENCED_PARAMETER(client_info);
   CORE_LOG(L1, (_T("[CrashHandler][Client exited][%d-bit][%d]"),
                EXE_ARCH, client_info->pid()));
 }

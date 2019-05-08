@@ -15,7 +15,7 @@
 
 #include "omaha/goopdate/resource.h"
 
-#include <afxres.h>
+#include <winres.h>
 
 #include "omaha/goopdate/resources/goopdateres/generated_resources_en.rc"
 

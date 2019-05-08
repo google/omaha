@@ -31,7 +31,9 @@
 #include <winhttp.h>
 #include <atlbase.h>
 #include <atlstr.h>
+#include <stdint.h>
 #include <functional>
+#include <limits>
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -857,10 +859,11 @@ DownloadMetrics BitsRequest::MakeDownloadMetrics(HRESULT hr) const {
   download_metrics.error = error;
   BG_JOB_PROGRESS progress = {0};
   if (SUCCEEDED(request_state_->bits_job->GetProgress(&progress))) {
-    download_metrics.downloaded_bytes = progress.BytesTransferred <= kint64max ?
-       static_cast<int64>(progress.BytesTransferred) : -1;
+    constexpr auto kMaxBytes = std::numeric_limits<int64_t>::max();
+    download_metrics.downloaded_bytes = progress.BytesTransferred <= kMaxBytes ?
+        static_cast<int64>(progress.BytesTransferred) : -1;
 
-    download_metrics.total_bytes = progress.BytesTotal <= kint64max ?
+    download_metrics.total_bytes = progress.BytesTotal <= kMaxBytes ?
         static_cast<int64>(progress.BytesTotal) : -1;
   }
   download_metrics.download_time_ms =

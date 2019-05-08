@@ -19,10 +19,12 @@
 #define BASE_EVENT_TRACE_PROVIDER_H_
 
 #include <windows.h>
-#include <wmistr.h>
 #include <evntrace.h>
-#include "omaha/base/debug.h"
+#include <wmistr.h>
+#include <stdint.h>
+#include <limits>
 #include "base/basictypes.h"
+#include "omaha/base/debug.h"
 
 namespace omaha {
 
@@ -70,7 +72,7 @@ template <size_t N> class EtwMofEvent: public EtwMofEventBase<N> {
 
   void SetField(int field, size_t size, const void *data) {
     ASSERT1(field < N);
-    if ((field < N) && (size <= kuint32max)) {
+    if ((field < N) && (size <= std::numeric_limits<uint32_t>::max())) {
       fields[field].DataPtr = reinterpret_cast<ULONG_PTR>(data);
       fields[field].Length = static_cast<ULONG>(size);
     }

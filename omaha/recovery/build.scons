@@ -35,6 +35,9 @@ rec_env.Append(
         ],
 )
 
+if env.Bit('use_precompiled_headers'):
+  recovery_inputs += rec_env.EnablePrecompile('google_update_recovery')
+
 # Need to add custom suffix to avoid target conflict with
 # common/signaturevalidator.obj
 rec_env['OBJSUFFIX'] = '_rec' + rec_env['OBJSUFFIX']

@@ -123,6 +123,12 @@ gmock_env.ComponentLibrary(
 lzma_env = env.Clone()
 lzma_env.Dir('lzma').addRepository(env.Dir('$THIRD_PARTY/lzma'))
 lzma_env.FilterOut(CCFLAGS=['/RTC1'])
+lzma_env.Append(
+    CCFLAGS = [
+      '/wd4456',  # declaration of '...' hides previous local declaration
+      '/wd4457',  # declaration of '...' hides function parameter
+    ],
+)
 lzma_env.ComponentLibrary(
     lib_name='lzma',
     source=[

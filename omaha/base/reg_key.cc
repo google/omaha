@@ -835,10 +835,6 @@ bool RegKey::HasKey(const TCHAR * full_key_name) {
   return HasKeyHelper(full_key_name, KEY_READ);
 }
 
-bool RegKey::HasNativeKey(const TCHAR * full_key_name) {
-  return HasKeyHelper(full_key_name, KEY_READ | KEY_WOW64_64KEY);
-}
-
 bool RegKey::HasKeyHelper(const TCHAR * full_key_name, DWORD sam_flags) {
   ASSERT1(full_key_name);
   ASSERT1(sam_flags & KEY_READ);
@@ -1040,7 +1036,7 @@ RegKey::RootKeyInfo RegKey::GetRootKeyInfo(CString* full_key_name) {
     root_key = *full_key_name;
     *full_key_name = _T("");
   } else {
-    root_key= full_key_name->Left(index);
+    root_key = full_key_name->Left(index);
     *full_key_name =
         full_key_name->Right(full_key_name->GetLength() - index - 1);
   }
@@ -1057,7 +1053,8 @@ RegKey::RootKeyInfo RegKey::GetRootKeyInfo(CString* full_key_name) {
   } else if (!root_key.CompareNoCase(_T("HKCR")) ||
              !root_key.CompareNoCase(_T("HKEY_CLASSES_ROOT"))) {
     result.key = HKEY_CLASSES_ROOT;
-  } else if (!root_key.CompareNoCase(_T("HKLM[64]"))) {
+  } else if (!root_key.CompareNoCase(_T("HKLM[64]")) ||
+             !root_key.CompareNoCase(_T("HKEY_LOCAL_MACHINE[64]"))) {
     result.key = HKEY_LOCAL_MACHINE;
     result.wow_override = k64BitView;
   }

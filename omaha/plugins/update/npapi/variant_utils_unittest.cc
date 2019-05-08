@@ -15,8 +15,10 @@
 
 #include "omaha/plugins/update/npapi/variant_utils.h"
 #include <atlbase.h>
-#include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+#include <limits>
 #include "omaha/plugins/update/npapi/testing/dispatch_host_test_interface.h"
 #include "omaha/plugins/update/npapi/testing/stubs.h"
 #include "omaha/testing/unit_test.h"
@@ -108,17 +110,17 @@ TEST_F(VariantUtilsTest, NPVariantToVariant_Bool) {
 }
 
 TEST_F(VariantUtilsTest, NPVariantToVariant_Int32) {
-  INT32_TO_NPVARIANT(kint32min, np_variant_);
+  INT32_TO_NPVARIANT(std::numeric_limits<int32_t>::min(), np_variant_);
   TestNPV2V();
-  EXPECT_EQ(kint32min, V_I4(&variant_));
+  EXPECT_EQ(std::numeric_limits<int32_t>::min(), V_I4(&variant_));
 
   INT32_TO_NPVARIANT(0, np_variant_);
   TestNPV2V();
   EXPECT_EQ(0, V_I4(&variant_));
 
-  INT32_TO_NPVARIANT(kint32max, np_variant_);
+  INT32_TO_NPVARIANT(std::numeric_limits<int32_t>::max(), np_variant_);
   TestNPV2V();
-  EXPECT_EQ(kint32max, V_I4(&variant_));
+  EXPECT_EQ(std::numeric_limits<int32_t>::max(), V_I4(&variant_));
 }
 
 TEST_F(VariantUtilsTest, NPVariantToVariant_Double) {
@@ -130,10 +132,11 @@ TEST_F(VariantUtilsTest, NPVariantToVariant_Double) {
   TestNPV2V();
   EXPECT_DOUBLE_EQ(0, V_R8(&variant_));
 
-  DOUBLE_TO_NPVARIANT(static_cast<double>(kuint64max),
+  DOUBLE_TO_NPVARIANT(static_cast<double>(std::numeric_limits<uint64_t>::max()),
                       np_variant_);
   TestNPV2V();
-  EXPECT_DOUBLE_EQ(static_cast<double>(kuint64max), V_R8(&variant_));
+  EXPECT_DOUBLE_EQ(static_cast<double>(std::numeric_limits<uint64_t>::max()),
+                   V_R8(&variant_));
 }
 
 TEST_F(VariantUtilsTest, NPVariantToVariant_String) {
@@ -198,17 +201,17 @@ TEST_F(VariantUtilsTest, VariantToNPVariant_VT_BOOL) {
 }
 
 TEST_F(VariantUtilsTest, VariantToNPVariant_VT_I4) {
-  variant_ = kint32max;
+  variant_ = std::numeric_limits<int32_t>::max();
   TestV2NPV();
-  EXPECT_EQ(kint32max, np_variant_.value.intValue);
+  EXPECT_EQ(std::numeric_limits<int32_t>::max(), np_variant_.value.intValue);
 
   variant_ = 0;
   TestV2NPV();
   EXPECT_EQ(0, np_variant_.value.intValue);
 
-  variant_ = kint32min;
+  variant_ = std::numeric_limits<int32_t>::min();
   TestV2NPV();
-  EXPECT_EQ(kint32min, np_variant_.value.intValue);
+  EXPECT_EQ(std::numeric_limits<int32_t>::min(), np_variant_.value.intValue);
 }
 
 TEST_F(VariantUtilsTest, VariantToNPVariant_VT_UI4) {
@@ -216,13 +219,13 @@ TEST_F(VariantUtilsTest, VariantToNPVariant_VT_UI4) {
   TestV2NPV();
   EXPECT_EQ(0, np_variant_.value.intValue);
 
-  variant_ = static_cast<uint32>(kint32max);
+  variant_ = static_cast<uint32>(std::numeric_limits<int32_t>::max());
   TestV2NPV();
-  EXPECT_EQ(kint32max, np_variant_.value.intValue);
+  EXPECT_EQ(std::numeric_limits<int32_t>::max(), np_variant_.value.intValue);
 
   // MSIE can natively support VT_UI4. Unfortunately, Firefox cannot.
   // Check that kuint32max wraps around to -1.
-  variant_ = kuint32max;
+  variant_ = std::numeric_limits<uint32_t>::max();
   TestV2NPV();
   EXPECT_EQ(-1, np_variant_.value.intValue);
 }
@@ -236,9 +239,9 @@ TEST_F(VariantUtilsTest, VariantToNPVariant_VT_R8) {
   TestV2NPV();
   EXPECT_DOUBLE_EQ(-1.0, np_variant_.value.doubleValue);
 
-  variant_ = static_cast<double>(kuint64max);
+  variant_ = static_cast<double>(std::numeric_limits<uint64_t>::max());
   TestV2NPV();
-  EXPECT_DOUBLE_EQ(static_cast<double>(kuint64max),
+  EXPECT_DOUBLE_EQ(static_cast<double>(std::numeric_limits<uint64_t>::max()),
                    np_variant_.value.doubleValue);
 }
 
