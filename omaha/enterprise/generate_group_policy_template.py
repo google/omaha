@@ -20,9 +20,12 @@ The resulting strings and files use CRLF as required by gpedit.msc.
 To unit test this module, just run the file from the command line.
 """
 
+from __future__ import print_function
+
 import codecs
 import filecmp
 import os
+import string
 import sys
 
 
@@ -396,6 +399,8 @@ HORIZONTAL_RULE +
 '; Individual Applications\n' +
 HORIZONTAL_RULE)
 
+DEFAULT_ROLLBACK_DISCLAIMER = """This policy is meant to serve as temporary measure when Enterprise Administrators need to downgrade for business reasons. To ensure users are protected by the latest security updates, the most recent version should be used. When versions are downgraded to older versions, there could be incompatibilities."""
+
 STRINGS_APP_POLICY_EXPLANATIONS_TEMPLATE = ("""
 ; $AppName$
 Explain_Install$AppLegalId$=Specifies whether $AppName$ can be installed using Google Update/Google Installer.\\
@@ -418,7 +423,7 @@ Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should 
     \\n\\nThis policy setting has no effect unless \"""" + TARGET_VERSION_POLICY + """\" is set.\\
     \\n\\nIf this policy is not configured or is disabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be left as-is.\\
     \\n\\nIf this policy is enabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be downgraded to the highest available version that matches the target version.\\
-    \\n\\nThis policy is meant to serve as temporary measure when Enterprise Administrators need to downgrade for business reasons. To ensure users are protected by the latest security updates, the most recent version should be used. When versions are downgraded to older versions, there could be incompatibilities.
+    \\n\\n$AppRollbackDisclaimer$
 """
 
 # pylint: enable-msg=C6013
@@ -509,12 +514,16 @@ def GenerateGroupPolicyTemplate(apps):
       strings.
     """
 
-    (app_name, app_guid, update_explain_extra) = app
+    (app_name, app_guid, update_explain_extra, rollback_disclaimer) = app
+    if not rollback_disclaimer:
+      rollback_disclaimer = DEFAULT_ROLLBACK_DISCLAIMER
+    rollback_disclaimer = string.replace(rollback_disclaimer, '\n', '\\n')
     # pylint: disable-msg=C6004
     return (template.replace('$AppName$', app_name)
                     .replace('$AppLegalId$', _CreateLegalIdentifier(app_name))
                     .replace('$AppGuid$', app_guid)
                     .replace('$AppUpdateExplainExtra$', update_explain_extra)
+                    .replace('$AppRollbackDisclaimer$', rollback_disclaimer)
            )
     # pylint: enable-msg=C6004
 
@@ -575,10 +584,12 @@ if __name__ == '__main__':
   TEST_APPS = [
       ('Google Test Foo',
        '{D6B08267-B440-4c85-9F79-E195E80D9937}',
-       ' Check http://www.google.com/test_foo/.'),
+       ' Check http://www.google.com/test_foo/.',
+       'Disclaimer'),
       (u'Google User Test Foo\u00a9\u00ae\u2122',
        '{104844D6-7DDA-460b-89F0-FBF8AFDD0A67}',
-       ' Check http://www.google.com/user_test_foo/.'),
+       ' Check http://www.google.com/user_test_foo/.',
+       ''),
       ]
   TEST_GOLD_FILENAME = 'test_gold.adm'
   TEST_OUTPUT_FILENAME = 'test_out.adm'
@@ -590,7 +601,7 @@ if __name__ == '__main__':
   WriteGroupPolicyTemplate(output_path, TEST_APPS)
 
   if filecmp.cmp(gold_path, output_path, shallow=False):
-    print 'PASS: Contents equal.'
+    print('PASS: Contents equal.')
   else:
-    print 'FAIL: Contents not equal.'
+    print('FAIL: Contents not equal.')
     sys.exit(-1)
