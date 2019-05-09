@@ -94,9 +94,10 @@ _OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2018 Google LLC'
 
 # Reads the value of OMAHA_MSC_VER to determine which compiler/toolchain to use.
 # The set of expected values are in omaha_version_utils.
-# Defaults to VC150 (Visual Studio 2017) if the environment variable is not
+# Defaults to VC142 (Visual Studio 2019) if the environment variable is not
 # specified.
-_msc_ver = int(os.getenv('OMAHA_MSC_VER', "1910"))
+_msc_ver = int(os.getenv('OMAHA_MSC_VER', "1920"))
+
 _sdk_dir = os.getenv('WindowsSdkDir', os.getenv('OMAHA_PLATFORM_SDK_DIR'))
 if (_sdk_dir is None):
     _sdk_dir = ('$THIRD_PARTY/%s/files' %
@@ -127,7 +128,7 @@ win_env = Environment(
     tools=[
         'component_setup',
         'target_platform_windows',
-        { omaha_version_utils.VC160:'windows_vc16_0',
+        { omaha_version_utils.VC160:'windows_vc16_0_host64_x86',
           omaha_version_utils.VC150:'windows_vc15_0_host64_x86',
           omaha_version_utils.VC140:'windows_vc14_0',
           omaha_version_utils.VC120:'windows_vc12_0',
@@ -469,6 +470,7 @@ win_env.AppendUnique(
                     # signed/unsigned mismatch
         '/wd4371',  # layout of class may have changed from a previous version
                     # of the compiler due to better packing of member
+        '/wd4505',  # unreferenced local function has been removed
         '/wd4510',  # default constructor could not be generated
         '/wd4512',  # assignment operator could not be generated
         '/wd4514',  # unreferenced inline function has been removed
@@ -476,6 +478,8 @@ win_env.AppendUnique(
         '/wd4555',  # expression has no effect
         '/wd4577',  # 'noexcept' used with no exception handling mode specified;
                     # termination on exception is not guaranteed.
+        '/wd4605',  # '...' specified on current command line, but was not
+                    # specified when precompiled header was built.
         '/wd4610',  # struct can never be instantiated
         '/wd4619',  # there is no warning number 'number'
         '/wd4623',  # default constructor could not be generated...

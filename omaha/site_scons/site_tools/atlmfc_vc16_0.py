@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc.
+# Copyright 2019 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +13,7 @@
 # limitations under the License.
 # ========================================================================
 
-"""Windows ATL MFC for VC16 (Visual Studio 2019) tool for SCons.
-
-Note that ATL MFC requires the commercial (non-free) version of Visual Studio
-2019.
-"""
+# Windows ATL MFC for VC15 (Visual Studio 2017) tool for SCons.
 
 import os
 
