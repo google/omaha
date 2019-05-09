@@ -25,7 +25,6 @@
 #include "omaha/tools/goopdump/data_dumper_app_manager.h"
 #include "omaha/tools/goopdump/data_dumper_goopdate.h"
 #include "omaha/tools/goopdump/data_dumper_network.h"
-#include "omaha/tools/goopdump/data_dumper_oneclick.h"
 #include "omaha/tools/goopdump/data_dumper_osdata.h"
 #include "omaha/tools/goopdump/process_commandline.h"
 #include "omaha/tools/goopdump/process_monitor.h"
@@ -94,10 +93,6 @@ HRESULT Goopdump::Main(const TCHAR* cmd_line, int argc, TCHAR** argv) {
     data_dumpers.push_back(new DataDumperOSData());
     data_dumpers.push_back(new DataDumperNetwork());
     data_dumpers.push_back(new DataDumperGoopdate());
-  }
-
-  if (args_.is_dump_oneclick) {
-    data_dumpers.push_back(new DataDumperOneClick());
   }
 
   if (args_.is_dump_app_manager) {

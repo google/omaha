@@ -141,7 +141,6 @@ const TCHAR* const kRegValueCommandLine        = _T("CommandLine");
 const TCHAR* const kRegValueReportingId        = _T("ReportingId");
 const TCHAR* const kRegValueRunAsUser          = _T("RunAsUser");
 const TCHAR* const kRegValueSendsPings         = _T("SendsPings");
-const TCHAR* const kRegValueWebAccessible      = _T("WebAccessible");
 
 // Registry value in an app's Clients key that contains a registration update
 // hook CLSID.

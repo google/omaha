@@ -92,12 +92,6 @@ class MockAppCommandVerifier : public AppCommandVerifier {
 
 }  // namespace
 
-TEST(AppCommandTest, Constructor) {
-  AppCommand app_command(kCmdLineExit0, true, false, false, false, NULL);
-  ASSERT_TRUE(app_command.is_web_accessible());
-  // TODO(erikwright): other accessors, variations.
-}
-
 TEST(AppCommandTest, Execute) {
   CString temp_file = GetTempFilename(_T("omaha"));
   ASSERT_FALSE(temp_file.IsEmpty());
@@ -110,7 +104,7 @@ TEST(AppCommandTest, Execute) {
 
   CString command_line = GetEchoCommandLine(_T("hello world!"), temp_file);
 
-  AppCommand app_command(command_line, false, false, true, false, NULL);
+  AppCommand app_command(command_line, false, true, false, NULL);
 
   ASSERT_EQ(COMMAND_STATUS_INIT, app_command.GetStatus());
   ASSERT_EQ(MAXDWORD, app_command.GetExitCode());
@@ -139,7 +133,7 @@ TEST(AppCommandTest, Execute) {
 
 TEST(AppCommandTest, NoDefaultCapture) {
   AppCommand app_command(
-      kCmdLineEchoHelloWorldAscii, false, false, false, false, NULL);
+      kCmdLineEchoHelloWorldAscii, false, false, false, NULL);
 
   scoped_process process;
 
@@ -156,7 +150,7 @@ TEST(AppCommandTest, NoDefaultCapture) {
 
 TEST(AppCommandTest, CaptureOutputAscii) {
   AppCommand app_command(kCmdLineEchoHelloWorldAscii,
-                         false, false, true, false, NULL);
+                         false, true, false, NULL);
 
   scoped_process process;
 
@@ -173,7 +167,7 @@ TEST(AppCommandTest, CaptureOutputAscii) {
 
 TEST(AppCommandTest, CaptureOutputTwoReads) {
   AppCommand app_command(kCmdLineEchoWithSleep,
-                         false, false, true, false, NULL);
+                         false, true, false, NULL);
 
   scoped_process process;
 
@@ -191,7 +185,7 @@ TEST(AppCommandTest, CaptureOutputTwoReads) {
 
 TEST(AppCommandTest, CaptureOutputUnicode) {
   AppCommand app_command(
-      kCmdLineEchoHelloWorldUnicode, false, false, true, false, NULL);
+      kCmdLineEchoHelloWorldUnicode, false, true, false, NULL);
 
   scoped_process process;
 
@@ -207,7 +201,7 @@ TEST(AppCommandTest, CaptureOutputUnicode) {
 }
 
 TEST(AppCommandTest, ExecuteParameterizedCommand) {
-  AppCommand app_command(kCmdLineExitX, false, false, false, false, NULL);
+  AppCommand app_command(kCmdLineExitX, false, false, false, NULL);
 
   scoped_process process;
   std::vector<CString> parameters;
@@ -224,7 +218,7 @@ TEST(AppCommandTest, ExecuteParameterizedCommand) {
 }
 
 TEST(AppCommandTest, FailedToLaunchStatus) {
-  AppCommand app_command(kBadCmdLine, false, false, false, false, NULL);
+  AppCommand app_command(kBadCmdLine, false, false, false, NULL);
 
   ASSERT_EQ(COMMAND_STATUS_INIT, app_command.GetStatus());
   ASSERT_EQ(MAXDWORD, app_command.GetExitCode());
@@ -239,7 +233,7 @@ TEST(AppCommandTest, FailedToLaunchStatus) {
 }
 
 TEST(AppCommandTest, CommandFailureStatus) {
-  AppCommand app_command(kCmdLineExit3, false, false, false, false, NULL);
+  AppCommand app_command(kCmdLineExit3, false, false, false, NULL);
 
   ASSERT_EQ(COMMAND_STATUS_INIT, app_command.GetStatus());
   ASSERT_EQ(MAXDWORD, app_command.GetExitCode());
@@ -256,7 +250,7 @@ TEST(AppCommandTest, CommandFailureStatus) {
 }
 
 TEST(AppCommandTest, CommandRunningStatus) {
-  AppCommand app_command(kCmdLineSleep1, false, false, false, false, NULL);
+  AppCommand app_command(kCmdLineSleep1, false, false, false, NULL);
 
   ASSERT_EQ(COMMAND_STATUS_INIT, app_command.GetStatus());
   ASSERT_EQ(MAXDWORD, app_command.GetExitCode());
@@ -278,7 +272,7 @@ TEST(AppCommandTest, CommandRunningStatus) {
 }
 
 TEST(AppCommandTest, AutoRunOnOSUpgradeCommand) {
-  AppCommand app_command(kCmdLineExit3, false, false, false, true, NULL);
+  AppCommand app_command(kCmdLineExit3, false, false, true, NULL);
 
   ASSERT_EQ(COMMAND_STATUS_INIT, app_command.GetStatus());
   ASSERT_EQ(MAXDWORD, app_command.GetExitCode());

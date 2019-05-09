@@ -71,7 +71,7 @@ void AppCommandPingDelegate::SendPing(PingEvent::Types type,
   PingEventPtr ping_event(
       new PingEvent(type, result, error_code, reporting_id_));
 
-  Ping ping(is_machine_, session_id_, kCmdLineInstallSource_OneClick);
+  Ping ping(is_machine_, session_id_, CString());
   std::vector<CString> apps;
   apps.push_back(app_guid_);
   ping.LoadAppDataFromRegistry(apps);

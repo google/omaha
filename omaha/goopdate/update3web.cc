@@ -482,27 +482,9 @@ STDMETHODIMP AppWeb::get_nextVersionWeb(IDispatch** next) {
 STDMETHODIMP AppWeb::get_command(BSTR command_id, IDispatch** command) {
   ASSERT1(command);
   *command = NULL;
-
-  CComPtr<IAppCommand2> app_command;
-  HRESULT hr = update3_utils::GetAppCommand(app_, command_id, &app_command);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  if (hr == S_FALSE) {
-    return S_FALSE;
-  }
-  ASSERT1(app_command);
-
-  VARIANT_BOOL is_web_accessible;
-  hr = app_command->get_isWebAccessible(&is_web_accessible);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  if (!is_web_accessible) {
-    return E_ACCESSDENIED;
-  }
-
-  return ComInitHelper<AppCommandWeb>(app_command.p, command);
+  // No access to commands from IAppWeb
+  UNREFERENCED_PARAMETER(command_id);
+  return E_ACCESSDENIED;
 }
 
 STDMETHODIMP AppWeb::cancel() {

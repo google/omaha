@@ -77,10 +77,6 @@ class AppCommandModel : public ModelObject {
   // returns an empty string.
   CString GetOutput();
 
-  // Returns true if this command is allowed to be invoked through the
-  // OneClick control.
-  bool is_web_accessible() const;
-
  private:
   std::unique_ptr<AppCommand> app_command_;
 

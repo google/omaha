@@ -113,8 +113,6 @@ const TCHAR* const kOmahaBrokerFileName        =
     MAIN_EXE_BASE_NAME _T("Broker.exe");
 const TCHAR* const kOmahaOnDemandFileName      =
     MAIN_EXE_BASE_NAME _T("OnDemand.exe");
-const TCHAR* const kOmahaWebPluginFileName      =
-    MAIN_EXE_BASE_NAME _T("WebPlugin.exe");
 const TCHAR* const kCrashHandlerFileName   = CRASH_HANDLER_NAME _T(".exe");
 const TCHAR* const kCrashHandler64FileName = CRASH_HANDLER_NAME _T("64.exe");
 const TCHAR* const kOmahaMetainstallerFileName =
@@ -126,9 +124,6 @@ const TCHAR* const kPSFileNameMachine  = _T("psmachine.dll");
 const TCHAR* const kPSFileNameMachine64= _T("psmachine_64.dll");
 const TCHAR* const kPSFileNameUser     = _T("psuser.dll");
 const TCHAR* const kPSFileNameUser64   = _T("psuser_64.dll");
-
-// TODO(omaha): Replace the following literal in clickonce\build.scons.
-// '%s/GoogleUpdateSetup.exe'
 
 // These must be in sync with the WiX files.
 // TODO(omaha): Make these constants in main.scons and use them in the .wxs
@@ -248,15 +243,6 @@ const TCHAR* const kChromeAppId = CHROME_APP_ID;
 // Expands to HKEY_LOCAL_MACHINE\SOFTWARE\Google\UpdateDev
 #define MACHINE_REG_UPDATE_DEV MACHINE_KEY REG_UPDATE_DEV
 
-// Regular expressions for the servers allowed to use the Omaha plugins.
-const TCHAR* const kSiteLockPatternStrings[] = {
-  _T("^(gears)|(mail)|(tools)|(www)|(desktop)|(pack)|(chrome)|(drive)\\.google\\.com$"),  // NOLINT
-  _T("^www\\.google\\.(ad)|(bg)|(ca)|(cn)|(cz)|(de)|(es)|(fi)|(fr)|(gr)|(hr)|(hu)|(it)|(ki)|(kr)|(lt)|(lv)|(nl)|(no)|(pl)|(pt)|(ro)|(ru)|(sk)|(sg)|(sl)|(sr)|(vn)$"),  // NOLINT
-  _T("^www\\.google\\.co\\.(hu)|(id)|(il)|(it)|(jp)|(kr)|(th)|(uk)$"),
-  _T("^www\\.google\\.com\\.(ar)|(au)|(br)|(cn)|(et)|(gr)|(hr)|(ki)|(lv)|(om)|(pl)|(pt)|(ru)|(sg)|(sv)|(tr)|(vn)$"),  // NOLINT
-  _T("^(www\\.)?chrome\\.com$"),
-};
-
 //
 // Minimum compatible shell version.
 // Shell versions equal to or newer than the following version are compatible
@@ -322,13 +308,6 @@ const TCHAR* const kRegValueLastCheckPeriodSec = _T("LastCheckPeriodSec");
 
 // Uses the production or the test cup keys.
 const TCHAR* const kRegValueCupKeys            = _T("TestKeys");
-
-// Allow a custom host pattern to be specified. For example,
-// "^https?://some_test_server\.google\.com/". For other examples, see
-// kSiteLockPatternStrings. The detailed regular expression syntax is documented
-// in the MSDN documentation for the CAtlRegExp class:
-// http://msdn.microsoft.com/en-us/library/k3zs4axe.aspx.
-const TCHAR* const kRegValueOneClickHostPattern = _T("OneClickHostPattern");
 
 // Disables executable verification for application commands.
 const TCHAR* const kRegValueSkipCommandVerification =

@@ -37,8 +37,6 @@ class AppCommandCompletionObserver;
 class AppCommand {
  public:
   // Instantiates an application command corresponding to |cmd_line|.
-  // |is_web_accessible| is an access control flag (that it is the client's
-  // responsibility to enforce.
   // |run_as_user| must be false for user-level commands. Otherwise, it
   // indicates whether the command should run as a medium-integrity user or with
   // system-integrity.
@@ -53,7 +51,6 @@ class AppCommand {
   // which will only be destroyed when both the launched process has completed
   // and the AppCommand instance has been destroyed.
   AppCommand(const CString& cmd_line,
-             bool is_web_accessible,
              bool run_as_user,
              bool capture_output,
              bool auto_run_on_os_upgrade,
@@ -88,13 +85,8 @@ class AppCommand {
   // completes. Returns true if the command has completed.
   bool Join(int timeoutMs);
 
-  // Returns true if this command is allowed to be invoked through the
-  // OneClick control.
-  bool is_web_accessible() const { return is_web_accessible_; }
-
  private:
   const AppCommandFormatter command_formatter_;
-  const bool is_web_accessible_;
   const bool run_as_user_;
   const bool capture_output_;
   const bool auto_run_on_os_upgrade_;

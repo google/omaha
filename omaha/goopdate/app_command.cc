@@ -30,13 +30,11 @@
 namespace omaha {
 
 AppCommand::AppCommand(const CString& cmd_line,
-                       bool is_web_accessible,
                        bool run_as_user,
                        bool capture_output,
                        bool auto_run_on_os_upgrade,
                        AppCommandDelegate* delegate)
     : command_formatter_(cmd_line),
-      is_web_accessible_(is_web_accessible),
       run_as_user_(run_as_user),
       capture_output_(capture_output),
       auto_run_on_os_upgrade_(auto_run_on_os_upgrade),

@@ -81,10 +81,10 @@ _OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2018 Google LLC'
 
 
 # TODO(omaha): Allow open source Omaha to be built without the Recovery MSI,
-# which requires an extra certificate file and is unlikely to be used, or
-# ClickOnce, which requires specifying a certificate hash. Disabling Recovery
-# by default also means the open source build will work by default without
-# having to check in SaveArguments.exe to SVN every 100 days.
+# which requires an extra certificate file and is unlikely to be used
+# Disabling Recovery by default also means the open source build will work
+# by default without having to check in SaveArguments.exe to
+# SVN every 100 days.
 # TODO(omaha3): Allow open source Omaha to be built without support for
 # Omaha 2's COM APIs.
 
@@ -183,8 +183,8 @@ if win_env['ENV'].has_key('SYSTEMROOT'):
 win_env['COMPONENT_TEST_SUBSYSTEM_WINDOWS'] = 1
 
 # Declare command line options relating to code signing
-# authenticode_file and authenticode_password are used by the normal signing
-# tool and to sign manifests for ClickOnce.
+# authenticode_file and authenticode_password are used by
+# the normal signing tool
 # patching_certificate is used to create patchable MSI installers and MSPs.
 # authenticode_file and authenticode_password are only used if !build_server.
 # patching_certificate is used in all cases.
@@ -591,18 +591,6 @@ win_env.AppendUnique(
         'MAIN_DLL_BASE_NAME_ANSI=\\"%s\\"' % _MAIN_DLL_BASE_NAME,
         'OFFICIAL_BUILD=%d' % win_env.Bit('build_server'),
         'TEST_CERTIFICATE=%d' % win_env.Bit('test_certificate'),
-        'ONECLICK_PLUGIN_NAME=_T(\\"%s\\")' % (
-            omaha_version_utils.GetONECLICK_PLUGIN_NAME()),
-        'ONECLICK_PLUGIN_VERSION_ANSI=\\"%d\\"' % (
-            omaha_version_info.oneclick_plugin_version),
-        'ONECLICK_PLUGIN_FILENAME=_T(\\"%s\\")' % (
-            omaha_version_info.oneclick_plugin_filename),
-        'UPDATE_PLUGIN_NAME=_T(\\"%s\\")' % (
-            omaha_version_utils.GetUPDATE_PLUGIN_NAME()),
-        'UPDATE_PLUGIN_VERSION_ANSI=\\"%d\\"' % (
-            omaha_version_info.update_plugin_version),
-        'UPDATE_PLUGIN_FILENAME=_T(\\"%s\\")' % (
-            omaha_version_info.update_plugin_filename),
         'CRASH_HANDLER_NAME=_T(\\"%s\\")' %
             omaha_version_utils.GetCRASH_HANDLER_NAME(),
         ],
@@ -720,7 +708,6 @@ if win_env.Bit('suppress_light_validation'):
 _base_dirs = [
     '.',
     'base',
-    'clickonce',
     'client',
     'common',
     'core',
@@ -739,7 +726,6 @@ _base_dirs = [
 _normal_dirs = [
     'installers',
     'mi_exe_stub',
-    #'plugins',
     'recovery',
     ]
 

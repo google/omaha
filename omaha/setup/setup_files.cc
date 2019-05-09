@@ -312,6 +312,8 @@ HRESULT SetupFiles::BuildFileLists() {
 
   core_program_files_.push_back(kPSFileNameUser);
   core_program_files_.push_back(kPSFileNameUser64);
+  // Machine-specific files are always installed, to support cross installs from
+  // user to machine and machine to user.
   core_program_files_.push_back(kPSFileNameMachine);
   core_program_files_.push_back(kPSFileNameMachine64);
 
@@ -321,14 +323,8 @@ HRESULT SetupFiles::BuildFileLists() {
   // If files are removed from this list, unit tests such as
   // ShouldInstall_SameVersionOptionalFileMissing may need to be updated.
   optional_files_.clear();
-  //optional_files_.push_back(UPDATE_PLUGIN_FILENAME);
   optional_files_.push_back(kOmahaBrokerFileName);
   optional_files_.push_back(kOmahaOnDemandFileName);
-  //optional_files_.push_back(kOmahaWebPluginFileName);
-
-  // Machine-specific files are always installed, to support cross installs from
-  // user to machine and machine to user.
-
   return S_OK;
 }
 

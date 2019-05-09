@@ -253,13 +253,6 @@ if omaha_unittest_env.Bit('has_device_management'):
 if omaha_unittest_env.IsBuildingModule('mi_exe_stub'):
   omaha_unittest_libs.append('$LIB_DIR/bcj2_lib.lib')
 
-if omaha_unittest_env.IsBuildingModule('plugins'):
-  omaha_unittest_libs += [
-      '$LIB_DIR/update.lib',
-      '$LIB_DIR/update_control_idl_guids_lib.lib',
-      '$LIB_DIR/update_test_helpers.lib',
-  ]
-
 if omaha_unittest_env.IsBuildingModule('recovery'):
   omaha_unittest_libs += [
       '$LIB_DIR/executecustomaction_lib',
@@ -451,7 +444,6 @@ omaha_unittest_inputs = [
     '../common/stats_uploader_unittest.cc',
     '../common/update_request_unittest.cc',
     '../common/url_utils_unittest.cc',
-    '../common/webplugin_utils_unittest.cc',
     '../common/web_services_client_unittest.cc',
     '../common/xml_parser_unittest.cc',
 
@@ -570,19 +562,6 @@ if omaha_unittest_env.IsBuildingModule('mi_exe_stub'):
       '../mi_exe_stub/x86_encoder/bcj2_encoder_unittest.cc',
   ]
 
-if omaha_unittest_env.IsBuildingModule('plugins'):
-  omaha_unittest_inputs += [
-      # Plugin unit tests.
-      '../plugins/update/omaha_customization_update_apis_unittest.cc',
-      '../plugins/update/omaha_customization_update_unittest.cc',
-      '../plugins/update/activex/update3web_control_unittest.cc',
-      '../plugins/update/npapi/dispatch_host_unittest.cc',
-      '../plugins/update/npapi/npfunction_host_unittest.cc',
-      '../plugins/update/npapi/variant_utils_unittest.cc',
-      '../plugins/update/site_lock_unittest.cc',
-      '$OBJ_ROOT/plugins/update/npapi/testing/dispatch_host_test.res',
-  ]
-
 if omaha_unittest_env.IsBuildingModule('recovery'):
   omaha_unittest_inputs += [
       # Recovery unit tests.
@@ -659,11 +638,6 @@ omaha_unittest_env.Depends(test, '$STAGING_DIR/GoogleUpdateSetup_repair.exe')
 
 # Customization/UI tests depend on goopdate.dll (for TypeLib/resources)
 omaha_unittest_env.Depends(test, '$TESTS_DIR/goopdate.dll')
-
-# Customization test uses update plugin DLL (npGoogleUpdate3.dll) for TypeLib.
-#omaha_unittest_env.Depends(
-#    test,
-#    '$STAGING_DIR/%s' % env['omaha_versions_info'][0].update_plugin_filename)
 
 if env.Bit('all'):
   save_args_env = env.Clone()

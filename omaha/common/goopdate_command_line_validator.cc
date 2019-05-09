@@ -153,12 +153,6 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   CreateScenario(cmd_line,
                  &GoopdateCommandLineValidator::OnReportCrashInteractive);
 
-  // gu.exe /pi <domainurl> <args> /installsource <oneclick|update3web>
-  SafeCStringFormat(&cmd_line, _T("/%s domainurl args /%s src"),
-                    kCmdLineWebPlugin,
-                    kCmdLineInstallSource);
-  CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnWebPlugin);
-
   // gu.exe /cr
   SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineCodeRedCheck);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnCodeRed);
@@ -409,45 +403,6 @@ HRESULT GoopdateCommandLineValidator::OnReportCrashInteractive() {
   return parser_->GetSwitchArgumentValue(kCmdLineInteractive,
                                          0,
                                          &args_->crash_filename);
-}
-
-HRESULT GoopdateCommandLineValidator::OnWebPlugin() {
-  HRESULT hr = parser_->GetSwitchArgumentValue(kCmdLineInstallSource,
-                                               0,
-                                               &args_->install_source);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  // Validate install_source value.
-  args_->install_source.MakeLower();
-  if ((args_->install_source.Compare(kCmdLineInstallSource_OneClick) != 0) &&
-      (args_->install_source.Compare(kCmdLineInstallSource_Update3Web) != 0)) {
-    args_->install_source.Empty();
-    return E_INVALIDARG;
-  }
-
-  args_->mode = COMMANDLINE_MODE_WEBPLUGIN;
-
-  CString urldomain;
-  hr = parser_->GetSwitchArgumentValue(kCmdLineWebPlugin,
-                                       0,
-                                       &urldomain);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  hr = StringUnescape(urldomain, &args_->webplugin_urldomain);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  CString webplugin_args;
-  hr = parser_->GetSwitchArgumentValue(kCmdLineWebPlugin,
-                                       1,
-                                       &webplugin_args);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  return StringUnescape(webplugin_args, &args_->webplugin_args);
 }
 
 HRESULT GoopdateCommandLineValidator::OnCodeRed() {

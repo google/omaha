@@ -66,10 +66,6 @@ class AppCommandConfiguration {
 
   bool sends_pings() const { return sends_pings_; }
 
-  // Returns true if this command is allowed to be invoked through the
-  // OneClick control.
-  bool is_web_accessible() const { return is_web_accessible_; }
-
   bool run_as_user() const { return run_as_user_; }
 
   bool capture_output() const { return capture_output_; }
@@ -98,7 +94,6 @@ class AppCommandConfiguration {
                           const CString& command_id,
                           const CString& command_line,
                           bool sends_pings,
-                          bool is_web_accessible,
                           bool auto_run_on_os_upgrade,
                           DWORD reporting_id,
                           bool run_as_user,
@@ -112,7 +107,6 @@ class AppCommandConfiguration {
   // Configuration from the registry.
   const CString command_line_;
   const bool sends_pings_;
-  const bool is_web_accessible_;
   const bool run_as_user_;
   const bool capture_output_;
   const int reporting_id_;

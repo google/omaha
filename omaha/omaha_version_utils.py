@@ -17,8 +17,6 @@
 
 """Constants and utilities related to Omaha and tools versions"""
 
-_ONECLICK_PLUGIN_NAME = 'npGoogleOneClick'
-_UPDATE_PLUGIN_NAME = 'npGoogleUpdate'
 _CRASH_HANDLER_NAME = 'GoogleCrashHandler'
 
 # List of languages that are fully supported in the current build.
@@ -109,29 +107,24 @@ def _IsSupportedOmaha2Version(omaha_version):
 # All languages supported by this script currently have the same set of
 # languages, so the omaha_version_info parameter is unused.
 def _GetMetainstallerPayloadFilenames(prefix,
-                                      update_plugin_filename,
                                       languages,
                                       omaha_version):
   """Returns list of metainstaller payload files for specified Omaha version."""
-  plugin_dll_name = '%s%s' % (prefix, update_plugin_filename)
 
   # The list of files below needs to be kept in sync with the list in
   # SetupFiles::BuildFileLists().
   # TODO(omaha): Move the other filename defines in main.scons into this file
-  # and allow all filenames to be customized.  At the moment, while the plugin
-  # names are generated in one place due to version numbers, most of the other
-  # files (googleupdate.exe, goopdateres_*.dll, etc.) are hardcoded all over
+  # and allow all filenames to be customized.  At the moment, most of the files
+  # (googleupdate.exe, goopdateres_*.dll, etc.) are hardcoded all over
   # the place, and require a ton of point fixes to customize.
   payload_files = [
       'GoogleUpdate.exe',
       '%s.exe' % _CRASH_HANDLER_NAME,
       '%sgoopdate.dll' % (prefix),
-      #plugin_dll_name,
       'GoogleUpdateHelper.msi',
       'GoogleUpdateBroker.exe',
       'GoogleUpdateOnDemand.exe',
       'GoogleUpdateComRegisterShell64.exe',
-      #'GoogleUpdateWebPlugin.exe',
       '%spsmachine.dll' % (prefix),
       '%spsmachine_64.dll' % (prefix),
       '%spsuser.dll' % (prefix),
@@ -139,7 +132,6 @@ def _GetMetainstallerPayloadFilenames(prefix,
       ]
 
   if _IsSupportedOmaha2Version(omaha_version):
-    #payload_files.remove(plugin_dll_name)
     payload_files.remove('GoogleUpdateBroker.exe')
     payload_files.remove('GoogleUpdateOnDemand.exe')
     payload_files.remove('GoogleUpdateComRegisterShell64.exe')
@@ -175,16 +167,6 @@ def _GetMetainstallerPayloadFilenames(prefix,
 def ConvertVersionToString(version):
   """Converts a four-element version list to a version string."""
   return '%d.%d.%d.%d' % (version[0], version[1], version[2], version[3])
-
-
-def GetONECLICK_PLUGIN_NAME():  # pylint: disable-msg=C6409
-  """Returns the value of the ONECLICK_PLUGIN_NAME define for the C++ code."""
-  return _ONECLICK_PLUGIN_NAME
-
-
-def GetUPDATE_PLUGIN_NAME():  # pylint: disable-msg=C6409
-  """Returns the value of the UPDATE_PLUGIN_NAME define for the C++ code."""
-  return _UPDATE_PLUGIN_NAME
 
 
 def GetCRASH_HANDLER_NAME():  # pylint: disable-msg=C6409
@@ -236,12 +218,11 @@ class OmahaVersionInfo(object):
     version_minor: Minor version.
     version_build: Build version.
     version_patch: Patch version.
-    oneclick_plugin_version: Version of the OneClick plug-in.
-    oneclick_plugin_filename: Name of the signed OneClick DLL.
-    update_plugin_version: Version of the Omaha 3 plug-in.
-    update_plugin_filename: Name of the signed Omaha 3 plug-in DLL.
+    upstream_version_major: Major version of the last upstream merge.
+    upstream_version_minor: Minor version of the last upstream merge.
+    upstream_version_build: Build version of the last upstream merge.
+    upstream_version_patch: Patch version of the last upstream merge.
     crash_handler_filename: Name of the Crash Handler EXE.
-    oneclick_signed_file_info: SignedFileInfo object for the OneClick DLL.
   """
 
   def __init__(self, version_file):
@@ -251,19 +232,8 @@ class OmahaVersionInfo(object):
     self.filename_prefix = ''
 
     # Objects containing more properties used to build the file.
-    self.oneclick_signed_file_info = SignedFileInfo(
-        _ONECLICK_PLUGIN_NAME,
-        'dll',
-        self.oneclick_plugin_version)
-    self.plugin_signed_file_info = SignedFileInfo(
-        _UPDATE_PLUGIN_NAME,
-        'dll',
-        self.update_plugin_version)
-
     # Simple properties for callers that only need the final filename. Not
     # affected by internal build changes.
-    self.oneclick_plugin_filename = self.oneclick_signed_file_info.filename
-    self.update_plugin_filename = self.plugin_signed_file_info.filename
     self.crash_handler_filename = _CRASH_HANDLER_NAME
 
   def _ReadFile(self, version_file):
@@ -290,17 +260,6 @@ class OmahaVersionInfo(object):
     self.version_minor = version_minor
     self.version_build = version_build
     self.version_patch = version_patch
-
-    self.oneclick_plugin_version = oneclick_plugin_version
-
-    # update_plugin_version does not exist in Omaha 2 VERSION file. Handle this.
-    try:
-      self.update_plugin_version = update_plugin_version
-    except NameError:
-      if _IsSupportedOmaha2Version(self.GetVersion()):
-        self.update_plugin_version = -1
-      else:
-        raise
 
     # pylint: enable-msg=E0602
 
@@ -340,7 +299,6 @@ class OmahaVersionInfo(object):
   def GetMetainstallerPayloadFilenames(self):
     """Returns list of metainstaller payload files for this version of Omaha."""
     return _GetMetainstallerPayloadFilenames(self.filename_prefix,
-                                             self.update_plugin_filename,
                                              self.GetSupportedLanguages(),
                                              self.GetVersion())
 

@@ -41,36 +41,6 @@
 
 namespace omaha {
 
-// These definitions are not in any current Microsoft SDK header file. Taken
-// from platformsdk/v6_1/files/Include/ObjIdl.h.
-MIDL_INTERFACE("0000015B-0000-0000-C000-000000000046")
-IGlobalOptions : public IUnknown {
- public:
-    virtual HRESULT STDMETHODCALLTYPE Set(
-        /* [in] */ DWORD dwProperty,
-        /* [in] */ ULONG_PTR dwValue) = 0;
-
-    virtual HRESULT STDMETHODCALLTYPE Query(
-        /* [in] */ DWORD dwProperty,
-        /* [out] */ ULONG_PTR *pdwValue) = 0;
-};
-
-enum __MIDL___MIDL_itf_objidl_0000_0047_0001 {
-  COMGLB_EXCEPTION_HANDLING  = 1,
-  COMGLB_APPID  = 2
-};
-
-enum __MIDL___MIDL_itf_objidl_0000_0047_0002 {
-  COMGLB_EXCEPTION_HANDLE  = 0,
-  COMGLB_EXCEPTION_DONOT_HANDLE  = 1
-};
-
-// Determines whether to run ClickOnce components. This constant is not defined
-// in the SDK headers.
-#ifndef URLACTION_MANAGED_UNSIGNED
-#define URLACTION_MANAGED_UNSIGNED (0x00002004)
-#endif
-
 ULONGLONG VersionFromString(const CString& s);
 
 CString StringFromVersion(ULONGLONG version);
@@ -150,10 +120,6 @@ HRESULT IsSystemProcess(bool* is_system_process);
 // Returns true if the user of the current process is Local System or it has an
 // interactive session: console, terminal services, or fast user switching.
 HRESULT IsUserLoggedOn(bool* is_logged_on);
-
-// Returns true if URLACTION_MANAGED_UNSIGNED is disabled for the Internet zone
-// for the current user.
-bool IsClickOnceDisabled();
 
 // Wrapper around ::GetProcAddress().
 template <typename T>

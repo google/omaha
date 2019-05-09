@@ -45,8 +45,6 @@ DEFINE_METRIC_bool(worker_is_windows_installing);
 
 DEFINE_METRIC_bool(worker_is_uac_disabled);
 
-DEFINE_METRIC_bool(worker_is_clickonce_disabled);
-
 DEFINE_METRIC_bool(worker_has_software_firewall);
 
 DEFINE_METRIC_count(worker_silent_update_running_on_batteries);

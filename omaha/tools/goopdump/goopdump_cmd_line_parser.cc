@@ -38,7 +38,6 @@ HRESULT ParseGoopdumpCmdLine(int argc,
 
   std::vector<CString> valid_params;
   valid_params.push_back(_T("dumpapps"));
-  valid_params.push_back(_T("oneclick"));
   valid_params.push_back(_T("monitor"));
   valid_params.push_back(_T("file"));
 
@@ -72,7 +71,6 @@ HRESULT ParseGoopdumpCmdLine(int argc,
     // If you don't pass anything, give them everything except monitoring.
     args->is_dump_general = true;
     args->is_dump_app_manager = true;
-    args->is_dump_oneclick = true;
     args->is_machine = true;
     args->is_user = true;
   }
@@ -80,13 +78,6 @@ HRESULT ParseGoopdumpCmdLine(int argc,
   if (parser.HasSwitch(_T("dumpapps"))) {
     args->is_dump_general = true;
     args->is_dump_app_manager = true;
-    args->is_machine = true;
-    args->is_user = true;
-  }
-
-  if (parser.HasSwitch(_T("oneclick"))) {
-    args->is_dump_general = true;
-    args->is_dump_oneclick = true;
     args->is_machine = true;
     args->is_user = true;
   }

@@ -80,7 +80,6 @@ HRESULT AppCommandConfiguration::Load(const CString& app_guid,
 
   CString command_line;
   DWORD sends_pings = 0;
-  DWORD is_web_accessible = 0;
   DWORD auto_run_on_os_upgrade = 0;
   DWORD reporting_id = 0;
   DWORD run_as_user = 0;
@@ -118,7 +117,6 @@ HRESULT AppCommandConfiguration::Load(const CString& app_guid,
       DWORD* value;
     } const values[] = {
       kRegValueSendsPings, &sends_pings,
-      kRegValueWebAccessible, &is_web_accessible,
       kRegValueAutoRunOnOSUpgrade, &auto_run_on_os_upgrade,
       kRegValueReportingId, &reporting_id,
       kRegValueRunAsUser, &run_as_user,
@@ -144,7 +142,6 @@ HRESULT AppCommandConfiguration::Load(const CString& app_guid,
                                                command_id,
                                                command_line,
                                                sends_pings != 0,
-                                               is_web_accessible != 0,
                                                auto_run_on_os_upgrade != 0,
                                                reporting_id,
                                                run_as_user != 0,
@@ -160,7 +157,6 @@ AppCommand* AppCommandConfiguration::Instantiate(
         app_guid_, is_machine_, session_id, reporting_id_);
   }
   return new AppCommand(command_line_,
-                        is_web_accessible_,
                         run_as_user_,
                         capture_output_,
                         auto_run_on_os_upgrade_,
@@ -245,7 +241,6 @@ AppCommandConfiguration::AppCommandConfiguration(
     const CString& command_id,
     const CString& command_line,
     bool sends_pings,
-    bool is_web_accessible,
     bool auto_run_on_os_upgrade,
     DWORD reporting_id,
     bool run_as_user,
@@ -255,7 +250,6 @@ AppCommandConfiguration::AppCommandConfiguration(
       command_id_(command_id),
       command_line_(command_line),
       sends_pings_(sends_pings),
-      is_web_accessible_(is_web_accessible),
       run_as_user_(run_as_user),
       capture_output_(capture_output),
       reporting_id_(reporting_id),

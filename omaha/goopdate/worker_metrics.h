@@ -73,9 +73,6 @@ DECLARE_METRIC_bool(worker_is_windows_installing);
 // True if UAC is disabled.
 DECLARE_METRIC_bool(worker_is_uac_disabled);
 
-// True if ClickOnce is disabled for the Internet zone for the current user.
-DECLARE_METRIC_bool(worker_is_clickonce_disabled);
-
 // True if a software firewall is detected.
 DECLARE_METRIC_bool(worker_has_software_firewall);
 

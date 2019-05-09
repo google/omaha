@@ -25,24 +25,6 @@ namespace omaha {
 #define kCiRegKeyShared      GOOPDATE_MAIN_KEY kRegKeyShared
 #define kRegValueReportIds   _T("report_ids")
 
-// TODO(omaha): Move these plugin values someplace else. Since we're building
-// constants, that should probably be the customization header. Move the Omaha 3
-// plugin equivalents from config.cc there as well.
-
-// NOTE: ONECLICK_PLUGIN_VERSION_ANSI is defined in main.scons
-// For example: kOneClickProgId == "Google.OneClickCtrl.1"
-const TCHAR* const kOneClickProgId = COMPANY_NAME_IDENTIFIER
-                                     _T(".OneClickCtrl.")
-                                     _T(ONECLICK_PLUGIN_VERSION_ANSI);
-// The plug-in MIME type.
-// For example:
-//     kOneClickPluginMimeTypeAnsi == "application/x-vnd.google.oneclickctrl.1"
-// TODO(omaha): Deal with the "Google.OneClickCtrl.%d") in
-// tools\goopdump\data_dumper_oneclick.cc after integrating goopdump.
-#define kOneClickPluginMimeTypeAnsi \
-    "application/x-vnd." COMPANY_DOMAIN_BASE_ANSI ".oneclickctrl." \
-     ONECLICK_PLUGIN_VERSION_ANSI
-
 }  // namespace omaha
 
 #endif  // OMAHA_BASE_CONST_CONFIG_H_

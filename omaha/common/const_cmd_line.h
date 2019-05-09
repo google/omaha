@@ -22,7 +22,7 @@ namespace omaha {
 
 //
 // Externally initiated modes.
-// These modes are invoked by or on metainstallers or by the OneClick plugin  .
+// These modes are invoked by or on metainstallers.
 //
 
 // The "install" switch indicates installing Omaha and the app.
@@ -37,12 +37,6 @@ const TCHAR* const kCmdLineUpdate = _T("update");
 // The "recover" switch indicates Omaha is to be repaired due to a
 // Code Red scenario.
 const TCHAR* const kCmdLineRecover = _T("recover");
-
-// The "pi" switch indicates that this came from a webplugin.
-// Requires two subarguments "siteurl" and "{args}" where
-// siteurl is the base URL where the plugin ran from and {args}
-// are the args to pass on once validation is complete.
-const TCHAR* const kCmdLineWebPlugin = _T("pi");
 
 //
 // Main operating modes
@@ -201,14 +195,12 @@ const TCHAR* const kCmdLineInteractive = _T("i");
 const TCHAR* const kCmdLineSessionId = _T("sessionid");
 
 // The "installsource" switch that is used to pass the source of installation
-// for ping tracking.  For example:  "/installsource OneClick".
+// for ping tracking.  For example:  "/installsource taggedmi".
 const TCHAR* const kCmdLineInstallSource = _T("installsource");
 
 // "installsource" values generated internally by Omaha. The server code needs
 // to be updated when these values change or new values are defined.
 const TCHAR* const kCmdLineInstallSource_TaggedMetainstaller = _T("taggedmi");
-const TCHAR* const kCmdLineInstallSource_OneClick = _T("oneclick");
-const TCHAR* const kCmdLineInstallSource_ClickOnce = _T("clickonce");
 const TCHAR* const kCmdLineInstallSource_Offline = _T("offline");
 const TCHAR* const kCmdLineInstallSource_InstallDefault = _T("otherinstallcmd");
 const TCHAR* const kCmdLineInstallSource_Scheduler = _T("scheduler");

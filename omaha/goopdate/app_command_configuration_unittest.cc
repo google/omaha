@@ -134,8 +134,6 @@ TEST_F(AppCommandConfigurationTest, LoadCommand) {
 
 TEST_F(AppCommandConfigurationTest, MemberMappings) {
   TestValueMapping(kRegValueSendsPings, &AppCommandConfiguration::sends_pings);
-  TestValueMapping(kRegValueWebAccessible,
-                   &AppCommandConfiguration::is_web_accessible);
   TestValueMapping(kRegValueReportingId,
                    &AppCommandConfiguration::reporting_id);
   TestValueMapping(kRegValueCaptureOutput,

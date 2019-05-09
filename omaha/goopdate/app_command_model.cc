@@ -90,15 +90,11 @@ CString AppCommandModel::GetOutput() {
   return app_command_->GetOutput();
 }
 
-bool AppCommandModel::is_web_accessible() const {
-  __mutexScope(model()->lock());
-  return app_command_->is_web_accessible();
-}
-
 STDMETHODIMP AppCommandWrapper::get_isWebAccessible(
     VARIANT_BOOL* is_web_accessible) {
   __mutexScope(model()->lock());
-  *is_web_accessible = wrapped_obj()->is_web_accessible();
+  // Obsolete: Removed support for web plugins
+  *is_web_accessible = VARIANT_FALSE;
   return S_OK;
 }
 
