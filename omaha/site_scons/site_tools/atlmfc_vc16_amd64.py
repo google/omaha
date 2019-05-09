@@ -35,8 +35,8 @@ def generate(env):
   # NOTE: SCons requires the use of this name, which fails gpylint.
   """SCons entry point for this tool."""
 
-  if not env.get('ATLMFC_VC15_0_DIR'):
-    env['ATLMFC_VC15_0_DIR'] = _FindLocalInstall()
+  if not env.get('ATLMFC_VC16_0_DIR'):
+    env['ATLMFC_VC16_0_DIR'] = _FindLocalInstall()
 
-  env.AppendENVPath('INCLUDE', env.Dir('$ATLMFC_VC15_0_DIR/include').abspath)
-  env.AppendENVPath('LIB', env.Dir('$ATLMFC_VC15_0_DIR/lib/x64').abspath)
+  env.AppendENVPath('INCLUDE', env.Dir('$ATLMFC_VC16_0_DIR/include').abspath)
+  env.AppendENVPath('LIB', env.Dir('$ATLMFC_VC16_0_DIR/lib/x64').abspath)
