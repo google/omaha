@@ -19,11 +19,14 @@ The resulting strings and files use CRLF as required by gpedit.msc.
 To unit test this module, just run the file from the command line.
 """
 
+from __future__ import print_function
+
 import codecs
 import filecmp
 import os
 import re
 import sys
+
 
 MAIN_POLICY_KEY = r'Software\Policies\Google\Update'
 
@@ -383,7 +386,7 @@ def GenerateGroupPolicyTemplateAdmx(apps):
 
     app_policy_list = []
     for app in apps:
-      app_name, app_guid, _ = app
+      app_name, app_guid, _, _ = app
       app_policy_list.append(ADMX_APP_POLICY_TEMPLATE % {
           'AppLegalId': _CreateLegalIdentifier(app_name),
           'AppGuid': app_guid,
@@ -416,6 +419,13 @@ ADML_ENVIRONMENT = '''\
   <description>
   </description>
 '''
+
+ADML_DEFAULT_ROLLBACK_DISCLAIMER = (
+    'This policy is meant to serve as temporary measure when Enterprise '
+    'Administrators need to downgrade for business reasons. To ensure '
+    'users are protected by the latest security updates, the most recent '
+    'version should be used. When versions are downgraded to older '
+    'versions, there could be incompatibilities.')
 
 ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Sup_GoogleUpdate1_2_145_5', 'At least Google Update 1.2.145.5'),
@@ -627,6 +637,9 @@ def GenerateGroupPolicyTemplateAdml(apps):
     app_name = app[0]
     app_legal_id = _CreateLegalIdentifier(app_name)
     app_additional_help_msg = app[2]
+    rollback_disclaimer = app[3]
+    if not rollback_disclaimer:
+      rollback_disclaimer = ADML_DEFAULT_ROLLBACK_DISCLAIMER
 
     app_category = ('Cat_' + app_legal_id, app_name)
     string_definition_list.append(app_category)
@@ -688,11 +701,7 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'If this policy is enabled, installs that have a version higher than '
         'that specified by "Target version prefix override" will be downgraded '
         'to the highest available version that matches the target version.\n\n'
-        'This policy is meant to serve as temporary measure when Enterprise '
-        'Administrators need to downgrade for business reasons. To ensure '
-        'users are protected by the latest security updates, the most recent '
-        'version should be used. When versions are downgraded to older '
-        'versions, there could be incompatibilities.\n' % app_name)
+        '%s' % (app_name, rollback_disclaimer))
     string_definition_list.append(app_rollback_to_target_version_explanation)
 
   app_resource_strings = []
@@ -758,10 +767,12 @@ def WriteGroupPolicyTemplateAdml(target_path, apps):
 if __name__ == '__main__':
   TEST_APPS = [
       ('Google Test Foo', '{D6B08267-B440-4c85-9F79-E195E80D9937}',
-       ' Check http://www.google.com/test_foo/.'),
+       ' Check http://www.google.com/test_foo/.',
+       'Disclaimer'),
       (u'Google User Test Foo\u00a9\u00ae\u2122',
        '{104844D6-7DDA-460b-89F0-FBF8AFDD0A67}',
-       ' Check http://www.google.com/user_test_foo/.'),
+       ' Check http://www.google.com/user_test_foo/.',
+       ''),
   ]
   module_dir = os.path.abspath(os.path.dirname(__file__))
   gold_path = os.path.join(module_dir, 'test_gold.admx')
@@ -770,16 +781,16 @@ if __name__ == '__main__':
   WriteGroupPolicyTemplateAdmx(output_path, TEST_APPS)
   admx_files_equal = filecmp.cmp(gold_path, output_path, shallow=False)
   if not admx_files_equal:
-    print 'FAIL: ADMX files are not equal.'
+    print('FAIL: ADMX files are not equal.')
 
   gold_path = os.path.join(module_dir, 'test_gold.adml')
   output_path = os.path.join(module_dir, 'test_out.adml')
   WriteGroupPolicyTemplateAdml(output_path, TEST_APPS)
   adml_files_equal = filecmp.cmp(gold_path, output_path, shallow=False)
   if not adml_files_equal:
-    print 'FAIL: ADML files are not equal.'
+    print('FAIL: ADML files are not equal.')
 
   if admx_files_equal and adml_files_equal:
-    print 'SUCCESS. contents are equal'
+    print('SUCCESS. contents are equal')
   else:
     sys.exit(-1)
