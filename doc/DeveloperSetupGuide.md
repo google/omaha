@@ -4,9 +4,9 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2017 Update 15.9.11 and Windows SDK 10.0.17763.0. ####
+#### Currently, the supported toolchain is Visual Studio 2019 Update 16.0.3 and Windows SDK 10.0.17763.0. ####
 
-But VS2019 should now work.
+Visual Studio 2017 Update 15.9.11 should work too.
 
 # Required Downloads/Tools #
 
@@ -81,7 +81,7 @@ Once the tree is in place, a number of environment variables need to be set up i
 Once the above setup is complete:
  * Open a fresh cmd.exe window as Administrator.
  * Navigate to the 'omaha' directory in your source checkout, for example: `D:\src\omahaopensource\omaha\omaha>`
- * Run the vsvars.bat file corresponding to the Visual C++ instance you want to use to build. For example: `%ProgramFiles(x86)%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat`. This step sets up the environment variables that the build scripts use.
+ * Run the vsvars.bat file corresponding to the Visual C++ instance you want to use to build. For example: `%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsamd64_x86.bat`. This step sets up the environment variables that the build scripts use. The 64-bit host toolchain is preferred, otherwise, run `vcvars32.bat` to set up the build environment for the x86 host toolchain.
  * From the above directory, just type `hammer` to build Omaha! (Note: More advanced build options can be found in [HammerOptions](HammerOptions.md).  In particular, if you are building on a multi-core or multi-processor, consider passing the -j# flag to Hammer to enable parallel compilation.)
  * To build all targets in all modes, type `hammer --all --mode=all`. This builds both debug and opt versions of the binaries, including all unit tests, and standalone installers.
 
