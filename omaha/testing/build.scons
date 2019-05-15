@@ -378,7 +378,6 @@ omaha_unittest_inputs = [
     '../base/highres_timer_unittest.cc',
     '../base/localization_unittest.cc',
     '../base/logging_unittest.cc',
-    '../base/md5_unittest.cc',
     '../base/omaha_version_unittest.cc',
     '../base/path_unittest.cc',
     '../base/proc_utils_unittest.cc',

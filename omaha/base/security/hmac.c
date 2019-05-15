@@ -19,7 +19,6 @@
 #include "util.h"
 
 #include <string.h>
-#include "md5.h"
 #include "sha.h"
 #include "sha256.h"
 
@@ -45,11 +44,6 @@ static void HMAC_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
   for (i = 0; i < sizeof(ctx->opad); ++i) {
     ctx->opad[i] ^= (0x36 ^ 0x5c);
   }
-}
-
-void HMAC_MD5_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
-  MD5_init(&ctx->hash);
-  HMAC_init(ctx, key, len);
 }
 
 void HMAC_SHA_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {

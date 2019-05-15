@@ -32,7 +32,6 @@ security_env.Append(
 
 security_inputs = [
     'hmac.c',
-    'md5.c',
     'p256.c',
     'p256_ec.c',
     'p256_ecdsa.c',
