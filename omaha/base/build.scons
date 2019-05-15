@@ -55,7 +55,6 @@ inputs = [
     'highres_timer-win32.cc',
     'localization.cc',
     'logging.cc',
-    'md5.cc',
     'omaha_version.cc',
     'path.cc',
     'process.cc',

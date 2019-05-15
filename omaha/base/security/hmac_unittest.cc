@@ -114,16 +114,6 @@ TEST_F(HmacTest, RFC2202andRFC4131) {
     string data = katp->data[0] ==
         'x' ? omaha::a2b_hex(katp->data + 1) : katp->data;
 
-    if (katp->md5) {
-      HMAC_MD5_init(&hmac, key.data(), katp->md5_keylength);
-      HMAC_update(&hmac, data.data(), data.size());
-
-      EXPECT_EQ(omaha::b2a_hex(
-          reinterpret_cast<const char*>(HMAC_final(&hmac)),
-          HMAC_size(&hmac)),
-          katp->md5);
-    }
-
     if (katp->sha1) {
       HMAC_SHA_init(&hmac, key.data(), key.size());
       HMAC_update(&hmac, data.data(), data.size());
