@@ -285,7 +285,7 @@ HRESULT SetAppBranding(const CString& client_state_key_path,
 
   const TCHAR* brand_code_to_write = brand_code.IsEmpty() ?
                                      kDefaultGoogleUpdateBrandCode :
-                                     brand_code;
+                                     brand_code.GetString();
   hr = state_key.SetValue(kRegValueBrandCode, brand_code_to_write);
   if (FAILED(hr)) {
     return hr;

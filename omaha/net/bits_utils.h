@@ -20,26 +20,17 @@
 #include <bits.h>
 #include <atlbase.h>
 #include <atlstr.h>
-#include <functional>
 
 namespace omaha {
 
 // Gets the instance of BITS manager.
 HRESULT GetBitsManager(IBackgroundCopyManager** bits_manager);
 
-// Compares the local name of a job.
-struct JobLocalNameEqual
-    : public std::binary_function<IBackgroundCopyJob*, const TCHAR*, bool> {
+// Compares the local name of a BITS job.
+bool IsEqualBitsJobLocalName(IBackgroundCopyJob* job, const TCHAR* name);
 
-  bool operator()(IBackgroundCopyJob* job, const TCHAR* local_name) const;
-};
-
-// Compares the display name of a job.
-struct JobDisplayNameEqual
-    : public std::binary_function<IBackgroundCopyJob*, const TCHAR*, bool> {
-
-  bool operator()(IBackgroundCopyJob* job, const TCHAR* local_name) const;
-};
+// Compares the display name of a BITS job.
+bool IsEqualBitsJobDisplayName(IBackgroundCopyJob* job, const TCHAR* name);
 
 // Finds a job that matches the given predicate.
 // TODO(omaha): do we need to search across all users?

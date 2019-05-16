@@ -287,7 +287,7 @@ bool operator==(const XMLFQName& u, const XMLFQName& v) {
     return !_tcscmp(u.uri, v.uri) && !_tcscmp(u.base, v.base);
   } else if (!u.uri && !v.uri) {
     // Both uris are null -> only compare the base names.
-    return !_tcscmp(u.base ? u.base : __T(""), v.base ? v.base : __T(""));
+    return !_tcscmp(u.base ? u.base : CString(), v.base ? v.base : CString());
   } else {
     // Either uri is null -> the names are in different namespaces.
     return false;

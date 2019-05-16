@@ -13,6 +13,7 @@
 // limitations under the License.
 // ========================================================================
 
+#include <tuple>
 #include <utility>
 
 #include "base/scoped_ptr.h"
@@ -103,7 +104,7 @@ class WebServiceClientSendAction
     : public ::testing::ActionInterface<WebServiceClientSendMethod> {
  public:
   virtual HRESULT Perform(const ArgumentTuple& args) {
-    xml::UpdateResponse* response = std::tr1::get<2>(args);
+    xml::UpdateResponse* response = std::get<2>(args);
     xml::response::Response r;
 
     // Omaha expects |elapsed_days| to be in range. So set it to a valid

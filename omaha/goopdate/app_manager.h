@@ -208,12 +208,6 @@ class AppManager {
   // Omaha will not send day_of_install if it is 0.
   uint32 GetDayOfInstall(const GUID& app_guid) const;
 
-#if 0
-  HRESULT RegisterProduct(const GUID& product_guid,
-                          const CString& product_name);
-  HRESULT UnregisterProduct(const GUID& product_guid);
-#endif
-
   bool IsAppRegistered(const CString& app_id) const;
   bool IsAppUninstalled(const CString& app_id) const;
   bool IsAppOemInstalledAndEulaAccepted(const CString& app_id) const;

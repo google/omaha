@@ -15,7 +15,6 @@
 
 #include "omaha/goopdate/model.h"
 #include <algorithm>
-#include <functional>
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/goopdate/worker.h"
@@ -60,7 +59,7 @@ void Model::CleanupExpiredAppBundles() {
   typedef std::vector<AppBundleWeakPtr>::iterator Iterator;
   Iterator it = remove_if(app_bundles_.begin(),
                           app_bundles_.end(),
-                          std::mem_fun_ref(&AppBundleWeakPtr::expired));
+                          [](AppBundleWeakPtr ptr) { return ptr.expired(); });
 
   const size_t num_bundles = distance(it, app_bundles_.end());
 

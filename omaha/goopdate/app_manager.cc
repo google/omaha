@@ -58,31 +58,10 @@ int GetNumberOfDaysSince(int time) {
   return (now - time) / kSecondsPerDay;
 }
 
-// Determines if an application is registered with Omaha.
-class IsAppRegisteredFunc
-    : public std::unary_function<const CString&, HRESULT> {
- public:
-  explicit IsAppRegisteredFunc(const CString& guid)
-      : is_registered_(false),
-        guid_(guid) {}
-
-  bool is_registered() const { return is_registered_; }
-
-  HRESULT operator() (const CString& guid) {
-    if (guid.CompareNoCase(guid_) == 0) {
-      is_registered_ = true;
-    }
-    return S_OK;
-  }
- private:
-  bool is_registered_;
-  CString guid_;
-};
-
-// Enumerates all sub keys of the key and calls the functor for each of them,
+// Enumerates all sub keys of the key and calls the function for each of them,
 // ignoring errors to ensure all keys are processed.
-template <typename T>
-HRESULT EnumerateSubKeys(const TCHAR* key_name, T* functor) {
+HRESULT EnumerateSubKeys(const TCHAR* key_name,
+                         std::function<void(const CString&)> fun) {
   RegKey client_key;
   HRESULT hr = client_key.Open(key_name, KEY_READ);
   if (FAILED(hr)) {
@@ -94,7 +73,7 @@ HRESULT EnumerateSubKeys(const TCHAR* key_name, T* functor) {
     CString sub_key_name;
     hr = client_key.GetSubkeyNameAt(i, &sub_key_name);
     if (SUCCEEDED(hr)) {
-      (*functor)(sub_key_name);
+      fun(sub_key_name);
     }
   }
 
@@ -103,109 +82,6 @@ HRESULT EnumerateSubKeys(const TCHAR* key_name, T* functor) {
 
 }  // namespace
 
-typedef bool (*AppPredictFunc)(const AppManager& app_manager,
-                               const CString& app_id);
-
-bool IsUninstalledAppPredicate(const AppManager& app_manager,
-                               const CString& app_id) {
-  return app_manager.IsAppUninstalled(app_id);
-}
-
-bool IsAppOemInstalledAndEulaAcceptedPredicate(const AppManager& app_manager,
-                                               const CString& app_id) {
-  return app_manager.IsAppOemInstalledAndEulaAccepted(app_id);
-}
-
-bool IsRegisteredAppPredicate(const AppManager& app_manager,
-                              const CString& app_id) {
-  return app_manager.IsAppRegistered(app_id);
-}
-
-// Accumulates app IDs for apps that satisfies the predicate.
-class CollectProductsFunc
-    : public std::unary_function<const CString&, HRESULT> {
- public:
-  CollectProductsFunc(const AppPredictFunc predicate,
-                      const AppManager& app_manager,
-                      AppIdVector* app_ids)
-      : predicate_(predicate),
-        app_manager_(app_manager),
-        app_ids_(app_ids) {
-    ASSERT1(app_ids);
-  }
-
-  // Ignores errors and accumulates as many applications as possible.
-  HRESULT operator() (const CString& app_id) const {
-    if ((*predicate_)(app_manager_, app_id)) {
-      app_ids_->push_back(app_id);
-    }
-
-    return S_OK;
-  }
-
- private:
-  const AppPredictFunc predicate_;
-  const AppManager& app_manager_;
-  AppIdVector* const app_ids_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(CollectProductsFunc);
-};
-
-// Runs application registration hooks registered under Omaha AppIds.
-// Reads the Hook Clsid entry under Clients\{AppID}. CoCreates the CLSID. Calls
-// IRegistrationUpdateHook::UpdateRegistry().
-class RunRegistrationUpdateHooksFunc
-    : public std::unary_function<const CString&, HRESULT> {
- public:
-  explicit RunRegistrationUpdateHooksFunc(const AppManager& app_manager)
-      : app_manager_(app_manager) {
-  }
-
-  HRESULT operator() (const CString& app_id) {
-    GUID app_guid = GUID_NULL;
-    HRESULT hr = StringToGuidSafe(app_id, &app_guid);
-    if (FAILED(hr)) {
-      return hr;
-    }
-    RegKey client_key;
-    hr = app_manager_.OpenClientKey(app_guid, &client_key);
-    if (FAILED(hr)) {
-      return hr;
-    }
-
-    CString hook_clsid_str;
-    hr = client_key.GetValue(kRegValueUpdateHookClsid, &hook_clsid_str);
-    if (FAILED(hr)) {
-      return hr;
-    }
-    GUID hook_clsid = GUID_NULL;
-    hr = StringToGuidSafe(hook_clsid_str, &hook_clsid);
-    if (FAILED(hr)) {
-      return hr;
-    }
-
-    CORE_LOG(L3, (_T("[Update Hook Clsid][%s][%s]"), app_id, hook_clsid_str));
-
-    CComPtr<IRegistrationUpdateHook> registration_hook;
-    hr = registration_hook.CoCreateInstance(hook_clsid);
-    if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[IRegistrationUpdateHook CoCreate failed][0x%x]"), hr));
-      return hr;
-    }
-
-    hr = registration_hook->UpdateRegistry(CComBSTR(app_id),
-                                           app_manager_.is_machine_);
-    if (FAILED(hr)) {
-      CORE_LOG(LE, (_T("[registration_hook UpdateRegistry failed][0x%x]"), hr));
-      return hr;
-    }
-
-    return S_OK;
-  }
-
- private:
-  const AppManager& app_manager_;
-};
 
 AppManager* AppManager::instance_ = NULL;
 
@@ -282,15 +158,20 @@ bool AppManager::IsAppRegistered(const GUID& app_guid) const {
 // Vulnerable to a race condition with installers. To prevent this, acquire
 // GetRegistryStableStateLock().
 bool AppManager::IsAppRegistered(const CString& app_id) const {
-  IsAppRegisteredFunc func(app_id);
+  bool is_registered = false;
   HRESULT hr = EnumerateSubKeys(
       ConfigManager::Instance()->registry_clients(is_machine_),
-      &func);
+      [&](const CString& subkey) {
+        if (subkey.CompareNoCase(app_id) == 0) {
+          is_registered = true;
+        }
+      });
+
   if (FAILED(hr)) {
     return false;
   }
 
-  return func.is_registered();
+  return is_registered;
 }
 
 bool AppManager::IsAppUninstalled(const CString& app_id) const {
@@ -341,55 +222,96 @@ bool AppManager::IsAppOemInstalledAndEulaAccepted(const CString& app_id) const {
   return RegKey::HasValue(GetClientStateKeyName(app_guid), kRegValueOemInstall);
 }
 
+HRESULT AppManager::RunRegistrationUpdateHook(const CString& app_id) const {
+  GUID app_guid = GUID_NULL;
+  HRESULT hr = StringToGuidSafe(app_id, &app_guid);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  RegKey client_key;
+  hr = OpenClientKey(app_guid, &client_key);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  CString hook_clsid_str;
+  hr = client_key.GetValue(kRegValueUpdateHookClsid, &hook_clsid_str);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  GUID hook_clsid = GUID_NULL;
+  hr = StringToGuidSafe(hook_clsid_str, &hook_clsid);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  CORE_LOG(L3, (_T("[Update Hook Clsid][%s][%s]"), app_id, hook_clsid_str));
+
+  CComPtr<IRegistrationUpdateHook> registration_hook;
+  hr = registration_hook.CoCreateInstance(hook_clsid);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[IRegistrationUpdateHook CoCreate failed][0x%x]"), hr));
+    return hr;
+  }
+
+  hr = registration_hook->UpdateRegistry(CComBSTR(app_id), is_machine_);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[registration_hook UpdateRegistry failed][0x%x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+
 // Vulnerable to a race condition with installers. To prevent this, hold
 // GetRegistryStableStateLock() while calling this function and related
 // functions, such as ReadAppPersistentData().
 HRESULT AppManager::GetRegisteredApps(AppIdVector* app_ids) const {
   ASSERT1(app_ids);
-
-  CollectProductsFunc func(IsRegisteredAppPredicate, *this, app_ids);
-
   return EnumerateSubKeys(
       ConfigManager::Instance()->registry_clients(is_machine_),
-      &func);
+      [&](const CString& subkey) {
+        if (this->IsAppRegistered(subkey)) {
+          app_ids->push_back(subkey);
+        }
+      });
 }
 
 // Vulnerable to a race condition with installers. To prevent this, acquire
 // GetRegistryStableStateLock().
 HRESULT AppManager::GetUninstalledApps(AppIdVector* app_ids) const {
   ASSERT1(app_ids);
-
-  CollectProductsFunc func(IsUninstalledAppPredicate, *this, app_ids);
-
   return EnumerateSubKeys(
       ConfigManager::Instance()->registry_client_state(is_machine_),
-      &func);
+      [&](const CString& subkey) {
+        if (this->IsAppUninstalled(subkey)) {
+          app_ids->push_back(subkey);
+        }
+      });
 }
 
 HRESULT AppManager::GetOemInstalledAndEulaAcceptedApps(
     AppIdVector* app_ids) const {
   ASSERT1(app_ids);
-
-  CollectProductsFunc func(IsAppOemInstalledAndEulaAcceptedPredicate,
-                           *this,
-                           app_ids);
-
   return EnumerateSubKeys(
       ConfigManager::Instance()->registry_client_state(is_machine_),
-      &func);
-}
-
-HRESULT AppManager::RunRegistrationUpdateHook(const CString& app_id) const {
-  return RunRegistrationUpdateHooksFunc(*this)(app_id);
+      [&](const CString& subkey) {
+        if (this->IsAppOemInstalledAndEulaAccepted(subkey)) {
+          app_ids->push_back(subkey);
+        }
+      });
 }
 
 // Vulnerable to a race condition with installers. We think this is acceptable.
 // If there is a future requirement for greater consistency, acquire
 // GetRegistryStableStateLock().
 HRESULT AppManager::RunAllRegistrationUpdateHooks() const {
-  RunRegistrationUpdateHooksFunc func(*this);
   const TCHAR* key(ConfigManager::Instance()->registry_clients(is_machine_));
-  return EnumerateSubKeys(key, &func);
+  return EnumerateSubKeys(key,
+    [&](const CString& subkey) {
+      this->RunRegistrationUpdateHook(subkey);
+    });
 }
 
 CString AppManager::GetClientKeyName(const GUID& app_guid) const {
@@ -1651,39 +1573,5 @@ HRESULT AppManager::RemoveClientState(const GUID& app_guid) {
   return app_registry_utils::RemoveClientState(is_machine_,
                                                GuidToString(app_guid));
 }
-
-// TODO(omaha3): May not need these
-#if 0
-// Writes 0.0.0.1 to pv. This value avoids any special cases, such as initial
-// install rules, for 0.0.0.0, while being unlikely to be higher than the
-// product's actual current version.
-HRESULT AppManager::RegisterProduct(const GUID& product_guid,
-                                    const CString& product_name) {
-  const TCHAR* const kRegisterProductVersion = _T("0.0.0.1");
-
-  __mutexScope(GetRegistryStableStateLock());
-  RegKey client_key;
-  HRESULT hr = client_key.Create(GetClientKeyName(GUID_NULL, product_guid));
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  hr = client_key.SetValue(kRegValueProductVersion, kRegisterProductVersion);
-  if (FAILED(hr)) {
-    return hr;
-  }
-
-  // AppName is not a required parameter since it's only used for being able to
-  // easily tell what application is there when reading the registry.
-  VERIFY1(SUCCEEDED(client_key.SetValue(kRegValueAppName, product_name)));
-
-  return S_OK;
-}
-
-HRESULT AppManager::UnregisterProduct(const GUID& product_guid) {
-  __mutexScope(GetRegistryStableStateLock());
-  return RegKey::DeleteKey(GetClientKeyName(GUID_NULL, product_guid), true);
-}
-#endif
 
 }  // namespace omaha

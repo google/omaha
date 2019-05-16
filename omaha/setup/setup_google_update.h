@@ -78,7 +78,7 @@ class SetupGoogleUpdate {
   HRESULT SetInstallationId();
 
   // Register COM classes and interfaces.
-  HRESULT RegisterOrUnregisterCOMLocalServer(bool register);
+  HRESULT RegisterOrUnregisterCOMLocalServer(bool register_server);
 
   // Uninstalls the helper (MSI).
   HRESULT UninstallMsiHelper();
