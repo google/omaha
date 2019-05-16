@@ -18,13 +18,11 @@ Import('env')
 env.BuildSConscript('x86_encoder')
 
 for omaha_version_info in env['omaha_versions_info']:
-  prefix = omaha_version_info.filename_prefix
   temp_env = env.Clone()
 
-  if prefix == 'TEST_':
-    temp_env['OBJPREFIX'] = temp_env.subst('test/$OBJPREFIX')
-  elif prefix:
-    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+  prefix = omaha_version_info.filename_prefix
+  if prefix:
+    temp_env['OBJPREFIX'] = temp_env.subst(prefix + 'obj/$OBJPREFIX')
 
   temp_env.Append(
       CPPDEFINES = [

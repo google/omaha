@@ -287,6 +287,8 @@ DeclareBit('is_google_update_build', 'True if building Google Update')
 DeclareBit('official_installers', 'Building using checked-in binaries')
 DeclareBit('build_server', 'Running on the build server')
 DeclareBit('build_two_versions', 'Build second version for self-update testing')
+DeclareBit('build_three_versions', 'Build a second and a third version for'
+           'self-update testing')
 DeclareBit('test_certificate', 'Files will be signed with the test certificate')
 DeclareBit('bin', 'Building from pre-built binaries')
 DeclareBit('min', 'Building minimal set of projects')
@@ -307,6 +309,9 @@ win_env.SetBitFromOption('build_server', False)
 
 # Build two versions if --build_two_versions is on the command line.
 win_env.SetBitFromOption('build_two_versions', False)
+
+# Build three versions if --build_three_versions is on the command line.
+win_env.SetBitFromOption('build_three_versions', False)
 
 # Store new versions of pre-built binaries if --bin is on the command line.
 win_env.SetBitFromOption('bin', False)
@@ -331,14 +336,16 @@ if _is_google_update_build:
   # to provide their own device management server.
   win_env.SetBits('has_device_management')
 
-# Build all directories and two versions if this is the build server.
 if win_env.Bit('build_server'):
   win_env.SetBits('all')
-  win_env.SetBits('build_two_versions')
 
-# Make sure 'all' overrides 'min'.
+# 'all' overrides 'min'.
 if win_env.Bit('all'):
   win_env.ClearBits('min')
+
+# 'build_three_versions' overrides 'build_two_versions'.
+if win_env.Bit('build_three_versions'):
+  win_env.ClearBits('build_two_versions')
 
 # Allow use of command-line-specified certificates to sign with, but
 # only if we're not on the build server.
@@ -375,13 +382,23 @@ win_env.SetBitFromOption('suppress_light_validation', False)
 #
 # Set up version info.
 #
+# If specified on the command line, either two or three successive versions
+# of the build targets could be produced by the build script. Such versions
+# are useful for creating A/B experiments to test the update paths from
+# current version to future versions and assess the quality of releases.
 omaha_version_info = omaha_version_utils.OmahaVersionInfo('VERSION')
 omaha_versions_info = [omaha_version_info]
-
 if win_env.Bit('build_two_versions'):
   omaha_test_version_info = copy.deepcopy(omaha_version_info)
-  omaha_test_version_info.MakeTestVersion()
+  omaha_test_version_info.MakeTestVersion(delta=1, prefix='TEST_')
   omaha_versions_info.append(omaha_test_version_info)
+elif win_env.Bit('build_three_versions'):
+  omaha_test_version_info = copy.deepcopy(omaha_version_info)
+  omaha_test_version_info.MakeTestVersion(delta=1, prefix='TEST_')
+  omaha_versions_info.append(omaha_test_version_info)
+  omaha_test_2_version_info = copy.deepcopy(omaha_version_info)
+  omaha_test_2_version_info.MakeTestVersion(delta=2, prefix='TEST2_')
+  omaha_versions_info.append(omaha_test_2_version_info)
 
 # Print the version(s) being built.
 print 'Building versions: %s' % ', '.join(
