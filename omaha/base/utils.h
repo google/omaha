@@ -32,6 +32,7 @@
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scoped_any.h"

@@ -32,7 +32,6 @@
 #include <atlbase.h>
 #include <atlstr.h>
 #include <stdint.h>
-#include <functional>
 #include <limits>
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/debug.h"
@@ -299,7 +298,10 @@ HRESULT BitsRequest::CreateOrOpenJob(const TCHAR* display_name,
   // Try to find if we already have the job in the BITS queue.
   // By convention, the display name of the job is the same as the file name.
   CComPtr<IBackgroundCopyJob> job;
-  hr = FindBitsJobIf(std::bind2nd(JobDisplayNameEqual(), display_name),
+  hr = FindBitsJobIf([display_name](CComPtr<IBackgroundCopyJob> in_job) {
+                          return IsEqualBitsJobDisplayName(in_job,
+                                                           display_name);
+                     },
                      bits_manager,
                      &job);
   if (SUCCEEDED(hr)) {

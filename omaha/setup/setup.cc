@@ -21,7 +21,6 @@
 #include <regstr.h>
 #include <atlpath.h>
 #include <algorithm>
-#include <functional>
 #include <vector>
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/constants.h"
@@ -1138,7 +1137,7 @@ HRESULT Setup::FindCoreProcesses(Pids* found_core_pids) const {
   const Pids::iterator new_end = std::remove_if(
       found_core_pids->begin(),
       found_core_pids->end(),
-      std::not1(std::ptr_fun(IsCoreProcess)));
+      [](Pids::value_type pid) { return !IsCoreProcess(pid); });
   if (new_end != found_core_pids->end()) {
     found_core_pids->erase(new_end, found_core_pids->end());
   }

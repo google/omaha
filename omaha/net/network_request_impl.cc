@@ -77,7 +77,8 @@ void LogFileBytes(const CString& filename, size_t num_bytes) {
                NULL);
   }
   bytes.resize(bytes_read);
-  replace_if(bytes.begin(), bytes.end(), std::not1(std::ptr_fun(isprint)), '.');
+  replace_if(bytes.begin(), bytes.end(),
+             [](int ch) {return !isprint(ch); }, '.');
   bytes.push_back('\0');
   NET_LOG(L3, (_T("[file bytes: %hs]"), &bytes.front()));
 }

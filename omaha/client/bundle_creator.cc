@@ -75,7 +75,7 @@ HRESULT UnescapeAndStoreUntrustedData(const CString& untrusted_data_escaped,
     return GOOPDATE_E_INVALID_INSTALLER_DATA_IN_APPARGS;
   }
 
-  return app->put_untrustedData(CComBSTR(CString(&buf.front())));
+  return app->put_untrustedData(CComBSTR(CString(&buf.front()).GetString()));
 }
 
 // display_language and install_source can be empty.
@@ -517,7 +517,7 @@ HRESULT CreateForOnDemand(bool is_machine,
 
   hr = internal::SetBundleProperties(
       lang,
-      name.IsEmpty() ? _T("On Demand Bundle") : name,
+      name.IsEmpty() ? CString(_T("On Demand Bundle")) : name,
       install_source,
       session_id,
       send_pings,

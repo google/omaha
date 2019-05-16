@@ -94,7 +94,7 @@ _OMAHA_COPYRIGHT_STRING_ENGLISH = 'Copyright 2018 Google LLC'
 
 # Reads the value of OMAHA_MSC_VER to determine which compiler/toolchain to use.
 # The set of expected values are in omaha_version_utils.
-# Defaults to VC142 (Visual Studio 2019) if the environment variable is not
+# Defaults to VC160 (Visual Studio 2019) if the environment variable is not
 # specified.
 _msc_ver = int(os.getenv('OMAHA_MSC_VER', "1920"))
 
@@ -450,23 +450,22 @@ win_env.AppendUnique(
     CCFLAGS = [
         '/arch:IA32',
         ('', '/analyze:WX-')[win_env.Bit('analysis')],
-        '/nologo',
         '/c',
-        '/Zc:forScope',
-        '/Zc:threadSafeInit-',
+        '/D_CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES=1',
+        '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1',
+        '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1',
         '/D_HAS_EXCEPTIONS=0',
+        '/D_USING_V110_SDK71_',
         '/DCOMPILER_MSVC',
         '/DSTL_MSVC',
         '/GR-',
         '/GS',
-        '/D_USING_V110_SDK71_',
-        '/D_CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES=1',
-        '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1',
-        '/D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1',
+        '/nologo',
+        '/std:c++17',
         '/W4',
         '/Wall',
         '/WX',      # warnings as errors
-        '/d2Zi+',   # better debugging support for optimized code
+        '/Zo',      # better debugging support for optimized code
 
         #
         # Disable the following level 4 warnings below.

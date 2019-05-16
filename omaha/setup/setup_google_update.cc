@@ -116,11 +116,13 @@ HRESULT VerifyCOMLocalServerRegistration(bool is_machine) {
 }
 #endif
 
-HRESULT RegisterOrUnregisterService(bool reg, CString service_path) {
+HRESULT RegisterOrUnregisterService(bool register_server,
+                                    CString service_path) {
   EnclosePath(&service_path);
 
-  CommandLineBuilder builder(reg ? COMMANDLINE_MODE_SERVICE_REGISTER :
-                                   COMMANDLINE_MODE_SERVICE_UNREGISTER);
+  CommandLineBuilder builder(
+      register_server ? COMMANDLINE_MODE_SERVICE_REGISTER :
+                        COMMANDLINE_MODE_SERVICE_UNREGISTER);
   CString cmd_line = builder.GetCommandLineArgs();
   return RegisterOrUnregisterExe(service_path, cmd_line);
 }

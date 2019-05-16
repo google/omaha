@@ -45,8 +45,7 @@ HRESULT GetBitsManager(IBackgroundCopyManager** bits_manager) {
   return S_OK;
 }
 
-bool JobLocalNameEqual::operator()(IBackgroundCopyJob* job,
-                                   const TCHAR* name) const {
+bool IsEqualBitsJobLocalName(IBackgroundCopyJob* job, const TCHAR* name) {
   ASSERT1(job);
   ASSERT1(name);
   CComPtr<IEnumBackgroundCopyFiles> files;
@@ -71,8 +70,7 @@ bool JobLocalNameEqual::operator()(IBackgroundCopyJob* job,
   return false;
 }
 
-bool JobDisplayNameEqual::operator()(IBackgroundCopyJob* job,
-                                     const TCHAR* name) const {
+bool IsEqualBitsJobDisplayName(IBackgroundCopyJob* job, const TCHAR* name) {
   ASSERT1(job);
   ASSERT1(name);
   scoped_ptr_cotask<TCHAR> display_name;
