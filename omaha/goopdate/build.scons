@@ -235,10 +235,8 @@ def BuildGoogleUpdateHandlerDll(handler_env,
   version_string = omaha_version_info.GetVersionString()
   prefix = omaha_version_info.filename_prefix
 
-  if prefix == 'TEST_':
-    handler_env['OBJPREFIX'] = handler_env.subst('test/$OBJPREFIX')
-  elif prefix:
-    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+  if prefix:
+    handler_env['OBJPREFIX'] = handler_env.subst(prefix + 'obj/$OBJPREFIX')
 
   handler_env.Append(
       CPPDEFINES = [
@@ -441,14 +439,11 @@ gd_env.ComponentStaticLibraryMultiarch(target_name, gd_inputs)
 # Build Goopdate DLL
 #
 for omaha_version_info in env['omaha_versions_info']:
-  prefix = omaha_version_info.filename_prefix
-
   temp_env = env.Clone(COMPONENT_STATIC=False)
 
-  if prefix == 'TEST_':
-    temp_env['OBJPREFIX'] = temp_env.subst('test/$OBJPREFIX')
-  elif prefix:
-    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+  prefix = omaha_version_info.filename_prefix
+  if prefix:
+    temp_env['OBJPREFIX'] = temp_env.subst(prefix + 'obj/$OBJPREFIX')
 
   # Add languages that have version resources but are not fully supported.
   translated_languages = omaha_version_utils.GetShellLanguagesForVersion(

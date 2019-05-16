@@ -71,8 +71,8 @@ def ReadBundleInstallerFile(installers_txt_filename):
   for line in installers_txt_file.readlines():
     line = line.strip()
     if len(line) and not line.startswith('#'):
-      (exe_name, needs_admin, language, browser, usage, bundle_apps) =\
-        eval(line)
+      (exe_name, needs_admin, language, browser, usage,
+          bundle_apps) = eval(line)
       bundle = Bundle(exe_name, needs_admin, language,
                       browser, usage,
                       installers_txt_filename, bundle_apps)
@@ -120,20 +120,15 @@ def SetOutputFileNames(file_name, apps, output_dir):
   """
 
   # Determine the language.
-  file = os.path.basename(file_name)
-  if file.startswith('TEST_'):
-    test = True
-  else:
-    test = False
-
   for (lang, apps_lang) in apps.iteritems():
     # Get the output filename and set it on the application.
     for app in apps_lang:
       output_path = BuildOutputDirectory(output_dir, lang, app)
-      path = os.path.join(output_path, GetOutputFileName(test, app.name, lang))
+      path = os.path.join(output_path, GetOutputFileName(
+          os.path.basename(file_name), app.name, lang))
       app.output_file_name = path
 
-def GetOutputFileName(test, name, lang):
+def GetOutputFileName(file, name, lang):
   """Creates the output file name based on the language and the name of the app.
   Args:
     test: Whether the input file name starts with TEST.
@@ -142,8 +137,8 @@ def GetOutputFileName(test, name, lang):
   Returns:
     The output filename
   """
-  if test:
-    file_name = 'Tagged_TEST_%sSetup_%s.exe' % (name, lang)
+  if file.startswith(('TEST_', 'TEST2_')):
+    file_name = 'Tagged_%s_%sSetup_%s.exe' % (file.split('_', 1)[0], name, lang)
   else:
     file_name = 'Tagged_%sSetup_%s.exe' % (name, lang)
   return file_name
@@ -163,8 +158,8 @@ def BuildTagStringForBundle(bundle):
     first_app = False
     (guid, name, ap) = app
     display_name = UrlEncodeString(name)
-    args += 'appguid=%s&appname=%s&needsadmin=%s' % \
-            (guid, display_name, bundle.needs_admin)
+    args += 'appguid=%s&appname=%s&needsadmin=%s' % (
+        guid, display_name, bundle.needs_admin)
     if ap:
       args += '&ap=%s' % ap
 
@@ -186,10 +181,9 @@ def TagOneFile(file, app, applytag_exe_name):
   """
   tag_string = BuildTagStringForBundle(app)
 
-  output_path = app.output_file_name
+  out_path = app.output_file_name
   if not os.path.exists(file):
-    print 'Could not find file %s required for creating %s' % \
-          (file, output_path)
+    print 'Could not find file %s required for creating %s' % (file, out_path)
     return False
 
   arguments = [applytag_exe_name,
@@ -245,8 +239,8 @@ def PrintUsage():
   print 'For an example of the <installer file> take a look at'
   print '#/installers/googlegears_installer.txt'
   print ''
-  print 'tag_meta_installers.py <applytag> <input file> <installer file>\
-  <output file>'
+  print ('tag_meta_installers.py <applytag> <input file> <installer file>'
+        '<output file>')
 
 def main():
   if len(sys.argv) != 5:

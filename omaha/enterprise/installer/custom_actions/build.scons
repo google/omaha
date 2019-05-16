@@ -21,17 +21,14 @@ Import('env')
 # Build msi_custom_action.dll
 #
 def BuildShowErrorActionDll(omaha_version_info):
-  prefix = omaha_version_info.filename_prefix
-
   dll_env = env.Clone(
       # Build a dll, not a lib.
       COMPONENT_STATIC = False,
   )
 
-  if prefix == 'TEST_':
-    dll_env['OBJPREFIX'] = dll_env.subst('test/$OBJPREFIX')
-  elif prefix:
-    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+  prefix = omaha_version_info.filename_prefix
+  if prefix:
+    dll_env['OBJPREFIX'] = dll_env.subst(prefix + 'obj/$OBJPREFIX')
 
   dll_env.Append(
       LIBS = [

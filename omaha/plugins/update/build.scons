@@ -146,16 +146,13 @@ update_lib = update_env.ComponentLibrary(
 
 
 def BuildNpGoogleUpdateDll(omaha_version_info):
-  version_string = omaha_version_info.GetVersionString()
-  prefix = omaha_version_info.filename_prefix
-
   plugin_env = update_env.Clone(COMPONENT_STATIC = False)
 
-  if prefix == 'TEST_':
-    plugin_env['OBJPREFIX'] = plugin_env.subst('test/$OBJPREFIX')
-  elif prefix:
-    raise Exception('ERROR: Unrecognized prefix "%s"' % prefix)
+  prefix = omaha_version_info.filename_prefix
+  if prefix:
+    plugin_env['OBJPREFIX'] = plugin_env.subst(prefix + 'obj/$OBJPREFIX')
 
+  version_string = omaha_version_info.GetVersionString()
   plugin_env.Append(
       LIBS = [
           '$LIB_DIR/common.lib',

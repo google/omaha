@@ -304,11 +304,14 @@ class OmahaVersionInfo(object):
 
     # pylint: enable-msg=E0602
 
-  def MakeTestVersion(self, delta=1):
+  def MakeTestVersion(self, delta, prefix):
     """Changes this object to be for a TEST version of Omaha."""
 
     if delta <= 0:
-      raise Exception('Delta must be greater than 0.')
+      raise Exception('Invalid version delta.')
+
+    if prefix and prefix != 'TEST_' and prefix != 'TEST2_':
+      raise Exception('Unrecognized prefix "%s"' % prefix)
 
     # If we're doing a patch, increment patch; else, increment build.
     if self.version_patch > 0:
@@ -316,7 +319,7 @@ class OmahaVersionInfo(object):
     else:
       self.version_build += delta
 
-    self.filename_prefix = 'TEST_'
+    self.filename_prefix = prefix
 
   def GetVersion(self):
     """Returns the version elements as a list."""
