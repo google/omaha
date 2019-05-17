@@ -461,6 +461,7 @@ win_env.AppendUnique(
         '/GR-',
         '/GS',
         '/nologo',
+        '/permissive-',
         '/std:c++17',
         '/W4',
         '/Wall',

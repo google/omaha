@@ -278,7 +278,6 @@ omaha_unittest_env.Append(
         '/wd4244',  # possible loss of data
         '/wd4388',  # signed/unsigned mismatch
         '/wd4389',  # signed/unsigned mismatch
-        '/wd4628',  # digraphs not supported with -Ze
         '/wd4647',  # behavior change: __is_pod(type) has different value
         '/wd4800',  # forcing value to bool 'true' or 'false'
         '/wd4826',  # Conversion from 'type_1' to 'type_2' is sign-extended.

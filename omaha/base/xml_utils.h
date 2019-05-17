@@ -27,6 +27,9 @@
 #include <utility>
 #include <vector>
 
+#include "omaha/base/debug.h"
+#include "omaha/base/utils.h"
+
 namespace omaha {
 
 // Creates a DOMDocument that disallows external definitions to be included and
@@ -220,7 +223,7 @@ HRESULT ForEachNodeInList(List list,
 template <class List, class Object, class Cookie>
 HRESULT ForEachNodeInListObj(List list,
                              Object* object,
-                             HRESULT (Object::*mem_fun)(IXMLDOMNode*, Cookie),
+                             HRESULT (Object::*fun)(IXMLDOMNode*, Cookie),
                              Cookie cookie) {
   ASSERT1(list);
   ASSERT1(object);
@@ -273,7 +276,7 @@ HRESULT ForEachChildNode(IXMLDOMNode* node,
 template <typename Object, typename Cookie>
 HRESULT ForEachChildNodeObj(IXMLDOMNode* node,
                             Object* object,
-                            HRESULT (Object::*mem_fun)(IXMLDOMNode*, Cookie),
+                            HRESULT (Object::*fun)(IXMLDOMNode*, Cookie),
                             Cookie cookie) {
   ASSERT1(node);
   ASSERT1(object);
@@ -282,7 +285,7 @@ HRESULT ForEachChildNodeObj(IXMLDOMNode* node,
   CComPtr<IXMLDOMNodeList> child_list;
   RET_IF_FAILED(node->get_childNodes(&child_list));
   ASSERT1(child_list);
-  RET_IF_FAILED(ForEachNodeInListObj(child_list, object, mem_fun, cookie));
+  RET_IF_FAILED(ForEachNodeInListObj(child_list, object, fun, cookie));
   return S_OK;
 }
 

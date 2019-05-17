@@ -90,9 +90,9 @@ TEST(StringTest, DoubleToString) {
 }
 
 TEST(StringTest, StrNCpy) {
-  TCHAR * str1 = L"test str 1234";
-  TCHAR * str2 = L"test str 12";
-  TCHAR * str3 = L"Test StR 1234";
+  const TCHAR * str1 = L"test str 1234";
+  const TCHAR * str2 = L"test str 12";
+  const TCHAR * str3 = L"Test StR 1234";
 
   // check case sensitive
   ASSERT_TRUE(0 == String_StrNCmp(str1, str2, 10, false));
@@ -705,7 +705,7 @@ bool IsSpaceA3(char c) {
   return false;
 }
 
-void TestIsSpace (char *s) {
+void TestIsSpace (const char *s) {
     ASSERT_TRUE(s);
 
     Timer t1 (false);

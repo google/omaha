@@ -52,33 +52,33 @@ template <size_t N> class EtwMofEvent: public EtwMofEventBase<N> {
   EtwMofEvent(const EtwEventClass& event_class, EtwEventType type,
               EtwEventLevel level) {
     memset(static_cast<Super*>(this), 0, sizeof(Super));
-    header.Size = sizeof(Super);
-    header.Guid = event_class;
-    header.Class.Type = type;
-    header.Class.Level = level;
-    header.Flags = WNODE_FLAG_TRACED_GUID | WNODE_FLAG_USE_MOF_PTR;
+    this->header.Size = sizeof(Super);
+    this->header.Guid = event_class;
+    this->header.Class.Type = type;
+    this->header.Class.Level = level;
+    this->header.Flags = WNODE_FLAG_TRACED_GUID | WNODE_FLAG_USE_MOF_PTR;
   }
 
   EtwMofEvent(const EtwEventClass& event_class, EtwEventType type,
               EtwEventVersion version, EtwEventLevel level) {
     memset(static_cast<Super*>(this), 0, sizeof(Super));
-    header.Size = sizeof(Super);
-    header.Guid = event_class;
-    header.Class.Type = type;
-    header.Class.Version = version;
-    header.Class.Level = level;
-    header.Flags = WNODE_FLAG_TRACED_GUID | WNODE_FLAG_USE_MOF_PTR;
+    this->header.Size = sizeof(Super);
+    this->header.Guid = event_class;
+    this->header.Class.Type = type;
+    this->header.Class.Version = version;
+    this->header.Class.Level = level;
+    this->header.Flags = WNODE_FLAG_TRACED_GUID | WNODE_FLAG_USE_MOF_PTR;
   }
 
   void SetField(int field, size_t size, const void *data) {
     ASSERT1(field < N);
     if ((field < N) && (size <= std::numeric_limits<uint32_t>::max())) {
-      fields[field].DataPtr = reinterpret_cast<ULONG_PTR>(data);
-      fields[field].Length = static_cast<ULONG>(size);
+      this->fields[field].DataPtr = reinterpret_cast<ULONG_PTR>(data);
+      this->fields[field].Length = static_cast<ULONG>(size);
     }
   }
 
-  EVENT_TRACE_HEADER* get() { return& header; }
+  EVENT_TRACE_HEADER* get() { return &this->header; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(EtwMofEvent);

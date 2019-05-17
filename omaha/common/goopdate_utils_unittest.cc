@@ -1055,14 +1055,14 @@ void ExpectMacMatchViaWMI(const CString& mac_address) {
   ASSERT_SUCCEEDED(locator.CoCreateInstance(CLSID_WbemAdministrativeLocator));
 
   CComPtr<IWbemServices> service;
-  ASSERT_SUCCEEDED(locator->ConnectServer(_T("root\\cimv2"),
-                                           NULL,
-                                           NULL,
-                                           NULL,
-                                           WBEM_FLAG_CONNECT_USE_MAX_WAIT,
-                                           NULL,
-                                           NULL,
-                                           &service));
+  ASSERT_SUCCEEDED(locator->ConnectServer(CComBSTR(_T("root\\cimv2")),
+                                          NULL,
+                                          NULL,
+                                          NULL,
+                                          WBEM_FLAG_CONNECT_USE_MAX_WAIT,
+                                          NULL,
+                                          NULL,
+                                          &service));
 
   ASSERT_SUCCEEDED(update3_utils::SetProxyBlanketAllowImpersonate(service));
 

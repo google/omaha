@@ -22,7 +22,7 @@ namespace omaha {
 
 // This test data from http://en.wikipedia.org/wiki/SHA-2:
 struct {
-  char* binary;
+  const char* binary;
   byte  hash[32];
 } test_hash256[] = {
     "",

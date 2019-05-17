@@ -18,11 +18,12 @@
 // Utilities for working with XML files via MSXML.
 
 #include "omaha/base/xml_utils.h"
+
 #include <msxml2.h>
 #include <atlsafe.h>
 #include <intsafe.h>
 #include <vector>
-#include "omaha/base/debug.h"
+
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/string.h"

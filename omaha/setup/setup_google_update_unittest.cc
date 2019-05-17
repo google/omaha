@@ -210,7 +210,7 @@ void VerifyHklmKeyHasIntegrity(
   TRUSTEE administrators = {0};
   administrators.TrusteeForm = TRUSTEE_IS_NAME;
   administrators.TrusteeType = TRUSTEE_IS_GROUP;
-  administrators.ptstrName = _T("Administrators");
+  administrators.ptstrName = const_cast<LPTSTR>(_T("Administrators"));
   VerifyAccessRightsForTrustee(key_name,
                                KEY_ALL_ACCESS,
                                &dacl,
@@ -219,13 +219,13 @@ void VerifyHklmKeyHasIntegrity(
   TRUSTEE users = {0};
   users.TrusteeForm = TRUSTEE_IS_NAME;
   users.TrusteeType = TRUSTEE_IS_GROUP;
-  users.ptstrName = _T("Users");
+  users.ptstrName = const_cast<LPTSTR>(_T("Users"));
   VerifyAccessRightsForTrustee(key_name, KEY_READ, &dacl, &users);
 
   TRUSTEE power_users = {0};
   power_users.TrusteeForm = TRUSTEE_IS_NAME;
   power_users.TrusteeType = TRUSTEE_IS_GROUP;
-  power_users.ptstrName = _T("Power Users");
+  power_users.ptstrName = const_cast<LPTSTR>(_T("Power Users"));
   VerifyAccessRightsForTrustee(key_name,
                                kExpectedPowerUsersAccess,
                                &dacl,
@@ -234,7 +234,7 @@ void VerifyHklmKeyHasIntegrity(
   TRUSTEE interactive = {0};
   interactive.TrusteeForm = TRUSTEE_IS_NAME;
   interactive.TrusteeType = TRUSTEE_IS_GROUP;
-  interactive.ptstrName = _T("INTERACTIVE");
+  interactive.ptstrName = const_cast<LPTSTR>(_T("INTERACTIVE"));
   VerifyAccessRightsForTrustee(key_name,
                                expected_non_admin_interactive_access,
                                &dacl,
@@ -243,13 +243,13 @@ void VerifyHklmKeyHasIntegrity(
   TRUSTEE everyone = {0};
   everyone.TrusteeForm = TRUSTEE_IS_NAME;
   everyone.TrusteeType = TRUSTEE_IS_GROUP;
-  everyone.ptstrName = _T("Everyone");
+  everyone.ptstrName = const_cast<LPTSTR>(_T("Everyone"));
   VerifyAccessRightsForTrustee(key_name, 0, &dacl, &everyone);
 
   TRUSTEE guest = {0};
   guest.TrusteeForm = TRUSTEE_IS_NAME;
   guest.TrusteeType = TRUSTEE_IS_USER;
-  guest.ptstrName = _T("Guest");
+  guest.ptstrName = const_cast<LPTSTR>(_T("Guest"));
   VerifyAccessRightsForTrustee(key_name, 0, &dacl, &guest);
 }
 
@@ -557,12 +557,12 @@ TEST_F(SetupGoogleUpdateMachineTest,
   TRUSTEE users = {0};
   users.TrusteeForm = TRUSTEE_IS_NAME;
   users.TrusteeType = TRUSTEE_IS_GROUP;
-  users.ptstrName = _T("Users");
+  users.ptstrName = const_cast<LPTSTR>(_T("Users"));
 
   TRUSTEE interactive = {0};
   interactive.TrusteeForm = TRUSTEE_IS_NAME;
   interactive.TrusteeType = TRUSTEE_IS_GROUP;
-  interactive.ptstrName = _T("INTERACTIVE");
+  interactive.ptstrName = const_cast<LPTSTR>(_T("INTERACTIVE"));
 
   EXPECT_SUCCEEDED(RegKey::CreateKey(MACHINE_REG_UPDATE));
 

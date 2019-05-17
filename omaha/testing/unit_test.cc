@@ -267,7 +267,9 @@ void LaunchProcess(const CString& exe_path,
 
   CString launch_cmd = exe_path;
   EnclosePath(&launch_cmd);
-  launch_cmd += args.IsEmpty() ? _T("") : _T(" ") + args;
+  if (!args.IsEmpty()) {
+    launch_cmd += CString(_T(" ")) + args;
+  }
 
   if (as_system) {
     // Retry the process launch if the process handle is invalid. Hopefully this

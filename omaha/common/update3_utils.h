@@ -20,8 +20,10 @@
 
 #include <windows.h>
 #include <atlsafe.h>
+
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
 
 namespace omaha {
 

@@ -65,7 +65,7 @@ class ATL_NO_VTABLE IDispatchImplResId : public IDispatchImpl<T, piid> {
 
     // Override the ITypeInfo in the CComTypeInfoHolder, which will be used in
     // subsequent calls to the IDispatch methods.
-    _tih.m_pInfo = type_info.Detach();
+    this->_tih.m_pInfo = type_info.Detach();
   }
 
   virtual ~IDispatchImplResId() {}

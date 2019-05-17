@@ -20,15 +20,10 @@
 
 #include <windows.h>
 #include <atlstr.h>
-#include "base/scoped_ptr.h"
 
-#pragma warning(push)
-// C4628: digraphs not supported with -Ze.
-#pragma warning(disable : 4628)
+#include "base/scoped_ptr.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#pragma warning(pop)
-
 #include "omaha/testing/unittest_debug_helper.h"
 
 namespace omaha {
