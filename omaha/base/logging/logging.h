@@ -18,11 +18,7 @@
 
 #include <string>
 #include <cstring>
-#pragma warning(push)
-// C4365: conversion from 'type_1' to 'type_2', signed/unsigned mismatch
-#pragma warning(disable : 4365)
 #include <strstream>
-#pragma warning(pop)
 #include <tchar.h>
 
 #include "base/basictypes.h"

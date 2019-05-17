@@ -36,8 +36,8 @@ namespace omaha {
 namespace {
 
 struct {
-  char* binary;
-  char* base64;
+  const char* binary;
+  const char* base64;
 } test_data[] = {
   "",                                "",
   "what",                            "d2hhdA==",
@@ -48,7 +48,7 @@ struct {
 
 // This test data from http://en.wikipedia.org/wiki/SHA-1:
 const struct {
-  char* binary;
+  const char* binary;
   byte  hash[20];
 } test_hash[] = {
     "The quick brown fox jumps over the lazy dog",
@@ -61,7 +61,7 @@ const struct {
 
 // This test data from http://en.wikipedia.org/wiki/SHA-2:
 struct {
-  char* binary;
+  const char* binary;
   byte  hash[32];
 } test_hash256[] = {
     "",

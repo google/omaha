@@ -14,10 +14,12 @@
 // ========================================================================
 //
 // Declares the interface to in-memory metrics capture
+
 #ifndef OMAHA_STATSREPORT_METRICS_H__
 #define OMAHA_STATSREPORT_METRICS_H__
 
 #include <iterator>
+
 #include "base/basictypes.h"
 #include "omaha/base/highres_timer-win32.h"
 #include "omaha/base/logging/logging.h"
@@ -230,10 +232,16 @@ public:
     DCHECK(coll.initialized());
   }
 
-  MetricBase *operator*() const {
+  MetricBase *operator*() {
     return curr_;
   }
-  MetricBase *operator->() const {
+  const MetricBase *operator*() const {
+    return curr_;
+  }
+  MetricBase *operator->() {
+    return curr_;
+  }
+  const MetricBase *operator->() const {
     return curr_;
   }
   MetricIterator operator++() { // preincrement
@@ -539,6 +547,6 @@ inline const BoolMetric &MetricBase::AsBool() const {
   return static_cast<const BoolMetric&>(*this);
 }
 
-} // namespace stats_report
+}  // namespace stats_report
 
 #endif  // OMAHA_STATSREPORT_METRICS_H__

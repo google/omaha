@@ -334,7 +334,7 @@ HRESULT System::StartProcessAsUserWithEnvironment(
     HANDLE user_token,
     const CString& executable_path,
     const CString& parameters,
-    LPWSTR desktop,
+    const TCHAR* desktop,
     LPVOID env_block,
     PROCESS_INFORMATION* pi) {
   UTIL_LOG(L3, (_T("[StartProcessAsUserWithEnvironment][%s][%s][%s]"),
@@ -347,7 +347,7 @@ HRESULT System::StartProcessAsUserWithEnvironment(
   cmd.Append(parameters);
 
   STARTUPINFO startup_info = { sizeof(startup_info) };
-  startup_info.lpDesktop = desktop;
+  startup_info.lpDesktop = const_cast<TCHAR*>(desktop);
   DWORD creation_flags(0);
 
   creation_flags |= CREATE_UNICODE_ENVIRONMENT;

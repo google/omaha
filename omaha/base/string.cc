@@ -774,7 +774,7 @@ HRESULT AnsiToUTF8 (char * src, int src_len, char * dest, int *dest_len) {
   WCHAR *unicode = new WCHAR [(src_len + 1) * sizeof (TCHAR)]; ASSERT (unicode, (L""));
   int chars_written = MultiByteToWideChar (CP_ACP, 0, src, src_len, unicode, src_len);
   ASSERT (chars_written == src_len, (L""));
-  char *unmappable = " ";
+  const char *unmappable = " ";
   BOOL unmappable_characters = false;
   *dest_len = WideCharToMultiByte (CP_UTF8, 0, unicode, chars_written, dest, *dest_len, unmappable, &unmappable_characters);
   delete [] unicode;

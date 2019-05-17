@@ -167,7 +167,7 @@ TEST_F(NpFunctionHostTest, GetTypeInfo_NotImplemented) {
 }
 
 TEST_F(NpFunctionHostTest, GetIDsOfNames_NotImplemented) {
-  LPOLESTR member_name = L"NonexistentMember";
+  LPOLESTR member_name = const_cast<LPOLESTR>(L"NonexistentMember");
   DISPID member_dispid = 0;
   EXPECT_EQ(E_NOTIMPL, host_->GetIDsOfNames(IID_NULL, &member_name, 1,
                                             LOCALE_SYSTEM_DEFAULT,

@@ -91,7 +91,7 @@ static bool history_buffer_full = false;
 //
 #define LC_ENTRY(lc_value)  (L#lc_value), (lc_value)
 struct {
-  wchar_t* category_name;
+  const wchar_t* category_name;
   LogCategory category;
 } static LogCategoryNames[] = {
   LC_ENTRY(LC_UTIL),

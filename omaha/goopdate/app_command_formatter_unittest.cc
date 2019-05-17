@@ -103,8 +103,8 @@ TEST(AppCommandFormatterTest, Interpolation) {
   parameters.push_back(_T("p3"));
 
   struct {
-    TCHAR* input;
-    TCHAR* output;
+    const TCHAR* input;
+    const TCHAR* output;
   } test_cases[] = {
     {_T("%1"),
      _T("p1")},
@@ -138,8 +138,8 @@ TEST(AppCommandFormatterTest, Interpolation) {
 
 TEST(AppCommandFormatterTest, ParameterQuoting) {
   struct {
-    TCHAR* input;
-    TCHAR* output;
+    const TCHAR* input;
+    const TCHAR* output;
   } test_cases[] = {
     // embedded \ and \\.
     {_T("a\\b\\\\c"),

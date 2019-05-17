@@ -38,7 +38,7 @@ class PackageCache {
         const CString& version,
         const CString& package_name)
         : app_id_(app_id),
-          version_(version.IsEmpty() ? _T("0.0.0.0") : version),
+          version_(version.IsEmpty() ? CString(_T("0.0.0.0")) : version),
           package_name_(package_name) {}
 
     CString app_id() const { return app_id_; }

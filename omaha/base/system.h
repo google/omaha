@@ -94,7 +94,7 @@ class System {
         HANDLE user_token,
         const CString& executable_path,
         const CString& parameters,
-        LPWSTR desktop,
+        const TCHAR* desktop,
         LPVOID env_block,
         PROCESS_INFORMATION* pi);
 

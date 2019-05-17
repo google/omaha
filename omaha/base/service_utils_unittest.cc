@@ -36,8 +36,10 @@ HRESULT TestEnumCallback(void* context, const wchar_t* service_name) {
 
 TEST(ServiceUtilsTest, ScmDatabaseEnumerateServices) {
   found_service = false;
-  EXPECT_TRUE(SUCCEEDED(ScmDatabase::EnumerateServices(TestEnumCallback,
-                            reinterpret_cast<void*>(_T("RpcSs")))));
+  TCHAR service_name[] = _T("RpcSs");
+  EXPECT_TRUE(SUCCEEDED(
+      ScmDatabase::EnumerateServices(TestEnumCallback,
+                                     reinterpret_cast<void*>(service_name))));
   EXPECT_TRUE(found_service);
 }
 

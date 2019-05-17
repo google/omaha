@@ -110,6 +110,9 @@ class ServiceModule
  public:
   typedef CAtlServiceModuleT<ServiceModule, IDS_SERVICE_NAME> Base;
 
+  using Base::OnStop;
+  using Base::SetServiceStatus;
+
   DECLARE_REGISTRY_APPID_RESOURCEID_EX(IDR_GOOGLE_UPDATE3_SERVICE_APPID,
                                        T::app_id_string())
 
@@ -122,7 +125,7 @@ class ServiceModule
       : service_thread_(NULL),
         is_service_com_server_(false) {
     SERVICE_LOG(L1, (_T("[ServiceModule]")));
-    _tcscpy(m_szServiceName, T::GetCurrentServiceName());
+    _tcscpy(this->m_szServiceName, T::GetCurrentServiceName());
   }
 
   ~ServiceModule() {
@@ -255,7 +258,7 @@ class ServiceModule
     }
 
     // m_szServiceName is set in the constructor.
-    hr = key.SetValue(_T("LocalService"), m_szServiceName);
+    hr = key.SetValue(_T("LocalService"), this->m_szServiceName);
     if (FAILED(hr)) {
       SERVICE_LOG(LE, (_T("[Could not set LocalService value][0x%x]"), hr));
       return hr;
@@ -287,8 +290,8 @@ class ServiceModule
 
     SERVICE_LOG(L1, (_T("[PreMessageLoop]")));
 
-    m_dwThreadID = ::GetCurrentThreadId();
-    service_thread_ = ::OpenThread(SYNCHRONIZE, false, m_dwThreadID);
+    this->m_dwThreadID = ::GetCurrentThreadId();
+    service_thread_ = ::OpenThread(SYNCHRONIZE, false, this->m_dwThreadID);
 
     if (is_service_com_server_) {
       return InitializeCOMServer();
@@ -332,7 +335,7 @@ class ServiceModule
   // further information.
   virtual LONG Lock() throw() {
     ::CoAddRefServerProcess();
-    LONG retval = CComGlobalsThreadModel::Increment(&m_nLockCnt);
+    LONG retval = CComGlobalsThreadModel::Increment(&this->m_nLockCnt);
     return retval;
   }
 
@@ -351,10 +354,10 @@ class ServiceModule
   // OnStop() correctly sets the service status to SERVICE_STOP_PENDING, and
   // posts a WM_QUIT to the service thread.
   virtual LONG Unlock() throw() {
-    ASSERT1(!m_bDelayShutdown);
+    ASSERT1(!this->m_bDelayShutdown);
 
     ::CoReleaseServerProcess();
-    LONG retval = CComGlobalsThreadModel::Decrement(&m_nLockCnt);
+    LONG retval = CComGlobalsThreadModel::Decrement(&this->m_nLockCnt);
 
     if (retval == 0) {
       OnStop();
@@ -370,41 +373,41 @@ class ServiceModule
     SERVICE_LOG(L3, (_T("[MonitorShutdown]")));
 
     while (true) {
-      ::WaitForSingleObject(m_hEventShutdown, INFINITE);
-      SERVICE_LOG(L4, (_T("[Infinite Wait][%d][%d]"), m_bActivity, m_nLockCnt));
+      ::WaitForSingleObject(this->m_hEventShutdown, INFINITE);
+      SERVICE_LOG(L4, (_T("[Infinite Wait][%d][%d]"), this->m_bActivity, this->m_nLockCnt));
 
       DWORD wait = 0;
       do {
-        m_bActivity = false;
-        wait = ::WaitForSingleObject(m_hEventShutdown, m_dwTimeOut);
+        this->m_bActivity = false;
+        wait = ::WaitForSingleObject(this->m_hEventShutdown, this->m_dwTimeOut);
       } while (wait == WAIT_OBJECT_0);
 
       SERVICE_LOG(L4, (_T("[MonitorShutdown][%d][%d]"),
-                       m_bActivity, m_nLockCnt));
-      if (!m_bActivity && m_nLockCnt == 0) {
+                       this->m_bActivity, this->m_nLockCnt));
+      if (!this->m_bActivity && this->m_nLockCnt == 0) {
         ::CoSuspendClassObjects();
-        if (m_nLockCnt == 0) {
+        if (this->m_nLockCnt == 0) {
           break;
         }
       }
     }
 
-    ::CloseHandle(m_hEventShutdown);
+    ::CloseHandle(this->m_hEventShutdown);
     OnStop();
   }
 
   // This is cloned from CAtlExeModuleT.StartMonitor().
   HANDLE StartMonitor() throw() {
     SERVICE_LOG(L3, (_T("[StartMonitor]")));
-    m_hEventShutdown = ::CreateEvent(NULL, false, false, NULL);
-    if (m_hEventShutdown == NULL) {
+    this->m_hEventShutdown = ::CreateEvent(NULL, false, false, NULL);
+    if (this->m_hEventShutdown == NULL) {
       return NULL;
     }
 
     DWORD thread_id(0);
     HANDLE monitor = ::CreateThread(NULL, 0, MonitorProc, this, 0, &thread_id);
     if (monitor == NULL) {
-      ::CloseHandle(m_hEventShutdown);
+      ::CloseHandle(this->m_hEventShutdown);
     }
 
     return monitor;
@@ -438,7 +441,7 @@ class ServiceModule
     // Initialize COM security right at the beginning, because Worker
     // initialization can cause interface marshaling. The first few lines below
     // are adapted from the beginning of CAtlServiceModuleT::PreMessageLoop().
-    ASSERT1(m_bService);
+    ASSERT1(this->m_bService);
     HRESULT hr = InitializeSecurity();
     if (FAILED(hr)) {
       return hr;
@@ -475,13 +478,13 @@ class ServiceModule
     UNREFERENCED_PARAMETER(show_cmd);
 
     SERVICE_TABLE_ENTRY st[] = {
-      { m_szServiceName, Base::_ServiceMain },
+      { this->m_szServiceName, Base::_ServiceMain },
       { NULL, NULL }
     };
 
-    m_status.dwWin32ExitCode = 0;
+    this->m_status.dwWin32ExitCode = 0;
     if (!::StartServiceCtrlDispatcher(st)) {
-      m_status.dwWin32ExitCode = ::GetLastError();
+      this->m_status.dwWin32ExitCode = ::GetLastError();
     }
 
     if (service_thread_) {
@@ -491,7 +494,7 @@ class ServiceModule
       service_thread_ = NULL;
     }
 
-    return m_status.dwWin32ExitCode;
+    return this->m_status.dwWin32ExitCode;
   }
 
   HANDLE service_thread_;   // The service thread provided by the SCM.

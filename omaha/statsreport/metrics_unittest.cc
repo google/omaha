@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <new>
+#include <ostream>
 
 #include "gtest/gtest.h"
 #include "omaha/statsreport/metrics.h"
@@ -31,7 +32,12 @@ DEFINE_METRIC_integer(integer);
 DECLARE_METRIC_bool(bool);
 DEFINE_METRIC_bool(bool);
 
-using namespace stats_report;
+namespace stats_report {
+
+std::ostream& operator <<(std::ostream& str, const MetricIterator&it) {
+  str << std::hex << (void*)*it;
+  return str;
+}
 
 namespace {
 
@@ -81,13 +87,6 @@ TEST_F(MetricsTest, Globals) {
   EXPECT_STREQ("timing", metric_timing.name());
   EXPECT_STREQ("integer", metric_integer.name());
   EXPECT_STREQ("bool", metric_bool.name());
-}
-
-
-// make GTest happy
-inline std::ostream &operator << (std::ostream &str, const MetricIterator &it) {
-  str << std::hex << (void*)*it;
-  return str;
 }
 
 TEST_F(MetricsTest, CollectionInitialization) {
@@ -359,3 +358,4 @@ TEST_F(MetricsTest, SimpleConstruction) {
   EXPECT_TRUE(NULL == bool_false.next());
 }
 
+}  // namespace stats_reports

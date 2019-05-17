@@ -75,7 +75,7 @@ HRESULT HelpUrlBuilder::BuildHttpGetString(
     CORE_LOG(LEVEL_WARNING, (_T("[GetOSInfo failed][0x%08x]"), hr));
   }
   const CString iid_string =
-      ::IsEqualGUID(GUID_NULL, iid_) ? _T("") : GuidToString(iid_);
+      ::IsEqualGUID(GUID_NULL, iid_) ? CString() : GuidToString(iid_);
 
   std::vector<QueryElement> elements;
   elements.push_back(QueryElement(_T("hl"), language_));
