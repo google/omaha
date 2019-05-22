@@ -28,7 +28,6 @@
 #include "omaha/common/lang.h"
 #include "omaha/google_update/resource.h"   // For the IDI_APP
 #include "omaha/goopdate/non_localized_resource.h"
-#include "omaha/ui/scoped_gdi.h"
 #include "omaha/ui/ui.h"
 
 namespace {
