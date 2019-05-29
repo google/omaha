@@ -158,6 +158,7 @@ win_env = Environment(
 win_env['ENV']['GOROOT'] = os.getenv('GOROOT',
                                      win_env.subst('$MAIN_DIR') +
                                      '\\..\\third_party\\go\\files')
+win_env['ENV']['LocalAppData'] = os.getenv('LocalAppData')
 
 # Append paths for supporting tools such as uuidgen.exe and mage.exe.
 win_env.AppendENVPath('PATH', (os.environ['WindowsSdkVerBinPath'] + '\\x86\\'))
