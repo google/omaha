@@ -81,7 +81,7 @@ set OMAHA_PROTOBUF_SRC_DIR=C:\protobuf\src
 set OMAHA_PYTHON_DIR=C:\Python27
 
 :: Directory in WiX where candle.exe and light.exe are installed.
-set OMAHA_WIX_DIR=%ProgramFiles(x86)%\WiX Toolset v3.10\bin
+set OMAHA_WIX_DIR=%WIX%\bin
 
 :: Root directory of the WTL installation.
 set OMAHA_WTL_DIR=C:\wtl\files
@@ -90,7 +90,7 @@ set OMAHA_PLATFORM_SDK_DIR=%WindowsSdkDir%\
 set OMAHA_WINDOWS_SDK_10_0_VERSION=%WindowsSDKVersion:~0,-1%
 
 :: Directory which includes the sign.exe tool for Authenticode signing.
-set OMAHA_SIGNTOOL_SDK_DIR=%WindowsSdkDir%\bin\x86
+set OMAHA_SIGNTOOL_SDK_DIR="%WindowsSdkVerBinPath%\x86"
 set PYTHONPATH=%OMAHA_PYTHON_DIR%
 
 :: Directory of Scons (http://www.scons.org/).
