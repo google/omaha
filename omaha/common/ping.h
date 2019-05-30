@@ -63,9 +63,10 @@
 #include <windows.h>
 #include <atlstr.h>
 #include <utility>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "gtest/gtest_prod.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/ping_event.h"
@@ -245,7 +246,7 @@ class Ping {
   std::vector<AppData> apps_data_;
   AppData omaha_data_;
 
-  scoped_ptr<xml::UpdateRequest> ping_request_;
+  std::unique_ptr<xml::UpdateRequest> ping_request_;
 
   DISALLOW_COPY_AND_ASSIGN(Ping);
 };

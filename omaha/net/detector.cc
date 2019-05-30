@@ -19,7 +19,7 @@
 
 #include "omaha/net/detector.h"
 
-#include "base/scoped_ptr.h"
+#include <memory>
 #include "omaha/base/atl_regexp.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/constants.h"
@@ -49,7 +49,7 @@ HRESULT IEProxyDetector::Detect(ProxyConfig* config) {
     return E_FAIL;
   }
 
-  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+  std::unique_ptr<HttpClient> http_client(CreateHttpClient());
 
   // We expect to be able to instantiate either of the http clients.
   ASSERT1(http_client.get());
@@ -423,7 +423,7 @@ void FirefoxProxyDetector::ParsePrefsLine(const char* ansi_line,
 HRESULT DefaultProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
 
-  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+  std::unique_ptr<HttpClient> http_client(CreateHttpClient());
 
   // We expect to be able to instantiate either of the http clients.
   ASSERT1(http_client.get());

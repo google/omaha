@@ -20,8 +20,9 @@
 
 #include <atlbase.h>
 #include <atlwin.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/registry_monitor_manager.h"
 
 namespace omaha {
@@ -85,7 +86,7 @@ class SystemMonitor
   static void RegistryKeyChangeCallback(const TCHAR* key_name,
                                         void* user_data);
 
-  scoped_ptr<RegistryMonitor> registry_monitor_;
+  std::unique_ptr<RegistryMonitor> registry_monitor_;
   bool is_machine_;
   SystemMonitorObserver* observer_;
 

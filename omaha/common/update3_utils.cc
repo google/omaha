@@ -46,8 +46,10 @@ HRESULT CreateGoogleUpdate3LocalClass(IGoogleUpdate3** server) {
   ASSERT1(server);
 
   typedef CComObject<Update3COMClassT> Update3;
-  scoped_ptr<Update3> update3;
-  HRESULT hr = Update3::CreateInstance(address(update3));
+  std::unique_ptr<Update3> update3;
+  Update3* update3_ptr = nullptr;
+  HRESULT hr = Update3::CreateInstance(&update3_ptr);
+  update3.reset(update3_ptr);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[Update3 creation failed][0x%x]"), hr));
     return hr;

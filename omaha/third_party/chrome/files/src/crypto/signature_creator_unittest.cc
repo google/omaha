@@ -2,26 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "crypto/signature_creator.h"
+
+#include <memory>
 #include <vector>
 
-#include "base/scoped_ptr.h"
-#include "crypto/signature_creator.h"
 #include "crypto/signature_verifier.h"
 #include "omaha/testing/unit_test.h"
 
 TEST(SignatureCreatorTest, BasicTest) {
   // Do a verify round trip.
-  scoped_ptr<crypto::RSAPrivateKey> key_original(
+  std::unique_ptr<crypto::RSAPrivateKey> key_original(
       crypto::RSAPrivateKey::Create(1024));
   ASSERT_TRUE(key_original.get());
 
   std::vector<uint8> key_info;
   key_original->ExportPrivateKey(&key_info);
-  scoped_ptr<crypto::RSAPrivateKey> key(
+  std::unique_ptr<crypto::RSAPrivateKey> key(
       crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(key_info));
   ASSERT_TRUE(key.get());
 
-  scoped_ptr<crypto::SignatureCreator> signer(
+  std::unique_ptr<crypto::SignatureCreator> signer(
       crypto::SignatureCreator::Create(key.get()));
   ASSERT_TRUE(signer.get());
 

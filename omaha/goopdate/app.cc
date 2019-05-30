@@ -14,12 +14,12 @@
 // ========================================================================
 
 #include "omaha/goopdate/app.h"
+
 #include "omaha/base/error.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 #include "omaha/common/config_manager.h"

@@ -13,11 +13,13 @@
 // limitations under the License.
 // ========================================================================
 
-#include <vector>
-#include "base/basictypes.h"
-#include "base/scoped_ptr.h"
-#include "omaha/base/omaha_version.h"
 #include "omaha/net/http_client.h"
+
+#include <memory>
+#include <vector>
+
+#include "base/basictypes.h"
+#include "omaha/base/omaha_version.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -29,20 +31,20 @@ class HttpClientTest : public testing::Test {
 
   static void SetUpTestCase() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     http_client_.reset(
         HttpClient::GetFactory().CreateObject(HttpClient::WINHTTP));
     ASSERT_TRUE(http_client_.get());
     ASSERT_SUCCEEDED(http_client_->Initialize());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     http_client_.reset();
   }
 
   void GetUrl(const TCHAR* url, bool use_proxy);
 
-  scoped_ptr<HttpClient> http_client_;
+  std::unique_ptr<HttpClient> http_client_;
 };
 
 CString BuildUserAgent() {
@@ -278,7 +280,7 @@ TEST_F(HttpClientTest, CrackUrl) {
 }
 
 TEST_F(HttpClientTest, QuerySetOption) {
-  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+  std::unique_ptr<HttpClient> http_client(CreateHttpClient());
   EXPECT_HRESULT_SUCCEEDED(http_client->Initialize());
 
   HINTERNET session_handle = NULL;

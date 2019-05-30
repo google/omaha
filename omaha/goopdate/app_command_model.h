@@ -23,8 +23,8 @@
 #include <atlcom.h>
 #include <windows.h>
 #include <string>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/constants.h"
 #include "omaha/goopdate/app_bundle.h"  // Required for com_wrapper_creator
@@ -82,7 +82,7 @@ class AppCommandModel : public ModelObject {
   bool is_web_accessible() const;
 
  private:
-  scoped_ptr<AppCommand> app_command_;
+  std::unique_ptr<AppCommand> app_command_;
 
   DISALLOW_COPY_AND_ASSIGN(AppCommandModel);
 };

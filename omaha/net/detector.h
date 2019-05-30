@@ -16,10 +16,11 @@
 #ifndef OMAHA_NET_DETECTOR_H__
 #define OMAHA_NET_DETECTOR_H__
 
-#include <windows.h>
 #include <atlstr.h>
+#include <windows.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 
 namespace omaha {
 
@@ -39,8 +40,8 @@ class RegistryOverrideProxyDetector : public ProxyDetectorInterface {
   explicit RegistryOverrideProxyDetector(const CString& reg_path)
       : reg_path_(reg_path) {}
 
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("RegistryOverride"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("RegistryOverride"); }
  private:
   CString reg_path_;
   DISALLOW_COPY_AND_ASSIGN(RegistryOverrideProxyDetector);
@@ -49,10 +50,10 @@ class RegistryOverrideProxyDetector : public ProxyDetectorInterface {
 class UpdateDevProxyDetector : public ProxyDetectorInterface {
  public:
   UpdateDevProxyDetector();
-  virtual HRESULT Detect(ProxyConfig* config) {
+  HRESULT Detect(ProxyConfig* config) override {
     return registry_detector_.Detect(config);
   }
-  virtual const TCHAR* source() { return _T("UpdateDev"); }
+  const TCHAR* source() override { return _T("UpdateDev"); }
  private:
   RegistryOverrideProxyDetector registry_detector_;
   DISALLOW_COPY_AND_ASSIGN(UpdateDevProxyDetector);
@@ -62,8 +63,8 @@ class UpdateDevProxyDetector : public ProxyDetectorInterface {
 class GroupPolicyProxyDetector : public ProxyDetectorInterface {
  public:
   GroupPolicyProxyDetector() {}
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("GroupPolicy"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("GroupPolicy"); }
  private:
   DISALLOW_COPY_AND_ASSIGN(GroupPolicyProxyDetector);
 };
@@ -75,8 +76,8 @@ class GroupPolicyProxyDetector : public ProxyDetectorInterface {
 class DefaultProxyDetector : public ProxyDetectorInterface {
  public:
   DefaultProxyDetector() {}
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("winhttp"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("winhttp"); }
  private:
   DISALLOW_COPY_AND_ASSIGN(DefaultProxyDetector);
 };
@@ -95,8 +96,8 @@ class FirefoxProxyDetector : public ProxyDetectorInterface {
 
   FirefoxProxyDetector();
 
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("Firefox"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("Firefox"); }
  private:
   // Parses the prefs.js file.
   HRESULT ParsePrefsFile(const TCHAR* name,
@@ -123,7 +124,7 @@ class FirefoxProxyDetector : public ProxyDetectorInterface {
   CString            cached_prefs_name_;
   CString            cached_prefs_file_path_;
   int64              cached_prefs_last_modified_;
-  scoped_ptr<ProxyConfig> cached_config_;
+  std::unique_ptr<ProxyConfig> cached_config_;
 
   friend class FirefoxProxyDetectorTest;
   DISALLOW_COPY_AND_ASSIGN(FirefoxProxyDetector);
@@ -137,8 +138,8 @@ namespace internal {
 class IEProxyDetector : public ProxyDetectorInterface {
  public:
   IEProxyDetector() {}
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("IE"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("IE"); }
  private:
   DISALLOW_COPY_AND_ASSIGN(IEProxyDetector);
 };
@@ -150,8 +151,8 @@ class IEProxyDetector : public ProxyDetectorInterface {
 class IEWPADProxyDetector : public internal::IEProxyDetector {
  public:
   IEWPADProxyDetector() {}
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("IEWPAD"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("IEWPAD"); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IEWPADProxyDetector);
@@ -162,8 +163,8 @@ class IEWPADProxyDetector : public internal::IEProxyDetector {
 class IEPACProxyDetector : public internal::IEProxyDetector {
  public:
   IEPACProxyDetector() {}
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("IEPAC"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("IEPAC"); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IEPACProxyDetector);
@@ -174,8 +175,8 @@ class IEPACProxyDetector : public internal::IEProxyDetector {
 class IENamedProxyDetector : public internal::IEProxyDetector {
  public:
   IENamedProxyDetector() {}
-  virtual HRESULT Detect(ProxyConfig* config);
-  virtual const TCHAR* source() { return _T("IENamed"); }
+  HRESULT Detect(ProxyConfig* config) override;
+  const TCHAR* source() override { return _T("IENamed"); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IENamedProxyDetector);

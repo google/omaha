@@ -24,9 +24,10 @@
 #include <atlbase.h>
 #include <atlsecurity.h>
 #include <atlstr.h>
+#include <memory>
 #include <string>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/core/google_update_core.h"

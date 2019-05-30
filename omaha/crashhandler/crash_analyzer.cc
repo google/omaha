@@ -15,10 +15,7 @@
 
 #include "omaha/crashhandler/crash_analyzer.h"
 
-#include <atlstr.h>
-#include <windows.h>
 #include <algorithm>
-#include <memory>
 
 #include "omaha/base/utils.h"
 #include "omaha/crashhandler/crash_analyzer_checks.h"

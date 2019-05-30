@@ -47,7 +47,6 @@
 #include <atlstr.h>
 #include <new>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/crash_if_specific_error.h"
@@ -60,7 +59,6 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
@@ -341,11 +339,11 @@ class GoopdateImpl {
   // Language identifier for the current user locale.
   CString user_default_language_id_;
 
-  scoped_ptr<OmahaExceptionHandler> exception_handler_;
-  scoped_ptr<ThreadPool> thread_pool_;
+  std::unique_ptr<OmahaExceptionHandler> exception_handler_;
+  std::unique_ptr<ThreadPool> thread_pool_;
 
 #if defined(HAS_DEVICE_MANAGEMENT)
-  scoped_ptr<DmStorage> dm_storage_;
+  std::unique_ptr<DmStorage> dm_storage_;
 #endif
 
   Goopdate* goopdate_;
@@ -1589,7 +1587,7 @@ HRESULT GoopdateImpl::InstallExceptionHandler() {
 
   return OmahaExceptionHandler::Create(is_machine_,
                                        custom_info_map,
-                                       address(exception_handler_));
+                                       &exception_handler_);
 }
 
 #if defined(HAS_DEVICE_MANAGEMENT)

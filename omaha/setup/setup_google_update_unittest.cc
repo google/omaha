@@ -16,7 +16,6 @@
 #include <windows.h>
 #include <msi.h>
 #include <atlpath.h>
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/atlregmapex.h"
 #include "omaha/base/constants.h"
@@ -26,7 +25,6 @@
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_impersonation.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
@@ -270,7 +268,7 @@ class SetupGoogleUpdateTest : public testing::Test {
   explicit SetupGoogleUpdateTest(bool is_machine) : is_machine_(is_machine) {}
   virtual ~SetupGoogleUpdateTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     setup_google_update_.reset(new SetupGoogleUpdate(is_machine_, false));
   }
 
@@ -299,7 +297,7 @@ class SetupGoogleUpdateTest : public testing::Test {
   }
 
   bool is_machine_;
-  scoped_ptr<SetupGoogleUpdate> setup_google_update_;
+  std::unique_ptr<SetupGoogleUpdate> setup_google_update_;
 };
 
 class SetupGoogleUpdateUserTest : public SetupGoogleUpdateTest {
@@ -311,12 +309,12 @@ class SetupGoogleUpdateUserTest : public SetupGoogleUpdateTest {
                                               kOmahaCoreFileName);
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     SetupGoogleUpdateTest::SetUp();
     RegKey::DeleteKey(USER_REG_UPDATE);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     RegKey::DeleteKey(USER_REG_UPDATE);
     SetupGoogleUpdateTest::TearDown();
   }
@@ -328,12 +326,12 @@ class SetupGoogleUpdateMachineTest : public SetupGoogleUpdateTest {
  protected:
   SetupGoogleUpdateMachineTest() : SetupGoogleUpdateTest(true) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     RegKey::DeleteKey(MACHINE_REG_UPDATE);
     SetupGoogleUpdateTest::SetUp();
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     RegKey::DeleteKey(MACHINE_REG_UPDATE);
     SetupGoogleUpdateTest::TearDown();
   }

@@ -51,7 +51,7 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/atlregmapex.h"
 #include "omaha/base/debug.h"
 // Use client/resource.h because it does not use StringFormatter and some of the

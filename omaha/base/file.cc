@@ -69,7 +69,6 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/timer.h"

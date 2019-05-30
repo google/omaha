@@ -13,9 +13,11 @@
 // limitations under the License.
 // ========================================================================
 
-#include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/thread_pool.h"
+
+#include <memory>
+
+#include "base/basictypes.h"
 #include "omaha/base/timer.h"
 #include "omaha/testing/unit_test.h"
 
@@ -85,7 +87,7 @@ class UserWorkItemCoInitTest : public UserWorkItem {
 };
 
 HRESULT QueueMyJob1(ThreadPool* thread_pool) {
-  scoped_ptr<MyJob1> job(new MyJob1);
+  std::unique_ptr<MyJob1> job(new MyJob1);
   HRESULT hr = thread_pool->QueueUserWorkItem(job.get(),
                                               COINIT_MULTITHREADED,
                                               WT_EXECUTEDEFAULT);
@@ -97,7 +99,7 @@ HRESULT QueueMyJob1(ThreadPool* thread_pool) {
 }
 
 HRESULT QueueMyJob2(ThreadPool* thread_pool) {
-  scoped_ptr<MyJob2> job(new MyJob2);
+  std::unique_ptr<MyJob2> job(new MyJob2);
   HRESULT hr = thread_pool->QueueUserWorkItem(job.get(),
                                               COINIT_MULTITHREADED,
                                               WT_EXECUTEDEFAULT);
@@ -109,7 +111,7 @@ HRESULT QueueMyJob2(ThreadPool* thread_pool) {
 }
 
 HRESULT QueueMyJob3(ThreadPool* thread_pool) {
-  scoped_ptr<MyJob3> job(new MyJob3);
+  std::unique_ptr<MyJob3> job(new MyJob3);
   HRESULT hr = thread_pool->QueueUserWorkItem(job.get(),
                                               COINIT_MULTITHREADED,
                                               WT_EXECUTEDEFAULT);
@@ -124,7 +126,7 @@ HRESULT QueueUserWorkItemCoInitTest(ThreadPool* thread_pool,
                                     DWORD coinit_flags_workitem,
                                     HRESULT coinit_expected_hresult,
                                     DWORD coinit_flags_threadpool) {
-  scoped_ptr<UserWorkItemCoInitTest> job(
+  std::unique_ptr<UserWorkItemCoInitTest> job(
       new UserWorkItemCoInitTest(coinit_flags_workitem,
                                  coinit_expected_hresult));
   EXPECT_HRESULT_SUCCEEDED(

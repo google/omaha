@@ -17,8 +17,9 @@
 #define OMAHA_UI_PROGRESS_WND_H_
 
 #include <atlbase.h>
+#include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/time.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
@@ -209,11 +210,11 @@ class ProgressWnd
     STATE_END,
   };
 
-  scoped_ptr<HighresTimer> metrics_timer_;
+  std::unique_ptr<HighresTimer> metrics_timer_;
 
   States cur_state_;
 
-  scoped_ptr<InstallStoppedWnd> install_stopped_wnd_;
+  std::unique_ptr<InstallStoppedWnd> install_stopped_wnd_;
 
   ProgressWndEvents* events_sink_;
   std::vector<CString> post_install_urls_;

@@ -16,7 +16,6 @@
 #include "omaha/base/user_rights.h"
 #include <lm.h>
 #include <wtsapi32.h>
-#include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"

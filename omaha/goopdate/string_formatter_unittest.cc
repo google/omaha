@@ -13,13 +13,13 @@
 // limitations under the License.
 // ========================================================================
 
-#include "base/scoped_ptr.h"
+#include "omaha/goopdate/string_formatter.h"
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/string.h"
 #include "omaha/common/lang.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/goopdate/server_resource.h"
-#include "omaha/goopdate/string_formatter.h"
 #include "omaha/testing/unit_test.h"
 
 using ::testing::_;
@@ -77,7 +77,7 @@ TEST_F(StringFormatterTest, FormatMessageTest) {
   StringFormatter formatter_de(_T("de"));
   EXPECT_HRESULT_SUCCEEDED(
       formatter_de.FormatMessage(&format_result, IDS_CLOSE));
-  EXPECT_STREQ(_T("Schließen"), format_result);   // NOLINT
+  EXPECT_STREQ(_T("Schlieï¿½en"), format_result);   // NOLINT
 
   StringFormatter formatter_fr(_T("fr"));
   EXPECT_HRESULT_SUCCEEDED(

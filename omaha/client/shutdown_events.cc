@@ -14,8 +14,9 @@
 // ========================================================================
 
 #include "omaha/client/shutdown_events.h"
+
 #include <atlsafe.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -67,19 +68,18 @@ HRESULT ShutdownEvents::Shutdown() {
 HRESULT ShutdownEvents::CreateShutdownHandler(
     bool is_machine,
     BundleInstaller* installer,
-    ShutdownCallback** shutdown_callback) {
+    std::unique_ptr<ShutdownCallback>* shutdown_callback) {
   ASSERT1(installer);
   ASSERT1(shutdown_callback);
-  ASSERT1(!*shutdown_callback);
 
-  scoped_ptr<ShutdownEvents> shutdown_events(new ShutdownEvents(installer));
+  std::unique_ptr<ShutdownEvents> shutdown_events(new ShutdownEvents(installer));
   HRESULT hr = shutdown_events->InitializeShutdownHandler(is_machine);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[InitializeShutDownHandler failed][0x%08x]"), hr));
     return hr;
   }
 
-  *shutdown_callback = shutdown_events.release();
+  shutdown_callback->reset(shutdown_events.release());
   return S_OK;
 }
 

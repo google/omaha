@@ -17,8 +17,9 @@
 #define OMAHA_NET_WINHTTP_ADAPTER_H_
 
 #include <windows.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/net/winhttp.h"
@@ -130,7 +131,7 @@ class WinHttpAdapter {
                                               void* info,
                                               DWORD info_len);
 
-  scoped_ptr<HttpClient> http_client_;
+  std::unique_ptr<HttpClient> http_client_;
 
   HINTERNET              connection_handle_;
   HINTERNET              request_handle_;

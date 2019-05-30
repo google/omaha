@@ -14,7 +14,9 @@
 // ========================================================================
 
 #include "omaha/goopdate/offline_utils.h"
+
 #include <atlpath.h>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -113,7 +115,7 @@ void ParseAndCheck(const TCHAR* source_manifest_extension,
   EXPECT_SUCCEEDED(File::Copy(source_manifest_path, target_manifest_path,
                               true));
 
-  scoped_ptr<xml::UpdateResponse> update_response(
+  std::unique_ptr<xml::UpdateResponse> update_response(
       xml::UpdateResponse::Create());
   EXPECT_SUCCEEDED(offline_utils::ParseOfflineManifest(
                        kAppId1,
@@ -178,7 +180,7 @@ TEST(OfflineUtilsTest, ParseOfflineManifest_v2_Success) {
 }
 
 TEST(OfflineUtilsTest, ParseOfflineManifest_FileDoesNotExist) {
-  scoped_ptr<xml::UpdateResponse> update_response(
+  std::unique_ptr<xml::UpdateResponse> update_response(
       xml::UpdateResponse::Create());
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
             offline_utils::ParseOfflineManifest(

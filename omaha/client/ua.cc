@@ -27,7 +27,6 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/program_instance.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/time.h"
 #include "omaha/client/install_apps.h"
@@ -134,16 +133,16 @@ HRESULT RegisterMSIHelperIfNeeded(bool is_machine) {
 }
 
 // Ensures there is only one instance of /ua per session per Omaha instance.
-bool EnsureSingleUAProcess(bool is_machine, ProgramInstance** instance) {
+bool EnsureSingleUAProcess(bool is_machine,
+                           std::unique_ptr<ProgramInstance>* instance) {
   ASSERT1(instance);
-  ASSERT1(!*instance);
   NamedObjectAttributes single_ua_process_attr;
   GetNamedObjectAttributes(kUpdateAppsSingleInstance,
                            is_machine,
                            &single_ua_process_attr);
 
-  *instance = new ProgramInstance(single_ua_process_attr.name);
-  return !(*instance)->EnsureSingleInstance();
+  instance->reset(new ProgramInstance(single_ua_process_attr.name));
+  return !instance->get()->EnsureSingleInstance();
 }
 
 bool IsUpdateAppsHourlyJitterDisabled() {
@@ -247,9 +246,9 @@ HRESULT UpdateApps(bool is_machine,
 
   WriteUpdateAppsStartEvent(is_machine);
 
-  scoped_ptr<ProgramInstance> single_ua_process;
+  std::unique_ptr<ProgramInstance> single_ua_process;
 
-  if (EnsureSingleUAProcess(is_machine, address(single_ua_process))) {
+  if (EnsureSingleUAProcess(is_machine, &single_ua_process)) {
     OPT_LOG(L1, (_T("[Another worker is already running. Exiting.]")));
     ++metric_client_another_update_in_progress;
     return GOOPDATE_E_UA_ALREADY_RUNNING;

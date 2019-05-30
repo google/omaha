@@ -16,7 +16,6 @@
 
 #include <memory>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
@@ -114,7 +113,7 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
   }
 
   // Create a network request and configure its headers.
-  scoped_ptr<NetworkRequest> request(
+  std::unique_ptr<NetworkRequest> request(
       new NetworkRequest(network_config->session()));
   // DeviceManagementRequestJobImpl::ConfigureRequest.
   request->AddHeader(L"Authorization",

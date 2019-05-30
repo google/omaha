@@ -4,14 +4,15 @@
 
 #include "crypto/signature_creator.h"
 
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/debug.h"
 
 namespace crypto {
 
 // static
 SignatureCreator* SignatureCreator::Create(RSAPrivateKey* key) {
-  scoped_ptr<SignatureCreator> result(new SignatureCreator);
+  std::unique_ptr<SignatureCreator> result(new SignatureCreator);
   result->key_ = key;
 
   if (!CryptCreateHash(key->provider(), CALG_SHA1, 0, 0,

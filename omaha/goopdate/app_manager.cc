@@ -14,16 +14,17 @@
 // ========================================================================
 
 #include "omaha/goopdate/app_manager.h"
-#include <algorithm>
+
 #include <cstdlib>
+#include <algorithm>
 #include <functional>
 #include <map>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"

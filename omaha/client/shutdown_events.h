@@ -18,7 +18,8 @@
 
 #include <windows.h>
 #include <atlsafe.h>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/synchronized.h"
 
@@ -36,15 +37,15 @@ class ShutdownEvents : public ShutdownCallback {
   HRESULT InitializeShutdownHandler(bool is_machine);
   HRESULT Shutdown();
   static HRESULT CreateShutdownHandler(bool is_machine,
-                                       BundleInstaller* installer,
-                                       ShutdownCallback** shutdown_callback);
+    BundleInstaller* installer,
+    std::unique_ptr<ShutdownCallback>* shutdown_callback);
 
  private:
   BundleInstaller* installer_;
 
   LLock lock_;
-  scoped_ptr<Reactor> reactor_;
-  scoped_ptr<ShutdownHandler> shutdown_handler_;
+  std::unique_ptr<Reactor> reactor_;
+  std::unique_ptr<ShutdownHandler> shutdown_handler_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(ShutdownEvents);
 };

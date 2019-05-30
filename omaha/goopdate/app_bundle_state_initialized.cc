@@ -14,11 +14,13 @@
 // ========================================================================
 
 #include "omaha/goopdate/app_bundle_state_initialized.h"
+
+#include <memory>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/goopdate_utils.h"
@@ -98,7 +100,7 @@ HRESULT AppBundleStateInitialized::CreateApp(AppBundle* app_bundle,
     return hr;
   }
 
-  scoped_ptr<App> local_app(new App(app_guid, false, app_bundle));
+  std::unique_ptr<App> local_app(new App(app_guid, false, app_bundle));
   hr = AddApp(app_bundle, local_app.get());
   if (FAILED(hr)) {
     return hr;
@@ -313,7 +315,7 @@ HRESULT AppBundleStateInitialized::AddInstalledApp(AppBundle* app_bundle,
                   hr, app_id, app_bundle->is_machine()));
   }
 
-  scoped_ptr<App> local_app(new App(app_guid, true, app_bundle));
+  std::unique_ptr<App> local_app(new App(app_guid, true, app_bundle));
 
   local_app->set_external_updater_event(release(external_updater_event));
 

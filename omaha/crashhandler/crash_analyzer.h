@@ -19,11 +19,11 @@
 #include <windows.h>
 #include <atlstr.h>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "base/basictypes.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 
 namespace omaha {
@@ -152,7 +152,7 @@ class CrashAnalyzer {
   bool InitializeDebuggerAndSuspendProcess();
   BYTE* GetCachedSegment(BYTE* ptr) const;
 
-  scoped_ptr<DEBUG_EVENT> debug_break_event_;
+  std::unique_ptr<DEBUG_EVENT> debug_break_event_;
   DWORD pid_;
 
   size_t exec_pages_;

@@ -18,11 +18,10 @@
 
 #include <windows.h>
 #include <atlstr.h>
-
 #include <map>
+#include <memory>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 
 namespace omaha {
 
@@ -86,7 +85,7 @@ class GoopdateCommandLineValidator {
 
   const CommandLineParser* parser_;
   CommandLineArgs* args_;
-  scoped_ptr<CommandLineValidator> validator_;
+  std::unique_ptr<CommandLineValidator> validator_;
   MapScenarioHandlers scenario_handlers_;
 
   DISALLOW_COPY_AND_ASSIGN(GoopdateCommandLineValidator);

@@ -22,11 +22,10 @@
 
 #include <atlbase.h>
 #include <atlcom.h>
-
+#include <memory>
 #include <vector>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/constants.h"
@@ -408,10 +407,10 @@ class App : public ModelObject {
   int GetTimeDifferenceMs(TimeMetricType time_start_metric_type,
                           TimeMetricType time_end_metric_type) const;
 
-  scoped_ptr<fsm::AppState> app_state_;
+  std::unique_ptr<fsm::AppState> app_state_;
 
-  scoped_ptr<AppVersion> current_version_;
-  scoped_ptr<AppVersion> next_version_;
+  std::unique_ptr<AppVersion> current_version_;
+  std::unique_ptr<AppVersion> next_version_;
 
   // Alias to the version of the app that is being modified.
   AppVersion* working_version_;

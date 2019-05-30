@@ -257,7 +257,7 @@ class CoreUtilsTest : public testing::Test {
     return SetupUpdate3Service::DeleteService();
   }
 
-  scoped_ptr<Core> core_;
+  std::unique_ptr<Core> core_;
   bool is_machine_;
 
   CAtlModule* original_atl_module_;

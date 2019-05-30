@@ -21,9 +21,8 @@
 #include <windows.h>
 #include <atlbase.h>
 #include <atlcom.h>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
-#include "base/scoped_ptr_address.h"
 #include "base/utils.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/goopdate/model_object.h"
@@ -49,8 +48,10 @@ class ComWrapper : public CComObjectRootEx<CComObjectThreadModel> {
 
     ASSERT1(IsModelLockedByCaller(t->model()));
 
-    scoped_ptr<TComObject> t_com_object;
-    HRESULT hr = TComObject::CreateInstance(address(t_com_object));
+    std::unique_ptr<TComObject> t_com_object;
+    TComObject* com_object_ptr = nullptr;
+    HRESULT hr = TComObject::CreateInstance(&com_object_ptr);
+    t_com_object.reset(com_object_ptr);
     if (FAILED(hr)) {
       return hr;
     }

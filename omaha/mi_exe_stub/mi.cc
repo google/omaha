@@ -47,7 +47,6 @@
 #pragma warning(disable : 4310)
 #include "base/basictypes.h"
 #pragma warning(pop)
-#include "base/scoped_ptr.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
 #include "omaha/base/extractor.h"

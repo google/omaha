@@ -14,9 +14,10 @@
 // ========================================================================
 
 #include"omaha/goopdate/app_bundle.h"
+
 #include <atlsafe.h>
 #include <intsafe.h>
-#include "omaha/base/debug.h"
+
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scope_guard.h"
@@ -195,12 +196,12 @@ CString AppBundle::FetchAndResetLogText() {
   return event_log_text;
 }
 
-void AppBundle::BuildPing(Ping** my_ping) {
+void AppBundle::BuildPing(std::unique_ptr<Ping>* my_ping) {
   CORE_LOG(L3, (_T("[AppBundle::BuildPing]")));
   ASSERT1(model()->IsLockedByCaller());
   ASSERT1(my_ping);
 
-  scoped_ptr<Ping> ping(
+  std::unique_ptr<Ping> ping(
       new Ping(is_machine_, session_id_, install_source_, request_id_));
 
   for (size_t i = 0; i != apps_.size(); ++i) {
@@ -215,14 +216,14 @@ void AppBundle::BuildPing(Ping** my_ping) {
     }
   }
 
-  *my_ping = ping.release();
+  my_ping->reset(ping.release());
 }
 
 HRESULT AppBundle::BuildAndPersistPing() {
   CORE_LOG(L3, (_T("[AppBundle::BuildAndPersistPing]")));
 
-  scoped_ptr<Ping> ping;
-  BuildPing(address(ping));
+  std::unique_ptr<Ping> ping;
+  BuildPing(&ping);
   return ping->PersistPing();
 }
 
@@ -236,10 +237,10 @@ HRESULT AppBundle::SendPingEventsAsync() {
     return S_OK;
   }
 
-  scoped_ptr<Ping> ping;
+  std::unique_ptr<Ping> ping;
 
   __mutexBlock(model()->lock()) {
-    BuildPing(address(ping));
+    BuildPing(&ping);
   }
 
   CORE_LOG(L3, (_T("[AppBundle::SendPingEventsAsync][sending ping events]")
@@ -254,7 +255,7 @@ HRESULT AppBundle::SendPingEventsAsync() {
 
   typedef StaticThreadPoolCallBack1<internal::SendPingEventsParameters> CB;
   Gate send_ping_events_gate;
-  scoped_ptr<CB> callback(new CB(&AppBundle::SendPingEvents,
+  std::unique_ptr<CB> callback(new CB(&AppBundle::SendPingEvents,
                           internal::SendPingEventsParameters(
                               ping.get(),
                               token.GetHandle(),
@@ -281,7 +282,7 @@ void AppBundle::SendPingEvents(internal::SendPingEventsParameters params) {
   _pAtlModule->Lock();
   ON_SCOPE_EXIT_OBJ(*_pAtlModule, &CAtlModule::Unlock);
 
-  scoped_ptr<Ping> ping(params.ping);
+  std::unique_ptr<Ping> ping(params.ping);
   scoped_handle impersonation_token(params.impersonation_token);
   scoped_impersonation impersonate_user(get(impersonation_token));
 
@@ -726,7 +727,7 @@ HRESULT AppBundle::CreateUninstalledApp(const CString& app_id, App** app) {
     return hr;
   }
 
-  scoped_ptr<App> local_app(new App(app_guid, true, this));
+  std::unique_ptr<App> local_app(new App(app_guid, true, this));
 
   hr = AppManager::Instance()->ReadUninstalledAppPersistentData(
            local_app.get());

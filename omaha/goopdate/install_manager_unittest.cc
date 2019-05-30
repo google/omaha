@@ -13,16 +13,17 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/goopdate/install_manager.h"
+
 #include <atlpath.h>
 #include <atlstr.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/system.h"
@@ -38,7 +39,6 @@
 #include "omaha/goopdate/app_state_waiting_to_install.h"
 #include "omaha/goopdate/app_unittest_base.h"
 #include "omaha/goopdate/installer_wrapper.h"
-#include "omaha/goopdate/install_manager.h"
 #include "omaha/testing/unit_test.h"
 
 using ::testing::_;
@@ -266,7 +266,7 @@ class InstallManagerInstallAppTest : public AppTestBase {
         app, result_info);
   }
 
-  scoped_ptr<InstallerWrapper> installer_wrapper_;
+  std::unique_ptr<InstallerWrapper> installer_wrapper_;
 
   App* app_;
 

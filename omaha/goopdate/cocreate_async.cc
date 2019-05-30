@@ -17,7 +17,6 @@
 #include "base/basictypes.h"
 #include "base/debug.h"
 #include "omaha/base/scope_guard.h"
-#include "base/scoped_ptr_address.h"
 #include "omaha/base/system.h"
 #include "omaha/base/thread_pool_callback.h"
 #include "omaha/base/vistautil.h"
@@ -44,8 +43,10 @@ STDMETHODIMP CoCreateAsync::createOmahaMachineServerAsync(
   }
 
   typedef CComObject<CoCreateAsyncStatus> ComObjectAsyncStatus;
-  scoped_ptr<ComObjectAsyncStatus> async_status;
-  HRESULT hr = ComObjectAsyncStatus::CreateInstance(address(async_status));
+  std::unique_ptr<ComObjectAsyncStatus> async_status;
+  ComObjectAsyncStatus* async_status_obj = nullptr;
+  HRESULT hr = ComObjectAsyncStatus::CreateInstance(&async_status_obj);
+  async_status.reset(async_status_obj);
   if (FAILED(hr)) {
     return hr;
   }
@@ -72,14 +73,13 @@ HRESULT CoCreateAsyncStatus::CreateOmahaMachineServerAsync(
     BOOL create_elevated) {
   // Create a thread pool work item for deferred execution of the CoCreate. The
   // thread pool owns this call back object.
-  typedef ThreadPoolCallBack2<CoCreateAsyncStatus,
+  using CallBack = ThreadPoolCallBack2<CoCreateAsyncStatus,
                               const CString,
-                              BOOL> CallBack;
-  scoped_ptr<CallBack>
-      callback(new CallBack(this,
-                            &CoCreateAsyncStatus::CreateOmahaMachineServer,
-                            origin_url,
-                            create_elevated));
+                              BOOL>;
+  auto callback = std::make_unique<CallBack>(this,
+                                &CoCreateAsyncStatus::CreateOmahaMachineServer,
+                                origin_url,
+                                create_elevated);
   HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
                                                       COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);

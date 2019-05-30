@@ -115,8 +115,8 @@ HRESULT AppBundleStateInit::Initialize(AppBundle* app_bundle) {
   CString update_check_url;
   VERIFY1(SUCCEEDED(
       ConfigManager::Instance()->GetUpdateCheckUrl(&update_check_url)));
-  scoped_ptr<WebServicesClient> web_service_client;
-  web_service_client.reset(new WebServicesClient(app_bundle->is_machine()));
+  auto web_service_client = std::make_unique<WebServicesClient>(
+      app_bundle->is_machine());
   hr = web_service_client->Initialize(update_check_url, HeadersVector(), true);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[Update check client init failed][0x%08x]"), hr));

@@ -21,9 +21,10 @@
 #include <atlbase.h>
 #include <oaidl.h>
 #include <oleauto.h>
+#include <memory>
+
 #include "base/basictypes.h"
 #include "base/debug.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/atlregmapex.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/preprocessor_fun.h"
@@ -179,7 +180,7 @@ class ATL_NO_VTABLE OnDemand
     // impersonation and primary tokens.
     typedef StaticThreadPoolCallBack1<internal::OnDemandParameters> Callback;
     Gate on_demand_gate;
-    scoped_ptr<Callback> callback(
+    std::unique_ptr<Callback> callback(
         new Callback(&OnDemand::DoOnDemandInternal,
                      internal::OnDemandParameters(
                          guid,

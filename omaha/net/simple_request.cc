@@ -232,8 +232,7 @@ HRESULT SimpleRequest::Send() {
         // current_bytes for resume purpose. These two states will be validated
         // against the previously (partially) downloaded file when reopens the
         // target file.
-        scoped_ptr<TransientRequestState> request_state(
-            new TransientRequestState);
+        auto request_state = std::make_unique<TransientRequestState>();
         request_state->content_length = request_state_->content_length;
         request_state->current_bytes = request_state_->current_bytes;
 

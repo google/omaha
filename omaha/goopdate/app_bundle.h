@@ -22,9 +22,10 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
@@ -187,7 +188,7 @@ class AppBundle
                                            fsm::AppBundleState* state);
 
   // Builds a new Ping object with all the Apps in the AppBundle.
-  void BuildPing(Ping** ping);
+  void BuildPing(std::unique_ptr<Ping>* ping);
 
   // TODO(omaha): missing unit test.
   // Sends the ping if the applications in the bundle have accumulated
@@ -238,7 +239,7 @@ class AppBundle
   // for debugging.
   UserWorkItem* user_work_item_;
 
-  scoped_ptr<WebServicesClientInterface> update_check_client_;
+  std::unique_ptr<WebServicesClientInterface> update_check_client_;
 
   // The apps in the bundle. Do not add to it directly; use AddApp() instead.
   std::vector<App*> apps_;
@@ -248,7 +249,7 @@ class AppBundle
   // other pings.
   std::vector<App*> uninstalled_apps_;
 
-  scoped_ptr<fsm::AppBundleState> app_bundle_state_;
+  std::unique_ptr<fsm::AppBundleState> app_bundle_state_;
 
   // Impersonation and primary tokens set by the client. Typically only
   // set by the gupdatem service. The gupdatem service exposes a narrow

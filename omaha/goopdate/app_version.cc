@@ -14,10 +14,11 @@
 // ========================================================================
 
 #include "omaha/goopdate/app_version.h"
+
 #include <atlsafe.h>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/utils.h"
 #include "omaha/goopdate/file_hash.h"

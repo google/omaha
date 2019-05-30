@@ -65,7 +65,7 @@ class UpdateRequestUtilsTest : public AppTestBaseWithRegistryOverride {
   }
 
   App* app_;
-  scoped_ptr<xml::UpdateRequest> update_request_;
+  std::unique_ptr<xml::UpdateRequest> update_request_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UpdateRequestUtilsTest);

@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <list>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 
 // This file manually encodes and decodes RSA private keys using PrivateKeyInfo

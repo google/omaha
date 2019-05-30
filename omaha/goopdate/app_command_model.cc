@@ -15,7 +15,7 @@
 
 #include "omaha/goopdate/app_command_model.h"
 
-#include "OleAuto.h"
+#include <OleAuto.h>
 
 #include "base/file.h"
 #include "base/utils.h"
@@ -23,7 +23,6 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
@@ -53,12 +52,12 @@ HRESULT AppCommandModel::Load(App* app,
   ASSERT1(app);
   ASSERT1(app_command_model);
 
-  scoped_ptr<AppCommandConfiguration> configuration;
+  std::unique_ptr<AppCommandConfiguration> configuration;
 
   HRESULT hr = AppCommandConfiguration::Load(GuidToString(app->app_guid()),
                                              app->app_bundle()->is_machine(),
                                              cmd_id,
-                                             address(configuration));
+                                             &configuration);
   if (FAILED(hr)) {
     return hr;
   }

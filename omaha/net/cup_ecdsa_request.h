@@ -22,8 +22,8 @@
 #include <windows.h>
 #include <atlstr.h>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/net/http_request.h"
 
 namespace omaha {
@@ -93,7 +93,7 @@ class CupEcdsaRequest : public HttpRequestInterface {
  private:
   friend class CupEcdsaRequestTest;
 
-  scoped_ptr<internal::CupEcdsaRequestImpl> impl_;
+  std::unique_ptr<internal::CupEcdsaRequestImpl> impl_;
   DISALLOW_COPY_AND_ASSIGN(CupEcdsaRequest);
 };
 

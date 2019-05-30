@@ -20,7 +20,7 @@
 
 #include <atlbase.h>
 #include <atlcom.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/xml_utils.h"
 #include "omaha/common/const_group_policy.h"
@@ -93,7 +93,7 @@ class AppTestBase : public testing::Test {
     std::vector<uint8> buffer(buffer_string.GetLength());
     memcpy(&buffer.front(), buffer_string, buffer.size());
 
-    scoped_ptr<xml::UpdateResponse> update_response(
+    std::unique_ptr<xml::UpdateResponse> update_response(
         xml::UpdateResponse::Create());
     HRESULT hr = update_response->Deserialize(buffer);
     if (FAILED(hr)) {
@@ -117,8 +117,8 @@ class AppTestBase : public testing::Test {
 
   CString hive_override_key_name_;
 
-  scoped_ptr<MockWorker> mock_worker_;
-  scoped_ptr<Model> model_;
+  std::unique_ptr<MockWorker> mock_worker_;
+  std::unique_ptr<Model> model_;
 
   Goopdate goopdate_;
   shared_ptr<AppBundle> app_bundle_;

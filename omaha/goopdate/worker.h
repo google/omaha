@@ -18,9 +18,10 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
+
 #include "base/basictypes.h"
 #include "omaha/base/program_instance.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/shutdown_handler.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
@@ -181,12 +182,12 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
   bool is_machine_;
   int lock_count_;
   HRESULT single_instance_hr_;
-  scoped_ptr<ProgramInstance> single_instance_;
-  scoped_ptr<Reactor>         reactor_;
-  scoped_ptr<ShutdownHandler> shutdown_handler_;
-  scoped_ptr<Model>           model_;
-  scoped_ptr<DownloadManagerInterface> download_manager_;
-  scoped_ptr<InstallManagerInterface> install_manager_;
+  std::unique_ptr<ProgramInstance> single_instance_;
+  std::unique_ptr<Reactor>         reactor_;
+  std::unique_ptr<ShutdownHandler> shutdown_handler_;
+  std::unique_ptr<Model>           model_;
+  std::unique_ptr<DownloadManagerInterface> download_manager_;
+  std::unique_ptr<InstallManagerInterface> install_manager_;
 
   CMessageLoop message_loop_;
 

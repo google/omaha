@@ -21,8 +21,9 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/thread_pool.h"
 
 namespace omaha {
@@ -76,7 +77,7 @@ class InstallManager : public InstallManagerInterface {
   // Base path where verified application packages are copied before install.
   CString install_working_dir_;
 
-  scoped_ptr<InstallerWrapper> installer_wrapper_;
+  std::unique_ptr<InstallerWrapper> installer_wrapper_;
 
   friend class InstallManagerInstallAppTest;
 

@@ -13,13 +13,15 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/common/xml_parser.h"
+
+#include <memory>
 #include <windows.h>
 #include "base/utils.h"
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/common/const_group_policy.h"
-#include "omaha/common/xml_parser.h"
 #include "omaha/goopdate/update_response_utils.h"
 #include "omaha/testing/unit_test.h"
 
@@ -60,7 +62,7 @@ class XmlParserTest : public ::testing::TestWithParam<bool> {
 TEST_F(XmlParserTest, GenerateRequestWithoutUserId_MachineUpdateRequest) {
   // The origin URL contains an invalid XML character, the double-quote. The
   // expectation is that this character should be escaped to "&quot;".
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(true,
                             _T("unittest_session"),
                             _T("unittest_install"),
@@ -140,7 +142,7 @@ INSTANTIATE_TEST_CASE_P(IsDomain, XmlParserTest, ::testing::Bool());
 TEST_F(XmlParserTest, GenerateRequestWithUserId_MachineUpdateRequest) {
   // The origin URL contains an invalid XML character, the double-quote. The
   // expectation is that this character should be escaped to "&quot;".
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(true,
                             _T("unittest_session"),
                             _T("unittest_install"),
@@ -249,7 +251,7 @@ TEST_F(XmlParserTest, Parse) {
     std::vector<uint8> buffer(buffer_strings[i].GetLength());
     memcpy(&buffer.front(), buffer_strings[i], buffer.size());
 
-    scoped_ptr<UpdateResponse> update_response(UpdateResponse::Create());
+    std::unique_ptr<UpdateResponse> update_response(UpdateResponse::Create());
     EXPECT_HRESULT_SUCCEEDED(XmlParser::DeserializeResponse(
         buffer,
         update_response.get()));
@@ -332,7 +334,7 @@ TEST_F(XmlParserTest, Parse_InvalidDataStatusError) {
   std::vector<uint8> buffer(buffer_string.GetLength());
   memcpy(&buffer.front(), buffer_string, buffer.size());
 
-  scoped_ptr<UpdateResponse> update_response(UpdateResponse::Create());
+  std::unique_ptr<UpdateResponse> update_response(UpdateResponse::Create());
   EXPECT_HRESULT_SUCCEEDED(XmlParser::DeserializeResponse(
       buffer,
       update_response.get()));
@@ -392,7 +394,7 @@ TEST_F(XmlParserTest, Parse_InvalidDataStatusError) {
 }
 
 TEST_F(XmlParserTest, Serialize_WithInvalidXmlCharacters) {
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(false, _T("sid"), _T("is"), _T("http://foo/\"")));
 
   request::Request& xml_request = get_xml_request(update_request.get());
@@ -439,7 +441,7 @@ TEST_F(XmlParserTest, Serialize_WithInvalidXmlCharacters) {
 }
 
 TEST_F(XmlParserTest, HwAttributes) {
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
 
   request::Request& xml_request = get_xml_request(update_request.get());
@@ -494,7 +496,7 @@ TEST_P(XmlParserTest, DlPref) {
                                             kRegValueDownloadPreference,
                                             kDownloadPreferenceCacheable));
 
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
         UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
 
   request::Request& xml_request = get_xml_request(update_request.get());
@@ -542,7 +544,7 @@ TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
                                             kRegValueDownloadPreference,
                                             _T("unknown policy")));
 
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
          UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
 
   request::Request& xml_request = get_xml_request(update_request.get());
@@ -578,7 +580,7 @@ TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
 }
 
 TEST_F(XmlParserTest, PingFreshness) {
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
          UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
   request::Request& xml_request = get_xml_request(update_request.get());
 
@@ -624,7 +626,7 @@ TEST_P(XmlParserTest, DomainJoined) {
                                     kRegValueIsEnrolledToDomain,
                                     IsDomain() ? 1UL : 0UL));
 
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
          UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
 
   request::Request& xml_request = get_xml_request(update_request.get());

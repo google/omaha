@@ -22,7 +22,6 @@
 #include <tchar.h>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 
 // This file provides logging facility for Windows client apps.
 //

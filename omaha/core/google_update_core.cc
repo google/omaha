@@ -14,13 +14,15 @@
 // ========================================================================
 
 #include "omaha/core/google_update_core.h"
+
+#include <memory>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
@@ -66,12 +68,12 @@ STDMETHODIMP GoogleUpdateCoreBase::LaunchCmdElevated(const WCHAR* app_guid,
   CString session_id;
   GetGuid(&session_id);
 
-  scoped_ptr<AppCommandConfiguration> configuration;
+  std::unique_ptr<AppCommandConfiguration> configuration;
   // true == machine level
   hr = AppCommandConfiguration::Load(app_guid,
                                      true,
                                      cmd_id,
-                                     address(configuration));
+                                     &configuration);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[failed to load command configuration][0x%x]"), hr));
     return hr;
@@ -83,7 +85,8 @@ STDMETHODIMP GoogleUpdateCoreBase::LaunchCmdElevated(const WCHAR* app_guid,
   scoped_process command_process;
   scoped_process duplicate_proc_handle;
 
-  scoped_ptr<AppCommand> app_command(configuration->Instantiate(session_id));
+  std::unique_ptr<AppCommand> app_command(
+    configuration->Instantiate(session_id));
 
   hr = app_command->Execute(
       NULL, std::vector<CString>(), address(command_process));

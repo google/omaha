@@ -14,7 +14,7 @@
 // ========================================================================
 
 #include "omaha/net/winhttp_adapter.h"
-#include <memory>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"

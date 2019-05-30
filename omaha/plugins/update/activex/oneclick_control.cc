@@ -25,7 +25,7 @@
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
+
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/vistautil.h"

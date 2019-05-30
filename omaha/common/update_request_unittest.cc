@@ -13,11 +13,13 @@
 // limitations under the License.
 // ========================================================================
 
-#include "base/scoped_ptr.h"
+#include "omaha/common/update_request.h"
+
+#include <memory>
+
 #include "omaha/base/reg_key.h"
 #include "omaha/base/system_info.h"
 #include "omaha/common/const_group_policy.h"
-#include "omaha/common/update_request.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -34,14 +36,14 @@ class UpdateRequestTest : public ::testing::TestWithParam<bool> {
 INSTANTIATE_TEST_CASE_P(IsDomain, UpdateRequestTest, ::testing::Bool());
 
 TEST_F(UpdateRequestTest, Create_Machine) {
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(true, _T("unittest"), _T("unittest"), CString()));
   ASSERT_TRUE(update_request.get());
   EXPECT_TRUE(update_request->IsEmpty());
 }
 
 TEST_F(UpdateRequestTest, Create_User) {
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(false, _T("unittest"), _T("unittest"), CString()));
   ASSERT_TRUE(update_request.get());
   EXPECT_TRUE(update_request->IsEmpty());
@@ -49,7 +51,7 @@ TEST_F(UpdateRequestTest, Create_User) {
 
 
 TEST_F(UpdateRequestTest, HardwarePlatformAttributes) {
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(false, _T("unittest"), _T("unittest"), CString()));
   ASSERT_TRUE(update_request.get());
   EXPECT_TRUE(update_request->IsEmpty());
@@ -78,7 +80,7 @@ TEST_P(UpdateRequestTest, DlPref) {
                                     kRegValueIsEnrolledToDomain,
                                     IsDomain() ? 1UL : 0UL));
 
-  scoped_ptr<UpdateRequest> update_request(
+  std::unique_ptr<UpdateRequest> update_request(
       UpdateRequest::Create(false, _T("unittest"), _T("unittest"), CString()));
   EXPECT_STREQ(_T(""), update_request->request().dlpref);
 

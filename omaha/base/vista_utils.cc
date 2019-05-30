@@ -15,8 +15,9 @@
 
 #include "omaha/base/vista_utils.h"
 
+#include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/commontypes.h"
 #include "omaha/base/const_utils.h"
@@ -145,7 +146,7 @@ bool IsProcessProtected() {
     return false;
   }
 
-  scoped_ptr<TOKEN_MANDATORY_LABEL> integration_level;
+  std::unique_ptr<TOKEN_MANDATORY_LABEL> integration_level;
 
   integration_level.reset(reinterpret_cast<TOKEN_MANDATORY_LABEL*>(
       new char[length_needed]));

@@ -21,13 +21,13 @@
 #include "omaha/base/signatures.h"
 #include <wincrypt.h>
 #include <intsafe.h>
-#include <memory.h>
 #pragma warning(disable : 4245)
 // C4245 : conversion from 'type1' to 'type2', signed/unsigned mismatch
 #include <atlenc.h>
 #pragma warning(default : 4245)
+#include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/const_utils.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -40,16 +40,16 @@
 
 namespace omaha {
 
-const ALG_ID kHashAlgorithm    = CALG_SHA1;
-const DWORD kEncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
-const DWORD kCertificateNameType = CERT_NAME_SIMPLE_DISPLAY_TYPE;
-const DWORD kKeyPairType = AT_SIGNATURE;
+constexpr ALG_ID kHashAlgorithm = CALG_SHA1;
+constexpr DWORD kEncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
+constexpr DWORD kCertificateNameType = CERT_NAME_SIMPLE_DISPLAY_TYPE;
+constexpr DWORD kKeyPairType = AT_SIGNATURE;
 
 // Maximum file size allowed for performing authentication.
-const size_t kMaxFileSizeForAuthentication = 512 * 1024 * 1024;  // 512MB
+constexpr size_t kMaxFileSizeForAuthentication = 512 * 1024 * 1024; // 512MB
 
 // Buffer size used to read files from disk.
-const size_t kFileReadBufferSize = 128 * 1024;
+constexpr size_t kFileReadBufferSize = 128 * 1024;
 
 namespace CryptDetails {
 
@@ -388,9 +388,9 @@ HRESULT CryptoHash::ComputeOrValidate(const std::vector<CString>& filepaths,
 
   uint64 curr_len = 0;
   std::vector<byte> buf(kFileReadBufferSize);
-  COMPILE_ASSERT(kFileReadBufferSize <= INT_MAX, buffer_size_too_large);
+  static_assert(kFileReadBufferSize <= INT_MAX);
 
-  scoped_ptr<CryptDetails::HashInterface> hasher(
+  std::unique_ptr<CryptDetails::HashInterface> hasher(
       CryptDetails::CreateHasher(use_sha256_));
 
   for (size_t i = 0; i < filepaths.size(); ++i) {
@@ -470,7 +470,7 @@ HRESULT CryptoHash::ComputeOrValidate(const std::vector<byte>& buffer_in,
     return E_INVALIDARG;
   }
 
-  scoped_ptr<CryptDetails::HashInterface> hasher(
+  std::unique_ptr<CryptDetails::HashInterface> hasher(
       CryptDetails::CreateHasher(use_sha256_));
 
   const size_t datalen = buffer_in.size();

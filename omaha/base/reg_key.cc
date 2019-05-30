@@ -14,11 +14,12 @@
 // ========================================================================
 
 #include "omaha/base/reg_key.h"
+
 #include <raserror.h>
 #include <intsafe.h>
+
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/static_assert.h"
 #include "omaha/base/string.h"
 #include "omaha/base/synchronized.h"
@@ -435,7 +436,7 @@ HRESULT RegKey::GetValueStaticHelper(const TCHAR * full_key_name,
           break;
         case REG_BINARY:
           hr = key.GetValue(value_name,
-                            reinterpret_cast<byte * *>(value),
+                            reinterpret_cast<byte**>(value),
                             byte_count);
           if (SUCCEEDED(hr)) {
             UTIL_LOG(L6, (_T("[Read binary value: %s:%s, len = %d]"),
@@ -466,7 +467,7 @@ HRESULT RegKey::GetValueStaticHelper(const TCHAR * full_key_name,
 // value_name may be NULL.
 HRESULT RegKey::GetValueHelper(const TCHAR * value_name,
                                DWORD * type,
-                               byte * * value,
+                               byte** value,
                                size_t * byte_count) const {
   ASSERT1(byte_count);
   ASSERT1(value);
@@ -712,7 +713,7 @@ HRESULT RegKey::GetValue(const TCHAR * value_name,
 
 // Binary data Get
 HRESULT RegKey::GetValue(const TCHAR * value_name,
-                         byte * * value,
+                         byte** value,
                          size_t * byte_count) const {
   ASSERT1(byte_count);
   ASSERT1(value);
@@ -726,7 +727,20 @@ HRESULT RegKey::GetValue(const TCHAR * value_name,
 
 // Raw data get
 HRESULT RegKey::GetValue(const TCHAR * value_name,
-                         byte * * value,
+                         std::unique_ptr<byte[]>* value_ptr,
+                         size_t * byte_count,
+                         DWORD *type) const {
+  ASSERT1(type);
+  ASSERT1(byte_count);
+  ASSERT1(value_ptr);
+  byte* value;
+  HRESULT hr = GetValue(value_name, &value, byte_count, type);
+  value_ptr->reset(value);
+  return hr;
+}
+
+HRESULT RegKey::GetValue(const TCHAR * value_name,
+                         byte** value,
                          size_t * byte_count,
                          DWORD *type) const {
   ASSERT1(type);
@@ -838,11 +852,11 @@ HRESULT RegKey::RenameValue(const TCHAR* old_value_name,
   ASSERT1(new_value_name);
   ASSERT1(old_value_name);
 
-  scoped_ptr<byte> value;
+  std::unique_ptr<byte[]> value;
   size_t byte_count = 0;
   DWORD type = 0;
 
-  HRESULT hr = GetValue(old_value_name, address(value), &byte_count, &type);
+  HRESULT hr = GetValue(old_value_name, &value, &byte_count, &type);
   if (FAILED(hr)) {
     return hr;
   }
@@ -891,10 +905,10 @@ HRESULT RegKey::CopyValue(const TCHAR * full_from_key_name,
     return hr;
   }
 
-  scoped_ptr<byte> val;
+  std::unique_ptr<byte[]> val;
   size_t byte_count = 0;
   DWORD type = 0;
-  hr = from_reg_key.GetValue(from_value_name, address(val), &byte_count, &type);
+  hr = from_reg_key.GetValue(from_value_name, &val, &byte_count, &type);
   if (FAILED(hr)) {
     return hr;
   }
@@ -1321,7 +1335,7 @@ RegKeyWatcher::RegKeyWatcher(const TCHAR* reg_key, bool watch_subtree,
 HRESULT RegKeyWatcher::EnsureEventSetup() {
   UTIL_LOG(L3, (_T("[RegKeyWatcher::EnsureEventSetup]")));
   if (!reg_key_with_change_event_.get()) {
-    scoped_ptr<RegKeyWithChangeEvent> local_reg_key(new RegKeyWithChangeEvent);
+    std::unique_ptr<RegKeyWithChangeEvent> local_reg_key(new RegKeyWithChangeEvent);
     if (!local_reg_key.get()) {
       ASSERT(false, (_T("unable to allocate local_reg_key")));
       return E_FAIL;

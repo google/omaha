@@ -13,10 +13,11 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/goopdate/worker.h"
+
 #include <tuple>
 #include <utility>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/common/config_manager.h"
@@ -32,7 +33,6 @@
 #include "omaha/goopdate/installer_result_info.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/resource_manager.h"
-#include "omaha/goopdate/worker.h"
 #include "omaha/goopdate/worker_internal.h"
 #include "omaha/goopdate/worker_metrics.h"
 #include "omaha/testing/unit_test.h"

@@ -21,8 +21,8 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/constants.h"
 #include "omaha/common/install_manifest.h"
@@ -78,7 +78,7 @@ class AppVersion : public ModelObject {
   // product version "pv".
   CString version_;
 
-  scoped_ptr<xml::InstallManifest> install_manifest_;
+  std::unique_ptr<xml::InstallManifest> install_manifest_;
 
   std::vector<Package*> packages_;
 

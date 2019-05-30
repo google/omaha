@@ -21,7 +21,7 @@
 
 #include <windows.h>
 #include <atlbase.h>
-#include "base/scoped_ptr.h"
+
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"

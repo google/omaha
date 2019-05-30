@@ -182,7 +182,7 @@ HRESULT GenerateMinidump(bool is_system,
   }
   // Passing an empty string as the dump directory is ok here because we are
   // generating the dumps using previously opened handles.
-  scoped_ptr<google_breakpad::MinidumpGenerator> dump_generator(
+  std::unique_ptr<google_breakpad::MinidumpGenerator> dump_generator(
       new google_breakpad::MinidumpGenerator(std::wstring(),
                                              client_info.process_handle(),
                                              client_info.pid(),

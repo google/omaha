@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/base/utils.h"
+
 #include <lm.h>
 #include <mdmregistration.h>
 #include <regstr.h>
@@ -26,19 +27,14 @@
 #include <limits>
 #include <map>
 #include <vector>
-#include "base/basictypes.h"
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/const_config.h"
 #include "omaha/base/const_timeouts.h"
 #include "omaha/base/const_object_names.h"
-#include "omaha/base/debug.h"
-#include "omaha/base/error.h"
 #include "omaha/base/file.h"
-#include "omaha/base/logging.h"
 #include "omaha/base/process.h"
-#include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/shell.h"

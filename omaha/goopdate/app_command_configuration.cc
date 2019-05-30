@@ -73,9 +73,9 @@ CString BuildAppCommandsPath(bool is_machine, const CString& app_guid) {
 }  // namespace
 
 HRESULT AppCommandConfiguration::Load(const CString& app_guid,
-                                      bool is_machine,
-                                      const CString& command_id,
-                                      AppCommandConfiguration** configuration) {
+  bool is_machine,
+  const CString& command_id,
+  std::unique_ptr<AppCommandConfiguration>* configuration) {
   ASSERT1(configuration);
 
   CString command_line;
@@ -139,7 +139,7 @@ HRESULT AppCommandConfiguration::Load(const CString& app_guid,
     run_as_user = 0;
   }
 
-  *configuration = new AppCommandConfiguration(app_guid,
+  configuration->reset(new AppCommandConfiguration(app_guid,
                                                is_machine,
                                                command_id,
                                                command_line,
@@ -148,7 +148,7 @@ HRESULT AppCommandConfiguration::Load(const CString& app_guid,
                                                auto_run_on_os_upgrade != 0,
                                                reporting_id,
                                                run_as_user != 0,
-                                               capture_output != 0);
+                                               capture_output != 0));
   return S_OK;
 }
 

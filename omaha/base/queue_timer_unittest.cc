@@ -14,9 +14,11 @@
 // ========================================================================
 
 
-#include <iostream>
-#include "base/scoped_ptr.h"
 #include "omaha/base/queue_timer.h"
+
+#include <iostream>
+#include <memory>
+
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/timer.h"
 #include "omaha/testing/unit_test.h"
@@ -54,7 +56,7 @@ class QueueTimerTest : public testing::Test {
   static void TimerCallback(QueueTimer* queue_timer);
 
   HANDLE timer_queue_;
-  scoped_ptr<QueueTimer> queue_timer_;
+  std::unique_ptr<QueueTimer> queue_timer_;
   scoped_event ev_;
   volatile int cnt_;
   volatile int max_cnt_;

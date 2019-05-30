@@ -39,10 +39,12 @@
 #ifndef OMAHA_GOOPDATE_APP_COMMAND_CONFIGURATION_H__
 #define OMAHA_GOOPDATE_APP_COMMAND_CONFIGURATION_H__
 
-#include <windows.h>
 #include <atlstr.h>
-#include <vector>
+#include <windows.h>
 #include <map>
+#include <memory>
+#include <vector>
+
 #include "base/basictypes.h"
 
 namespace omaha {
@@ -56,7 +58,7 @@ class AppCommandConfiguration {
   static HRESULT Load(const CString& app_guid,
                       bool is_machine,
                       const CString& command_id,
-                      AppCommandConfiguration** configuration);
+                      std::unique_ptr<AppCommandConfiguration>* configuration);
 
   AppCommand* Instantiate(const CString& session_id) const;
 

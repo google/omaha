@@ -15,15 +15,15 @@
 
 // TODO(omaha): why so many dependencies for this unit test?
 
-#include <windows.h>
 #include <atlstr.h>
+#include <windows.h>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/signatures.h"
 #include "omaha/base/thread_pool.h"
 #include "omaha/base/timer.h"
@@ -129,7 +129,7 @@ class DownloadManagerTest : public AppTestBase {
   }
 
   const CString cache_path_;
-  scoped_ptr<DownloadManager> download_manager_;
+  std::unique_ptr<DownloadManager> download_manager_;
 };
 
 
@@ -400,7 +400,7 @@ TEST_F(DownloadManagerUserTest, DownloadApp_Concurrent) {
     app = app_bundle_->GetApp(i);
     SetAppStateWaitingToDownload(app);
 
-    scoped_ptr<DownloadAppWorkItem> work_item(
+    std::unique_ptr<DownloadAppWorkItem> work_item(
         new DownloadAppWorkItem(download_manager_.get(), app));
 
     // WT_EXECUTELONGFUNCTION causes the thread pool to use multiple threads.
@@ -535,7 +535,7 @@ TEST_F(DownloadManagerUserTest, DISABLED_DownloadApp_Cancel) {
     app = app_bundle_->GetApp(i);
     SetAppStateWaitingToDownload(app);
 
-    scoped_ptr<DownloadAppWorkItem> work_item(
+    std::unique_ptr<DownloadAppWorkItem> work_item(
         new DownloadAppWorkItem(download_manager_.get(), app));
 
     ASSERT_HRESULT_SUCCEEDED(thread_pool.QueueUserWorkItem(

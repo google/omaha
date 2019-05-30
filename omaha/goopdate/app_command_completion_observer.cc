@@ -16,11 +16,10 @@
 #include "omaha/goopdate/app_command_completion_observer.h"
 
 #include <algorithm>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/ping.h"
@@ -77,9 +76,11 @@ HRESULT AppCommandCompletionObserver::Start(
 
   CComPtr<AppCommandCompletionObserver> local_observer;
   {
-    scoped_ptr<CComObject<AppCommandCompletionObserver> > new_object;
+    std::unique_ptr<CComObject<AppCommandCompletionObserver>> new_object;
+    CComObject<AppCommandCompletionObserver>* new_object_ptr = nullptr;
     HRESULT hr = CComObject<AppCommandCompletionObserver>::CreateInstance(
-        address(new_object));
+        &new_object_ptr);
+    new_object.reset(new_object_ptr);
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("[failed to create AppCommandCompletionObserver]"),
                     _T("[0x%08x]"), hr));

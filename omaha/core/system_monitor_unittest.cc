@@ -13,12 +13,13 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/core/system_monitor.h"
+
 #include "omaha/base/constants.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/common/const_goopdate.h"
-#include "omaha/core/system_monitor.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -57,7 +58,7 @@ class SystemMonitorTest
   void MonitorClientsTest(bool is_machine);
 
   bool is_machine_;
-  scoped_ptr<Gate> gate_;
+  std::unique_ptr<Gate> gate_;
 };
 
 void SystemMonitorTest::MonitorLastCheckedTest(bool is_machine) {

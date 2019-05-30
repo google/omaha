@@ -18,10 +18,10 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
 #include <utility>
 #include <vector>
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/net/proxy_auth.h"
 
 namespace omaha {
@@ -206,7 +206,7 @@ class WebServicesClient : public WebServicesClientInterface {
   ProxyAuthConfig proxy_auth_config_;
 
   // Each web services request must use its own network request instance.
-  scoped_ptr<NetworkRequest> network_request_;
+  std::unique_ptr<NetworkRequest> network_request_;
 
   friend class WebServicesClientTest;
   DISALLOW_COPY_AND_ASSIGN(WebServicesClient);

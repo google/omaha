@@ -19,8 +19,8 @@
 #include <atlbase.h>
 #include <atlstr.h>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
 // TODO(omaha3): Depending on how separate the UI is, we may want to separate

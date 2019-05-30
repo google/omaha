@@ -5,9 +5,9 @@
 #ifndef BASE_BASICTYPES_H_
 #define BASE_BASICTYPES_H_
 
-#include <limits.h>         // So we can set the bounds of our types
-#include <stddef.h>         // For size_t
-#include <string.h>         // for memcpy
+#include <climits>         // So we can set the bounds of our types
+#include <cstddef>         // For size_t
+#include <cstring>         // for memcpy
 
 #include "base/port.h"    // Types that only need exist on certain systems
 
@@ -306,7 +306,7 @@ inline Dest bit_cast(const Source& source) {
 // really sure you don't want to do anything with the return value of a function
 // that has been marked WARN_UNUSED_RESULT, wrap it with this. Example:
 //
-//   scoped_ptr<MyType> my_var = ...;
+//   std::unique_ptr<MyType> my_var = ...;
 //   if (TakeOwnership(my_var.get()) == SUCCESS)
 //     ignore_result(my_var.release());
 //
