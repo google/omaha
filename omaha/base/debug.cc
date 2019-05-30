@@ -27,8 +27,9 @@
 #endif
 #include <stdlib.h>
 #include <signal.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/clipboard.h"
 #include "omaha/base/commontypes.h"
@@ -43,7 +44,6 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/system_info.h"
@@ -1117,9 +1117,9 @@ void DumpInterface(IUnknown* unknown) {
         //
         RegKey sub_key;
         if (sub_key.Open(key.Key(), name, KEY_READ) == S_OK) {
-          scoped_array<TCHAR> display;
+          std::unique_ptr<TCHAR[]> display;
           // If this fails, we should still have the IID
-          if (sub_key.GetValue(NULL, address(display)) == S_OK)
+          if (sub_key.GetValue(NULL, &display) == S_OK)
             lstrcpyn(name, display.get(), _MAX_PATH);
         }
 

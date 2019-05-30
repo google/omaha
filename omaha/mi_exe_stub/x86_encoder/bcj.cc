@@ -17,9 +17,9 @@
 
 #include <windows.h>
 #include <shellapi.h>
+#include <memory>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "third_party/smartany/scoped_any.h"
 
 extern "C" {
@@ -46,7 +46,7 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   }
 
   DWORD file_size = static_cast<DWORD>(file_size_data.QuadPart);
-  scoped_array<uint8> buffer(new uint8[file_size]);
+  std::unique_ptr<uint8[]> buffer(new uint8[file_size]);
   DWORD bytes_read = 0;
   if (!::ReadFile(get(file), buffer.get(), file_size, &bytes_read, NULL) ||
       bytes_read != file_size) {

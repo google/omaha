@@ -5,17 +5,17 @@
 #include "crypto/rsa_private_key.h"
 
 #include <list>
+#include <memory>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 
 namespace crypto {
 
 // static
 RSAPrivateKey* RSAPrivateKey::Create(uint16 num_bits) {
-  scoped_ptr<RSAPrivateKey> result(new RSAPrivateKey);
+  std::unique_ptr<RSAPrivateKey> result(new RSAPrivateKey());
   if (!result->InitProvider())
-    return NULL;
+    return nullptr;
 
   DWORD flags = CRYPT_EXPORTABLE;
 
@@ -23,7 +23,7 @@ RSAPrivateKey* RSAPrivateKey::Create(uint16 num_bits) {
   flags |= (num_bits << 16);
   if (!CryptGenKey(result->provider_, CALG_RSA_SIGN, flags,
                    result->key_.receive()))
-    return NULL;
+    return nullptr;
 
   return result.release();
 }
@@ -32,15 +32,15 @@ RSAPrivateKey* RSAPrivateKey::Create(uint16 num_bits) {
 RSAPrivateKey* RSAPrivateKey::CreateSensitive(uint16 num_bits) {
   UNREFERENCED_PARAMETER(num_bits);
   ASSERT1(false);
-  return NULL;
+  return nullptr;
 }
 
 // static
 RSAPrivateKey* RSAPrivateKey::CreateFromPrivateKeyInfo(
     const std::vector<uint8>& input) {
-  scoped_ptr<RSAPrivateKey> result(new RSAPrivateKey);
+  std::unique_ptr<RSAPrivateKey> result(new RSAPrivateKey());
   if (!result->InitProvider())
-    return NULL;
+    return nullptr;
 
   PrivateKeyInfoCodec pki(false);  // Little-Endian
   pki.Import(input);
@@ -54,7 +54,7 @@ RSAPrivateKey* RSAPrivateKey::CreateFromPrivateKeyInfo(
                      pki.exponent2()->size() +
                      pki.coefficient()->size() +
                      pki.private_exponent()->size();
-  scoped_array<BYTE> blob(new BYTE[blob_size]);
+  std::unique_ptr<BYTE[]> blob(new BYTE[blob_size]);
 
   uint8* dest = blob.get();
   PUBLICKEYSTRUC* public_key_struc = reinterpret_cast<PUBLICKEYSTRUC*>(dest);
@@ -96,7 +96,7 @@ RSAPrivateKey* RSAPrivateKey::CreateFromPrivateKeyInfo(
                       reinterpret_cast<uint8*>(public_key_struc),
                       static_cast<DWORD>(blob_size), 0,
                       CRYPT_EXPORTABLE, result->key_.receive()))
-    return NULL;
+    return nullptr;
 
   return result.release();
 }
@@ -106,7 +106,7 @@ RSAPrivateKey* RSAPrivateKey::CreateSensitiveFromPrivateKeyInfo(
     const std::vector<uint8>& input) {
   UNREFERENCED_PARAMETER(input);
   ASSERT1(false);
-  return NULL;
+  return nullptr;
 }
 
 // static
@@ -114,7 +114,7 @@ RSAPrivateKey* RSAPrivateKey::FindFromPublicKeyInfo(
     const std::vector<uint8>& input) {
   UNREFERENCED_PARAMETER(input);
   ASSERT1(false);
-  return NULL;
+  return nullptr;
 }
 
 RSAPrivateKey::RSAPrivateKey() : provider_(NULL), key_(NULL) {}
@@ -134,7 +134,7 @@ bool RSAPrivateKey::ExportPrivateKey(std::vector<uint8>* output) {
     return false;
   }
 
-  scoped_array<uint8> blob(new uint8[blob_length]);
+  std::unique_ptr<uint8[]> blob(new uint8[blob_length]);
   if (!CryptExportKey(key_, 0, PRIVATEKEYBLOB, 0, blob.get(), &blob_length)) {
     ASSERT1(false);
     return false;
@@ -188,7 +188,7 @@ bool RSAPrivateKey::ExportPublicKey(std::vector<uint8>* output) {
     return false;
   }
 
-  scoped_array<uint8> key_info(new uint8[key_info_len]);
+  std::unique_ptr<uint8[]> key_info(new uint8[key_info_len]);
   if (!CryptExportPublicKeyInfo(
       provider_, AT_SIGNATURE, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
       reinterpret_cast<CERT_PUBLIC_KEY_INFO*>(key_info.get()), &key_info_len)) {
@@ -205,7 +205,7 @@ bool RSAPrivateKey::ExportPublicKey(std::vector<uint8>* output) {
     return false;
   }
 
-  scoped_array<BYTE> encoded(new BYTE[encoded_length]);
+  std::unique_ptr<BYTE[]> encoded(new BYTE[encoded_length]);
   if (!CryptEncodeObject(
       X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, X509_PUBLIC_KEY_INFO,
       reinterpret_cast<CERT_PUBLIC_KEY_INFO*>(key_info.get()), encoded.get(),

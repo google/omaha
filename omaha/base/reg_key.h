@@ -27,7 +27,9 @@
 #define OMAHA_BASE_REG_KEY_H_
 
 #include <windows.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
@@ -172,6 +174,8 @@ class RegKey {
   HRESULT GetValue(const TCHAR * value_name, DWORD64 * value) const;
 
   // get a string value - the caller must free the return buffer
+  HRESULT GetValue(const TCHAR * value_name,
+                   std::unique_ptr<TCHAR[]>* value_ptr) const;
   HRESULT GetValue(const TCHAR * value_name, TCHAR * * value) const;
 
   // get a CString value
@@ -182,6 +186,10 @@ class RegKey {
                    std::vector<CString> * value) const;
 
   // get binary data - the caller must free the return buffer
+  HRESULT GetValue(const TCHAR * value_name,
+                    std::unique_ptr<byte[]>* value_ptr,
+                   size_t * byte_count) const;
+
   HRESULT GetValue(const TCHAR * value_name,
                    byte * * value,
                    size_t * byte_count) const;
@@ -286,6 +294,10 @@ class RegKey {
 
   static HRESULT GetValue(const TCHAR * full_key_name,
                           const TCHAR * value_name,
+                          std::unique_ptr<TCHAR[]>* value);
+
+  static HRESULT GetValue(const TCHAR * full_key_name,
+                          const TCHAR * value_name,
                           CString * value);
 
   // STATIC REG_MULTI_SZ get
@@ -294,6 +306,11 @@ class RegKey {
                           std::vector<CString> * value);
 
   // STATIC get binary data - the caller must free the return buffer
+  static HRESULT GetValue(const TCHAR * full_key_name,
+                          const TCHAR * value_name,
+                          std::unique_ptr<byte[]>* value_ptr,
+                          size_t * byte_count);
+
   static HRESULT GetValue(const TCHAR * full_key_name,
                           const TCHAR * value_name,
                           byte * * value,
@@ -497,7 +514,7 @@ class RegKeyWatcher : public StoreWatcher {
 
  private:
   // Used to do the SetupEvent method
-  scoped_ptr<RegKeyWithChangeEvent> reg_key_with_change_event_;
+  std::unique_ptr<RegKeyWithChangeEvent> reg_key_with_change_event_;
 
   CString reg_key_string_;
   bool watch_subtree_;
@@ -637,7 +654,7 @@ inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
                                     REG_BINARY,
                                     &buffer,
                                     &byte_count);
-  scoped_array<byte> free_buffer(buffer);
+  std::unique_ptr<byte[]> free_buffer(buffer);
 
   if (SUCCEEDED(hr)) {
     if (byte_count == sizeof(*value)) {
@@ -667,7 +684,7 @@ inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
                                     REG_BINARY,
                                     &buffer,
                                     &byte_count);
-  scoped_array<byte> free_buffer(buffer);
+  std::unique_ptr<byte[]> free_buffer(buffer);
 
   if (SUCCEEDED(hr)) {
     if (byte_count == sizeof(*value)) {
@@ -680,6 +697,18 @@ inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
     }
   }
 
+  return hr;
+}
+
+inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
+                                const TCHAR* value_name,
+                                std::unique_ptr<TCHAR[]>* value_ptr) {
+  ASSERT1(full_key_name);
+  ASSERT1(value_ptr);
+
+  TCHAR* value = nullptr;
+  HRESULT hr = GetValueStaticHelper(full_key_name, value_name, REG_SZ, &value);
+  value_ptr->reset(value);
   return hr;
 }
 
@@ -712,6 +741,20 @@ inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
   ASSERT1(value);
 
   return GetValueStaticHelper(full_key_name, value_name, REG_MULTI_SZ, value);
+}
+
+inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,
+                                const TCHAR* value_name,
+                                std::unique_ptr<byte[]>* value_ptr,
+                                size_t* byte_count) {
+  ASSERT1(full_key_name);
+  ASSERT1(value_ptr);
+  ASSERT1(byte_count);
+
+  byte* value = nullptr;
+  HRESULT hr = GetValue(full_key_name, value_name, &value, byte_count);
+  value_ptr->reset(value);
+  return hr;
 }
 
 inline HRESULT RegKey::GetValue(const TCHAR* full_key_name,

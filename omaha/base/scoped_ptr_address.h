@@ -47,12 +47,5 @@ inline T** address(const scoped_ptr<T>& t) {
   return reinterpret_cast<T**>(&const_cast<scoped_ptr<T>&>(t));
 }
 
-template <typename T>
-inline T** address(const scoped_array<T>& t) {
-  COMPILE_ASSERT(sizeof(T*) == sizeof(scoped_ptr<T>), types_do_not_match);
-  ASSERT1(!t.get());
-  return reinterpret_cast<T**>(&const_cast<scoped_array<T>&>(t));
-}
-
 #endif // OMAHA_COMMON_SCOPED_PTR_ADDRESS__
 

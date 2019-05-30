@@ -15,6 +15,7 @@
 
 #include "omaha/plugins/update/npapi/npfunction_host.h"
 
+#include <memory>
 #include "omaha/base/debug.h"
 #include "omaha/base/utils.h"
 #include "omaha/plugins/update/npapi/variant_utils.h"
@@ -98,7 +99,7 @@ STDMETHODIMP NpFunctionHost::Invoke(DISPID dispIdMember,
   }
 
   uint32_t num_args = 0;
-  scoped_array<NPVariant> arguments;
+  std::unique_ptr<NPVariant[]> arguments;
   if (pDispParams) {
     // Javascript doesn't officially support named args, so the current
     // implementation ignores any named args that are supplied.  However,

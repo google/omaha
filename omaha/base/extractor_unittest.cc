@@ -18,11 +18,13 @@
 // TODO(omaha): eliminate the dependency on the hardcoded "GoogleUpdate.exe"
 // program name.
 
+#include "omaha/base/extractor.h"
+
 #include <shlobj.h>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/apply_tag.h"
-#include "omaha/base/extractor.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
@@ -146,7 +148,7 @@ TEST(ExtractorTest, EmbedAppendExtract) {
   ASSERT_TRUE(extractor.ExtractTag(NULL, &tag_buffer_size));
   ASSERT_EQ(tag_buffer_size, expected_tag_string_len);
 
-  scoped_array<char> tag_buffer(new char[expected_tag_string_len]);
+  std::unique_ptr<char[]> tag_buffer(new char[expected_tag_string_len]);
   ASSERT_TRUE(extractor.ExtractTag(tag_buffer.get(), &tag_buffer_size));
   ASSERT_EQ(tag_buffer_size, expected_tag_string_len);
   ASSERT_EQ(memcmp(tag_buffer.get(),

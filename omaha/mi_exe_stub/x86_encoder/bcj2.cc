@@ -15,13 +15,13 @@
 //
 // BCJ encodes a file to increase its compressibility.
 
+#include <memory>
+#include <string>
 #include <windows.h>
 #include <intsafe.h>
 #include <shellapi.h>
-#include <string>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/mi_exe_stub/x86_encoder/bcj2_encoder.h"
 #include "third_party/smartany/scoped_any.h"
 
@@ -45,7 +45,7 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   }
 
   DWORD file_size = static_cast<DWORD>(file_size_data.QuadPart);
-  scoped_array<uint8> buffer(new uint8[file_size]);
+  std::unique_ptr<uint8[]> buffer(new uint8[file_size]);
   DWORD bytes_read = 0;
   if (!::ReadFile(get(file), buffer.get(), file_size, &bytes_read, NULL) ||
       bytes_read != file_size) {
@@ -76,7 +76,7 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   }
 
   size_t buffer_remaining = output_buffer_length;
-  scoped_array<uint8> output_buffer(new uint8[output_buffer_length]);
+  std::unique_ptr<uint8[]> output_buffer(new uint8[output_buffer_length]);
   uint8* p = output_buffer.get();
   *reinterpret_cast<uint32*>(p) = bytes_read;
   p += sizeof(uint32);                                                // NOLINT

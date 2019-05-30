@@ -557,6 +557,16 @@ HRESULT RegKey::GetValue(const TCHAR * value_name, DWORD64 * value) const {
 
 // String Get
 // value_name may be NULL.
+HRESULT RegKey::GetValue(const TCHAR * value_name,
+                         std::unique_ptr<TCHAR[]>* value_ptr) const {
+  ASSERT1(value_name);
+  ASSERT1(value_ptr);
+  TCHAR* value;
+  HRESULT hr = GetValue(value_name, &value);
+  value_ptr->reset(value);
+  return hr;
+}
+
 HRESULT RegKey::GetValue(const TCHAR * value_name, TCHAR * * value) const {
   ASSERT1(value);
   ASSERT1(h_key_);
@@ -682,6 +692,21 @@ HRESULT RegKey::GetValue(const TCHAR * value_name,
     hr = MultiSZBytesToStringArray(buffer, byte_count, value);
   }
 
+  return hr;
+}
+
+HRESULT RegKey::GetValue(const TCHAR * value_name,
+                         std::unique_ptr<byte[]>* value,
+                         size_t * byte_count) const {
+  ASSERT1(byte_count);
+  ASSERT1(value);
+  // value_name may be NULL
+
+  DWORD type = 0;
+  BYTE* byte = nullptr;
+  HRESULT hr = GetValueHelper(value_name, &type, &byte, byte_count);
+  value->reset(byte);
+  ASSERT1((hr != S_OK) || (type == REG_MULTI_SZ) || (type == REG_BINARY));
   return hr;
 }
 

@@ -15,11 +15,11 @@
 
 #include "omaha/crashhandler/crash_analyzer.h"
 
-#include <windows.h>
 #include <atlstr.h>
+#include <windows.h>
 #include <algorithm>
+#include <memory>
 
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/utils.h"
 #include "omaha/crashhandler/crash_analyzer_checks.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
@@ -193,7 +193,7 @@ bool CrashAnalyzer::ReadMemorySegment(BYTE* ptr,
     *size = region_size;
     return true;
   }
-  scoped_array<BYTE> region_buffer(new BYTE[region_size]);
+  std::unique_ptr<BYTE[]> region_buffer(new BYTE[region_size]);
   memset(region_buffer.get(), 0, region_size);
   if (!::ReadProcessMemory(client_info_.process_handle(),
                            ptr,

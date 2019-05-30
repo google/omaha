@@ -17,8 +17,8 @@
 
 #include <iphlpapi.h>
 #include <intsafe.h>
+#include <memory>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_any.h"
@@ -35,7 +35,7 @@ bool IsMachineConnectedToNetwork() {
     return true;
   }
 
-  scoped_array<char> buffer(new char[table_size]);
+  std::unique_ptr<char[]> buffer(new char[table_size]);
   MIB_IFTABLE* mib_table = reinterpret_cast<MIB_IFTABLE*>(buffer.get());
   result = ::GetIfTable(mib_table, &table_size, false);
   if (result != NO_ERROR) {

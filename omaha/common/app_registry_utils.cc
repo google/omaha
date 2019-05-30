@@ -14,6 +14,9 @@
 // ========================================================================
 
 #include "omaha/common/app_registry_utils.h"
+
+#include <memory>
+
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -634,12 +637,12 @@ void RemoveClientStateForApps(bool is_machine,
 HRESULT GetLastOSVersion(bool is_machine, OSVERSIONINFOEX* os_version_out) {
   ASSERT1(os_version_out);
 
-  scoped_array<byte> value;
+  std::unique_ptr<byte[]> value;
   size_t size = 0;
   HRESULT hr = RegKey::GetValue(
       ConfigManager::Instance()->registry_update(is_machine),
       kRegValueLastOSVersion,
-      address(value),
+      &value,
       &size);
   if (FAILED(hr) || !value.get()) {
     return value.get() ? hr : E_FAIL;

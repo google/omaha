@@ -15,6 +15,8 @@
 
 #include "omaha/crashhandler/crash_worker.h"
 
+#include <memory>
+
 #include "omaha/base/environment_block_modifier.h"
 #include "omaha/base/error.h"
 #include "omaha/base/process.h"
@@ -193,7 +195,7 @@ HRESULT GenerateMinidump(bool is_system,
   dump_generator->SetDumpFile(mini_dump_file_handle);
   dump_generator->SetFullDumpFile(full_dump_file_handle);
 
-  scoped_array<MINIDUMP_USER_STREAM> user_streams(
+  std::unique_ptr<MINIDUMP_USER_STREAM[]> user_streams(
       new MINIDUMP_USER_STREAM[kMaxUserStreams]);
   memset(user_streams.get(), 0, sizeof(MINIDUMP_USER_STREAM) * kMaxUserStreams);
 

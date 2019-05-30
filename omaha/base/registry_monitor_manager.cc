@@ -20,9 +20,12 @@
 // The events are signaled when the corresponding monitored key changes.
 
 #include "omaha/base/registry_monitor_manager.h"
+
 #include <atlbase.h>
+#include <memory>
 #include <utility>
 #include <vector>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -524,7 +527,7 @@ void RegistryMonitorImpl::Run() {
   const size_t kNumHandles = kNumNotificationHandles + 1;
   const size_t kStopMonitoringHandleIndex = kNumNotificationHandles;
 
-  scoped_array<HANDLE> handles(new HANDLE[kNumHandles]);
+  std::unique_ptr<HANDLE[]> handles(new HANDLE[kNumHandles]);
   for (size_t i = 0; i != watchers_.size(); ++i) {
     handles[i] = watchers_[i].second->notification_event();
     VERIFY1(SUCCEEDED(watchers_[i].second->StartWatching()));

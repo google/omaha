@@ -19,10 +19,12 @@
 #ifndef OMAHA_BASE_FILE_H_
 #define OMAHA_BASE_FILE_H_
 
+#include <cstdint>
 #include <windows.h>
-#include <stdint.h>
 #include <limits>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/store_watcher.h"
@@ -173,11 +175,12 @@ class File {
     // NOTE: If the only values found were our own keys, the whole
     // PendingFileRenameOperations MULTISZ needs to be deleted. This is
     // signified by a returned *value_size_chars_ptr of 0.
-    static HRESULT GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
-                                                  bool prefix_match,
-                                                  TCHAR** value_multisz_ptr,
-                                                  size_t* value_size_chars_ptr,
-                                                  bool* found_ptr);
+    static HRESULT GetPendingRenamesValueMinusDir(
+      const TCHAR* in_directory,
+      bool prefix_match,
+      std::unique_ptr<TCHAR[]>* value_multisz_ptr,
+      size_t* value_size_chars_ptr,
+      bool* found_ptr);
 
     HANDLE handle_;
     CString file_name_;

@@ -16,9 +16,11 @@
 // TODO(omaha): improve unit test. For example, test we are handling correctly
 // different types of line termination.
 
-#include <vector>
-#include "base/scoped_ptr.h"
 #include "omaha/base/file_reader.h"
+
+#include <memory>
+#include <vector>
+
 #include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 
@@ -29,13 +31,13 @@ class ReadingFilesTest : public testing::Test {
   ReadingFilesTest() {
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     // create a temporary file
     temp_file_ = GetTempFilename(_T("ut_"));
     ASSERT_FALSE(temp_file_.IsEmpty());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     // remove the temporary file
     if (!temp_file_.IsEmpty()) {
       ASSERT_SUCCEEDED(File::Remove(temp_file_));
@@ -162,7 +164,7 @@ TEST_F(ReadingFilesTest, ReadFile1) {
   ASSERT_SUCCEEDED(file_read1.Open(temp_file_, false, false));
   while (true) {
     uint32 bytes_read;
-    scoped_array<char> line(new char[256]);
+    std::unique_ptr<char[]> line(new char[256]);
     if (FAILED(file_read1.ReadLineAnsi(256, line.get(), &bytes_read))) {
       break;
     }
@@ -177,7 +179,7 @@ TEST_F(ReadingFilesTest, ReadFile1) {
   uint32 buffer_size = 512;
   ASSERT_SUCCEEDED(file_read2.Init(temp_file_, buffer_size));
   while (true) {
-    scoped_array<char> line(new char[256]);
+    std::unique_ptr<char[]> line(new char[256]);
     if (FAILED(file_read2.ReadLineAnsi(256, line.get()))) {
       break;
     }

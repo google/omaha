@@ -14,12 +14,15 @@
 // ========================================================================
 
 #include "omaha/base/string.h"
+
+#include <cstddef>
+#include <cstdlib>
+#include <intsafe.h>
 #include <wininet.h>        // For INTERNET_MAX_URL_LENGTH.
 #include <algorithm>
-#include <cstdlib>
 #include <string>
-#include <intsafe.h>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/commontypes.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/localization.h"
@@ -405,7 +408,7 @@ CStringA WideToUtf8(const CString& w) {
   // Figure out how long the string is
   int req_bytes = ::WideCharToMultiByte(CP_UTF8, 0, w, -1, NULL, 0, NULL, NULL);
 
-  scoped_array<char> utf8_buffer(new char[req_bytes]);
+  std::unique_ptr<char[]> utf8_buffer(new char[req_bytes]);
 
   int conv_bytes = ::WideCharToMultiByte(CP_UTF8, 0, w, -1, utf8_buffer.get(), req_bytes, NULL, NULL);
   ASSERT1(req_bytes == conv_bytes);
@@ -897,7 +900,7 @@ inline bool UnescapeSequence(const CString &src, int pos,
   int length = src.GetLength();
   // (input_len - pos) / 3 is enough for un-escaping the (%xx)+ sequences.
   int max_dst_length = (length - pos) / 3;
-  scoped_array<char> unescaped(new char[max_dst_length]);
+  std::unique_ptr<char[]> unescaped(new char[max_dst_length]);
   char *buf = unescaped.get();
   if (buf == NULL) {  // no enough space ???
     *consumed_length = 0;
@@ -1414,7 +1417,7 @@ void WebSafeBase64Escape(const char *src, int szsrc,
 void WebSafeBase64Escape(const CStringA& src, CStringA* dest) {
   ASSERT(dest,(L""));
   int encoded_len = CalculateBase64EscapedLen(src.GetLength());
-  scoped_array<char> buf(new char[encoded_len]);
+  std::unique_ptr<char[]> buf(new char[encoded_len]);
   int len = WebSafeBase64Escape(src,src.GetLength(), buf.get(), encoded_len, false);
   dest->SetString(buf.get(), len);
 }
