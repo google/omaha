@@ -52,6 +52,8 @@
 #include <string.h>
 #include <atlpath.h>
 #include <atlsecurity.h>
+#include <memory>
+
 #include "base/basictypes.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_debug.h"
@@ -1171,7 +1173,7 @@ bool FileLogWriter::IsArchivePending() {
   if (!(res == ERROR_SUCCESS && type == REG_MULTI_SZ)) {
     return false;
   }
-  scoped_array<byte> buf(new byte[bytes]);
+  std::unique_ptr<byte[]> buf(new byte[bytes]);
   memset(buf.get(), 0, bytes);
   res = ::RegQueryValueEx(key,
                           L"PendingFileRenameOperations",

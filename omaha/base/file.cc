@@ -56,8 +56,10 @@
 // call some cleanup routine
 
 #include "omaha/base/file.h"
+
 #include <algorithm>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_config.h"
 #include "omaha/base/debug.h"
@@ -481,27 +483,27 @@ HRESULT File::MoveAfterReboot(const TCHAR* from, const TCHAR* to) {
 // NOTE: If the only values found were our own keys, the whole
 // PendingFileRenameOperations MULTISZ needs to be deleted.
 // This is signified by a returned *value_size_chars_ptr of 0.
-HRESULT File::GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
-                                             bool prefix_match,
-                                             TCHAR** value_multisz_ptr,
-                                             size_t* value_size_chars_ptr,
-                                             bool* found_ptr) {
+HRESULT File::GetPendingRenamesValueMinusDir(
+  const TCHAR* in_directory,
+  bool prefix_match,
+  std::unique_ptr<TCHAR[]>* value_multisz_ptr,
+  size_t* value_size_chars_ptr,
+  bool* found_ptr) {
   ASSERT1(in_directory && *in_directory);
 
   // Convert to references for easier-to-read-code:
-  TCHAR*& value_multisz = *value_multisz_ptr;
   size_t& value_size_chars = *value_size_chars_ptr;
   bool& found = *found_ptr;
 
   // Initialize [out] parameters
-  value_multisz = NULL;
+  value_multisz_ptr->reset();
   value_size_chars = 0;
   found = false;
 
   // Locals mirroring the [out] parameters.
   // We will only set the corresponding [out] parameters when we have something
   // meaningful to return to the caller
-  scoped_array<TCHAR> value_multisz_local;
+  std::unique_ptr<byte[]> value_multisz_bytes;
   size_t value_size_chars_local = 0;
 
   size_t value_size_bytes = 0;
@@ -511,9 +513,12 @@ HRESULT File::GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
       RegKey::HasValue(kSessionManagerKey, kPendingFileRenameOps) &&
       SUCCEEDED(RegKey::GetValue(kSessionManagerKey,
                                  kPendingFileRenameOps,
-                                 reinterpret_cast<byte**>(&value_multisz_local),
+                                 &value_multisz_bytes,
                                  &value_size_bytes)),
       S_OK);
+
+  std::unique_ptr<TCHAR[]> value_multisz_local(
+    reinterpret_cast<TCHAR*>(value_multisz_bytes.release()));
 
   ASSERT1(value_multisz_local.get() || value_size_bytes == 0);
   UTIL_LOG(L5, (_T("[File::GetPendingRenamesValueMinusDir]")
@@ -611,7 +616,7 @@ HRESULT File::GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
       // value needs to be deleted. We do not populate
       // value_size_chars or value_multisz in this case.
       ASSERT1(!value_size_chars);
-      ASSERT1(!value_multisz);
+      ASSERT1(!*value_multisz_ptr);
     } else  {
       // The last string should have a NULL terminator:
       ASSERT1(str_write[-1] == '\0');
@@ -622,8 +627,8 @@ HRESULT File::GetPendingRenamesValueMinusDir(const TCHAR* in_directory,
       ++str_write;
 
       // Populate value_size_chars and value_multisz in this case.
-      value_multisz = value_multisz_local.release();
-      value_size_chars = str_write - value_multisz;
+      value_multisz_ptr->reset(value_multisz_local.release());
+      value_size_chars = str_write - value_multisz_ptr->get();
     }
   }
 
@@ -639,12 +644,12 @@ HRESULT File::RemoveFromMovesPendingReboot(const TCHAR* in_directory,
   ASSERT1(in_directory && *in_directory);
 
   bool found = false;
-  // scoped_array will free the value_multisz buffer on stack unwind:
-  scoped_array<TCHAR> value_multisz;
+  // unique_ptr will free the value_multisz buffer on stack unwind:
+  std::unique_ptr<TCHAR[]> value_multisz;
   size_t value_size_chars = 0;
   HRESULT hr = GetPendingRenamesValueMinusDir(in_directory,
                                               prefix_match,
-                                              address(value_multisz),
+                                              &value_multisz,
                                               &value_size_chars,
                                               &found);
   if (SUCCEEDED(hr) && found) {
@@ -684,13 +689,13 @@ bool File::AreMovesPendingReboot(const TCHAR* in_directory, bool prefix_match) {
   ASSERT1(in_directory && *in_directory);
 
   bool found = false;
-  // scoped_array will free the value_multisz buffer on stack unwind:
-  scoped_array<TCHAR> value_multisz;
+  // unique_ptr will free the value_multisz buffer on stack unwind:
+  std::unique_ptr<TCHAR[]> value_multisz;
   size_t value_size_chars = 0;
 
   if (SUCCEEDED(GetPendingRenamesValueMinusDir(in_directory,
                                                prefix_match,
-                                               address(value_multisz),
+                                               &value_multisz,
                                                &value_size_chars,
                                                &found)) && found) {
     return true;
@@ -955,7 +960,7 @@ HRESULT File::WriteN(const byte* buf,
 
   byte* temp_buf = const_cast<byte*>(buf);
 
-  scoped_array<byte> encrypt_buf;
+  std::unique_ptr<byte[]> encrypt_buf;
 
   uint32 to_go = n;
   while (to_go) {
@@ -987,7 +992,7 @@ HRESULT File::Write(const byte* buf, const uint32 len, uint32* bytes_written) {
 
   byte* b = const_cast<byte*>(buf);
 
-  scoped_array<byte> encrypt_buf;
+  std::unique_ptr<byte[]> encrypt_buf;
 
   DWORD wrote = 0;
   if (!::WriteFile(handle_, b, len, &wrote, NULL)) {

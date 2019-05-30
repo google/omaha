@@ -40,6 +40,7 @@
 #include <strsafe.h>
 #include <atlpath.h>
 #include <atlsimpcoll.h>
+#include <memory>
 
 #pragma warning(push)
 // C4310: cast truncates constant value
@@ -111,7 +112,7 @@ char* ReadTag(TagExtractor* extractor) {
     return NULL;
   }
 
-  scoped_array<char> tag_buffer(new char[tag_buffer_size]);
+  std::unique_ptr<char[]> tag_buffer(new char[tag_buffer_size]);
   if (!tag_buffer.get()) {
     return NULL;
   }
@@ -204,7 +205,7 @@ class MetaInstaller {
       CString command_line(exe_path_);
       ::PathQuoteSpaces(CStrBuf(command_line, MAX_PATH));
 
-      scoped_array<char> tag(GetTag());
+      std::unique_ptr<char[]> tag(GetTag());
       if (cmd_line_.IsEmpty()) {
         // Run-by-user case.
         if (!tag.get()) {
@@ -526,7 +527,7 @@ class MetaInstaller {
     packed_buffer += sizeof(unpacked_size_64);
     packed_size -= sizeof(unpacked_size_64);
 
-    scoped_array<uint8> unpacked_buffer(new uint8[unpacked_size]);
+    std::unique_ptr<uint8[]> unpacked_buffer(new uint8[unpacked_size]);
 
     ELzmaStatus status = static_cast<ELzmaStatus>(0);
     SRes result = LzmaDec_DecodeToBuf(
@@ -562,7 +563,7 @@ class MetaInstaller {
     uint32 stream3_size = *reinterpret_cast<const uint32*>(p);
     p += sizeof(uint32);  // NOLINT
 
-    scoped_array<uint8> output_buffer(new uint8[original_size]);
+    std::unique_ptr<uint8[]> output_buffer(new uint8[original_size]);
     if (SZ_OK != Bcj2_Decode(p,
                              stream0_size,
                              p + stream0_size,

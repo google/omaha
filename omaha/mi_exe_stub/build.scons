@@ -35,7 +35,6 @@ for omaha_version_info in env['omaha_versions_info']:
       CCFLAGS = [
           '/D_SECURE_SCL=1',
           '/EHsc',
-          '/FI$MAIN_DIR/mi_exe_stub/ptrdiff_t.h',
       ],
       LIBS = [
           'lzma',

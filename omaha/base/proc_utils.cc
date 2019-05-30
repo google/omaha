@@ -21,7 +21,8 @@
 #include "omaha/base/proc_utils.h"
 
 #include <psapi.h>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_config.h"
 #include "omaha/base/const_timeouts.h"
@@ -87,7 +88,7 @@ bool ProcessTerminator::WaitForProcessInstancesToDie(
   UTIL_LOG(L3, (_T("[WaitForProcessInstancesToDie]")));
   const size_t size = process_handles_.size();
   ASSERT1(size <= MAXIMUM_WAIT_OBJECTS);
-  scoped_array<HANDLE> handles(new HANDLE[size]);
+  std::unique_ptr<HANDLE[]> handles(new HANDLE[size]);
 
   for (size_t i = 0; i < size; i++) {
     handles[i] = process_handles_[i];

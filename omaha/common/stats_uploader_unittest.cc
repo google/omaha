@@ -15,16 +15,18 @@
 
 // All tests are user only.
 
-#include <windows.h>
-#include <limits.h>
+#include "omaha/common/stats_uploader.h"
+
+#include <climits>
 #include <ctime>
+#include <windows.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scoped_ptr_address.h"
-#include "omaha/common/stats_uploader.h"
 #include "omaha/statsreport/metrics.h"
 #include "omaha/testing/unit_test.h"
 
@@ -80,11 +82,11 @@ class StatsUploaderTest : public testing::Test {
   HRESULT GetMetricValue(const TCHAR* value_name, bool* value) {
     CString key_name = key_name_ + CString(_T("Booleans"));
 
-    scoped_array<byte> buffer;
+    std::unique_ptr<byte[]> buffer;
     size_t byte_count(0);
     HRESULT hr = RegKey::GetValue(key_name,
                                   value_name,
-                                  address(buffer),
+                                  &buffer,
                                   &byte_count);
     if (FAILED(hr)) {
       return hr;

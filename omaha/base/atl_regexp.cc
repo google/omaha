@@ -14,11 +14,13 @@
 // ========================================================================
 
 #include "omaha/base/atl_regexp.h"
+
+#include <cstddef>
 #include <intsafe.h>
 
 namespace omaha {
 
-const int kMaxArgs  = 16;
+constexpr int kMaxArgs  = 16;
 
 AtlRE::AtlRE(const TCHAR* pattern, bool case_sensitive) {
   ASSERT(pattern, (L""));

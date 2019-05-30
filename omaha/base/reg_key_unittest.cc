@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include "omaha/base/reg_key.h"
+
 #include "omaha/base/debug.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/dynamic_link_kernel32.h"
@@ -240,6 +241,7 @@ TEST(RegKeyTest, RegKey) {
   double double_val = 0;
   TCHAR * str_val = NULL;
   byte * binary_val = NULL;
+  std::unique_ptr<byte[]> binary_ptr;
   size_t byte_count = 0;
 
   // Just in case...
@@ -406,6 +408,10 @@ TEST(RegKeyTest, RegKey) {
   ASSERT_EQ(0, memcmp(binary_val, kBinaryVal, sizeof(kBinaryVal)-1));
   delete [] binary_val;
 
+  hr = r_key.GetValue(kValNameBinary, &binary_ptr, &byte_count);
+  ASSERT_SUCCEEDED(hr);
+  ASSERT_EQ(0, memcmp(binary_ptr.get(), kBinaryVal, sizeof(kBinaryVal)-1));
+
   // set it again
   hr = r_key.SetValue(kValNameBinary, (const byte *)kBinaryVal2,
                       sizeof(kBinaryVal)-1);
@@ -416,6 +422,10 @@ TEST(RegKeyTest, RegKey) {
   ASSERT_SUCCEEDED(hr);
   ASSERT_EQ(0, memcmp(binary_val, kBinaryVal2, sizeof(kBinaryVal2)-1));
   delete [] binary_val;
+
+  hr = r_key.GetValue(kValNameBinary, &binary_ptr, &byte_count);
+  ASSERT_SUCCEEDED(hr);
+  ASSERT_EQ(0, memcmp(binary_ptr.get(), kBinaryVal2, sizeof(kBinaryVal2)-1));
 
   // delete the value
   hr = r_key.DeleteValue(kValNameBinary);
@@ -675,6 +685,10 @@ TEST(RegKeyTest, RegKey) {
   ASSERT_EQ(0, memcmp(binary_val, kStBinaryVal, sizeof(kStBinaryVal)-1));
   delete [] binary_val;
 
+  hr = RegKey::GetValue(kStRkey1, kStValNameBinary, &binary_ptr, &byte_count);
+  ASSERT_SUCCEEDED(hr);
+  ASSERT_EQ(0, memcmp(binary_ptr.get(), kStBinaryVal, sizeof(kStBinaryVal)-1));
+
   // delete the value
   hr = RegKey::DeleteValue(kStRkey1, kStValNameBinary);
   ASSERT_SUCCEEDED(hr);
@@ -699,6 +713,11 @@ TEST(RegKeyTest, RegKey) {
   ASSERT_TRUE(binary_val == NULL);
   delete [] binary_val;
 
+  hr = RegKey::GetValue(kStRkey1, kStValNameBinary, &binary_ptr, &byte_count);
+  ASSERT_SUCCEEDED(hr);
+  ASSERT_EQ(byte_count, 0);
+  ASSERT_FALSE(binary_ptr);
+
   // delete the value
   hr = RegKey::DeleteValue(kStRkey1, kStValNameBinary);
   ASSERT_SUCCEEDED(hr);
@@ -721,6 +740,11 @@ TEST(RegKeyTest, RegKey) {
   ASSERT_EQ(byte_count, 0);
   ASSERT_TRUE(binary_val == NULL);
   delete [] binary_val;
+
+  hr = RegKey::GetValue(kStRkey1, kStValNameBinary, &binary_ptr, &byte_count);
+  ASSERT_SUCCEEDED(hr);
+  ASSERT_EQ(byte_count, 0);
+  ASSERT_TRUE(binary_ptr.get() == nullptr);
 
   // delete the value
   hr = RegKey::DeleteValue(kStRkey1, kStValNameBinary);

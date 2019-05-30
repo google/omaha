@@ -15,8 +15,10 @@
 //
 // Unit test for the CGI escape/unescape string..
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/cgi.h"
+
+#include <memory>
+
 #include "omaha/base/string.h"
 #include "omaha/testing/unit_test.h"
 
@@ -25,12 +27,12 @@ namespace omaha {
 void TestEscapeUnescape(const TCHAR* origin, const TCHAR* escaped) {
   int origin_len = lstrlen(origin);
   int buffer_len = origin_len * CGI::kEscapeFactor + 1;
-  scoped_array<TCHAR> escaped_buffer(new TCHAR[buffer_len]);
+  std::unique_ptr<TCHAR[]> escaped_buffer(new TCHAR[buffer_len]);
   ASSERT_TRUE(CGI::EscapeString(origin, origin_len,
                                 escaped_buffer.get(), buffer_len));
   ASSERT_STREQ(escaped_buffer.get(), escaped);
 
-  scoped_array<TCHAR> origin_buffer(new TCHAR[buffer_len]);
+  std::unique_ptr<TCHAR[]> origin_buffer(new TCHAR[buffer_len]);
   ASSERT_TRUE(CGI::UnescapeString(escaped_buffer.get(),
                                   lstrlen(escaped_buffer.get()),
                                   origin_buffer.get(), buffer_len));

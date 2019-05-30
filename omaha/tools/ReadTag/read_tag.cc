@@ -15,9 +15,10 @@
 //
 // Simple tool to read the stamped tag inside a binary.
 
-#include <Windows.h>
-#include <stdio.h>
-#include "base/scoped_ptr.h"
+#include <cstdio>
+#include <windows.h>
+#include <memory>
+
 #include "omaha/base/file.h"
 #include "omaha/base/extractor.h"
 
@@ -46,7 +47,7 @@ int _tmain(int argc, TCHAR* argv[]) {
     return -1;
   }
 
-  scoped_array<char> buffer(new char[len]);
+  std::unique_ptr<char[]> buffer(new char[len]);
   if (!ext.ExtractTag(buffer.get(), &len)) {
     _tprintf(_T("Extract tag failed."));
     return -1;

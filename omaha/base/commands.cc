@@ -16,8 +16,10 @@
 // Parse command-line options
 
 #include "omaha/base/commands.h"
+
 #include <cstdlib>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/cgi.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -28,12 +30,11 @@
 
 namespace omaha {
 
-#define kNameValueChar  _T('=')
-#define kTrueValue      _T("true")
-#define kFalseValue     _T("false")
-#define kOnValue        _T("on")
-#define kOffValue       _T("off")
-
+constexpr TCHAR kNameValueChar = L'=';
+constexpr TCHAR kTrueValue[] = L"true";
+constexpr TCHAR kFalseValue[] = L"false";
+constexpr TCHAR kOnValue[] = L"on";
+constexpr TCHAR kOffValue[] = L"off";
 
 //
 // Helper functions
@@ -117,7 +118,7 @@ HRESULT ConvertValue(const TCHAR* str_value, CString* value, bool to_unescape) {
 
   if (to_unescape) {
     int length = value->GetLength();
-    scoped_array<TCHAR> unescaped_value(new TCHAR[length + 1]);
+    std::unique_ptr<TCHAR[]> unescaped_value(new TCHAR[length + 1]);
     RET_IF_FALSE(CGI::UnescapeString(*value, length, unescaped_value.get(),
       length + 1), CI_E_INVALID_ARG);
     *value = unescaped_value.get();

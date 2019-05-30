@@ -86,7 +86,7 @@ CStringA LoadDmTokenFromKey(const TCHAR* path) {
   size_t byte_count = 0;
   DWORD type = REG_NONE;
   hr = key.GetValue(kRegValueDmToken, &value, &byte_count, &type);
-  scoped_array<byte> safe_value(value);
+  std::unique_ptr<byte[]> safe_value(value);
   if (FAILED(hr) || type != REG_BINARY || byte_count == 0 ||
       byte_count > 4096 /* kMaxDMTokenLength */ ) {
     return CStringA();

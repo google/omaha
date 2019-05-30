@@ -17,9 +17,9 @@
 
 #include "omaha/plugins/update/npapi/dispatch_host.h"
 
+#include <memory>
 #include "base/logging.h"
 #include "base/scope_guard.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/plugins/update/npapi/variant_utils.h"
@@ -124,7 +124,7 @@ HRESULT DispatchHost::InvokeHelper(DISPID dispatch_id, WORD flags,
 
   // Just in case a rogue browser decides to use the return value on failure.
   VOID_TO_NPVARIANT(*result);
-  scoped_array<CComVariant> dispatch_args(new CComVariant[arg_count]);
+  std::unique_ptr<CComVariant[]> dispatch_args(new CComVariant[arg_count]);
 
   // IDispatch::Invoke expects arguments in "reverse" order
   for (uint32_t i = 0 ; i < arg_count; ++i) {

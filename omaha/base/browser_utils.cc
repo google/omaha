@@ -17,6 +17,8 @@
 
 #include <exdisp.h>
 
+#include <memory>
+
 #include "base/basictypes.h"
 #include "omaha/base/commands.h"
 #include "omaha/base/const_utils.h"
@@ -29,7 +31,6 @@
 #include "omaha/base/proc_utils.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
@@ -745,10 +746,10 @@ HRESULT GetIeFontSize(uint32* font_size) {
     return E_UNEXPECTED;
   }
 
-  scoped_array<byte> buf;   // The font size is a binary registry value.
+  std::unique_ptr<byte[]> buf;   // The font size is a binary registry value.
   size_t buf_size(0);
   if (FAILED(RegKey::GetValue(ie_scripts_key, ie_font_size,
-                              address(buf), &buf_size))) {
+                              &buf, &buf_size))) {
     *font_size = kDefaultFontSize;
     return S_OK;
   }

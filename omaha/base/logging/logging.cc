@@ -16,17 +16,19 @@
 // This is code that defines the backend for the new LogMessage definition
 // and the functions that the client application can call to control logging.
 
-#include <ctime>
-#include <iomanip>
-#include <cstring>
-#include <windows.h>
-#include <tchar.h>
-#include <algorithm>
 #include "omaha/base/logging/logging.h"
+
+#include <cstring>
+#include <ctime>
+#include <tchar.h>
+#include <windows.h>
+#include <algorithm>
+#include <memory>
+#include <iomanip>
 
 namespace logging {
 
-const char* const log_severity_names[LOG_NUM_SEVERITIES] = {
+constexpr const char* const log_severity_names[LOG_NUM_SEVERITIES] = {
   "INFO", "WARNING", "ERROR", "FATAL" };
 
 int min_log_level = 0;
@@ -178,7 +180,7 @@ void DisplayDebugMessage(const std::string& str) {
   int charcount = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
   if (!charcount)
     return;
-  scoped_array<wchar_t> cmdline(new wchar_t[charcount]);
+  std::unique_ptr<wchar_t[]> cmdline(new wchar_t[charcount]);
   if (!MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, cmdline.get(),
       charcount))
     return;
@@ -351,7 +353,7 @@ std::ostream& operator<<(std::ostream& out, const wchar_t* wstr) {
     return out;
 
   // convert
-  scoped_array<char> buf(new char[charcount]);
+  std::unique_ptr<char[]> buf(new char[charcount]);
   WideCharToMultiByte(CP_UTF8, 0, wstr, -1, buf.get(), charcount, NULL, NULL);
   return out << buf.get();
 }

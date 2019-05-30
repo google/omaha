@@ -23,6 +23,7 @@
 #include <tlhelp32.h>
 
 #include <list>
+#include <memory>
 
 #include "omaha/common/constants.h"
 #include "omaha/common/error.h"
@@ -275,7 +276,7 @@ void DataDumperGoopdate::DumpEventLog(const DumpLog& dump_log) {
 
   const int kInitialBufferSize = 8192;
   int buffer_size = kInitialBufferSize;
-  scoped_array<TCHAR> buffer(new TCHAR[buffer_size]);
+  std::unique_ptr<TCHAR[]> buffer(new TCHAR[buffer_size]);
 
   while (1) {
     EVENTLOGRECORD* record = reinterpret_cast<EVENTLOGRECORD*>(buffer.get());

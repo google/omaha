@@ -16,10 +16,11 @@
 #ifndef OMAHA_COMMON_FILE_READER_H_
 #define OMAHA_COMMON_FILE_READER_H_
 
-#include <windows.h>
 #include <tchar.h>
+#include <windows.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/file.h"
 
 namespace omaha {
@@ -47,7 +48,7 @@ class FileReader {
   bool file_is_open_;
   uint32 buffered_byte_count_;          // How many bytes are in the buffer.
   uint32 current_position_;             // An index into the buffer.
-  scoped_array<byte> file_buffer_;      // A buffer (cache) of the file.
+  std::unique_ptr<byte[]> file_buffer_; // A buffer (cache) of the file.
   uint32 file_buffer_size_;             // How much of the file to slurp
                                         // in on each read.
   bool is_unicode_;
