@@ -26,7 +26,6 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/statsreport/metrics.h"
 #include "omaha/testing/unit_test.h"
 

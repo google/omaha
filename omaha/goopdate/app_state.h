@@ -18,8 +18,8 @@
 
 #include <windows.h>
 #include <atlstr.h>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/ping_event.h"
 #include "omaha/goopdate/installer_result_info.h"

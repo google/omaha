@@ -14,15 +14,15 @@
 // ========================================================================
 
 #include "omaha/client/install_apps.h"
+
 #include <atlsafe.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reactor.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/shutdown_handler.h"
 #include "omaha/base/string.h"
@@ -338,15 +338,13 @@ HRESULT CreateClientUI(bool is_machine,
                        BrowserType browser_type,
                        BundleInstaller* installer,
                        IAppBundle* app_bundle,
-                       InstallProgressObserver** observer,
-                       OmahaWndEvents** ui_sink) {
+                       std::unique_ptr<InstallProgressObserver>* observer,
+                       std::unique_ptr<OmahaWndEvents>* ui_sink) {
   ASSERT1(installer);
   ASSERT1(observer);
-  ASSERT1(!*observer);
   ASSERT1(ui_sink);
-  ASSERT1(!*ui_sink);
 
-  scoped_ptr<ProgressWnd> progress_wnd(
+  std::unique_ptr<ProgressWnd> progress_wnd(
       new ProgressWnd(installer->message_loop(), NULL));
   ScopeGuard destroy_window_guard = MakeObjGuard(*progress_wnd,
                                                  &ProgressWnd::DestroyWindow);
@@ -359,7 +357,7 @@ HRESULT CreateClientUI(bool is_machine,
     return hr;
   }
 
-  scoped_ptr<internal::InstallAppsWndEvents> progress_wnd_events(
+  std::unique_ptr<internal::InstallAppsWndEvents> progress_wnd_events(
       new internal::InstallAppsWndEvents(is_machine, installer, browser_type));
   progress_wnd->SetEventSink(progress_wnd_events.get());
 
@@ -367,8 +365,8 @@ HRESULT CreateClientUI(bool is_machine,
   installer->SetBundleParentWindow(progress_wnd->m_hWnd);
 
   destroy_window_guard.Dismiss();
-  *observer = progress_wnd.release();
-  *ui_sink = progress_wnd_events.release();
+  observer->reset(progress_wnd.release());
+  ui_sink->reset(progress_wnd_events.release());
   return S_OK;
 }
 
@@ -387,8 +385,8 @@ HRESULT DoInstallApps(BundleInstaller* installer,
   ASSERT1(installer);
   ASSERT1(has_ui_been_displayed);
 
-  scoped_ptr<InstallProgressObserver> observer;
-  scoped_ptr<OmahaWndEvents> ui_sink;
+  std::unique_ptr<InstallProgressObserver> observer;
+  std::unique_ptr<OmahaWndEvents> ui_sink;
 
   CComPtr<IAppBundle> app_bundle_ptr;
   app_bundle_ptr.Attach(app_bundle);
@@ -399,8 +397,8 @@ HRESULT DoInstallApps(BundleInstaller* installer,
                         browser_type,
                         installer,
                         app_bundle,
-                        address(observer),
-                        address(ui_sink));
+                        &observer,
+                        &ui_sink);
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("CreateClientUI failed][0x%08x]"), hr));
       return hr;

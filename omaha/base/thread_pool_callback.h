@@ -28,7 +28,7 @@ class ThreadPoolCallBack0 : public UserWorkItem {
   explicit ThreadPoolCallBack0(T* obj, void (T::*fun)())
       : obj_(obj), fun_(fun) {}
  private:
-  virtual void DoProcess() {
+  void DoProcess() override {
     (obj_->*fun_)();
   }
   T* obj_;
@@ -43,7 +43,7 @@ class ThreadPoolCallBack1 : public UserWorkItem {
   explicit ThreadPoolCallBack1(T* obj, void (T::*fun)(P1), P1 p1)
       : obj_(obj), fun_(fun), p1_(p1) {}
  private:
-  virtual void DoProcess() {
+  void DoProcess() override {
     (obj_->*fun_)(p1_);
   }
   T* obj_;
@@ -59,7 +59,7 @@ class StaticThreadPoolCallBack1 : public UserWorkItem {
   explicit StaticThreadPoolCallBack1(void (*fun)(P1), P1 p1)
       : fun_(fun), p1_(p1) {}
  private:
-  virtual void DoProcess() {
+  void DoProcess() override {
     (*fun_)(p1_);
   }
 
@@ -75,7 +75,7 @@ class ThreadPoolCallBack2 : public UserWorkItem {
   explicit ThreadPoolCallBack2(T* obj, void (T::*fun)(P1, P2), P1 p1, P2 p2)
       : obj_(obj), fun_(fun), p1_(p1), p2_(p2) {}
  private:
-  virtual void DoProcess() {
+  void DoProcess() override {
     (obj_->*fun_)(p1_, p2_);
   }
   T* obj_;

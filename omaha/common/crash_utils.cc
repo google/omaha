@@ -22,7 +22,6 @@
 #include <map>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/constants.h"

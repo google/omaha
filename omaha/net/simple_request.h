@@ -24,9 +24,10 @@
 #define OMAHA_NET_SIMPLE_REQUEST_H_
 
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
@@ -161,7 +162,7 @@ class SimpleRequest : public HttpRequestInterface {
     int current_bytes;
     uint64 request_begin_ms;
     uint64 request_end_ms;
-    scoped_ptr<DownloadMetrics> download_metrics;
+    std::unique_ptr<DownloadMetrics> download_metrics;
   };
 
   LLock lock_;
@@ -180,8 +181,8 @@ class SimpleRequest : public HttpRequestInterface {
   ProxyConfig proxy_config_;
   bool low_priority_;
   NetworkRequestCallback* callback_;
-  scoped_ptr<WinHttpAdapter> winhttp_adapter_;
-  scoped_ptr<TransientRequestState> request_state_;
+  std::unique_ptr<WinHttpAdapter> winhttp_adapter_;
+  std::unique_ptr<TransientRequestState> request_state_;
   scoped_event event_resume_;
   bool download_completed_;
 

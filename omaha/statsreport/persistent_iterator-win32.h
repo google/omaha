@@ -21,7 +21,6 @@
 #include <atlstr.h>
 #include <iterator>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/statsreport/metrics.h"
 #include "omaha/statsreport/const-win32.h"
@@ -116,7 +115,7 @@ class PersistentMetricsIteratorWin32
   CStringA current_value_name_;
 
   /// The metric under the iterator
-  scoped_ptr<MetricBase> current_value_;
+  std::unique_ptr<MetricBase> current_value_;
 
   /// Specifies HKLM or HKCU, respectively.
   bool is_machine_;

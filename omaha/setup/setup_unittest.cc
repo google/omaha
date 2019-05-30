@@ -13,10 +13,12 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/setup/setup.h"
 
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/error.h"
@@ -35,7 +37,6 @@
 #include "omaha/common/command_line.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
-#include "omaha/setup/setup.h"
 #include "omaha/setup/setup_files.h"
 #include "omaha/testing/unit_test.h"
 
@@ -661,7 +662,7 @@ class SetupTest : public testing::Test {
   CString omaha_exe_path_;
   CString not_listening_exe_path_;
   CString not_listening_exe_opposite_path_;
-  scoped_ptr<omaha::Setup> setup_;
+  std::unique_ptr<omaha::Setup> setup_;
 
   static CString not_listening_user_exe_path_;
   static CString not_listening_machine_exe_path_;

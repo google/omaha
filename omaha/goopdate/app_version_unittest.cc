@@ -15,7 +15,7 @@
 
 #include <atlbase.h>
 #include <atlcom.h>
-#include "omaha/base/scoped_ptr_address.h"
+
 #include "omaha/base/synchronized.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/update3_utils.h"
@@ -53,7 +53,7 @@ class AppVersionTest : public testing::Test {
 
 TEST_F(AppVersionTest, TestReadOnly) {
   IDummyUnknownImpl dummy_unknown;
-  scoped_ptr<AppVersion> app_version;
+  std::unique_ptr<AppVersion> app_version;
   EXPECT_SUCCEEDED(AppVersion::Create(&lock_,
                                       &dummy_unknown,
                                       true,
@@ -89,7 +89,7 @@ TEST_F(AppVersionTest, TestReadOnly) {
 
 TEST_F(AppVersionTest, TestReadWrite) {
   IDummyUnknownImpl dummy_unknown;
-  scoped_ptr<AppVersion> app_version;
+  std::unique_ptr<AppVersion> app_version;
   EXPECT_SUCCEEDED(AppVersion::Create(&lock_,
                                       &dummy_unknown,
                                       false,

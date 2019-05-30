@@ -13,10 +13,11 @@
 // limitations under the License.
 // ========================================================================
 
-#include <vector>
-#include "base/scoped_ptr.h"
-
 #include "omaha/base/environment_block_modifier.h"
+
+#include <memory>
+#include <vector>
+
 #include "omaha/base/environment_utils.h"
 #include "omaha/base/error.h"
 #include "omaha/testing/unit_test.h"

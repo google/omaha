@@ -22,7 +22,7 @@
 #include <windows.h>
 #include <atlbase.h>
 #include <atlcom.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/utils.h"
 #include "omaha/client/install_apps.h"
 #include "goopdate/omaha3_idl.h"

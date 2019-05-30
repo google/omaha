@@ -18,7 +18,6 @@
 
 #include <windows.h>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/smart_handle.h"
 #include "omaha/base/synchronized.h"

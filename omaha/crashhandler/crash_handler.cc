@@ -44,7 +44,6 @@
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/shutdown_handler.h"
 #include "omaha/base/string.h"
@@ -111,7 +110,7 @@ HRESULT CrashHandler::Main(bool is_system) {
     VERIFY1(SUCCEEDED(
         OmahaExceptionHandler::Create(is_system,
                                       custom_info_map,
-                                      address(exception_handler_))));
+                                      &exception_handler_)));
 
     // Are we allowed to monitor crashes?
     if (!ConfigManager::Instance()->CanCollectStats(is_system)) {
@@ -133,12 +132,12 @@ HRESULT CrashHandler::RunAsCrashHandlerWorker() {
   scoped_handle mini_dump_handle;
   scoped_handle full_dump_handle;
   scoped_handle custom_info_handle;
-  scoped_ptr<google_breakpad::ClientInfo> client_info;
+  std::unique_ptr<google_breakpad::ClientInfo> client_info;
   HRESULT hr = GetCrashInfoFromEnvironmentVariables(address(notification_event),
                                                     address(mini_dump_handle),
                                                     address(full_dump_handle),
                                                     address(custom_info_handle),
-                                                    address(client_info));
+                                                    &client_info);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[Failed to get crash info from environment.]")));
     return hr;
@@ -148,7 +147,7 @@ HRESULT CrashHandler::RunAsCrashHandlerWorker() {
   OPT_LOG(L1, (_T("[CrashHandler][Preparing dump][%d-bit][pid %d]"),
       EXE_ARCH, pid));
 
-  scoped_ptr<CrashAnalyzer> analyzer(new CrashAnalyzer(*client_info));
+  std::unique_ptr<CrashAnalyzer> analyzer(new CrashAnalyzer(*client_info));
   if (!analyzer->Init()) {
     analyzer.release();
   }

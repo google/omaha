@@ -23,9 +23,9 @@
 #include <winhttp.h>
 #include <atlstr.h>
 #include <map>
+#include <memory>
 #include <vector>
-#include "base/basictypes.h"
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/net/detector.h"
@@ -258,10 +258,10 @@ class NetworkConfig {
 
   bool is_initialized_;
 
-  scoped_ptr<ProxyConfig> configuration_override_;
+  std::unique_ptr<ProxyConfig> configuration_override_;
 
   Session session_;
-  scoped_ptr<HttpClient> http_client_;
+  std::unique_ptr<HttpClient> http_client_;
 
   // Manages the proxy auth credentials. Typically a http client tries to
   // use autologon via Negotiate/NTLM with a proxy server. If that fails, the

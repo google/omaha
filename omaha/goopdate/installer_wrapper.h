@@ -23,8 +23,8 @@
 #include <atlstr.h>
 #include <queue>
 #include <utility>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/goopdate/installer_result_info.h"
 

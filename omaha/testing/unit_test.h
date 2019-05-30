@@ -21,7 +21,6 @@
 #include <windows.h>
 #include <atlstr.h>
 
-#include "base/scoped_ptr.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "omaha/testing/unittest_debug_helper.h"

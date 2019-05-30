@@ -18,7 +18,6 @@
 #include <cmath>
 
 #include "base/cpu.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/system.h"
@@ -46,7 +45,7 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
                                      const CString& request_id) {
   const ConfigManager* cm = ConfigManager::Instance();
 
-  scoped_ptr<UpdateRequest> update_request(new UpdateRequest);
+  std::unique_ptr<UpdateRequest> update_request(new UpdateRequest);
 
   request::Request& request = update_request->request_;
 

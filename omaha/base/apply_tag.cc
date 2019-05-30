@@ -16,11 +16,12 @@
 // Applies a tag to a signed file.
 
 #include "omaha/base/apply_tag.h"
+
 #include <intsafe.h>
 #include <atlrx.h>
 #include <algorithm>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/utils.h"
 #include "omaha/base/extractor.h"
 

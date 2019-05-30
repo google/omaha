@@ -13,9 +13,11 @@
 // limitations under the License.
 // ========================================================================
 
-#include <windows.h>
-#include "base/scoped_ptr.h"
 #include "omaha/net/winhttp_adapter.h"
+
+#include <windows.h>
+#include <memory>
+
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -27,7 +29,7 @@ TEST(WinHttpAdapter, NullHandles) {
 
   // Opens a session, connects, closes the connection handle, and then
   // tries to open a request for the null connection.
-  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+  std::unique_ptr<HttpClient> http_client(CreateHttpClient());
   EXPECT_HRESULT_SUCCEEDED(http_client->Initialize());
 
   HINTERNET session_handle = NULL;
@@ -65,7 +67,7 @@ TEST(WinHttpAdapter, OpenRequestClose) {
   EXPECT_HRESULT_SUCCEEDED(winhttp_adapter.Initialize());
 
   // Opens a session, connects, opens the request, then closes the handles.
-  scoped_ptr<HttpClient> http_client(CreateHttpClient());
+  std::unique_ptr<HttpClient> http_client(CreateHttpClient());
   EXPECT_HRESULT_SUCCEEDED(http_client->Initialize());
 
   HINTERNET session_handle = NULL;

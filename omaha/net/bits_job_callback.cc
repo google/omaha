@@ -29,7 +29,7 @@ HRESULT BitsJobCallback::Create(BitsRequest* bits_request,
   ASSERT1(bits_job_callback);
 
   *bits_job_callback = NULL;
-  scoped_ptr<CComObjectNoLock<BitsJobCallback> > callback_obj(
+  std::unique_ptr<CComObjectNoLock<BitsJobCallback>> callback_obj(
       new CComObjectNoLock<BitsJobCallback>);
   if (callback_obj == NULL) {
     return E_OUTOFMEMORY;

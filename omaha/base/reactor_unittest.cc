@@ -14,11 +14,12 @@
 // ========================================================================
 
 
-#include <stdlib.h>
-#include "base/rand_util.h"
-#include "base/scoped_ptr.h"
-#include "omaha/base/event_handler.h"
 #include "omaha/base/reactor.h"
+
+#include <cstdlib>
+
+#include "base/rand_util.h"
+#include "omaha/base/event_handler.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/testing/unit_test.h"
 

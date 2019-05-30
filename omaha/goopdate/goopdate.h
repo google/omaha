@@ -19,8 +19,9 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/thread_pool.h"
 
 namespace omaha {
@@ -59,7 +60,7 @@ class Goopdate {
   static Goopdate* instance_;
 
   // Uses pimpl idiom to minimize dependencies on implementation details.
-  scoped_ptr<detail::GoopdateImpl> impl_;
+  std::unique_ptr<detail::GoopdateImpl> impl_;
 
   DISALLOW_COPY_AND_ASSIGN(Goopdate);
 };

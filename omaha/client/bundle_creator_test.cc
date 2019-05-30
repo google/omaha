@@ -13,6 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/client/bundle_creator.h"
+
+#include <memory>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/omaha_version.h"
@@ -21,7 +25,6 @@
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
-#include "omaha/client/bundle_creator.h"
 #include "omaha/client/client_utils.h"
 #include "omaha/common/command_line.h"
 #include "omaha/common/command_line_builder.h"
@@ -158,10 +161,10 @@ class BundleCreatorTest : public testing::Test {
     EXPECT_SUCCEEDED(RegKey::DeleteKey(clients_key_name));
   }
 
-  static scoped_ptr<Goopdate> goopdates_;
+  static std::unique_ptr<Goopdate> goopdates_;
 };
 
-scoped_ptr<Goopdate> BundleCreatorTest::goopdates_;
+std::unique_ptr<Goopdate> BundleCreatorTest::goopdates_;
 
 TEST_F(BundleCreatorTest, Create) {
   const CString kDisplayLanguage = _T("en");

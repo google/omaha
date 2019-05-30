@@ -19,9 +19,10 @@
 #include <windows.h>
 #include <atlstr.h>
 #include <map>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 
 namespace omaha {
 
@@ -102,8 +103,8 @@ class CommandLineParser {
   HRESULT AddOptionalSwitchArgument(const CString& switch_name,
                                     const CString& argument_value);
 
-  scoped_ptr<internal::CommandLineParserArgs> required_args_;
-  scoped_ptr<internal::CommandLineParserArgs> optional_args_;
+  std::unique_ptr<internal::CommandLineParserArgs> required_args_;
+  std::unique_ptr<internal::CommandLineParserArgs> optional_args_;
 
   DISALLOW_COPY_AND_ASSIGN(CommandLineParser);
 };

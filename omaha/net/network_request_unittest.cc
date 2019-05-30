@@ -15,8 +15,9 @@
 
 #include <windows.h>
 #include <winhttp.h>
+#include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "base/basictypes.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/constants.h"
@@ -25,7 +26,6 @@
 #include "omaha/base/queue_timer.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
@@ -279,7 +279,7 @@ class NetworkRequestTest
               network_request_->Get(url, &response));
   }
 
-  scoped_ptr<NetworkRequest> network_request_;
+  std::unique_ptr<NetworkRequest> network_request_;
   static HANDLE token_;
 };
 

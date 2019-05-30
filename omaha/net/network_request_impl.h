@@ -19,8 +19,8 @@
 #include <windows.h>
 #include <atlstr.h>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/net/network_config.h"
@@ -162,7 +162,7 @@ class NetworkRequestImpl {
 
   // Specifies the proxy configuration override. When set, the proxy
   // configurations are not auto detected.
-  scoped_ptr<ProxyConfig> proxy_configuration_;
+  std::unique_ptr<ProxyConfig> proxy_configuration_;
 
   // Input data members.
   // The request and response buffers are owner by the caller.

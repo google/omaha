@@ -28,9 +28,10 @@
 
 #include <windows.h>
 #include <bits.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/utils.h"
 #include "omaha/net/http_request.h"
@@ -222,7 +223,7 @@ class BitsRequest : public HttpRequestInterface {
     int http_status_code;
     CComPtr<IBackgroundCopyJob> bits_job;
     GUID bits_job_id;
-    scoped_ptr<DownloadMetrics> download_metrics;
+    std::unique_ptr<DownloadMetrics> download_metrics;
     uint64 request_begin_ms;
     uint64 request_end_ms;
   };
@@ -256,7 +257,7 @@ class BitsRequest : public HttpRequestInterface {
   BitsJobCallback*  bits_request_callback_;
   uint32 last_progress_report_tick_;
 
-  scoped_ptr<TransientRequestState> request_state_;
+  std::unique_ptr<TransientRequestState> request_state_;
 
   // See http://b/1189928
   CComPtr<IBackgroundCopyManager> bits_manager_;

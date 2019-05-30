@@ -13,16 +13,14 @@
 // limitations under the License.
 // ========================================================================
 
-#include <atlstr.h>
+#include "omaha/goopdate/app_command_configuration.h"
+
 #include <atlsimpstr.h>
-#include <windows.h>
 #include <algorithm>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
-#include "omaha/goopdate/app_command_configuration.h"
 #include "omaha/goopdate/app_command_test_base.h"
 
 namespace omaha {
@@ -50,87 +48,87 @@ class AppCommandConfigurationTest : public AppCommandTestBase {
   typedef int(AppCommandConfiguration::*IntMember)(void) const;
 
   void TestValueMapping(const TCHAR* name, BoolMember mapped_member) {
-     scoped_ptr<AppCommandConfiguration> configuration;
+     std::unique_ptr<AppCommandConfiguration> configuration;
      CreateCommand(kAppGuid1, true, kCmdId1, kCmdLineExit0);
 
      SetCommandValue(kAppGuid1, true, kCmdId1, name, &kZero);
      ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-         kAppGuid1, true, kCmdId1, address(configuration)));
+         kAppGuid1, true, kCmdId1, &configuration));
      ASSERT_FALSE((configuration.get()->*mapped_member)());
      configuration.reset();
 
      SetCommandValue(kAppGuid1, true, kCmdId1, name, &kOne);
      ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-         kAppGuid1, true, kCmdId1, address(configuration)));
+         kAppGuid1, true, kCmdId1, &configuration));
      ASSERT_TRUE((configuration.get()->*mapped_member)());
      configuration.reset();
 
      SetCommandValue(kAppGuid1, true, kCmdId1, name, NULL);
      ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-         kAppGuid1, true, kCmdId1, address(configuration)));
+         kAppGuid1, true, kCmdId1, &configuration));
      ASSERT_FALSE((configuration.get()->*mapped_member)());
   }
 
   void TestValueMapping(const TCHAR* name, IntMember mapped_member) {
-     scoped_ptr<AppCommandConfiguration> configuration;
+     std::unique_ptr<AppCommandConfiguration> configuration;
      CreateCommand(kAppGuid1, true, kCmdId1, kCmdLineExit0);
 
      SetCommandValue(kAppGuid1, true, kCmdId1, name, &kZero);
      ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-         kAppGuid1, true, kCmdId1, address(configuration)));
+         kAppGuid1, true, kCmdId1, &configuration));
      ASSERT_EQ(0, (configuration.get()->*mapped_member)());
      configuration.reset();
 
      SetCommandValue(kAppGuid1, true, kCmdId1, name, &kOne);
      ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-         kAppGuid1, true, kCmdId1, address(configuration)));
+         kAppGuid1, true, kCmdId1, &configuration));
      ASSERT_EQ(1, (configuration.get()->*mapped_member)());
      configuration.reset();
 
      SetCommandValue(kAppGuid1, true, kCmdId1, name, &kTwo);
      ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-         kAppGuid1, true, kCmdId1, address(configuration)));
+         kAppGuid1, true, kCmdId1, &configuration));
      ASSERT_EQ(2, (configuration.get()->*mapped_member)());
      configuration.reset();
 
      SetCommandValue(kAppGuid1, true, kCmdId1, name, NULL);
      ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-         kAppGuid1, true, kCmdId1, address(configuration)));
+         kAppGuid1, true, kCmdId1, &configuration));
      ASSERT_EQ(0, (configuration.get()->*mapped_member)());
   }
 };
 
 TEST_F(AppCommandConfigurationTest, NoApp) {
-  scoped_ptr<AppCommandConfiguration> configuration;
+  std::unique_ptr<AppCommandConfiguration> configuration;
   ASSERT_HRESULT_FAILED(AppCommandConfiguration::Load(
-      kAppGuid1, false, kCmdId1, address(configuration)));
+      kAppGuid1, false, kCmdId1, &configuration));
 }
 
 TEST_F(AppCommandConfigurationTest, NoCmd) {
-  scoped_ptr<AppCommandConfiguration> configuration;
+  std::unique_ptr<AppCommandConfiguration> configuration;
   CreateAppClientKey(kAppGuid1, false);
   CreateCommand(kAppGuid1, false, kCmdId1, kCmdLineExit0);
 
   ASSERT_HRESULT_FAILED(AppCommandConfiguration::Load(
-      kAppGuid1, false, kCmdId2, address(configuration)));
+      kAppGuid1, false, kCmdId2, &configuration));
 }
 
 TEST_F(AppCommandConfigurationTest, WrongLevel) {
-  scoped_ptr<AppCommandConfiguration> configuration;
+  std::unique_ptr<AppCommandConfiguration> configuration;
   CreateAppClientKey(kAppGuid1, true);
   CreateCommand(kAppGuid1, true, kCmdId1, kCmdLineExit0);
 
   ASSERT_HRESULT_FAILED(AppCommandConfiguration::Load(
-      kAppGuid1, false, kCmdId1, address(configuration)));
+      kAppGuid1, false, kCmdId1, &configuration));
 }
 
 TEST_F(AppCommandConfigurationTest, LoadCommand) {
-  scoped_ptr<AppCommandConfiguration> configuration;
+  std::unique_ptr<AppCommandConfiguration> configuration;
   CreateAppClientKey(kAppGuid1, true);
   CreateCommand(kAppGuid1, true, kCmdId1, kCmdLineExit0);
 
   ASSERT_HRESULT_SUCCEEDED(AppCommandConfiguration::Load(
-      kAppGuid1, true, kCmdId1, address(configuration)));
+      kAppGuid1, true, kCmdId1, &configuration));
   ASSERT_EQ(kCmdLineExit0, configuration->command_line());
 }
 

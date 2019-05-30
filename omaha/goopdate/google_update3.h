@@ -20,8 +20,8 @@
 #include <atlcom.h>
 #include <atlstr.h>
 #include <vector>
+
 #include "goopdate/omaha3_idl.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/atlregmapex.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"

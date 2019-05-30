@@ -24,7 +24,6 @@
 #include <map>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/string.h"
@@ -128,15 +127,15 @@ class CrashHandler : public ShutdownCallback {
 
   bool is_system_;
   CString crash_dir_;
-  scoped_ptr<google_breakpad::CrashGenerationServer> crash_server_;
+  std::unique_ptr<google_breakpad::CrashGenerationServer> crash_server_;
 
   DWORD main_thread_id_;
-  scoped_ptr<Reactor> reactor_;
-  scoped_ptr<ShutdownHandler> shutdown_handler_;
+  std::unique_ptr<Reactor> reactor_;
+  std::unique_ptr<ShutdownHandler> shutdown_handler_;
 
   std::map<DWORD, CString> saved_crashes_;
 
-  scoped_ptr<OmahaExceptionHandler> exception_handler_;
+  std::unique_ptr<OmahaExceptionHandler> exception_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(CrashHandler);
 };

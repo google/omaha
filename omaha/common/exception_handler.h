@@ -21,8 +21,9 @@
 #include <atlsecurity.h>
 #include <atlstr.h>
 #include <map>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/crash_utils.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
@@ -42,7 +43,7 @@ class OmahaExceptionHandler {
  public:
   static HRESULT Create(bool is_machine,
                         const CustomInfoMap& custom_info_map,
-                        OmahaExceptionHandler** handler_out);
+                        std::unique_ptr<OmahaExceptionHandler>* handler_out);
 
   ~OmahaExceptionHandler();
 
@@ -102,7 +103,7 @@ class OmahaExceptionHandler {
   CString version_postfix_string_;
   CString crash_dir_;
 
-  scoped_ptr<google_breakpad::ExceptionHandler> breakpad_exception_handler_;
+  std::unique_ptr<google_breakpad::ExceptionHandler> breakpad_exception_handler_;
   std::vector<google_breakpad::CustomInfoEntry> custom_entries_;
 
   friend class ExceptionHandlerTest;

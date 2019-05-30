@@ -13,6 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/common/goopdate_utils.h"
+
 #include <windows.h>
 #include <wbemidl.h>
 #include <atlpath.h>
@@ -20,6 +22,7 @@
 #include <atlstr.h>
 #include <map>
 #include <vector>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/atl_regexp.h"
 #include "omaha/base/browser_utils.h"
@@ -32,7 +35,6 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/scoped_ptr_cotask.h"
 #include "omaha/base/signatures.h"
 #include "omaha/base/string.h"
@@ -45,7 +47,6 @@
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/const_group_policy.h"
-#include "omaha/common/goopdate_utils.h"
 #include "omaha/common/oem_install_utils.h"
 #include "omaha/common/update3_utils.h"
 #include "omaha/testing/resource.h"

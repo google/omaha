@@ -22,7 +22,7 @@
 #include <sddl.h>
 #include <lmcons.h>
 #include <atlsecurity.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/utils.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"

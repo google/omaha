@@ -22,8 +22,9 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 
 namespace omaha {
 
@@ -81,7 +82,7 @@ class RegistryMonitor {
   HRESULT StartMonitoring();
 
  private:
-  scoped_ptr<detail::RegistryMonitorImpl> impl_;
+  std::unique_ptr<detail::RegistryMonitorImpl> impl_;
 
   DISALLOW_COPY_AND_ASSIGN(RegistryMonitor);
 };

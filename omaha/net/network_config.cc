@@ -18,15 +18,12 @@
 #include <winhttp.h>
 #include <atlconv.h>
 #include <atlsecurity.h>
-#if _MSC_VER >= 1900
-#include <unordered_set>
-#else
-#include <hash_set>
-#endif
 #include <algorithm>
+#include <memory>
+#include <unordered_set>
 #include <vector>
+
 #include "base/error.h"
-#include "base/scoped_ptr.h"
 #include "base/scope_guard.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/const_object_names.h"
@@ -39,7 +36,6 @@
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/user_info.h"

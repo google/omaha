@@ -24,9 +24,9 @@
 
 #include <windows.h>
 #include <vector>
+
 #include "base/basictypes.h"
 #include "base/debug.h"
-#include "base/scoped_ptr.h"
 #include "base/synchronized.h"
 #include "omaha/goopdate/app.h"
 #include "omaha/goopdate/app_bundle.h"

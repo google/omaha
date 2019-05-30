@@ -21,8 +21,9 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 
 namespace omaha {
 
@@ -46,13 +47,13 @@ class Scheduler {
 
   const Core& core_;
   HANDLE timer_queue_;
-  scoped_ptr<QueueTimer> update_timer_;
-  scoped_ptr<QueueTimer> code_red_timer_;
+  std::unique_ptr<QueueTimer> update_timer_;
+  std::unique_ptr<QueueTimer> code_red_timer_;
 
   // Measures the actual time interval between code red events for debugging
   // purposes. The timer is started when a code red alarm is set and then,
   // the value of the timer is read when the alarm goes off.
-  scoped_ptr<HighresTimer> cr_debug_timer_;
+  std::unique_ptr<HighresTimer> cr_debug_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(Scheduler);
 };

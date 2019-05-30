@@ -13,18 +13,17 @@
 // limitations under the License.
 // ========================================================================
 
-#include "base/scoped_ptr.h"
+#include "omaha/common/web_services_client.h"
+
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/string.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/update_request.h"
 #include "omaha/common/update_response.h"
-#include "omaha/common/web_services_client.h"
 #include "omaha/net/network_request.h"
 #include "omaha/testing/unit_test.h"
 
@@ -38,7 +37,7 @@ namespace omaha {
 class WebServicesClientTest : public testing::Test,
                               public ::testing::WithParamInterface<bool> {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     EXPECT_HRESULT_SUCCEEDED(
         ConfigManager::Instance()->GetUpdateCheckUrl(&update_check_url_));
 
@@ -51,7 +50,7 @@ class WebServicesClientTest : public testing::Test,
     update_response_.reset(xml::UpdateResponse::Create());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     web_service_client_.reset();
   }
 
@@ -70,9 +69,9 @@ class WebServicesClientTest : public testing::Test,
 
   CString update_check_url_;
 
-  scoped_ptr<WebServicesClient> web_service_client_;
-  scoped_ptr<xml::UpdateRequest> update_request_;
-  scoped_ptr<xml::UpdateResponse> update_response_;
+  std::unique_ptr<WebServicesClient> web_service_client_;
+  std::unique_ptr<xml::UpdateRequest> update_request_;
+  std::unique_ptr<xml::UpdateResponse> update_response_;
   bool reg_value_enable_ecdsa_exists_;
   DWORD ecdsa_enabled_;
 };
@@ -280,7 +279,7 @@ TEST_P(WebServicesClientTest, SendString) {
   CString request_string =
     _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     _T("<request protocol=\"3.0\" testsource=\"dev\"></request>");
-  scoped_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
+  std::unique_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
   EXPECT_HRESULT_SUCCEEDED(web_service_client_->SendString(GetParam(),
                                                            &request_string,
                                                            response.get()));
@@ -319,7 +318,7 @@ TEST_F(WebServicesClientTest, SendStringWithCustomHeader) {
   CString request_string =
     _T("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     _T("<request protocol=\"3.0\" testsource=\"dev\"></request>");
-  scoped_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
+  std::unique_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
   EXPECT_HRESULT_SUCCEEDED(web_service_client_->SendString(false,
                                                            &request_string,
                                                            response.get()));

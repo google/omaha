@@ -14,7 +14,9 @@
 // ========================================================================
 
 #include "omaha/base/thread_pool.h"
-#include "base/scoped_ptr.h"
+
+#include <memory>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -116,7 +118,7 @@ HRESULT ThreadPool::QueueUserWorkItem(UserWorkItem* work_item,
   UTIL_LOG(L4, (_T("[ThreadPool::QueueUserWorkItem]")));
   ASSERT1(work_item);
 
-  scoped_ptr<Context> context(new Context(this, work_item, coinit_flags));
+  auto context = std::make_unique<Context>(this, work_item, coinit_flags);
   work_item->set_shutdown_event(get(shutdown_event_));
   ::InterlockedIncrement(&work_item_count_);
   if (!::QueueUserWorkItem(&ThreadPool::ThreadProc, context.get(), flags)) {

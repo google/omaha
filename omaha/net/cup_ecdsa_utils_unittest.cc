@@ -14,7 +14,7 @@
 // ========================================================================
 
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/string.h"
 #include "omaha/base/security/p256.h"
 #include "omaha/net/cup_ecdsa_utils.h"

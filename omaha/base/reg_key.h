@@ -31,7 +31,6 @@
 #include <vector>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_any.h"
@@ -187,7 +186,7 @@ class RegKey {
 
   // get binary data - the caller must free the return buffer
   HRESULT GetValue(const TCHAR * value_name,
-                    std::unique_ptr<byte[]>* value_ptr,
+                   std::unique_ptr<byte[]>* value_ptr,
                    size_t * byte_count) const;
 
   HRESULT GetValue(const TCHAR * value_name,
@@ -195,6 +194,11 @@ class RegKey {
                    size_t * byte_count) const;
 
   // get raw data, including type - the caller must free the return buffer
+  HRESULT GetValue(const TCHAR * value_name,
+                   std::unique_ptr<byte[]>* value_ptr,
+                   size_t * byte_count,
+                   DWORD *type) const;
+
   HRESULT GetValue(const TCHAR * value_name,
                    byte * * value,
                    size_t * byte_count,

@@ -20,12 +20,16 @@
 // be running.
 
 #include "omaha/core/core.h"
+
 #include <lmsname.h>
+
 #include <atlsecurity.h>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/debug.h"
@@ -266,20 +270,20 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   MSG msg = {0};
   ::PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
 
-  scoped_ptr<Reactor> reactor(new Reactor);
-  scoped_ptr<ShutdownHandler> shutdown_handler(new ShutdownHandler);
+  std::unique_ptr<Reactor> reactor(new Reactor);
+  std::unique_ptr<ShutdownHandler> shutdown_handler(new ShutdownHandler);
   HRESULT hr = shutdown_handler->Initialize(reactor.get(), this, is_system_);
   if (FAILED(hr)) {
     return hr;
   }
 
-  scoped_ptr<Scheduler> scheduler(new Scheduler(*this));
+  std::unique_ptr<Scheduler> scheduler(new Scheduler(*this));
   hr = scheduler->Initialize();
   if (FAILED(hr)) {
     return hr;
   }
 
-  scoped_ptr<SystemMonitor> system_monitor(new SystemMonitor(is_system_));
+  std::unique_ptr<SystemMonitor> system_monitor(new SystemMonitor(is_system_));
   VERIFY1(SUCCEEDED(system_monitor->Initialize(true)));
   system_monitor->set_observer(this);
 
@@ -494,9 +498,9 @@ void Core::LaunchAppCommandsOnOSUpgrade() const {
          ++cmd_it) {
       const CString& command_id = *cmd_it;
 
-      scoped_ptr<AppCommandConfiguration> configuration;
+      std::unique_ptr<AppCommandConfiguration> configuration;
       hr = AppCommandConfiguration::Load(app_guid, is_system_, command_id,
-                                         address(configuration));
+                                         &configuration);
       if (FAILED(hr)) {
         CORE_LOG(LE, (_T("[AppCommand::Load failed][%s][%d][%s][%#08x]"),
                       app_guid, is_system_, command_id, hr));
@@ -508,7 +512,7 @@ void Core::LaunchAppCommandsOnOSUpgrade() const {
         // This app command is marked for automatic launch on OS upgrade.
         // Attempt to launch it.  (We don't care about the return value of
         // the process, only that we successfully created it.)
-        scoped_ptr<AppCommand> app_command(
+        std::unique_ptr<AppCommand> app_command(
             configuration->Instantiate(session_id));
 
         std::vector<CString> parameters;

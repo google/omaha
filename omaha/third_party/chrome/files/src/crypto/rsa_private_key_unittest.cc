@@ -4,15 +4,16 @@
 
 #include "crypto/rsa_private_key.h"
 
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/testing/unit_test.h"
 
 // Generate random private keys with two different sizes. Reimport, then
 // export them again. We should get back the same exact bytes.
 TEST(RSAPrivateKeyUnitTest, InitRandomTest) {
-  scoped_ptr<crypto::RSAPrivateKey> keypair1(
+  std::unique_ptr<crypto::RSAPrivateKey> keypair1(
       crypto::RSAPrivateKey::Create(1024));
-  scoped_ptr<crypto::RSAPrivateKey> keypair2(
+  std::unique_ptr<crypto::RSAPrivateKey> keypair2(
       crypto::RSAPrivateKey::Create(2048));
   ASSERT_TRUE(keypair1.get());
   ASSERT_TRUE(keypair2.get());
@@ -27,9 +28,9 @@ TEST(RSAPrivateKeyUnitTest, InitRandomTest) {
   ASSERT_TRUE(keypair1->ExportPublicKey(&pubkey1));
   ASSERT_TRUE(keypair2->ExportPublicKey(&pubkey2));
 
-  scoped_ptr<crypto::RSAPrivateKey> keypair3(
+  std::unique_ptr<crypto::RSAPrivateKey> keypair3(
       crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(privkey1));
-  scoped_ptr<crypto::RSAPrivateKey> keypair4(
+  std::unique_ptr<crypto::RSAPrivateKey> keypair4(
       crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(privkey2));
   ASSERT_TRUE(keypair3.get());
   ASSERT_TRUE(keypair4.get());
@@ -162,7 +163,7 @@ TEST(RSAPrivateKeyUnitTest, PublicKeyTest) {
   input.resize(sizeof(private_key_info));
   memcpy(&input.front(), private_key_info, sizeof(private_key_info));
 
-  scoped_ptr<crypto::RSAPrivateKey> key(
+  std::unique_ptr<crypto::RSAPrivateKey> key(
       crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(input));
   ASSERT_TRUE(key.get());
 
@@ -365,9 +366,9 @@ TEST(RSAPrivateKeyUnitTest, ShortIntegers) {
   memcpy(&input2.front(), short_integer_without_high_bit,
          sizeof(short_integer_without_high_bit));
 
-  scoped_ptr<crypto::RSAPrivateKey> keypair1(
+  std::unique_ptr<crypto::RSAPrivateKey> keypair1(
       crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(input1));
-  scoped_ptr<crypto::RSAPrivateKey> keypair2(
+  std::unique_ptr<crypto::RSAPrivateKey> keypair2(
       crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(input2));
   ASSERT_TRUE(keypair1.get());
   ASSERT_TRUE(keypair2.get());

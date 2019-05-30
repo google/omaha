@@ -36,7 +36,6 @@
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/service_utils.h"
 #include "omaha/base/signatures.h"

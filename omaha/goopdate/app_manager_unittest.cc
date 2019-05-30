@@ -13,14 +13,16 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/goopdate/app_manager.h"
+
 #include <vector>
+
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/error.h"
 #include "omaha/base/highres_timer-win32.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/thread.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
@@ -29,7 +31,6 @@
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
-#include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/app_unittest_base.h"
 #include "omaha/goopdate/worker.h"
 #include "omaha/setup/setup_google_update.h"
@@ -1422,7 +1423,7 @@ void PingFreshnessTest(bool is_machine) {
   EXPECT_HRESULT_SUCCEEDED(StringToGuidSafe(
       _T("{21CD0965-0B0E-47cf-B421-2D191C16C0E2}"), &app_guid));
 
-  scoped_ptr<AppBundle> app_bundle;
+  std::unique_ptr<AppBundle> app_bundle;
   {
     // AppBundle code expects the model to be locked.
     __mutexScope(Worker::Instance().model()->lock());

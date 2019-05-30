@@ -16,8 +16,9 @@
 
 #include "omaha/base/reactor.h"
 
+#include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -70,7 +71,7 @@ HRESULT Reactor::RegisterHandle(HANDLE handle,
     return E_INVALIDARG;
   }
 
-  scoped_ptr<RegistrationState> state(new RegistrationState);
+  std::unique_ptr<RegistrationState> state(new RegistrationState());
   state->event_handler = event_handler;
   state->handle = handle;
   state->reactor = this;
@@ -153,7 +154,7 @@ HRESULT Reactor::UnregisterHandle(HANDLE handle) {
   // Attempts to take the ownership of the registration state for the handle.
   // If taking the ownership does not succeed, it means the handle has already
   // been unregistered.
-  scoped_ptr<RegistrationState> state(ReleaseHandlerState(handle));
+  std::unique_ptr<RegistrationState> state(ReleaseHandlerState(handle));
   if (!state.get()) {
     return E_UNEXPECTED;
   }

@@ -29,7 +29,7 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include <atlctl.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/ATLRegMapEx.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/constants.h"

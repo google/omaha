@@ -17,6 +17,7 @@
 #define OMAHA_CRASHHANDLER_CRASH_DUMP_UTIL_H_
 
 #include <windows.h>
+#include <memory>
 
 #include "base/basictypes.h"
 #include "omaha/base/string.h"
@@ -51,7 +52,7 @@ HRESULT GetCrashInfoFromEnvironmentVariables(
     HANDLE* mini_dump_handle,
     HANDLE* full_dump_handle,
     HANDLE* custom_info_handle,
-    google_breakpad::ClientInfo** client_info);
+    std::unique_ptr<google_breakpad::ClientInfo>* client_info);
 
 }  // namespace omaha
 

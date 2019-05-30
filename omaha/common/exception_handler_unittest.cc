@@ -13,10 +13,9 @@
 // limitations under the License.
 // ========================================================================
 
-#include "base/scoped_ptr.h"
-#include "omaha/base/scoped_ptr_address.h"
-#include "omaha/common/command_line.h"
 #include "omaha/common/exception_handler.h"
+
+#include "omaha/common/command_line.h"
 #include "omaha/testing/unit_test.h"
 
 using google_breakpad::CustomInfoEntry;
@@ -41,7 +40,7 @@ class ExceptionHandlerTest : public testing::Test {
 
     return OmahaExceptionHandler::Create(is_machine,
                                          custom_info_map,
-                                         address(handler_));
+                                         &handler_);
   }
 
   void UninstallHandler() {
@@ -64,7 +63,7 @@ class ExceptionHandlerTest : public testing::Test {
     return CString();
   }
 
-  scoped_ptr<OmahaExceptionHandler> handler_;
+  std::unique_ptr<OmahaExceptionHandler> handler_;
 };
 
 // Installs and uninstalls the crash handler in the user case.

@@ -18,9 +18,10 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 
 namespace omaha {
 
@@ -109,7 +110,7 @@ class DownloadManager : public DownloadManagerInterface {
     // Not owned by this object.
     App* app_;
 
-    scoped_ptr<NetworkRequest> network_request_;
+    std::unique_ptr<NetworkRequest> network_request_;
 
     DISALLOW_COPY_AND_ASSIGN(State);
   };
@@ -151,7 +152,7 @@ class DownloadManager : public DownloadManagerInterface {
 
   std::vector<State*> download_state_;
 
-  scoped_ptr<PackageCache> package_cache_;
+  std::unique_ptr<PackageCache> package_cache_;
 
   friend class DownloadManagerTest;
   DISALLOW_COPY_AND_ASSIGN(DownloadManager);

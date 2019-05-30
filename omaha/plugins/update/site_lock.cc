@@ -18,8 +18,8 @@
 #include <mshtml.h>
 #include <shlobj.h>
 #include <wininet.h>
+#include <memory>
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/atl_regexp.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
@@ -126,7 +126,7 @@ bool SiteLock::AddPattern(const WCHAR* pattern) {
     return false;
   }
 
-  scoped_ptr<AtlRegExp> re(new AtlRegExp);
+  auto re = std::make_unique<AtlRegExp>();
   REParseError error = re->Parse(pattern);
   if (REPARSE_ERROR_OK != error) {
     ASSERT(false, (L"Failed to parse site lock pattern: %s",

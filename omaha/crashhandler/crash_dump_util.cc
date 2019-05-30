@@ -15,6 +15,8 @@
 
 #include "omaha/crashhandler/crash_dump_util.h"
 
+#include <memory>
+
 #include "omaha/base/environment_block_modifier.h"
 #include "omaha/base/error.h"
 #include "omaha/base/process.h"
@@ -147,14 +149,14 @@ HRESULT GetCrashInfoFromEnvironmentVariables(
     HANDLE* mini_dump_handle,
     HANDLE* full_dump_handle,
     HANDLE* custom_info_handle,
-    google_breakpad::ClientInfo** client_info_ptr) {
+    std::unique_ptr<google_breakpad::ClientInfo>* client_info_ptr) {
   ASSERT1(notification_event);
   ASSERT1(mini_dump_handle);
   ASSERT1(full_dump_handle);
   ASSERT1(custom_info_handle);
   ASSERT1(client_info_ptr);
   *notification_event = NULL;
-  *client_info_ptr = NULL;
+  client_info_ptr->reset();
   *mini_dump_handle = NULL;
   *full_dump_handle = NULL;
   *custom_info_handle = NULL;
@@ -169,7 +171,7 @@ HRESULT GetCrashInfoFromEnvironmentVariables(
   *mini_dump_handle = crash_info.mini_dump_handle;
   *full_dump_handle = crash_info.full_dump_handle;
   *custom_info_handle = crash_info.custom_info_handle;
-  scoped_ptr<google_breakpad::ClientInfo> client_info;
+  std::unique_ptr<google_breakpad::ClientInfo> client_info;
   client_info.reset(new google_breakpad::ClientInfo(NULL,
                                                     crash_info.crash_process_id,
                                                     crash_info.dump_type,
@@ -181,7 +183,7 @@ HRESULT GetCrashInfoFromEnvironmentVariables(
     CORE_LOG(LE, (_T("[CrashHandler][Failed to initialize ClientInfo.")));
     return E_FAIL;
   }
-  *client_info_ptr = client_info.release();
+  client_info_ptr->reset(client_info.release());
   return S_OK;
 }
 

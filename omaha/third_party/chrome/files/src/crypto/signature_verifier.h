@@ -20,10 +20,10 @@
 #ifndef OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_SIGNATURE_VERIFIER_H_
 #define OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_SIGNATURE_VERIFIER_H_
 
-#include <stdint.h>
+#include <cstdint>
 #include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "crypto/crypto_export.h"
 #include "omaha/base/signatures.h"
 #include "omaha/net/cup_ecdsa_utils.h"
@@ -83,7 +83,7 @@ class CRYPTO_EXPORT SignatureVerifier {
 
   omaha::internal::EcdsaSignature sig_;
   omaha::internal::EcdsaPublicKey key_;
-  scoped_ptr<omaha::CryptDetails::HashInterface> hasher_;
+  std::unique_ptr<omaha::CryptDetails::HashInterface> hasher_;
 };
 
 }  // namespace crypto

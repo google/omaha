@@ -13,14 +13,14 @@
 // limitations under the License.
 // ========================================================================
 
-#include "base/scoped_ptr.h"
+#include "omaha/goopdate/update_response_utils.h"
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/error.h"
 #include "omaha/base/system_info.h"
 #include "omaha/goopdate/app_unittest_base.h"
 #include "omaha/goopdate/resource_manager.h"
-#include "omaha/goopdate/update_response_utils.h"
 #include "omaha/testing/unit_test.h"
 
 namespace omaha {
@@ -86,7 +86,7 @@ class UpdateResponseUtilsGetResultTest : public testing::Test {
     ResourceManager::Delete();
   }
 
-  scoped_ptr<xml::UpdateResponse> update_response_;
+  std::unique_ptr<xml::UpdateResponse> update_response_;
 };
 
 class UpdateResponseUtilsTest : public AppTestBase,

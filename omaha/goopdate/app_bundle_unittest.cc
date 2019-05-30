@@ -14,11 +14,11 @@
 // ========================================================================
 
 #include <atlsecurity.h>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/thread_pool.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
@@ -186,8 +186,8 @@ class AppBundleNoBundleTest : public testing::Test {
   }
 
   const bool is_machine_;
-  scoped_ptr<MockWorker> worker_;
-  scoped_ptr<Model> model_;
+  std::unique_ptr<MockWorker> worker_;
+  std::unique_ptr<Model> model_;
 
  private:
   Goopdate goopdate_;

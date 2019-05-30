@@ -17,9 +17,10 @@
 #define OMAHA_NET_CUP_ECDSA_REQUEST_IMPL_H__
 
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/net/cup_ecdsa_utils.h"
 
 namespace omaha {
@@ -88,7 +89,7 @@ class CupEcdsaRequestImpl {
     EcdsaSignature signature;          // The decoded ECDSA signature.
     std::vector<uint8> observed_hash;  // The observed hash of the request body.
   };
-  scoped_ptr<TransientCupState> cup_;
+  std::unique_ptr<TransientCupState> cup_;
 
   CString     url_;                     // The original url.
   const void* request_buffer_;          // Contains the request body for POST.
@@ -98,7 +99,7 @@ class CupEcdsaRequestImpl {
   typedef const uint8* PublicKey;
 
   EcdsaPublicKey public_key_;                      // Server public key.
-  scoped_ptr<HttpRequestInterface> http_request_;  // Inner http request.
+  std::unique_ptr<HttpRequestInterface> http_request_;  // Inner http request.
 
   static const PublicKeyInstance kCupProductionPublicKey;
   static const PublicKeyInstance kCupTestPublicKey;

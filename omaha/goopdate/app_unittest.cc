@@ -87,7 +87,7 @@ class AppTest : public AppTestBaseWithRegistryOverride {
   }
 
   App* app_;
-  scoped_ptr<xml::UpdateResponse> update_response_;
+  std::unique_ptr<xml::UpdateResponse> update_response_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AppTest);
@@ -529,7 +529,7 @@ TEST_F(AppInstallTest, PreUpdateCheck_EulaAccepted) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -546,7 +546,7 @@ TEST_F(AppAutoUpdateTest, PreUpdateCheck_EulaAccepted) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -563,7 +563,7 @@ TEST_F(AppInstallTest, PreUpdateCheck_EulaNotAccepted_Online) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_FALSE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -583,7 +583,7 @@ TEST_F(AppInstallTest, PreUpdateCheck_EulaNotAccepted_Offline) {
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_FALSE));
   EXPECT_SUCCEEDED(app_bundle_->put_offlineDirectory(CComBSTR(_T("foo"))));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -599,7 +599,7 @@ TEST_F(AppAutoUpdateTest, PreUpdateCheck_EulaNotAccepted) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_FALSE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -617,7 +617,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabled) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -637,7 +637,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_InstallDisabled) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -657,7 +657,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_InstallDisabled) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -677,7 +677,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabledForDifferentApp) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -695,7 +695,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_UpdateDisabled) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -713,7 +713,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabled) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -737,7 +737,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabled) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -757,7 +757,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -777,7 +777,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -797,7 +797,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_ManualUpdatesOnly) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -815,7 +815,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),
@@ -835,7 +835,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
-  scoped_ptr<xml::UpdateRequest> update_request;
+  std::unique_ptr<xml::UpdateRequest> update_request;
   update_request.reset(xml::UpdateRequest::Create(is_machine_,
                                                   _T("unittest_sessionid"),
                                                   _T("unittest_instsource"),

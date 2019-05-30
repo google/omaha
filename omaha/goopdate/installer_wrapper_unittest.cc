@@ -13,16 +13,18 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/goopdate/installer_wrapper.h"
+
 #include <atlpath.h>
 #include <atlstr.h>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/system.h"
 #include "omaha/base/timer.h"
@@ -32,7 +34,6 @@
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/install_manifest.h"
 #include "omaha/goopdate/app_manager.h"
-#include "omaha/goopdate/installer_wrapper.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/testing/unit_test.h"
@@ -409,7 +410,7 @@ class InstallerWrapperTest : public testing::Test {
   static const int kOtherInstaller = InstallerWrapper::CUSTOM_INSTALLER;
 
   bool is_machine_;
-  scoped_ptr<InstallerWrapper> iw_;
+  std::unique_ptr<InstallerWrapper> iw_;
 
   // Used as an argument to various functions.
   InstallerResultInfo result_info_;

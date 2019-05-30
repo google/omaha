@@ -27,9 +27,10 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/scoped_any.h"
 
 namespace omaha {
@@ -186,7 +187,7 @@ class Setup {
   scoped_event shutdown_event_;
   int extra_code1_;
 
-  scoped_ptr<HighresTimer> metrics_timer_;
+  std::unique_ptr<HighresTimer> metrics_timer_;
 
   // Whether this process uninstalled Google Update for any reason.
   // Access must be protected by the Setup Lock.

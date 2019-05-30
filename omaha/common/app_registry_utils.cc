@@ -22,7 +22,6 @@
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"

@@ -13,8 +13,9 @@
 // limitations under the License.
 // ========================================================================
 
+#include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
@@ -262,7 +263,7 @@ class SetupFilesTest : public testing::Test {
   const bool is_machine_;
   const CString omaha_path_;
   const CString hive_override_key_name_;
-  scoped_ptr<SetupFiles> setup_files_;
+  std::unique_ptr<SetupFiles> setup_files_;
 
   static CString exe_parent_dir_;
   static CString this_version_;

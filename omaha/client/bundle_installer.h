@@ -19,9 +19,10 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
 #include "goopdate/omaha3_idl.h"
@@ -209,7 +210,7 @@ class BundleInstaller
   void ReleaseAppBundle();
 
   InstallProgressObserver* observer_;
-  scoped_ptr<HelpUrlBuilder> help_url_builder_;
+  std::unique_ptr<HelpUrlBuilder> help_url_builder_;
 
   // The bundle to be installed.
   CComPtr<IAppBundle> app_bundle_;
@@ -221,7 +222,7 @@ class BundleInstaller
   CMessageLoop message_loop_;
 
   // Shutdown event listener.
-  scoped_ptr<ShutdownCallback> shutdown_callback_;
+  std::unique_ptr<ShutdownCallback> shutdown_callback_;
 
   // The apps in app_bundle_. Allows easier and quicker access to the apps than
   // going through app_bundle_.

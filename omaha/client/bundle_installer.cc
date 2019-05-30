@@ -15,12 +15,11 @@
 
 #include "omaha/client/bundle_installer.h"
 #include <atlsafe.h>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_ptr_address.h"
 #include "omaha/client/client_utils.h"
 #include "omaha/client/help_url_builder.h"
 #include "omaha/client/resource.h"
@@ -510,7 +509,7 @@ void BundleInstaller::SetBundleParentWindow(HWND parent_window) {
 HRESULT BundleInstaller::ListenToShutdownEvent(bool is_machine) {
   ASSERT1(!shutdown_callback_.get());
   HRESULT hr = ShutdownEvents::CreateShutdownHandler(
-      is_machine, this, address(shutdown_callback_));
+      is_machine, this, &shutdown_callback_);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("CreateShutdownHandler failed][0x%08x]"), hr));
   }

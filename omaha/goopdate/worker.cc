@@ -15,8 +15,11 @@
 
 #include "omaha/goopdate/worker.h"
 #include "omaha/goopdate/worker_internal.h"
+
 #include <atlbase.h>
 #include <atlstr.h>
+#include <memory>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/debug.h"
@@ -463,13 +466,13 @@ void Worker::CheckForUpdateHelper(AppBundle* app_bundle,
     return;
   }
 
-  scoped_ptr<xml::UpdateRequest> update_request(
+  std::unique_ptr<xml::UpdateRequest> update_request(
       xml::UpdateRequest::Create(is_machine_,
                                  app_bundle->session_id(),
                                  app_bundle->install_source(),
                                  app_bundle->origin_url()));
 
-  scoped_ptr<xml::UpdateResponse> update_response(
+  std::unique_ptr<xml::UpdateResponse> update_response(
       xml::UpdateResponse::Create());
 
   CallAsSelfAndImpersonate2(this,
@@ -1045,10 +1048,10 @@ HRESULT Worker::QueueDeferredFunctionCall0(
   ASSERT1(app_bundle.get());
   ASSERT1(deferred_function);
 
-  typedef ThreadPoolCallBack1<Worker, shared_ptr<AppBundle> > Callback;
-  scoped_ptr<Callback> callback(new Callback(this,
+  using Callback = ThreadPoolCallBack1<Worker, shared_ptr<AppBundle> >;
+  auto callback = std::make_unique<Callback>(this,
                                              deferred_function,
-                                             app_bundle));
+                                             app_bundle);
   HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
                                                       COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);
@@ -1071,11 +1074,11 @@ HRESULT Worker::QueueDeferredFunctionCall1(
   ASSERT1(app_bundle.get());
   ASSERT1(deferred_function);
 
-  typedef ThreadPoolCallBack2<Worker, shared_ptr<AppBundle>, P1> Callback;
-  scoped_ptr<Callback> callback(new Callback(this,
+  using Callback = ThreadPoolCallBack2<Worker, shared_ptr<AppBundle>, P1>;
+  auto callback = std::make_unique<Callback>(this,
                                              deferred_function,
                                              app_bundle,
-                                             p1));
+                                             p1);
   HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
                                                       COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);

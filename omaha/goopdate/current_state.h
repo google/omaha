@@ -21,8 +21,8 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/atlregmapex.h"
 #include "omaha/base/constants.h"

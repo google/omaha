@@ -16,8 +16,9 @@
 // This unit test is hardcoded to run against production servers only.
 
 #include <iostream>
+#include <memory>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/constants.h"
 #include "omaha/base/string.h"
 #include "omaha/base/reg_key.h"
@@ -70,8 +71,7 @@ class CupEcdsaRequestTest : public testing::Test {
                  const uint8* request_buffer,
                  size_t request_buffer_length) {
     // Create a CUP-ECDSA request wrapping the contained request.
-    scoped_ptr<CupEcdsaRequest> http_request(
-        new CupEcdsaRequest(contained_request));
+    auto http_request = std::make_unique<CupEcdsaRequest>(contained_request);
 
     // Set up a a direct (non-proxied) connection.
     NetworkConfig* network_config = NULL;

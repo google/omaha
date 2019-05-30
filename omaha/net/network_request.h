@@ -19,9 +19,10 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 #include "omaha/common/ping_event_download_metrics.h"
@@ -186,7 +187,7 @@ class NetworkRequest {
 
  private:
   // Uses pimpl idiom to minimize dependencies on implementation details.
-  scoped_ptr<internal::NetworkRequestImpl> impl_;
+  std::unique_ptr<internal::NetworkRequestImpl> impl_;
   DISALLOW_COPY_AND_ASSIGN(NetworkRequest);
 };
 

@@ -16,9 +16,11 @@
 // Internet-access utility functions via winhttp
 
 #include "omaha/net/winhttp.h"
+
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"

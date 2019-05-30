@@ -14,7 +14,7 @@
 // ========================================================================
 
 #include "omaha/common/ping.h"
-#include "base/scoped_ptr.h"
+
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
@@ -548,7 +548,7 @@ HRESULT Ping::SendString(bool is_machine,
     return hr;
   }
 
-  scoped_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
+  std::unique_ptr<xml::UpdateResponse> response(xml::UpdateResponse::Create());
   hr = web_service_client.SendString(false, &request_string, response.get());
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[WebServicesClient::SendString failed][0x%08x]"), hr));

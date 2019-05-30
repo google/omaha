@@ -584,7 +584,7 @@ HRESULT DownloadManager::CreateStateForApp(App* app, State** state) {
   network_request->set_proxy_auth_config(
       app->app_bundle()->GetProxyAuthConfig());
 
-  scoped_ptr<State> state_ptr(new State(app, network_request));
+  std::unique_ptr<State> state_ptr(new State(app, network_request));
 
   __mutexBlock(lock()) {
     download_state_.push_back(state_ptr.release());

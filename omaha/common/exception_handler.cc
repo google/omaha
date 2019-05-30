@@ -22,6 +22,7 @@
 #include <windows.h>
 #include <atlbase.h>
 #include <atlstr.h>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
@@ -45,8 +46,8 @@ using crash_utils::CustomInfoMap;
 
 // static
 HRESULT OmahaExceptionHandler::Create(bool is_machine,
-                                      const CustomInfoMap& custom_info_map,
-                                      OmahaExceptionHandler** handler_out) {
+  const CustomInfoMap& custom_info_map,
+  std::unique_ptr<OmahaExceptionHandler>* handler_out) {
   CORE_LOG(L3, (_T("[OmahaExceptionHandler::Create][%d]"), is_machine));
 
   ASSERT1(OkayToInstall());
@@ -55,7 +56,7 @@ HRESULT OmahaExceptionHandler::Create(bool is_machine,
     return E_POINTER;
   }
 
-  scoped_ptr<OmahaExceptionHandler> outp(new OmahaExceptionHandler(is_machine));
+  std::unique_ptr<OmahaExceptionHandler> outp(new OmahaExceptionHandler(is_machine));
   HRESULT hr = outp->Initialize(custom_info_map);
   if (FAILED(hr)) {
     CORE_LOG(L3, (_T("[Initialize failed][%#08x]"), hr));
@@ -68,7 +69,7 @@ HRESULT OmahaExceptionHandler::Create(bool is_machine,
     return hr;
   }
 
-  *handler_out = outp.release();
+  handler_out->reset(outp.release());
   return S_OK;
 }
 

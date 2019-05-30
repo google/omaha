@@ -19,7 +19,9 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "omaha/base/browser_utils.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/ui/progress_wnd.h"
@@ -63,8 +65,8 @@ HRESULT CreateClientUI(bool is_machine,
                        BrowserType browser_type,
                        BundleInstaller* installer,
                        AppBundle* app_bundle,
-                       InstallProgressObserver** observer,
-                       OmahaWndEvents** ui_sink);
+                       std::unique_ptr<InstallProgressObserver>* observer,
+                       std::unique_ptr<OmahaWndEvents>* ui_sink);
 
 // Does the work for InstallApps, allowing the COM server to be mocked.
 HRESULT DoInstallApps(BundleInstaller* installer,

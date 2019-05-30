@@ -13,20 +13,20 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/goopdate/app_command.h"
+
 #include <io.h>
-#include <stdio.h>
+#include <cstdio>
 #include <atlstr.h>
 #include <atlsimpstr.h>
 #include <windows.h>
 #include <algorithm>
-#include "base/scoped_ptr.h"
+
 #include "base/utils.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_any.h"
-#include "omaha/base/scoped_ptr_address.h"
-#include "omaha/goopdate/app_command.h"
 #include "omaha/goopdate/app_command_verifier.h"
 #include "omaha/testing/unit_test.h"
 

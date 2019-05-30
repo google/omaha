@@ -16,7 +16,6 @@
 #ifndef OMAHA_UI_COMPLETE_WND_H_
 #define OMAHA_UI_COMPLETE_WND_H_
 
-#include "base/scoped_ptr.h"
 #include "omaha/ui/ui.h"
 
 namespace omaha {

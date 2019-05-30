@@ -14,7 +14,6 @@
 
 #include "omaha/goopdate/dm_storage.h"
 
-#include "base/scoped_ptr.h"
 #include "omaha/base/const_utils.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/reg_key.h"

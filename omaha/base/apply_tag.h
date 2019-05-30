@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/error.h"
 
 namespace omaha {

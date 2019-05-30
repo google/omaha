@@ -16,12 +16,10 @@
 #include "omaha/crashhandler/crash_analyzer_checks.h"
 
 #include <winnt.h>
-
 #include <cstdlib>
 #include <ctime>
 
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_ptr_address.h"
 
 namespace omaha {
 

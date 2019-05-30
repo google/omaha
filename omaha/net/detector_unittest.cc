@@ -13,15 +13,17 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/net/detector.h"
+
 #include <cstdio>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/common/const_group_policy.h"
-#include "omaha/net/detector.h"
 #include "omaha/net/network_config.h"
 #include "omaha/testing/unit_test.h"
 
@@ -31,11 +33,11 @@ class FirefoxProxyDetectorTest : public testing::Test {
  public:
   FirefoxProxyDetectorTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     detector_.reset(new FirefoxProxyDetector);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
   }
 
   HRESULT BuildProxyString(const CString& http_host,
@@ -82,7 +84,7 @@ class FirefoxProxyDetectorTest : public testing::Test {
                       const CString& ssl_port,
                       CString* file_path);
 
-  scoped_ptr<FirefoxProxyDetector> detector_;
+  std::unique_ptr<FirefoxProxyDetector> detector_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FirefoxProxyDetectorTest);
@@ -354,7 +356,7 @@ class GroupPolicyProxyDetectorTest : public testing::TestWithParam<bool>  {
   }
 
   CString hive_override_key_name_;
-  scoped_ptr<GroupPolicyProxyDetector> detector_;
+  std::unique_ptr<GroupPolicyProxyDetector> detector_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GroupPolicyProxyDetectorTest);

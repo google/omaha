@@ -189,7 +189,7 @@ class RegistryMonitorImpl : public Runnable {
   std::vector<Watcher> watchers_;
 
   Thread thread_;
-  scoped_ptr<Gate> start_monitoring_gate_;
+  std::unique_ptr<Gate> start_monitoring_gate_;
   scoped_event stop_monitoring_;
   DISALLOW_COPY_AND_ASSIGN(RegistryMonitorImpl);
 };
@@ -467,7 +467,7 @@ HRESULT RegistryMonitorImpl::MonitorKey(HKEY root_key,
   if (watchers_.size() >= MAXIMUM_WAIT_OBJECTS) {
     return GOOPDATE_E_TOO_MANY_WAITS;
   }
-  scoped_ptr<KeyWatcher> key_watcher(new KeyWatcher(key_id));
+  std::unique_ptr<KeyWatcher> key_watcher(new KeyWatcher(key_id));
   key_watcher->set_callback(callback, user_data);
   Watcher watcher(key_id, key_watcher.release());
   watchers_.push_back(watcher);
@@ -492,7 +492,7 @@ HRESULT RegistryMonitorImpl::MonitorValue(
   if (watchers_.size() >= MAXIMUM_WAIT_OBJECTS) {
     return GOOPDATE_E_TOO_MANY_WAITS;
   }
-  scoped_ptr<KeyWatcher> key_watcher(new KeyWatcher(key_id));
+  std::unique_ptr<KeyWatcher> key_watcher(new KeyWatcher(key_id));
   HRESULT hr = key_watcher->AddValue(value_name, value_type,
                                      callback, user_data);
   if (FAILED(hr)) {
