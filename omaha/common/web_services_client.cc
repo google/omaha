@@ -14,7 +14,10 @@
 // ========================================================================
 
 #include "omaha/common/web_services_client.h"
+
 #include <atlstr.h>
+#include <algorithm>
+
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/debug.h"

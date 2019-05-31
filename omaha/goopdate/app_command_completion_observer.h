@@ -19,11 +19,12 @@
 #include <windows.h>
 #include <atlbase.h>
 #include <atlcom.h>
+#include <memory>
+
 #include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/common/ping_event.h"
 #include "goopdate/omaha3_idl.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
@@ -49,7 +50,7 @@ class ATL_NO_VTABLE AppCommandCompletionObserver
   // returned via |observer|.
   static HRESULT Start(HANDLE process,
                        HANDLE output,
-                       const shared_ptr<AppCommandDelegate>& delegate,
+                       const std::shared_ptr<AppCommandDelegate>& delegate,
                        AppCommandCompletionObserver** observer);
 
   // Returns the process status (one of
@@ -81,7 +82,7 @@ class ATL_NO_VTABLE AppCommandCompletionObserver
   // Initializes the object properties and spins off the background thread.
   HRESULT Init(HANDLE process,
                HANDLE output,
-               const shared_ptr<AppCommandDelegate>& delegate);
+               const std::shared_ptr<AppCommandDelegate>& delegate);
 
   // Reads the child process's output for reporting to our client.
   void CaptureOutput();
@@ -100,7 +101,7 @@ class ATL_NO_VTABLE AppCommandCompletionObserver
 
   scoped_process process_;
   scoped_handle output_pipe_;
-  shared_ptr<AppCommandDelegate> delegate_;
+  std::shared_ptr<AppCommandDelegate> delegate_;
 
   scoped_handle thread_;
 

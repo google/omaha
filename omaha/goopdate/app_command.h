@@ -17,13 +17,14 @@
 #define OMAHA_GOOPDATE_APP_COMMAND_H__
 
 #include <windows.h>
+#include <memory>
 #include <string>
 #include <vector>
+
 #include "base/basictypes.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/scoped_any.h"
 #include "omaha/goopdate/app_command_formatter.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
@@ -99,7 +100,7 @@ class AppCommand {
   const bool capture_output_;
   const bool auto_run_on_os_upgrade_;
 
-  shared_ptr<AppCommandDelegate> delegate_;
+  std::shared_ptr<AppCommandDelegate> delegate_;
 
   // Tracks state of the currently running process.
   CComPtr<AppCommandCompletionObserver> completion_observer_;

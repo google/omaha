@@ -40,7 +40,6 @@
 #include "omaha/base/signatures.h"
 #include "omaha/base/utils.h"
 #include "omaha/net/cup_ecdsa_utils.h"
-#include "third_party/bar/shared_ptr.h"
 #include "third_party/chrome/files/src/components/crx_file/crx3.pb.h"
 #include "third_party/libzip/lib/zip.h"
 
@@ -60,7 +59,7 @@ const uint8_t kPublisherKeyHash[] = {
     0x24, 0x97, 0xcc, 0x9b, 0x04, 0x25, 0x4c, 0x65, 0x8f, 0x79, 0xf2,
     0x14, 0x53, 0x92, 0x86, 0x7e, 0xa8, 0x36, 0x63, 0x67, 0xcf};
 
-typedef std::vector<shared_ptr<crypto::SignatureVerifier>> Verifiers;
+typedef std::vector<std::shared_ptr<crypto::SignatureVerifier>> Verifiers;
 typedef google::protobuf::RepeatedPtrField<AsymmetricKeyProof> RepeatedProof;
 
 // Returns the number of bytes read, or -1 in the case of an unexpected EOF or
@@ -216,7 +215,8 @@ VerifierResult VerifyCrx3(
         continue;
       }
 
-      shared_ptr<crypto::SignatureVerifier> v(new crypto::SignatureVerifier);
+      std::shared_ptr<crypto::SignatureVerifier> v(
+        new crypto::SignatureVerifier);
       ASSERT1(sizeof(unsigned char) == sizeof(uint8_t));
 
       if (!v->VerifyInit(
@@ -432,7 +432,7 @@ VerifierResult Verify(
     return VerifierResult::ERROR_FILE_NOT_READABLE;
   }
 
-  shared_ptr<omaha::CryptDetails::HashInterface> file_hash(
+  std::shared_ptr<omaha::CryptDetails::HashInterface> file_hash(
       omaha::CryptDetails::CreateHasher(true));
 
   // Magic number.

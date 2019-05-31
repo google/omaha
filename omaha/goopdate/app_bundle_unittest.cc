@@ -13,6 +13,8 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/goopdate/app_bundle.h"
+
 #include <atlsecurity.h>
 
 #include "omaha/base/app_util.h"
@@ -256,7 +258,7 @@ class AppBundleTest : public AppBundleNoBundleTest {
     return static_cast<BundleState>(app_bundle_->app_bundle_state_->state_);
   }
 
-  shared_ptr<AppBundle> app_bundle_;
+  std::shared_ptr<AppBundle> app_bundle_;
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(AppBundleTest);
@@ -368,7 +370,7 @@ TEST_F(AppBundleNoBundleUserTest, ConstructorAndDestructor) {
   EXPECT_CALL(*worker_, Lock()).WillOnce(Return(2));
   EXPECT_CALL(*worker_, Unlock()).WillOnce(Return(1));
 
-  shared_ptr<AppBundle> app_bundle(model_->CreateAppBundle(is_machine_));
+  std::shared_ptr<AppBundle> app_bundle(model_->CreateAppBundle(is_machine_));
   EXPECT_TRUE(app_bundle.get());
   EXPECT_EQ(1, model_->GetNumberOfAppBundles());
   EXPECT_EQ(app_bundle.get(), model_->GetAppBundle(0).get());
@@ -380,7 +382,7 @@ TEST_F(AppBundleNoBundleMachineTest, ConstructorAndDestructor) {
   EXPECT_CALL(*worker_, Lock()).WillOnce(Return(2));
   EXPECT_CALL(*worker_, Unlock()).WillOnce(Return(1));
 
-  shared_ptr<AppBundle> app_bundle(model_->CreateAppBundle(is_machine_));
+  std::shared_ptr<AppBundle> app_bundle(model_->CreateAppBundle(is_machine_));
   EXPECT_TRUE(app_bundle.get());
   EXPECT_EQ(1, model_->GetNumberOfAppBundles());
   EXPECT_EQ(app_bundle.get(), model_->GetAppBundle(0).get());
@@ -460,7 +462,7 @@ class AppBundlePopulatedRegistryTest : public AppBundleInitializedTest {
     AppManager::Instance()->ReadAppInstallTimeDiff(opposite_hive_app2);
   }
 
-  shared_ptr<AppBundle> dummy_app_bundle_for_expected_apps_;
+  std::shared_ptr<AppBundle> dummy_app_bundle_for_expected_apps_;
   LLock lock_;
 
  private:

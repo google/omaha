@@ -419,7 +419,7 @@ HRESULT Worker::CheckForUpdateAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  std::shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
   HRESULT hr = QueueDeferredFunctionCall0(shared_bundle,
                                           &Worker::CheckForUpdate);
   if (FAILED(hr)) {
@@ -434,7 +434,7 @@ HRESULT Worker::CheckForUpdateAsync(AppBundle* app_bundle) {
   return S_OK;
 }
 
-void Worker::CheckForUpdate(shared_ptr<AppBundle> app_bundle) {
+void Worker::CheckForUpdate(std::shared_ptr<AppBundle> app_bundle) {
   CORE_LOG(L3, (_T("[Worker::CheckForUpdate][0x%p]"), app_bundle.get()));
   ASSERT1(app_bundle.get());
 
@@ -529,7 +529,7 @@ HRESULT Worker::DownloadAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  std::shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
   HRESULT hr = QueueDeferredFunctionCall0(shared_bundle, &Worker::Download);
   if (FAILED(hr)) {
     return hr;
@@ -543,7 +543,7 @@ HRESULT Worker::DownloadAsync(AppBundle* app_bundle) {
   return S_OK;
 }
 
-void Worker::Download(shared_ptr<AppBundle> app_bundle) {
+void Worker::Download(std::shared_ptr<AppBundle> app_bundle) {
   CORE_LOG(L3, (_T("[Worker::Download][0x%p]"), app_bundle.get()));
   ASSERT1(app_bundle.get());
 
@@ -584,7 +584,7 @@ HRESULT Worker::DownloadAndInstallAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  std::shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
   HRESULT hr = QueueDeferredFunctionCall0(shared_bundle,
                                           &Worker::DownloadAndInstall);
   if (FAILED(hr)) {
@@ -602,7 +602,7 @@ HRESULT Worker::DownloadAndInstallAsync(AppBundle* app_bundle) {
   return S_OK;
 }
 
-void Worker::DownloadAndInstall(shared_ptr<AppBundle> app_bundle) {
+void Worker::DownloadAndInstall(std::shared_ptr<AppBundle> app_bundle) {
   CORE_LOG(L3, (_T("[Worker::DownloadAndInstall][0x%p]"), app_bundle.get()));
   ASSERT1(app_bundle.get());
 
@@ -675,7 +675,7 @@ HRESULT Worker::UpdateAllAppsAsync(AppBundle* app_bundle) {
   ASSERT1(app_bundle);
   ASSERT1(model_->IsLockedByCaller());
 
-  shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
+  std::shared_ptr<AppBundle> shared_bundle(app_bundle->controlling_ptr());
   HRESULT hr = QueueDeferredFunctionCall0(shared_bundle,
                                           &Worker::UpdateAllApps);
   if (FAILED(hr)) {
@@ -691,7 +691,7 @@ HRESULT Worker::UpdateAllAppsAsync(AppBundle* app_bundle) {
 }
 
 // Runs through all steps regardless of error. App state machine handles errors.
-void Worker::UpdateAllApps(shared_ptr<AppBundle> app_bundle) {
+void Worker::UpdateAllApps(std::shared_ptr<AppBundle> app_bundle) {
   CORE_LOG(L3, (_T("[Worker::UpdateAllApps][0x%p]"), app_bundle.get()));
   ASSERT1(app_bundle.get());
 
@@ -725,7 +725,7 @@ HRESULT Worker::DownloadPackageAsync(Package* package) {
   ASSERT1(package);
   ASSERT1(model_->IsLockedByCaller());
 
-  shared_ptr<AppBundle> shared_bundle =
+  std::shared_ptr<AppBundle> shared_bundle =
       package->app_version()->app()->app_bundle()->controlling_ptr();
   CORE_LOG(L3, (_T("[Worker::DownloadPackageAsync][0x%p][0x%p]"),
       shared_bundle.get(), package));
@@ -743,7 +743,7 @@ HRESULT Worker::DownloadPackageAsync(Package* package) {
   return S_OK;
 }
 
-void Worker::DownloadPackage(shared_ptr<AppBundle> app_bundle,
+void Worker::DownloadPackage(std::shared_ptr<AppBundle> app_bundle,
                              Package* package) {
   CORE_LOG(L3, (_T("[Worker::DownloadPackage][0x%p][0x%p]"),
       app_bundle.get(), package));
@@ -1043,12 +1043,12 @@ void Worker::PersistRetryAfter(int retry_after_sec) const {
 // Creates a thread pool work item for deferred execution of deferred_function.
 // The thread pool owns this callback object.
 HRESULT Worker::QueueDeferredFunctionCall0(
-    shared_ptr<AppBundle> app_bundle,
-    void (Worker::*deferred_function)(shared_ptr<AppBundle>)) {
+    std::shared_ptr<AppBundle> app_bundle,
+    void (Worker::*deferred_function)(std::shared_ptr<AppBundle>)) {
   ASSERT1(app_bundle.get());
   ASSERT1(deferred_function);
 
-  using Callback = ThreadPoolCallBack1<Worker, shared_ptr<AppBundle> >;
+  using Callback = ThreadPoolCallBack1<Worker, std::shared_ptr<AppBundle> >;
   auto callback = std::make_unique<Callback>(this,
                                              deferred_function,
                                              app_bundle);
@@ -1068,13 +1068,13 @@ HRESULT Worker::QueueDeferredFunctionCall0(
 // The thread pool owns this callback object.
 template <typename P1>
 HRESULT Worker::QueueDeferredFunctionCall1(
-    shared_ptr<AppBundle> app_bundle,
+    std::shared_ptr<AppBundle> app_bundle,
     P1 p1,
-    void (Worker::*deferred_function)(shared_ptr<AppBundle>, P1)) {
+    void (Worker::*deferred_function)(std::shared_ptr<AppBundle>, P1)) {
   ASSERT1(app_bundle.get());
   ASSERT1(deferred_function);
 
-  using Callback = ThreadPoolCallBack2<Worker, shared_ptr<AppBundle>, P1>;
+  using Callback = ThreadPoolCallBack2<Worker, std::shared_ptr<AppBundle>, P1>;
   auto callback = std::make_unique<Callback>(this,
                                              deferred_function,
                                              app_bundle,

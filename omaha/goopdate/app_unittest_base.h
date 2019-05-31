@@ -121,7 +121,7 @@ class AppTestBase : public testing::Test {
   std::unique_ptr<Model> model_;
 
   Goopdate goopdate_;
-  shared_ptr<AppBundle> app_bundle_;
+  std::shared_ptr<AppBundle> app_bundle_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AppTestBase);

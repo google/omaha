@@ -758,7 +758,7 @@ TEST_F(DownloadManagerUserTest, DownloadApp_FileAlreadyInCache) {
   EXPECT_LT(0, app->GetDownloadTimeMs());
 
   // Create the second app bundle.
-  shared_ptr<AppBundle> app_bundle2(model_->CreateAppBundle(false));
+  std::shared_ptr<AppBundle> app_bundle2(model_->CreateAppBundle(false));
   EXPECT_SUCCEEDED(app_bundle2->put_displayName(CComBSTR(_T("My Bundle"))));
   EXPECT_SUCCEEDED(app_bundle2->put_displayLanguage(CComBSTR(_T("en"))));
   EXPECT_SUCCEEDED(app_bundle2->initialize());

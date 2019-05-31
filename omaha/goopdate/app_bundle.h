@@ -35,7 +35,6 @@
 #include "omaha/goopdate/com_wrapper_creator.h"
 #include "omaha/goopdate/model_object.h"
 #include "omaha/net/proxy_auth.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
@@ -82,7 +81,7 @@ struct SendPingEventsParameters {
 // depend on the bundle objects.
 class AppBundle
     : public ModelObject,
-      public enable_shared_from_this<AppBundle> {
+      public std::enable_shared_from_this<AppBundle> {
  public:
   AppBundle(bool is_machine, Model* model);
   virtual ~AppBundle();

@@ -14,7 +14,9 @@
 // ========================================================================
 
 #include "omaha/goopdate/model.h"
+
 #include <algorithm>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/goopdate/worker.h"
@@ -38,10 +40,10 @@ Model::~Model() {
   worker_ = NULL;
 }
 
-shared_ptr<AppBundle> Model::CreateAppBundle(bool is_machine) {
+std::shared_ptr<AppBundle> Model::CreateAppBundle(bool is_machine) {
   __mutexScope(lock_);
 
-  shared_ptr<AppBundle> app_bundle(new AppBundle(is_machine, this));
+  std::shared_ptr<AppBundle> app_bundle(new AppBundle(is_machine, this));
   app_bundles_.push_back(AppBundleWeakPtr(app_bundle));
 
   const int lock_count(worker_->Lock());
@@ -77,7 +79,7 @@ size_t Model::GetNumberOfAppBundles() const {
   return app_bundles_.size();
 }
 
-shared_ptr<AppBundle> Model::GetAppBundle(size_t index) const {
+std::shared_ptr<AppBundle> Model::GetAppBundle(size_t index) const {
   __mutexScope(lock_);
   ASSERT1(!app_bundles_[index].expired());
   return app_bundles_[index].lock();

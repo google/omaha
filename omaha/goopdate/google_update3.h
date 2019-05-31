@@ -19,6 +19,7 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include <atlstr.h>
+#include <memory>
 #include <vector>
 
 #include "goopdate/omaha3_idl.h"
@@ -33,7 +34,6 @@
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/non_localized_resource.h"
 #include "omaha/goopdate/worker.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
@@ -129,7 +129,7 @@ class ATL_NO_VTABLE Update3COMClass
     if (index < 0 || static_cast<size_t>(index) >= num_app_bundles) {
       return HRESULT_FROM_WIN32(ERROR_INVALID_INDEX);
     }
-    shared_ptr<AppBundle> app_bundle(model()->GetAppBundle(index));
+    std::shared_ptr<AppBundle> app_bundle(model()->GetAppBundle(index));
     return AppBundleWrapper::Create(app_bundle->controlling_ptr(),
                                     app_bundle.get(),
                                     app_bundle_wrapper);
@@ -146,7 +146,7 @@ class ATL_NO_VTABLE Update3COMClass
 
     __mutexScope(model()->lock());
 
-    shared_ptr<AppBundle> app_bundle(model()->CreateAppBundle(T::is_machine()));
+    std::shared_ptr<AppBundle> app_bundle(model()->CreateAppBundle(T::is_machine()));
     return AppBundleWrapper::Create(app_bundle->controlling_ptr(),
                                     app_bundle.get(),
                                     app_bundle_wrapper);

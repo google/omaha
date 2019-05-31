@@ -21,17 +21,17 @@
 #include <windows.h>
 #include <atlbase.h>
 #include <atlcom.h>
+#include <memory>
 
 #include "base/basictypes.h"
 #include "base/utils.h"
 #include "goopdate/omaha3_idl.h"
 #include "omaha/goopdate/model_object.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
 class AppBundle;
-typedef shared_ptr<AppBundle> ControllingPtr;
+using ControllingPtr = typedef std::shared_ptr<AppBundle>;
 
 // Generalizes the creation of COM wrappers for a given class T.
 // It requires:
