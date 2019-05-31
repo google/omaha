@@ -17,10 +17,11 @@
 #define OMAHA_COMMON_PING_EVENT_H_
 
 #include <atlstr.h>
+#include <memory>
 #include <vector>
+
 #include "base/basictypes.h"
 #include "omaha/base/debug.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
@@ -152,8 +153,8 @@ class PingEvent {
   DISALLOW_COPY_AND_ASSIGN(PingEvent);
 };
 
-typedef shared_ptr<const PingEvent> PingEventPtr;
-typedef std::vector<PingEventPtr> PingEventVector;
+using PingEventPtr = std::shared_ptr<const PingEvent>;
+using PingEventVector = std::vector<PingEventPtr>;
 
 }  // namespace omaha
 

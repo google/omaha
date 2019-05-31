@@ -15,7 +15,7 @@
 
 #include "omaha/goopdate/app_manager.h"
 
-#include <vector>
+#include <memory>
 
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/error.h"
@@ -1243,7 +1243,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
   // A second bundle is necessary because the same bundle cannot have the same
   // app in it more than once and many of these tests create an app to populate
   // the registry and another to read it.
-  shared_ptr<AppBundle> dummy_app_bundle_for_app_creation_;
+  std::shared_ptr<AppBundle> dummy_app_bundle_for_app_creation_;
 
   const GUID guid1_;
 

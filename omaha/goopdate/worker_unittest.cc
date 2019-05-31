@@ -314,7 +314,7 @@ class WorkerWithBundleTest : public WorkerTest {
     WorkerTest::TearDown();
   }
 
-  shared_ptr<AppBundle> app_bundle_;
+  std::shared_ptr<AppBundle> app_bundle_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WorkerWithBundleTest);

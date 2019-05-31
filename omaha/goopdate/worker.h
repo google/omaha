@@ -25,7 +25,6 @@
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/shutdown_handler.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
@@ -133,11 +132,11 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
   // These functions execute code in the thread pool. They hold an outstanding
   // reference to the application bundle to prevent the application bundle
   // object from being deleted before the functions complete.
-  void CheckForUpdate(shared_ptr<AppBundle> app_bundle);
-  void Download(shared_ptr<AppBundle> app_bundle);
-  void DownloadAndInstall(shared_ptr<AppBundle> app_bundle);
-  void DownloadPackage(shared_ptr<AppBundle> app_bundle, Package* package);
-  void UpdateAllApps(shared_ptr<AppBundle> app_bundle);
+  void CheckForUpdate(std::shared_ptr<AppBundle> app_bundle);
+  void Download(std::shared_ptr<AppBundle> app_bundle);
+  void DownloadAndInstall(std::shared_ptr<AppBundle> app_bundle);
+  void DownloadPackage(std::shared_ptr<AppBundle> app_bundle, Package* package);
+  void UpdateAllApps(std::shared_ptr<AppBundle> app_bundle);
 
   // These functions do the work for the corresponding functions but do not call
   // CompleteAsyncCall().
@@ -165,14 +164,14 @@ class Worker : public WorkerModelInterface, public ShutdownCallback {
   void PersistRetryAfter(int retry_after_sec) const;
 
   HRESULT QueueDeferredFunctionCall0(
-      shared_ptr<AppBundle> app_bundle,
-      void (Worker::*deferred_function)(shared_ptr<AppBundle>));
+      std::shared_ptr<AppBundle> app_bundle,
+      void (Worker::*deferred_function)(std::shared_ptr<AppBundle>));
 
   template <typename P1>
   HRESULT QueueDeferredFunctionCall1(
-      shared_ptr<AppBundle> app_bundle,
+      std::shared_ptr<AppBundle> app_bundle,
       P1 p1,
-      void (Worker::*deferred_function)(shared_ptr<AppBundle>, P1));
+      void (Worker::*deferred_function)(std::shared_ptr<AppBundle>, P1));
 
   void WriteEventLog(int event_type,
                      int event_id,

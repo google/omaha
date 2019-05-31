@@ -35,7 +35,7 @@ AppCommandCompletionObserver::AppCommandCompletionObserver()
 HRESULT AppCommandCompletionObserver::Init(
     HANDLE process,
     HANDLE output,
-    const shared_ptr<AppCommandDelegate>& delegate) {
+    const std::shared_ptr<AppCommandDelegate>& delegate) {
   reset(process_, process);
   reset(output_pipe_, output);
   delegate_ = delegate;
@@ -64,7 +64,7 @@ AppCommandCompletionObserver::~AppCommandCompletionObserver() {
 HRESULT AppCommandCompletionObserver::Start(
     HANDLE process,
     HANDLE output,
-    const shared_ptr<AppCommandDelegate>& delegate,
+    const std::shared_ptr<AppCommandDelegate>& delegate,
     AppCommandCompletionObserver** observer) {
   ASSERT1(process);
   ASSERT1(observer);

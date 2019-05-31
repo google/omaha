@@ -23,6 +23,7 @@
 #endif
 
 #include <windows.h>
+#include <memory>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -33,7 +34,6 @@
 #include "omaha/goopdate/app_version.h"
 #include "omaha/goopdate/current_state.h"
 #include "omaha/goopdate/package.h"
-#include "third_party/bar/shared_ptr.h"
 
 namespace omaha {
 
@@ -52,14 +52,14 @@ class Model {
   }
 
   // Creates an AppBundle object in the model.
-  shared_ptr<AppBundle> CreateAppBundle(bool is_machine);
+  std::shared_ptr<AppBundle> CreateAppBundle(bool is_machine);
 
   // Removes the AppBundle objects that have no outstanding strong references.
   void CleanupExpiredAppBundles();
 
   size_t GetNumberOfAppBundles() const;
 
-  shared_ptr<AppBundle> GetAppBundle(size_t index) const;
+  std::shared_ptr<AppBundle> GetAppBundle(size_t index) const;
 
   // Initiates an update check for all apps in the bundle.
   HRESULT CheckForUpdate(AppBundle* app_bundle);
@@ -88,7 +88,7 @@ class Model {
                                 const CString& version) const;
 
  private:
-  typedef weak_ptr<AppBundle> AppBundleWeakPtr;
+  using AppBundleWeakPtr = std::weak_ptr<AppBundle>;
 
   // Serializes access to the model objects. Consider replacing with SWMR lock.
   LLock lock_;
