@@ -114,7 +114,7 @@ class ProgressWnd
       public InstallProgressObserver {
  public:
   ProgressWnd(CMessageLoop* message_loop, HWND parent);
-  virtual ~ProgressWnd();
+  ~ProgressWnd() override;
 
   void SetEventSink(ProgressWndEvents* ev);
 

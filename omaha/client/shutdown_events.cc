@@ -72,7 +72,7 @@ HRESULT ShutdownEvents::CreateShutdownHandler(
   ASSERT1(installer);
   ASSERT1(shutdown_callback);
 
-  std::unique_ptr<ShutdownEvents> shutdown_events(new ShutdownEvents(installer));
+  auto shutdown_events = std::make_unique<ShutdownEvents>(installer);
   HRESULT hr = shutdown_events->InitializeShutdownHandler(is_machine);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[InitializeShutDownHandler failed][0x%08x]"), hr));

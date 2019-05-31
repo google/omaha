@@ -344,8 +344,8 @@ HRESULT CreateClientUI(bool is_machine,
   ASSERT1(observer);
   ASSERT1(ui_sink);
 
-  std::unique_ptr<ProgressWnd> progress_wnd(
-      new ProgressWnd(installer->message_loop(), NULL));
+  auto progress_wnd = std::make_unique<ProgressWnd>(installer->message_loop(),
+                                                    nullptr);
   ScopeGuard destroy_window_guard = MakeObjGuard(*progress_wnd,
                                                  &ProgressWnd::DestroyWindow);
 
@@ -357,8 +357,8 @@ HRESULT CreateClientUI(bool is_machine,
     return hr;
   }
 
-  std::unique_ptr<internal::InstallAppsWndEvents> progress_wnd_events(
-      new internal::InstallAppsWndEvents(is_machine, installer, browser_type));
+  auto progress_wnd_events = std::make_unique<internal::InstallAppsWndEvents>(
+    is_machine, installer, browser_type);
   progress_wnd->SetEventSink(progress_wnd_events.get());
 
   progress_wnd->Show();
