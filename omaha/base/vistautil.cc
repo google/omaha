@@ -14,12 +14,14 @@
 // ========================================================================
 
 #include "omaha/base/vistautil.h"
+
 #include <accctrl.h>
 #include <Aclapi.h>
 #include <Sddl.h>
 #include <ShellAPI.h>
 #include <shlobj.h>
-#include "base/scoped_ptr.h"
+#include <memory>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
@@ -35,6 +37,17 @@ namespace omaha {
 namespace vista_util {
 
 namespace {
+
+struct free_deleter{
+  template <typename T>
+  void operator()(T *p) const {
+    std::free(const_cast<std::remove_const_t<T>*>(p));
+  }
+};
+
+template <typename T>
+using scoped_ptr_malloc = std::unique_ptr<T,free_deleter>;
+static_assert(sizeof(char *)==sizeof(scoped_ptr_malloc<char>),"");
 
 static SID_IDENTIFIER_AUTHORITY mandatory_label_auth =
     SECURITY_MANDATORY_LABEL_AUTHORITY;
