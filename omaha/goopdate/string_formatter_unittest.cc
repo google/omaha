@@ -77,7 +77,7 @@ TEST_F(StringFormatterTest, FormatMessageTest) {
   StringFormatter formatter_de(_T("de"));
   EXPECT_HRESULT_SUCCEEDED(
       formatter_de.FormatMessage(&format_result, IDS_CLOSE));
-  EXPECT_STREQ(_T("Schlie�en"), format_result);   // NOLINT
+  EXPECT_STREQ(_T("Schlie\u00dfen"), format_result);   // NOLINT
 
   StringFormatter formatter_fr(_T("fr"));
   EXPECT_HRESULT_SUCCEEDED(
