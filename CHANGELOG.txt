@@ -1,35 +1,49 @@
-## 2019-05-10 @243143383,247089588
+## 2019-06-05 @247089589,251531419
 
 ### Changes
 --------------------------------------------------------------------------------
-  Fix broken unit test CommandLineTest.ParseCommandLine_Install.
---------------------------------------------------------------------------------
-  App-specific disclaimers for RollbackToTargetVersion policy.
+Remove obsolete smartany wrappers.
 
-  This change provides a way for apps to inject their own specific disclaimer
-  text in their RollbackToTargetVersion policy documentation.
-  New text for Chrome is included.
+Also, remove obsolete #pragmas to disable C4640
+(construction of local static object is not thread-safe).
 --------------------------------------------------------------------------------
-  Switch Omaha continuous build from VS2017 to VS2019.
+Implement the Omaha Cloud Policies Fetcher.
+
+* The policies are fetched when the UpdateApps (/ua) process runs. UA runs at 
+5 hour intervals typically.
+* The serialized policies are stored locally in separate directories for each 
+policy_type within the directory "%ProgramFiles(x86)%\Google\Policies".
+* Each PolicyFetchResponse is stored into a subdirectory based off the 
+policy_type, with a fixed file name of "PolicyFetchResponse", where the file 
+contents are {SerializeToString-PolicyFetchResponse}}.
+* Each "PolicyFetchResponse" file is opened in exclusive mode. If we are unable
+to open or write to this file, UA will retry at the next UA interval.
+* Client applications could use ::FindFirstChangeNotificationW on the 
+subdirectory corresponding to their respective policy_type to watch for 
+changes. They can then read and apply the policies within this file.
 --------------------------------------------------------------------------------
-  Remove precompiled headers support.
+Perform best-effort registration with the DMServer during UpdateApps processing.
+
+This allows post-install registration to take place in the normal /ua scheduled 
+task in case:
+- The network could not be used during installation on account 
+of NOGOOGLEUPDATEPING.
+- Non-mandatory registration failed during installation.
+- An enrollment token was provisioned to the machine via Group Policy 
+after installation.
 --------------------------------------------------------------------------------
-  Fix various test failures.
-  - RegKey::HasNativeKey has been removed, and callers have been updated to
-  use HKEY_LOCAL_MACHINE[64] or HKLM[64] as the name of the root key.
-  - ParseCommandLine_Install had a blatant typo ('%' instead of '&') which
-  has been fixed.
-  - DmClientRequestTest.RegisterWithRequest has been updated to reflect the
-  late change in the request type.
+Workaround for ICE in service_main.h when building with 16.1.0
 --------------------------------------------------------------------------------
-  Fix bug 131367413 Eliminate MFC headers.
+Cloud policy fetch.
 --------------------------------------------------------------------------------
-  Compliance changes for VS2017.
+Enable '/permissive-' as a compiler switch.
 --------------------------------------------------------------------------------
-  Rework the fix for bug 130373054 Build the Protocol Buffer Compiler executable
-  protoc.exe from source.
+Allow C++17 language features
 --------------------------------------------------------------------------------
-  Device Registration in Google Update during install.
+Remove weak crypto hash algorithms from Omaha client.
+This cl removes MD5 support.
+--------------------------------------------------------------------------------
+Produce 3 consecutive versions of some of the Omaha build artifacts.
 --------------------------------------------------------------------------------
 
 ## 2019-04-11 @239101812,243143382
