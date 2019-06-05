@@ -22,12 +22,12 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/goopdate/app_command.h"
 #include "omaha/goopdate/app_command_configuration.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

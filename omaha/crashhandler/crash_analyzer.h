@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 
 namespace omaha {

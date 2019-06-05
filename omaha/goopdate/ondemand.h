@@ -80,10 +80,6 @@ HRESULT DoOnDemand(bool is_machine,
 
 }  // namespace internal
 
-#pragma warning(push)
-
-// Construction of local static object is not thread-safe
-#pragma warning(disable:4640)
 
 template <typename T>
 class ATL_NO_VTABLE OnDemand
@@ -284,8 +280,6 @@ struct OnDemandModeService {
 typedef OnDemand<OnDemandModeUser> OnDemandUser;
 typedef OnDemand<OnDemandModeMachineFallback> OnDemandMachineFallback;
 typedef OnDemand<OnDemandModeService> OnDemandService;
-
-#pragma warning(pop)
 
 }  // namespace omaha
 

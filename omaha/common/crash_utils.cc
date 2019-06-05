@@ -32,12 +32,12 @@
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/user_info.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/common/command_line_builder.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/goopdate_utils.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "third_party/breakpad/src/client/windows/common/ipc_protocol.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 

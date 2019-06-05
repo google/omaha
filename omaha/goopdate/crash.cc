@@ -43,7 +43,6 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
@@ -55,6 +54,7 @@
 #include "omaha/common/lang.h"
 #include "omaha/common/stats_uploader.h"
 #include "omaha/goopdate/goopdate_metrics.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 #include "third_party/breakpad/src/client/windows/sender/crash_report_sender.h"
 

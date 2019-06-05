@@ -21,7 +21,6 @@
 
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/utils.h"
 
 namespace omaha {

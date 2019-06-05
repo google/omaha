@@ -35,7 +35,6 @@
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/service_utils.h"
 #include "omaha/base/signatures.h"
@@ -52,6 +51,7 @@
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/oem_install_utils.h"
 #include "omaha/statsreport/metrics.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "goopdate/omaha3_idl.h"
 
 namespace omaha {

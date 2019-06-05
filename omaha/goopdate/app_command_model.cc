@@ -22,7 +22,6 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
@@ -34,6 +33,7 @@
 #include "omaha/goopdate/app_command_configuration.h"
 #include "omaha/goopdate/google_app_command_verifier.h"
 #include "omaha/goopdate/model.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

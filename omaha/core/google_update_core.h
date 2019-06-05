@@ -33,10 +33,6 @@
 
 namespace omaha {
 
-#pragma warning(push)
-// Construction of local static object is not thread-safe
-#pragma warning(disable:4640)
-
 class ATL_NO_VTABLE GoogleUpdateCoreBase
     : public CComObjectRootEx<CComMultiThreadModel>,
       public IGoogleUpdateCore,
@@ -98,8 +94,6 @@ class ATL_NO_VTABLE GoogleUpdateCore
 
 typedef GoogleUpdateCore<false> GoogleUpdateCoreMachine;
 typedef GoogleUpdateCore<true> GoogleUpdateCoreService;
-
-#pragma warning(pop)
 
 }  // namespace omaha
 

@@ -40,7 +40,7 @@
 #define OMAHA_UI_SCOPED_GDI_H_
 
 #include <wingdi.h>
-#include "omaha/base/scoped_any.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

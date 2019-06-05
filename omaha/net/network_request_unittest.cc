@@ -25,7 +25,6 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/queue_timer.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
@@ -35,6 +34,7 @@
 #include "omaha/net/network_request.h"
 #include "omaha/net/simple_request.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

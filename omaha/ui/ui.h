@@ -21,13 +21,13 @@
 #include <vector>
 
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
 // TODO(omaha3): Depending on how separate the UI is, we may want to separate
 // the UI-specific resources, especially the dialogs. Can we handle bidi
 // independent of languages? This would allow simple replacement of Omaha's
 // UI without impacting the core or error messages.
 #include "omaha/client/resource.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "omaha/ui/owner_draw_title_bar.h"
 
 namespace omaha {

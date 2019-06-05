@@ -23,7 +23,6 @@
 
 #include "base/basictypes.h"
 #include "goopdate/omaha3_idl.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/goopdate/app_command_formatter.h"
 
 namespace omaha {

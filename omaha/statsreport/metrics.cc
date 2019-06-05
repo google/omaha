@@ -27,9 +27,8 @@ MetricCollection &g_global_metrics =
                   *static_cast<MetricCollection*>(&g_global_metric_storage);
 
 #pragma warning(push)
-// C4640: construction of local static object is not thread-safe.
 // C4073: initializers put in library initialization area.
-#pragma warning(disable : 4640 4073)
+#pragma warning(disable : 4073)
 
 // Serialize all metric manipulation and access under this lock.
 //

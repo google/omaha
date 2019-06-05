@@ -36,7 +36,6 @@
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/system_info.h"

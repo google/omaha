@@ -20,7 +20,6 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
@@ -38,6 +37,7 @@
 #include "omaha/goopdate/app_bundle.h"
 #include "omaha/goopdate/update_request_utils.h"
 #include "omaha/goopdate/update_response_utils.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

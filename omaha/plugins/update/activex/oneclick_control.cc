@@ -24,8 +24,6 @@
 
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
-#include "omaha/base/scoped_any.h"
-
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/vistautil.h"
@@ -37,6 +35,7 @@
 #include "omaha/common/webplugin_utils.h"
 #include "omaha/goopdate/app_command.h"
 #include "omaha/goopdate/app_manager.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "goopdate/omaha3_idl.h"
 
 namespace omaha {

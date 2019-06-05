@@ -28,11 +28,11 @@
 #include <string>
 
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/core/google_update_core.h"
 #include "omaha/core/system_monitor.h"
 #include "omaha/goopdate/google_update3.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

@@ -20,7 +20,6 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/error.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/thread_pool.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
@@ -38,6 +37,7 @@
 #include "omaha/goopdate/worker.h"
 #include "omaha/goopdate/worker_mock.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

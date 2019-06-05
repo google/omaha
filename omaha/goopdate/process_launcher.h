@@ -55,9 +55,6 @@ class ATL_NO_VTABLE ProcessLauncher
 
   DECLARE_REGISTRY_RESOURCEID_EX(IDR_LOCAL_SERVER_RGS)
 
-  #pragma warning(push)
-  // C4640: construction of local static object is not thread-safe
-  #pragma warning(disable : 4640)
   BEGIN_REGISTRY_MAP()
     REGMAP_ENTRY(_T("HKROOT"),       goopdate_utils::GetHKRoot())
     REGMAP_MODULE2(_T("MODULE"),     kOmahaOnDemandFileName)
@@ -66,10 +63,7 @@ class ATL_NO_VTABLE ProcessLauncher
     REGMAP_ENTRY(_T("DESCRIPTION"),  kProcessWorkerDescription)
     REGMAP_UUID(_T("CLSID"),         __uuidof(ProcessLauncherClass))
   END_REGISTRY_MAP()
-  #pragma warning(pop)
 
-  // C4505: unreferenced IUnknown local functions have been removed
-  #pragma warning(disable : 4505)
   BEGIN_COM_MAP(ProcessLauncher)
     COM_INTERFACE_ENTRY(IProcessLauncher2)
     COM_INTERFACE_ENTRY(IProcessLauncher)

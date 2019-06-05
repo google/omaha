@@ -100,10 +100,6 @@ class UpdateMediumServiceMode {
   static HRESULT PreMessageLoop();
 };
 
-#pragma warning(push)
-// C4640: construction of local static object is not thread-safe
-#pragma warning(disable : 4640)
-
 template <typename T>
 class ServiceModule
     : public CAtlServiceModuleT<ServiceModule<T>, IDS_SERVICE_NAME> {
@@ -518,8 +514,6 @@ class ServiceModule
 
   DISALLOW_COPY_AND_ASSIGN(ServiceModule);
 };
-
-#pragma warning(pop)
 
 typedef ServiceModule<Update3ServiceMode> Update3ServiceModule;
 typedef ServiceModule<UpdateMediumServiceMode> UpdateMediumServiceModule;

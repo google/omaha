@@ -26,7 +26,7 @@
 // is especially important because of the duplicate BrowserType definition.
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/synchronized.h"
-#include "omaha/base/scoped_any.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

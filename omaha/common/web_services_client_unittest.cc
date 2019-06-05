@@ -18,7 +18,6 @@
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/common/config_manager.h"
@@ -26,6 +25,7 @@
 #include "omaha/common/update_response.h"
 #include "omaha/net/network_request.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 using ::testing::_;
 

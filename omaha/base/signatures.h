@@ -27,7 +27,7 @@
 #include <atlstr.h>
 #include <vector>
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

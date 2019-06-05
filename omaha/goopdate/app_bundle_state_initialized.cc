@@ -20,7 +20,6 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/goopdate_utils.h"
@@ -30,6 +29,7 @@
 #include "omaha/goopdate/app_bundle_state_stopped.h"
 #include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/model.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

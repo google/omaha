@@ -26,7 +26,6 @@
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
@@ -43,6 +42,7 @@
 #include "omaha/common/oem_install_utils.h"
 #include "omaha/common/ping.h"
 #include "omaha/setup/setup_metrics.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "omaha/ui/splash_screen.h"
 
 namespace omaha {

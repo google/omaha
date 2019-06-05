@@ -29,10 +29,10 @@
 
 #include "base/basictypes.h"
 #include "omaha/base/debug.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/net/http_request.h"
 #include "omaha/net/network_config.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

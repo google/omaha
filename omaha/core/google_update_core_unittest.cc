@@ -20,7 +20,6 @@
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/system.h"
 #include "omaha/base/timer.h"
@@ -32,6 +31,7 @@
 #include "omaha/core/google_update_core.h"
 #include "omaha/setup/setup_service.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

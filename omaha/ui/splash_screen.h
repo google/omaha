@@ -18,11 +18,11 @@
 
 #include <windows.h>
 
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/smart_handle.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/thread.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "omaha/ui/owner_draw_title_bar.h"
 
 namespace omaha {

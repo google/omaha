@@ -20,9 +20,9 @@
 #include <memory>
 
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/net/winhttp.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

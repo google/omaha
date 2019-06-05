@@ -23,9 +23,9 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

@@ -99,13 +99,6 @@ struct ComProxyMode {
   }
 };
 
-#pragma warning(push)
-
-// C4640: construction of local static object is not thread-safe
-#pragma warning(disable : 4640)
-
-// C4505: unreferenced IUnknown local functions have been removed
-#pragma warning(disable : 4505)
 
 class ATL_NO_VTABLE ComProxy
     : public CComObjectRootEx<CComMultiThreadModel>,
@@ -119,14 +112,10 @@ class ATL_NO_VTABLE ComProxy
   DECLARE_GET_CONTROLLING_UNKNOWN()
   DECLARE_REGISTRY_RESOURCEID_EX(IDR_COM_PROXY_RGS);
 
-#pragma warning(push)
-// Construction of local static object is not thread-safe
-#pragma warning(disable:4640)
   BEGIN_REGISTRY_MAP()
     REGMAP_ENTRY(_T("HKROOT"), ComProxyMode::hk_root())
     REGMAP_ENTRY(_T("CLSID"),  ComProxyMode::class_id())
   END_REGISTRY_MAP()
-#pragma warning(pop)
 
   BEGIN_COM_MAP(ComProxy)
     COM_INTERFACE_ENTRY(IUnknown)
@@ -208,8 +197,6 @@ class ATL_NO_VTABLE ComProxy
 
   DISALLOW_COPY_AND_ASSIGN(ComProxy);
 };
-
-#pragma warning(pop)
 
 class StdMarshalInfo : public IStdMarshalInfo {
  public:

@@ -22,13 +22,13 @@
 
 #include <windows.h>
 #include "omaha/base/app_util.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/smart_handle.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/testing/resource.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "omaha/ui/splash_screen.h"
 
 namespace omaha {

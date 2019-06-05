@@ -19,9 +19,9 @@
 #include <iostream>
 #include <memory>
 
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/timer.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

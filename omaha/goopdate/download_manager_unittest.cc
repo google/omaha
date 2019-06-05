@@ -23,7 +23,6 @@
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/signatures.h"
 #include "omaha/base/thread_pool.h"
 #include "omaha/base/timer.h"
@@ -37,6 +36,7 @@
 #include "omaha/goopdate/download_manager.h"
 #include "omaha/goopdate/file_hash.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 using ::testing::_;
 using ::testing::Return;

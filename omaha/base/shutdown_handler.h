@@ -18,10 +18,12 @@
 #ifndef OMAHA_BASE_SHUTDOWN_HANDLER_H_
 #define OMAHA_BASE_SHUTDOWN_HANDLER_H_
 
+#include <objbase.h>
 #include <windows.h>
+
 #include "base/basictypes.h"
 #include "omaha/base/event_handler.h"
-#include "omaha/base/scoped_any.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 
