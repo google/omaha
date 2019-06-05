@@ -27,7 +27,6 @@
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_current_directory.h"
 #include "omaha/base/signatures.h"
 #include "omaha/base/signaturevalidator.h"
@@ -38,6 +37,7 @@
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/goopdate/resource_manager.h"
 #include "omaha/setup/setup_metrics.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

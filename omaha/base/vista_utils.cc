@@ -28,7 +28,6 @@
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/smart_handle.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/system.h"
@@ -36,6 +35,7 @@
 #include "omaha/base/user_info.h"
 #include "omaha/base/user_rights.h"
 #include "omaha/base/utils.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 #define LOW_INTEGRITY_SID_W           NOTRANSL(L"S-1-16-4096")
 

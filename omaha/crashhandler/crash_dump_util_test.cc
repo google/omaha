@@ -19,12 +19,12 @@
 #include "omaha/base/app_util.h"
 #include "omaha/base/environment_block_modifier.h"
 #include "omaha/base/process.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
 #include "omaha/crashhandler/crash_dump_util_internal.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

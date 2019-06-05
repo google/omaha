@@ -62,9 +62,9 @@
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/process.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/common/const_cmd_line.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace {
 

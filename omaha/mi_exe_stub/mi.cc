@@ -54,13 +54,14 @@
 // C4244: conversion from 'type1' to 'type2', possible loss of data
 #pragma warning(disable : 4244)
 #pragma warning(pop)
-#include "omaha/base/scoped_any.h"
+
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/mi_exe_stub/process.h"
 #include "omaha/mi_exe_stub/mi.grh"
 #include "omaha/mi_exe_stub/tar.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 extern "C" {
 #include "third_party/lzma/files/C/Bcj2.h"
 #include "third_party/lzma/files/C/LzmaDec.h"

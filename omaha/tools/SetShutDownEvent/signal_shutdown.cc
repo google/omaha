@@ -19,8 +19,9 @@
 #include <stdio.h>
 
 #include "omaha/base/const_object_names.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/utils.h"
+#include "omaha/third_party/smartany/scoped_any.h"
+
 
 int _tmain(int argc, TCHAR* argv[]) {
   if (argc != 2) {

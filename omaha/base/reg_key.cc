@@ -19,7 +19,6 @@
 #include <intsafe.h>
 
 #include "omaha/base/logging.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/static_assert.h"
 #include "omaha/base/string.h"
 #include "omaha/base/synchronized.h"

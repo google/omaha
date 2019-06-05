@@ -81,9 +81,6 @@ class BrokerClassFactory : public CComClassFactory {
   }
 };
 
-#pragma warning(push)
-// Construction of local static object is not thread-safe
-#pragma warning(disable:4640)
 
 // This class is used for COM registration and class factory registration and
 // instantiation of the delegate brokers. The class itself is not
@@ -131,7 +128,6 @@ class ATL_NO_VTABLE BrokerClassFactoryRegistrar
   DISALLOW_COPY_AND_ASSIGN(BrokerClassFactoryRegistrar);
 };
 
-#pragma warning(pop)
 
 extern TCHAR kOnDemandMachineBrokerProgId[];
 extern TCHAR kUpdate3WebMachineBrokerProgId[];

@@ -24,10 +24,10 @@
 #include <map>
 
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/string.h"
 #include "omaha/common/exception_handler.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/crash_generation_server.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/minidump_generator.h"

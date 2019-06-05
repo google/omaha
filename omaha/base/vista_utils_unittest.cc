@@ -16,12 +16,12 @@
 #include <windows.h>
 #include "omaha/base/app_util.h"
 #include "omaha/base/path.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

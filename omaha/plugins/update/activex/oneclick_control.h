@@ -69,9 +69,6 @@ class ATL_NO_VTABLE OneClickControl
 
   DECLARE_REGISTRY_RESOURCEID_EX(IDR_ONECLICK_RGS)
 
-#pragma warning(push)
-// C4640: construction of local static object is not thread-safe
-#pragma warning(disable : 4640)
   BEGIN_REGISTRY_MAP()
     REGMAP_ENTRY(_T("CLSID"),             GetObjectCLSID())
     REGMAP_ENTRY(_T("PROGID"),            kOneclickControlProgId)
@@ -87,7 +84,6 @@ class ATL_NO_VTABLE OneClickControl
     REGMAP_ENTRY(_T("PLUGINPRODUCT"),     kAppName)
     REGMAP_ENTRY(_T("PLUGINMIMETYPE"),    ONECLICK_MIME_TYPE)
   END_REGISTRY_MAP()
-#pragma warning(pop)
 
   BEGIN_COM_MAP(OneClickControl)
     COM_INTERFACE_ENTRY(IDispatch)

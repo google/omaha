@@ -37,10 +37,6 @@
 
 namespace omaha {
 
-#pragma warning(push)
-// Construction of local static object is not thread-safe
-#pragma warning(disable:4640)
-
 class ATL_NO_VTABLE Update3WebBase
     : public CComObjectRootEx<CComObjectThreadModel>,
       public IDispatchImpl<IGoogleUpdate3Web,
@@ -150,8 +146,6 @@ struct Update3WebModeService {
 typedef Update3Web<Update3WebModeUser> Update3WebUser;
 typedef Update3Web<Update3WebModeMachineFallback> Update3WebMachineFallback;
 typedef Update3Web<Update3WebModeService> Update3WebService;
-
-#pragma warning(pop)
 
 }  // namespace omaha
 

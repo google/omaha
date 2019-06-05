@@ -47,12 +47,6 @@ struct Update3COMClassMode {
   static const TCHAR* const hk_root() { return hkroot; }
 };
 
-#pragma warning(push)
-// C4640: construction of local static object is not thread-safe
-#pragma warning(disable : 4640)
-// C4505: unreferenced IUnknown local functions have been removed
-#pragma warning(disable : 4505)
-
 template <typename T>
 class ATL_NO_VTABLE Update3COMClass
     : public CComObjectRootEx<CComObjectThreadModel>,
@@ -183,7 +177,7 @@ class ATL_NO_VTABLE Update3COMClass
     }
 
     if (!instance->model()) {
-      omaha::interlocked_exchange_pointer(&instance->model_, 
+      omaha::interlocked_exchange_pointer(&instance->model_,
                                           Worker::Instance().model());
     }
     ASSERT1(instance->model());
@@ -200,8 +194,6 @@ class ATL_NO_VTABLE Update3COMClass
 
   DISALLOW_COPY_AND_ASSIGN(Update3COMClass);
 };
-
-#pragma warning(pop)
 
 extern TCHAR kHKRootUser[];
 extern TCHAR kHKRootMachine[];

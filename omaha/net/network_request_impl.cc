@@ -31,13 +31,13 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/omaha_version.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 #include "omaha/base/user_info.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/net_utils.h"
 #include "omaha/net/network_config.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

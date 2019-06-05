@@ -19,7 +19,6 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 #include "omaha/common/config_manager.h"
@@ -33,6 +32,7 @@
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/server_resource.h"
 #include "omaha/goopdate/string_formatter.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

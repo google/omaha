@@ -29,10 +29,6 @@
 
 namespace omaha {
 
-#pragma warning(push)
-// Construction of local static object is not thread-safe
-#pragma warning(disable:4640)
-
 class ATL_NO_VTABLE CoCreateAsync
   : public CComObjectRootEx<CComObjectThreadModel>,
     public CComCoClass<CoCreateAsync, &__uuidof(CoCreateAsyncClass)>,
@@ -106,8 +102,6 @@ class ATL_NO_VTABLE CoCreateAsyncStatus
 
   DISALLOW_COPY_AND_ASSIGN(CoCreateAsyncStatus);
 };
-
-#pragma warning(pop)
 
 }  // namespace omaha
 

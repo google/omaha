@@ -74,9 +74,6 @@ class ATL_NO_VTABLE CurrentAppState
 
   DECLARE_REGISTRY_RESOURCEID_EX(IDR_INPROC_SERVER_RGS)
 
-  #pragma warning(push)
-  // C4640: construction of local static object is not thread-safe
-  #pragma warning(disable : 4640)
   BEGIN_REGISTRY_MAP()
     REGMAP_ENTRY(_T("HKROOT"), is_machine() ? _T("HKLM") : _T("HKCU"))
     REGMAP_ENTRY(_T("CLSID"), GetObjectCLSID())
@@ -105,7 +102,6 @@ class ATL_NO_VTABLE CurrentAppState
     PROP_DATA_ENTRY("PostInstallUrl", post_install_url_, VT_BSTR)
     PROP_DATA_ENTRY("PostInstallAction", post_install_action_, VT_I4)
   END_PROP_MAP()
-  #pragma warning(pop)
 
   // ICurrentState.
   STDMETHOD(get_stateValue)(LONG* state_value);

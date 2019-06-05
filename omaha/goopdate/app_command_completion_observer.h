@@ -21,10 +21,10 @@
 #include <atlcom.h>
 #include <memory>
 
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/common/ping_event.h"
 #include "goopdate/omaha3_idl.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

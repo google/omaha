@@ -22,7 +22,6 @@
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/time.h"
 #include "omaha/base/user_info.h"
 #include "omaha/base/utils.h"
@@ -32,6 +31,7 @@
 #include "omaha/common/event_logger.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "third_party/breakpad/src/client/windows/common/ipc_protocol.h"
 #include "third_party/breakpad/src/client/windows/crash_generation/client_info.h"
 

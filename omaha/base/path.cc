@@ -92,11 +92,7 @@ HRESULT FindFilesEx(const CString& dir,
 HRESULT ExpandStringWithSpecialFolders(CString* str) {
   ASSERT(str, (L""));
 
-#pragma warning(push)
-// construction of local static object is not thread-safe
-#pragma warning(disable : 4640)
   static std::map<CString, CString> g_special_folders_mapping;
-#pragma warning(pop)
 
   if (g_special_folders_mapping.size() == 0) {
     RET_IF_FAILED(

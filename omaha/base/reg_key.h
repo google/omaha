@@ -33,9 +33,9 @@
 #include "base/basictypes.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/static_assert.h"
 #include "omaha/base/store_watcher.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

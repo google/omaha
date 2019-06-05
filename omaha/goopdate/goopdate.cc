@@ -58,7 +58,6 @@
 #include "omaha/base/proc_utils.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/system_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vistautil.h"
@@ -93,6 +92,7 @@
 #include "omaha/service/service_main.h"
 #include "omaha/setup/setup_google_update.h"
 #include "omaha/setup/setup_service.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "third_party/breakpad/src/client/windows/sender/crash_report_sender.h"
 #include "third_party/breakpad/src/client/windows/handler/exception_handler.h"
 

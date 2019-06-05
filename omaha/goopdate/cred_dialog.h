@@ -27,10 +27,6 @@
 
 namespace omaha {
 
-#pragma warning(push)
-// Construction of local static object is not thread-safe
-#pragma warning(disable:4640)
-
 class ATL_NO_VTABLE CredentialDialogBase
   : public CComObjectRootEx<CComObjectThreadModel>,
     public ICredentialDialog,
@@ -181,8 +177,6 @@ inline HRESULT LaunchCredentialDialog(
 
   return hr;
 }
-
-#pragma warning(pop)
 
 }  // namespace omaha
 

@@ -34,7 +34,6 @@
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/service_utils.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/user_info.h"
@@ -48,6 +47,7 @@
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/setup/setup_metrics.h"
 #include "omaha/setup/setup_service.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

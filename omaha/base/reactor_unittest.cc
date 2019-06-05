@@ -20,8 +20,8 @@
 
 #include "base/rand_util.h"
 #include "omaha/base/event_handler.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

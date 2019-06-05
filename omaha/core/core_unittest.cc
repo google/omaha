@@ -19,7 +19,6 @@
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/thread.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
@@ -33,6 +32,7 @@
 #include "omaha/goopdate/app_command_test_base.h"
 #include "omaha/setup/setup_service.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

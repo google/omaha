@@ -20,8 +20,8 @@
 
 #include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/goopdate/app_command_test_base.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

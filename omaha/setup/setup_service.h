@@ -29,7 +29,6 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/service_utils.h"
 #include "omaha/base/system_info.h"
 #include "omaha/client/resource.h"
@@ -37,6 +36,7 @@
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/service/service_main.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

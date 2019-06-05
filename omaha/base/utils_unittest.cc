@@ -31,10 +31,10 @@
 #include "omaha/base/time.h"
 #include "omaha/base/user_info.h"
 #include "omaha/base/utils.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/system_info.h"
 #include "omaha/base/vistautil.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

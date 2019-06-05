@@ -18,9 +18,9 @@
 
 #include <windows.h>
 
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
 #include "omaha/client/resource.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "omaha/ui/owner_draw_title_bar.h"
 
 namespace omaha {

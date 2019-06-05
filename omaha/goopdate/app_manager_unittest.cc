@@ -22,7 +22,6 @@
 #include "omaha/base/highres_timer-win32.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/scope_guard.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/thread.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
@@ -35,6 +34,7 @@
 #include "omaha/goopdate/worker.h"
 #include "omaha/setup/setup_google_update.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 using ::testing::_;
 using ::testing::Return;

@@ -15,10 +15,10 @@
 
 #include <windows.h>
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/vista_utils.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

@@ -29,12 +29,12 @@
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/common/ping.h"
 #include "omaha/goopdate/com_wrapper_creator.h"
 #include "omaha/goopdate/model_object.h"
 #include "omaha/net/proxy_auth.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

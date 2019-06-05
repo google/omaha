@@ -17,9 +17,9 @@
 #include <shellapi.h>
 #include <vector>
 #include "base/basictypes.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/goopdate/app_command_formatter.h"
 #include "omaha/testing/unit_test.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

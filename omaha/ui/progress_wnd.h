@@ -20,10 +20,10 @@
 #include <memory>
 #include <vector>
 
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/time.h"
 #include "omaha/base/wtl_atlapp_wrapper.h"
 #include "omaha/client/install_progress_observer.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 #include "omaha/ui/complete_wnd.h"
 #include "omaha/ui/owner_draw_title_bar.h"
 

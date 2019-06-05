@@ -22,7 +22,7 @@
 #define OMAHA_UI_UI_DISPLAYED_EVENT_H_
 
 #include <windows.h>
-#include "omaha/base/scoped_any.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

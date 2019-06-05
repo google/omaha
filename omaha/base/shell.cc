@@ -28,10 +28,10 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/path.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 

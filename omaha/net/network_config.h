@@ -26,11 +26,11 @@
 #include <memory>
 #include <vector>
 
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/net/detector.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/proxy_auth.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace ATL {
 

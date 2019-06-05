@@ -32,7 +32,6 @@
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/safe_format.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/system.h"

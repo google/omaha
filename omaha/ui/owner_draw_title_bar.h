@@ -47,15 +47,11 @@ namespace omaha {
 class CaptionButton : public CWindowImpl<CaptionButton, CButton>,
                       public COwnerDraw<CaptionButton> {
  public:
-  #pragma warning(push)
-  // C4640: construction of local static object is not thread-safe
-  #pragma warning(disable : 4640)
   // This class uses DECLARE_WND_CLASS_EX because DECLARE_WND_CLASS includes the
   // CS_DBLCLKS style which we want to avoid.
   DECLARE_WND_CLASS_EX(_T("CaptionButton"),
                        CS_HREDRAW | CS_VREDRAW,
                        COLOR_WINDOW)
-  #pragma warning(pop)
 
   BEGIN_MSG_MAP(CaptionButton)
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -151,15 +147,11 @@ class MaximizeButton : public CaptionButton {
 
 class OwnerDrawTitleBarWindow : public CWindowImpl<OwnerDrawTitleBarWindow> {
  public:
-  #pragma warning(push)
-  // C4640: construction of local static object is not thread-safe
-  #pragma warning(disable : 4640)
   // This class uses DECLARE_WND_CLASS_EX because DECLARE_WND_CLASS includes the
   // CS_DBLCLKS style which we want to avoid.
   DECLARE_WND_CLASS_EX(_T("OwnerDrawTitleBarWindow"),
                        CS_HREDRAW | CS_VREDRAW,
                        COLOR_WINDOW)
-  #pragma warning(pop)
 
   BEGIN_MSG_MAP(OwnerDrawTitleBarWindow)
     MESSAGE_HANDLER(WM_CREATE, OnCreate)

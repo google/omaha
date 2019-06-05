@@ -20,7 +20,6 @@
 #include "omaha/base/path.h"
 #include "omaha/base/process.h"
 #include "omaha/base/reg_key.h"
-#include "omaha/base/scoped_any.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/utils.h"
@@ -29,6 +28,7 @@
 #include "omaha/common/command_line.h"
 #include "omaha/common/command_line_builder.h"
 #include "omaha/common/const_goopdate.h"
+#include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
 
