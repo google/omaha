@@ -96,29 +96,6 @@ TEST_F(DmStorageTest, EnrollmentTokenFromOldLegacyPolicy) {
 
 TEST_F(DmStorageTest, EnrollmentTokenPrecedence) {
   // Add the sources from lowest to highest priority.
-#if defined(HAS_LEGACY_DM_CLIENT)
-  ASSERT_NO_FATAL_FAILURE(WriteOldLegacyPolicyToken(kETOldLegacyPolicy));
-  {
-    DmStorage dm_storage((CString()));
-    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETOldLegacyPolicy);
-    EXPECT_EQ(dm_storage.enrollment_token_source(),
-              DmStorage::kETokenSourceOldLegacyPolicy);
-  }
-  ASSERT_NO_FATAL_FAILURE(WriteLegacyPolicyToken(kETLegacyPolicy));
-  {
-    DmStorage dm_storage((CString()));
-    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETLegacyPolicy);
-    EXPECT_EQ(dm_storage.enrollment_token_source(),
-              DmStorage::kETokenSourceLegacyPolicy);
-  }
-#endif  // defined(HAS_LEGACY_DM_CLIENT)
-  ASSERT_NO_FATAL_FAILURE(WriteCompanyPolicyToken(kETCompanyPolicy));
-  {
-    DmStorage dm_storage((CString()));
-    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETCompanyPolicy);
-    EXPECT_EQ(dm_storage.enrollment_token_source(),
-              DmStorage::kETokenSourceCompanyPolicy);
-  }
   ASSERT_NO_FATAL_FAILURE(WriteInstallToken(kETInstall));
   {
     DmStorage dm_storage((CString()));
@@ -126,23 +103,61 @@ TEST_F(DmStorageTest, EnrollmentTokenPrecedence) {
     EXPECT_EQ(dm_storage.enrollment_token_source(),
               DmStorage::kETokenSourceInstall);
   }
-
-  DmStorage dm_storage(kETRuntime);
-  EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETRuntime);
-  EXPECT_EQ(dm_storage.enrollment_token_source(),
-            DmStorage::kETokenSourceRuntime);
-}
-
-TEST_F(DmStorageTest, EnrollmentTokenForInstall) {
   {
     DmStorage dm_storage(kETRuntime);
-    dm_storage.StoreEnrollmentTokenForInstall();
+    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETRuntime);
+    EXPECT_EQ(dm_storage.enrollment_token_source(),
+              DmStorage::kETokenSourceRuntime);
+  }
+#if defined(HAS_LEGACY_DM_CLIENT)
+  ASSERT_NO_FATAL_FAILURE(WriteOldLegacyPolicyToken(kETOldLegacyPolicy));
+  {
+    DmStorage dm_storage(kETRuntime);
+    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETOldLegacyPolicy);
+    EXPECT_EQ(dm_storage.enrollment_token_source(),
+              DmStorage::kETokenSourceOldLegacyPolicy);
+  }
+  ASSERT_NO_FATAL_FAILURE(WriteLegacyPolicyToken(kETLegacyPolicy));
+  {
+    DmStorage dm_storage(kETRuntime);
+    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETLegacyPolicy);
+    EXPECT_EQ(dm_storage.enrollment_token_source(),
+              DmStorage::kETokenSourceLegacyPolicy);
+  }
+#endif  // defined(HAS_LEGACY_DM_CLIENT)
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyPolicyToken(kETCompanyPolicy));
+  {
+    DmStorage dm_storage(kETRuntime);
+    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETCompanyPolicy);
+    EXPECT_EQ(dm_storage.enrollment_token_source(),
+              DmStorage::kETokenSourceCompanyPolicy);
+  }
+}
+
+TEST_F(DmStorageTest, RuntimeEnrollmentTokenForInstall) {
+  {
+    DmStorage dm_storage(kETRuntime);
+    EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETRuntime);
+    EXPECT_EQ(dm_storage.StoreRuntimeEnrollmentTokenForInstall(), S_OK);
   }
 
   DmStorage dm_storage((CString()));
   EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETRuntime);
   EXPECT_EQ(dm_storage.enrollment_token_source(),
             DmStorage::kETokenSourceInstall);
+}
+
+TEST_F(DmStorageTest, PolicyEnrollmentTokenForInstall) {
+  {
+    ASSERT_NO_FATAL_FAILURE(WriteCompanyPolicyToken(kETCompanyPolicy));
+    DmStorage dm_storage((CString()));
+    EXPECT_EQ(dm_storage.StoreRuntimeEnrollmentTokenForInstall(), S_FALSE);
+  }
+
+  DmStorage dm_storage((CString()));
+  EXPECT_STREQ(dm_storage.GetEnrollmentToken(), kETCompanyPolicy);
+  EXPECT_EQ(dm_storage.enrollment_token_source(),
+            DmStorage::kETokenSourceCompanyPolicy);
 }
 
 TEST_F(DmStorageTest, NoDmToken) {

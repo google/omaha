@@ -32,18 +32,18 @@ class DmStorage {
   // precedence.
   enum EnrollmentTokenSource {
     kETokenSourceNone,
-    kETokenSourceRuntime,
-    kETokenSourceInstall,
     kETokenSourceCompanyPolicy,
 #if defined(HAS_LEGACY_DM_CLIENT)
     kETokenSourceLegacyPolicy,
     kETokenSourceOldLegacyPolicy,
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
+    kETokenSourceRuntime,
+    kETokenSourceInstall,
   };
 
   // Constructs an instance with a runtime-provided enrollment token (e.g., one
   // obtained via the etoken extra arg).
-  explicit DmStorage(const CString& enrollment_token);
+  explicit DmStorage(const CString& runtime_enrollment_token);
 
   // Returns the current enrollment token, reading from sources as-needed to
   // find one. Returns an empty string if no enrollment token is found.
@@ -51,13 +51,15 @@ class DmStorage {
 
   // Returns the origin of the current enrollment token, or kETokenSourceNone if
   // none has been found.
-  EnrollmentTokenSource enrollment_token_source() const {
+  EnrollmentTokenSource enrollment_token_source  () const {
     return enrollment_token_source_;
   }
 
-  // Writes the instance's enrollment token into Omaha's ClientState key so that
-  // it is available for subsequent runs.
-  HRESULT StoreEnrollmentTokenForInstall();
+  // Writes the instance's enrollment token if it was provided at runtime into
+  // Omaha's ClientState key so that it is available for subsequent runs.
+  // Returns S_FALSE if the instance's enrollment token was not provided at
+  // runtime.
+  HRESULT StoreRuntimeEnrollmentTokenForInstall();
 
   // Returns the device management token, reading from sources as-needed to find
   // one. Returns an empty string if no device management token is found.
@@ -83,6 +85,9 @@ class DmStorage {
   void LoadEnrollmentTokenFromStorage();
   void LoadDmTokenFromStorage();
   void LoadDeviceIdFromStorage();
+
+  // An enrollment token provided on the command line at runtime.
+  const CString runtime_enrollment_token_;
 
   // The active enrollment token.
   CString enrollment_token_;
