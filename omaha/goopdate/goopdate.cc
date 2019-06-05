@@ -313,8 +313,6 @@ class GoopdateImpl {
   // a failure HRESULT if registration was mandatory and failed.
   HRESULT RegisterForDeviceManagement();
 
-  DmStorage* GetDmStorage();
-
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
 
   // Called by operator new or operator new[] when they cannot satisfy
@@ -341,10 +339,6 @@ class GoopdateImpl {
 
   std::unique_ptr<OmahaExceptionHandler> exception_handler_;
   std::unique_ptr<ThreadPool> thread_pool_;
-
-#if defined(HAS_DEVICE_MANAGEMENT)
-  std::unique_ptr<DmStorage> dm_storage_;
-#endif
 
   Goopdate* goopdate_;
 
@@ -405,6 +399,10 @@ GoopdateImpl::~GoopdateImpl() {
   ++metric_goopdate_destructor;
 
   Stop();
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+  DmStorage::DeleteInstance();
+#endif
 
   // Bug 994348 does not repro anymore.
   // If the assert fires, clean up the key, and fix the code if we have unit
@@ -760,6 +758,12 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
   ASSERT1(CheckRegisteredVersion(GetVersionString(), is_machine_, mode));
 
   VERIFY1(SUCCEEDED(SetBackgroundPriorityIfNeeded(mode)));
+
+#if defined(HAS_DEVICE_MANAGEMENT)
+  // Reference the DmStorage instance here so the singleton can be created
+  // before use.
+  VERIFY1(SUCCEEDED(DmStorage::CreateInstance(args_.extra.enrollment_token)));
+#endif
 
 #pragma warning(push)
 // C4061: enumerator 'xxx' in switch of enum 'yyy' is not explicitly handled by
@@ -1180,6 +1184,17 @@ HRESULT GoopdateImpl::DoInstall(bool* has_ui_been_displayed) {
     if (FAILED(hr)) {
       return hr;  // Mandatory registration failed.
     }
+
+    // TODO(ganesh): It is desirable to separate the execution paths of
+    // installs/updates and policy fetch. Once we have the Firebase Messaging
+    // feature solidified, we can move the policy fetch logic over there.
+    hr = dm_client::RefreshPolicies();
+    if (FAILED(hr)) {
+      OPT_LOG(LE, (_T("[RefreshPolicies failed][%#x]"), hr));
+      LogErrorWithHResult(kRefreshPoliciesFailedEventId,
+                          _T("Device management policy refresh failed"),
+                          hr);
+    }
   }
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
 
@@ -1320,8 +1335,11 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
   // - Non-mandatory registration failed during installation.
   // - An enrollment token was provisioned to the machine via Group Policy after
   //   installation.
+  // TODO(ganesh): It is desirable to separate the execution paths of
+  // installs/updates and policy fetch. Once we have the Firebase Messaging
+  // feature solidified, we can move the policy fetch logic over there.
   if (is_machine_) {
-    hr = dm_client::RegisterIfNeeded(GetDmStorage());
+    hr = dm_client::RegisterIfNeeded(DmStorage::Instance());
     if (FAILED(hr)) {
       OPT_LOG(LE, (_T("[Registration failed][%#x]"), hr));
       // Emit to the Event Log. The entry will include details by way of
@@ -1329,6 +1347,14 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
       LogErrorWithHResult(kEnrollmentFailedEventId,
                           _T("Device management enrollment failed"),
                           hr);
+    } else {
+      hr = dm_client::RefreshPolicies();
+      if (FAILED(hr)) {
+        OPT_LOG(LE, (_T("[RefreshPolicies failed][%#x]"), hr));
+        LogErrorWithHResult(kRefreshPoliciesFailedEventId,
+                            _T("Device management policy refresh failed"),
+                            hr);
+      }
     }
   }
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
@@ -1621,7 +1647,7 @@ HRESULT GoopdateImpl::RegisterForDeviceManagement() {
     return S_FALSE;
   }
 
-  DmStorage* const dm_storage = GetDmStorage();
+  DmStorage* const dm_storage = DmStorage::Instance();
   const bool is_enrollment_mandatory =
       ConfigManager::Instance()->IsCloudManagementEnrollmentMandatory();
 
@@ -1666,14 +1692,6 @@ HRESULT GoopdateImpl::RegisterForDeviceManagement() {
 
   // Bubble the failure HRESULT up if enrollment was mandatory.
   return is_enrollment_mandatory ? hr : S_FALSE;
-}
-
-DmStorage* GoopdateImpl::GetDmStorage() {
-  ASSERT1(is_machine_);
-  if (!dm_storage_.get()) {
-    dm_storage_.reset(new DmStorage(args_.extra.enrollment_token));
-  }
-  return dm_storage_.get();
 }
 
 #endif  // defined(HAS_DEVICE_MANAGEMENT)

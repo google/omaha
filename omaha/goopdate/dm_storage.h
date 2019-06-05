@@ -16,12 +16,18 @@
 #define OMAHA_GOOPDATE_DM_STORAGE_H__
 
 #include <windows.h>
+#include <atlpath.h>
 #include <atlstr.h>
 
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
+#include "omaha/goopdate/dm_messages.h"
 
 namespace omaha {
+
+// This is the standard name for the file that PersistPolicies() uses for each
+// {policy_type} that it receives from the DMServer.
+const TCHAR kPolicyResponseFileName[] = _T("PolicyFetchResponse");
 
 // A handler for storage related to cloud-based device management of Omaha. This
 // class provides access to an enrollment token, a device management token, and
@@ -41,9 +47,10 @@ class DmStorage {
     kETokenSourceInstall,
   };
 
-  // Constructs an instance with a runtime-provided enrollment token (e.g., one
-  // obtained via the etoken extra arg).
-  explicit DmStorage(const CString& runtime_enrollment_token);
+  static HRESULT CreateInstance(const CString& enrollment_token);
+  static void DeleteInstance();
+
+  static DmStorage* Instance();
 
   // Returns the current enrollment token, reading from sources as-needed to
   // find one. Returns an empty string if no enrollment token is found.
@@ -51,7 +58,7 @@ class DmStorage {
 
   // Returns the origin of the current enrollment token, or kETokenSourceNone if
   // none has been found.
-  EnrollmentTokenSource enrollment_token_source  () const {
+  EnrollmentTokenSource enrollment_token_source() const {
     return enrollment_token_source_;
   }
 
@@ -71,7 +78,30 @@ class DmStorage {
   // Returns the device identifier, or an empty string in case of error.
   CString GetDeviceId();
 
+  // Persists each PolicyFetchResponse in |responses| into a subdirectory within
+  // |policy_responses_dir|. Each PolicyFetchResponse is stored within a
+  // subdirectory named {Base64Encoded{policy_type}}, with a fixed file name of
+  // "PolicyFetchResponse", where the file contents are
+  // {SerializeToString-PolicyFetchResponse}}.
+  //
+  // Each PolicyFetchResponse file is opened in exclusive mode. If we are unable
+  // to open or write to this file, the caller is expected to try again later.
+  // For instance, if UA is calling us, UA will retry at the next UA interval.
+  //
+  // Client applications could use ::FindFirstChangeNotificationW on the
+  // subdirectory corresponding to their respective policy_type to watch for
+  // changes. They can then read and apply the policies within this file.
+  // To minimize the number of notifications for existing PolicyFetchResponse
+  // files, the files are first modified in-place if the response includes them,
+  // and then the files that do not have a corresponding response are deleted.
+  static HRESULT PersistPolicies(const CPath& policy_responses_dir,
+                                 const PolicyResponsesMap& responses);
+
  private:
+  // Constructs an instance with a runtime-provided enrollment token (e.g., one
+  // obtained via the etoken extra arg).
+  explicit DmStorage(const CString& runtime_enrollment_token);
+
   // The possible sources of a device management token, sorted by decreasing
   // precedence.
   enum DmTokenSource {
@@ -103,6 +133,10 @@ class DmStorage {
 
   // The origin of the current device management token.
   DmTokenSource dm_token_source_;
+
+  static DmStorage* instance_;
+
+  friend class DmStorageTest;
 
   DISALLOW_COPY_AND_ASSIGN(DmStorage);
 };

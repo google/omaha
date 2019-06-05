@@ -16,18 +16,31 @@
 #define OMAHA_GOOPDATE_DM_MESSAGES_H__
 
 #include <atlstr.h>
+#include <map>
+#include <string>
 #include <vector>
 
 #include "base/basictypes.h"
 
 namespace omaha {
 
+// Maps policy types to their corresponding serialized PolicyFetchResponses.
+using PolicyResponsesMap = std::map<std::string, std::string>;
+
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,
                                          const CStringA& os_version);
 
+CStringA SerializePolicyFetchRequest(const CStringA& policy_type);
+
 HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
                                     CStringA* dm_token);
+
+// Parses the policies from the DMServer, and return the PolicyFetchResponses in
+// |responses|. |responses| contains elements in the following format:
+//   {policy_type}=>{SerializeToString-PolicyFetchResponse}.
+HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
+                                  PolicyResponsesMap* response_map);
 
 HRESULT ParseDeviceManagementResponseError(const std::vector<uint8>& response,
                                            CStringA* error_message);

@@ -17,6 +17,7 @@
 
 #include <msi.h>
 #include <atlpath.h>
+#include <set>
 #include <vector>
 #include "base/basictypes.h"
 #include "omaha/base/app_util.h"
@@ -694,12 +695,14 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
     return HRESULT_FROM_WIN32(err);
   }
 
-  // The download and install directories are left alone here. They are cleaned
-  // up by DownloadManager::Initialize() and InstallManager::InstallManager().
-  CPath download_dir(OMAHA_REL_DOWNLOAD_STORAGE_DIR);
-  download_dir.StripPath();
-  CPath install_dir(OMAHA_REL_INSTALL_WORKING_DIR);
-  install_dir.StripPath();
+  // The following subdirectories are not deleted here.
+  std::set<CString> excluded_directories = {
+    _T(".."),
+    _T("."),
+    this_version_,
+    DOWNLOAD_DIR_NAME,  // Managed by DownloadManager::Initialize().
+    INSTALL_WORKING_DIR_NAME,  // Managed by InstallManager::InstallManager().
+  };
 
   BOOL found_next = TRUE;
   for (; found_next; found_next = ::FindNextFile(get(find_handle),
@@ -711,11 +714,7 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
       if (_tcsicmp(file_data.cFileName, kOmahaShellFileName)) {
         DeleteBeforeOrAfterReboot(file_or_directory);
       }
-    } else if (_tcscmp(file_data.cFileName, _T("..")) &&
-               _tcscmp(file_data.cFileName, _T(".")) &&
-               _tcsicmp(file_data.cFileName, this_version_) &&
-               _tcsicmp(file_data.cFileName, download_dir) &&
-               _tcsicmp(file_data.cFileName, install_dir)) {
+    } else if (!excluded_directories.count(file_data.cFileName)) {
       // Unregister the previous version OneClick if it exists. Ignore
       // failures. The file is named npGoogleOneClick*.dll.
       CPath old_oneclick(file_or_directory);

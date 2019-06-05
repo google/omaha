@@ -15,8 +15,10 @@
 #include "omaha/goopdate/dm_messages.h"
 
 #include <limits>
+#include <utility>
 
 #include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
 
 namespace omaha {
@@ -39,7 +41,7 @@ void SerializeToCStringA(const ::google::protobuf_opensource::Message& message,
   output->ReleaseBufferSetLength(end - buffer);
 }
 
-} // namespace
+}  // namespace
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,
@@ -54,6 +56,25 @@ CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
 
   CStringA result;
   SerializeToCStringA(dm_request, &result);
+  return result;
+}
+
+CStringA SerializePolicyFetchRequest(const CStringA& policy_type) {
+  // Request signed policy blobs. kPolicyVerificationKeyHash needs to be kept in
+  // sync with the corresponding value in Chromium's cloud_policy_constants.cc.
+  static constexpr char kPolicyVerificationKeyHash[] = "1:356l7w";
+
+  enterprise_management::DeviceManagementRequest policy_request;
+
+  enterprise_management::PolicyFetchRequest* policy_fetch_request =
+      policy_request.mutable_policy_request()->add_requests();
+  policy_fetch_request->set_policy_type(policy_type);
+  policy_fetch_request->set_signature_type(
+      enterprise_management::PolicyFetchRequest::SHA1_RSA);
+  policy_fetch_request->set_verification_key_hash(kPolicyVerificationKeyHash);
+
+  CStringA result;
+  SerializeToCStringA(policy_request, &result);
   return result;
 }
 
@@ -86,6 +107,61 @@ HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
   }
   dm_token->SetString(token.data(), static_cast<int>(token.size()));
 
+  return S_OK;
+}
+
+HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
+                                  PolicyResponsesMap* response_map) {
+  ASSERT1(response_map);
+  enterprise_management::DeviceManagementResponse dm_response;
+
+  if (dm_response_array.size() >
+      static_cast<size_t>(std::numeric_limits<int>::max())) {
+    return E_FAIL;
+  }
+
+  if (!dm_response.ParseFromArray(dm_response_array.data(),
+                                  static_cast<int>(dm_response_array.size()))) {
+    return E_FAIL;
+  }
+
+  if (!dm_response.has_policy_response() ||
+      dm_response.policy_response().responses_size() == 0) {
+    return E_FAIL;
+  }
+
+  const enterprise_management::DevicePolicyResponse& policy_response =
+      dm_response.policy_response();
+  PolicyResponsesMap responses;
+  for (int i = 0; i < policy_response.responses_size(); ++i) {
+    const enterprise_management::PolicyFetchResponse& response =
+        policy_response.responses(i);
+    enterprise_management::PolicyData policy_data;
+    if (!policy_data.ParseFromString(response.policy_data()) ||
+        !policy_data.IsInitialized() ||
+        !policy_data.has_policy_type()) {
+      OPT_LOG(LW, (_T("Ignoring invalid PolicyData")));
+      continue;
+    }
+
+    const std::string& type = policy_data.policy_type();
+    if (responses.find(type) != responses.end()) {
+      OPT_LOG(LW, (_T("Duplicate PolicyFetchResponse for type: %S"),
+                   type.c_str()));
+      continue;
+    }
+
+    std::string policy_fetch_response;
+    if (!response.SerializeToString(&policy_fetch_response)) {
+      OPT_LOG(LW, (_T("Failed to serialize response for type: %S"),
+                   type.c_str()));
+      continue;
+    }
+
+    responses[type] = std::move(policy_fetch_response);
+  }
+
+  *response_map = std::move(responses);
   return S_OK;
 }
 

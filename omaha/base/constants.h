@@ -178,19 +178,25 @@ const TCHAR* const kChromeAppId = CHROME_APP_ID;
 //
 // Directory names
 //
-#define OFFLINE_DIR_NAME _T("Offline")
+#define OFFLINE_DIR_NAME          _T("Offline")
+#define DOWNLOAD_DIR_NAME         _T("Download")
+#define INSTALL_WORKING_DIR_NAME  _T("Install")
 
+// Directories relative to \Google
 #define OMAHA_REL_COMPANY_DIR SHORT_COMPANY_NAME
 #define OMAHA_REL_CRASH_DIR OMAHA_REL_COMPANY_DIR _T("\\CrashReports")
+#define OMAHA_REL_POLICY_RESPONSES_DIR OMAHA_REL_COMPANY_DIR _T("\\Policies")
+
+// Directories relative to \Google\Update
 #define OMAHA_REL_GOOPDATE_INSTALL_DIR \
     OMAHA_REL_COMPANY_DIR _T("\\") PRODUCT_NAME
 #define OMAHA_REL_LOG_DIR OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\Log")
 #define OMAHA_REL_OFFLINE_STORAGE_DIR \
     OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\") OFFLINE_DIR_NAME
 #define OMAHA_REL_DOWNLOAD_STORAGE_DIR \
-    OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\Download")
+    OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\") DOWNLOAD_DIR_NAME
 #define OMAHA_REL_INSTALL_WORKING_DIR \
-      OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\Install")
+    OMAHA_REL_GOOPDATE_INSTALL_DIR _T("\\") INSTALL_WORKING_DIR_NAME
 
 // This directory is relative to the user profile app data local.
 #define LOCAL_APPDATA_REL_TEMP_DIR _T("\\Temp")

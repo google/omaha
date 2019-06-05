@@ -19,6 +19,7 @@
 #include <atlstr.h>
 #include <utility>
 #include <vector>
+#include "omaha/goopdate/dm_messages.h"
 
 namespace omaha {
 
@@ -26,6 +27,10 @@ class DmStorage;
 class HttpRequestInterface;
 
 namespace dm_client {
+
+// The policy type that supports getting the policies for all Machine
+// applications from the DMServer.
+const char kGoogleUpdateMachineLevelApps[] = "google/machine-level-apps";
 
 enum RegistrationState {
   // This client appears to not be managed. In particular, neither a device
@@ -48,19 +53,39 @@ RegistrationState GetRegistrationState(DmStorage* dm_storage);
 // enrollment token is found), or a failure HRESULT in case of error.
 HRESULT RegisterIfNeeded(DmStorage* dm_storage);
 
+// Retrieve and persist locally the policies from the Device Management Server.
+HRESULT RefreshPolicies();
+
 namespace internal {
 
 HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
                             const CString& enrollment_token,
                             const CString& device_id,
                             CStringA* dm_token);
+
+// Fetch policies from the DMServer. The policies are returned in |responses|
+// containing elements in the following format:
+//   {policy_type}=>{SerializeToString-PolicyFetchResponse}.
+HRESULT FetchPolicies(HttpRequestInterface* http_request,
+                      const CString& dm_token,
+                      const CString& device_id,
+                      PolicyResponsesMap* responses);
+
+HRESULT SendDeviceManagementRequest(
+    HttpRequestInterface* http_request,
+    const CStringA& payload,
+    const CString& authorization_header,
+    const CString& device_id,
+    std::vector<std::pair<CString, CString>> query_params,
+    std::vector<uint8>* response);
 CString GetAgent();
 CString GetPlatform();
 CStringA GetOsVersion();
 HRESULT AppendQueryParamsToUrl(
-    const std::vector<std::pair<CString,CString>>& query_params,
+    const std::vector<std::pair<CString, CString>>& query_params,
     CString* url);
 CString FormatEnrollmentTokenAuthorizationHeader(const CString& token);
+CString FormatDMTokenAuthorizationHeader(const CString& token);
 
 }  // namespace internal
 }  // namespace dm_client

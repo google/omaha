@@ -24,6 +24,7 @@
 #define OMAHA_COMMON_CONFIG_MANAGER_H_
 
 #include <windows.h>
+#include <atlpath.h>
 #include <atlstr.h>
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
@@ -175,6 +176,10 @@ class ConfigManager {
 #if defined(HAS_DEVICE_MANAGEMENT)
   // Returns the Device Management API url.
   HRESULT GetDeviceManagementUrl(CString* url) const;
+
+  // Returns the directory under which the Device Management policies are
+  // persisted.
+  CPath GetPolicyResponsesDir() const;
 #endif
 
   // Returns the time interval between update checks in seconds.
