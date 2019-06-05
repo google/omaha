@@ -870,10 +870,6 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
               return DoHandoff(has_ui_been_displayed);
 
             case COMMANDLINE_MODE_UA:
-              // TODO(b/117412382): Consider performing registration during /ua
-              // processing in case best-effor registration failed during
-              // install, or if an enrollment token was provisioned to the
-              // machine post-install.
               return DoUpdateAllApps(has_ui_been_displayed);
 
             case COMMANDLINE_MODE_CRASH:
@@ -1315,6 +1311,28 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
   OPT_LOG(L1, (_T("[GoopdateImpl::DoUpdateAllApps]")));
   ASSERT1(has_ui_been_displayed);
 
+  HRESULT hr = S_OK;
+#if defined(HAS_DEVICE_MANAGEMENT)
+  // Make a best-effort attempt to register during UA processing to handle the
+  // following cases:
+  // - The network could not be used during installation on account of
+  //   NOGOOGLEUPDATEPING.
+  // - Non-mandatory registration failed during installation.
+  // - An enrollment token was provisioned to the machine via Group Policy after
+  //   installation.
+  if (is_machine_) {
+    hr = dm_client::RegisterIfNeeded(GetDmStorage());
+    if (FAILED(hr)) {
+      OPT_LOG(LE, (_T("[Registration failed][%#x]"), hr));
+      // Emit to the Event Log. The entry will include details by way of
+      // logging at the LC_REPORT category within dm_client.
+      LogErrorWithHResult(kEnrollmentFailedEventId,
+                          _T("Device management enrollment failed"),
+                          hr);
+    }
+  }
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
   bool is_interactive_update = !args_.is_silent_set;
 
   // TODO(omaha3): Interactive is used as an indication of an on-demand request.
@@ -1333,7 +1351,7 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
 
   // TODO(omaha): Consider moving InitializeClientSecurity calls inside
   // install_apps.cc or maybe to update3_utils::CreateGoogleUpdate3Class().
-  HRESULT hr = InitializeClientSecurity();
+  hr = InitializeClientSecurity();
   if (FAILED(hr)) {
     ASSERT1(false);
     return is_interactive_update ? hr : S_OK;
@@ -1593,29 +1611,35 @@ HRESULT GoopdateImpl::InstallExceptionHandler() {
 #if defined(HAS_DEVICE_MANAGEMENT)
 
 HRESULT GoopdateImpl::RegisterForDeviceManagement() {
+  ASSERT1(args_.mode == COMMANDLINE_MODE_INSTALL);
   ASSERT1(is_machine_);
 
   if (args_.is_oem_set) {
     // TODO(b/117412382): Consider storing an enrollment token provided via
-    // extra args (DmStorage::StoreEnrollmentTokenForInstall) so that
+    // extra args (DmStorage::StoreRuntimeEnrollmentTokenForInstall) so that
     // registration can take place when the OEM ping is sent.
     return S_FALSE;
   }
 
   DmStorage* const dm_storage = GetDmStorage();
+  const bool is_enrollment_mandatory =
+      ConfigManager::Instance()->IsCloudManagementEnrollmentMandatory();
 
   if (args_.is_enterprise_set &&
       dm_client::GetRegistrationState(dm_storage) ==
           dm_client::kRegistrationPending) {
-    // TODO(b/117412382): Consider storing an enrollment token provided via
-    // extra args (DmStorage::StoreEnrollmentTokenForInstall) so that
-    // registration can take place at some point post-install.
-    LogErrorWithHResult(kEnrollmentRequiresNetworkEventId,
-                        _T("Device management enrollment incompatible with ")
-                        _T("NOGOOGLEUPDATEPING"),
-                        S_OK);
-    return ConfigManager::Instance()->IsCloudManagementEnrollmentMandatory() ?
-        E_FAIL : S_FALSE;
+    if (is_enrollment_mandatory) {
+      LogErrorWithHResult(kEnrollmentRequiresNetworkEventId,
+                          _T("Mandatory device management enrollment ")
+                          _T("incompatible with NOGOOGLEUPDATEPING"),
+                          S_OK);
+      return E_FAIL;
+    }
+    // If the enrollment token was provided via extra args, write the token to
+    // the registry for use in subsequent registration attempts during
+    // UpdateApps processing.
+    dm_storage->StoreRuntimeEnrollmentTokenForInstall();
+    return S_FALSE;
   }
 
   HRESULT hr = dm_client::RegisterIfNeeded(dm_storage);
@@ -1627,14 +1651,7 @@ HRESULT GoopdateImpl::RegisterForDeviceManagement() {
 
   // If the enrollment token was provided via extra args, write the token to the
   // registry for use in subsequent registration attempts.
-  if (dm_storage->enrollment_token_source() ==
-      DmStorage::kETokenSourceRuntime) {
-    HRESULT store_hr = dm_storage->StoreEnrollmentTokenForInstall();
-    if (FAILED(store_hr)) {
-      OPT_LOG(LE, (_T("[StoreEnrollmentTokenForInstall failed][%#x]"),
-                   store_hr));
-    }
-  }
+  dm_storage->StoreRuntimeEnrollmentTokenForInstall();
 
   if (SUCCEEDED(hr)) {
     return hr;
@@ -1648,8 +1665,7 @@ HRESULT GoopdateImpl::RegisterForDeviceManagement() {
                       hr);
 
   // Bubble the failure HRESULT up if enrollment was mandatory.
-  return ConfigManager::Instance()->IsCloudManagementEnrollmentMandatory() ?
-      hr : S_FALSE;
+  return is_enrollment_mandatory ? hr : S_FALSE;
 }
 
 DmStorage* GoopdateImpl::GetDmStorage() {

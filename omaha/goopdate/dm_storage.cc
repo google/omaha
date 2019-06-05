@@ -16,6 +16,7 @@
 
 #include "omaha/base/const_utils.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/common/app_registry_utils.h"
 #include "omaha/common/config_manager.h"
@@ -112,11 +113,9 @@ HRESULT StoreDmTokenInKey(const CStringA& dm_token, const TCHAR* path) {
 
 }  // namespace
 
-DmStorage::DmStorage(const CString& enrollment_token)
-    : enrollment_token_(enrollment_token),
-      enrollment_token_source_(enrollment_token.IsEmpty()
-                               ? kETokenSourceNone
-                               : kETokenSourceRuntime),
+DmStorage::DmStorage(const CString& runtime_enrollment_token)
+    : runtime_enrollment_token_(runtime_enrollment_token),
+      enrollment_token_source_(kETokenSourceNone),
       dm_token_source_(kDmTokenSourceNone) {
 }
 
@@ -129,12 +128,20 @@ CString DmStorage::GetEnrollmentToken() {
   return enrollment_token_;
 }
 
-HRESULT DmStorage::StoreEnrollmentTokenForInstall() {
-  return RegKey::SetValue(
+HRESULT DmStorage::StoreRuntimeEnrollmentTokenForInstall() {
+  if (enrollment_token_source_ != kETokenSourceRuntime) {
+    return S_FALSE;
+  }
+  HRESULT hr = RegKey::SetValue(
       app_registry_utils::GetAppClientStateKey(true /* is_machine */,
                                                kGoogleUpdateAppId),
       kRegValueCloudManagementEnrollmentToken,
       enrollment_token_);
+  if (FAILED(hr)) {
+    OPT_LOG(LE, (_T("[StoreRuntimeEnrollmentTokenForInstall failed][%#x]"),
+                 hr));
+  }
+  return hr;
 }
 
 CStringA DmStorage::GetDmToken() {
@@ -165,12 +172,6 @@ CString DmStorage::GetDeviceId() {
 
 void DmStorage::LoadEnrollmentTokenFromStorage() {
   // Load from most to least preferred, stopping when one is found.
-  enrollment_token_ = LoadEnrollmentTokenFromInstall();
-  if (!enrollment_token_.IsEmpty()) {
-    enrollment_token_source_ = kETokenSourceInstall;
-    return;
-  }
-
   enrollment_token_ = LoadEnrollmentTokenFromCompanyPolicy();
   if (!enrollment_token_.IsEmpty()) {
     enrollment_token_source_ = kETokenSourceCompanyPolicy;
@@ -187,8 +188,20 @@ void DmStorage::LoadEnrollmentTokenFromStorage() {
   enrollment_token_ = LoadEnrollmentTokenFromOldLegacyPolicy();
   if (!enrollment_token_.IsEmpty()) {
     enrollment_token_source_ = kETokenSourceOldLegacyPolicy;
+    return;
   }
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
+
+  if (!runtime_enrollment_token_.IsEmpty()) {
+    enrollment_token_ = runtime_enrollment_token_;
+    enrollment_token_source_ = kETokenSourceRuntime;
+    return;
+  }
+
+  enrollment_token_ = LoadEnrollmentTokenFromInstall();
+  if (!enrollment_token_.IsEmpty()) {
+    enrollment_token_source_ = kETokenSourceInstall;
+  }
 }
 
 void DmStorage::LoadDmTokenFromStorage() {
