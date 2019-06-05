@@ -15,11 +15,14 @@
 #include "omaha/goopdate/dm_client.h"
 
 #include <map>
+#include <ostream>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "base/basictypes.h"
 #include "gtest/gtest-matchers.h"
+#include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/goopdate/dm_storage.h"
@@ -49,8 +52,9 @@ namespace {
 class IsValidRequestUrlMatcher
     : public ::testing::MatcherInterface<const CString&> {
  public:
-  IsValidRequestUrlMatcher(const TCHAR* request_type, const TCHAR* device_id)
-      : request_type_(request_type), device_id_(device_id) {
+  IsValidRequestUrlMatcher(
+      std::vector<std::pair<CString, CString>> query_params)
+      : query_params_(std::move(query_params)) {
     ConfigManager::Instance()->GetDeviceManagementUrl(&device_management_url_);
   }
 
@@ -79,56 +83,53 @@ class IsValidRequestUrlMatcher
     }
 
     // Check that the required params are present.
-    static const TCHAR* kRequiredParams[] = {
-      _T("agent"),
-      _T("apptype"),
-      _T("deviceid"),
-      _T("platform"),
-      _T("request"),
-    };
-    for (size_t i = 0; i < arraysize(kRequiredParams); ++i) {
-      const TCHAR* p = kRequiredParams[i];
+    for (const auto& query_param : query_params_) {
+      const TCHAR* p = query_param.first;
       if (query_params.find(p) == query_params.end()) {
         *listener << "the url is missing the \"" << WideToUtf8(p)
                   << "\" query parameter";
         return false;
       }
-    }
 
-    // Check the value of the request param.
-    if (query_params[_T("request")] != request_type_) {
-      *listener << "the request query parameter is \""
-                << query_params[_T("request")] << "\"";
-      return false;
-    }
+      CString expected_param_value;
+      HRESULT hr = StringEscape(query_param.second,
+                                false,
+                                &expected_param_value);
+      if (FAILED(hr)) {
+        *listener << "failed to StringEscape \""
+                  << WideToUtf8(query_param.second)
+                  << "\" query parameter";
+        return false;
+      }
 
-    // Check the value of the device_id param.
-    if (query_params[_T("deviceid")] != device_id_) {
-      *listener << "the device_id query parameter is \""
-                << query_params[_T("device_id")] << "\"";
-      return false;
+      if (query_params[p] != expected_param_value) {
+        *listener << "the actual request query parameter is \""
+                  << WideToUtf8(query_params[p]) << "\""
+                  << " and does not match the expected query parameter of \""
+                  << WideToUtf8(expected_param_value) << "\"";
+        return false;
+      }
     }
 
     return true;
   }
 
-  virtual void DescribeTo(::std::ostream* os) const {
+  virtual void DescribeTo(std::ostream* os) const {
     *os << "string contains a valid device management request URL";
   }
 
  private:
-  const TCHAR* const request_type_;
-  const TCHAR* const device_id_;
+  const std::vector<std::pair<CString, CString>> query_params_;
   CString device_management_url_;
 };
 
 // Returns an IsValidRequestUrl matcher, which takes a CString and matches if
-// it is an URL leading to the device management server endpoint, contains all
-// required query parameters, and has the given |request_type| and |device_id|.
-::testing::Matcher<const CString&> IsValidRequestUrl(const TCHAR* request_type,
-                                                     const TCHAR* device_id) {
+// it is an URL leading to the device management server endpoint, and contains
+// all the required query parameters in |query_params|.
+::testing::Matcher<const CString&> IsValidRequestUrl(
+    std::vector<std::pair<CString, CString>> query_params) {
   return ::testing::MakeMatcher(
-      new IsValidRequestUrlMatcher(request_type, device_id));
+      new IsValidRequestUrlMatcher(std::move(query_params)));
 }
 
 // A Google Mock matcher that returns true if a buffer contains a valid
@@ -169,8 +170,56 @@ class IsRegisterBrowserRequestMatcher
     return true;
   }
 
-  virtual void DescribeTo(::std::ostream* os) const {
+  virtual void DescribeTo(std::ostream* os) const {
     *os << "buffer contains a valid serialized RegisterBrowserRequest";
+  }
+};
+
+// A Google Mock matcher that returns true if a buffer contains a valid
+// serialized DevicePolicyRequest message. While the presence of each field
+// in the request is checked, the exact value of each is not.
+class IsFetchPoliciesRequestMatcher
+    : public ::testing::MatcherInterface<const ::testing::tuple<const void*,
+                                                                size_t>& > {
+ public:
+  virtual bool MatchAndExplain(
+      const ::testing::tuple<const void*, size_t>& buffer,
+      ::testing::MatchResultListener* listener) const {
+    enterprise_management::DeviceManagementRequest request;
+    if (!request.ParseFromArray(
+            ::testing::get<0>(buffer),
+            static_cast<int>(::testing::get<1>(buffer)))) {
+      *listener << "parse failure";
+      return false;
+    }
+    if (!request.has_policy_request()) {
+      *listener << "missing policy_request";
+      return false;
+    }
+    if (!request.policy_request().requests_size()) {
+      *listener << "unexpected requests_size() == 0";
+      return false;
+    }
+    const enterprise_management::PolicyFetchRequest& policy_request =
+        request.policy_request().requests(0);
+    if (!policy_request.has_policy_type()) {
+      *listener << "missing policy_request.has_policy_type";
+      return false;
+    }
+    if (!policy_request.has_signature_type()) {
+      *listener << "missing policy_request.has_signature_type";
+      return false;
+    }
+    if (!policy_request.has_verification_key_hash()) {
+      *listener << "missing policy_request.has_verification_key_hash";
+      return false;
+    }
+    return true;
+  }
+
+
+  virtual void DescribeTo(std::ostream* os) const {
+    *os << "buffer contains a valid serialized DevicePolicyRequest";
   }
 };
 
@@ -179,6 +228,13 @@ class IsRegisterBrowserRequestMatcher
 ::testing::Matcher<const ::testing::tuple<const void*, size_t>& >
 IsRegisterBrowserRequest() {
   return ::testing::MakeMatcher(new IsRegisterBrowserRequestMatcher);
+}
+
+// Returns an IsFetchPoliciesRequest matcher, which takes a tuple of a pointer
+// to a buffer and a buffer size.
+::testing::Matcher<const ::testing::tuple<const void*, size_t>& >
+IsFetchPoliciesRequest() {
+  return ::testing::MakeMatcher(new IsFetchPoliciesRequestMatcher);
 }
 
 class MockHttpRequest : public HttpRequestInterface {
@@ -220,10 +276,11 @@ class DmClientRequestTest : public ::testing::Test {
   virtual ~DmClientRequestTest() {}
 
   // Populates |request| with a mock HttpRequest that behaves as if the server
-  // successfully processed a RegisterBrowserRequest, returning a
-  // DeviceRegisterResponse containing |dm_token|.
+  // successfully processed a HTTP request, returning a HTTP response containing
+  // |response_data|.
   // Note: always wrap calls to this with ASSERT_NO_FATAL_FAILURE.
-  void MakeSuccessHttpRequest(const char* dm_token, MockHttpRequest** request) {
+  template <typename T>
+  void MakeSuccessHttpRequest(T response_data, MockHttpRequest** request) {
     *request = new ::testing::NiceMock<MockHttpRequest>();
 
     // The server responds with 200.
@@ -232,7 +289,7 @@ class DmClientRequestTest : public ::testing::Test {
 
     // And a valid response.
     std::vector<uint8> response;
-    ASSERT_NO_FATAL_FAILURE(MakeSuccessResponseBody(dm_token, &response));
+    ASSERT_NO_FATAL_FAILURE(MakeSuccessResponseBody(response_data, &response));
     ON_CALL(**request, GetResponse()).WillByDefault(Return(response));
   }
 
@@ -243,6 +300,26 @@ class DmClientRequestTest : public ::testing::Test {
     enterprise_management::DeviceManagementResponse dm_response;
     dm_response.mutable_register_response()->
         set_device_management_token(dm_token);
+    std::string response_string;
+    ASSERT_TRUE(dm_response.SerializeToString(&response_string));
+    body->assign(response_string.begin(), response_string.end());
+  }
+
+  // Populates |body| with a valid serialized DevicePolicyResponse.
+  // Note: always wrap calls to this with ASSERT_NO_FATAL_FAILURE.
+  void MakeSuccessResponseBody(const PolicyResponsesMap& responses,
+                               std::vector<uint8>* body) {
+    enterprise_management::DeviceManagementResponse dm_response;
+
+    for (const auto& response : responses) {
+      enterprise_management::PolicyFetchResponse* policy_response =
+          dm_response.mutable_policy_response()->add_responses();
+      enterprise_management::PolicyData policy_data;
+      policy_data.set_policy_type(response.first);
+      policy_data.set_policy_value(response.second);
+      policy_response->set_policy_data(policy_data.SerializeAsString());
+    }
+
     std::string response_string;
     ASSERT_TRUE(dm_response.SerializeToString(&response_string));
     body->assign(response_string.begin(), response_string.end());
@@ -260,10 +337,17 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
   MockHttpRequest* mock_http_request = nullptr;
   ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest(kDmToken, &mock_http_request));
 
+  std::vector<std::pair<CString, CString>> query_params = {
+    {_T("request"), _T("register_policy_agent")},
+    {_T("agent"), internal::GetAgent()},
+    {_T("apptype"), _T("Chrome")},
+    {_T("deviceid"), kDeviceId},
+    {_T("platform"), internal::GetPlatform()},
+  };
+
   // Expect the proper URL with query params.
   EXPECT_CALL(*mock_http_request,
-              set_url(IsValidRequestUrl(_T("register_policy_agent"),
-                                        kDeviceId)));
+              set_url(IsValidRequestUrl(std::move(query_params))));
 
   // Expect that the request headers contain the enrollment token.
   EXPECT_CALL(*mock_http_request,
@@ -285,33 +369,101 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
   EXPECT_STREQ(dm_token.GetString(), kDmToken);
 }
 
+// Test that DmClient can send a reasonable DevicePolicyRequest and handle a
+// corresponding DevicePolicyResponse.
+TEST_F(DmClientRequestTest, FetchPolicies) {
+  static const TCHAR kDeviceId[] = _T("device_id");
+
+  PolicyResponsesMap expected_responses = {
+    {"google/chrome/machine-level-user", "test-data-chrome"},
+    {"google/drive/machine-level-user", "test-data-drive"},
+    {"google/earth/machine-level-user", "test-data-earth"},
+  };
+
+  MockHttpRequest* mock_http_request = nullptr;
+  ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest(expected_responses,
+                                                 &mock_http_request));
+
+  std::vector<std::pair<CString, CString>> query_params = {
+    {_T("request"), _T("policy")},
+    {_T("agent"), internal::GetAgent()},
+    {_T("apptype"), _T("Chrome")},
+    {_T("deviceid"), kDeviceId},
+    {_T("platform"), internal::GetPlatform()},
+  };
+
+  // Expect the proper URL with query params.
+  EXPECT_CALL(*mock_http_request,
+              set_url(IsValidRequestUrl(std::move(query_params))));
+
+  // Expect that the request headers contain the DMToken.
+  EXPECT_CALL(*mock_http_request,
+              set_additional_headers(
+                  CStringHasSubstr(_T("Authorization: GoogleDMToken ")
+                                   _T("token=dm_token"))));
+
+  // Expect that the body of the request contains a well-formed fetch policies
+  // request.
+  EXPECT_CALL(*mock_http_request, set_request_buffer(_, _))
+      .With(AllArgs(IsFetchPoliciesRequest()));
+
+  // Fetch Policies should succeed, providing the expected PolicyResponsesMap.
+  PolicyResponsesMap responses;
+  ASSERT_HRESULT_SUCCEEDED(internal::FetchPolicies(mock_http_request,
+                                                   _T("dm_token"),
+                                                   kDeviceId,
+                                                   &responses));
+
+  EXPECT_EQ(expected_responses.size(), responses.size());
+  for (const auto& expected_response : expected_responses) {
+    enterprise_management::PolicyFetchResponse response;
+    EXPECT_TRUE(response.ParseFromString(
+        responses[expected_response.first.c_str()]));
+
+    enterprise_management::PolicyData policy_data;
+    EXPECT_TRUE(policy_data.ParseFromString(response.policy_data()));
+    EXPECT_TRUE(policy_data.IsInitialized());
+    EXPECT_TRUE(policy_data.has_policy_type());
+
+    EXPECT_STREQ(expected_response.first.c_str(),
+                 policy_data.policy_type().c_str());
+    EXPECT_STREQ(expected_response.second.c_str(),
+                 policy_data.policy_value().c_str());
+  }
+}
+
 class DmClientRegistryTest : public RegistryProtectedTest {
 };
 
 TEST_F(DmClientRegistryTest, GetRegistrationState) {
   // No enrollment token.
   {
-    DmStorage dm_storage((CString()));
-    EXPECT_EQ(GetRegistrationState(&dm_storage), kNotManaged);
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(GetRegistrationState(DmStorage::Instance()), kNotManaged);
   }
 
   // Enrollment token without device management token.
   {
-    DmStorage dm_storage(_T("enrollment_token"));
-    EXPECT_EQ(GetRegistrationState(&dm_storage), kRegistrationPending);
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(GetRegistrationState(DmStorage::Instance()),
+              kRegistrationPending);
   }
 
   // Enrollment token and device management token.
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken("dm_token"));
   {
-    DmStorage dm_storage(_T("enrollment_token"));
-    EXPECT_EQ(GetRegistrationState(&dm_storage), kRegistered);
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(GetRegistrationState(DmStorage::Instance()), kRegistered);
   }
 
   // Device management token without enrollment token.
   {
-    DmStorage dm_storage((CString()));
-    EXPECT_EQ(GetRegistrationState(&dm_storage), kRegistered);
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(GetRegistrationState(DmStorage::Instance()), kRegistered);
   }
 }
 
@@ -329,9 +481,11 @@ TEST(DmClientTest, GetOsVersion) {
 
 TEST(DmClientTest, AppendQueryParamsToUrl) {
   static const TCHAR kUrl[] = _T("https://some.net/endpoint");
-  std::vector<std::pair<CString, CString>> params;
-  params.push_back(std::make_pair(_T("one"), _T("1")));
-  params.push_back(std::make_pair(_T("2"), _T("two")));
+  std::vector<std::pair<CString, CString>> params = {
+    {_T("one"), _T("1")},
+    {_T("2"), _T("two")},
+  };
+
   CString url(kUrl);
   EXPECT_HRESULT_SUCCEEDED(internal::AppendQueryParamsToUrl(params, &url));
   EXPECT_EQ(url, CString(kUrl) + _T("?one=1&2=two"));
@@ -341,6 +495,12 @@ TEST(DmClientTest, FormatEnrollmentTokenAuthorizationHeader) {
   static const TCHAR kToken[] = _T("token");
   EXPECT_EQ(internal::FormatEnrollmentTokenAuthorizationHeader(kToken),
             _T("GoogleEnrollmentToken token=token"));
+}
+
+TEST(DmClientTest, FormatDMTokenAuthorizationHeader) {
+  static const TCHAR kToken[] = _T("token");
+  EXPECT_EQ(internal::FormatDMTokenAuthorizationHeader(kToken),
+            _T("GoogleDMToken token=token"));
 }
 
 }  // namespace dm_client

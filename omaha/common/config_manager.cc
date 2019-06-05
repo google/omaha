@@ -524,6 +524,15 @@ HRESULT ConfigManager::GetDeviceManagementUrl(CString* url) const {
   return S_OK;
 }
 
+CPath ConfigManager::GetPolicyResponsesDir() const {
+  CString path;
+  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                             CString(OMAHA_REL_POLICY_RESPONSES_DIR),
+                             true,
+                             &path)));
+  return CPath(path);
+}
+
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 // Returns the override from the registry locations if present. Otherwise,

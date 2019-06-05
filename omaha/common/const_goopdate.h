@@ -332,6 +332,7 @@ const int kNetworkRequestEventId     = 20;
 // Device management events.
 const int kEnrollmentFailedEventId = 30;
 const int kEnrollmentRequiresNetworkEventId = 31;
+const int kRefreshPoliciesFailedEventId = 32;
 
 // Maximum value the server can respond for elapsed_seconds attribute in
 // <daystart ...> element. The value is one day plus an hour ("fall back"

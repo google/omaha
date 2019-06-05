@@ -14,7 +14,9 @@
 
 #include "omaha/goopdate/dm_client.h"
 
+#include <shlobj.h>
 #include <memory>
+#include <utility>
 
 #include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
@@ -55,6 +57,13 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage) {
   ASSERT1(dm_storage);
   OPT_LOG(L1, (_T("[DmClient::RegisterIfNeeded]")));
 
+  // No work to be done if the process is not running as an administrator, since
+  // we will not be able to persist anything.
+  if (!::IsUserAnAdmin()) {
+    OPT_LOG(L1, (_T("[RegisterIfNeeded][Process not Admin, exiting early]")));
+    return S_FALSE;
+  }
+
   // No work to be done if a DM token was found.
   CStringA dm_token = dm_storage->GetDmToken();
   if (!dm_token.IsEmpty()) {
@@ -76,8 +85,10 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage) {
     return E_FAIL;
   }
 
+  // RegisterWithRequest owns the SimpleRequest being created here.
   HRESULT hr = internal::RegisterWithRequest(new SimpleRequest,
-                                             enrollment_token, device_id,
+                                             enrollment_token,
+                                             device_id,
                                              &dm_token);
   if (FAILED(hr)) {
     return hr;
@@ -94,6 +105,53 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage) {
   return S_OK;
 }
 
+HRESULT RefreshPolicies() {
+  // No work to be done if the process is not running as an administrator, since
+  // we will not be able to persist anything.
+  if (!::IsUserAnAdmin()) {
+    OPT_LOG(L1, (_T("[RefreshPolicies][Process not Admin, exiting early]")));
+    return S_FALSE;
+  }
+
+  DmStorage* const dm_storage = DmStorage::Instance();
+  const CString dm_token = CString(dm_storage->GetDmToken());
+  if (dm_token.IsEmpty()) {
+    OPT_LOG(L1, (_T("[Skipping RefreshPolicies as there is no DMToken]")));
+    return S_FALSE;
+  }
+
+  const CString device_id = dm_storage->GetDeviceId();
+  if (device_id.IsEmpty()) {
+    REPORT_LOG(LE, (_T("[Device ID not found]")));
+    return E_FAIL;
+  }
+
+  PolicyResponsesMap responses;
+
+  // FetchPolicies owns the SimpleRequest being created here.
+  HRESULT hr = internal::FetchPolicies(new SimpleRequest,
+                                       dm_token,
+                                       device_id,
+                                       &responses);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[FetchPolicies failed][%#x]"), hr));
+    return hr;
+  }
+
+  const CPath policy_responses_dir(
+      ConfigManager::Instance()->GetPolicyResponsesDir());
+
+  hr = DmStorage::PersistPolicies(policy_responses_dir, responses);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[PersistPolicies failed][%#x]"), hr));
+    return hr;
+  }
+
+  OPT_LOG(L1, (_T("[RefreshPolicies complete]")));
+
+  return S_OK;
+}
+
 namespace internal {
 
 HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
@@ -102,6 +160,94 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
                             CStringA* dm_token) {
   ASSERT1(http_request);
   ASSERT1(dm_token);
+
+  std::vector<std::pair<CString, CString>> query_params = {
+    {_T("request"), _T("register_policy_agent")},
+  };
+
+  // Make the request payload.
+  CStringA payload = SerializeRegisterBrowserRequest(
+      WideToUtf8(app_util::GetHostName()),
+      CStringA("Windows"),
+      internal::GetOsVersion());
+  if (payload.IsEmpty()) {
+    REPORT_LOG(LE, (_T("[SerializeRegisterBrowserRequest failed]")));
+    return E_FAIL;
+  }
+
+  std::vector<uint8> response;
+  HRESULT hr = SendDeviceManagementRequest(
+    http_request,
+    payload,
+    internal::FormatEnrollmentTokenAuthorizationHeader(enrollment_token),
+    device_id,
+    std::move(query_params),
+    &response);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[SendDeviceManagementRequest failed][%#x]"), hr));
+    return hr;
+  }
+
+  hr = ParseDeviceRegisterResponse(response, dm_token);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[ParseDeviceRegisterResponse failed][%#x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT FetchPolicies(HttpRequestInterface* http_request,
+                      const CString& dm_token,
+                      const CString& device_id,
+                      PolicyResponsesMap* responses) {
+  ASSERT1(http_request);
+  ASSERT1(!dm_token.IsEmpty());
+  ASSERT1(responses);
+
+  std::vector<std::pair<CString, CString>> query_params = {
+    {_T("request"), _T("policy")},
+  };
+
+  CStringA payload = SerializePolicyFetchRequest(
+      CStringA(kGoogleUpdateMachineLevelApps));
+  if (payload.IsEmpty()) {
+    REPORT_LOG(LE, (_T("[SerializePolicyFetchRequest failed]")));
+    return E_FAIL;
+  }
+
+  std::vector<uint8> response;
+  HRESULT hr = SendDeviceManagementRequest(
+      http_request,
+      payload,
+      FormatDMTokenAuthorizationHeader(dm_token),
+      device_id,
+      std::move(query_params),
+      &response);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[SendDeviceManagementRequest failed][%#x]"), hr));
+    return hr;
+  }
+
+  hr = ParseDevicePolicyResponse(response, responses);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[ParseDeviceRegisterResponse failed][%#x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT SendDeviceManagementRequest(
+    HttpRequestInterface* http_request,
+    const CStringA& payload,
+    const CString& authorization_header,
+    const CString& device_id,
+    std::vector<std::pair<CString, CString>> query_params,
+    std::vector<uint8>* response) {
+  ASSERT1(http_request);
+  ASSERT1(response);
+
   // Get the network configuration.
   NetworkConfig* network_config = NULL;
   NetworkConfigManager& network_config_manager =
@@ -115,10 +261,7 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
   // Create a network request and configure its headers.
   std::unique_ptr<NetworkRequest> request(
       new NetworkRequest(network_config->session()));
-  // DeviceManagementRequestJobImpl::ConfigureRequest.
-  request->AddHeader(L"Authorization",
-                     internal::FormatEnrollmentTokenAuthorizationHeader(
-                         enrollment_token));
+  request->AddHeader(_T("Authorization"), authorization_header);
 
   // Set it up
   request->AddHttpRequest(http_request);
@@ -131,22 +274,10 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
     return hr;
   }
 
-  std::vector<std::pair<CString, CString>> query_params;
-  // DeviceManagementRequestJob::DeviceManagementRequestJob.
-  // kParamRequest = kValueRequestTokenEnrollment.
-  query_params.push_back(std::make_pair(_T("request"),
-                                        _T("register_policy_agent")));
-  // kParamAppType = kValueAppType.
-  query_params.push_back(std::make_pair(_T("apptype"), _T("Chrome")));
-  // kParamAgent.
-  query_params.push_back(std::make_pair(_T("agent"), internal::GetAgent()));
-  // kParamPlatform.
-  query_params.push_back(std::make_pair(_T("platform"),
-                                        internal::GetPlatform()));
-
-  // DeviceManagementRequestJob::SetClientID.
-  // kParamDeviceID.
-  query_params.push_back(std::make_pair(_T("deviceid"), device_id));
+  query_params.emplace_back(_T("agent"), internal::GetAgent());
+  query_params.emplace_back(_T("apptype"), _T("Chrome"));
+  query_params.emplace_back(_T("deviceid"), device_id);
+  query_params.emplace_back(_T("platform"), internal::GetPlatform());
 
   hr = internal::AppendQueryParamsToUrl(query_params, &url);
   if (FAILED(hr)) {
@@ -154,19 +285,7 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
     return hr;
   }
 
-  // Make the request payload.
-  // DeviceManagementRequest.RegisterBrowserRequest:
-  CStringA payload = SerializeRegisterBrowserRequest(
-      WideToUtf8(app_util::GetHostName()),  // policy::GetMachineName
-      CStringA("Windows"),  // policy::GetOSPlatform
-      internal::GetOsVersion());  // policy::GetOSVersion
-  if (payload.IsEmpty()) {
-    REPORT_LOG(LE, (_T("[SerializeRegisterBrowserRequest failed]")));
-    return E_FAIL;
-  }
-
-  std::vector<uint8> response;
-  hr = request->Post(url, payload, payload.GetLength(), &response);
+  hr = request->Post(url, payload, payload.GetLength(), response);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[NetworkRequest::Post failed][%#x, %s]"), hr, url));
     return hr;
@@ -177,31 +296,23 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
     REPORT_LOG(LE, (_T("[NetworkRequest::Post failed][status code %d]"),
                     http_status_code));
     CStringA error_message;
-    hr = ParseDeviceManagementResponseError(response, &error_message);
+    hr = ParseDeviceManagementResponseError(*response, &error_message);
     if (SUCCEEDED(hr)) {
       OPT_LOG(LE, (_T("[Server returned: %S]"), error_message));
     }
     return E_FAIL;
   }
 
-  hr = ParseDeviceRegisterResponse(response, dm_token);
-  if (FAILED(hr)) {
-    REPORT_LOG(LE, (_T("[ParseDeviceRegisterResponse failed][%#x]"), hr));
-    return hr;
-  }
-
   return S_OK;
 }
 
 CString GetAgent() {
-  // DeviceManagementServiceConfiguration::GetAgentParameter.
   CString agent;
   SafeCStringFormat(&agent, _T("%s %s()"), kAppName, GetVersionString());
   return agent;
 }
 
 CString GetPlatform() {
-  // DeviceManagementServiceConfiguration::GetPlatformParameter.
   const DWORD architecture = SystemInfo::GetProcessorArchitecture();
 
   int major_version = 0;
@@ -255,6 +366,13 @@ CString FormatEnrollmentTokenAuthorizationHeader(
     const CString& token) {
   CString header_value;
   SafeCStringFormat(&header_value, _T("GoogleEnrollmentToken token=%s"), token);
+  return header_value;
+}
+
+CString FormatDMTokenAuthorizationHeader(
+    const CString& token) {
+  CString header_value;
+  SafeCStringFormat(&header_value, _T("GoogleDMToken token=%s"), token);
   return header_value;
 }
 
