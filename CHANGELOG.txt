@@ -46,6 +46,40 @@ This cl removes MD5 support.
 Produce 3 consecutive versions of some of the Omaha build artifacts.
 --------------------------------------------------------------------------------
 
+## 2019-05-10 @243143383,247089588
+
+### Changes
+--------------------------------------------------------------------------------
+Fix broken unit test CommandLineTest.ParseCommandLine_Install.
+--------------------------------------------------------------------------------
+App-specific disclaimers for RollbackToTargetVersion policy.
+
+This change provides a way for apps to inject their own specific disclaimer
+text in their RollbackToTargetVersion policy documentation.
+New text for Chrome is included.
+--------------------------------------------------------------------------------
+Switch Omaha continuous build from VS2017 to VS2019.
+--------------------------------------------------------------------------------
+Remove precompiled headers support.
+--------------------------------------------------------------------------------
+Fix various test failures.
+- RegKey::HasNativeKey has been removed, and callers have been updated to
+use HKEY_LOCAL_MACHINE[64] or HKLM[64] as the name of the root key.
+- ParseCommandLine_Install had a blatant typo ('%' instead of '&') which
+has been fixed.
+- DmClientRequestTest.RegisterWithRequest has been updated to reflect the
+late change in the request type.
+--------------------------------------------------------------------------------
+Fix bug 131367413 Eliminate MFC headers.
+--------------------------------------------------------------------------------
+Compliance changes for VS2017.
+--------------------------------------------------------------------------------
+Rework the fix for bug 130373054 Build the Protocol Buffer Compiler executable
+protoc.exe from source.
+--------------------------------------------------------------------------------
+Device Registration in Google Update during install.
+--------------------------------------------------------------------------------
+
 ## 2019-04-11 @239101812,243143382
 
 ### Changes
