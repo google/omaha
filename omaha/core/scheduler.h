@@ -19,8 +19,10 @@
 #ifndef OMAHA_CORE_SCHEDULER_H__
 #define OMAHA_CORE_SCHEDULER_H__
 
-#include <windows.h>
 #include <atlstr.h>
+#include <windows.h>
+#include <functional>
+#include <list>
 #include <memory>
 
 #include "base/basictypes.h"
@@ -31,34 +33,59 @@ class Core;
 class HighresTimer;
 class QueueTimer;
 
+using ScheduledWork = std::function<void(HighresTimer*)>;
+
+struct SchedulerItem {
+  SchedulerItem(HANDLE timer_queue,
+                int start_delay,
+                int interval,
+                bool has_debug_timer,
+                ScheduledWork work_fn);
+
+  ~SchedulerItem();
+
+  int start_delay_ms;
+  int interval_ms;
+  std::unique_ptr<QueueTimer> timer;
+
+  // Measures the actual time interval between events for debugging
+  // purposes. The timer is started when a red alarm is set and then,
+  // the value of the timer is read when the alarm goes off.
+  std::unique_ptr<HighresTimer> debug_timer;
+
+  // Work function to be run on the timer
+  ScheduledWork work;
+
+  static HRESULT ScheduleNext(QueueTimer* timer,
+                              HighresTimer* debug_timer,
+                              int interval_ms);
+  static void TimerCallback(QueueTimer* timer);
+
+  DISALLOW_COPY_AND_ASSIGN(SchedulerItem);
+};
+
 class Scheduler {
  public:
-  explicit Scheduler(const Core& core);
+  explicit Scheduler();
   ~Scheduler();
 
-  // Starts the scheduler.
-  HRESULT Initialize();
+  // Starts the scheduler with a delay.
+  // Default debug timer to false
+  HRESULT Start(int start_delay,
+                int interval,
+                ScheduledWork work,
+                bool has_debug_timer = false);
+
+  // Starts the scheduler with regular interval
+  HRESULT Start(int interval, ScheduledWork work, bool has_debug_timer = false);
 
  private:
-  static void TimerCallback(QueueTimer* timer);
-  void HandleCallback(QueueTimer* timer);
-  HRESULT ScheduleUpdateTimer(int interval_ms);
-  HRESULT ScheduleCodeRedTimer(int interval_ms);
-
-  const Core& core_;
+  // Timer queue handle for all timers
   HANDLE timer_queue_;
-  std::unique_ptr<QueueTimer> update_timer_;
-  std::unique_ptr<QueueTimer> code_red_timer_;
-
-  // Measures the actual time interval between code red events for debugging
-  // purposes. The timer is started when a code red alarm is set and then,
-  // the value of the timer is read when the alarm goes off.
-  std::unique_ptr<HighresTimer> cr_debug_timer_;
-
+  std::list<SchedulerItem> timers_;
   DISALLOW_COPY_AND_ASSIGN(Scheduler);
 };
 
 }  // namespace omaha
 
 #endif  // OMAHA_CORE_SCHEDULER_H__
-

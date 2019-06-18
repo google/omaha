@@ -277,11 +277,30 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
     return hr;
   }
 
-  std::unique_ptr<Scheduler> scheduler(new Scheduler(*this));
-  hr = scheduler->Initialize();
+  auto scheduler = std::make_unique<Scheduler>();
+
+  // Start update worker
+  hr = scheduler->Start(cm.GetUpdateWorkerStartUpDelayMs(),
+                        cm.GetAutoUpdateTimerIntervalMs(),
+                        [this](auto*) {
+    StartUpdateWorker();
+  });
+
   if (FAILED(hr)) {
     return hr;
   }
+
+  // Start Code Red worker
+  const int cr_timer_interval = cm.GetCodeRedTimerIntervalMs();
+  hr = scheduler->Start(cr_timer_interval,
+                        [this, cr_timer_interval](HighresTimer* debug_timer) {
+    StartCodeRed();
+    if (debug_timer) {
+      int actual_time_ms = static_cast<int>(debug_timer->GetElapsedMs());
+      metric_core_cr_actual_timer_interval_ms = actual_time_ms;
+    }
+    metric_core_cr_expected_timer_interval_ms = cr_timer_interval;
+  }, true /* has_debug_timer */);
 
   std::unique_ptr<SystemMonitor> system_monitor(new SystemMonitor(is_system_));
   VERIFY1(SUCCEEDED(system_monitor->Initialize(true)));
