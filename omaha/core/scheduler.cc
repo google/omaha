@@ -17,42 +17,38 @@
 
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
-#include "omaha/base/highres_timer-win32.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/queue_timer.h"
-#include "omaha/common/config_manager.h"
-#include "omaha/core/core.h"
-#include "omaha/core/core_metrics.h"
 
 namespace omaha {
 
-SchedulerItem::SchedulerItem(HANDLE timer_queue,
-                             int start_delay_ms,
-                             int interval_ms,
-                             bool has_debug_timer,
-                             ScheduledWork work_fn)
-    : start_delay_ms(start_delay_ms), interval_ms(interval_ms), work(work_fn) {
+Scheduler::SchedulerItem::SchedulerItem(HANDLE timer_queue,
+                                        int start_delay_ms,
+                                        int interval_ms,
+                                        bool has_debug_timer,
+                                        ScheduledWork work)
+    : start_delay_ms_(start_delay_ms), interval_ms_(interval_ms), work_(work) {
   if (has_debug_timer) {
-    debug_timer.reset(new HighresTimer());
+    debug_timer_.reset(new HighresTimer());
   }
 
   if (timer_queue) {
-    timer.reset(
+    timer_.reset(
         new QueueTimer(timer_queue, &SchedulerItem::TimerCallback, this));
     VERIFY1(SUCCEEDED(
-        ScheduleNext(timer.get(), debug_timer.get(), start_delay_ms)));
+        ScheduleNext(timer_.get(), debug_timer_.get(), start_delay_ms)));
   }
 }
 
-SchedulerItem::~SchedulerItem() {
+Scheduler::SchedulerItem::~SchedulerItem() {
   // QueueTimer dtor may block for pending callbacks
-  timer.reset(nullptr);
+  timer_.reset(nullptr);
+  debug_timer_.reset();
 }
 
 // static
-HRESULT SchedulerItem::ScheduleNext(QueueTimer* timer,
-                                    HighresTimer* debug_timer,
-                                    int start_after_ms) {
+HRESULT Scheduler::SchedulerItem::ScheduleNext(QueueTimer* timer,
+                                               HighresTimer* debug_timer,
+                                               int start_after_ms) {
   if (!timer) {
     return E_FAIL;
   }
@@ -71,7 +67,7 @@ HRESULT SchedulerItem::ScheduleNext(QueueTimer* timer,
 }
 
 // static
-void SchedulerItem::TimerCallback(QueueTimer* timer) {
+void Scheduler::SchedulerItem::TimerCallback(QueueTimer* timer) {
   ASSERT1(timer);
   if (!timer) {
     return;
@@ -81,17 +77,20 @@ void SchedulerItem::TimerCallback(QueueTimer* timer) {
   ASSERT1(item);
 
   if (!item) {
+    CORE_LOG(LE, (L"[Expected timer context to contain SchedulerItem]"));
     return;
   }
 
-  // This may be long running, item may be deleted in the meantime
-  if (item && item->work) {
-    item->work(item->debug_timer.get());
+  // This may be long running, |item| may be deleted in the meantime,
+  // however the dtor should block on deleting the |timer| and allow
+  // pending callbacks to run
+  if (item && item->work_) {
+    item->work_(item->GetDebugTimer());
   }
 
   if (item) {
     const HRESULT hr = SchedulerItem::ScheduleNext(
-        timer, item->debug_timer.get(), item->interval_ms);
+        timer, item->GetDebugTimer(), item->GetIntervalMs());
     if (FAILED(hr)) {
       CORE_LOG(L1, (L"[Scheduling next timer callback failed][0x%08x]", hr));
     }

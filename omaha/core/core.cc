@@ -287,6 +287,7 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   });
 
   if (FAILED(hr)) {
+    OPT_LOG(LW, (L"[Failed to start update worker scheduler][0x%08x]", hr));
     return hr;
   }
 
@@ -301,6 +302,11 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
     }
     metric_core_cr_expected_timer_interval_ms = cr_timer_interval;
   }, true /* has_debug_timer */);
+
+  if (FAILED(hr)) {
+    OPT_LOG(LW, (L"[Failed to start code red scheduler][0x%08x]", hr));
+    return hr;
+  }
 
   std::unique_ptr<SystemMonitor> system_monitor(new SystemMonitor(is_system_));
   VERIFY1(SUCCEEDED(system_monitor->Initialize(true)));
