@@ -61,7 +61,7 @@ class Scheduler {
     ~SchedulerItem();
 
     HighresTimer* GetDebugTimer() {
-      return debug_timer_ ? nullptr : debug_timer_.get();
+      return debug_timer_ ? debug_timer_.get() : nullptr;
     }
 
     int GetIntervalMs() const { return interval_ms_; }
