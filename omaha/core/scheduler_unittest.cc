@@ -22,6 +22,27 @@
 
 namespace omaha {
 
+namespace {
+
+inline void ASSERT_SIGNALLED_BEFORE(HANDLE handle, DWORD timeout_ms) {
+  ASSERT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(handle, timeout_ms));
+}
+
+inline void ASSERT_ALL_SIGNALLED_BEFORE(int count,
+                                        HANDLE* handles,
+                                        DWORD timeout_ms) {
+  // Wait for all handles
+  constexpr bool kWaitAll = true;
+  ASSERT_EQ(WAIT_OBJECT_0,
+            ::WaitForMultipleObjects(count, handles, kWaitAll, timeout_ms));
+}
+
+inline void ASSERT_TIMEOUT_AFTER(HANDLE handle, DWORD timeout_ms) {
+  ASSERT_EQ(WAIT_TIMEOUT, ::WaitForSingleObject(handle, timeout_ms));
+}
+
+}  // namespace
+
 class SchedulerTest : public ::testing::Test {
  protected:
   void SetUp() override {}
@@ -30,27 +51,23 @@ class SchedulerTest : public ::testing::Test {
 
 TEST_F(SchedulerTest, ScheduledTaskReschedules) {
   int call_count = 0;
+  std::vector<HANDLE> event_handles(4);
 
-  {
-    std::vector<HANDLE> event_handles(4);
-    for (auto& handle : event_handles) {
-      handle = ::CreateEvent(NULL, true, false, NULL);
-    }
-
-    Scheduler scheduler;
-    // Increase call count after 200ms and every 300ms afterwards
-    HRESULT hr =
-        scheduler.Start(200, 300, [&call_count, &event_handles](auto*) {
-          if (call_count < 4) {
-            ::SetEvent(event_handles[call_count]);
-          }
-          call_count++;
-        });
-
-    ASSERT_EQ(WAIT_OBJECT_0,
-              ::WaitForMultipleObjects(4, &event_handles[0], true, 1500));
+  for (auto& handle : event_handles) {
+    handle = ::CreateEvent(NULL, true, false, NULL);
   }
-  // One after 200ms, then 2x 1000ms
+
+  Scheduler scheduler;
+  // Increase call count after 200ms and every 300ms afterwards
+  HRESULT hr = scheduler.Start(200, 300, [&call_count, &event_handles](auto*) {
+    if (call_count < 4) {
+      ::SetEvent(event_handles[call_count]);
+    }
+    call_count++;
+  });
+  ASSERT_SUCCEEDED(hr);
+  ASSERT_ALL_SIGNALLED_BEFORE(4, &event_handles[0], 1500);
+  EXPECT_EQ(4, call_count);
 }
 
 TEST_F(SchedulerTest, DeleteWhenCallbackExpires) {
@@ -60,6 +77,7 @@ TEST_F(SchedulerTest, DeleteWhenCallbackExpires) {
     handle = ::CreateEvent(NULL, true, false, NULL);
   }
 
+  // Create the scheduler in a new scope
   {
     Scheduler scheduler;
     // Timer that runs every 250 ms
@@ -68,31 +86,36 @@ TEST_F(SchedulerTest, DeleteWhenCallbackExpires) {
       call_count++;
     });
     // Wait for one callback, then scheduler should go out of scope
-    ASSERT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(callbacks[0], 300));
+    ASSERT_SIGNALLED_BEFORE(callbacks[0], 300);
   }
   // Second callback should never fire
-  ASSERT_EQ(WAIT_TIMEOUT, ::WaitForSingleObject(callbacks[1], 1000));
+  ASSERT_TIMEOUT_AFTER(callbacks[1], 1000);
   EXPECT_EQ(call_count, 1);
 }
 
 TEST_F(SchedulerTest, DeleteSoonBeforeCallbackExpires) {
   int call_count = 0;
+  constexpr int kInterval = 500;
+  constexpr int kTimeout = kInterval - 10;
   HANDLE callback_fired = ::CreateEvent(NULL, true, false, NULL);
   {
     Scheduler scheduler;
     // Task runs every 500ms
-    HRESULT hr = scheduler.Start(500, [&call_count, callback_fired](auto*) {
-      call_count++;
-      ::SetEvent(callback_fired);
-    });
-    ASSERT_EQ(WAIT_TIMEOUT, ::WaitForSingleObject(callback_fired, 490));
+    HRESULT hr =
+        scheduler.Start(kInterval, [&call_count, callback_fired](auto*) {
+          call_count++;
+          ::SetEvent(callback_fired);
+        });
+    ASSERT_SUCCEEDED(hr);
+    ASSERT_TIMEOUT_AFTER(callback_fired, kTimeout);
   }
   EXPECT_EQ(call_count, 0);
 }
 
 TEST_F(SchedulerTest, DoesntUseDebugTimer) {
   int call_count = 0;
-  const int kExpectedIntervalMs = 100;
+  constexpr int kExpectedIntervalMs = 100;
+  constexpr int kTimeout = 500;
   HANDLE callback_fired = ::CreateEvent(NULL, true, false, NULL);
   {
     Scheduler scheduler;
@@ -103,7 +126,8 @@ TEST_F(SchedulerTest, DoesntUseDebugTimer) {
           call_count++;
           ::SetEvent(callback_fired);
         });
-    ASSERT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(callback_fired, 500));
+    ASSERT_SUCCEEDED(hr);
+    ASSERT_SIGNALLED_BEFORE(callback_fired, kTimeout);
   }
   ASSERT_EQ(call_count, 1);
 }
@@ -111,20 +135,21 @@ TEST_F(SchedulerTest, DoesntUseDebugTimer) {
 TEST_F(SchedulerTest, UsesDebugTimer) {
   int call_count = 0;
   constexpr int kExpectedIntervalMs = 500;
-  HANDLE signaled = ::CreateEvent(NULL, true, false, NULL);
+  HANDLE callback_handle = ::CreateEvent(NULL, true, false, NULL);
   {
     Scheduler scheduler;
     // Task runs every 500ms
     HRESULT hr = scheduler.Start(
         kExpectedIntervalMs,
-        [&call_count, kExpectedIntervalMs, signaled](auto* debug_timer) {
+        [&call_count, kExpectedIntervalMs, callback_handle](auto* debug_timer) {
+          ASSERT_TRUE(debug_timer != nullptr);
           EXPECT_GE(debug_timer->GetElapsedMs(), kExpectedIntervalMs);
           call_count++;
-          ::SetEvent(signaled);
+          ::SetEvent(callback_handle);
         },
-        true);
-    ASSERT_EQ(WAIT_OBJECT_0,
-              ::WaitForSingleObject(signaled, kExpectedIntervalMs + 100));
+        true /* has_debug_timer */);
+    ASSERT_SUCCEEDED(hr);
+    ASSERT_SIGNALLED_BEFORE(callback_handle, kExpectedIntervalMs + 100);
   }
   ASSERT_EQ(call_count, 1);
 }
@@ -143,12 +168,12 @@ TEST_F(SchedulerTest, LongCallbackBlocks) {
         Sleep(kCallbackDelay);
         ::SetEvent(callback_end);
       });
-
+  ASSERT_SUCCEEDED(hr);
   // Try deleting, record how much time it takes
-  ASSERT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(callback_start, 100));
+  ASSERT_SIGNALLED_BEFORE(callback_start, 100);
   timer.Start();
   scheduler.reset();
-  ASSERT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(callback_end, 600));
+  ASSERT_SIGNALLED_BEFORE(callback_end, 600);
   EXPECT_GE(timer.GetElapsedMs(), kCallbackDelay);
 }
 
