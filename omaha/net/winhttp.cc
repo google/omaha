@@ -505,11 +505,11 @@ HRESULT WinHttp::CreateUrl(const TCHAR* scheme,
     url_comp.dwExtraInfoLength = static_cast<DWORD>(_tcslen(extra_info));
   }
 
-  DWORD url_length = 0;
+  DWORD url_length = INTERNET_MAX_URL_LENGTH;
   bool res = !!winhttp_.WinHttpCreateUrl(
                             &url_comp,
                             flags,
-                            url->GetBuffer(INTERNET_MAX_URL_LENGTH),
+                            url->GetBuffer(url_length),
                             &url_length);
   if (!res) {
     return HRESULTFromLastError();
