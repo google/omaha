@@ -38,11 +38,11 @@ class Scheduler {
   explicit Scheduler();
   ~Scheduler();
 
-  // Starts the scheduler that executes |work| with regular |interval| (ms)
+  // Starts the scheduler that executes |work| with regular |interval| (ms).
   HRESULT Start(int interval, ScheduledWork work) const;
 
-  // Starts the scheduler that executes |work| with regular |interval| (ms) after
-  // an initial |delay| (ms)
+  // Starts the scheduler that executes |work| with regular |interval| (ms)
+  // after an initial |delay| (ms).
   HRESULT StartWithDelay(int delay, int interval, ScheduledWork work) const;
 
   // Start the scheduler on a regular |interval| (ms). The callback is provided
@@ -92,7 +92,7 @@ class Scheduler {
                   ScheduledWorkWithTimer work,
                   bool has_debug_timer = false) const;
 
-  // Timer queue handle for all QueueTimer objects
+  // Timer queue handle for all QueueTimer objects.
   HANDLE timer_queue_;
 
   mutable std::list<SchedulerItem> timers_;

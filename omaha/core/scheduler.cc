@@ -40,7 +40,7 @@ Scheduler::SchedulerItem::SchedulerItem(HANDLE timer_queue,
 }
 
 Scheduler::SchedulerItem::~SchedulerItem() {
-  // QueueTimer dtor may block for pending callbacks
+  // QueueTimer dtor may block for pending callbacks.
   if (timer_) {
     timer_.reset();
   }
@@ -88,7 +88,7 @@ void Scheduler::SchedulerItem::TimerCallback(QueueTimer* timer) {
 
   // This may be long running, |item| may be deleted in the meantime,
   // however the dtor should block on deleting the |timer| and allow
-  // pending callbacks to run
+  // pending callbacks to run.
   if (item && item->work_) {
     item->work_(item->debug_timer());
   }
@@ -114,7 +114,6 @@ Scheduler::Scheduler() {
 Scheduler::~Scheduler() {
   CORE_LOG(L1, (L"[Scheduler::~Scheduler]"));
 
-  // Reset all the timers
   timers_.clear();
 
   if (timer_queue_) {
