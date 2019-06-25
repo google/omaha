@@ -14,116 +14,144 @@
 // ========================================================================
 
 #include "omaha/core/scheduler.h"
-#include <algorithm>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
-#include "omaha/base/highres_timer-win32.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/queue_timer.h"
-#include "omaha/common/config_manager.h"
-#include "omaha/core/core.h"
-#include "omaha/core/core_metrics.h"
 
 namespace omaha {
 
-Scheduler::Scheduler(const Core& core)
-    : core_(core) {
-  CORE_LOG(L1, (_T("[Scheduler::Scheduler]")));
+Scheduler::SchedulerItem::SchedulerItem(HANDLE timer_queue,
+                                        int start_delay_ms,
+                                        int interval_ms,
+                                        bool has_debug_timer,
+                                        ScheduledWorkWithTimer work)
+    : start_delay_ms_(start_delay_ms), interval_ms_(interval_ms), work_(work) {
+  if (has_debug_timer) {
+    debug_timer_.reset(new HighresTimer());
+  }
+
+  if (timer_queue) {
+    timer_.reset(
+        new QueueTimer(timer_queue, &SchedulerItem::TimerCallback, this));
+    VERIFY1(SUCCEEDED(
+        ScheduleNext(timer_.get(), debug_timer_.get(), start_delay_ms)));
+  }
+}
+
+Scheduler::SchedulerItem::~SchedulerItem() {
+  // QueueTimer dtor may block for pending callbacks.
+  if (timer_) {
+    timer_.reset();
+  }
+
+  if (debug_timer_) {
+    debug_timer_.reset();
+  }
+}
+
+// static
+HRESULT Scheduler::SchedulerItem::ScheduleNext(QueueTimer* timer,
+                                               HighresTimer* debug_timer,
+                                               int start_after_ms) {
+  if (!timer) {
+    return E_FAIL;
+  }
+
+  if (debug_timer) {
+    debug_timer->Start();
+  }
+
+  const HRESULT hr = timer->Start(start_after_ms, 0, WT_EXECUTEONLYONCE);
+
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (L"[can't start queue timer][0x%08x]", hr));
+  }
+
+  return hr;
+}
+
+// static
+void Scheduler::SchedulerItem::TimerCallback(QueueTimer* timer) {
+  ASSERT1(timer);
+  if (!timer) {
+    return;
+  }
+
+  SchedulerItem* item = reinterpret_cast<SchedulerItem*>(timer->ctx());
+  ASSERT1(item);
+
+  if (!item) {
+    CORE_LOG(LE, (L"[Expected timer context to contain SchedulerItem]"));
+    return;
+  }
+
+  // This may be long running, |item| may be deleted in the meantime,
+  // however the dtor should block on deleting the |timer| and allow
+  // pending callbacks to run.
+  if (item && item->work_) {
+    item->work_(item->debug_timer());
+  }
+
+  if (item) {
+    const HRESULT hr = SchedulerItem::ScheduleNext(timer,
+                                                   item->debug_timer(),
+                                                   item->interval_ms());
+    if (FAILED(hr)) {
+      CORE_LOG(L1, (L"[Scheduling next timer callback failed][0x%08x]", hr));
+    }
+  }
+}
+
+Scheduler::Scheduler() {
+  CORE_LOG(L1, (L"[Scheduler::Scheduler]"));
+  timer_queue_ = ::CreateTimerQueue();
+  if (!timer_queue_) {
+    CORE_LOG(LE, (L"[Failed to create Timer Queue][%d]", ::GetLastError()));
+  }
 }
 
 Scheduler::~Scheduler() {
-  CORE_LOG(L1, (_T("[Scheduler::~Scheduler]")));
+  CORE_LOG(L1, (L"[Scheduler::~Scheduler]"));
 
-  if (update_timer_.get()) {
-    update_timer_.reset(NULL);
-  }
-
-  if (code_red_timer_.get()) {
-    code_red_timer_.reset(NULL);
-  }
+  timers_.clear();
 
   if (timer_queue_) {
     // The destructor blocks on deleting the timer queue and it waits for
     // all timer callbacks to complete.
     ::DeleteTimerQueueEx(timer_queue_, INVALID_HANDLE_VALUE);
+    timer_queue_ = NULL;
   }
 }
 
-HRESULT Scheduler::Initialize() {
-  CORE_LOG(L1, (_T("[Scheduler::Initialize]")));
+HRESULT Scheduler::StartWithDebugTimer(int interval,
+                                       ScheduledWorkWithTimer work) const {
+  return DoStart(interval, interval, work, true /*has_debug_timer*/);
+}
 
-  timer_queue_ = ::CreateTimerQueue();
+HRESULT Scheduler::StartWithDelay(int delay,
+                                  int interval,
+                                  ScheduledWork work) const {
+  return DoStart(delay, interval, std::bind(work));
+}
+
+HRESULT Scheduler::Start(int interval, ScheduledWork work) const {
+  return DoStart(interval, interval, std::bind(work));
+}
+
+HRESULT Scheduler::DoStart(int start_delay,
+                           int interval,
+                           ScheduledWorkWithTimer work_fn,
+                           bool has_debug_timer) const {
+  CORE_LOG(L1, (L"[Scheduler::Start]"));
+
   if (!timer_queue_) {
     return HRESULTFromLastError();
   }
 
-  cr_debug_timer_.reset(new HighresTimer);
-
-  update_timer_.reset(new QueueTimer(timer_queue_,
-                                     &Scheduler::TimerCallback,
-                                     this));
-  code_red_timer_.reset(new QueueTimer(timer_queue_,
-                                       &Scheduler::TimerCallback,
-                                       this));
-
-  ConfigManager* config_manager = ConfigManager::Instance();
-  int cr_timer_interval_ms = config_manager->GetCodeRedTimerIntervalMs();
-  VERIFY1(SUCCEEDED(ScheduleCodeRedTimer(cr_timer_interval_ms)));
-
-  int au_timer_interval_ms = config_manager->GetUpdateWorkerStartUpDelayMs();
-  VERIFY1(SUCCEEDED(ScheduleUpdateTimer(au_timer_interval_ms)));
-
+  timers_.emplace_back(timer_queue_, start_delay, interval, has_debug_timer,
+                       work_fn);
   return S_OK;
 }
 
-void Scheduler::TimerCallback(QueueTimer* timer) {
-  ASSERT1(timer);
-  Scheduler* scheduler = static_cast<Scheduler*>(timer->ctx());
-  ASSERT1(scheduler);
-  scheduler->HandleCallback(timer);
-}
-
-// First, do the useful work and then reschedule the timer. Otherwise, it is
-// possible that timer notifications overlap, and the timer can't be further
-// rescheduled: http://b/1228095
-void Scheduler::HandleCallback(QueueTimer* timer) {
-  ConfigManager* config_manager = ConfigManager::Instance();
-  if (update_timer_.get() == timer) {
-    core_.StartUpdateWorker();
-    int au_timer_interval_ms = config_manager->GetAutoUpdateTimerIntervalMs();
-    VERIFY1(SUCCEEDED(ScheduleUpdateTimer(au_timer_interval_ms)));
-  } else if (code_red_timer_.get() == timer) {
-    core_.StartCodeRed();
-    int actual_time_ms = static_cast<int>(cr_debug_timer_->GetElapsedMs());
-    metric_core_cr_actual_timer_interval_ms = actual_time_ms;
-    CORE_LOG(L3, (_T("[code red actual period][%d ms]"), actual_time_ms));
-    int cr_timer_interval_ms = config_manager->GetCodeRedTimerIntervalMs();
-    VERIFY1(SUCCEEDED(ScheduleCodeRedTimer(cr_timer_interval_ms)));
-  } else {
-    ASSERT1(false);
-  }
-
-  // Since core is a long lived process, aggregate its metrics once in a while.
-  core_.AggregateMetrics();
-}
-
-HRESULT Scheduler::ScheduleUpdateTimer(int interval_ms) {
-  HRESULT hr = update_timer_->Start(interval_ms, 0, WT_EXECUTEONLYONCE);
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[can't start update queue timer][0x%08x]"), hr));
-  }
-  return hr;
-}
-
-HRESULT Scheduler::ScheduleCodeRedTimer(int interval_ms) {
-  metric_core_cr_expected_timer_interval_ms = interval_ms;
-  cr_debug_timer_->Start();
-  HRESULT hr = code_red_timer_->Start(interval_ms, 0, WT_EXECUTEONLYONCE);
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[can't start Code Red queue timer][0x%08x]"), hr));
-  }
-  return hr;
-}
-
 }  // namespace omaha
-

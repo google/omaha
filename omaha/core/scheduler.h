@@ -20,40 +20,82 @@
 #define OMAHA_CORE_SCHEDULER_H__
 
 #include <windows.h>
-#include <atlstr.h>
+#include <functional>
+#include <list>
 #include <memory>
 
 #include "base/basictypes.h"
+#include "omaha/base/highres_timer-win32.h"
+#include "omaha/base/queue_timer.h"
 
 namespace omaha {
 
-class Core;
-class HighresTimer;
-class QueueTimer;
+using ScheduledWork = std::function<void()>;
+using ScheduledWorkWithTimer = std::function<void(HighresTimer*)>;
 
 class Scheduler {
  public:
-  explicit Scheduler(const Core& core);
+  explicit Scheduler();
   ~Scheduler();
 
-  // Starts the scheduler.
-  HRESULT Initialize();
+  // Starts the scheduler that executes |work| with regular |interval| (ms).
+  HRESULT Start(int interval, ScheduledWork work) const;
+
+  // Starts the scheduler that executes |work| with regular |interval| (ms)
+  // after an initial |delay| (ms).
+  HRESULT StartWithDelay(int delay, int interval, ScheduledWork work) const;
+
+  // Start the scheduler on a regular |interval| (ms). The callback is provided
+  // a timer which starts after the previous item finishes execution.
+  HRESULT StartWithDebugTimer(int interval, ScheduledWorkWithTimer work) const;
 
  private:
-  static void TimerCallback(QueueTimer* timer);
-  void HandleCallback(QueueTimer* timer);
-  HRESULT ScheduleUpdateTimer(int interval_ms);
-  HRESULT ScheduleCodeRedTimer(int interval_ms);
+  class SchedulerItem {
+   public:
+    SchedulerItem(HANDLE timer_queue,
+                  int start_delay,
+                  int interval,
+                  bool has_debug_timer,
+                  ScheduledWorkWithTimer work_fn);
 
-  const Core& core_;
+    ~SchedulerItem();
+
+    HighresTimer* debug_timer() const {
+      return debug_timer_ ? debug_timer_.get() : nullptr;
+    }
+
+    int interval_ms() const { return interval_ms_; }
+
+   private:
+    int start_delay_ms_;
+    int interval_ms_;
+
+    std::unique_ptr<QueueTimer> timer_;
+
+    // Measures the actual time interval between events for debugging
+    // purposes. The timer is started when an alarm is set and then,
+    // the value of the timer is read when the alarm goes off.
+    std::unique_ptr<HighresTimer> debug_timer_;
+
+    ScheduledWorkWithTimer work_;
+
+    static HRESULT ScheduleNext(QueueTimer* timer,
+                                HighresTimer* debug_timer,
+                                int interval_ms);
+    static void TimerCallback(QueueTimer* timer);
+
+    DISALLOW_COPY_AND_ASSIGN(SchedulerItem);
+  };
+
+  HRESULT DoStart(int start_delay,
+                  int interval,
+                  ScheduledWorkWithTimer work,
+                  bool has_debug_timer = false) const;
+
+  // Timer queue handle for all QueueTimer objects.
   HANDLE timer_queue_;
-  std::unique_ptr<QueueTimer> update_timer_;
-  std::unique_ptr<QueueTimer> code_red_timer_;
 
-  // Measures the actual time interval between code red events for debugging
-  // purposes. The timer is started when a code red alarm is set and then,
-  // the value of the timer is read when the alarm goes off.
-  std::unique_ptr<HighresTimer> cr_debug_timer_;
+  mutable std::list<SchedulerItem> timers_;
 
   DISALLOW_COPY_AND_ASSIGN(Scheduler);
 };
@@ -61,4 +103,3 @@ class Scheduler {
 }  // namespace omaha
 
 #endif  // OMAHA_CORE_SCHEDULER_H__
-

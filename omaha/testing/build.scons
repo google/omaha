@@ -457,6 +457,7 @@ omaha_unittest_inputs = [
 
     # Core unit tests
     '../core/core_unittest.cc',
+    '../core/scheduler_unittest.cc',
     '../core/system_monitor_unittest.cc',
     '../core/google_update_core_unittest.cc',
 
