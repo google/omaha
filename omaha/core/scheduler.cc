@@ -94,8 +94,9 @@ void Scheduler::SchedulerItem::TimerCallback(QueueTimer* timer) {
   }
 
   if (item) {
-    const HRESULT hr = SchedulerItem::ScheduleNext(
-        timer, item->debug_timer(), item->interval_ms());
+    const HRESULT hr = SchedulerItem::ScheduleNext(timer,
+                                                   item->debug_timer(),
+                                                   item->interval_ms());
     if (FAILED(hr)) {
       CORE_LOG(L1, (L"[Scheduling next timer callback failed][0x%08x]", hr));
     }
@@ -125,24 +126,24 @@ Scheduler::~Scheduler() {
 }
 
 HRESULT Scheduler::StartWithDebugTimer(int interval,
-                         ScheduledWorkWithTimer work) const {
+                                       ScheduledWorkWithTimer work) const {
   return DoStart(interval, interval, work, true /*has_debug_timer*/);
 }
 
-HRESULT Scheduler::StartWithDelay(int delay, int interval,
-                         ScheduledWork work) const {
-
-  return DoStart(delay, interval, std::bind(work), false /* has_debug_timer */);
+HRESULT Scheduler::StartWithDelay(int delay,
+                                  int interval,
+                                  ScheduledWork work) const {
+  return DoStart(delay, interval, std::bind(work));
 }
 
 HRESULT Scheduler::Start(int interval, ScheduledWork work) const {
-  return DoStart(interval, interval, std::bind(work), false /*has_debug_timer*/);
+  return DoStart(interval, interval, std::bind(work));
 }
 
 HRESULT Scheduler::DoStart(int start_delay,
-                         int interval,
-                         ScheduledWorkWithTimer work_fn,
-                         bool has_debug_timer) const {
+                           int interval,
+                           ScheduledWorkWithTimer work_fn,
+                           bool has_debug_timer) const {
   CORE_LOG(L1, (L"[Scheduler::Start]"));
 
   if (!timer_queue_) {

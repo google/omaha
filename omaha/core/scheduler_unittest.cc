@@ -1,4 +1,4 @@
-// Copyright 2007-2019 Google Inc.
+// Copyright 2019 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,13 +26,12 @@ namespace omaha {
 
 namespace {
 
-inline void ASSERT_SIGNALLED_BEFORE(HANDLE handle, DWORD timeout_ms) {
+inline void AssertSignalledBefore(HANDLE handle, DWORD timeout_ms) {
   ASSERT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(handle, timeout_ms));
 }
 
-inline void ASSERT_ALL_SIGNALLED_BEFORE(std::vector<scoped_handle>& handles,
-                                        DWORD timeout_ms) {
-  // Wait for all handles
+inline void AssertAllSignalledBefore(std::vector<scoped_handle>& handles,
+                                     DWORD timeout_ms) {
   constexpr bool kWaitAll = true;
   std::vector<HANDLE> raw_handles;
   for (auto& handle : handles) {
@@ -43,7 +42,7 @@ inline void ASSERT_ALL_SIGNALLED_BEFORE(std::vector<scoped_handle>& handles,
   ASSERT_EQ(WAIT_OBJECT_0, res);
 }
 
-inline void ASSERT_TIMEOUT_AFTER(HANDLE handle, DWORD timeout_ms) {
+inline void AssertTimeoutAfter(HANDLE handle, DWORD timeout_ms) {
   ASSERT_EQ(WAIT_TIMEOUT, ::WaitForSingleObject(handle, timeout_ms));
 }
 
@@ -73,7 +72,7 @@ TEST_F(SchedulerTest, ScheduledTaskReschedules) {
         call_count++;
       });
   ASSERT_SUCCEEDED(hr);
-  ASSERT_ALL_SIGNALLED_BEFORE(event_handles, 1500);
+  AssertAllSignalledBefore(event_handles, 1500);
   EXPECT_GE(4, call_count);
 }
 
@@ -93,10 +92,10 @@ TEST_F(SchedulerTest, DeleteWhenCallbackExpires) {
       call_count++;
     });
     // Wait for one callback, then scheduler should go out of scope
-    ASSERT_SIGNALLED_BEFORE(get(callbacks[0]), 300);
+    AssertSignalledBefore(get(callbacks[0]), 300);
   }
   // Second callback should never fire
-  ASSERT_TIMEOUT_AFTER(get(callbacks[1]), 1000);
+  AssertTimeoutAfter(get(callbacks[1]), 1000);
   EXPECT_EQ(call_count, 1);
 }
 
@@ -107,13 +106,12 @@ TEST_F(SchedulerTest, DeleteSoonBeforeCallbackExpires) {
   scoped_handle callback_fired(::CreateEvent(NULL, true, false, NULL));
   {
     Scheduler scheduler;
-    // Task runs every 500ms
     HRESULT hr = scheduler.Start(kInterval, [&call_count, &callback_fired]() {
       call_count++;
       ::SetEvent(get(callback_fired));
     });
     ASSERT_SUCCEEDED(hr);
-    ASSERT_TIMEOUT_AFTER(get(callback_fired), kTimeout);
+    AssertTimeoutAfter(get(callback_fired), kTimeout);
   }
   EXPECT_EQ(call_count, 0);
 }
@@ -125,14 +123,13 @@ TEST_F(SchedulerTest, DoesntUseDebugTimer) {
   scoped_handle callback_fired(::CreateEvent(NULL, true, false, NULL));
   {
     Scheduler scheduler;
-    // Task runs every 100ms
     HRESULT hr =
         scheduler.Start(kExpectedIntervalMs, [&call_count, &callback_fired]() {
           call_count++;
           ::SetEvent(get(callback_fired));
         });
     ASSERT_SUCCEEDED(hr);
-    ASSERT_SIGNALLED_BEFORE(get(callback_fired), kTimeout);
+    AssertSignalledBefore(get(callback_fired), kTimeout);
   }
   ASSERT_EQ(call_count, 1);
 }
@@ -143,17 +140,16 @@ TEST_F(SchedulerTest, UsesDebugTimer) {
   scoped_handle callback_handle(::CreateEvent(NULL, true, false, NULL));
   {
     Scheduler scheduler;
-    // Task runs every 500ms
     HRESULT hr = scheduler.StartWithDebugTimer(
         kExpectedIntervalMs, [&call_count, kExpectedIntervalMs,
-                              &callback_handle](auto* debug_timer) {
+                              &callback_handle](HighresTimer* debug_timer) {
           ASSERT_TRUE(debug_timer != nullptr);
           EXPECT_GE(debug_timer->GetElapsedMs(), kExpectedIntervalMs);
           call_count++;
           ::SetEvent(get(callback_handle));
         });
     ASSERT_SUCCEEDED(hr);
-    ASSERT_SIGNALLED_BEFORE(get(callback_handle), kExpectedIntervalMs + 100);
+    AssertSignalledBefore(get(callback_handle), kExpectedIntervalMs + 100);
   }
   ASSERT_EQ(call_count, 1);
 }
@@ -162,11 +158,10 @@ TEST_F(SchedulerTest, LongCallbackBlocks) {
   auto scheduler = std::make_unique<Scheduler>();
   constexpr int kInterval = 50;
   constexpr int kCallbackDelay = 500;
-  HighresTimer timer;
+
   scoped_handle callback_start(::CreateEvent(NULL, true, false, NULL));
   scoped_handle callback_end(::CreateEvent(NULL, true, false, NULL));
 
-  // Run after 50ms, callback will take 500ms to execute
   HRESULT hr = scheduler->Start(
       kInterval, [kCallbackDelay, &callback_start, &callback_end]() {
         ::SetEvent(get(callback_start));
@@ -175,10 +170,14 @@ TEST_F(SchedulerTest, LongCallbackBlocks) {
       });
   ASSERT_SUCCEEDED(hr);
   // Try deleting, record how much time it takes
-  ASSERT_SIGNALLED_BEFORE(get(callback_start), 100);
+  AssertSignalledBefore(get(callback_start), 100);
+  HighresTimer timer;
   timer.Start();
+
+  // Delete the scheduler, this should block until the long callback finishes
   scheduler.reset();
-  ASSERT_SIGNALLED_BEFORE(get(callback_end), 600);
+
+  AssertSignalledBefore(get(callback_end), 600);
   EXPECT_GE(timer.GetElapsedMs(), kCallbackDelay);
 }
 

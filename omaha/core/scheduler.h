@@ -50,7 +50,6 @@ class Scheduler {
   HRESULT StartWithDebugTimer(int interval, ScheduledWorkWithTimer work) const;
 
  private:
-  // Represents a unit of work that scheduler executes.
   class SchedulerItem {
    public:
     SchedulerItem(HANDLE timer_queue,
@@ -68,21 +67,16 @@ class Scheduler {
     int interval_ms() const { return interval_ms_; }
 
    private:
-    // Initial delay for the |timer_|
     int start_delay_ms_;
-
-    // Interval in milliseconds after which |timer_| callback should be called
     int interval_ms_;
 
-    // Timer used for scheduling
     std::unique_ptr<QueueTimer> timer_;
 
     // Measures the actual time interval between events for debugging
-    // purposes. The timer is started when a red alarm is set and then,
+    // purposes. The timer is started when an alarm is set and then,
     // the value of the timer is read when the alarm goes off.
     std::unique_ptr<HighresTimer> debug_timer_;
 
-    // Work function to be run on the timer
     ScheduledWorkWithTimer work_;
 
     static HRESULT ScheduleNext(QueueTimer* timer,
@@ -93,15 +87,12 @@ class Scheduler {
     DISALLOW_COPY_AND_ASSIGN(SchedulerItem);
   };
 
-  // Starts the scheduler that executes |work| when |interval| (ms) elapses,
-  // after an initial delay of |start_delay| (ms).
-  // Default debug timer to false.
   HRESULT DoStart(int start_delay,
                   int interval,
                   ScheduledWorkWithTimer work,
                   bool has_debug_timer = false) const;
 
-  // Timer queue handle for all timers
+  // Timer queue handle for all QueueTimer objects
   HANDLE timer_queue_;
 
   mutable std::list<SchedulerItem> timers_;
