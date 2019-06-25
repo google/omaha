@@ -55,7 +55,6 @@
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/common/stats_uploader.h"
 #include "omaha/core/core_metrics.h"
-#include "omaha/core/scheduler.h"
 #include "omaha/core/system_monitor.h"
 #include "omaha/goopdate/app_command.h"
 #include "omaha/goopdate/app_command_configuration.h"
@@ -278,33 +277,8 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   }
 
   auto scheduler = std::make_unique<Scheduler>();
-
-  // Start update worker
-  hr = scheduler->Start(cm.GetUpdateWorkerStartUpDelayMs(),
-                        cm.GetAutoUpdateTimerIntervalMs(),
-                        [this](auto*) {
-    StartUpdateWorker();
-  });
-
+  hr = InitializeScheduler(scheduler.get());
   if (FAILED(hr)) {
-    OPT_LOG(LW, (L"[Failed to start update worker scheduler][0x%08x]", hr));
-    return hr;
-  }
-
-  // Start Code Red worker
-  const int cr_timer_interval = cm.GetCodeRedTimerIntervalMs();
-  hr = scheduler->Start(cr_timer_interval,
-                        [this, cr_timer_interval](HighresTimer* debug_timer) {
-    StartCodeRed();
-    if (debug_timer) {
-      int actual_time_ms = static_cast<int>(debug_timer->GetElapsedMs());
-      metric_core_cr_actual_timer_interval_ms = actual_time_ms;
-    }
-    metric_core_cr_expected_timer_interval_ms = cr_timer_interval;
-  }, true /* has_debug_timer */);
-
-  if (FAILED(hr)) {
-    OPT_LOG(LW, (L"[Failed to start code red scheduler][0x%08x]", hr));
     return hr;
   }
 
@@ -624,6 +598,41 @@ void Core::CollectMetrics() const {
                                               &total_bytes_current_user,
                                               &free_bytes_all_users)));
   metric_core_disk_space_available = free_bytes_current_user;
+}
+
+HRESULT Core::InitializeScheduler(const Scheduler* scheduler) {
+  ASSERT1(scheduler);
+
+  const ConfigManager* cm = ConfigManager::Instance();
+  // Start update worker
+  HRESULT hr = scheduler->Start(cm->GetUpdateWorkerStartUpDelayMs(),
+                                cm->GetAutoUpdateTimerIntervalMs(),
+                                [this](auto*) { StartUpdateWorker(); });
+
+  if (FAILED(hr)) {
+    OPT_LOG(LW, (L"[Failed to start update worker scheduler][0x%08x]", hr));
+    return hr;
+  }
+
+  // Start Code Red worker
+  const int cr_timer_interval = cm->GetCodeRedTimerIntervalMs();
+  hr = scheduler->Start(
+      cr_timer_interval,
+      [this, cr_timer_interval](HighresTimer* debug_timer) {
+        StartCodeRed();
+        if (debug_timer) {
+          int actual_time_ms = static_cast<int>(debug_timer->GetElapsedMs());
+          metric_core_cr_actual_timer_interval_ms = actual_time_ms;
+        }
+        metric_core_cr_expected_timer_interval_ms = cr_timer_interval;
+      },
+      true /* has_debug_timer */);
+
+  if (FAILED(hr)) {
+    OPT_LOG(LW, (L"[Failed to start code red scheduler][0x%08x]", hr));
+    return hr;
+  }
+  return S_OK;
 }
 
 }  // namespace omaha

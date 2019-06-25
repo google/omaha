@@ -30,6 +30,7 @@
 #include "base/basictypes.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/core/google_update_core.h"
+#include "omaha/core/scheduler.h"
 #include "omaha/core/system_monitor.h"
 #include "omaha/goopdate/google_update3.h"
 #include "omaha/third_party/smartany/scoped_any.h"
@@ -114,6 +115,8 @@ class Core
 
   static bool ShouldRunCore(bool is_system);
   static HRESULT UpdateLastCoreRunTime(bool is_system);
+
+  HRESULT InitializeScheduler(const Scheduler* scheduler);
 
   bool is_system_;
 

@@ -43,10 +43,11 @@ class Scheduler {
   HRESULT Start(int start_delay,
                 int interval,
                 ScheduledWork work,
-                bool has_debug_timer = false);
+                bool has_debug_timer = false) const;
 
   // Starts the scheduler that executes |work| with regular |interval| (ms)
-  HRESULT Start(int interval, ScheduledWork work, bool has_debug_timer = false);
+  HRESULT Start(int interval, ScheduledWork work,
+                bool has_debug_timer = false) const;
 
  private:
   // Represents a unit of work that scheduler executes.
@@ -60,11 +61,11 @@ class Scheduler {
 
     ~SchedulerItem();
 
-    HighresTimer* GetDebugTimer() {
+    HighresTimer* debug_timer() const {
       return debug_timer_ ? debug_timer_.get() : nullptr;
     }
 
-    int GetIntervalMs() const { return interval_ms_; }
+    int interval_ms() const { return interval_ms_; }
   private:
 
     // Initial delay for the |timer_|
@@ -95,8 +96,7 @@ class Scheduler {
   // Timer queue handle for all timers
   HANDLE timer_queue_;
 
-  // Use list to avoid copying SchedulerItems
-  std::list<SchedulerItem> timers_;
+  mutable std::list<SchedulerItem> timers_;
 
   DISALLOW_COPY_AND_ASSIGN(Scheduler);
 };

@@ -41,8 +41,13 @@ Scheduler::SchedulerItem::SchedulerItem(HANDLE timer_queue,
 
 Scheduler::SchedulerItem::~SchedulerItem() {
   // QueueTimer dtor may block for pending callbacks
-  timer_.reset(nullptr);
-  debug_timer_.reset();
+  if (timer_) {
+    timer_.reset();
+  }
+
+  if (debug_timer_) {
+    debug_timer_.reset();
+  }
 }
 
 // static
@@ -85,12 +90,12 @@ void Scheduler::SchedulerItem::TimerCallback(QueueTimer* timer) {
   // however the dtor should block on deleting the |timer| and allow
   // pending callbacks to run
   if (item && item->work_) {
-    item->work_(item->GetDebugTimer());
+    item->work_(item->debug_timer());
   }
 
   if (item) {
     const HRESULT hr = SchedulerItem::ScheduleNext(
-        timer, item->GetDebugTimer(), item->GetIntervalMs());
+        timer, item->debug_timer(), item->interval_ms());
     if (FAILED(hr)) {
       CORE_LOG(L1, (L"[Scheduling next timer callback failed][0x%08x]", hr));
     }
@@ -115,20 +120,20 @@ Scheduler::~Scheduler() {
     // The destructor blocks on deleting the timer queue and it waits for
     // all timer callbacks to complete.
     ::DeleteTimerQueueEx(timer_queue_, INVALID_HANDLE_VALUE);
-    timer_queue_ = nullptr;
+    timer_queue_ = NULL;
   }
 }
 
 HRESULT Scheduler::Start(int interval,
                          ScheduledWork work,
-                         bool has_debug_timer) {
+                         bool has_debug_timer) const {
   return Start(interval, interval, work, has_debug_timer);
 }
 
 HRESULT Scheduler::Start(int start_delay,
                          int interval,
                          ScheduledWork work_fn,
-                         bool has_debug_timer) {
+                         bool has_debug_timer) const {
   CORE_LOG(L1, (L"[Scheduler::Start]"));
 
   if (!timer_queue_) {
