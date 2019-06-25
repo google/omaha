@@ -605,9 +605,9 @@ HRESULT Core::InitializeScheduler(const Scheduler* scheduler) {
 
   const ConfigManager* cm = ConfigManager::Instance();
   // Start update worker
-  HRESULT hr = scheduler->Start(cm->GetUpdateWorkerStartUpDelayMs(),
-                                cm->GetAutoUpdateTimerIntervalMs(),
-                                [this](auto*) { StartUpdateWorker(); });
+  HRESULT hr = scheduler->StartWithDelay(cm->GetUpdateWorkerStartUpDelayMs(),
+                                         cm->GetAutoUpdateTimerIntervalMs(),
+                                         [this]() { StartUpdateWorker(); });
 
   if (FAILED(hr)) {
     OPT_LOG(LW, (L"[Failed to start update worker scheduler][0x%08x]", hr));
@@ -616,17 +616,15 @@ HRESULT Core::InitializeScheduler(const Scheduler* scheduler) {
 
   // Start Code Red worker
   const int cr_timer_interval = cm->GetCodeRedTimerIntervalMs();
-  hr = scheduler->Start(
-      cr_timer_interval,
-      [this, cr_timer_interval](HighresTimer* debug_timer) {
+  hr = scheduler->StartWithDebugTimer(
+      cr_timer_interval, [this, cr_timer_interval](HighresTimer* debug_timer) {
         StartCodeRed();
         if (debug_timer) {
           int actual_time_ms = static_cast<int>(debug_timer->GetElapsedMs());
           metric_core_cr_actual_timer_interval_ms = actual_time_ms;
         }
         metric_core_cr_expected_timer_interval_ms = cr_timer_interval;
-      },
-      true /* has_debug_timer */);
+      });
 
   if (FAILED(hr)) {
     OPT_LOG(LW, (L"[Failed to start code red scheduler][0x%08x]", hr));

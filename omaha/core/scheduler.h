@@ -30,34 +30,34 @@
 
 namespace omaha {
 
-using ScheduledWork = std::function<void(HighresTimer*)>;
+using ScheduledWork = std::function<void()>;
+using ScheduledWorkWithTimer = std::function<void(HighresTimer*)>;
 
 class Scheduler {
  public:
   explicit Scheduler();
   ~Scheduler();
 
-  // Starts the scheduler that executes |work| when |interval| (ms) elapses,
-  // after an initial delay of |start_delay| (ms).
-  // Default debug timer to false.
-  HRESULT Start(int start_delay,
-                int interval,
-                ScheduledWork work,
-                bool has_debug_timer = false) const;
-
   // Starts the scheduler that executes |work| with regular |interval| (ms)
-  HRESULT Start(int interval, ScheduledWork work,
-                bool has_debug_timer = false) const;
+  HRESULT Start(int interval, ScheduledWork work) const;
+
+  // Starts the scheduler that executes |work| with regular |interval| (ms) after
+  // an initial |delay| (ms)
+  HRESULT StartWithDelay(int delay, int interval, ScheduledWork work) const;
+
+  // Start the scheduler on a regular |interval| (ms). The callback is provided
+  // a timer which starts after the previous item finishes execution.
+  HRESULT StartWithDebugTimer(int interval, ScheduledWorkWithTimer work) const;
 
  private:
   // Represents a unit of work that scheduler executes.
   class SchedulerItem {
-  public:
+   public:
     SchedulerItem(HANDLE timer_queue,
                   int start_delay,
                   int interval,
                   bool has_debug_timer,
-                  ScheduledWork work_fn);
+                  ScheduledWorkWithTimer work_fn);
 
     ~SchedulerItem();
 
@@ -66,8 +66,8 @@ class Scheduler {
     }
 
     int interval_ms() const { return interval_ms_; }
-  private:
 
+   private:
     // Initial delay for the |timer_|
     int start_delay_ms_;
 
@@ -83,7 +83,7 @@ class Scheduler {
     std::unique_ptr<HighresTimer> debug_timer_;
 
     // Work function to be run on the timer
-    ScheduledWork work_;
+    ScheduledWorkWithTimer work_;
 
     static HRESULT ScheduleNext(QueueTimer* timer,
                                 HighresTimer* debug_timer,
@@ -92,6 +92,14 @@ class Scheduler {
 
     DISALLOW_COPY_AND_ASSIGN(SchedulerItem);
   };
+
+  // Starts the scheduler that executes |work| when |interval| (ms) elapses,
+  // after an initial delay of |start_delay| (ms).
+  // Default debug timer to false.
+  HRESULT DoStart(int start_delay,
+                  int interval,
+                  ScheduledWorkWithTimer work,
+                  bool has_debug_timer = false) const;
 
   // Timer queue handle for all timers
   HANDLE timer_queue_;

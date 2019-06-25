@@ -65,15 +65,16 @@ TEST_F(SchedulerTest, ScheduledTaskReschedules) {
 
   Scheduler scheduler;
   // Increase call count after 200ms and every 300ms afterwards
-  HRESULT hr = scheduler.Start(200, 300, [&call_count, &event_handles](auto*) {
-    if (call_count < 4) {
-      ::SetEvent(get(event_handles[call_count]));
-    }
-    call_count++;
-  });
+  HRESULT hr =
+      scheduler.StartWithDelay(200, 300, [&call_count, &event_handles]() {
+        if (call_count < 4) {
+          ::SetEvent(get(event_handles[call_count]));
+        }
+        call_count++;
+      });
   ASSERT_SUCCEEDED(hr);
   ASSERT_ALL_SIGNALLED_BEFORE(event_handles, 1500);
-  EXPECT_EQ(4, call_count);
+  EXPECT_GE(4, call_count);
 }
 
 TEST_F(SchedulerTest, DeleteWhenCallbackExpires) {
@@ -87,7 +88,7 @@ TEST_F(SchedulerTest, DeleteWhenCallbackExpires) {
   {
     Scheduler scheduler;
     // Timer that runs every 250 ms
-    HRESULT hr = scheduler.Start(250, [&call_count, &callbacks](auto*) {
+    HRESULT hr = scheduler.Start(250, [&call_count, &callbacks]() {
       ::SetEvent(get(callbacks[call_count]));
       call_count++;
     });
@@ -107,11 +108,10 @@ TEST_F(SchedulerTest, DeleteSoonBeforeCallbackExpires) {
   {
     Scheduler scheduler;
     // Task runs every 500ms
-    HRESULT hr =
-        scheduler.Start(kInterval, [&call_count, &callback_fired](auto*) {
-          call_count++;
-          ::SetEvent(get(callback_fired));
-        });
+    HRESULT hr = scheduler.Start(kInterval, [&call_count, &callback_fired]() {
+      call_count++;
+      ::SetEvent(get(callback_fired));
+    });
     ASSERT_SUCCEEDED(hr);
     ASSERT_TIMEOUT_AFTER(get(callback_fired), kTimeout);
   }
@@ -126,9 +126,8 @@ TEST_F(SchedulerTest, DoesntUseDebugTimer) {
   {
     Scheduler scheduler;
     // Task runs every 100ms
-    HRESULT hr = scheduler.Start(
-        kExpectedIntervalMs, [&call_count, &callback_fired](auto* debug_timer) {
-          ASSERT_EQ(nullptr, debug_timer);
+    HRESULT hr =
+        scheduler.Start(kExpectedIntervalMs, [&call_count, &callback_fired]() {
           call_count++;
           ::SetEvent(get(callback_fired));
         });
@@ -145,15 +144,14 @@ TEST_F(SchedulerTest, UsesDebugTimer) {
   {
     Scheduler scheduler;
     // Task runs every 500ms
-    HRESULT hr = scheduler.Start(
-        kExpectedIntervalMs,
-        [&call_count, kExpectedIntervalMs, &callback_handle](auto* debug_timer) {
+    HRESULT hr = scheduler.StartWithDebugTimer(
+        kExpectedIntervalMs, [&call_count, kExpectedIntervalMs,
+                              &callback_handle](auto* debug_timer) {
           ASSERT_TRUE(debug_timer != nullptr);
           EXPECT_GE(debug_timer->GetElapsedMs(), kExpectedIntervalMs);
           call_count++;
           ::SetEvent(get(callback_handle));
-        },
-        true /* has_debug_timer */);
+        });
     ASSERT_SUCCEEDED(hr);
     ASSERT_SIGNALLED_BEFORE(get(callback_handle), kExpectedIntervalMs + 100);
   }
@@ -170,7 +168,7 @@ TEST_F(SchedulerTest, LongCallbackBlocks) {
 
   // Run after 50ms, callback will take 500ms to execute
   HRESULT hr = scheduler->Start(
-      kInterval, [kCallbackDelay, &callback_start, &callback_end](auto*) {
+      kInterval, [kCallbackDelay, &callback_start, &callback_end]() {
         ::SetEvent(get(callback_start));
         Sleep(kCallbackDelay);
         ::SetEvent(get(callback_end));

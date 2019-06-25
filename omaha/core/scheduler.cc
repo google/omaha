@@ -25,7 +25,7 @@ Scheduler::SchedulerItem::SchedulerItem(HANDLE timer_queue,
                                         int start_delay_ms,
                                         int interval_ms,
                                         bool has_debug_timer,
-                                        ScheduledWork work)
+                                        ScheduledWorkWithTimer work)
     : start_delay_ms_(start_delay_ms), interval_ms_(interval_ms), work_(work) {
   if (has_debug_timer) {
     debug_timer_.reset(new HighresTimer());
@@ -124,15 +124,24 @@ Scheduler::~Scheduler() {
   }
 }
 
-HRESULT Scheduler::Start(int interval,
-                         ScheduledWork work,
-                         bool has_debug_timer) const {
-  return Start(interval, interval, work, has_debug_timer);
+HRESULT Scheduler::StartWithDebugTimer(int interval,
+                         ScheduledWorkWithTimer work) const {
+  return DoStart(interval, interval, work, true /*has_debug_timer*/);
 }
 
-HRESULT Scheduler::Start(int start_delay,
+HRESULT Scheduler::StartWithDelay(int delay, int interval,
+                         ScheduledWork work) const {
+
+  return DoStart(delay, interval, std::bind(work), false /* has_debug_timer */);
+}
+
+HRESULT Scheduler::Start(int interval, ScheduledWork work) const {
+  return DoStart(interval, interval, std::bind(work), false /*has_debug_timer*/);
+}
+
+HRESULT Scheduler::DoStart(int start_delay,
                          int interval,
-                         ScheduledWork work_fn,
+                         ScheduledWorkWithTimer work_fn,
                          bool has_debug_timer) const {
   CORE_LOG(L1, (L"[Scheduler::Start]"));
 
