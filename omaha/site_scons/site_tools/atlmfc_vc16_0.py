@@ -13,7 +13,7 @@
 # limitations under the License.
 # ========================================================================
 
-# Windows ATL MFC for VC15 (Visual Studio 2017) tool for SCons.
+# Windows ATL MFC for VC16 (Visual Studio 2019) tool for SCons.
 
 import os
 
