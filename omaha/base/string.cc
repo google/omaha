@@ -25,7 +25,6 @@
 
 #include "omaha/base/commontypes.h"
 #include "omaha/base/debug.h"
-#include "omaha/base/localization.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
 
@@ -1208,71 +1207,6 @@ const WCHAR *stristrW(const WCHAR *string, const WCHAR *pattern)
   return NULL;
 }
 
-// case sensitive Unicode strstr
-// adapted from http://c.snippets.org/snip_lister.php?fname=stristr.c
-const WCHAR *strstrW(const WCHAR *string, const WCHAR *pattern)
-{
-  ASSERT (pattern, (L""));
-  ASSERT (string, (L""));
-  ASSERT (string && pattern, (L""));
-  const WCHAR *start;
-
-  for (start = string; *start != 0; start++)
-  {
-    // find start of pattern in string
-    for ( ; ((*start!=0) && (*start != *pattern)); start++)
-     ;
-    if (0 == *start)
-     return NULL;
-
-    const WCHAR *pattern_ptr = pattern;
-    const WCHAR *string_ptr = start;
-
-    while (*string_ptr == *pattern_ptr)
-    {
-      string_ptr++;
-      pattern_ptr++;
-
-      // if end of pattern then pattern was found
-      if (0 == *pattern_ptr)
-        return (start);
-    }
-  }
-
-  return NULL;
-}
-
-// -------------------------------------------------------------------------
-// Helper function
-float GetLenWithWordWrap (const float len_so_far,
-  const float len_to_add,
-  const uint32 len_line) {
-  // lint -save -e414  Possible division by 0
-  ASSERT (len_line != 0, (L""));
-
-  float len_total = len_so_far + len_to_add;
-
-  // Figure out if we need to word wrap by seeing if adding the second
-  // string will cause us to span more lines than before.
-  uint32 num_lines_before = static_cast<uint32> (len_so_far / len_line);
-  uint32 num_lines_after = static_cast<uint32> (len_total / len_line);
-
-  // If it just barely fit onto the line, do not wrap to the next line.
-  if (num_lines_after > 0 && (len_total / len_line - num_lines_after == 0)) {
-    --num_lines_after;
-  }
-
-  if (num_lines_after > num_lines_before)  {
-    // Need to word wrap.
-    // lint -e{790}  Suspicious truncation
-    return num_lines_after * len_line + len_to_add;
-  }
-  else
-    return len_total;
-
-  // lint -restore
-}
-
 int CalculateBase64EscapedLen(int input_len, bool do_padding) {
   // these formulae were copied from comments that used to go with the base64
   // encoding functions
@@ -2174,38 +2108,6 @@ bool String_HasAlphabetLetters (const TCHAR * str) {
   return false;
 }
 
-CString String_LargeIntToApproximateString(uint64 value, bool base_ten, int* power) {
-  uint32 to_one_decimal;
-
-  uint32 gig         = base_ten ? 1000000000 : (1<<30);
-  uint32 gig_div_10  = base_ten ?  100000000 : (1<<30)/10;
-  uint32 meg         = base_ten ?    1000000 : (1<<20);
-  uint32 meg_div_10  = base_ten ?     100000 : (1<<20)/10;
-  uint32 kilo        = base_ten ?       1000 : (1<<10);
-  uint32 kilo_div_10 = base_ten ?        100 : (1<<10)/10;
-
-  if (value >= gig) {
-    if (power) *power = 3;
-    to_one_decimal = static_cast<uint32>(value / gig_div_10);
-  } else if (value >= meg) {
-    if (power) *power = 2;
-    to_one_decimal = static_cast<uint32>(value / meg_div_10);
-  } else if (value >= kilo) {
-    if (power) *power = 1;
-    to_one_decimal = static_cast<uint32>(value / kilo_div_10);
-  } else {
-    if (power) *power = 0;
-    return String_Int64ToString(static_cast<uint32>(value), 10 /*radix*/);
-  }
-
-  uint32 whole_part = to_one_decimal / 10;
-
-  if (whole_part < 10)
-    return Show(0.1 * static_cast<double>(to_one_decimal), 1);
-
-  return String_Int64ToString(whole_part, 10 /*radix*/);
-}
-
 int String_FindString(const TCHAR *s1, const TCHAR *s2) {
   ASSERT(s2, (L""));
   ASSERT(s1, (L""));
@@ -2299,21 +2201,6 @@ bool String_Contains(const TCHAR *s1, const TCHAR *s2) {
   ASSERT(s1, (L""));
 
   return -1 != String_FindString(s1, s2);
-}
-
-void String_ReplaceChar(TCHAR *str, TCHAR old_char, TCHAR new_char) {
-  ASSERT (str, (L""));
-  while (*str) {
-    if (*str == old_char)
-      *str = new_char;
-
-    ++str;
-  }
-}
-
-void String_ReplaceChar(CString & str, TCHAR old_char, TCHAR new_char) {
-  String_ReplaceChar (str.GetBuffer(), old_char, new_char);
-  str.ReleaseBuffer();
 }
 
 int ReplaceCString (CString & src, const TCHAR *from, const TCHAR *to) {
@@ -2457,40 +2344,6 @@ int ReplaceCString (CString & src, const TCHAR *from, unsigned int from_len,
   return matches;
 }
 
-// Functions on arrays of strings
-
-// Returns true iff s is in the array strings (case-insensitive compare)
-bool String_MemberOf(const TCHAR* const* strings, const TCHAR* s) {
-  ASSERT(s, (L""));
-  // strings may be NULL
-
-  const int s_length = lstrlen(s);
-  if (strings == NULL)
-    return false;
-  for (; *strings != NULL; strings++) {
-    if (0 == String_StrNCmp(*strings, s, s_length, true)) {
-      return true;      // Found equal string
-    }
-  }
-  return false;
-}
-
-// Returns index of s in the array of strings (or -1 for missing) (case-insensitive compare)
-int String_IndexOf(const TCHAR* const* strings, const TCHAR* s) {
-  ASSERT(s, (L""));
-  // strings may be NULL
-
-  const int s_length = lstrlen(s);
-  if (strings == NULL)
-    return -1;
-  for (int i = 0; *strings != NULL; i++, strings++) {
-    if (0 == String_StrNCmp(*strings, s, s_length, true)) {
-      return i;      // Found equal string
-    }
-  }
-  return -1;
-}
-
 // The internal format is a int64.
 time64 StringToTime(const CString & time) {
   return static_cast<time64>(String_StringToInt64(time));
@@ -2501,24 +2354,6 @@ time64 StringToTime(const CString & time) {
 // NOTE: this will truncating it to INT64, which may lop off some times in the future
 CString TimeToString(const time64 & time) {
   return String_Int64ToString(static_cast<int64>(time), 10);
-}
-
-const TCHAR *FindStringASpaceStringB (const TCHAR *s, const TCHAR *a, const TCHAR *b) {
-  ASSERT(s, (L""));
-  ASSERT(a, (L""));
-  ASSERT(b, (L""));
-
-  const TCHAR *search_from = s;
-  const TCHAR *pos;
-  while (*search_from && (pos = stristrW (search_from, a)) != NULL) {
-      const TCHAR *start = pos;
-      pos += lstrlen(a);
-      search_from = pos;
-      while (*pos == ' ' || *pos == '\t') pos++;
-      if (!String_StrNCmp (pos, b, lstrlen(b), true)) return start;
-  }
-
-  return 0;
 }
 
 bool IsAlphaA (const char c) {

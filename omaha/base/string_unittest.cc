@@ -16,7 +16,6 @@
 #include "base/basictypes.h"
 #include "base/rand_util.h"
 #include "omaha/base/debug.h"
-#include "omaha/base/localization.h"
 #include "omaha/base/string.h"
 #include "omaha/base/time.h"
 #include "omaha/base/timer.h"
@@ -235,13 +234,6 @@ bool TestAnsiToWideString() {
   return true;
 }
 #endif
-
-TEST(StringTest, Show) {
-  ASSERT_STREQ(Show(0), _T("0"));
-  ASSERT_STREQ(Show(1), _T("1"));
-  ASSERT_STREQ(Show(-1), _T("-1"));
-}
-
 
 // Test international strings.
 TEST(StringTest, International) {
@@ -502,43 +494,6 @@ TEST(StringTest, String_HasAlphabetLetters) {
   ASSERT_FALSE(String_HasAlphabetLetters (L"010"));
   ASSERT_FALSE(String_HasAlphabetLetters (L"314-159"));
   ASSERT_TRUE(String_HasAlphabetLetters (L"pie0"));
-}
-
-TEST(StringTest, String_LargeIntToApproximateString) {
-  int power;
-  ASSERT_TRUE(String_LargeIntToApproximateString(10LL, true, &power) == _T("10") && power == 0);
-  ASSERT_TRUE(String_LargeIntToApproximateString(99LL, true, &power) == _T("99") && power == 0);
-  ASSERT_TRUE(String_LargeIntToApproximateString(990LL, true, &power) == _T("990") && power == 0);
-  ASSERT_TRUE(String_LargeIntToApproximateString(999LL, true, &power) == _T("999") && power == 0);
-
-  ASSERT_TRUE(String_LargeIntToApproximateString(1000LL, true, &power) == _T("1.0") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(1200LL, true, &power) == _T("1.2") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(7500LL, true, &power) == _T("7.5") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(9900LL, true, &power) == _T("9.9") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(10000LL, true, &power) == _T("10") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(11000LL, true, &power) == _T("11") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(987654LL, true, &power) == _T("987") && power == 1);
-
-  ASSERT_TRUE(String_LargeIntToApproximateString(1000000LL, true, &power) == _T("1.0") && power == 2);
-  ASSERT_TRUE(String_LargeIntToApproximateString(1300000LL, true, &power) == _T("1.3") && power == 2);
-  ASSERT_TRUE(String_LargeIntToApproximateString(987654321LL, true, &power) == _T("987") && power == 2);
-
-  ASSERT_TRUE(String_LargeIntToApproximateString(1000000000LL, true, &power) == _T("1.0") && power == 3);
-  ASSERT_TRUE(String_LargeIntToApproximateString(1999999999LL, true, &power) == _T("1.9") && power == 3);
-  ASSERT_TRUE(String_LargeIntToApproximateString(20000000000LL, true, &power) == _T("20") && power == 3);
-  ASSERT_TRUE(String_LargeIntToApproximateString(1000000000000LL, true, &power) == _T("1000") && power == 3);
-  ASSERT_TRUE(String_LargeIntToApproximateString(12345678901234LL, true, &power) == _T("12345") && power == 3);
-
-  ASSERT_TRUE(String_LargeIntToApproximateString(1023LL, false, &power) == _T("1023") && power == 0);
-
-  ASSERT_TRUE(String_LargeIntToApproximateString(1024LL, false, &power) == _T("1.0") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(1134LL, false, &power) == _T("1.1") && power == 1);
-  ASSERT_TRUE(String_LargeIntToApproximateString(10240LL, false, &power) == _T("10") && power == 1);
-
-  ASSERT_TRUE(String_LargeIntToApproximateString(5242880LL, false, &power) == _T("5.0") && power == 2);
-
-  ASSERT_TRUE(String_LargeIntToApproximateString(1073741824LL, false, &power) == _T("1.0") && power == 3);
-  ASSERT_TRUE(String_LargeIntToApproximateString(17179869184LL, false, &power) == _T("16") && power == 3);
 }
 
 TEST(StringTest, FindWholeWordMatch) {
@@ -1050,52 +1005,6 @@ TEST(StringTest, WideToAnsiDirect) {
     ASSERT_EQ(static_cast<unsigned char>(nasty_chars[i]),
               static_cast<unsigned char>(out.GetAt(i)));
   }
-}
-
-TEST(StringTest, FindStringASpaceStringB) {
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type: text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-TYPE: text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-TYPE: text/HTML", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-TYPE: text/HTML", L"content-type:", L"text/HTML"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-TYPE: text/HTML", L"content-TYPE:", L"text/HTML"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:  text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:   text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type: sdfjsldkgjsdg content-type:    text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type: content-type: sdfjsldkgjsdg content-type:    text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:content-type: sdfjsldkgjsdg content-type:    text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:content-type:    text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"test/html content-type:content-type:    text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:    text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:\ttext/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:\t text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"Content-Type:\t text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"aasd content-type: text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"aa content-TYPE: text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"text.html  content-TYPE: text/HTML", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"text/html content-TYPE: text/HTML", L"content-type:", L"text/HTML"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"AAAA content-TYPE: text/HTML", L"content-TYPE:", L"text/HTML"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:text/html AAAAA", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:  text/html", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:   text/htmlaaa", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:    text/html  asdsdg content-type", L"content-type:", L"text/html"));
-  ASSERT_TRUE(FindStringASpaceStringB(L"content-type:\ttext/htmlconttent-type:te", L"content-type:", L"text/html"));
-
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:  a  text/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:  content-type:  a  text/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type: b text/html  content-type:  a  text/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:-text/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:\ntext/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:  a  TEXT/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:  a  html/text", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"a dss content-type:  a  text/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"text/html content-type:-text/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"text/html sdfsd fcontent-type:\ntext/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"AAAA content-type:  a  TEXT/html", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:  a  html/text AAA", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:content-type:", L"content-type:", L"text/html"));
-  ASSERT_FALSE(FindStringASpaceStringB(L"content-type:content-type: content-type:", L"content-type:", L"text/html"));
 }
 
 TEST(StringTest, ElideIfNeeded) {
