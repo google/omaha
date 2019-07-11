@@ -68,15 +68,6 @@ TEST_F(NetworkConfigTest, GetAccessType) {
             WINHTTP_ACCESS_TYPE_NAMED_PROXY);
 }
 
-TEST_F(NetworkConfigTest, JoinStrings) {
-  EXPECT_STREQ(NetworkConfig::JoinStrings(NULL, NULL, NULL), _T(""));
-
-  CString result;
-  EXPECT_STREQ(NetworkConfig::JoinStrings(NULL, NULL, _T("-")), _T("-"));
-  EXPECT_STREQ(NetworkConfig::JoinStrings(_T("foo"), _T("bar"), _T("-")),
-                                          _T("foo-bar"));
-}
-
 TEST_F(NetworkConfigTest, GetUserAgentTest) {
   CString version(GetVersionString());
   EXPECT_FALSE(version.IsEmpty());

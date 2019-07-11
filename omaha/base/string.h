@@ -349,9 +349,6 @@ HRESULT StringUnescape(const CString& str_in, CString* str_out);
 // Tests for overflow and non-int strings.
 bool String_StringToDecimalIntChecked(const TCHAR* str, int* value);
 
-// Converts CLSID to a string.
-bool CLSIDToCString(const GUID& guid, CString* str);
-
 // Converts a string to a bool.
 HRESULT String_StringToBool(const TCHAR* str, bool* value);
 
@@ -384,15 +381,6 @@ CString BytesToHex(const uint8* bytes, size_t num_bytes);
 
 // Converts a vector of bytes to a hex string.
 CString BytesToHex(const std::vector<uint8>& bytes);
-
-void JoinStrings(const std::vector<CString>& components,
-                 const TCHAR* delim,
-                 CString* result);
-
-void JoinStringsInArray(const TCHAR* components[],
-                        int num_components,
-                        const TCHAR* delim,
-                        CString* result);
 
 // Formats the specified message ID.
 // It is similar to CStringT::FormatMessage() but it returns an empty string

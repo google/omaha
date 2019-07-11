@@ -2090,19 +2090,6 @@ bool String_StringToDecimalIntChecked(const TCHAR* str, int* value) {
   return true;
 }
 
-bool CLSIDToCString(const GUID& guid, CString* str) {
-  ASSERT(str, (L""));
-
-  LPOLESTR string_guid = NULL;
-  if (::StringFromCLSID(guid, &string_guid) != S_OK) {
-    return false;
-  }
-  *str = string_guid;
-  ::CoTaskMemFree(string_guid);
-
-  return true;
-}
-
 HRESULT String_StringToBool(const TCHAR* str, bool* value) {
   ASSERT1(str);
   ASSERT1(value);
@@ -2318,54 +2305,6 @@ CString BytesToHex(const std::vector<uint8>& bytes) {
     result.SetString(BytesToHex(&bytes.front(), bytes.size()));
   }
   return result;
-}
-
-void JoinStrings(const std::vector<CString>& components,
-                 const TCHAR* delim,
-                 CString* result) {
-  ASSERT1(result);
-  result->Empty();
-
-  // Compute length so we can reserve memory.
-  size_t length = 0;
-  size_t delim_length = delim ? _tcslen(delim) : 0;
-  for (size_t i = 0; i != components.size(); ++i) {
-    if (i != 0) {
-      length += delim_length;
-    }
-    length += components[i].GetLength();
-  }
-
-  ASSERT1(length <= INT_MAX && delim_length <= INT_MAX);
-  if (length > INT_MAX || delim_length > INT_MAX) {
-    return;
-  }
-
-  result->Preallocate(static_cast<int>(length));
-
-  for (size_t i = 0; i != components.size(); ++i) {
-    if (i != 0 && delim) {
-      result->Append(delim, static_cast<int>(delim_length));
-    }
-    result->Append(components[i]);
-  }
-}
-
-void JoinStringsInArray(const TCHAR* components[],
-                        int num_components,
-                        const TCHAR* delim,
-                        CString* result) {
-  ASSERT1(result);
-  result->Empty();
-
-  for (int i = 0; i != num_components; ++i) {
-    if (i != 0 && delim) {
-      result->Append(delim);
-    }
-    if (components[i]) {
-      result->Append(components[i]);
-    }
-  }
 }
 
 CString FormatResourceMessage(uint32 resource_id, ...) {

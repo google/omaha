@@ -1026,67 +1026,6 @@ TEST(StringTest, BytesToHex) {
                _T("0123456789abcdef"));
 }
 
-TEST(StringTest, JoinStrings) {
-  std::vector<CString> components;
-  const TCHAR* delim = _T("-");
-  CString result;
-
-  JoinStrings(components, delim, &result);
-  EXPECT_TRUE(result.IsEmpty());
-  JoinStrings(components, NULL, &result);
-  EXPECT_TRUE(result.IsEmpty());
-
-  components.push_back(CString(_T("foo")));
-  JoinStrings(components, delim, &result);
-  EXPECT_STREQ(result, (_T("foo")));
-  JoinStrings(components, NULL, &result);
-  EXPECT_STREQ(result, (_T("foo")));
-
-  components.push_back(CString(_T("bar")));
-  JoinStrings(components, delim, &result);
-  EXPECT_STREQ(result, (_T("foo-bar")));
-  JoinStrings(components, NULL, &result);
-  EXPECT_STREQ(result, (_T("foobar")));
-
-  components.push_back(CString(_T("baz")));
-  JoinStrings(components, delim, &result);
-  EXPECT_STREQ(result, (_T("foo-bar-baz")));
-  JoinStrings(components, NULL, &result);
-  EXPECT_STREQ(result, (_T("foobarbaz")));
-
-
-  JoinStringsInArray(NULL, 0, delim, &result);
-  EXPECT_TRUE(result.IsEmpty());
-  JoinStringsInArray(NULL, 0, NULL, &result);
-  EXPECT_TRUE(result.IsEmpty());
-
-  const TCHAR* array1[] = {_T("foo")};
-  JoinStringsInArray(array1, arraysize(array1), delim, &result);
-  EXPECT_STREQ(result, (_T("foo")));
-  JoinStringsInArray(array1, arraysize(array1), NULL, &result);
-  EXPECT_STREQ(result, (_T("foo")));
-
-  const TCHAR* array2[] = {_T("foo"), _T("bar")};
-  JoinStringsInArray(array2, arraysize(array2), delim, &result);
-  EXPECT_STREQ(result, (_T("foo-bar")));
-  JoinStringsInArray(array2, arraysize(array2), NULL, &result);
-  EXPECT_STREQ(result, (_T("foobar")));
-
-  const TCHAR* array3[] = {_T("foo"), _T("bar"), _T("baz")};
-  JoinStringsInArray(array3, arraysize(array3), delim, &result);
-  EXPECT_STREQ(result, (_T("foo-bar-baz")));
-  JoinStringsInArray(array3, arraysize(array3), NULL, &result);
-  EXPECT_STREQ(result, (_T("foobarbaz")));
-
-  const TCHAR* array_null_1[] = {NULL};
-  JoinStringsInArray(array_null_1, arraysize(array_null_1), delim, &result);
-  EXPECT_STREQ(result, (_T("")));
-
-  const TCHAR* array_null_2[] = {NULL, NULL};
-  JoinStringsInArray(array_null_2, arraysize(array_null_2), delim, &result);
-  EXPECT_STREQ(result, (_T("-")));
-}
-
 TEST(StringTest, String_ToUpper) {
   // String_ToUpper is a wrapper over ::CharUpper.
   TCHAR s[] = _T("foo");
