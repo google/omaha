@@ -2383,27 +2383,6 @@ const TCHAR *ExtractNextDouble (const TCHAR *s, double *f) {
   return s;
 }
 
-TCHAR *String_PathFindExtension(const TCHAR *path) {
-  ASSERT(path, (L""));
-
-  // Documentation says PathFindExtension string must be of max length
-  // MAX_PATH but a trusted tester hit the ASSERT and we don't really
-  // need it here, so commented out. We can't address where it is
-  // called because it's called from ATL code.
-  // ASSERT(lstrlen(path)<=MAX_PATH, (L""));
-
-  // point to terminating NULL
-  const TCHAR *ret = path + lstrlen(path);
-  const TCHAR *pos = ret;
-
-  while (--pos >= path) {
-    if (*pos == '.')
-      return const_cast<TCHAR *>(pos);
-  }
-
-  return const_cast<TCHAR *>(ret);
-}
-
 char String_ToLowerCharAnsi(char c) {
   if (c >= 'A' && c <= 'Z') return (c + ('a' - 'A'));
   return c;
