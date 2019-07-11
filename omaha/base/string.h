@@ -49,17 +49,6 @@ HRESULT ConvertFileUriToLocalPath(const CString& uri, CString* path_out);
 // Caller deletes the returned buffer.
 WCHAR *ToWide (const char *s, int len);
 
-// Bolds the periods used for abbreviation.  Call this after HighlightTerms.
-CString BoldAbbreviationPeriods(const CString & in);
-
-// Unencode a URL encoded string
-CString Unencode(const CString & input);
-
-CString GetTextInbetween(const CString &input, const CString &start, const CString &end);
-
-// Given a ? seperated string, extract a particular segment, and URL-Unencode it
-CString GetParam(const CString & input, const CString & key);
-
 // Convert Wide to ANSI directly. Use only when it is all ANSI
 CStringA WideToAnsiDirect(const CString & in);
 
@@ -90,13 +79,6 @@ BOOL AnsiToWideString(const char *from, int length, UINT codepage, CString *to);
 
 // Convert char to Wchar directly
 CString AnsiToWideString(const char *from, int length);
-
-// these functions untested
-// they should not be used unless tested
-// HRESULT AnsiToUTF8 (char * src, int src_len, char * dest, int *dest_len);
-// HRESULT UTF8ToAnsi (char * src, int src_len, char * dest, int *dest_len);
-// HRESULT UCS2ToUTF8 (LPCWSTR src, int src_len, char * dest, int *dest_len);
-// HRESULT UTF8ToUCS2 (char * src, int src_len, LPWSTR dest, int *dest_len);
 
 // "Absolute" is perhaps not the right term, this normalizes the Uri
 // given http://www.google.com changes to correct http://www.google.com/
@@ -172,20 +154,9 @@ int WebSafeBase64Unescape(const char *src, int slen, char *dest, int szdest);
 bool IsSpaceW(WCHAR c);
 bool IsSpaceA(char c);
 
-// Remove all leading and trailing whitespace from s.
-// Returns the new length of the string (not including 0-terminator)
-int TrimCString(CString &s);
-int Trim(TCHAR *s);
-
 // Trims all characters in the delimiter string from both ends of the
 // string s
 void TrimString(CString& s, const TCHAR* delimiters);
-
-// Strip the first token from the front of argument s.  A token is a
-// series of consecutive non-blank characters - unless the first
-// character is a double-quote ("), in that case the token is the full
-// quoted string
-CString StripFirstQuotedToken(const CString& s);
 
 // A block of text to separate lines, and back
 void TextToLines(const CString& text, const TCHAR* delimiter, std::vector<CString>* lines);
@@ -194,12 +165,6 @@ void LinesToText(const std::vector<CString>& lines, const TCHAR* delimiter, CStr
 
 // Make a CString lower case
 void MakeLowerCString(CString & s);
-
-// Clean up the string: replace all whitespace with spaces, and
-// replace consecutive spaces with one.
-// Returns the new length of the string (not including 0-terminator)
-int CleanupWhitespaceCString(CString &s);
-int CleanupWhitespace(TCHAR *s);
 
 int HexDigitToInt (WCHAR c);
 bool IsHexDigit (WCHAR c);

@@ -180,29 +180,6 @@ TEST(StringTest, EndsWith) {
   ASSERT_FALSE(String_EndsWith(L"The quick brown fox", L"the brown foX", true));
 }
 
-TEST(StringTest, Unencode) {
-  // Normal, correct usage.
-  // char 0x25 is '%'
-  ASSERT_STREQ(Unencode(L"?q=moon+doggy_%25%5E%26"), L"?q=moon doggy_%^&");
-  ASSERT_STREQ(Unencode(L"%54%68%69%73+%69%73%09%61%20%74%65%73%74%0A"),
-               L"This is\ta test\n");
-  ASSERT_STREQ(Unencode(L"This+is%09a+test%0a"), L"This is\ta test\n");
-
-  // NULL char.
-  ASSERT_STREQ(Unencode(L"Terminated%00before+this"), L"Terminated");
-  ASSERT_STREQ(Unencode(L"invalid+%a%25"), L"invalid %a%");
-  ASSERT_STREQ(Unencode(L"invalid+%25%41%37"), L"invalid %A7");
-  ASSERT_STREQ(Unencode(L"not a symbol %RA"), L"not a symbol %RA");
-  ASSERT_STREQ(Unencode(L"%ag"), L"%ag");
-  ASSERT_STREQ(Unencode(L"dontdecode%dont"), L"dontdecode%dont");
-  ASSERT_STREQ(Unencode(L""), L"");
-  ASSERT_STREQ(Unencode(L"%1"), L"%1");
-  ASSERT_STREQ(Unencode(L"\x100"), L"\x100");
-  ASSERT_STREQ(Unencode(L"this is%20a%20wide%20char%20\x345"),
-               L"this is a wide char \x345");
-  ASSERT_STREQ(Unencode(L"a utf8 string %E7%BC%9c %E4%B8%8a = 2"),
-               L"a utf8 string \x7f1c \x4e0a = 2");
-}
 
 #if 0
 static const struct {
@@ -378,15 +355,6 @@ TEST(StringTest, International) {
     temp.ReleaseBuffer();
 
     ASSERT_STREQ(temp, true_lower);
-
-    // Make sure that the normal CString::Trim works the same as our fast one
-    CString trim_normal(tabs_by_lang[i]);
-    trim_normal.Trim();
-
-    CString trim_fast(tabs_by_lang[i]);
-    TrimCString(trim_fast);
-
-    ASSERT_STREQ(trim_normal, trim_fast);
   }
 }
 
@@ -481,37 +449,6 @@ TEST(StringTest, GetAbsoluteUri) {
                L"http://www.google.com/");
   ASSERT_STREQ(GetAbsoluteUri(L"http://www.google.com/test"),
                L"http://www.google.com/test");
-}
-
-void TestTrim(const TCHAR *str, const TCHAR *result) {
-  ASSERT_TRUE(result);
-  ASSERT_TRUE(str);
-
-  size_t ptr_size = _tcslen(str) + 1;
-  TCHAR* ptr = new TCHAR[ptr_size];
-  _tcscpy_s(ptr, ptr_size, str);
-
-  int len = Trim(ptr);
-  ASSERT_STREQ(ptr, result);
-  ASSERT_EQ(len, lstrlen(result));
-
-  delete [] ptr;
-}
-
-TEST(StringTest, Trim) {
-  TestTrim(L"", L"");
-  TestTrim(L" ", L"");
-  TestTrim(L"\t", L"");
-  TestTrim(L"\n", L"");
-  TestTrim(L"\n\t    \t \n", L"");
-  TestTrim(L"    joe", L"joe");
-  TestTrim(L"joe      ", L"joe");
-  TestTrim(L"    joe      ", L"joe");
-  TestTrim(L"joe smith    ", L"joe smith");
-  TestTrim(L"     joe smith    ", L"joe smith");
-  TestTrim(L"     joe   smith    ", L"joe   smith");
-  TestTrim(L"     The quick brown fox,\tblah", L"The quick brown fox,\tblah");
-  TestTrim(L" \tblah\n    joe smith    ", L"blah\n    joe smith");
 }
 
 // IsSpaceA1 is much faster without the cache clearing (which is what happends
@@ -618,37 +555,6 @@ void TestIsSpace (const char *s) {
 TEST(StringTest, IsSpace) {
   TestIsSpace("banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie banana pie");
   TestIsSpace("sdlfhdkgheorutsgj sdlj aoi oaj gldjg opre gdsfjng oate yhdnv ;zsj fpoe v;kjae hgpaieh dajlgn aegh avn WEIf h9243y 9814cu 902t7 9[-32 [O8W759 RC90817 V9pDAHc n( ny(7LKFJAOISF *&^*^%$$%#*&^(*_*)_^& 67% 796%&$*^$ 8)6 (^ 08&^ )*^ 9-7=90z& +(^ )^* %9%4386 $& (& &+ 7- &(_* ");
-}
-
-void TestCleanupWhitespace(const TCHAR *str, const TCHAR *result) {
-  ASSERT_TRUE(result);
-  ASSERT_TRUE(str);
-
-  size_t ptr_size = _tcslen(str) + 1;
-  TCHAR* ptr = new TCHAR[ptr_size];
-  _tcscpy_s(ptr, ptr_size, str);
-
-  int len = CleanupWhitespace(ptr);
-  ASSERT_STREQ(ptr, result);
-  ASSERT_EQ(len, lstrlen(result));
-
-  delete [] ptr;
-}
-
-TEST(StringTest, CleanupWhitespace) {
-  TestCleanupWhitespace(L"", L"");
-  TestCleanupWhitespace(L"a    ", L"a");
-  TestCleanupWhitespace(L"    a", L"a");
-  TestCleanupWhitespace(L" a   ", L"a");
-  TestCleanupWhitespace(L"\t\n\r a   ", L"a");
-  TestCleanupWhitespace(L"  \n   a  \t   \r ", L"a");
-  TestCleanupWhitespace(L"a      b", L"a b");
-  TestCleanupWhitespace(L"   a \t\n\r     b", L"a b");
-  TestCleanupWhitespace(L"   vool                 voop", L"vool voop");
-  TestCleanupWhitespace(L"thisisaverylongstringwithsometext",
-                        L"thisisaverylongstringwithsometext");
-  TestCleanupWhitespace(L"thisisavery   longstringwithsometext",
-                        L"thisisavery longstringwithsometext");
 }
 
 TEST(StringTest, IsDigit) {
@@ -848,15 +754,6 @@ TEST(StringTest, TrimString) {
   ASSERT_STREQ(L"abc", TrimStdString(L" \tabc\t "));
   ASSERT_STREQ(L"", TrimStdString(L""));
   ASSERT_STREQ(L"", TrimStdString(L"   "));
-}
-
-TEST(StringTest, StripFirstQuotedToken) {
-  ASSERT_STREQ(StripFirstQuotedToken(L""), L"");
-  ASSERT_STREQ(StripFirstQuotedToken(L"a" ), L"");
-  ASSERT_STREQ(StripFirstQuotedToken(L"  a b  "), L"b");
-  ASSERT_STREQ(StripFirstQuotedToken(L"\"abc\" def"), L" def");
-  ASSERT_STREQ(StripFirstQuotedToken(L"  \"abc def\" ghi  "), L" ghi");
-  ASSERT_STREQ(StripFirstQuotedToken(L"\"abc\"   \"def\" "), L"   \"def\"");
 }
 
 TEST(StringTest, EscapeUnescape) {
