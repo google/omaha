@@ -397,8 +397,6 @@ void SafeStrCat (TCHAR *dest, const TCHAR *src, int dest_buffer_len);
 
 const TCHAR *ExtractNextDouble (const TCHAR *s, double *f);
 
-TCHAR *String_PathFindExtension(const TCHAR *path);
-
 inline TCHAR Char_ToLower(TCHAR c) {
   const TCHAR* result = ::CharLower(reinterpret_cast<TCHAR*>(c));
   ASSERT1(HIWORD(result) == 0);

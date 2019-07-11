@@ -1053,25 +1053,6 @@ TEST(StringTest, SafeStrCat) {
   ASSERT_LT(lstrlen(dest), kDestLen);
 }
 
-void TestPathFindExtension(const TCHAR *s) {
-  ASSERT_STREQ(String_PathFindExtension(s), PathFindExtension(s));
-}
-
-TEST(StringTest, TestPathFindExtension) {
-  TestPathFindExtension(L"c:\\test.tmp");
-  TestPathFindExtension(L"c:\\test.temp");
-  TestPathFindExtension(L"c:\\t\\e\\st.temp");
-  TestPathFindExtension(L"c:\\a.temp");
-  TestPathFindExtension(L"\\aaa\\a.temp");
-  TestPathFindExtension(L"\\a\\a.temp");
-  TestPathFindExtension(L"\\a\\a.temp");
-  TestPathFindExtension(L"\\a\\a.t....emp");
-  TestPathFindExtension(L"\\a.a.a...a\\a.t....emp");
-  TestPathFindExtension(L"\\a\\a\\bbbb\\ddddddddddddddd.temp");
-  TestPathFindExtension(L"\\a\\a\\bbbb\\ddddddddddddddd.te___124567mp");
-  TestPathFindExtension(L"\\a\\a\\bbbb\\ddddddd.dddddddd.te___124567mp");
-}
-
 TEST(StringTest, TextToLinesAndBack) {
   const TCHAR sample_input[]  = L"Now is the time\r\nfor all good men\r\nto come to the aid of their country";
   const TCHAR* sample_lines[] = { L"Now is the time", L"for all good men", L"to come to the aid of their country" };
