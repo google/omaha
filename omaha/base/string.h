@@ -288,9 +288,6 @@ int String_FindChar(const TCHAR *str, const TCHAR c);
 // start from index start_pos
 int String_FindChar(const TCHAR *str, const TCHAR c, int start_pos);
 
-// Return the index of the first occurrence of c in string, or -1 if none.
-int String_ReverseFindChar(const TCHAR * str, TCHAR c);
-
 bool String_Contains(const TCHAR *s1, const TCHAR *s2);
 
 // Append the given character to the string if it doesn't already end with it.

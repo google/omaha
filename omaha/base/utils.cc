@@ -1478,35 +1478,6 @@ HRESULT StringToBuffer(const CString& str_in, std::vector<byte>* buffer_out) {
   return S_OK;
 }
 
-HRESULT RegSplitKeyvalueName(const CString& keyvalue_name,
-                             CString* key_name,
-                             CString* value_name) {
-  ASSERT1(key_name);
-  ASSERT1(value_name);
-
-  const TCHAR kDefault[] = _T("\\(default)");
-
-  if (String_EndsWith(keyvalue_name, _T("\\"), false)) {
-    key_name->SetString(keyvalue_name, keyvalue_name.GetLength() - 1);
-    value_name->Empty();
-  } else if (String_EndsWith(keyvalue_name, kDefault, true)) {
-    key_name->SetString(keyvalue_name,
-                        keyvalue_name.GetLength() - TSTR_SIZE(kDefault));
-    value_name->Empty();
-  } else {
-    int last_slash = String_ReverseFindChar(keyvalue_name, _T('\\'));
-    if (last_slash == -1) {
-      // No slash found - bizzare and wrong
-      return E_FAIL;
-    }
-    key_name->SetString(keyvalue_name, last_slash);
-    value_name->SetString(keyvalue_name.GetString() + last_slash + 1,
-                          keyvalue_name.GetLength() - last_slash - 1);
-  }
-
-  return S_OK;
-}
-
 HRESULT ExpandEnvLikeStrings(const TCHAR* src,
                              const std::map<CString, CString>& keywords,
                              CString* dest) {

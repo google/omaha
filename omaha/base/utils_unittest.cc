@@ -153,27 +153,6 @@ TEST(UtilsTest, ReadEntireFile) {
 // TEST(UtilsTest, WriteEntireFile) {
 // }
 
-TEST(UtilsTest, RegSplitKeyvalueName) {
-  CString key_name, value_name;
-  ASSERT_SUCCEEDED(RegSplitKeyvalueName(CString(L"HKLM\\Foo\\"),
-                                        &key_name,
-                                        &value_name));
-  ASSERT_STREQ(key_name, L"HKLM\\Foo");
-  ASSERT_TRUE(value_name.IsEmpty());
-
-  ASSERT_SUCCEEDED(RegSplitKeyvalueName(CString(L"HKLM\\Foo\\(default)"),
-                                        &key_name,
-                                        &value_name));
-  ASSERT_STREQ(key_name, L"HKLM\\Foo");
-  ASSERT_TRUE(value_name.IsEmpty());
-
-  ASSERT_SUCCEEDED(RegSplitKeyvalueName(CString(L"HKLM\\Foo\\Bar"),
-                                        &key_name,
-                                        &value_name));
-  ASSERT_STREQ(key_name, L"HKLM\\Foo");
-  ASSERT_STREQ(value_name, L"Bar");
-}
-
 TEST(UtilsTest, ExpandEnvLikeStrings) {
   std::map<CString, CString> mapping;
   ASSERT_SUCCEEDED(Shell::GetSpecialFolderKeywordsMapping(&mapping));
