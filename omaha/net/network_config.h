@@ -200,12 +200,6 @@ class NetworkConfig {
 
   static int GetAccessType(const ProxyConfig& config);
 
-  // Returns s1 + delim + s2. Consider making it an utility function if
-  // more usage patterns are found.
-  static CString JoinStrings(const TCHAR* s1,
-                             const TCHAR* s2,
-                             const TCHAR* delim);
-
   // Uses jsproxy to use a PAC proxy configuration file stored on the local
   // drive, instead of one sourced from WPAD.
   static HRESULT GetProxyForUrlLocal(const CString& url,

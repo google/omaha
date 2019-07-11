@@ -449,15 +449,6 @@ CString NetworkConfig::GetMID() {
   return mid;
 }
 
-CString NetworkConfig::JoinStrings(const TCHAR* s1,
-                                   const TCHAR* s2,
-                                   const TCHAR* delim) {
-  CString result;
-  const TCHAR* components[] = {s1, s2};
-  JoinStringsInArray(components, arraysize(components), delim, &result);
-  return result;
-}
-
 // Using std::hash_set adds about 2K uncompressed code size. Using a CAtlMap
 // adds about 1.5K. Usually, there are only five detected configurations so
 // an O(n^2) algorithm would work well. The advantage of the current
