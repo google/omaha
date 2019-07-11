@@ -714,12 +714,6 @@ HRESULT BufferToString(const std::vector<byte>& buffer_in, CString* str_out);
 HRESULT StringToBuffer(const CStringA& str_in, std::vector<byte>* buffer_out);
 HRESULT StringToBuffer(const CString& str_in, std::vector<byte>* buffer_out);
 
-// Splits a "full regkey name" into a key name part and a value name part.
-// Handles "(default)" as a value name.  Treats a trailing "/" as "(default)".
-HRESULT RegSplitKeyvalueName(const CString& keyvalue_name,
-                             CString* key_name,
-                             CString* value_name);
-
 // Expands string with embedded special variables which are enclosed
 // in '%' pair. For example, "%PROGRAMFILES%\Google" expands to
 // "C:\Program Files\Google".

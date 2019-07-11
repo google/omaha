@@ -1818,25 +1818,6 @@ int String_FindChar(const TCHAR *str, const TCHAR c) {
   return -1;
 }
 
-// taken from wcsrchr, modified to behave in the CString way
-int String_ReverseFindChar(const TCHAR * str,TCHAR c) {
-  ASSERT (str, (L""));
-  TCHAR *start = (TCHAR *)str;
-
-  while (*str++)                       /* find end of string */
-    ;
-  /* search towards front */
-  while (--str != start && *str != (TCHAR)c)
-    ;
-
-  if (*str == (TCHAR)c) {            /* found ? */
-    // TODO(portability): cast is unsafe.
-    return static_cast<int>(str - start);
-  }
-
-  return -1;
-}
-
 int String_FindChar(const TCHAR *str, const TCHAR c, int start_pos) {
   ASSERT (str, (L""));
   int n = 0;
