@@ -1735,68 +1735,6 @@ int HexDigitToInt (WCHAR c) {
           (c - L'0'));
 }
 
-// ----------------------------------------------------------------------
-// int QuotedPrintableUnescape()
-//
-// Check out http://www.cis.ohio-state.edu/htbin/rfc/rfc2045.html for
-// more details, only briefly implemented. But from the web...
-// Quoted-printable is an encoding method defined in the MIME
-// standard. It is used primarily to encode 8-bit text (such as text
-// that includes foreign characters) into 7-bit US ASCII, creating a
-// document that is mostly readable by humans, even in its encoded
-// form. All MIME compliant applications can decode quoted-printable
-// text, though they may not necessarily be able to properly display the
-// document as it was originally intended. As quoted-printable encoding
-// is implemented most commonly, printable ASCII characters (values 33
-// through 126, excluding 61), tabs and spaces that do not appear at the
-// end of lines, and end-of-line characters are not encoded. Other
-// characters are represented by an equal sign (=) immediately followed
-// by that character's hexadecimal value. Lines that are longer than 76
-// characters are shortened by line breaks, with the equal sign marking
-// where the breaks occurred.
-//
-// Update: we really want QuotedPrintableUnescape to conform to rfc2047,
-// which expands the q encoding. In particular, it specifices that _'s are
-// to be treated as spaces.
-// ----------------------------------------------------------------------
-int QuotedPrintableUnescape(const WCHAR *source, int slen,
-                            WCHAR *dest, int len_dest) {
-  ASSERT(dest, (L""));
-  ASSERT(source, (L""));
-
-  WCHAR* d = dest;
-  const WCHAR* p = source;
-
-  while (*p != '\0' && p < source+slen && d < dest+len_dest) {
-    switch (*p) {
-      case '=':
-        if (p == source+slen-1) {
-          // End of line, no need to print the =..
-          // TODO(portability): cast is unsafe.
-          return static_cast<int>(d-dest);
-        }
-        // if its valid, convert to hex and insert
-        if (p < source+slen-2 && IsHexDigit(p[1]) && IsHexDigit(p[2])) {
-          // lint -e{734} Loss of precision
-          *d++ = static_cast<WCHAR>(
-                    HexDigitToInt(p[1]) * 16 + HexDigitToInt(p[2]));
-          p += 3;
-        } else {
-          p++;
-        }
-        break;
-      case '_':   // According to rfc2047, _'s are to be treated as spaces
-        *d++ = ' '; p++;
-        break;
-      default:
-        *d++ = *p++;
-        break;
-    }
-  }
-  // TODO(portability): cast is unsafe.
-  return static_cast<int>(d-dest);
-}
-
 // TODO(omaha): currently set not to use IsCharUpper because that is relatively slow
 // this is used in the QUIB; consider if we need to use IsCharUpper or a replacement
 bool String_IsUpper(TCHAR c) {

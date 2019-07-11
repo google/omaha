@@ -191,16 +191,6 @@ float GetLenWithWordWrap (const float len_so_far,
   const float len_to_add,
   const uint32 len_line);
 
-// ----------------------------------------------------------------------
-// QuotedPrintableUnescape()
-//    Copies "src" to "dest", rewriting quoted printable escape sequences
-//    =XX to their ASCII equivalents. src is not null terminated, instead
-//    specify len. I recommend that slen<len_dest, but we honour len_dest
-//    anyway.
-//    RETURNS the length of dest.
-// ----------------------------------------------------------------------
-int QuotedPrintableUnescape(const WCHAR *src, int slen, WCHAR *dest, int len_dest);
-
 // Return the length to use for the output buffer given to the base64 escape
 // routines. Make sure to use the same value for do_padding in both.
 // This function may return incorrect results if given input_len values that
