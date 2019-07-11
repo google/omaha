@@ -158,9 +158,6 @@ const TCHAR* const kCmdLinePing = _T("ping");
 // These are used for debug, testing, etc.
 //
 
-// Run network diagnostics.
-const TCHAR* const kCmdLineNetDiags = _T("netdiags");
-
 // The "crash" switch indicates that Omaha should crash upon startup.
 // This option is used to test the crash reporting system.
 const TCHAR* const kCmdLineCrash = _T("crash");

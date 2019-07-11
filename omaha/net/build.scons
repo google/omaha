@@ -38,7 +38,6 @@ inputs = [
     'detector.cc',
     'http_client.cc',
     'simple_request.cc',
-    'net_diags.cc',
     'net_utils.cc',
     'network_config.cc',
     'network_request.cc',

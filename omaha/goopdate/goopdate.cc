@@ -88,7 +88,6 @@
 #include "omaha/goopdate/goopdate_internal.h"
 #include "omaha/goopdate/goopdate_metrics.h"
 #include "omaha/goopdate/resource_manager.h"
-#include "omaha/net/net_diags.h"
 #include "omaha/service/service_main.h"
 #include "omaha/setup/setup_google_update.h"
 #include "omaha/setup/setup_service.h"
@@ -135,7 +134,6 @@ bool CheckRegisteredVersion(const CString& version,
     case COMMANDLINE_MODE_NOARGS:
     case COMMANDLINE_MODE_REGSERVER:
     case COMMANDLINE_MODE_UNREGSERVER:
-    case COMMANDLINE_MODE_NETDIAGS:
     case COMMANDLINE_MODE_CRASH:
     case COMMANDLINE_MODE_REPORTCRASH:
     case COMMANDLINE_MODE_INSTALL:
@@ -854,9 +852,6 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
             case COMMANDLINE_MODE_CODE_RED_CHECK:
               return HandleCodeRedCheck();
 
-            case COMMANDLINE_MODE_NETDIAGS:
-              return NetDiags().Main();
-
             case COMMANDLINE_MODE_REGISTER_PRODUCT:
               // TODO(omaha3): Eliminate the need for this mode.
               return E_FAIL;
@@ -982,7 +977,6 @@ bool GoopdateImpl::ShouldCheckShutdownEvent(CommandLineMode mode) {
     case COMMANDLINE_MODE_NOARGS:
     case COMMANDLINE_MODE_REGSERVER:
     case COMMANDLINE_MODE_UNREGSERVER:
-    case COMMANDLINE_MODE_NETDIAGS:
     case COMMANDLINE_MODE_CRASH:
     case COMMANDLINE_MODE_REPORTCRASH:
     case COMMANDLINE_MODE_RECOVER:
@@ -1062,7 +1056,6 @@ HRESULT GoopdateImpl::LoadResourceDllIfNecessary(CommandLineMode mode,
     case COMMANDLINE_MODE_CORE:
     case COMMANDLINE_MODE_REGSERVER:
     case COMMANDLINE_MODE_UNREGSERVER:
-    case COMMANDLINE_MODE_NETDIAGS:
     case COMMANDLINE_MODE_CRASH:
     case COMMANDLINE_MODE_REPORTCRASH:
     case COMMANDLINE_MODE_WEBPLUGIN:
@@ -1572,7 +1565,6 @@ bool GoopdateImpl::ShouldSetBackgroundPriority(CommandLineMode mode) {
     case COMMANDLINE_MODE_NOARGS:
     case COMMANDLINE_MODE_REGSERVER:
     case COMMANDLINE_MODE_UNREGSERVER:
-    case COMMANDLINE_MODE_NETDIAGS:
     case COMMANDLINE_MODE_CRASH:
     case COMMANDLINE_MODE_RECOVER:
     case COMMANDLINE_MODE_SERVICE_REGISTER:
@@ -1911,7 +1903,6 @@ bool IsMachineProcess(CommandLineMode mode,
     // in the wild.
     case COMMANDLINE_MODE_NOARGS:
     case COMMANDLINE_MODE_UNKNOWN:
-    case COMMANDLINE_MODE_NETDIAGS:
     case COMMANDLINE_MODE_CRASH:
     default:
       return is_running_from_official_machine_directory;
@@ -1937,7 +1928,6 @@ bool CanDisplayUi(CommandLineMode mode, bool is_silent) {
     case COMMANDLINE_MODE_SERVICE:
     case COMMANDLINE_MODE_REGSERVER:
     case COMMANDLINE_MODE_UNREGSERVER:
-    case COMMANDLINE_MODE_NETDIAGS:
     case COMMANDLINE_MODE_CRASH:
     case COMMANDLINE_MODE_REPORTCRASH:
     case COMMANDLINE_MODE_UPDATE:

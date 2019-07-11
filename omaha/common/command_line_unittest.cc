@@ -857,15 +857,6 @@ TEST_F(CommandLineTest, ParseCommandLine_UpdateSessionId) {
   VerifyCommandLineArgs(expected_, args_);
 }
 
-// Parse: <path> /netdiags
-TEST_F(CommandLineTest, ParseCommandLine_NetDiags) {
-  const TCHAR* kCmdLine = _T("goopdate.exe /netdiags");
-  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
-
-  expected_.mode = COMMANDLINE_MODE_NETDIAGS;
-  VerifyCommandLineArgs(expected_, args_);
-}
-
 // Parse: <path> /regserver
 TEST_F(CommandLineTest, ParseCommandLine_Regserver) {
   const TCHAR* kCmdLine = _T("goopdate.exe /regserver");

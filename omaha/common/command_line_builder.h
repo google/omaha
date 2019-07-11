@@ -107,7 +107,6 @@ class CommandLineBuilder {
   CString GetServiceUnregister() const;
   CString GetRegServer() const;
   CString GetUnregServer() const;
-  CString GetNetDiags() const;
   CString GetCrash() const;
   CString GetReportCrash() const;
   CString GetInstall() const;
