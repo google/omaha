@@ -375,7 +375,6 @@ omaha_unittest_inputs = [
     '../base/file_unittest.cc',
     '../base/firewall_product_detection_unittest.cc',
     '../base/highres_timer_unittest.cc',
-    '../base/localization_unittest.cc',
     '../base/logging_unittest.cc',
     '../base/omaha_version_unittest.cc',
     '../base/path_unittest.cc',

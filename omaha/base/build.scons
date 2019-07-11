@@ -53,7 +53,6 @@ inputs = [
     'file_ver.cc',
     'firewall_product_detection.cc',
     'highres_timer-win32.cc',
-    'localization.cc',
     'logging.cc',
     'omaha_version.cc',
     'path.cc',

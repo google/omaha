@@ -182,14 +182,6 @@ CString GetUriHostNameHostOnly(const CString& uri, bool strip_leading_www);
 
 const char *stristr(const char *string, const char *pattern);
 const WCHAR *stristrW(const WCHAR *string, const WCHAR *pattern);
-const WCHAR *strstrW(const WCHAR *string, const WCHAR *pattern);
-
-// Add len_to_add to len_so_far, assuming that if it exceeds the
-// length of the line, it will word wrap onto the next line.  Returns
-// the total length of all the lines summed together.
-float GetLenWithWordWrap (const float len_so_far,
-  const float len_to_add,
-  const uint32 len_line);
 
 // Return the length to use for the output buffer given to the base64 escape
 // routines. Make sure to use the same value for do_padding in both.
@@ -324,12 +316,6 @@ CString sizet_to_str(const size_t & i);
 CString itostr(const int i);
 CString itostr(const uint32 i);
 
-// converts a large number to an approximate value, like "1.2G" or "900M"
-// base_ten = true if based on powers of 10 (like disk space) otherwise based
-// on powers of two.  power = 0 for *10^0, 1 for *10^3 or 2^10, 2 for *10^6
-// or 2^20, and 3 for *10^9 or 2^30, in other words: no units, K, M, or G.
-CString String_LargeIntToApproximateString(uint64 value, bool base_ten, int* power);
-
 // converts a string to an  int
 // Does not check for overflow
 int32 String_StringToInt(const TCHAR * str);
@@ -376,10 +362,6 @@ int String_ReverseFindChar(const TCHAR * str, TCHAR c);
 
 bool String_Contains(const TCHAR *s1, const TCHAR *s2);
 
-// Replace old_char with new_char in str.
-void String_ReplaceChar(TCHAR *str, TCHAR old_char, TCHAR new_char);
-void String_ReplaceChar(CString & str, TCHAR old_char, TCHAR new_char);
-
 // Append the given character to the string if it doesn't already end with it.
 // There must be room in the string to append the character if necessary.
 void String_EndWithChar(TCHAR *str, TCHAR c);
@@ -400,21 +382,9 @@ int ReplaceCString (CString & src, const TCHAR *from, unsigned int from_len,
 // on memory allocation error, returns the original string
 int ReplaceCString (CString & src, const TCHAR *from, const TCHAR *to);
 
-// Functions on arrays of strings
-
-// Returns true iff s is in the array strings (case-insensitive compare)
-bool String_MemberOf(const TCHAR* const* strings, const TCHAR* s);
-// Returns index of s in the array of strings (or -1 for missing) (case-insensitive compare)
-int String_IndexOf(const TCHAR* const* strings, const TCHAR* s);
-
 // Serializes a time64 to a string, and then loads it out again, this string it not for human consumption
 time64 StringToTime(const CString & time);
 CString TimeToString(const time64 & time);
-
-// looks for string A followed by any number of spaces/tabs followed by string b
-// returns starting position of a if found, NULL if not
-// case insensitive
-const TCHAR *FindStringASpaceStringB (const TCHAR *s, const TCHAR *a, const TCHAR *b);
 
 bool IsAlphaA (const char c);
 bool IsDigitA (const char c);

@@ -23,7 +23,6 @@
 #include "omaha/base/const_config.h"
 #include "omaha/base/error.h"
 #include "omaha/base/file.h"
-#include "omaha/base/localization.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/shell.h"
