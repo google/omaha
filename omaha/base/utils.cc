@@ -1429,55 +1429,6 @@ HRESULT WriteEntireFile(const TCHAR * filepath,
   return S_OK;
 }
 
-// Conversions between a byte stream and a std::string
-HRESULT BufferToString(const std::vector<byte>& buffer_in, CStringA* str_out) {
-  ASSERT1(str_out);
-
-  if (buffer_in.size() > INT_MAX) {
-    return E_INVALIDARG;
-  }
-
-  str_out->Append(reinterpret_cast<const char*>(&buffer_in.front()),
-                  static_cast<int>(buffer_in.size()));
-  return S_OK;
-}
-
-HRESULT StringToBuffer(const CStringA& str_in, std::vector<byte>* buffer_out) {
-  ASSERT1(buffer_out);
-  buffer_out->assign(str_in.GetString(),
-                     str_in.GetString() + str_in.GetLength());
-  return S_OK;
-}
-
-HRESULT BufferToString(const std::vector<byte>& buffer_in, CString* str_out) {
-  ASSERT1(str_out);
-
-  const size_t len2 = buffer_in.size();
-  ASSERT1(len2 % 2 == 0);
-  const size_t len = len2 / 2;
-
-  if (len > INT_MAX) {
-    return E_INVALIDARG;
-  }
-
-  str_out->Append(reinterpret_cast<const TCHAR*>(&buffer_in.front()),
-                  static_cast<int>(len));
-
-  return S_OK;
-}
-
-HRESULT StringToBuffer(const CString& str_in, std::vector<byte>* buffer_out) {
-  ASSERT1(buffer_out);
-
-  size_t len = str_in.GetLength();
-  size_t len2 = len * 2;
-
-  buffer_out->resize(len2);
-  ::memcpy(&buffer_out->front(), str_in.GetString(), len2);
-
-  return S_OK;
-}
-
 HRESULT ExpandEnvLikeStrings(const TCHAR* src,
                              const std::map<CString, CString>& keywords,
                              CString* dest) {

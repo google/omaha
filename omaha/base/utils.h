@@ -708,12 +708,6 @@ HRESULT ReadEntireFileShareMode(const TCHAR* filepath,
 HRESULT WriteEntireFile(const TCHAR * filepath,
                         const std::vector<byte>& buffer_in);
 
-// Conversions between a byte stream and a std::string
-HRESULT BufferToString(const std::vector<byte>& buffer_in, CStringA* str_out);
-HRESULT BufferToString(const std::vector<byte>& buffer_in, CString* str_out);
-HRESULT StringToBuffer(const CStringA& str_in, std::vector<byte>* buffer_out);
-HRESULT StringToBuffer(const CString& str_in, std::vector<byte>* buffer_out);
-
 // Expands string with embedded special variables which are enclosed
 // in '%' pair. For example, "%PROGRAMFILES%\Google" expands to
 // "C:\Program Files\Google".
