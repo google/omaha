@@ -77,10 +77,6 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   SafeCStringFormat(&cmd_line, _T("/%s"), kCmdUnregServer);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnUnregServer);
 
-  // gu.exe /netdiags
-  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineNetDiags);
-  CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnNetDiags);
-
   // gu.exe /crash
   SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineCrash);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnCrash);
@@ -310,11 +306,6 @@ HRESULT GoopdateCommandLineValidator::OnRegServer() {
 
 HRESULT GoopdateCommandLineValidator::OnUnregServer() {
   args_->mode = COMMANDLINE_MODE_UNREGSERVER;
-  return S_OK;
-}
-
-HRESULT GoopdateCommandLineValidator::OnNetDiags() {
-  args_->mode = COMMANDLINE_MODE_NETDIAGS;
   return S_OK;
 }
 

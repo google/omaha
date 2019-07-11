@@ -61,12 +61,6 @@ TEST(CommandLineBuilder, BuildUnregServer) {
   EXPECT_STREQ(_T("/unregserver"), cmd_line);
 }
 
-TEST(CommandLineBuilder, BuildNetDiags) {
-  CommandLineBuilder builder(COMMANDLINE_MODE_NETDIAGS);
-  CString cmd_line = builder.GetCommandLineArgs();
-  EXPECT_STREQ(_T("/netdiags"), cmd_line);
-}
-
 TEST(CommandLineBuilder, BuildCrashNoFilename) {
   CommandLineBuilder builder(COMMANDLINE_MODE_CRASH);
   CString cmd_line = builder.GetCommandLineArgs();

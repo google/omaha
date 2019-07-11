@@ -197,14 +197,6 @@ GPA_WRAP(RasApi32.dll,
          DWORD,
          ERROR_MOD_NOT_FOUND);
 
-GPA_WRAP(kernel32.dll,
-         AttachConsole,
-         (DWORD process_id),
-         (process_id),
-         WINAPI,
-         BOOL,
-         0);
-
 // Private Object Namespaces for Vista and above. More information here:
 // http://msdn2.microsoft.com/en-us/library/ms684295(VS.85).aspx
 GPA_WRAP(kernel32.dll,

@@ -57,7 +57,6 @@ class GoopdateCommandLineValidator {
   HRESULT OnServiceUnregister();
   HRESULT OnRegServer();
   HRESULT OnUnregServer();
-  HRESULT OnNetDiags();
   HRESULT OnCrash();
   HRESULT OnComServer();
   HRESULT OnComBroker();

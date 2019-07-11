@@ -165,9 +165,6 @@ CString CommandLineBuilder::GetCommandLineArgs() const {
     case COMMANDLINE_MODE_UNREGSERVER:
       cmd_line_args = GetUnregServer();
       break;
-    case COMMANDLINE_MODE_NETDIAGS:
-      cmd_line_args = GetNetDiags();
-      break;
     case COMMANDLINE_MODE_CRASH:
       cmd_line_args = GetCrash();
       break;
@@ -300,10 +297,6 @@ CString CommandLineBuilder::GetRegServer() const {
 
 CString CommandLineBuilder::GetUnregServer() const {
   return GetSingleSwitch(kCmdUnregServer);
-}
-
-CString CommandLineBuilder::GetNetDiags() const {
-  return GetSingleSwitch(kCmdLineNetDiags);
 }
 
 CString CommandLineBuilder::GetCrash() const {
