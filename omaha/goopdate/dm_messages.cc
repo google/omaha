@@ -103,7 +103,7 @@ bool CheckVerificationKeySignature(
     const std::string& key,
     const std::string& verification_key,
     const std::string& signature) {
-  enterprise_management::DEPRECATEDPolicyPublicKeyAndDomain signed_data;
+  enterprise_management::PublicKeyVerificationData signed_data;
   signed_data.set_new_public_key(key);
 
   std::string username = policy_data.username();
@@ -115,6 +115,11 @@ bool CheckVerificationKeySignature(
   }
 
   signed_data.set_domain(domain);
+
+  if (policy_data.has_public_key_version()) {
+    signed_data.set_new_public_key_version(policy_data.public_key_version());
+  }
+
   std::string signed_data_as_string;
   if (!signed_data.SerializeToString(&signed_data_as_string)) {
     REPORT_LOG(LE, (_T("[CheckVerificationKeySignature]")
@@ -128,15 +133,15 @@ bool CheckVerificationKeySignature(
                          CALG_SHA_256);
 }
 
-// Verifies that the |new_public_key_verification_signature_deprecated| verifies
-// with the hardcoded |GetPolicyVerificationKey()| for the |new_public_key| in
+// Verifies that the |new_public_key_verification_data_signature| verifies with
+// the hardcoded |GetPolicyVerificationKey()| for the |new_public_key| in
 // |fetch_response|.
 bool CheckNewPublicKeyVerificationSignature(
     const enterprise_management::PolicyFetchResponse& fetch_response,
     const enterprise_management::PolicyData& policy_data) {
-  if (!fetch_response.has_new_public_key_verification_signature_deprecated()) {
+  if (!fetch_response.has_new_public_key_verification_data_signature()) {
     REPORT_LOG(LE, (_T("[CheckNewPublicKeyVerificationSignature]")
-        _T("[Policy missing public_key_verification_signature_deprecated]")));
+        _T("[Policy missing new_public_key_verification_data_signature]")));
     return false;
   }
 
@@ -144,7 +149,7 @@ bool CheckNewPublicKeyVerificationSignature(
            policy_data,
            fetch_response.new_public_key(),
            GetPolicyVerificationKey(),
-           fetch_response.new_public_key_verification_signature_deprecated())) {
+           fetch_response.new_public_key_verification_data_signature())) {
     REPORT_LOG(LE, (_T("[CheckNewPublicKeyVerificationSignature]")
                     _T("[Signature verification failed]")));
     return false;

@@ -532,7 +532,7 @@ class DmClientRequestTest : public ::testing::Test {
     std::string public_key_verification_signature(
         reinterpret_cast<const char*>(public_key_signature),
         public_key_signature_length);
-    response->set_new_public_key_verification_signature_deprecated(
+    response->set_new_public_key_verification_data_signature(
         public_key_verification_signature);
 
     // Add the PolicyData signature to the policy response.
