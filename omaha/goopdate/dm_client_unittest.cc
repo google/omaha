@@ -24,6 +24,7 @@
 
 #include "base/basictypes.h"
 #include "crypto/rsa_private_key.h"
+#include "crypto/signature_creator.h"
 #include "gtest/gtest-matchers.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
@@ -111,6 +112,21 @@ const uint8_t kNewSigningPublicKeySignature[] = {
 };
 
 const char kUsername[] = "username@example.com";
+
+// Produces |key|'s signature over |data| and stores it in |signature|.
+void SignData(const std::string& data,
+              crypto::RSAPrivateKey* key,
+              std::string* signature) {
+  std::unique_ptr<crypto::SignatureCreator> signature_creator(
+      crypto::SignatureCreator::Create(key, CALG_SHA1));
+  ASSERT_TRUE(
+      signature_creator->Update(reinterpret_cast<const uint8_t*>(data.c_str()),
+                                data.size()));
+  std::vector<uint8_t> signature_bytes;
+  ASSERT_TRUE(signature_creator->Final(&signature_bytes));
+  signature->assign(reinterpret_cast<const char*>(signature_bytes.data()),
+                    signature_bytes.size());
+}
 
 // A Google Mock matcher that returns true if a string contains a valid
 // URL to the device management server with the required query parameters.
@@ -383,6 +399,11 @@ class DmClientRequestTest : public ::testing::Test {
         sizeof(kNewSigningPublicKeySignature));
     response->set_new_public_key_verification_signature_deprecated(
         public_key_signature);
+
+    // PolicyData signature.
+    SignData(response->policy_data(),
+             policy_signing_key.get(),
+             response->mutable_policy_data_signature());
   }
 
   // Populates |body| with a valid serialized DeviceRegisterResponse.

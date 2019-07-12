@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTO_SIGNATURE_CREATOR_H_
-#define CRYPTO_SIGNATURE_CREATOR_H_
+#ifndef OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_SIGNATURE_CREATOR_H_
+#define OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_SIGNATURE_CREATOR_H_
 
 #include <vector>
 
@@ -21,7 +21,7 @@ class SignatureCreator {
 
   // Create an instance. The caller must ensure that the provided PrivateKey
   // instance outlives the created SignatureCreator.
-  static SignatureCreator* Create(RSAPrivateKey* key);
+  static SignatureCreator* Create(RSAPrivateKey* key, ALG_ID algorithm_id);
 
   // Update the signature with more data.
   bool Update(const uint8* data_part, int data_part_len);
@@ -42,5 +42,5 @@ class SignatureCreator {
 
 }  // namespace crypto
 
-#endif  // CRYPTO_SIGNATURE_CREATOR_H_
+#endif  // OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_SIGNATURE_CREATOR_H_
 

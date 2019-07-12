@@ -11,11 +11,12 @@
 namespace crypto {
 
 // static
-SignatureCreator* SignatureCreator::Create(RSAPrivateKey* key) {
+SignatureCreator* SignatureCreator::Create(RSAPrivateKey* key,
+                                           ALG_ID algorithm_id) {
   std::unique_ptr<SignatureCreator> result(new SignatureCreator);
   result->key_ = key;
 
-  if (!CryptCreateHash(key->provider(), CALG_SHA1, 0, 0,
+  if (!CryptCreateHash(key->provider(), algorithm_id, 0, 0,
                        result->hash_object_.receive())) {
     ASSERT1(false);
     return NULL;

@@ -23,7 +23,7 @@ TEST(SignatureCreatorTest, BasicTest) {
   ASSERT_TRUE(key.get());
 
   std::unique_ptr<crypto::SignatureCreator> signer(
-      crypto::SignatureCreator::Create(key.get()));
+      crypto::SignatureCreator::Create(key.get(), CALG_SHA1));
   ASSERT_TRUE(signer.get());
 
   std::string data("Hello, World!");

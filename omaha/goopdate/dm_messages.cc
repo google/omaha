@@ -162,6 +162,16 @@ HRESULT ValidatePolicy(
     return E_FAIL;
   }
 
+  if (!fetch_response.has_policy_data_signature() ||
+      !VerifySignature(fetch_response.policy_data(),
+                       fetch_response.new_public_key(),
+                       fetch_response.policy_data_signature(),
+                       CALG_SHA1)) {
+    REPORT_LOG(LE, (_T("[ValidatePolicy]")
+                    _T("[Failed to verify the signature on policy_data()]")));
+    return E_FAIL;
+  }
+
   return S_OK;
 }
 
