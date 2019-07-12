@@ -15,7 +15,6 @@
 
 Import('env')
 
-import functools
 import glob
 import operator
 import os
@@ -277,6 +276,7 @@ cc_files += [
     '../third_party/chrome/files/src/components/crx_file/crx_verifier.cc',
     '../third_party/chrome/files/src/components/crx_file/id_util.cc',
     '../third_party/chrome/files/src/crypto/signature_verifier.cc',
+    '../third_party/chrome/files/src/crypto/signature_verifier_win.cc',
     '../third_party/chrome/files/src/crypto/secure_util.cc',
 ]
 

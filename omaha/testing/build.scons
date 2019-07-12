@@ -547,6 +547,8 @@ omaha_unittest_inputs = [
     '../third_party/chrome/files/src/base/cpu_unittest.cc',
     '../third_party/chrome/files/src/base/rand_util_unittest.cc',
     '../third_party/chrome/files/src/crypto/rsa_private_key_unittest.cc',
+    '../third_party/chrome/files/src/crypto/signature_creator_unittest.cc',
+    '../third_party/chrome/files/src/crypto/signature_verifier_win_unittest.cc',
 ]
 
 if omaha_unittest_env.Bit('has_device_management'):

@@ -8,8 +8,40 @@
 #include <memory>
 
 #include "omaha/base/debug.h"
+#include "omaha/base/logging.h"
 
 namespace crypto {
+
+HRESULT CryptAcquireContextWithFallback(DWORD provider_type,
+                                        HCRYPTPROV* provider) {
+  ASSERT1(provider);
+
+  const TCHAR* kHashCryptoProviders[] = {
+      NULL,                   // The default provider.
+      MS_ENH_RSA_AES_PROV,    // The named provider for Vista and up.
+      MS_ENH_RSA_AES_PROV_XP  // The named provider for XP SP3 and up.
+  };
+
+  // Try different providers until one of them succeeds.
+  HRESULT hr = S_OK;
+  ScopedHCRYPTPROV scoped_provider;
+  for (auto hash_crypto_provider : kHashCryptoProviders) {
+    if (::CryptAcquireContext(scoped_provider.receive(),
+                              NULL,
+                              hash_crypto_provider,
+                              provider_type,
+                              CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
+      REPORT_LOG(L6, (_T("[CryptAcquireContext succeeded]")));
+      *provider = scoped_provider.release();
+      return S_OK;
+    }
+
+    hr = HRESULT_FROM_WIN32(::GetLastError());
+    REPORT_LOG(LE, (_T("[CryptAcquireContext failed][%#x]"), hr));
+  }
+
+  return hr;
+}
 
 // static
 RSAPrivateKey* RSAPrivateKey::Create(uint16 num_bits) {
@@ -122,8 +154,8 @@ RSAPrivateKey::RSAPrivateKey() : provider_(NULL), key_(NULL) {}
 RSAPrivateKey::~RSAPrivateKey() {}
 
 bool RSAPrivateKey::InitProvider() {
-  return FALSE != CryptAcquireContext(provider_.receive(), NULL, NULL,
-                                      PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+  return SUCCEEDED(CryptAcquireContextWithFallback(PROV_RSA_AES,
+                                                   provider_.receive()));
 }
 
 bool RSAPrivateKey::ExportPrivateKey(std::vector<uint8>* output) {

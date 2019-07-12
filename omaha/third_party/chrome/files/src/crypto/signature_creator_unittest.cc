@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "crypto/signature_verifier.h"
+#include "crypto/signature_verifier_win.h"
 #include "omaha/testing/unit_test.h"
 
 TEST(SignatureCreatorTest, BasicTest) {
@@ -16,7 +16,7 @@ TEST(SignatureCreatorTest, BasicTest) {
       crypto::RSAPrivateKey::Create(1024));
   ASSERT_TRUE(key_original.get());
 
-  std::vector<uint8> key_info;
+  std::vector<uint8_t> key_info;
   key_original->ExportPrivateKey(&key_info);
   std::unique_ptr<crypto::RSAPrivateKey> key(
       crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(key_info));
@@ -27,28 +27,22 @@ TEST(SignatureCreatorTest, BasicTest) {
   ASSERT_TRUE(signer.get());
 
   std::string data("Hello, World!");
-  ASSERT_TRUE(signer->Update(reinterpret_cast<const uint8*>(data.c_str()),
+  ASSERT_TRUE(signer->Update(reinterpret_cast<const uint8_t*>(data.c_str()),
                              static_cast<int>(data.size())));
 
-  std::vector<uint8> signature;
+  std::vector<uint8_t> signature;
   ASSERT_TRUE(signer->Final(&signature));
 
-  std::vector<uint8> public_key_info;
+  std::vector<uint8_t> public_key_info;
   ASSERT_TRUE(key_original->ExportPublicKey(&public_key_info));
 
-  // This is the algorithm ID for SHA-1 with RSA encryption.
-  // TODO(aa): Factor this out into some shared location.
-  const uint8 kSHA1WithRSAAlgorithmID[] = {
-    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
-    0xf7, 0x0d, 0x01, 0x01, 0x05, 0x05, 0x00
-  };
-  crypto::SignatureVerifier verifier;
+  crypto::SignatureVerifierWin verifier;
   ASSERT_TRUE(verifier.VerifyInit(
-      kSHA1WithRSAAlgorithmID, sizeof(kSHA1WithRSAAlgorithmID),
+      CALG_SHA1,
       &signature.front(), static_cast<int>(signature.size()),
       &public_key_info.front(), static_cast<int>(public_key_info.size())));
 
-  verifier.VerifyUpdate(reinterpret_cast<const uint8*>(data.c_str()),
+  verifier.VerifyUpdate(reinterpret_cast<const uint8_t*>(data.c_str()),
                         static_cast<int>(data.size()));
   ASSERT_TRUE(verifier.VerifyFinal());
 }

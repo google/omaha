@@ -17,6 +17,7 @@
 #include <limits>
 #include <utility>
 
+#include "crypto/signature_verifier_win.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
@@ -24,6 +25,37 @@
 namespace omaha {
 
 namespace {
+
+// Request signed policy blobs. kPolicyVerificationKeyHash and
+// kPolicyVerificationKey need to be kept in sync with the corresponding values
+// in Chromium's cloud_policy_constants.cc.
+constexpr char kPolicyVerificationKeyHash[] = "1:356l7w";
+const uint8_t kPolicyVerificationKey[] = {
+    0x30, 0x82, 0x01, 0x22, 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86,
+    0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0F, 0x00,
+    0x30, 0x82, 0x01, 0x0A, 0x02, 0x82, 0x01, 0x01, 0x00, 0xA7, 0xB3, 0xF9,
+    0x0D, 0xC7, 0xC7, 0x8D, 0x84, 0x3D, 0x4B, 0x80, 0xDD, 0x9A, 0x2F, 0xF8,
+    0x69, 0xD4, 0xD1, 0x14, 0x5A, 0xCA, 0x04, 0x4B, 0x1C, 0xBC, 0x28, 0xEB,
+    0x5E, 0x10, 0x01, 0x36, 0xFD, 0x81, 0xEB, 0xE4, 0x3C, 0x16, 0x40, 0xA5,
+    0x8A, 0xE6, 0x08, 0xEE, 0xEF, 0x39, 0x1F, 0x6B, 0x10, 0x29, 0x50, 0x84,
+    0xCE, 0xEE, 0x33, 0x5C, 0x48, 0x4A, 0x33, 0xB0, 0xC8, 0x8A, 0x66, 0x0D,
+    0x10, 0x11, 0x9D, 0x6B, 0x55, 0x4C, 0x9A, 0x62, 0x40, 0x9A, 0xE2, 0xCA,
+    0x21, 0x01, 0x1F, 0x10, 0x1E, 0x7B, 0xC6, 0x89, 0x94, 0xDA, 0x39, 0x69,
+    0xBE, 0x27, 0x28, 0x50, 0x5E, 0xA2, 0x55, 0xB9, 0x12, 0x3C, 0x79, 0x6E,
+    0xDF, 0x24, 0xBF, 0x34, 0x88, 0xF2, 0x5E, 0xD0, 0xC4, 0x06, 0xEE, 0x95,
+    0x6D, 0xC2, 0x14, 0xBF, 0x51, 0x7E, 0x3F, 0x55, 0x10, 0x85, 0xCE, 0x33,
+    0x8F, 0x02, 0x87, 0xFC, 0xD2, 0xDD, 0x42, 0xAF, 0x59, 0xBB, 0x69, 0x3D,
+    0xBC, 0x77, 0x4B, 0x3F, 0xC7, 0x22, 0x0D, 0x5F, 0x72, 0xC7, 0x36, 0xB6,
+    0x98, 0x3D, 0x03, 0xCD, 0x2F, 0x68, 0x61, 0xEE, 0xF4, 0x5A, 0xF5, 0x07,
+    0xAE, 0xAE, 0x79, 0xD1, 0x1A, 0xB2, 0x38, 0xE0, 0xAB, 0x60, 0x5C, 0x0C,
+    0x14, 0xFE, 0x44, 0x67, 0x2C, 0x8A, 0x08, 0x51, 0x9C, 0xCD, 0x3D, 0xDB,
+    0x13, 0x04, 0x57, 0xC5, 0x85, 0xB6, 0x2A, 0x0F, 0x02, 0x46, 0x0D, 0x2D,
+    0xCA, 0xE3, 0x3F, 0x84, 0x9E, 0x8B, 0x8A, 0x5F, 0xFC, 0x4D, 0xAA, 0xBE,
+    0xBD, 0xE6, 0x64, 0x9F, 0x26, 0x9A, 0x2B, 0x97, 0x69, 0xA9, 0xBA, 0x0B,
+    0xBD, 0x48, 0xE4, 0x81, 0x6B, 0xD4, 0x4B, 0x78, 0xE6, 0xAF, 0x95, 0x66,
+    0xC1, 0x23, 0xDA, 0x23, 0x45, 0x36, 0x6E, 0x25, 0xF3, 0xC7, 0xC0, 0x61,
+    0xFC, 0xEC, 0x66, 0x9D, 0x31, 0xD4, 0xD6, 0xB6, 0x36, 0xE3, 0x7F, 0x81,
+    0x87, 0x02, 0x03, 0x01, 0x00, 0x01};
 
 void SerializeToCStringA(const ::google::protobuf_opensource::Message& message,
                          CStringA* output) {
@@ -39,6 +71,98 @@ void SerializeToCStringA(const ::google::protobuf_opensource::Message& message,
   ::google::protobuf_opensource::uint8* end =
         message.SerializeWithCachedSizesToArray(buffer);
   output->ReleaseBufferSetLength(end - buffer);
+}
+
+std::string GetPolicyVerificationKey() {
+  return std::string(reinterpret_cast<const char*>(kPolicyVerificationKey),
+                     sizeof(kPolicyVerificationKey));
+}
+
+bool VerifySignature(const std::string& data,
+                     const std::string& key,
+                     const std::string& signature,
+                     ALG_ID algorithm_id) {
+  crypto::SignatureVerifierWin verifier;
+  if (!verifier.VerifyInit(algorithm_id,
+                           reinterpret_cast<const uint8_t*>(signature.data()),
+                           signature.size(),
+                           reinterpret_cast<const uint8_t*>(key.data()),
+                           key.size())) {
+    REPORT_LOG(LE, (_T("[VerifySignature][Invalid signature/key]")));
+    return false;
+  }
+
+  verifier.VerifyUpdate(reinterpret_cast<const uint8_t*>(data.data()),
+                        data.size());
+
+  return verifier.VerifyFinal();
+}
+
+bool CheckVerificationKeySignature(
+    const enterprise_management::PolicyData& policy_data,
+    const std::string& key,
+    const std::string& verification_key,
+    const std::string& signature) {
+  enterprise_management::DEPRECATEDPolicyPublicKeyAndDomain signed_data;
+  signed_data.set_new_public_key(key);
+
+  std::string username = policy_data.username();
+  std::string domain = username.substr(username.rfind('@') + 1);
+  if (domain.empty()) {
+    REPORT_LOG(LE, (_T("[CheckVerificationKeySignature]")
+                    _T("[Domain not found in policy][%S]"), username.c_str()));
+    return false;
+  }
+
+  signed_data.set_domain(domain);
+  std::string signed_data_as_string;
+  if (!signed_data.SerializeToString(&signed_data_as_string)) {
+    REPORT_LOG(LE, (_T("[CheckVerificationKeySignature]")
+                    _T("[Could not serialize key and domain to string]")));
+    return false;
+  }
+
+  return VerifySignature(signed_data_as_string,
+                         verification_key,
+                         signature,
+                         CALG_SHA_256);
+}
+
+// Verifies that the |new_public_key_verification_signature_deprecated| verifies
+// with the hardcoded |GetPolicyVerificationKey()| for the |new_public_key| in
+// |fetch_response|.
+bool CheckNewPublicKeyVerificationSignature(
+    const enterprise_management::PolicyFetchResponse& fetch_response,
+    const enterprise_management::PolicyData& policy_data) {
+  if (!fetch_response.has_new_public_key_verification_signature_deprecated()) {
+    REPORT_LOG(LE, (_T("[CheckNewPublicKeyVerificationSignature]")
+        _T("[Policy missing public_key_verification_signature_deprecated]")));
+    return false;
+  }
+
+  if (!CheckVerificationKeySignature(
+           policy_data,
+           fetch_response.new_public_key(),
+           GetPolicyVerificationKey(),
+           fetch_response.new_public_key_verification_signature_deprecated())) {
+    REPORT_LOG(LE, (_T("[CheckNewPublicKeyVerificationSignature]")
+                    _T("[Signature verification failed]")));
+    return false;
+  }
+
+  return true;
+}
+
+HRESULT ValidatePolicy(
+    const enterprise_management::PolicyFetchResponse& fetch_response,
+    const enterprise_management::PolicyData& policy_data) {
+  if (!CheckNewPublicKeyVerificationSignature(fetch_response, policy_data)) {
+    REPORT_LOG(LE, (_T("[ValidatePolicy]")
+                    _T("[Failed CheckNewPublicKeyVerificationSignature]")));
+    return E_FAIL;
+  }
+
+  return S_OK;
 }
 
 }  // namespace
@@ -60,10 +184,6 @@ CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
 }
 
 CStringA SerializePolicyFetchRequest(const CStringA& policy_type) {
-  // Request signed policy blobs. kPolicyVerificationKeyHash needs to be kept in
-  // sync with the corresponding value in Chromium's cloud_policy_constants.cc.
-  static constexpr char kPolicyVerificationKeyHash[] = "1:356l7w";
-
   enterprise_management::DeviceManagementRequest policy_request;
 
   enterprise_management::PolicyFetchRequest* policy_fetch_request =
@@ -140,21 +260,28 @@ HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
     if (!policy_data.ParseFromString(response.policy_data()) ||
         !policy_data.IsInitialized() ||
         !policy_data.has_policy_type()) {
-      OPT_LOG(LW, (_T("Ignoring invalid PolicyData")));
+      REPORT_LOG(LW, (_T("Ignoring invalid PolicyData")));
       continue;
     }
 
     const std::string& type = policy_data.policy_type();
     if (responses.find(type) != responses.end()) {
-      OPT_LOG(LW, (_T("Duplicate PolicyFetchResponse for type: %S"),
-                   type.c_str()));
+      REPORT_LOG(LW, (_T("Duplicate PolicyFetchResponse for type: %S"),
+                      type.c_str()));
       continue;
     }
 
     std::string policy_fetch_response;
     if (!response.SerializeToString(&policy_fetch_response)) {
-      OPT_LOG(LW, (_T("Failed to serialize response for type: %S"),
-                   type.c_str()));
+      REPORT_LOG(LW, (_T("Failed to serialize response for type: %S"),
+                      type.c_str()));
+      continue;
+    }
+
+    HRESULT hr = ValidatePolicy(response, policy_data);
+    if (FAILED(hr)) {
+      REPORT_LOG(LW,
+          (_T("[ParseDevicePolicyResponse][Failed ValidatePolicy][%#x]"), hr));
       continue;
     }
 

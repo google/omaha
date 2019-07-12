@@ -45,7 +45,7 @@ constexpr DWORD kCertificateNameType = CERT_NAME_SIMPLE_DISPLAY_TYPE;
 constexpr DWORD kKeyPairType = AT_SIGNATURE;
 
 // Maximum file size allowed for performing authentication.
-constexpr size_t kMaxFileSizeForAuthentication = 512 * 1024 * 1024; // 512MB
+constexpr size_t kMaxFileSizeForAuthentication = 512 * 1024 * 1024;  // 512MB
 
 // Buffer size used to read files from disk.
 constexpr size_t kFileReadBufferSize = 128 * 1024;
@@ -86,39 +86,6 @@ void crypt_destroy_hash(HCRYPTHASH hash) {
 typedef close_fun<void (*)(HCRYPTHASH),
                   crypt_destroy_hash> smart_destroy_hash;
 typedef scoped_any<HCRYPTHASH, smart_destroy_hash, null_t> scoped_crypt_hash;
-
-// Providers implementing SHA256 can be instantiated using different names.
-// On Vista and up, both the default provider and the enhanced RSA/AES
-// provider support SHA256. On Windows XP, the named provider has a different
-// name, therefore, the code falls back to a specific named provider in case
-// of errors.
-HRESULT CryptAcquireContextWithFallback(DWORD provider_type,
-                                        HCRYPTPROV* provider) {
-  const TCHAR* kHashCryptoProvider[] = {
-      NULL,                   // The default provider.
-      MS_ENH_RSA_AES_PROV,    // The named provider for Vista and up.
-      MS_ENH_RSA_AES_PROV_XP  // The named provider for XP SP3 and up.
-  };
-
-  // Try different providers until one of them succeeds.
-  HRESULT hr = S_OK;
-  CryptDetails::scoped_crypt_context scoped_csp_handle;
-  for (size_t i = 0; i != arraysize(kHashCryptoProvider); ++i) {
-    if (::CryptAcquireContext(address(scoped_csp_handle),
-                              NULL,
-                              kHashCryptoProvider[i],
-                              provider_type,
-                              CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
-      UTIL_LOG(L6, (_T("[CryptAcquireContext succeeded]")));
-      *provider = release(scoped_csp_handle);
-      return S_OK;
-    } else {
-      hr = HRESULTFromLastError();
-      UTIL_LOG(LE, (_T("[CryptAcquireContext failed][0x%08lX]"), hr));
-    }
-  }
-  return hr;
-}
 
 class SHA256Hash : public HashInterface {
  public:

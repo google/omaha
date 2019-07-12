@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTO_RSA_PRIVATE_KEY_H_
-#define CRYPTO_RSA_PRIVATE_KEY_H_
+#ifndef OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_RSA_PRIVATE_KEY_H_
+#define OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_RSA_PRIVATE_KEY_H_
 #pragma once
 
 #include "build/build_config.h"
@@ -33,11 +33,18 @@ struct SECKEYPublicKeyStr;
 
 namespace crypto {
 
+// Providers implementing SHA256 can be instantiated using different names.
+// On Vista and up, both the default provider and the enhanced RSA/AES
+// provider support SHA256. On Windows XP, the named provider has a different
+// name, therefore, the code falls back to a specific named provider in case
+// of errors.
+HRESULT CryptAcquireContextWithFallback(DWORD provider_type,
+                                        HCRYPTPROV* provider);
+
 // Used internally by RSAPrivateKey for serializing and deserializing
 // PKCS #8 PrivateKeyInfo and PublicKeyInfo.
 class PrivateKeyInfoCodec {
  public:
-
   // ASN.1 encoding of the AlgorithmIdentifier from PKCS #8.
   static const uint8 kRsaAlgorithmIdentifier[];
 
@@ -76,14 +83,14 @@ class PrivateKeyInfoCodec {
 
   // Accessors to the contents of the integer components of the PrivateKeyInfo
   // structure.
-  std::vector<uint8>* modulus() { return &modulus_; };
-  std::vector<uint8>* public_exponent() { return &public_exponent_; };
-  std::vector<uint8>* private_exponent() { return &private_exponent_; };
-  std::vector<uint8>* prime1() { return &prime1_; };
-  std::vector<uint8>* prime2() { return &prime2_; };
-  std::vector<uint8>* exponent1() { return &exponent1_; };
-  std::vector<uint8>* exponent2() { return &exponent2_; };
-  std::vector<uint8>* coefficient() { return &coefficient_; };
+  std::vector<uint8>* modulus() { return &modulus_; }
+  std::vector<uint8>* public_exponent() { return &public_exponent_; }
+  std::vector<uint8>* private_exponent() { return &private_exponent_; }
+  std::vector<uint8>* prime1() { return &prime1_; }
+  std::vector<uint8>* prime2() { return &prime2_; }
+  std::vector<uint8>* exponent1() { return &exponent1_; }
+  std::vector<uint8>* exponent2() { return &exponent2_; }
+  std::vector<uint8>* coefficient() { return &coefficient_; }
 
  private:
   // Utility wrappers for PrependIntegerImpl that use the class's |big_endian_|
@@ -270,5 +277,5 @@ class RSAPrivateKey {
 
 }  // namespace crypto
 
-#endif  // CRYPTO_RSA_PRIVATE_KEY_H_
+#endif  // OMAHA_THIRD_PARTY_CHROME_FILES_SRC_CRYPTO_RSA_PRIVATE_KEY_H_
 
