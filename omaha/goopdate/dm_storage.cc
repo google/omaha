@@ -14,6 +14,7 @@
 
 #include "omaha/goopdate/dm_storage.h"
 
+#include <string.h>
 #include <set>
 
 #include "omaha/base/const_utils.h"
@@ -118,8 +119,15 @@ HRESULT StoreDmTokenInKey(const CStringA& dm_token, const TCHAR* path) {
   return hr;
 }
 
-HRESULT DeleteObsoletePolicies(const CPath& policy_responses_dir,
-                               const std::set<CString>& policy_types_base64) {
+struct IgnoreCaseCompare {
+  bool operator() (const CString& a, const CString& b) const {
+    return a.CompareNoCase(b) < 0;
+  }
+};
+
+HRESULT DeleteObsoletePolicies(
+    const CPath& policy_responses_dir,
+    const std::set<CString, IgnoreCaseCompare>& policy_types_base64) {
   std::vector<CString> files;
   HRESULT hr = FindFiles(policy_responses_dir, _T("*"), &files);
   if (FAILED(hr)) {
@@ -129,7 +137,7 @@ HRESULT DeleteObsoletePolicies(const CPath& policy_responses_dir,
   for (const auto& file : files) {
     if (file == _T(".") ||
         file == _T("..") ||
-        file == kCachedPublicKeyFileName ||
+        !file.CompareNoCase(kCachedPublicKeyFileName) ||
         policy_types_base64.count(file)) {
       continue;
     }
@@ -251,7 +259,7 @@ CString DmStorage::GetDeviceId() {
 
 HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
                                    const PolicyResponses& responses) {
-  std::set<CString> policy_types_base64;
+  std::set<CString, IgnoreCaseCompare> policy_types_base64;
   bool is_key_file_initialized = false;
 
   for (const auto& response : responses.responses) {
