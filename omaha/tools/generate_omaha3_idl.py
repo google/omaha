@@ -17,7 +17,7 @@
 
 """Generates IDL file Omaha3 internfaces."""
 
-import commands
+import subprocess
 import getopt
 import os
 import sys
@@ -33,7 +33,7 @@ def _GetStatusOutput(cmd):
     if text[-1:] == "\n": text = text[:-1]
     return sts, text
   else:
-    return commands.getstatusoutput(cmd)
+    return subprocess.getstatusoutput(cmd)
 
 
 def _GenerateGuid():
@@ -67,7 +67,7 @@ def _GenerateIDLFile(idl_template_filename, idl_output_filename):
 
 def _Usage():
   """Prints out script usage information."""
-  print """
+  print("""
 generate_omaha3_idl.py: Write out the given IDL file.
 
 Usage:
@@ -79,7 +79,7 @@ Options:
   --help                        Show this information.
   --idl_output_file filename    Path/name of output IDL filename.
   --idl_template_file filename  Path/name of input IDL template.
-"""
+""")
 
 
 def _Main():

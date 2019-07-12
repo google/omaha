@@ -11,11 +11,11 @@ duration = float(sys.argv[2])
 cmd = sys.argv[3:]
 
 # Open stdout with no buffering.
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'wb', 0)
 
 for i in range(times):
   if i:
-    print 'Retrying %d...' % i
+    print('Retrying %d...' % i)
   retcode = subprocess.call(cmd, stderr=subprocess.STDOUT)
   if retcode == 0:
     sys.exit(0)

@@ -17,7 +17,7 @@
 
 """Generates Omaha build file and Omaha customization unit test file."""
 
-import commands
+import subprocess
 import os
 
 
@@ -37,7 +37,7 @@ def _GetStatusOutput(cmd):
     if text[-1:] == "\n": text = text[:-1]
     return sts, text
   else:
-    return commands.getstatusoutput(cmd)
+    return subprocess.getstatusoutput(cmd)
 
 
 def _GenerateGuid():
