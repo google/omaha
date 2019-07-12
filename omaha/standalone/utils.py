@@ -6,13 +6,7 @@ allowing it to be used in both scons-based and "standard" python code.
 
 import array
 import base64
-try:
-  # Import _hashlib instead of hashlib, otherwise, when used in an Omaha build,
-  # it collides with the incompatible Scons hashlib hack in:
-  # googleclient/third_party/scons/hammer_version/scons-local/SCons/compat/_scons_hashlib.py
-  import _hashlib
-except ImportError:
-  from third_party.hashlib import _hashlib
+import hashlib
 import os
 
 
@@ -49,7 +43,7 @@ def GenerateUpdateResponseFile(target, sources, version_list, has_x64_binaries):
     installer_file = open(os.path.abspath(binary_path), mode='rb')
     data.fromfile(installer_file, size)
     installer_file.close()
-    sha256 = _hashlib.openssl_sha256()
+    sha256 = hashlib.sha256()
     sha256.update(data)
     hash_value = sha256.hexdigest()
 
