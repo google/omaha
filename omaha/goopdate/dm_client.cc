@@ -109,14 +109,14 @@ HRESULT RefreshPolicies() {
   // No work to be done if the process is not running as an administrator, since
   // we will not be able to persist anything.
   if (!::IsUserAnAdmin()) {
-    OPT_LOG(L1, (_T("[RefreshPolicies][Process not Admin, exiting early]")));
+    REPORT_LOG(L1, (_T("[RefreshPolicies][Process not Admin, exiting early]")));
     return S_FALSE;
   }
 
   DmStorage* const dm_storage = DmStorage::Instance();
   const CString dm_token = CString(dm_storage->GetDmToken());
   if (dm_token.IsEmpty()) {
-    OPT_LOG(L1, (_T("[Skipping RefreshPolicies as there is no DMToken]")));
+    REPORT_LOG(L1, (_T("[Skipping RefreshPolicies as there is no DMToken]")));
     return S_FALSE;
   }
 
@@ -126,20 +126,26 @@ HRESULT RefreshPolicies() {
     return E_FAIL;
   }
 
-  PolicyResponsesMap responses;
+  const CPath policy_responses_dir(
+      ConfigManager::Instance()->GetPolicyResponsesDir());
+  CachedPublicKey key;
+  HRESULT hr = DmStorage::ReadCachedPublicKeyFile(policy_responses_dir, &key);
+  if (FAILED(hr)) {
+    REPORT_LOG(LW, (_T("[ReadCachedPublicKeyFile failed][%#x]"), hr));
+    // Not fatal, continue.
+  }
 
   // FetchPolicies owns the SimpleRequest being created here.
-  HRESULT hr = internal::FetchPolicies(new SimpleRequest,
-                                       dm_token,
-                                       device_id,
-                                       &responses);
+  PolicyResponses responses;
+  hr = internal::FetchPolicies(new SimpleRequest,
+                               dm_token,
+                               device_id,
+                               key,
+                               &responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[FetchPolicies failed][%#x]"), hr));
     return hr;
   }
-
-  const CPath policy_responses_dir(
-      ConfigManager::Instance()->GetPolicyResponsesDir());
 
   hr = DmStorage::PersistPolicies(policy_responses_dir, responses);
   if (FAILED(hr)) {
@@ -147,7 +153,7 @@ HRESULT RefreshPolicies() {
     return hr;
   }
 
-  OPT_LOG(L1, (_T("[RefreshPolicies complete]")));
+  REPORT_LOG(L1, (_T("[RefreshPolicies complete]")));
 
   return S_OK;
 }
@@ -200,7 +206,8 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
 HRESULT FetchPolicies(HttpRequestInterface* http_request,
                       const CString& dm_token,
                       const CString& device_id,
-                      PolicyResponsesMap* responses) {
+                      const CachedPublicKey& key,
+                      PolicyResponses* responses) {
   ASSERT1(http_request);
   ASSERT1(!dm_token.IsEmpty());
   ASSERT1(responses);
@@ -210,7 +217,8 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
   };
 
   CStringA payload = SerializePolicyFetchRequest(
-      CStringA(kGoogleUpdateMachineLevelApps));
+      CStringA(kGoogleUpdateMachineLevelApps),
+      key);
   if (payload.IsEmpty()) {
     REPORT_LOG(LE, (_T("[SerializePolicyFetchRequest failed]")));
     return E_FAIL;
@@ -229,7 +237,7 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
     return hr;
   }
 
-  hr = ParseDevicePolicyResponse(response, responses);
+  hr = ParseDevicePolicyResponse(response, key, responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[ParseDeviceRegisterResponse failed][%#x]"), hr));
     return hr;
@@ -298,7 +306,7 @@ HRESULT SendDeviceManagementRequest(
     CStringA error_message;
     hr = ParseDeviceManagementResponseError(*response, &error_message);
     if (SUCCEEDED(hr)) {
-      OPT_LOG(LE, (_T("[Server returned: %S]"), error_message));
+      REPORT_LOG(LE, (_T("[Server returned: %S]"), error_message));
     }
     return E_FAIL;
   }

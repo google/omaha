@@ -29,6 +29,12 @@ namespace omaha {
 // {policy_type} that it receives from the DMServer.
 const TCHAR kPolicyResponseFileName[] = _T("PolicyFetchResponse");
 
+// This is the standard name for the file that PersistPolicies() uses to store
+// a PolicyFetchResponse that contains PolicyFetchResponse::new_public_key()
+// and PolicyData::public_key_version(). These are used for subsequent requests
+// and validations of server responses.
+const TCHAR kCachedPublicKeyFileName[] = _T("CachedPublicKey");
+
 // A handler for storage related to cloud-based device management of Omaha. This
 // class provides access to an enrollment token, a device management token, and
 // a device identifier.
@@ -84,9 +90,16 @@ class DmStorage {
   // "PolicyFetchResponse", where the file contents are
   // {SerializeToString-PolicyFetchResponse}}.
   //
-  // Each PolicyFetchResponse file is opened in exclusive mode. If we are unable
-  // to open or write to this file, the caller is expected to try again later.
-  // For instance, if UA is calling us, UA will retry at the next UA interval.
+  // Also, if |responses.has_new_public_key| is true, we persist the first
+  // PolicyFetchResponse in |responses| into a file with a fixed file name of
+  // "CachedPublicKey", where the file contents are
+  // {SerializeToString-PolicyFetchResponse}}. The contents of the
+  // PolicyFetchResponse (primarily the new public key and version) are used in
+  // subsequent policy fetches.
+  //
+  // Each file is opened in exclusive mode. If we are unable to open or write to
+  // files, the caller is expected to try again later. For instance, if UA is
+  // calling us, UA will retry at the next UA interval.
   //
   // Client applications could use ::FindFirstChangeNotificationW on the
   // subdirectory corresponding to their respective policy_type to watch for
@@ -95,7 +108,12 @@ class DmStorage {
   // files, the files are first modified in-place if the response includes them,
   // and then the files that do not have a corresponding response are deleted.
   static HRESULT PersistPolicies(const CPath& policy_responses_dir,
-                                 const PolicyResponsesMap& responses);
+                                 const PolicyResponses& responses);
+
+  // Returns the public key information within the PolicyFetchResponse in
+  // |policy_responses_dir|\CachedPublicKey.
+  static HRESULT ReadCachedPublicKeyFile(const CPath& policy_responses_dir,
+                                         CachedPublicKey* key);
 
  private:
   // Constructs an instance with a runtime-provided enrollment token (e.g., one

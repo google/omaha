@@ -16,6 +16,7 @@
 #define OMAHA_GOOPDATE_DM_MESSAGES_H__
 
 #include <atlstr.h>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -26,12 +27,26 @@ namespace omaha {
 
 // Maps policy types to their corresponding serialized PolicyFetchResponses.
 using PolicyResponsesMap = std::map<std::string, std::string>;
+struct PolicyResponses {
+  PolicyResponsesMap responses;
+  bool has_new_public_key = false;
+};
+
+struct CachedPublicKey {
+  std::string key;
+  bool is_version_valid = false;
+  int32_t version = -1;
+};
+
+HRESULT GetCachedPublicKeyFromResponse(const std::string& string_response,
+                                       CachedPublicKey* key);
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,
                                          const CStringA& os_version);
 
-CStringA SerializePolicyFetchRequest(const CStringA& policy_type);
+CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
+                                     const CachedPublicKey& key);
 
 HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
                                     CStringA* dm_token);
@@ -40,7 +55,8 @@ HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
 // |responses|. |responses| contains elements in the following format:
 //   {policy_type}=>{SerializeToString-PolicyFetchResponse}.
 HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
-                                  PolicyResponsesMap* response_map);
+                                  const CachedPublicKey& key,
+                                  PolicyResponses* responses_out);
 
 HRESULT ParseDeviceManagementResponseError(const std::vector<uint8>& response,
                                            CStringA* error_message);

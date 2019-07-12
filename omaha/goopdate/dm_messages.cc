@@ -155,16 +155,45 @@ bool CheckNewPublicKeyVerificationSignature(
 
 HRESULT ValidatePolicy(
     const enterprise_management::PolicyFetchResponse& fetch_response,
-    const enterprise_management::PolicyData& policy_data) {
-  if (!CheckNewPublicKeyVerificationSignature(fetch_response, policy_data)) {
-    REPORT_LOG(LE, (_T("[ValidatePolicy]")
-                    _T("[Failed CheckNewPublicKeyVerificationSignature]")));
-    return E_FAIL;
+    const enterprise_management::PolicyData& policy_data,
+    const std::string& cached_public_key) {
+  // We expect to use the cached public key for policy data validation, unless
+  // there is a new public key in the response, in which case we first validate
+  // the new public key and then use the new public key for the policy data
+  // validation.
+  const std::string* signature_key = &cached_public_key;
+
+  if (fetch_response.has_new_public_key()) {
+    // Validate new_public_key() against the hard-coded verification key.
+    if (!CheckNewPublicKeyVerificationSignature(fetch_response, policy_data)) {
+      REPORT_LOG(LE, (_T("[ValidatePolicy]")
+                      _T("[Failed CheckNewPublicKeyVerificationSignature]")));
+      return E_FAIL;
+    }
+
+    // Also validate new_public_key() against the cached_public_key, if the
+    // latter exists.
+    if (!cached_public_key.empty()) {
+      if (!fetch_response.has_new_public_key_signature() ||
+          !VerifySignature(fetch_response.new_public_key(),
+                           cached_public_key,
+                           fetch_response.new_public_key_signature(),
+                           CALG_SHA1)) {
+        REPORT_LOG(LE, (_T("[ValidatePolicy]")
+                        _T("[Verification against cached public key failed]")));
+        return E_FAIL;
+      }
+    }
+
+    // Now that the new public key has been successfully verified, we rotate to
+    // use it for future policy data validation.
+    signature_key = &fetch_response.new_public_key();
   }
+
 
   if (!fetch_response.has_policy_data_signature() ||
       !VerifySignature(fetch_response.policy_data(),
-                       fetch_response.new_public_key(),
+                       *signature_key,
                        fetch_response.policy_data_signature(),
                        CALG_SHA1)) {
     REPORT_LOG(LE, (_T("[ValidatePolicy]")
@@ -176,6 +205,29 @@ HRESULT ValidatePolicy(
 }
 
 }  // namespace
+
+HRESULT GetCachedPublicKeyFromResponse(const std::string& string_response,
+                                       CachedPublicKey* key) {
+  ASSERT1(key);
+
+  *key = {};
+
+  enterprise_management::PolicyFetchResponse response;
+  enterprise_management::PolicyData policy_data;
+  if (string_response.empty() ||
+      !response.ParseFromString(string_response) ||
+      !policy_data.ParseFromString(response.policy_data())) {
+    return E_UNEXPECTED;
+  }
+
+  key->key = response.new_public_key();
+  if (policy_data.has_public_key_version()) {
+    key->is_version_valid = true;
+    key->version = policy_data.public_key_version();
+  }
+
+  return S_OK;
+}
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,
@@ -193,7 +245,8 @@ CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
   return result;
 }
 
-CStringA SerializePolicyFetchRequest(const CStringA& policy_type) {
+CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
+                                     const CachedPublicKey& key) {
   enterprise_management::DeviceManagementRequest policy_request;
 
   enterprise_management::PolicyFetchRequest* policy_fetch_request =
@@ -202,6 +255,10 @@ CStringA SerializePolicyFetchRequest(const CStringA& policy_type) {
   policy_fetch_request->set_signature_type(
       enterprise_management::PolicyFetchRequest::SHA1_RSA);
   policy_fetch_request->set_verification_key_hash(kPolicyVerificationKeyHash);
+
+  if (key.is_version_valid) {
+    policy_fetch_request->set_public_key_version(key.version);
+  }
 
   CStringA result;
   SerializeToCStringA(policy_request, &result);
@@ -241,9 +298,12 @@ HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
 }
 
 HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
-                                  PolicyResponsesMap* response_map) {
-  ASSERT1(response_map);
+                                  const CachedPublicKey& key,
+                                  PolicyResponses* responses_out) {
+  ASSERT1(responses_out);
+
   enterprise_management::DeviceManagementResponse dm_response;
+  responses_out->has_new_public_key = false;
 
   if (dm_response_array.size() >
       static_cast<size_t>(std::numeric_limits<int>::max())) {
@@ -288,17 +348,22 @@ HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
       continue;
     }
 
-    HRESULT hr = ValidatePolicy(response, policy_data);
+    HRESULT hr = ValidatePolicy(response, policy_data, key.key);
     if (FAILED(hr)) {
       REPORT_LOG(LW,
-          (_T("[ParseDevicePolicyResponse][Failed ValidatePolicy][%#x]"), hr));
+          (_T("[ParseDevicePolicyResponse][Failed ValidatePolicy][%d][%#x]"),
+           key.version, hr));
       continue;
+    }
+
+    if (!responses_out->has_new_public_key && response.has_new_public_key()) {
+      responses_out->has_new_public_key = true;
     }
 
     responses[type] = std::move(policy_fetch_response);
   }
 
-  *response_map = std::move(responses);
+  responses_out->responses = std::move(responses);
   return S_OK;
 }
 

@@ -129,6 +129,7 @@ HRESULT DeleteObsoletePolicies(const CPath& policy_responses_dir,
   for (const auto& file : files) {
     if (file == _T(".") ||
         file == _T("..") ||
+        file == kCachedPublicKeyFileName ||
         policy_types_base64.count(file)) {
       continue;
     }
@@ -140,6 +141,32 @@ HRESULT DeleteObsoletePolicies(const CPath& policy_responses_dir,
   }
 
   return S_OK;
+}
+
+HRESULT WriteToFile(const CPath& filename, const char* buf, const size_t len) {
+  ASSERT1(buf);
+  ASSERT1(len);
+
+  File file;
+  HRESULT hr = file.Open(filename, true, false);
+  if (FAILED(hr)) {
+    REPORT_LOG(LW, (_T("[WriteToFile][Failed Open][%s][%#x]"), filename, hr));
+    return hr;
+  }
+
+  uint32_t bytes_written = 0;
+  hr = file.WriteAt(0,
+                    reinterpret_cast<const byte*>(buf),
+                    static_cast<uint32_t>(len),
+                    0,
+                    &bytes_written);
+  if (FAILED(hr)) {
+    REPORT_LOG(LW, (_T("[WriteToFile][Failed Write][%s][%#x]"), filename, hr));
+    return hr;
+  }
+
+  ASSERT1(bytes_written == len);
+  return file.SetLength(bytes_written, false);
 }
 
 }  // namespace
@@ -223,10 +250,11 @@ CString DmStorage::GetDeviceId() {
 }
 
 HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
-                                   const PolicyResponsesMap& responses) {
+                                   const PolicyResponses& responses) {
   std::set<CString> policy_types_base64;
+  bool is_key_file_initialized = false;
 
-  for (const auto& response : responses) {
+  for (const auto& response : responses.responses) {
     CStringA encoded_policy_response_dirname;
     Base64Escape(response.first.c_str(),
                  static_cast<int>(response.first.length()),
@@ -247,32 +275,67 @@ HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
     CPath policy_response_file(policy_response_dir);
     policy_response_file.Append(kPolicyResponseFileName);
 
-    File file;
-    hr = file.Open(policy_response_file, true, false);
+    const char* policy_fetch_response = response.second.c_str();
+    const size_t len = response.second.length();
+    hr = WriteToFile(policy_response_file, policy_fetch_response, len);
     if (FAILED(hr)) {
-      REPORT_LOG(LW, (_T("[PersistPolicies][Failed to open][%s][%#x]"),
+      REPORT_LOG(LW, (_T("[PersistPolicies][WriteToFile failed][%s][%#x]"),
                       policy_response_file, hr));
       continue;
     }
 
-    uint32 bytes_written = 0;
-    hr = file.WriteAt(0,
-                      reinterpret_cast<const byte*>(response.second.c_str()),
-                      static_cast<uint32>(response.second.length()),
-                      0,
-                      &bytes_written);
-    if (FAILED(hr)) {
-      REPORT_LOG(LW, (_T("[PersistPolicies][Failed to write][%s][%#x]"),
-                      policy_response_file, hr));
-      continue;
-    }
+    if (responses.has_new_public_key && !is_key_file_initialized) {
+      CPath public_key_file(policy_responses_dir);
+      public_key_file.Append(kCachedPublicKeyFileName);
+      hr = WriteToFile(public_key_file, policy_fetch_response, len);
+      if (FAILED(hr)) {
+        REPORT_LOG(LW, (_T("[PersistPolicies][WriteToFile failed][%s][%#x]"),
+                        public_key_file, hr));
+        continue;
+      }
 
-    ASSERT1(bytes_written == response.second.length());
-    VERIFY1(SUCCEEDED(file.SetLength(bytes_written, false)));
+      is_key_file_initialized = true;
+    }
   }
 
   VERIFY1(SUCCEEDED(DeleteObsoletePolicies(policy_responses_dir,
                                            policy_types_base64)));
+  return S_OK;
+}
+
+HRESULT DmStorage::ReadCachedPublicKeyFile(const CPath& policy_responses_dir,
+                                           CachedPublicKey* key) {
+  ASSERT1(key);
+
+  CPath public_key_file(policy_responses_dir);
+  public_key_file.Append(kCachedPublicKeyFileName);
+
+  if (!File::Exists(public_key_file)) {
+    return S_FALSE;
+  }
+
+  std::vector<byte> raw_policy_response;
+  HRESULT hr = ReadEntireFileShareMode(public_key_file,
+                                       0,
+                                       FILE_SHARE_READ,
+                                       &raw_policy_response);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[ReadCachedPublicKeyFile][Read failed][%s][%#x]"),
+                    public_key_file, hr));
+    return hr;
+  }
+
+  hr = GetCachedPublicKeyFromResponse(
+      std::string(reinterpret_cast<const char*>(&raw_policy_response[0]),
+                  raw_policy_response.size()),
+      key);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[ReadCachedPublicKeyFile]")
+                    _T("[GetCachedPublicKeyFromResponse failed][%s][%#x]"),
+                    public_key_file, hr));
+    return hr;
+  }
+
   return S_OK;
 }
 

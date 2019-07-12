@@ -51,6 +51,67 @@ namespace dm_client {
 
 namespace {
 
+// Signing private key data (for testing only) in DER-encoded PKCS8 format.
+const uint8_t kSigningPrivateKey[] = {
+    0x30, 0x82, 0x01, 0x55, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x2a,
+    0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x04, 0x82,
+    0x01, 0x3f, 0x30, 0x82, 0x01, 0x3b, 0x02, 0x01, 0x00, 0x02, 0x41, 0x00,
+    0xd9, 0xcd, 0xca, 0xcd, 0xc3, 0xea, 0xbe, 0x72, 0x79, 0x1c, 0x29, 0x37,
+    0x39, 0x99, 0x1f, 0xd4, 0xb3, 0x0e, 0xf0, 0x7b, 0x78, 0x77, 0x0e, 0x05,
+    0x3b, 0x65, 0x34, 0x12, 0x62, 0xaf, 0xa6, 0x8d, 0x33, 0xce, 0x78, 0xf8,
+    0x47, 0x05, 0x1d, 0x98, 0xaa, 0x1b, 0x1f, 0x50, 0x05, 0x5b, 0x3c, 0x19,
+    0x3f, 0x80, 0x83, 0x63, 0x63, 0x3a, 0xec, 0xcb, 0x2e, 0x90, 0x4f, 0xf5,
+    0x26, 0x76, 0xf1, 0xd5, 0x02, 0x03, 0x01, 0x00, 0x01, 0x02, 0x40, 0x64,
+    0x29, 0xc2, 0xd9, 0x6b, 0xfe, 0xf9, 0x84, 0x75, 0x73, 0xe0, 0xf4, 0x77,
+    0xb5, 0x96, 0xb0, 0xdf, 0x83, 0xc0, 0x4e, 0x57, 0xf1, 0x10, 0x6e, 0x91,
+    0x89, 0x12, 0x30, 0x5e, 0x57, 0xff, 0x14, 0x59, 0x5f, 0x18, 0x86, 0x4e,
+    0x4b, 0x17, 0x56, 0xfc, 0x8d, 0x40, 0xdd, 0x74, 0x65, 0xd3, 0xff, 0x67,
+    0x64, 0xcb, 0x9c, 0xb4, 0x14, 0x8a, 0x06, 0xb7, 0x13, 0x45, 0x94, 0x16,
+    0x7d, 0x3f, 0xe1, 0x02, 0x21, 0x00, 0xf6, 0x0f, 0x31, 0x6d, 0x06, 0xcc,
+    0x3b, 0xa0, 0x44, 0x1f, 0xf5, 0xc2, 0x45, 0x2b, 0x10, 0x6c, 0xf9, 0x6f,
+    0x8f, 0x87, 0x3d, 0xc0, 0x3b, 0x55, 0x13, 0x37, 0x80, 0xcd, 0x9f, 0xe1,
+    0xb7, 0xd9, 0x02, 0x21, 0x00, 0xe2, 0x9a, 0x5f, 0xbf, 0x95, 0x74, 0xb5,
+    0x7a, 0x6a, 0xa6, 0x97, 0xbd, 0x75, 0x8c, 0x97, 0x18, 0x24, 0xd6, 0x09,
+    0xcd, 0xdc, 0xb5, 0x94, 0xbf, 0xe2, 0x78, 0xaa, 0x20, 0x47, 0x9f, 0x68,
+    0x5d, 0x02, 0x21, 0x00, 0xaf, 0x8f, 0x97, 0x8c, 0x5a, 0xd5, 0x4d, 0x95,
+    0xc4, 0x05, 0xa9, 0xab, 0xba, 0xfe, 0x46, 0xf1, 0xf9, 0xe7, 0x07, 0x59,
+    0x4f, 0x4d, 0xe1, 0x07, 0x8a, 0x76, 0x87, 0x88, 0x2f, 0x13, 0x35, 0xc1,
+    0x02, 0x20, 0x24, 0xc3, 0xd9, 0x2f, 0x13, 0x47, 0x99, 0x3e, 0x20, 0x59,
+    0xa1, 0x1a, 0xeb, 0x1c, 0x81, 0x53, 0x38, 0x7e, 0xc5, 0x9e, 0x71, 0xe5,
+    0xc0, 0x19, 0x95, 0xdb, 0xef, 0xf6, 0x46, 0xc8, 0x95, 0x3d, 0x02, 0x21,
+    0x00, 0xaa, 0xb1, 0xff, 0x8a, 0xa2, 0xb2, 0x2b, 0xef, 0x9a, 0x83, 0x3f,
+    0xc5, 0xbc, 0xd4, 0x6a, 0x07, 0xe8, 0xc7, 0x0b, 0x2e, 0xd4, 0x0f, 0xf8,
+    0x98, 0x68, 0xe1, 0x04, 0xa8, 0x92, 0xd0, 0x10, 0xaa,
+};
+
+// SHA256 signature of the public key corresponding to private key
+// kSigningPrivateKey for "example.com" domain signed with
+// kPolicyVerificationKey.
+const uint8_t kSigningPublicKeySignature[] = {
+    0x97, 0xEB, 0x13, 0xE6, 0x6C, 0xE2, 0x7A, 0x2F, 0xC6, 0x6E, 0x68, 0x8F,
+    0xED, 0x5B, 0x51, 0x08, 0x27, 0xF0, 0xA5, 0x97, 0x20, 0xEE, 0xE2, 0x9B,
+    0x5B, 0x63, 0xA5, 0x9C, 0xAE, 0x41, 0xFD, 0x34, 0xC4, 0x2E, 0xEB, 0x63,
+    0x10, 0x80, 0x0C, 0x74, 0x77, 0x6E, 0x34, 0x1C, 0x1B, 0x3B, 0x8E, 0x2A,
+    0x3A, 0x7F, 0xF9, 0x73, 0xB6, 0x2B, 0xB6, 0x45, 0xDB, 0x05, 0xE8, 0x5A,
+    0x68, 0x36, 0x05, 0x3C, 0x62, 0x3A, 0x6C, 0x64, 0xDB, 0x0E, 0x61, 0xBD,
+    0x29, 0x1C, 0x61, 0x4B, 0xE0, 0xDA, 0x07, 0xBA, 0x29, 0x81, 0xF0, 0x90,
+    0x58, 0xB8, 0xBB, 0xF4, 0x69, 0xFF, 0x8F, 0x2B, 0x4A, 0x2D, 0x98, 0x51,
+    0x37, 0xF5, 0x52, 0xCB, 0xE3, 0xC4, 0x6D, 0xEC, 0xEA, 0x32, 0x2D, 0xDD,
+    0xD7, 0xFC, 0x43, 0xC6, 0x54, 0xE1, 0xC1, 0x66, 0x43, 0x37, 0x09, 0xE1,
+    0xBF, 0xD1, 0x11, 0xFC, 0xDB, 0xBF, 0xDF, 0x66, 0x53, 0x8F, 0x38, 0x2D,
+    0xAA, 0x89, 0xD2, 0x9F, 0x60, 0x90, 0xB7, 0x05, 0xC2, 0x20, 0x82, 0xE6,
+    0xE0, 0x57, 0x55, 0xFF, 0x5F, 0xC1, 0x76, 0x66, 0x46, 0xF8, 0x67, 0xB8,
+    0x8B, 0x81, 0x53, 0xA9, 0x8B, 0x48, 0x9E, 0x2A, 0xF9, 0x60, 0x57, 0xBA,
+    0xD7, 0x52, 0x97, 0x53, 0xF0, 0x2F, 0x78, 0x68, 0x50, 0x18, 0x12, 0x00,
+    0x5E, 0x8E, 0x2A, 0x62, 0x0D, 0x48, 0xA9, 0xB5, 0x6B, 0xBC, 0xA0, 0x52,
+    0x53, 0xD7, 0x65, 0x23, 0xA4, 0xA5, 0xF5, 0x32, 0x49, 0x2D, 0xB2, 0x77,
+    0x2C, 0x66, 0x97, 0xBA, 0x58, 0xE0, 0x16, 0x1C, 0x8C, 0x02, 0x5D, 0xE0,
+    0x73, 0x2E, 0xDF, 0xB4, 0x2F, 0x4C, 0xA2, 0x11, 0x26, 0xC1, 0xAF, 0xAC,
+    0x73, 0xBC, 0xB6, 0x98, 0xE0, 0x20, 0x61, 0x0E, 0x52, 0x4A, 0x6C, 0x80,
+    0xB5, 0x0C, 0x10, 0x80, 0x09, 0x17, 0xF4, 0x9D, 0xFE, 0xB5, 0xFC, 0x63,
+    0x9A, 0x80, 0x3F, 0x76,
+};
+
 // New signing private key data (for testing only) in DER-encoded PKCS8 format.
 const uint8_t kNewSigningPrivateKey[] = {
     0x30, 0x82, 0x01, 0x54, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x2a,
@@ -85,7 +146,8 @@ const uint8_t kNewSigningPrivateKey[] = {
 };
 
 // SHA256 signature of the public key corresponding to private key
-// kNewSigningKey for "example.com" domain signed with kPolicyVerificationKey.
+// kNewSigningPrivateKey for "example.com" domain signed with
+// kPolicyVerificationKey.
 const uint8_t kNewSigningPublicKeySignature[] = {
     0x70, 0xED, 0x27, 0x42, 0x34, 0x69, 0xB6, 0x47, 0x9E, 0x7C, 0xA0, 0xF0,
     0xE5, 0x0A, 0x49, 0x49, 0x00, 0xDA, 0xBC, 0x70, 0x01, 0xC5, 0x4B, 0xDB,
@@ -112,21 +174,6 @@ const uint8_t kNewSigningPublicKeySignature[] = {
 };
 
 const char kUsername[] = "username@example.com";
-
-// Produces |key|'s signature over |data| and stores it in |signature|.
-void SignData(const std::string& data,
-              crypto::RSAPrivateKey* key,
-              std::string* signature) {
-  std::unique_ptr<crypto::SignatureCreator> signature_creator(
-      crypto::SignatureCreator::Create(key, CALG_SHA1));
-  ASSERT_TRUE(
-      signature_creator->Update(reinterpret_cast<const uint8_t*>(data.c_str()),
-                                data.size()));
-  std::vector<uint8_t> signature_bytes;
-  ASSERT_TRUE(signature_creator->Final(&signature_bytes));
-  signature->assign(reinterpret_cast<const char*>(signature_bytes.data()),
-                    signature_bytes.size());
-}
 
 // A Google Mock matcher that returns true if a string contains a valid
 // URL to the device management server with the required query parameters.
@@ -374,14 +421,102 @@ class DmClientRequestTest : public ::testing::Test {
     ON_CALL(**request, GetResponse()).WillByDefault(Return(response));
   }
 
+  void RunFetchPolicies(CachedPublicKey* key) {
+    ASSERT_TRUE(key);
+
+    static const TCHAR kDeviceId[] = _T("device_id");
+
+    PolicyResponsesMap expected_responses = {
+      {"google/chrome/machine-level-user", "test-data-chrome"},
+      {"google/drive/machine-level-user", "test-data-drive"},
+      {"google/earth/machine-level-user", "test-data-earth"},
+    };
+
+    PolicyResponses input = {expected_responses, !key->key.empty()};
+    MockHttpRequest* mock_http_request = nullptr;
+    ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest(input, &mock_http_request));
+
+    std::vector<std::pair<CString, CString>> query_params = {
+      {_T("request"), _T("policy")},
+      {_T("agent"), internal::GetAgent()},
+      {_T("apptype"), _T("Chrome")},
+      {_T("deviceid"), kDeviceId},
+      {_T("platform"), internal::GetPlatform()},
+    };
+
+    // Expect the proper URL with query params.
+    EXPECT_CALL(*mock_http_request,
+                set_url(IsValidRequestUrl(std::move(query_params))));
+
+    // Expect that the request headers contain the DMToken.
+    EXPECT_CALL(*mock_http_request,
+                set_additional_headers(
+                    CStringHasSubstr(_T("Authorization: GoogleDMToken ")
+                                     _T("token=dm_token"))));
+
+    // Expect that the body of the request contains a well-formed fetch policies
+    // request.
+    EXPECT_CALL(*mock_http_request, set_request_buffer(_, _))
+        .With(AllArgs(IsFetchPoliciesRequest()));
+
+    // Fetch Policies should succeed, providing the expected PolicyResponses.
+    PolicyResponses responses;
+    ASSERT_HRESULT_SUCCEEDED(internal::FetchPolicies(mock_http_request,
+                                                     _T("dm_token"),
+                                                     kDeviceId,
+                                                     *key,
+                                                     &responses));
+    ASSERT_TRUE(responses.has_new_public_key);
+
+    EXPECT_EQ(expected_responses.size(), responses.responses.size());
+    for (const auto& expected_response : expected_responses) {
+      enterprise_management::PolicyFetchResponse response;
+      const std::string& string_response =
+          responses.responses[expected_response.first.c_str()];
+      EXPECT_TRUE(response.ParseFromString(string_response));
+
+      if (key->key.empty()) {
+        GetCachedPublicKeyFromResponse(string_response, key);
+      }
+
+      enterprise_management::PolicyData policy_data;
+      EXPECT_TRUE(policy_data.ParseFromString(response.policy_data()));
+      EXPECT_TRUE(policy_data.IsInitialized());
+      EXPECT_TRUE(policy_data.has_policy_type());
+
+      EXPECT_STREQ(expected_response.first.c_str(),
+                   policy_data.policy_type().c_str());
+      EXPECT_STREQ(expected_response.second.c_str(),
+                   policy_data.policy_value().c_str());
+    }
+  }
+
  private:
+  // Produces |key|'s signature over |data| and stores it in |signature|.
+  void SignData(const std::string& data,
+                crypto::RSAPrivateKey* key,
+                std::string* signature) {
+    std::unique_ptr<crypto::SignatureCreator> signature_creator(
+        crypto::SignatureCreator::Create(key, CALG_SHA1));
+    ASSERT_TRUE(signature_creator->Update(
+        reinterpret_cast<const uint8_t*>(data.c_str()), data.size()));
+    std::vector<uint8_t> signature_bytes;
+    ASSERT_TRUE(signature_creator->Final(&signature_bytes));
+    signature->assign(reinterpret_cast<const char*>(signature_bytes.data()),
+                      signature_bytes.size());
+  }
+
   void SignPolicyResponse(
-      enterprise_management::PolicyFetchResponse* response) {
+      enterprise_management::PolicyFetchResponse* response,
+      const uint8_t* private_key,
+      size_t private_key_length,
+      const uint8_t* public_key_signature,
+      size_t public_key_signature_length,
+      const uint8_t* cached_private_key,
+      size_t cached_private_key_length) {
     ASSERT_TRUE(response);
 
-    std::vector<uint8_t> input(std::begin(kNewSigningPrivateKey),
-                               std::end(kNewSigningPrivateKey));
-
+    std::vector<uint8_t> input(private_key, private_key + private_key_length);
     std::unique_ptr<crypto::RSAPrivateKey> policy_signing_key(
         crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(input));
     ASSERT_TRUE(policy_signing_key.get());
@@ -389,21 +524,35 @@ class DmClientRequestTest : public ::testing::Test {
     std::vector<uint8_t> public_key;
     ASSERT_TRUE(policy_signing_key->ExportPublicKey(&public_key));
 
-    // Add the new public key and the corresponding signature to the policy
-    // response.
+    // Add the new public key and the corresponding verification key signature
+    // to the policy response.
     response->set_new_public_key(
         std::string(reinterpret_cast<const char*>(public_key.data()),
-                       public_key.size()));
-    std::string public_key_signature(
-        reinterpret_cast<const char*>(kNewSigningPublicKeySignature),
-        sizeof(kNewSigningPublicKeySignature));
+                    public_key.size()));
+    std::string public_key_verification_signature(
+        reinterpret_cast<const char*>(public_key_signature),
+        public_key_signature_length);
     response->set_new_public_key_verification_signature_deprecated(
-        public_key_signature);
+        public_key_verification_signature);
 
-    // PolicyData signature.
+    // Add the PolicyData signature to the policy response.
     SignData(response->policy_data(),
              policy_signing_key.get(),
              response->mutable_policy_data_signature());
+
+    if (cached_private_key) {
+      // Use the cached private key to sign the new public key and add the
+      // signature to the policy response.
+      std::vector<uint8_t> cached_input(
+          cached_private_key, cached_private_key + cached_private_key_length);
+      std::unique_ptr<crypto::RSAPrivateKey> cached_policy_signing_key(
+          crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(cached_input));
+      ASSERT_TRUE(cached_policy_signing_key.get());
+
+      SignData(response->new_public_key(),
+               cached_policy_signing_key.get(),
+               response->mutable_new_public_key_signature());
+    }
   }
 
   // Populates |body| with a valid serialized DeviceRegisterResponse.
@@ -419,8 +568,10 @@ class DmClientRequestTest : public ::testing::Test {
 
   // Populates |body| with a valid serialized DevicePolicyResponse.
   // Note: always wrap calls to this with ASSERT_NO_FATAL_FAILURE.
-  void MakeSuccessResponseBody(const PolicyResponsesMap& responses,
+  void MakeSuccessResponseBody(const PolicyResponses& input,
                                std::vector<uint8>* body) {
+    const PolicyResponsesMap& responses = input.responses;
+
     enterprise_management::DeviceManagementResponse dm_response;
 
     for (const auto& response : responses) {
@@ -431,7 +582,28 @@ class DmClientRequestTest : public ::testing::Test {
       policy_data.set_policy_value(response.second);
       policy_data.set_username(kUsername);
       policy_response->set_policy_data(policy_data.SerializeAsString());
-      SignPolicyResponse(policy_response);
+      if (input.has_new_public_key) {
+        // Have the policy_response contain kNewSigningPrivateKey, signed with
+        // both the verification key as well as with the previous private key
+        // kSigningPrivateKey. PolicyData is signed with kNewSigningPrivateKey.
+        SignPolicyResponse(policy_response,
+                           kNewSigningPrivateKey,
+                           sizeof(kNewSigningPrivateKey),
+                           kNewSigningPublicKeySignature,
+                           sizeof(kNewSigningPublicKeySignature),
+                           kSigningPrivateKey,
+                           sizeof(kSigningPrivateKey));
+      } else {
+        // Have the policy_response contain kSigningPrivateKey signed with
+        // the verification key. PolicyData is signed with kSigningPrivateKey.
+        SignPolicyResponse(policy_response,
+                           kSigningPrivateKey,
+                           sizeof(kSigningPrivateKey),
+                           kSigningPublicKeySignature,
+                           sizeof(kSigningPublicKeySignature),
+                           nullptr,
+                           0);
+      }
     }
 
     std::string response_string;
@@ -486,64 +658,19 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
 // Test that DmClient can send a reasonable DevicePolicyRequest and handle a
 // corresponding DevicePolicyResponse.
 TEST_F(DmClientRequestTest, FetchPolicies) {
-  static const TCHAR kDeviceId[] = _T("device_id");
+  CachedPublicKey key;
 
-  PolicyResponsesMap expected_responses = {
-    {"google/chrome/machine-level-user", "test-data-chrome"},
-    {"google/drive/machine-level-user", "test-data-drive"},
-    {"google/earth/machine-level-user", "test-data-earth"},
-  };
+  // The mock server will return PolicyData signed with kSigningPrivateKey, and
+  // a new public key corresponding to kSigningPrivateKey, signed with the
+  // hard-coded verification key.
+  RunFetchPolicies(&key);
 
-  MockHttpRequest* mock_http_request = nullptr;
-  ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest(expected_responses,
-                                                 &mock_http_request));
-
-  std::vector<std::pair<CString, CString>> query_params = {
-    {_T("request"), _T("policy")},
-    {_T("agent"), internal::GetAgent()},
-    {_T("apptype"), _T("Chrome")},
-    {_T("deviceid"), kDeviceId},
-    {_T("platform"), internal::GetPlatform()},
-  };
-
-  // Expect the proper URL with query params.
-  EXPECT_CALL(*mock_http_request,
-              set_url(IsValidRequestUrl(std::move(query_params))));
-
-  // Expect that the request headers contain the DMToken.
-  EXPECT_CALL(*mock_http_request,
-              set_additional_headers(
-                  CStringHasSubstr(_T("Authorization: GoogleDMToken ")
-                                   _T("token=dm_token"))));
-
-  // Expect that the body of the request contains a well-formed fetch policies
-  // request.
-  EXPECT_CALL(*mock_http_request, set_request_buffer(_, _))
-      .With(AllArgs(IsFetchPoliciesRequest()));
-
-  // Fetch Policies should succeed, providing the expected PolicyResponsesMap.
-  PolicyResponsesMap responses;
-  ASSERT_HRESULT_SUCCEEDED(internal::FetchPolicies(mock_http_request,
-                                                   _T("dm_token"),
-                                                   kDeviceId,
-                                                   &responses));
-
-  EXPECT_EQ(expected_responses.size(), responses.size());
-  for (const auto& expected_response : expected_responses) {
-    enterprise_management::PolicyFetchResponse response;
-    EXPECT_TRUE(response.ParseFromString(
-        responses[expected_response.first.c_str()]));
-
-    enterprise_management::PolicyData policy_data;
-    EXPECT_TRUE(policy_data.ParseFromString(response.policy_data()));
-    EXPECT_TRUE(policy_data.IsInitialized());
-    EXPECT_TRUE(policy_data.has_policy_type());
-
-    EXPECT_STREQ(expected_response.first.c_str(),
-                 policy_data.policy_type().c_str());
-    EXPECT_STREQ(expected_response.second.c_str(),
-                 policy_data.policy_value().c_str());
-  }
+  // |key| was initialized in the previous run with the signing public key. Now
+  // the mock server will return PolicyData signed with kNewSigningPrivateKey,
+  // and a new public key corresponding to kNewSigningPrivateKey, signed with
+  // both the hard-coded verification key as well as with the previous private
+  // key kSigningPrivateKey.
+  RunFetchPolicies(&key);
 }
 
 class DmClientRegistryTest : public RegistryProtectedTest {

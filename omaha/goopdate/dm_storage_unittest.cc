@@ -56,20 +56,33 @@ class DmStorageTest : public RegistryProtectedTest {
     return policy_response_file;
   }
 
+  void CheckFileContentsMatch(const CPath& file_path,
+                              const std::string& expected_contents) {
+    std::vector<byte> raw_contents;
+    ASSERT_HRESULT_SUCCEEDED(ReadEntireFileShareMode(
+        file_path, 0, FILE_SHARE_READ, &raw_contents));
+    std::string contents(reinterpret_cast<const char*>(&raw_contents[0]),
+                         raw_contents.size());
+
+    ASSERT_STREQ(expected_contents.c_str(), contents.c_str());
+  }
+
   void VerifyPolicies(const CPath& policy_responses_dir,
-                      const PolicyResponsesMap& expected_responses) {
-    for (const auto& expected_response : expected_responses) {
+                      const PolicyResponses& expected_responses) {
+    bool key_file_verified = false;
+    for (const auto& expected_response : expected_responses.responses) {
       CPath policy_response_file = GetPolicyResponseFilePath(
           policy_responses_dir, expected_response.first);
 
-      std::vector<byte> raw_policy_response;
-      ASSERT_HRESULT_SUCCEEDED(ReadEntireFileShareMode(
-          policy_response_file, 0, FILE_SHARE_READ, &raw_policy_response));
-      const std::string policy_response(
-          reinterpret_cast<const char*>(&raw_policy_response[0]),
-          raw_policy_response.size());
+      CheckFileContentsMatch(policy_response_file, expected_response.second);
 
-      ASSERT_STREQ(expected_response.second.c_str(), policy_response.c_str());
+      if (!key_file_verified && expected_responses.has_new_public_key) {
+        CPath policy_key_file(policy_responses_dir);
+        policy_key_file.Append(kCachedPublicKeyFileName);
+
+        CheckFileContentsMatch(policy_key_file, expected_response.second);
+        key_file_verified = true;
+      }
     }
   }
 };
@@ -249,9 +262,10 @@ TEST_F(DmStorageTest, PersistPolicies) {
       app_util::GetCurrentModuleDirectory(),
       _T("Policies")));
 
+  PolicyResponses expected_old_responses = {old_responses, false};
   ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
-                                                      old_responses));
-  VerifyPolicies(policy_responses_dir, old_responses);
+                                                      expected_old_responses));
+  VerifyPolicies(policy_responses_dir, expected_old_responses);
 
   PolicyResponsesMap new_responses = {
     {"google/chrome/machine-level-user", "test-data-chr"},  // Shorter data.
@@ -261,9 +275,10 @@ TEST_F(DmStorageTest, PersistPolicies) {
     {"google/newdrive/machine-level-user", "test-data-newdrive"},  // New.
   };
 
+  PolicyResponses expected_new_responses = {new_responses, true};
   ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
-                                                      new_responses));
-  VerifyPolicies(policy_responses_dir, new_responses);
+                                                      expected_new_responses));
+  VerifyPolicies(policy_responses_dir, expected_new_responses);
   EXPECT_FALSE(GetPolicyResponseFilePath(
       policy_responses_dir, "google/drive/machine-level-user").FileExists());
 
