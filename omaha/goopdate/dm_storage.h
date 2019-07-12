@@ -90,12 +90,10 @@ class DmStorage {
   // "PolicyFetchResponse", where the file contents are
   // {SerializeToString-PolicyFetchResponse}}.
   //
-  // Also, if |responses.has_new_public_key| is true, we persist the first
-  // PolicyFetchResponse in |responses| into a file with a fixed file name of
-  // "CachedPublicKey", where the file contents are
-  // {SerializeToString-PolicyFetchResponse}}. The contents of the
-  // PolicyFetchResponse (primarily the new public key and version) are used in
-  // subsequent policy fetches.
+  // Also, if |responses.new_public_key_verification_data| has data, we persist
+  // the data (PublicKeyVerificationData) into a file with a fixed file name of
+  // "CachedPublicKey". The PublicKeyVerificationData (the new public key and
+  // version) is used in subsequent policy fetches.
   //
   // Each file is opened in exclusive mode. If we are unable to open or write to
   // files, the caller is expected to try again later. For instance, if UA is

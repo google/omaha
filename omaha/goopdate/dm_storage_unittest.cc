@@ -69,20 +69,20 @@ class DmStorageTest : public RegistryProtectedTest {
 
   void VerifyPolicies(const CPath& policy_responses_dir,
                       const PolicyResponses& expected_responses) {
-    bool key_file_verified = false;
+    if (!expected_responses.new_public_key_verification_data.empty()) {
+      CPath policy_key_file(policy_responses_dir);
+      policy_key_file.Append(kCachedPublicKeyFileName);
+
+      CheckFileContentsMatch(
+          policy_key_file,
+          expected_responses.new_public_key_verification_data);
+    }
+
     for (const auto& expected_response : expected_responses.responses) {
       CPath policy_response_file = GetPolicyResponseFilePath(
           policy_responses_dir, expected_response.first);
 
       CheckFileContentsMatch(policy_response_file, expected_response.second);
-
-      if (!key_file_verified && expected_responses.has_new_public_key) {
-        CPath policy_key_file(policy_responses_dir);
-        policy_key_file.Append(kCachedPublicKeyFileName);
-
-        CheckFileContentsMatch(policy_key_file, expected_response.second);
-        key_file_verified = true;
-      }
     }
   }
 };
@@ -262,7 +262,7 @@ TEST_F(DmStorageTest, PersistPolicies) {
       app_util::GetCurrentModuleDirectory(),
       _T("Policies")));
 
-  PolicyResponses expected_old_responses = {old_responses, false};
+  PolicyResponses expected_old_responses = {old_responses, ""};
   ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
                                                       expected_old_responses));
   VerifyPolicies(policy_responses_dir, expected_old_responses);
@@ -275,7 +275,7 @@ TEST_F(DmStorageTest, PersistPolicies) {
     {"google/newdrive/machine-level-user", "test-data-newdrive"},  // New.
   };
 
-  PolicyResponses expected_new_responses = {new_responses, true};
+  PolicyResponses expected_new_responses = {new_responses, "expected data"};
   ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
                                                       expected_new_responses));
   VerifyPolicies(policy_responses_dir, expected_new_responses);

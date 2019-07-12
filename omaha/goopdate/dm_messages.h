@@ -29,7 +29,7 @@ namespace omaha {
 using PolicyResponsesMap = std::map<std::string, std::string>;
 struct PolicyResponses {
   PolicyResponsesMap responses;
-  bool has_new_public_key = false;
+  std::string new_public_key_verification_data;
 };
 
 struct CachedPublicKey {
@@ -38,8 +38,8 @@ struct CachedPublicKey {
   int32_t version = -1;
 };
 
-HRESULT GetCachedPublicKeyFromResponse(const std::string& string_response,
-                                       CachedPublicKey* key);
+HRESULT GetCachedPublicKey(const std::string& raw_verification_data,
+                           CachedPublicKey* key);
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,
