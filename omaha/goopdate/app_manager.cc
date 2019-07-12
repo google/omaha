@@ -791,6 +791,7 @@ HRESULT AppManager::ReadUninstalledAppPersistentData(App* app) {
 //    eulaaccepted (set/deleted)
 //    browser
 //    usagestats
+//    ping freshness
 // Sets eulaaccepted=0 if the app is not already registered and the app's EULA
 // has not been accepted. Deletes eulaaccepted if the EULA has been accepted.
 // Only call for initial or over-installs. Do not call for updates to avoid
@@ -809,6 +810,17 @@ HRESULT AppManager::WritePreInstallData(const App& app) {
   HRESULT hr = CreateClientStateKey(app.app_guid(), &client_state_key);
   if (FAILED(hr)) {
     return hr;
+  }
+
+  // Initialize the ping freshness, if needed. For installs and over-installs,
+  // ping freshness must be available before sending a completion ping.
+  // Otherwise, the completion ping contains no ping_freshness, which makes
+  // impossible to do an accurate user count in the presence of system reimage.
+  if (!client_state_key.HasValue(kRegValuePingFreshness)) {
+    GUID ping_freshness = GUID_NULL;
+    VERIFY1(SUCCEEDED(::CoCreateGuid(&ping_freshness)));
+    client_state_key.SetValue(kRegValuePingFreshness,
+                               GuidToString(ping_freshness));
   }
 
   if (app.is_eula_accepted()) {

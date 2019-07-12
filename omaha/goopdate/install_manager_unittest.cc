@@ -95,7 +95,7 @@ const TCHAR kMsiLogFormat[] = _T("%s.log");
 
 // brand, InstallTime, DayOfInstall, DayOfLastActivity, DayOfLastRollCall, and
 // LastCheckSuccess are automatically populated.
-const int kNumAutoPopulatedValues = 6;
+const int kNumAutoPopulatedValues = 7;
 
 FileHash CreateFileHash(const CString& sha1, const CString& sha256) {
   FileHash hash;
