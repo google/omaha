@@ -29,24 +29,25 @@ namespace omaha {
 using PolicyResponsesMap = std::map<std::string, std::string>;
 struct PolicyResponses {
   PolicyResponsesMap responses;
-  std::string new_public_key_verification_data;
+  std::string policy_info;
 };
 
-struct CachedPublicKey {
+struct CachedPolicyInfo {
   std::string key;
   bool is_version_valid = false;
   int32_t version = -1;
+  int64_t timestamp = 0;
 };
 
-HRESULT GetCachedPublicKey(const std::string& raw_verification_data,
-                           CachedPublicKey* key);
+HRESULT GetCachedPolicyInfo(const std::string& raw_response,
+                            CachedPolicyInfo* info);
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,
                                          const CStringA& os_version);
 
 CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
-                                     const CachedPublicKey& key);
+                                     const CachedPolicyInfo& info);
 
 HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
                                     CStringA* dm_token);
@@ -55,7 +56,9 @@ HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
 // |responses|. |responses| contains elements in the following format:
 //   {policy_type}=>{SerializeToString-PolicyFetchResponse}.
 HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
-                                  const CachedPublicKey& key,
+                                  const CachedPolicyInfo& info,
+                                  const CString& dm_token,
+                                  const CString& device_id,
                                   PolicyResponses* responses_out);
 
 HRESULT ParseDeviceManagementResponseError(const std::vector<uint8>& response,

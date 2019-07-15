@@ -69,13 +69,10 @@ class DmStorageTest : public RegistryProtectedTest {
 
   void VerifyPolicies(const CPath& policy_responses_dir,
                       const PolicyResponses& expected_responses) {
-    if (!expected_responses.new_public_key_verification_data.empty()) {
-      CPath policy_key_file(policy_responses_dir);
-      policy_key_file.Append(kCachedPublicKeyFileName);
-
-      CheckFileContentsMatch(
-          policy_key_file,
-          expected_responses.new_public_key_verification_data);
+    if (!expected_responses.policy_info.empty()) {
+      CPath policy_info_file(policy_responses_dir);
+      policy_info_file.Append(kCachedPolicyInfoFileName);
+      CheckFileContentsMatch(policy_info_file, expected_responses.policy_info);
     }
 
     for (const auto& expected_response : expected_responses.responses) {

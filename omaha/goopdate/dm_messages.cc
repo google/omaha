@@ -178,6 +178,56 @@ HRESULT ValidateNewPublicKey(
   return S_OK;
 }
 
+HRESULT ValidateDMToken(const enterprise_management::PolicyData& policy_data,
+                        const CString& dm_token) {
+  if (!policy_data.has_request_token()) {
+    REPORT_LOG(LW, (_T("[ValidateDMToken][No DMToken in PolicyData]")));
+    return E_FAIL;
+  }
+
+  CString received_token(policy_data.request_token().c_str());
+  if (dm_token.CompareNoCase(received_token)) {
+    REPORT_LOG(LE, (_T("[ValidateDMToken][Unexpected DMToken]")
+                    _T("[Expected][%s][Got][%s]"), dm_token, received_token));
+    return E_FAIL;
+  }
+
+  return S_OK;
+}
+
+HRESULT ValidateDeviceId(const enterprise_management::PolicyData& policy_data,
+                         const CString& device_id) {
+  if (!policy_data.has_device_id()) {
+    REPORT_LOG(LW, (_T("[ValidateDeviceId][No Device Id in PolicyData]")));
+    return E_FAIL;
+  }
+
+  CString received_id(policy_data.device_id().c_str());
+  if (device_id.CompareNoCase(received_id)) {
+    REPORT_LOG(LE, (_T("[ValidateDeviceId][Unexpected Device Id]")
+                    _T("[Expected][%s][Got][%s]"), device_id, received_id));
+    return E_FAIL;
+  }
+
+  return S_OK;
+}
+
+HRESULT ValidateTimestamp(const enterprise_management::PolicyData& policy_data,
+                          const int64_t cached_timestamp) {
+  if (!policy_data.has_timestamp()) {
+    REPORT_LOG(LW, (_T("[ValidateTimestamp][No timestamp in PolicyData]")));
+    return E_FAIL;
+  }
+
+  if (policy_data.timestamp() < cached_timestamp) {
+    REPORT_LOG(LE, (_T("[ValidateTimestamp]")
+                    _T("[Unexpected timestamp older than cached timestamp]")));
+    return E_FAIL;
+  }
+
+  return S_OK;
+}
+
 HRESULT ValidatePolicy(
     const enterprise_management::PolicyFetchResponse& fetch_response,
     const std::string& signature_key) {
@@ -196,23 +246,31 @@ HRESULT ValidatePolicy(
 
 }  // namespace
 
-HRESULT GetCachedPublicKey(const std::string& raw_verification_data,
-                           CachedPublicKey* key) {
-  ASSERT1(key);
+HRESULT GetCachedPolicyInfo(const std::string& raw_response,
+                            CachedPolicyInfo* info) {
+  ASSERT1(info);
 
-  *key = {};
+  *info = {};
 
+  enterprise_management::PolicyFetchResponse response;
+  enterprise_management::PolicyData policy_data;
   enterprise_management::PublicKeyVerificationData verification_data;
-  if (raw_verification_data.empty() ||
-      !verification_data.ParseFromString(raw_verification_data)) {
+  if (raw_response.empty() ||
+      !response.ParseFromString(raw_response) ||
+      !policy_data.ParseFromString(response.policy_data()) ||
+      !policy_data.has_timestamp() ||
+      !response.has_new_public_key_verification_data() ||
+      !verification_data.ParseFromString(
+           response.new_public_key_verification_data())) {
     return E_UNEXPECTED;
   }
 
-  key->key = verification_data.new_public_key();
+  info->key = verification_data.new_public_key();
   if (verification_data.has_new_public_key_version()) {
-    key->is_version_valid = true;
-    key->version = verification_data.new_public_key_version();
+    info->is_version_valid = true;
+    info->version = verification_data.new_public_key_version();
   }
+  info->timestamp = policy_data.timestamp();
 
   return S_OK;
 }
@@ -234,7 +292,7 @@ CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
 }
 
 CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
-                                     const CachedPublicKey& key) {
+                                     const CachedPolicyInfo& info) {
   enterprise_management::DeviceManagementRequest policy_request;
 
   enterprise_management::PolicyFetchRequest* policy_fetch_request =
@@ -244,8 +302,8 @@ CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
       enterprise_management::PolicyFetchRequest::SHA1_RSA);
   policy_fetch_request->set_verification_key_hash(kPolicyVerificationKeyHash);
 
-  if (key.is_version_valid) {
-    policy_fetch_request->set_public_key_version(key.version);
+  if (info.is_version_valid) {
+    policy_fetch_request->set_public_key_version(info.version);
   }
 
   CStringA result;
@@ -286,7 +344,9 @@ HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
 }
 
 HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
-                                  const CachedPublicKey& key,
+                                  const CachedPolicyInfo& info,
+                                  const CString& dm_token,
+                                  const CString& device_id,
                                   PolicyResponses* responses_out) {
   ASSERT1(responses_out);
 
@@ -313,15 +373,37 @@ HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
       policy_response.responses(0);
 
   std::string signature_key;
-  HRESULT hr = ValidateNewPublicKey(fetch_response, key.key, &signature_key);
+  HRESULT hr = ValidateNewPublicKey(fetch_response, info.key, &signature_key);
   if (FAILED(hr)) {
     return hr;
   }
 
-  if (fetch_response.has_new_public_key_verification_data()) {
-    responses_out->new_public_key_verification_data =
-        fetch_response.new_public_key_verification_data();
+  enterprise_management::PolicyData fetch_policy_data;
+  if (!fetch_policy_data.ParseFromString(fetch_response.policy_data())) {
+    REPORT_LOG(LW, (_T("[ParseDevicePolicyResponse][Invalid PolicyData]")));
+    return E_FAIL;
   }
+
+  hr = ValidateDMToken(fetch_policy_data, dm_token);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = ValidateDeviceId(fetch_policy_data, device_id);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = ValidateTimestamp(fetch_policy_data, info.timestamp);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  std::string policy_info;
+  if (!fetch_response.SerializeToString(&policy_info)) {
+    return E_UNEXPECTED;
+  }
+  responses_out->policy_info = std::move(policy_info);
 
   PolicyResponsesMap responses;
   for (int i = 0; i < policy_response.responses_size(); ++i) {
@@ -353,7 +435,7 @@ HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
     if (FAILED(hr)) {
       REPORT_LOG(LW,
           (_T("[ParseDevicePolicyResponse][Failed ValidatePolicy][%d][%#x]"),
-           key.version, hr));
+           info.version, hr));
       continue;
     }
 

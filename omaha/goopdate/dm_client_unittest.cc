@@ -15,6 +15,7 @@
 #include "omaha/goopdate/dm_client.h"
 
 #include <stdint.h>
+#include <ctime>
 #include <iterator>
 #include <map>
 #include <ostream>
@@ -175,6 +176,8 @@ const uint8_t kNewSigningPublicKeySignature[] = {
 
 const char kDomain[] = "example.com";
 const char kUsername[] = "username@example.com";
+const char kDmToken[] = "dm_token";
+const TCHAR kDeviceId[] = _T("device_id");
 
 // A Google Mock matcher that returns true if a string contains a valid
 // URL to the device management server with the required query parameters.
@@ -435,10 +438,8 @@ class DmClientRequestTest : public ::testing::Test {
   };
 
   void RunFetchPolicies(const std::unique_ptr<KeyInfo>& key_info,
-                        CachedPublicKey* key) {
-    ASSERT_TRUE(key);
-
-    static const TCHAR kDeviceId[] = _T("device_id");
+                        CachedPolicyInfo* info) {
+    ASSERT_TRUE(info);
 
     PolicyResponsesMap expected_responses = {
       {"google/chrome/machine-level-user", "test-data-chrome"},
@@ -483,14 +484,12 @@ class DmClientRequestTest : public ::testing::Test {
     // Fetch Policies should succeed, providing the expected PolicyResponses.
     PolicyResponses responses;
     ASSERT_HRESULT_SUCCEEDED(internal::FetchPolicies(mock_http_request,
-                                                     _T("dm_token"),
+                                                     CString(kDmToken),
                                                      kDeviceId,
-                                                     *key,
+                                                     *info,
                                                      &responses));
-    ASSERT_TRUE(!responses.new_public_key_verification_data.empty());
-    ASSERT_HRESULT_SUCCEEDED(GetCachedPublicKey(
-        responses.new_public_key_verification_data,
-        key));
+    ASSERT_TRUE(!responses.policy_info.empty());
+    ASSERT_HRESULT_SUCCEEDED(GetCachedPolicyInfo(responses.policy_info, info));
 
     EXPECT_EQ(expected_responses.size(), responses.responses.size());
     for (const auto& expected_response : expected_responses) {
@@ -606,6 +605,9 @@ class DmClientRequestTest : public ::testing::Test {
       policy_data.set_policy_type(response.first);
       policy_data.set_policy_value(response.second);
       policy_data.set_username(kUsername);
+      policy_data.set_request_token(kDmToken);
+      policy_data.set_device_id(CStringA(kDeviceId));
+      policy_data.set_timestamp(time(NULL));
       policy_response->set_policy_data(policy_data.SerializeAsString());
       SignPolicyResponse(policy_response, fetch_input.key_info);
     }
@@ -621,9 +623,6 @@ class DmClientRequestTest : public ::testing::Test {
 // Test that DmClient can send a reasonable RegisterBrowserRequest and handle a
 // corresponding DeviceRegisterResponse.
 TEST_F(DmClientRequestTest, RegisterWithRequest) {
-  static const char kDmToken[] = "dm_token";
-  static const TCHAR kDeviceId[] = _T("device_id");
-
   MockHttpRequest* mock_http_request = nullptr;
   ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest(kDmToken, &mock_http_request));
 
@@ -690,19 +689,19 @@ TEST_F(DmClientRequestTest, FetchPolicies) {
                                         new_signing_public_key_signature,
                                         signing_private_key}));
 
-  CachedPublicKey key;
+  CachedPolicyInfo info;
 
   // The mock server will return PolicyData signed with kSigningPrivateKey, and
   // a new public key corresponding to kSigningPrivateKey, signed with the
   // hard-coded verification key.
-  RunFetchPolicies(signing_key_info, &key);
+  RunFetchPolicies(signing_key_info, &info);
 
-  // |key| was initialized in the previous run with the signing public key. Now
+  // |info| was initialized in the previous run with the signing public key. Now
   // the mock server will return PolicyData signed with kNewSigningPrivateKey,
   // and a new public key corresponding to kNewSigningPrivateKey, signed with
   // both the hard-coded verification key as well as with the previous private
   // key kSigningPrivateKey.
-  RunFetchPolicies(new_signing_key_info, &key);
+  RunFetchPolicies(new_signing_key_info, &info);
 }
 
 class DmClientRegistryTest : public RegistryProtectedTest {

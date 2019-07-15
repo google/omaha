@@ -137,7 +137,7 @@ HRESULT DeleteObsoletePolicies(
   for (const auto& file : files) {
     if (file == _T(".") ||
         file == _T("..") ||
-        !file.CompareNoCase(kCachedPublicKeyFileName) ||
+        !file.CompareNoCase(kCachedPolicyInfoFileName) ||
         policy_types_base64.count(file)) {
       continue;
     }
@@ -259,16 +259,15 @@ CString DmStorage::GetDeviceId() {
 
 HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
                                    const PolicyResponses& responses) {
-  if (!responses.new_public_key_verification_data.empty()) {
-    CPath public_key_file(policy_responses_dir);
-    public_key_file.Append(kCachedPublicKeyFileName);
-    HRESULT hr = WriteToFile(
-                     public_key_file,
-                     responses.new_public_key_verification_data.c_str(),
-                     responses.new_public_key_verification_data.length());
+  if (!responses.policy_info.empty()) {
+    CPath policy_info_file(policy_responses_dir);
+    policy_info_file.Append(kCachedPolicyInfoFileName);
+    HRESULT hr = WriteToFile(policy_info_file,
+                             responses.policy_info.c_str(),
+                             responses.policy_info.length());
     if (FAILED(hr)) {
       REPORT_LOG(LW, (_T("[PersistPolicies][WriteToFile failed][%s][%#x]"),
-                      public_key_file, hr));
+                      policy_info_file, hr));
     }
   }
 
@@ -310,35 +309,35 @@ HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
   return S_OK;
 }
 
-HRESULT DmStorage::ReadCachedPublicKeyFile(const CPath& policy_responses_dir,
-                                           CachedPublicKey* key) {
-  ASSERT1(key);
+HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
+                                            CachedPolicyInfo* info) {
+  ASSERT1(info);
 
-  CPath public_key_file(policy_responses_dir);
-  public_key_file.Append(kCachedPublicKeyFileName);
+  CPath policy_info_file(policy_responses_dir);
+  policy_info_file.Append(kCachedPolicyInfoFileName);
 
-  if (!File::Exists(public_key_file)) {
+  if (!File::Exists(policy_info_file)) {
     return S_FALSE;
   }
 
   std::vector<byte> data;
-  HRESULT hr = ReadEntireFileShareMode(public_key_file,
+  HRESULT hr = ReadEntireFileShareMode(policy_info_file,
                                        0,
                                        FILE_SHARE_READ,
                                        &data);
   if (FAILED(hr)) {
-    REPORT_LOG(LE, (_T("[ReadCachedPublicKeyFile][Read failed][%s][%#x]"),
-                    public_key_file, hr));
+    REPORT_LOG(LE, (_T("[ReadCachedPolicyInfoFile][Read failed][%s][%#x]"),
+                    policy_info_file, hr));
     return hr;
   }
 
-  hr = GetCachedPublicKey(std::string(reinterpret_cast<const char*>(&data[0]),
+  hr = GetCachedPolicyInfo(std::string(reinterpret_cast<const char*>(&data[0]),
                                       data.size()),
-                          key);
+                          info);
   if (FAILED(hr)) {
-    REPORT_LOG(LE, (_T("[ReadCachedPublicKeyFile]")
-                    _T("[GetCachedPublicKey failed][%s][%#x]"),
-                    public_key_file, hr));
+    REPORT_LOG(LE, (_T("[ReadCachedPolicyInfoFile]")
+                    _T("[GetCachedPolicyInfo failed][%s][%#x]"),
+                    policy_info_file, hr));
     return hr;
   }
 

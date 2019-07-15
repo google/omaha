@@ -128,10 +128,10 @@ HRESULT RefreshPolicies() {
 
   const CPath policy_responses_dir(
       ConfigManager::Instance()->GetPolicyResponsesDir());
-  CachedPublicKey key;
-  HRESULT hr = DmStorage::ReadCachedPublicKeyFile(policy_responses_dir, &key);
+  CachedPolicyInfo info;
+  HRESULT hr = DmStorage::ReadCachedPolicyInfoFile(policy_responses_dir, &info);
   if (FAILED(hr)) {
-    REPORT_LOG(LW, (_T("[ReadCachedPublicKeyFile failed][%#x]"), hr));
+    REPORT_LOG(LW, (_T("[ReadCachedPolicyInfoFile failed][%#x]"), hr));
     // Not fatal, continue.
   }
 
@@ -140,7 +140,7 @@ HRESULT RefreshPolicies() {
   hr = internal::FetchPolicies(new SimpleRequest,
                                dm_token,
                                device_id,
-                               key,
+                               info,
                                &responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[FetchPolicies failed][%#x]"), hr));
@@ -206,7 +206,7 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
 HRESULT FetchPolicies(HttpRequestInterface* http_request,
                       const CString& dm_token,
                       const CString& device_id,
-                      const CachedPublicKey& key,
+                      const CachedPolicyInfo& info,
                       PolicyResponses* responses) {
   ASSERT1(http_request);
   ASSERT1(!dm_token.IsEmpty());
@@ -218,7 +218,7 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
 
   CStringA payload = SerializePolicyFetchRequest(
       CStringA(kGoogleUpdateMachineLevelApps),
-      key);
+      info);
   if (payload.IsEmpty()) {
     REPORT_LOG(LE, (_T("[SerializePolicyFetchRequest failed]")));
     return E_FAIL;
@@ -237,7 +237,11 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
     return hr;
   }
 
-  hr = ParseDevicePolicyResponse(response, key, responses);
+  hr = ParseDevicePolicyResponse(response,
+                                 info,
+                                 dm_token,
+                                 device_id,
+                                 responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[ParseDeviceRegisterResponse failed][%#x]"), hr));
     return hr;

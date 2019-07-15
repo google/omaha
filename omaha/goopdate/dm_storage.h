@@ -30,10 +30,11 @@ namespace omaha {
 const TCHAR kPolicyResponseFileName[] = _T("PolicyFetchResponse");
 
 // This is the standard name for the file that PersistPolicies() uses to store
-// a PolicyFetchResponse that contains PolicyFetchResponse::new_public_key()
-// and PolicyData::public_key_version(). These are used for subsequent requests
-// and validations of server responses.
-const TCHAR kCachedPublicKeyFileName[] = _T("CachedPublicKey");
+// a PolicyFetchResponse received from the DMServer during the previous request.
+// The data within the PolicyFetchResponse, such as the public key, version, and
+// timestamp are used for subsequent requests and validations of DMServer
+// responses.
+const TCHAR kCachedPolicyInfoFileName[] = _T("CachedPolicyInfo");
 
 // A handler for storage related to cloud-based device management of Omaha. This
 // class provides access to an enrollment token, a device management token, and
@@ -90,10 +91,10 @@ class DmStorage {
   // "PolicyFetchResponse", where the file contents are
   // {SerializeToString-PolicyFetchResponse}}.
   //
-  // Also, if |responses.new_public_key_verification_data| has data, we persist
-  // the data (PublicKeyVerificationData) into a file with a fixed file name of
-  // "CachedPublicKey". The PublicKeyVerificationData (the new public key and
-  // version) is used in subsequent policy fetches.
+  // Also, if |responses.policy_info| has data, we persist the data
+  // (a PolicyFetchResponse) into a file with a fixed file name of
+  // "CachedPolicyInfo". The PolicyFetchResponse (the new public key, version,
+  // and timestamp) is used in subsequent policy fetches.
   //
   // Each file is opened in exclusive mode. If we are unable to open or write to
   // files, the caller is expected to try again later. For instance, if UA is
@@ -109,9 +110,9 @@ class DmStorage {
                                  const PolicyResponses& responses);
 
   // Returns the public key information within the PolicyFetchResponse in
-  // |policy_responses_dir|\CachedPublicKey.
-  static HRESULT ReadCachedPublicKeyFile(const CPath& policy_responses_dir,
-                                         CachedPublicKey* key);
+  // |policy_responses_dir|\CachedPolicyInfo.
+  static HRESULT ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
+                                          CachedPolicyInfo* info);
 
  private:
   // Constructs an instance with a runtime-provided enrollment token (e.g., one

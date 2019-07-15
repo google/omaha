@@ -69,7 +69,7 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
 HRESULT FetchPolicies(HttpRequestInterface* http_request,
                       const CString& dm_token,
                       const CString& device_id,
-                      const CachedPublicKey& key,
+                      const CachedPolicyInfo& info,
                       PolicyResponses* responses);
 
 HRESULT SendDeviceManagementRequest(
