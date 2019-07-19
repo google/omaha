@@ -1,3 +1,6 @@
+# CHANGELOG.txt is not going to be be updated beyond this point
+# To see what is being changed, please inspect the git log.
+
 ## 2019-06-05 @247089589,251531419
 
 ### Changes
