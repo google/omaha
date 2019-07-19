@@ -27,6 +27,7 @@
 #include "crypto/rsa_private_key.h"
 #include "crypto/signature_creator.h"
 #include "gtest/gtest-matchers.h"
+#include "omaha/base/constants.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
 #include "omaha/common/config_manager.h"
@@ -34,6 +35,7 @@
 #include "omaha/goopdate/dm_storage_test_utils.h"
 #include "omaha/net/http_request.h"
 #include "omaha/testing/unit_test.h"
+#include "ccc/hosted/policies/services/chrome/omaha_settings.pb.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
 
 using ::testing::_;
@@ -510,6 +512,33 @@ class DmClientRequestTest : public ::testing::Test {
     }
   }
 
+  void DecodeOmahaPolicies() {
+    ccc_hosted_policies_services_chrome::OmahaSettingsProto omaha_settings;
+    google::protobuf_opensource::Map<
+        std::string,
+        ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto>*
+        app_map =
+            omaha_settings.mutable_application_settings()
+            ->mutable_application_settings();
+    ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto app;
+    app.set_app_guid(CStringA(kChromeAppId));
+    app_map->insert(
+        google::protobuf_opensource::MapPair(std::string("Chrome"), app));
+
+    enterprise_management::PolicyData policy_data;
+    policy_data.set_policy_value(omaha_settings.SerializeAsString());
+
+    enterprise_management::PolicyFetchResponse response;
+    response.set_policy_data(policy_data.SerializeAsString());
+
+    CachedOmahaPolicy op;
+    ASSERT_HRESULT_SUCCEEDED(GetCachedOmahaPolicy(response.SerializeAsString(),
+                                                  &op));
+    ASSERT_EQ(op.application_settings.size(), 1);
+    ASSERT_TRUE(::IsEqualGUID(op.application_settings.begin()->first,
+                StringToGuid(kChromeAppId)));
+  }
+
   std::unique_ptr<crypto::RSAPrivateKey> CreateKey(
       const uint8_t* private_key,
       size_t private_key_length,
@@ -702,6 +731,12 @@ TEST_F(DmClientRequestTest, FetchPolicies) {
   // both the hard-coded verification key as well as with the previous private
   // key kSigningPrivateKey.
   RunFetchPolicies(new_signing_key_info, &info);
+}
+
+// Test that we are able to successfully encode and then decode a
+// protobuf OmahaSettingsProto into a CachedOmahaPolicy instance.
+TEST_F(DmClientRequestTest, DecodePolicies) {
+  DecodeOmahaPolicies();
 }
 
 class DmClientRegistryTest : public RegistryProtectedTest {

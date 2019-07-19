@@ -331,13 +331,55 @@ HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
     return hr;
   }
 
-  hr = GetCachedPolicyInfo(std::string(reinterpret_cast<const char*>(&data[0]),
-                                      data.size()),
-                          info);
+  std::string raw_response(reinterpret_cast<const char*>(&data[0]),
+                           data.size());
+  hr = GetCachedPolicyInfo(raw_response, info);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[ReadCachedPolicyInfoFile]")
-                    _T("[GetCachedPolicyInfo failed][%s][%#x]"),
-                    policy_info_file, hr));
+                    _T("[GetCachedPolicyInfo failed][%S][%#x]"),
+                    raw_response.c_str(), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
+                                         CachedOmahaPolicy* info) {
+  ASSERT1(info);
+
+  CStringA encoded_policy_response_dirname;
+  Base64Escape(kGoogleUpdatePolicyType,
+               arraysize(kGoogleUpdatePolicyType) - 1,
+               &encoded_policy_response_dirname,
+               true);
+
+  CString dirname(encoded_policy_response_dirname);
+  CPath policy_response_file(policy_responses_dir);
+  policy_response_file.Append(dirname);
+  policy_response_file.Append(kPolicyResponseFileName);
+  if (!File::Exists(policy_response_file)) {
+    return S_FALSE;
+  }
+
+  std::vector<byte> data;
+  HRESULT hr = ReadEntireFileShareMode(policy_response_file,
+                                       0,
+                                       FILE_SHARE_READ,
+                                       &data);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[ReadCachedOmahaPolicy][Read failed][%s][%#x]"),
+                    policy_response_file, hr));
+    return hr;
+  }
+
+  std::string raw_response(reinterpret_cast<const char*>(&data[0]),
+                           data.size());
+  hr = GetCachedOmahaPolicy(raw_response, info);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[ReadCachedOmahaPolicy]")
+                    _T("[GetCachedOmahaPolicy failed][%S][%#x]"),
+                    raw_response.c_str(), hr));
     return hr;
   }
 

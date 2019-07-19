@@ -144,11 +144,13 @@ bool GetEffectivePolicyForApp(const TCHAR* apps_default_value_name,
   return false;
 }
 
-// Gets the raw update check period override value in seconds from the registry.
+// Gets the raw update check period override value in seconds from DM Policy or
+// the registry.
 // The value must be processed for limits and overflow before using.
-// Checks UpdateDev and Group Policy.
-// Returns true if either override was successefully read.
-bool GetLastCheckPeriodSecFromRegistry(DWORD* period_sec) {
+// Checks UpdateDev, DM Policy, and Group Policy.
+// Returns true if one of the overrides was successfully read.
+bool GetLastCheckPeriodSecFromPolicy(const CachedOmahaPolicy& dm_policy,
+                                     DWORD* period_sec) {
   ASSERT1(period_sec);
 
   DWORD update_dev_sec = 0;
@@ -160,51 +162,73 @@ bool GetLastCheckPeriodSecFromRegistry(DWORD* period_sec) {
     return true;
   }
 
-  if (!IsEnrolledToDomain()) {
-    OPT_LOG(L5, (_T("[GetLastCheckPeriodSecFromRegistry]")
+  DWORD policy_minutes = 0;
+  if (dm_policy.is_initialized) {
+    if (dm_policy.auto_update_check_period_minutes == -1) {
+      return false;
+    }
+
+    policy_minutes =
+        static_cast<DWORD>(dm_policy.auto_update_check_period_minutes);
+    REPORT_LOG(L5, (_T("[DM Policy check period override %d]"),
+                    policy_minutes));
+  } else if (IsEnrolledToDomain()) {
+    if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                                &policy_minutes))) {
+      return false;
+    }
+
+    CORE_LOG(L5, (_T("[Group Policy check period override %d]"),
+                  policy_minutes));
+  } else {
+    OPT_LOG(L5, (_T("[GetLastCheckPeriodSecFromPolicy]")
                  _T("[Ignoring group policy]")
                  _T("[machine is not part of a domain]")));
     return false;
   }
 
-  DWORD group_policy_minutes = 0;
-  if (SUCCEEDED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                 kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                                 &group_policy_minutes))) {
-    CORE_LOG(L5, (_T("[Group Policy check period override %d]"),
-                  group_policy_minutes));
+  *period_sec = (policy_minutes > UINT_MAX / 60) ?
+                UINT_MAX :
+                policy_minutes * 60;
+  CORE_LOG(L5, (_T("[GetLastCheckPeriodSecFromPolicy][%d]"), *period_sec));
 
-    *period_sec = (group_policy_minutes > UINT_MAX / 60) ?
-                  UINT_MAX :
-                  group_policy_minutes * 60;
-    CORE_LOG(L5, (_T("[GetLastCheckPeriodSecFromRegistry][%d]"), *period_sec));
-
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
-bool GetUpdatesSuppressedTimes(DWORD* start_hour,
+bool GetUpdatesSuppressedTimes(const CachedOmahaPolicy& dm_policy,
+                               DWORD* start_hour,
                                DWORD* start_min,
                                DWORD* duration_min) {
-  if (!IsEnrolledToDomain()) {
+  if (dm_policy.is_initialized) {
+    if (dm_policy.updates_suppressed.start_hour == -1 ||
+        dm_policy.updates_suppressed.start_minute == -1 ||
+        dm_policy.updates_suppressed.duration_min == -1) {
+      OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing DM time]")));
+      return false;
+    }
+
+    *start_hour = static_cast<DWORD>(dm_policy.updates_suppressed.start_hour);
+    *start_min = static_cast<DWORD>(dm_policy.updates_suppressed.start_minute);
+    *duration_min =
+        static_cast<DWORD>(dm_policy.updates_suppressed.duration_min);
+  } else if (IsEnrolledToDomain()) {
+    if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                kRegValueUpdatesSuppressedStartHour,
+                                start_hour)) ||
+        FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                kRegValueUpdatesSuppressedStartMin,
+                                start_min)) ||
+        FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                kRegValueUpdatesSuppressedDurationMin,
+                                duration_min))) {
+      OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing time][%x][%x][%x]"),
+                  *start_hour, *start_min, *duration_min));
+      return false;
+    }
+  } else {
     OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Ignoring group policy]")
                  _T("[machine is not part of a domain]")));
-    return false;
-  }
-
-  if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                              kRegValueUpdatesSuppressedStartHour,
-                              start_hour)) ||
-      FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                              kRegValueUpdatesSuppressedStartMin,
-                              start_min)) ||
-      FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                              kRegValueUpdatesSuppressedDurationMin,
-                              duration_min))) {
-    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing time][%x][%x][%x]"),
-                *start_hour, *start_min, *duration_min));
     return false;
   }
 
@@ -533,6 +557,10 @@ CPath ConfigManager::GetPolicyResponsesDir() const {
   return CPath(path);
 }
 
+void ConfigManager::SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy) {
+  dm_policy_ = dm_policy;
+}
+
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 // Returns the override from the registry locations if present. Otherwise,
@@ -543,16 +571,17 @@ CPath ConfigManager::GetPolicyResponsesDir() const {
 // when the override is 0, which indicates updates are disabled.
 int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
   ASSERT1(is_overridden);
-  DWORD registry_period_sec = 0;
-  *is_overridden = GetLastCheckPeriodSecFromRegistry(&registry_period_sec);
+  DWORD policy_period_sec = 0;
+  *is_overridden = GetLastCheckPeriodSecFromPolicy(dm_policy_,
+                                                   &policy_period_sec);
   if (*is_overridden) {
-    if (0 == registry_period_sec) {
-      CORE_LOG(L5, (_T("[GetLastCheckPeriodSec][0 == registry_period_sec]")));
+    if (0 == policy_period_sec) {
+      CORE_LOG(L5, (_T("[GetLastCheckPeriodSec][0 == policy_period_sec]")));
       return 0;
     }
-    const int period_sec = registry_period_sec > INT_MAX ?
+    const int period_sec = policy_period_sec > INT_MAX ?
                            INT_MAX :
-                           static_cast<int>(registry_period_sec);
+                           static_cast<int>(policy_period_sec);
 
     if (period_sec < kMinLastCheckPeriodSec) {
       return kMinLastCheckPeriodSec;
@@ -1002,7 +1031,14 @@ bool ConfigManager::IsInternalUser() const {
   return false;
 }
 
-DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid) {
+DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid)
+    const {
+  if (dm_policy_.is_initialized) {
+    return dm_policy_.application_settings.count(app_guid) > 0 ?
+        dm_policy_.application_settings.at(app_guid).install :
+        dm_policy_.install_default;
+  }
+
   DWORD effective_policy = kPolicyDisabled;
   if (!GetEffectivePolicyForApp(kRegValueInstallAppsDefault,
                                 kRegValueInstallAppPrefix,
@@ -1014,7 +1050,14 @@ DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid) {
   return effective_policy;
 }
 
-DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid) {
+DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid)
+    const {
+  if (dm_policy_.is_initialized) {
+    return dm_policy_.application_settings.count(app_guid) ?
+        dm_policy_.application_settings.at(app_guid).update :
+        dm_policy_.update_default;
+  }
+
   DWORD effective_policy = kPolicyDisabled;
   if (!GetEffectivePolicyForApp(kRegValueUpdateAppsDefault,
                                 kRegValueUpdateAppPrefix,
@@ -1026,7 +1069,13 @@ DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid) {
   return effective_policy;
 }
 
-CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) {
+CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) const {
+  if (dm_policy_.is_initialized) {
+    return dm_policy_.application_settings.count(app_guid) ?
+        dm_policy_.application_settings.at(app_guid).target_version_prefix :
+        CString();
+  }
+
   if (!IsEnrolledToDomain()) {
     OPT_LOG(L5, (_T("[GetTargetVersionPrefix][Ignoring group policy for %s]")
                  _T("[machine is not part of a domain]"),
@@ -1044,7 +1093,14 @@ CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) {
   return target_version_prefix;
 }
 
-bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid) {
+bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid)
+    const {
+  if (dm_policy_.is_initialized) {
+    return dm_policy_.application_settings.count(app_guid) ?
+        dm_policy_.application_settings.at(app_guid).rollback_to_target_version
+        : false;
+  }
+
   if (!IsEnrolledToDomain()) {
     OPT_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][false][%s]")
                  _T("[machine is not part of a domain]"),
@@ -1062,11 +1118,14 @@ bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid) {
   return !!is_rollback_allowed;
 }
 
-bool ConfigManager::AreUpdatesSuppressedNow() {
+bool ConfigManager::AreUpdatesSuppressedNow() const {
   DWORD start_hour = 0;
   DWORD start_min = 0;
   DWORD duration_min = 0;
-  if (!GetUpdatesSuppressedTimes(&start_hour, &start_min, &duration_min)) {
+  if (!GetUpdatesSuppressedTimes(dm_policy_,
+                                 &start_hour,
+                                 &start_min,
+                                 &duration_min)) {
     return false;
   }
 
@@ -1140,6 +1199,12 @@ int ConfigManager::MaxCrashUploadsPerDay() const {
 }
 
 CString ConfigManager::GetDownloadPreferenceGroupPolicy() const {
+  if (dm_policy_.is_initialized) {
+    return dm_policy_.download_preference == kDownloadPreferenceCacheable ?
+        dm_policy_.download_preference :
+        CString();
+  }
+
   CString download_preference;
 
   if (!IsEnrolledToDomain()) {

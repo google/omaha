@@ -17,11 +17,13 @@
 
 #include <atlstr.h>
 #include <cstdint>
+#include <cstring>
 #include <map>
 #include <string>
 #include <vector>
 
 #include "base/basictypes.h"
+#include "omaha/common/const_group_policy.h"
 
 namespace omaha {
 
@@ -39,8 +41,47 @@ struct CachedPolicyInfo {
   int64_t timestamp = 0;
 };
 
+struct UpdatesSuppressed {
+  int64_t start_hour = -1;
+  int64_t start_minute = -1;
+  int64_t duration_min = -1;
+};
+
+struct ApplicationSettings {
+  int install = kInstallPolicyDefault;
+  int update = kUpdatePolicyDefault;
+  CString target_version_prefix;
+  bool rollback_to_target_version = false;
+};
+
+struct GUIDCompare {
+  bool operator()(const GUID& left, const GUID& right) const {
+    return std::memcmp(&left, &right, sizeof(left)) < 0;
+  }
+};
+
+struct CachedOmahaPolicy {
+  bool is_initialized = false;
+
+  int64_t auto_update_check_period_minutes = -1;
+  CString download_preference;
+  UpdatesSuppressed updates_suppressed;
+  CString proxy_mode;
+  CString proxy_server;
+  CString proxy_pac_url;
+  int install_default = kInstallPolicyDefault;
+  int update_default = kUpdatePolicyDefault;
+
+  std::map<GUID, ApplicationSettings, GUIDCompare> application_settings;
+};
+
 HRESULT GetCachedPolicyInfo(const std::string& raw_response,
                             CachedPolicyInfo* info);
+
+// Interprets the OmahaSettingsProto within the PolicyData and populates the
+// |info| with that information.
+HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
+                             CachedOmahaPolicy* info);
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,

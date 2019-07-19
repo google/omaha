@@ -113,12 +113,12 @@ class ConfigManagerNoOverrideTest : public testing::Test {
     return cm_->CanUpdateApp(StringToGuid(guid), is_manual);
   }
 
-  static DWORD GetEffectivePolicyForAppInstalls(const TCHAR* guid) {
-    return ConfigManager::GetEffectivePolicyForAppInstalls(StringToGuid(guid));
+  DWORD GetEffectivePolicyForAppInstalls(const TCHAR* guid) {
+    return cm_->GetEffectivePolicyForAppInstalls(StringToGuid(guid));
   }
 
-  static DWORD GetEffectivePolicyForAppUpdates(const TCHAR* guid) {
-    return ConfigManager::GetEffectivePolicyForAppUpdates(StringToGuid(guid));
+  DWORD GetEffectivePolicyForAppUpdates(const TCHAR* guid) {
+    return cm_->GetEffectivePolicyForAppUpdates(StringToGuid(guid));
   }
 
   ConfigManager* cm_;

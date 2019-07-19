@@ -32,9 +32,11 @@
 #include "omaha/base/user_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/time.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/common/const_group_policy.h"
 #include "omaha/net/http_client.h"
 #include "omaha/net/network_config.h"
+#include "omaha/goopdate/dm_storage.h"
 
 namespace omaha {
 
@@ -83,7 +85,7 @@ HRESULT IEProxyDetector::Detect(ProxyConfig* config) {
   ::GlobalFree(const_cast<TCHAR*>(ie_proxy_config.proxy_bypass));
 
   return S_OK;
-};
+}
 
 }  // namespace internal
 
@@ -118,19 +120,23 @@ UpdateDevProxyDetector::UpdateDevProxyDetector()
 HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
 
-  if (!IsEnrolledToDomain()) {
+  CString proxy_mode;
+  const CachedOmahaPolicy& dm_policy = ConfigManager::Instance()->dm_policy();
+  if (dm_policy.is_initialized) {
+    proxy_mode = dm_policy.proxy_mode;
+  } else if (IsEnrolledToDomain()) {
+    HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                  kRegValueProxyMode,
+                                  &proxy_mode);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  } else {
     OPT_LOG(L5, (_T("[GroupPolicyProxyDetector::Detect][Ignoring group policy]")
                  _T("[machine is not part of a domain]")));
     return E_FAIL;
   }
 
-  CString proxy_mode;
-  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                kRegValueProxyMode,
-                                &proxy_mode);
-  if (FAILED(hr)) {
-    return hr;
-  }
   NET_LOG(L4, (_T("[group policy proxy mode][%s]"), proxy_mode));
 
   *config = ProxyConfig();
@@ -143,10 +149,18 @@ HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
     config->auto_detect = true;
     return S_OK;
   } else if (proxy_mode.CompareNoCase(kProxyModePacScript) == 0) {
+    if (dm_policy.is_initialized) {
+      config->auto_config_url = dm_policy.proxy_pac_url;
+      return S_OK;
+    }
     return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                             kRegValueProxyPacUrl,
                             &config->auto_config_url);
   } else if (proxy_mode.CompareNoCase(kProxyModeFixedServers) == 0) {
+    if (dm_policy.is_initialized) {
+      config->proxy = dm_policy.proxy_server;
+      return S_OK;
+    }
     return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                             kRegValueProxyServer,
                             &config->proxy);
@@ -468,7 +482,7 @@ HRESULT IEWPADProxyDetector::Detect(ProxyConfig* config) {
   config->auto_detect = ie_proxy_config.auto_detect;
   config->priority = ie_proxy_config.priority;
   return S_OK;
-};
+}
 
 HRESULT IEPACProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
@@ -487,7 +501,7 @@ HRESULT IEPACProxyDetector::Detect(ProxyConfig* config) {
   config->auto_config_url = ie_proxy_config.auto_config_url;
   config->priority = ie_proxy_config.priority;
   return S_OK;
-};
+}
 
 HRESULT IENamedProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
@@ -507,7 +521,7 @@ HRESULT IENamedProxyDetector::Detect(ProxyConfig* config) {
   config->proxy_bypass = ie_proxy_config.proxy_bypass;
   config->priority = ie_proxy_config.priority;
   return S_OK;
-};
+}
 
 }  // namespace omaha
 

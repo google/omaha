@@ -917,8 +917,8 @@ HRESULT App::CheckGroupPolicy() const {
     if (!ConfigManager::Instance()->CanUpdateApp(
              app_guid_,
              !app_bundle_->is_auto_update())) {
-      if (ConfigManager::GetEffectivePolicyForAppUpdates(app_guid_) ==
-          kPolicyAutomaticUpdatesOnly) {
+      if (ConfigManager::Instance()->GetEffectivePolicyForAppUpdates(app_guid_)
+          == kPolicyAutomaticUpdatesOnly) {
         // This return code allows Omaha clients to show a message indicating
         // Manual Updates are disabled, but Automatic Updates are enabled. This
         // is to reassure end-users that administrators have enabled automatic
@@ -940,13 +940,13 @@ HRESULT App::CheckGroupPolicy() const {
 bool App::IsRollbackToTargetVersionAllowed() const {
   __mutexScope(model()->lock());
 
-  return ConfigManager::IsRollbackToTargetVersionAllowed(app_guid_);
+  return ConfigManager::Instance()->IsRollbackToTargetVersionAllowed(app_guid_);
 }
 
 CString App::GetTargetVersionPrefix() const {
   __mutexScope(model()->lock());
 
-  return ConfigManager::GetTargetVersionPrefix(app_guid_);
+  return ConfigManager::Instance()->GetTargetVersionPrefix(app_guid_);
 }
 
 void App::UpdateNumBytesDownloaded(uint64 num_bytes) {

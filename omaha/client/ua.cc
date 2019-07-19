@@ -187,7 +187,7 @@ bool ShouldCheckForUpdates(bool is_machine) {
 
   bool should_check_for_updates = false;
 
-  if (ConfigManager::AreUpdatesSuppressedNow()) {
+  if (ConfigManager::Instance()->AreUpdatesSuppressedNow()) {
     should_check_for_updates = false;
   } else if (time_since_last_check < update_interval) {
     // Too soon.

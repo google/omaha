@@ -30,6 +30,7 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
+#include "omaha/goopdate/dm_storage.h"
 
 namespace omaha {
 
@@ -180,7 +181,13 @@ class ConfigManager {
   // Returns the directory under which the Device Management policies are
   // persisted.
   CPath GetPolicyResponsesDir() const;
+
+  // Sets the DM policies on the ConfigManager instance, which is used by the
+  // ConfigManager for subsequent config queries.
+  void SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy);
 #endif
+
+  CachedOmahaPolicy dm_policy() { return dm_policy_; }
 
   // Returns the time interval between update checks in seconds.
   // 0 indicates updates are disabled.
@@ -247,6 +254,38 @@ class ConfigManager {
   // Returns true if the user is considered an internal user.
   bool IsInternalUser() const;
 
+  // Returns kPolicyEnabled if installation of the specified app is allowed.
+  // Otherwise, returns kPolicyDisabled.
+  DWORD GetEffectivePolicyForAppInstalls(const GUID& app_guid) const;
+
+  // Returns kPolicyEnabled if updates of the specified app is allowed.
+  // Otherwise, returns one of kPolicyDisabled, kPolicyManualUpdatesOnly, or
+  // kPolicyAutomaticUpdatesOnly.
+  DWORD GetEffectivePolicyForAppUpdates(const GUID& app_guid) const;
+
+  // Returns the target version prefix for the app, if the machine is joined to
+  // a domain and has the corresponding policy set.
+  // Examples:
+  // * "" (or not configured): update to latest version available.
+  // * "55.": update to any minor version of 55 (e.g. 55.24.34 or 55.60.2).
+  // * "55.2.": update to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).
+  // * "55.24.34": update to this specific version only.
+  CString GetTargetVersionPrefix(const GUID& app_guid) const;
+
+  // Returns whether the RollbackToTargetVersion policy has been set for the
+  // app. If RollbackToTargetVersion is set, the TargetVersionPrefix policy
+  // governs the version to rollback clients with higher versions to.
+  bool IsRollbackToTargetVersionAllowed(const GUID& app_guid) const;
+
+  // For domain-joined machines, checks the current time against the times that
+  // updates are suppressed. Returns true if the current time falls between the
+  // start time and the duration.
+  // The duration does not account for daylight savings time. For instance, if
+  // the start time is 22:00 hours, and with a duration of 8 hours, the updates
+  // will be suppressed for 8 hours regardless of whether daylight savings time
+  // changes happen in between.
+  bool AreUpdatesSuppressedNow() const;
+
   // Returns true if installation of the specified app is allowed.
   bool CanInstallApp(const GUID& app_guid) const;
 
@@ -289,38 +328,6 @@ class ConfigManager {
   // or installed.
   static bool Is24HoursSinceLastUpdate(bool is_machine);
 
-  // Returns kPolicyEnabled if installation of the specified app is allowed.
-  // Otherwise, returns kPolicyDisabled.
-  static DWORD GetEffectivePolicyForAppInstalls(const GUID& app_guid);
-
-  // Returns kPolicyEnabled if updates of the specified app is allowed.
-  // Otherwise, returns one of kPolicyDisabled, kPolicyManualUpdatesOnly, or
-  // kPolicyAutomaticUpdatesOnly.
-  static DWORD GetEffectivePolicyForAppUpdates(const GUID& app_guid);
-
-  // Returns the target version prefix for the app, if the machine is joined to
-  // a domain and has the corresponding group policy set.
-  // Examples:
-  // * "" (or not configured): update to latest version available.
-  // * "55.": update to any minor version of 55 (e.g. 55.24.34 or 55.60.2).
-  // * "55.2.": update to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).
-  // * "55.24.34": update to this specific version only.
-  static CString GetTargetVersionPrefix(const GUID& app_guid);
-
-  // Returns whether the RollbackToTargetVersion policy has been set for the
-  // app. If RollbackToTargetVersion is set, the TargetVersionPrefix policy
-  // governs the version to rollback clients with higher versions to.
-  static bool IsRollbackToTargetVersionAllowed(const GUID& app_guid);
-
-  // For domain-joined machines, checks the current time against the times that
-  // updates are suppressed. Returns true if the current time falls between the
-  // start time and the duration.
-  // The duration does not account for daylight savings time. For instance, if
-  // the start time is 22:00 hours, and with a duration of 8 hours, the updates
-  // will be suppressed for 8 hours regardless of whether daylight savings time
-  // changes happen in between.
-  static bool AreUpdatesSuppressedNow();
-
   static ConfigManager* Instance();
   static void DeleteInstance();
 
@@ -332,6 +339,7 @@ class ConfigManager {
 
   bool is_running_from_official_user_dir_;
   bool is_running_from_official_machine_dir_;
+  CachedOmahaPolicy dm_policy_;
 
   DISALLOW_COPY_AND_ASSIGN(ConfigManager);
 };

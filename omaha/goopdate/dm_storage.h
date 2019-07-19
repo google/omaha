@@ -36,6 +36,9 @@ const TCHAR kPolicyResponseFileName[] = _T("PolicyFetchResponse");
 // responses.
 const TCHAR kCachedPolicyInfoFileName[] = _T("CachedPolicyInfo");
 
+// The policy type for Omaha policy settings.
+const char kGoogleUpdatePolicyType[] = "google/machine-level-omaha";
+
 // A handler for storage related to cloud-based device management of Omaha. This
 // class provides access to an enrollment token, a device management token, and
 // a device identifier.
@@ -113,6 +116,12 @@ class DmStorage {
   // |policy_responses_dir|\CachedPolicyInfo.
   static HRESULT ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
                                           CachedPolicyInfo* info);
+
+  // Reads the information within the PolicyFetchResponse file within the
+  // |policy_responses_dir|\{Base64Encoded{kGoogleUpdatePolicyType}} directory.
+  // Then calls on GetCachedOmahaPolicy() to populate |info|.
+  static HRESULT ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
+                                       CachedOmahaPolicy* info);
 
  private:
   // Constructs an instance with a runtime-provided enrollment token (e.g., one
