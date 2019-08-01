@@ -18,6 +18,7 @@
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/goopdate/goopdate_metrics.h"
 #include "omaha/net/network_request.h"
@@ -198,6 +199,14 @@ HRESULT CodeRedDownloadCallback(const TCHAR* url,
 }  // namespace
 
 HRESULT CheckForCodeRed(bool is_machine, const CString& omaha_version) {
+  bool is_period_overridden = false;
+  const int update_interval =
+      ConfigManager::Instance()->GetLastCheckPeriodSec(&is_period_overridden);
+  if (is_period_overridden && 0 == update_interval) {
+    OPT_LOG(L1, (_T("[GetLastCheckPeriodSec is 0][code red checks disabled]")));
+    return HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY);
+  }
+
   HRESULT hr = FixGoogleUpdate(kGoogleUpdateAppId,
                                omaha_version,
                                _T(""),     // Omaha doesn't have a language.

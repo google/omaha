@@ -566,27 +566,6 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                                           NULL));
 }
 
-// Setting kRegValueAutoUpdateCheckPeriodOverrideMinutes to zero disables
-// Code Red checks just as it does regular update checks.
-TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
-       FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDword) {
-  EXPECT_HRESULT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                       static_cast<DWORD>(0)));
-
-  EXPECT_EQ(IsDomain() ?
-            HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY) :
-            kDummyNoFileError,
-            FixGoogleUpdate(kDummyAppGuid,
-                            kDummyAppVersion,
-                            kDummyAppLang,
-                            true,
-                            DownloadFileNoFile,
-                            NULL));
-  EXPECT_EQ(IsDomain(), saved_url_.IsEmpty());
-}
-
 TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_AutoUpdateCheckPeriodMinutesIsZeroDwordInHkcu) {
   EXPECT_HRESULT_SUCCEEDED(

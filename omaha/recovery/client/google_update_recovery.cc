@@ -492,35 +492,6 @@ HRESULT RunRepairFile(const CString& file_path, bool is_machine_app) {
   return StartProcess(NULL, command_line.GetBuffer());
 }
 
-enum DomainEnrollementState {UNKNOWN = -1, NOT_ENROLLED, ENROLLED};
-static volatile LONG g_domain_state = UNKNOWN;
-
-bool IsEnrolledToDomain() {
-  DWORD is_enrolled(false);
-  if (SUCCEEDED(GetRegDwordValue(true,
-                                 REG_UPDATE_DEV,
-                                 kRegValueIsEnrolledToDomain,
-                                 &is_enrolled))) {
-    return !!is_enrolled;
-  }
-
-  if (g_domain_state == UNKNOWN) {
-    LPWSTR domain;
-    NETSETUP_JOIN_STATUS join_status;
-    if (::NetGetJoinInformation(NULL, &domain, &join_status) != NERR_Success) {
-      return false;
-    }
-
-    ::NetApiBufferFree(domain);
-    ::InterlockedCompareExchange(&g_domain_state,
-                                 join_status == ::NetSetupDomainName ?
-                                     ENROLLED : NOT_ENROLLED,
-                                 UNKNOWN);
-  }
-
-  return g_domain_state == ENROLLED;
-}
-
 }  // namespace
 
 // Verifies the integrity of the file, the file certificate, and the timestamp
@@ -641,19 +612,6 @@ HRESULT FixGoogleUpdate(const TCHAR* app_guid,
                         void* context) {
   if (!app_guid || !app_version || !app_language || !download_callback) {
     return E_INVALIDARG;
-  }
-
-  DWORD update_check_period_override_minutes(UINT_MAX);
-
-  if (omaha::IsEnrolledToDomain()) {
-    HRESULT hr = omaha::GetRegDwordValue(
-                     true,
-                     GOOPDATE_POLICIES_RELATIVE,
-                     omaha::kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                     &update_check_period_override_minutes);
-    if (SUCCEEDED(hr) && (0 == update_check_period_override_minutes)) {
-      return HRESULT_FROM_WIN32(ERROR_ACCESS_DISABLED_BY_POLICY);
-    }
   }
 
   CPath download_target_path;

@@ -108,9 +108,6 @@ bool GetEffectivePolicyForApp(const TCHAR* apps_default_value_name,
                               const GUID& app_guid,
                               DWORD* effective_policy) {
   if (!IsEnrolledToDomain()) {
-    OPT_LOG(L5, (_T("[GetEffectivePolicyForApp][Ignoring group policy for %s]")
-                 _T("[machine is not part of a domain]"),
-                 GuidToString(app_guid)));
     return false;
   }
 
@@ -163,16 +160,7 @@ bool GetLastCheckPeriodSecFromPolicy(const CachedOmahaPolicy& dm_policy,
   }
 
   DWORD policy_minutes = 0;
-  if (dm_policy.is_initialized) {
-    if (dm_policy.auto_update_check_period_minutes == -1) {
-      return false;
-    }
-
-    policy_minutes =
-        static_cast<DWORD>(dm_policy.auto_update_check_period_minutes);
-    REPORT_LOG(L5, (_T("[DM Policy check period override %d]"),
-                    policy_minutes));
-  } else if (IsEnrolledToDomain()) {
+  if (IsEnrolledToDomain()) {
     if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                                 kRegValueAutoUpdateCheckPeriodOverrideMinutes,
                                 &policy_minutes))) {
@@ -181,10 +169,19 @@ bool GetLastCheckPeriodSecFromPolicy(const CachedOmahaPolicy& dm_policy,
 
     CORE_LOG(L5, (_T("[Group Policy check period override %d]"),
                   policy_minutes));
+  } else if (dm_policy.is_initialized) {
+    if (dm_policy.auto_update_check_period_minutes == -1) {
+      return false;
+    }
+
+    policy_minutes =
+        static_cast<DWORD>(dm_policy.auto_update_check_period_minutes);
+    REPORT_LOG(L5, (_T("[DM Policy check period override %d]"),
+                    policy_minutes));
   } else {
     OPT_LOG(L5, (_T("[GetLastCheckPeriodSecFromPolicy]")
-                 _T("[Ignoring group policy]")
-                 _T("[machine is not part of a domain]")));
+                 _T("[Ignoring policy]")
+                 _T("[machine is not part of a domain or Device Management]")));
     return false;
   }
 
@@ -200,19 +197,7 @@ bool GetUpdatesSuppressedTimes(const CachedOmahaPolicy& dm_policy,
                                DWORD* start_hour,
                                DWORD* start_min,
                                DWORD* duration_min) {
-  if (dm_policy.is_initialized) {
-    if (dm_policy.updates_suppressed.start_hour == -1 ||
-        dm_policy.updates_suppressed.start_minute == -1 ||
-        dm_policy.updates_suppressed.duration_min == -1) {
-      OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing DM time]")));
-      return false;
-    }
-
-    *start_hour = static_cast<DWORD>(dm_policy.updates_suppressed.start_hour);
-    *start_min = static_cast<DWORD>(dm_policy.updates_suppressed.start_minute);
-    *duration_min =
-        static_cast<DWORD>(dm_policy.updates_suppressed.duration_min);
-  } else if (IsEnrolledToDomain()) {
+  if (IsEnrolledToDomain()) {
     if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                                 kRegValueUpdatesSuppressedStartHour,
                                 start_hour)) ||
@@ -226,9 +211,21 @@ bool GetUpdatesSuppressedTimes(const CachedOmahaPolicy& dm_policy,
                   *start_hour, *start_min, *duration_min));
       return false;
     }
+  } else if (dm_policy.is_initialized) {
+    if (dm_policy.updates_suppressed.start_hour == -1 ||
+        dm_policy.updates_suppressed.start_minute == -1 ||
+        dm_policy.updates_suppressed.duration_min == -1) {
+      OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing DM time]")));
+      return false;
+    }
+
+    *start_hour = static_cast<DWORD>(dm_policy.updates_suppressed.start_hour);
+    *start_min = static_cast<DWORD>(dm_policy.updates_suppressed.start_minute);
+    *duration_min =
+        static_cast<DWORD>(dm_policy.updates_suppressed.duration_min);
   } else {
-    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Ignoring group policy]")
-                 _T("[machine is not part of a domain]")));
+    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Ignoring policy]")
+                 _T("[machine is not part of a domain or Device Management]")));
     return false;
   }
 
@@ -1033,89 +1030,87 @@ bool ConfigManager::IsInternalUser() const {
 
 DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid)
     const {
-  if (dm_policy_.is_initialized) {
+  DWORD effective_policy = kPolicyDisabled;
+  if (GetEffectivePolicyForApp(kRegValueInstallAppsDefault,
+                               kRegValueInstallAppPrefix,
+                               app_guid,
+                               &effective_policy)) {
+    return effective_policy;
+  } else if (dm_policy_.is_initialized) {
     return dm_policy_.application_settings.count(app_guid) > 0 ?
         dm_policy_.application_settings.at(app_guid).install :
         dm_policy_.install_default;
   }
 
-  DWORD effective_policy = kPolicyDisabled;
-  if (!GetEffectivePolicyForApp(kRegValueInstallAppsDefault,
-                                kRegValueInstallAppPrefix,
-                                app_guid,
-                                &effective_policy)) {
-    return kInstallPolicyDefault;
-  }
-
-  return effective_policy;
+  OPT_LOG(L5, (_T("[GetEffectivePolicyForAppInstalls][Ignoring policy][%s]")
+               _T("[machine is not part of a domain or Device Management]"),
+               GuidToString(app_guid)));
+  return kInstallPolicyDefault;
 }
 
 DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid)
     const {
-  if (dm_policy_.is_initialized) {
+  DWORD effective_policy = kPolicyDisabled;
+  if (GetEffectivePolicyForApp(kRegValueUpdateAppsDefault,
+                               kRegValueUpdateAppPrefix,
+                               app_guid,
+                               &effective_policy)) {
+    return effective_policy;
+  } else if (dm_policy_.is_initialized) {
     return dm_policy_.application_settings.count(app_guid) ?
         dm_policy_.application_settings.at(app_guid).update :
         dm_policy_.update_default;
   }
 
-  DWORD effective_policy = kPolicyDisabled;
-  if (!GetEffectivePolicyForApp(kRegValueUpdateAppsDefault,
-                                kRegValueUpdateAppPrefix,
-                                app_guid,
-                                &effective_policy)) {
-    return kUpdatePolicyDefault;
-  }
-
-  return effective_policy;
+  OPT_LOG(L5, (_T("[GetEffectivePolicyForAppUpdates][Ignoring policy][%s]")
+               _T("[machine is not part of a domain or Device Management]"),
+               GuidToString(app_guid)));
+  return kUpdatePolicyDefault;
 }
 
 CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) const {
-  if (dm_policy_.is_initialized) {
+  if (IsEnrolledToDomain()) {
+    CString app_value_name(kRegValueTargetVersionPrefix);
+    app_value_name.Append(GuidToString(app_guid));
+
+    CString target_version_prefix;
+    RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                     app_value_name,
+                     &target_version_prefix);
+    return target_version_prefix;
+  } else if (dm_policy_.is_initialized) {
     return dm_policy_.application_settings.count(app_guid) ?
         dm_policy_.application_settings.at(app_guid).target_version_prefix :
         CString();
   }
 
-  if (!IsEnrolledToDomain()) {
-    OPT_LOG(L5, (_T("[GetTargetVersionPrefix][Ignoring group policy for %s]")
-                 _T("[machine is not part of a domain]"),
-                 GuidToString(app_guid)));
-    return CString();
-  }
-
-  CString app_value_name(kRegValueTargetVersionPrefix);
-  app_value_name.Append(GuidToString(app_guid));
-
-  CString target_version_prefix;
-  RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                   app_value_name,
-                   &target_version_prefix);
-  return target_version_prefix;
+  OPT_LOG(L5, (_T("[GetTargetVersionPrefix][Ignoring policy][%s]")
+               _T("[machine is not part of a domain or Device Management]"),
+               GuidToString(app_guid)));
+  return CString();
 }
 
 bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid)
     const {
-  if (dm_policy_.is_initialized) {
+  if (IsEnrolledToDomain()) {
+    CString app_value_name(kRegValueRollbackToTargetVersion);
+    app_value_name.Append(GuidToString(app_guid));
+
+    DWORD is_rollback_allowed = 0;
+    RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                     app_value_name,
+                     &is_rollback_allowed);
+    return !!is_rollback_allowed;
+  } else if (dm_policy_.is_initialized) {
     return dm_policy_.application_settings.count(app_guid) ?
         dm_policy_.application_settings.at(app_guid).rollback_to_target_version
         : false;
   }
 
-  if (!IsEnrolledToDomain()) {
-    OPT_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][false][%s]")
-                 _T("[machine is not part of a domain]"),
-                 GuidToString(app_guid)));
-    return false;
-  }
-
-  CString app_value_name(kRegValueRollbackToTargetVersion);
-  app_value_name.Append(GuidToString(app_guid));
-
-  DWORD is_rollback_allowed = 0;
-  RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                   app_value_name,
-                   &is_rollback_allowed);
-  return !!is_rollback_allowed;
+  OPT_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][Ignoring policy][%s]")
+               _T("[machine is not part of a domain or Device Management]"),
+               GuidToString(app_guid)));
+  return false;
 }
 
 bool ConfigManager::AreUpdatesSuppressedNow() const {
@@ -1199,28 +1194,26 @@ int ConfigManager::MaxCrashUploadsPerDay() const {
 }
 
 CString ConfigManager::GetDownloadPreferenceGroupPolicy() const {
-  if (dm_policy_.is_initialized) {
+  CString download_preference;
+
+  if (IsEnrolledToDomain()) {
+    HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                  kRegValueDownloadPreference,
+                                  &download_preference);
+    if (SUCCEEDED(hr) && download_preference == kDownloadPreferenceCacheable) {
+      return download_preference;
+    }
+
+    return CString();
+  } else if (dm_policy_.is_initialized) {
     return dm_policy_.download_preference == kDownloadPreferenceCacheable ?
         dm_policy_.download_preference :
         CString();
   }
 
-  CString download_preference;
-
-  if (!IsEnrolledToDomain()) {
-    OPT_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy]")
-                 _T("[Ignoring group policy]")
-                 _T("[machine is not part of a domain]")));
-    return CString();
-  }
-
-  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                kRegValueDownloadPreference,
-                                &download_preference);
-  if (SUCCEEDED(hr) && download_preference == kDownloadPreferenceCacheable) {
-    return download_preference;
-  }
-
+  OPT_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy]")
+               _T("[Ignoring policy]")
+               _T("[machine is not part of a domain or Device Management]")));
   return CString();
 }
 

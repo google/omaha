@@ -122,18 +122,20 @@ HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
 
   CString proxy_mode;
   const CachedOmahaPolicy& dm_policy = ConfigManager::Instance()->dm_policy();
-  if (dm_policy.is_initialized) {
-    proxy_mode = dm_policy.proxy_mode;
-  } else if (IsEnrolledToDomain()) {
+  bool is_enrolled_to_domain = IsEnrolledToDomain();
+
+  if (is_enrolled_to_domain) {
     HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                                   kRegValueProxyMode,
                                   &proxy_mode);
     if (FAILED(hr)) {
       return hr;
     }
+  } else if (dm_policy.is_initialized) {
+    proxy_mode = dm_policy.proxy_mode;
   } else {
-    OPT_LOG(L5, (_T("[GroupPolicyProxyDetector::Detect][Ignoring group policy]")
-                 _T("[machine is not part of a domain]")));
+    OPT_LOG(L5, (_T("[GroupPolicyProxyDetector::Detect][Ignoring policy]")
+                 _T("[machine is not part of a domain or Device Management]")));
     return E_FAIL;
   }
 
@@ -149,21 +151,27 @@ HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
     config->auto_detect = true;
     return S_OK;
   } else if (proxy_mode.CompareNoCase(kProxyModePacScript) == 0) {
-    if (dm_policy.is_initialized) {
+    if (is_enrolled_to_domain) {
+      return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                              kRegValueProxyPacUrl,
+                              &config->auto_config_url);
+    } else if (dm_policy.is_initialized) {
       config->auto_config_url = dm_policy.proxy_pac_url;
       return S_OK;
     }
-    return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                            kRegValueProxyPacUrl,
-                            &config->auto_config_url);
+
+    return E_FAIL;
   } else if (proxy_mode.CompareNoCase(kProxyModeFixedServers) == 0) {
-    if (dm_policy.is_initialized) {
+    if (is_enrolled_to_domain) {
+      return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                              kRegValueProxyServer,
+                              &config->proxy);
+    } else if (dm_policy.is_initialized) {
       config->proxy = dm_policy.proxy_server;
       return S_OK;
     }
-    return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                            kRegValueProxyServer,
-                            &config->proxy);
+
+    return E_FAIL;
   } else if (proxy_mode.CompareNoCase(kProxyModeSystem) == 0) {
     // Fall through, and let the rest of the proxy detectors deal with it.
     return E_FAIL;
