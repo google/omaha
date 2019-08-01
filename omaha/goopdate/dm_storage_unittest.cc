@@ -14,14 +14,17 @@
 
 #include "omaha/goopdate/dm_storage.h"
 
+#include "ccc/hosted/policies/services/chrome/omaha_settings.pb.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
+#include "omaha/goopdate/dm_messages.h"
 #include "omaha/goopdate/dm_storage_test_utils.h"
 #include "omaha/testing/unit_test.h"
+#include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
 
 namespace omaha {
 
@@ -67,6 +70,78 @@ class DmStorageTest : public RegistryProtectedTest {
     ASSERT_STREQ(expected_contents.c_str(), contents.c_str());
   }
 
+  std::string CannedOmahaPolicyFetchResponse() {
+    ccc_hosted_policies_services_chrome::OmahaSettingsProto omaha_settings;
+    google::protobuf_opensource::Map<
+        std::string,
+        ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto>*
+        app_map =
+            omaha_settings.mutable_application_settings()
+            ->mutable_application_settings();
+
+    omaha_settings.mutable_auto_update_check_period_minutes()
+        ->set_auto_update_check_period_minutes(111);
+    omaha_settings.mutable_download_preference()
+        ->set_download_preference(CStringA(kDownloadPreferenceCacheable));
+    omaha_settings.mutable_updates_suppressed()->set_start_hour(8);
+    omaha_settings.mutable_updates_suppressed()->set_start_minute(8);
+    omaha_settings.mutable_updates_suppressed()->set_duration_min(47);
+    omaha_settings.mutable_proxy_mode()
+        ->set_proxy_mode(CStringA(kProxyModePacScript));
+    omaha_settings.mutable_proxy_pac_url()->set_proxy_pac_url("foo.c/proxy.pa");
+    omaha_settings.mutable_install_default()->set_install_default(
+        ccc_hosted_policies_services_chrome
+        ::OmahaInstallDefaultProto_InstallDefaultValue_DISABLED);
+    omaha_settings.mutable_update_default()->set_update_default(
+        ccc_hosted_policies_services_chrome::MANUAL_UPDATES_ONLY);
+
+    ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto app;
+    app.set_app_guid(CStringA(kChromeAppId));
+
+    app.mutable_install()->set_install(
+        ccc_hosted_policies_services_chrome
+        ::OmahaInstallProto_InstallValue_DISABLED);
+    app.mutable_update()->set_update(
+        ccc_hosted_policies_services_chrome::AUTOMATIC_UPDATES_ONLY);
+    app.mutable_target_version_prefix()->set_target_version_prefix("3.6.55");
+    app.mutable_rollback_to_target_version()->set_rollback_to_target_version(
+        ccc_hosted_policies_services_chrome
+    ::OmahaRollbackToTargetVersionProto_RollbackToTargetVersionValue_ENABLED);
+
+    app_map->insert(
+        google::protobuf_opensource::MapPair(std::string("Chrome"), app));
+
+    enterprise_management::PolicyData policy_data;
+    policy_data.set_policy_value(omaha_settings.SerializeAsString());
+
+    enterprise_management::PolicyFetchResponse response;
+    response.set_policy_data(policy_data.SerializeAsString());
+
+    return response.SerializeAsString();
+  }
+
+  void CheckCannedCachedOmahaPolicy(const CachedOmahaPolicy& info) {
+    EXPECT_TRUE(info.is_initialized);
+    EXPECT_EQ(111, info.auto_update_check_period_minutes);
+    EXPECT_STREQ(kDownloadPreferenceCacheable, info.download_preference);
+    EXPECT_EQ(8, info.updates_suppressed.start_hour);
+    EXPECT_EQ(8, info.updates_suppressed.start_minute);
+    EXPECT_EQ(47, info.updates_suppressed.duration_min);
+    EXPECT_STREQ(kProxyModePacScript, info.proxy_mode);
+    EXPECT_STREQ(_T("foo.c/proxy.pa"), info.proxy_pac_url);
+    EXPECT_EQ(kPolicyDisabled, info.install_default);
+    EXPECT_EQ(kPolicyManualUpdatesOnly, info.update_default);
+
+    EXPECT_EQ(info.application_settings.size(), 1);
+    EXPECT_TRUE(::IsEqualGUID(info.application_settings.begin()->first,
+                StringToGuid(kChromeAppId)));
+    const ApplicationSettings& app = info.application_settings.begin()->second;
+    EXPECT_EQ(kPolicyDisabled, app.install);
+    EXPECT_EQ(kPolicyAutomaticUpdatesOnly, app.update);
+    EXPECT_STREQ(_T("3.6.55"), app.target_version_prefix);
+    EXPECT_TRUE(app.rollback_to_target_version);
+  }
+
   void VerifyPolicies(const CPath& policy_responses_dir,
                       const PolicyResponses& expected_responses) {
     if (!expected_responses.policy_info.empty()) {
@@ -80,6 +155,13 @@ class DmStorageTest : public RegistryProtectedTest {
           policy_responses_dir, expected_response.first);
 
       CheckFileContentsMatch(policy_response_file, expected_response.second);
+
+      if (expected_response.first == kGoogleUpdatePolicyType) {
+        CachedOmahaPolicy info;
+        EXPECT_EQ(S_OK,
+            DmStorage::ReadCachedOmahaPolicy(policy_responses_dir, &info));
+        CheckCannedCachedOmahaPolicy(info);
+      }
     }
   }
 };
@@ -270,6 +352,7 @@ TEST_F(DmStorageTest, PersistPolicies) {
     {"google/earth/machine-level-user",
      "test-data-earth-foo-bar-baz-foo-bar-baz-foo-bar-baz"},  // Longer data.
     {"google/newdrive/machine-level-user", "test-data-newdrive"},  // New.
+    {kGoogleUpdatePolicyType, CannedOmahaPolicyFetchResponse()},  // New.
   };
 
   PolicyResponses expected_new_responses = {new_responses, "expected data"};
