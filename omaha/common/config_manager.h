@@ -181,11 +181,11 @@ class ConfigManager {
   // Returns the directory under which the Device Management policies are
   // persisted.
   CPath GetPolicyResponsesDir() const;
+#endif
 
   // Sets the DM policies on the ConfigManager instance, which is used by the
   // ConfigManager for subsequent config queries.
   void SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy);
-#endif
 
   CachedOmahaPolicy dm_policy() { return dm_policy_; }
 

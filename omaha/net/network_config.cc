@@ -20,7 +20,7 @@
 #include <atlsecurity.h>
 #include <algorithm>
 #include <memory>
-#include <unordered_set>
+#include <unordered_set>  // NOLINT
 #include <vector>
 
 #include "base/error.h"
@@ -122,6 +122,7 @@ HRESULT NetworkConfig::Initialize() {
 
   Add(new UpdateDevProxyDetector);
   Add(new GroupPolicyProxyDetector);
+  Add(new DMProxyDetector);
   BrowserType browser_type(BROWSER_UNKNOWN);
   GetDefaultBrowserType(&browser_type);
   if (browser_type == BROWSER_FIREFOX) {

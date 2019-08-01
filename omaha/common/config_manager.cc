@@ -554,11 +554,11 @@ CPath ConfigManager::GetPolicyResponsesDir() const {
   return CPath(path);
 }
 
+#endif  // defined(HAS_DEVICE_MANAGEMENT)
+
 void ConfigManager::SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy) {
   dm_policy_ = dm_policy;
 }
-
-#endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 // Returns the override from the registry locations if present. Otherwise,
 // returns the default value.
