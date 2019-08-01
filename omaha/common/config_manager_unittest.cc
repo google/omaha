@@ -13,7 +13,9 @@
 // limitations under the License.
 // ========================================================================
 
+#include <atltime.h>
 #include <limits.h>
+#include <tuple>
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/constants.h"
@@ -121,13 +123,27 @@ class ConfigManagerNoOverrideTest : public testing::Test {
     return cm_->GetEffectivePolicyForAppUpdates(StringToGuid(guid));
   }
 
+  CString GetTargetVersionPrefix(const TCHAR* guid) {
+    return cm_->GetTargetVersionPrefix(StringToGuid(guid));
+  }
+
+  bool IsRollbackToTargetVersionAllowed(const TCHAR* guid) {
+    return cm_->IsRollbackToTargetVersionAllowed(StringToGuid(guid));
+  }
+
+  bool AreUpdatesSuppressedNow() {
+    return cm_->AreUpdatesSuppressedNow();
+  }
+
   ConfigManager* cm_;
 };
 
-// This class is parameterized for Domain/Non-Domain using
-// ::testing::WithParamInterface<bool>.
-class ConfigManagerTest : public ConfigManagerNoOverrideTest,
-                          public ::testing::WithParamInterface<bool> {
+// This class is parameterized for Domain and Device Management using
+// ::testing::WithParamInterface<std::tuple<bool, bool>>. The first parameter
+// is the bool for Domain, and the second the bool for DM (Device Management).
+class ConfigManagerTest
+    : public ConfigManagerNoOverrideTest,
+      public ::testing::WithParamInterface<std::tuple<bool, bool>> {
  protected:
   ConfigManagerTest()
       : hive_override_key_name_(kRegistryHiveOverrideRoot) {
@@ -139,9 +155,15 @@ class ConfigManagerTest : public ConfigManagerNoOverrideTest,
     EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                       kRegValueIsEnrolledToDomain,
                                       IsDomain() ? 1UL : 0UL));
+    if (IsDM()) {
+      SetCannedCachedOmahaPolicy();
+    }
   }
 
   virtual void TearDown() {
+    if (IsDM()) {
+      ResetCachedOmahaPolicy();
+    }
     EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
                                          kRegValueIsEnrolledToDomain));
     RestoreRegistryHives();
@@ -149,12 +171,18 @@ class ConfigManagerTest : public ConfigManagerNoOverrideTest,
   }
 
   bool IsDomain() {
-    return GetParam();
+    return std::get<0>(GetParam());
+  }
+
+  bool IsDM() {
+    return std::get<1>(GetParam());
   }
 
   void ExpectTrueOnlyIfDomain(bool condition) {
     if (IsDomain()) {
       EXPECT_TRUE(condition);
+    } else if (IsDM()) {
+      return;
     } else {
       EXPECT_FALSE(condition);
     }
@@ -162,6 +190,32 @@ class ConfigManagerTest : public ConfigManagerNoOverrideTest,
 
   void ExpectFalseOnlyIfDomain(bool condition) {
     ExpectTrueOnlyIfDomain(!condition);
+  }
+
+  void SetCannedCachedOmahaPolicy() {
+    CachedOmahaPolicy info;
+    info.is_initialized = true;
+    info.auto_update_check_period_minutes = 111;
+    info.download_preference = kDownloadPreferenceCacheable;
+    CTime now(CTime::GetCurrentTime());
+    info.updates_suppressed.start_hour = now.GetHour();
+    info.updates_suppressed.start_minute = now.GetMinute();
+    info.updates_suppressed.duration_min = 180;
+    info.install_default = kPolicyEnabled;
+    info.update_default = kPolicyEnabled;
+
+    ApplicationSettings app;
+    app.install = kPolicyDisabled;
+    app.update = kPolicyAutomaticUpdatesOnly;
+    app.target_version_prefix = _T("3.6.55");
+    app.rollback_to_target_version = true;
+    info.application_settings.insert(std::make_pair(StringToGuid(kChromeAppId),
+                                                    app));
+    cm_->SetOmahaDMPolicies(info);
+  }
+
+  void ResetCachedOmahaPolicy() {
+    cm_->SetOmahaDMPolicies(CachedOmahaPolicy());
   }
 
   void CanCollectStatsHelper(bool is_machine);
@@ -411,7 +465,10 @@ TEST_F(ConfigManagerNoOverrideTest, IsRunningFromMachineGoopdateInstallDir) {
   EXPECT_FALSE(cm_->IsRunningFromMachineGoopdateInstallDir());
 }
 
-INSTANTIATE_TEST_CASE_P(IsDomain, ConfigManagerTest, ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(IsDomainIsDM,
+                        ConfigManagerTest,
+                        ::testing::Combine(::testing::Bool(),
+                                           ::testing::Bool()));
 
 // Tests the GetUpdateCheckUrl override.
 TEST_P(ConfigManagerTest, GetUpdateCheckUrl) {
@@ -485,6 +542,10 @@ TEST_P(ConfigManagerTest, GetUsageStatsReportUrl) {
 
 // Tests LastCheckPeriodSec override.
 TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_Default) {
+  if (IsDM()) {
+    return;
+  }
+
   bool is_overridden = true;
   if (cm_->IsInternalUser()) {
     EXPECT_EQ(kLastCheckPeriodInternalUserSec,
@@ -531,6 +592,11 @@ TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_UpdateDevOverride) {
 
   EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
                                        kRegValueLastCheckPeriodSec));
+
+  if (IsDM()) {
+    return;
+  }
+
   is_overridden = true;
   if (cm_->IsInternalUser()) {
     EXPECT_EQ(kLastCheckPeriodInternalUserSec,
@@ -541,7 +607,7 @@ TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_UpdateDevOverride) {
   EXPECT_FALSE(is_overridden);
 }
 
-TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride) {
+TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_PolicyOverride) {
   const DWORD kOverrideMinutes = 4000;
   const DWORD kExpectedSeconds = kOverrideMinutes * 60;
   EXPECT_SUCCEEDED(SetPolicy(_T("AutoUpdateCheckPeriodMinutes"),
@@ -550,9 +616,13 @@ TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride) {
 
   if (IsDomain()) {
     EXPECT_EQ(kExpectedSeconds, cm_->GetLastCheckPeriodSec(&is_overridden));
+    EXPECT_TRUE(is_overridden);
+  } else if (IsDM()) {
+    EXPECT_EQ(111 * 60, cm_->GetLastCheckPeriodSec(&is_overridden));
+    EXPECT_TRUE(is_overridden);
+  } else {
+    EXPECT_FALSE(is_overridden);
   }
-
-  ExpectTrueOnlyIfDomain(is_overridden);
 }
 
 TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride_TooLow) {
@@ -1215,6 +1285,12 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) == 2);
 }
 
+TEST_P(ConfigManagerTest, CanInstallApp_DMPolicy) {
+  EXPECT_EQ(!IsDM(), CanInstallApp(kChromeAppId));
+  EXPECT_EQ(IsDM() ? kPolicyDisabled : kPolicyEnabled,
+            GetEffectivePolicyForAppInstalls(kChromeAppId));
+}
+
 TEST_P(ConfigManagerTest, CanUpdateApp_Auto_NoGroupPolicy) {
   EXPECT_TRUE(CanUpdateApp(kAppGuid1, false));
 }
@@ -1702,6 +1778,34 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_Omaha_AppDisabled) {
   EXPECT_TRUE(CanUpdateApp(kGoogleUpdateAppId, true));
 }
 
+TEST_P(ConfigManagerTest, GetEffectivePolicyForAppUpdates_DMPolicy) {
+  EXPECT_EQ(IsDM() ? kPolicyAutomaticUpdatesOnly : kPolicyEnabled,
+            GetEffectivePolicyForAppUpdates(kChromeAppId));
+}
+
+TEST_P(ConfigManagerTest, GetTargetVersionPrefix) {
+  EXPECT_SUCCEEDED(SetPolicyString(_T("TargetVersionPrefix") CHROME_APP_ID,
+                   _T("4.67.5")));
+  EXPECT_STREQ(IsDomain() ? _T("4.67.5") : IsDM() ? _T("3.6.55") : _T(""),
+               GetTargetVersionPrefix(kChromeAppId));
+}
+
+TEST_P(ConfigManagerTest, IsRollbackToTargetVersionAllowed) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("RollbackToTargetVersion") CHROME_APP_ID, 1));
+  EXPECT_EQ(IsDomain() || IsDM(),
+            IsRollbackToTargetVersionAllowed(kChromeAppId));
+}
+
+TEST_P(ConfigManagerTest, AreUpdatesSuppressedNow) {
+  CTime now(CTime::GetCurrentTime());
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartHour,
+                             now.GetHour()));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartMin,
+                             now.GetMinute()));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedDurationMin, 180));
+  EXPECT_EQ(IsDomain() || IsDM(), AreUpdatesSuppressedNow());
+}
+
 TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Default) {
   EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes());
 }
@@ -2006,15 +2110,17 @@ TEST_P(ConfigManagerTest, GetAutoUpdateJitterMs) {
 }
 
 TEST_P(ConfigManagerTest, GetDownloadPreferenceGroupPolicy) {
-  EXPECT_STREQ(_T(""), cm_->GetDownloadPreferenceGroupPolicy());
+  EXPECT_STREQ(!IsDomain() && IsDM() ? kDownloadPreferenceCacheable : _T(""),
+               cm_->GetDownloadPreferenceGroupPolicy());
 
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
                                    _T("unknown")));
-  EXPECT_STREQ(_T(""), cm_->GetDownloadPreferenceGroupPolicy());
+  EXPECT_STREQ(!IsDomain() && IsDM() ? kDownloadPreferenceCacheable : _T(""),
+               cm_->GetDownloadPreferenceGroupPolicy());
 
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
                                    kDownloadPreferenceCacheable));
-  EXPECT_STREQ(IsDomain() ? kDownloadPreferenceCacheable : _T(""),
+  EXPECT_STREQ(IsDomain() || IsDM() ? kDownloadPreferenceCacheable : _T(""),
                cm_->GetDownloadPreferenceGroupPolicy());
 }
 
