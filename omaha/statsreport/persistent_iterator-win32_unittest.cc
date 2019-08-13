@@ -110,8 +110,8 @@ TEST_F(PersistentMetricsIteratorWin32Test, Basic) {
 }
 
 // Test to see whether we can reliably roundtrip metrics through
-// the registry without molestation
-TEST_F(PersistentMetricsIteratorWin32Test, UnmolestedValues) {
+// the registry without corruption.
+TEST_F(PersistentMetricsIteratorWin32Test, WriteStats) {
   EXPECT_TRUE(WriteStats());
 
   MetricsMap metrics;
@@ -122,7 +122,7 @@ TEST_F(PersistentMetricsIteratorWin32Test, UnmolestedValues) {
   for (; it != end; ++it) {
     MetricsMap::iterator found = metrics.find(it->name());
 
-    // make sure we found it, and that it's unmolested in value
+    // Make sure we found it, and that it's the correct value.
     EXPECT_TRUE(found != metrics.end() && equals(found->second, *it));
     count++;
   }
