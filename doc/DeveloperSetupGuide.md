@@ -8,6 +8,8 @@ We are striving to make the code build with the latest Windows toolchain from Mi
 
 Visual Studio 2017 Update 15.9.15 should work too.
 
+The updater runs on Windows 7, 8, and 10. Windows XP is not supported in the current build configuration due to a number of issues, such as thread-safe initializing of static local variables, etc.
+
 # Required Downloads/Tools #
 
 The following packages are required to build Omaha:
