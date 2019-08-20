@@ -175,8 +175,6 @@ void DisplayDebugMessage(const std::string& str) {
   wcsncat(prog_name, L"DebugMessage.exe", num);
   prog_name[MAX_PATH - 1] = L'\0';
 
-  // stupid CreateProcess requires a non-const command line and may modify it.
-  // We also want to use the wide string
   int charcount = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
   if (!charcount)
     return;
