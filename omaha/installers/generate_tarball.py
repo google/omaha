@@ -21,7 +21,7 @@ import sys
 import tarfile
 import urllib
 
-TEST_PREFIX = 'TEST_'
+TEST_PREFIXES = ('TEST_', 'TEST2_')
 
 def GenerateTarball(output_filename, members):
   """
@@ -33,8 +33,8 @@ def GenerateTarball(output_filename, members):
     # A hacky convention to get around the spaces in filenames is to
     # urlencode them. So at this point we unescape those characters.
     scrubbed_filename = urllib.unquote(os.path.basename(filename))
-    if scrubbed_filename.startswith(TEST_PREFIX):
-      scrubbed_filename = scrubbed_filename[len(TEST_PREFIX):]
+    if scrubbed_filename.startswith(TEST_PREFIXES):
+      scrubbed_filename = scrubbed_filename.split('_', 1)[1]
     tarball.add(filename, scrubbed_filename)
   tarball.close()
 
