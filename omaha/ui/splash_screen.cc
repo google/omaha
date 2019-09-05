@@ -33,7 +33,7 @@
 namespace {
 
 const int kClosingTimerID = 1;
-// Frequency that the window changes alpah blending value during fading stage.
+// Frequency that the window changes alpha blending value during fading stage.
 const int kTimerInterval = 100;
 
 // Alpha blending values for the fading effect.

@@ -32,7 +32,7 @@ namespace omaha {
 // restart browser AND launchcmd?
 // If we keep this enum, rename to something like CompletionTypes to make it
 // clear that it is describing the desired behavior of the observer. This also
-// differentiates the name from LegacyCompetionCodes.
+// differentiates the name from LegacyCompletionCodes.
 // TODO(omaha): If the codes below change, need a conversion method to convert
 // to LegacyCompletionCodes.
 typedef enum {

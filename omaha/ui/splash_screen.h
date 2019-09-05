@@ -77,7 +77,7 @@ class SplashScreen
     STATE_CLOSED,
   };
 
-  // Creates the window and adjusts its size and apperance.
+  // Creates the window and adjusts its size and appearance.
   HRESULT Initialize();
 
   void InitProgressBar();
@@ -103,7 +103,7 @@ class SplashScreen
                     BOOL& handled);   // NOLINT(runtime/references)
 
   LLock lock_;    // Lock for access synchronization of this object.
-  Thread thread_;  // Thread that creats the window and runs the message loop.
+  Thread thread_;  // Thread that creates the window and runs the message loop.
   WindowState state_;   // State of the object.
 
   // Indicates whether timer for fading effect has been created.
