@@ -1271,7 +1271,7 @@ HRESULT OpenUniqueEventFromEnvironment(const CString& var_name,
   return S_OK;
 }
 
-// The caller is responsible for reseting the event and closing the handle.
+// The caller is responsible for resetting the event and closing the handle.
 HRESULT CreateEvent(NamedObjectAttributes* event_attr, HANDLE* event_handle) {
   ASSERT1(event_handle);
   ASSERT1(event_attr);

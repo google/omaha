@@ -635,7 +635,7 @@ void ProgressWnd::DeterminePostInstallUrls(const ObserverCompletionInfo& info) {
 }
 
 // TODO(omaha): We can eliminate this function is we have a better UI that can
-// show compeltion status for each app in the bundle.
+// show completion status for each app in the bundle.
 //
 // Overall completion code is determined by apps' completion codes and bundle
 // completion code. If bundle installation fails or installation completed after
