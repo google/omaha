@@ -650,7 +650,7 @@ LRESULT CustomProgressBarCtrl::OnPaint(UINT,
     ASSERT1(progress_bar_rect.left <= progress_bar_rect.right);
   }
 
-  CRgnHandle rgn(::CreateRectRgnIndirect(&client_rect));
+  CRgn rgn(::CreateRectRgnIndirect(&client_rect));
   CRgn rgn_temp(::CreateRectRgnIndirect(&progress_bar_rect));
   VERIFY1(rgn.CombineRgn(rgn_temp, RGN_DIFF) != RGN_ERROR);
 
