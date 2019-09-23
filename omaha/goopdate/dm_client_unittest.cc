@@ -546,16 +546,14 @@ class DmClientRequestTest : public ::testing::Test {
     std::vector<uint8_t> input(private_key, private_key + private_key_length);
     std::unique_ptr<crypto::RSAPrivateKey> rsa_private_key(
         crypto::RSAPrivateKey::CreateFromPrivateKeyInfo(input));
-    ASSERT1(rsa_private_key.get());
 
     if (rsa_public_key) {
       std::vector<uint8_t> public_key;
-      ASSERT1(rsa_private_key->ExportPublicKey(&public_key));
+      VERIFY1(rsa_private_key->ExportPublicKey(&public_key));
 
       *rsa_public_key = std::string(
           reinterpret_cast<const char*>(public_key.data()),
           public_key.size());
-      ASSERT1(rsa_public_key->length());
     }
 
     return std::move(rsa_private_key);

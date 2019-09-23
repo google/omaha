@@ -8,7 +8,6 @@
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/string.h"
 
 namespace {
 
@@ -52,9 +51,6 @@ bool SignatureVerifierWin::VerifyInit(ALG_ID algorithm_id,
   // to first swap the order of signature bytes.
   for (int i = signature_len - 1; i >= 0; --i)
     signature_.push_back(signature[i]);
-
-  REPORT_LOG(L6, (_T("[VerifyInit][Signature][%s][%d]"),
-                  omaha::BytesToHex(signature_), signature_.size()));
 
   CRYPT_DECODE_PARA decode_para;
   decode_para.cbSize = sizeof(decode_para);
