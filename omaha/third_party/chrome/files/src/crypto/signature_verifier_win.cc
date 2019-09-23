@@ -6,6 +6,7 @@
 
 #include "crypto/rsa_private_key.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 
 namespace {
@@ -66,26 +67,40 @@ bool SignatureVerifierWin::VerifyInit(ALG_ID algorithm_id,
                            &decode_para,
                            &cert_public_key_info,
                            &struct_len);
-  if (!ok)
+  if (!ok) {
+    HRESULT hr = omaha::HRESULTFromLastError();
+    REPORT_LOG(LE, (_T("[VerifyInit][CryptDecodeObjectEx failed][%#x]"), hr));
     return false;
+  }
 
   ok = CryptImportPublicKeyInfo(provider_,
                                 X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                 cert_public_key_info, public_key_.receive());
   free(cert_public_key_info);
-  if (!ok)
+  if (!ok) {
+    HRESULT hr = omaha::HRESULTFromLastError();
+    REPORT_LOG(LE, (_T("[VerifyInit][CryptImportPublicKeyInfo failed][%#x]"),
+                    hr));
     return false;
+  }
 
   ok = CryptCreateHash(provider_, algorithm_id, 0, 0, hash_object_.receive());
-  if (!ok)
+  if (!ok) {
+    HRESULT hr = omaha::HRESULTFromLastError();
+    REPORT_LOG(LE, (_T("[VerifyFinal][CryptVerifySignature failed][%#x]"), hr));
     return false;
+  }
 
   return true;
 }
 
 void SignatureVerifierWin::VerifyUpdate(const uint8_t* data_part,
                                         size_t data_part_len) {
-  CryptHashData(hash_object_, data_part, data_part_len, 0);
+  BOOL ok = CryptHashData(hash_object_, data_part, data_part_len, 0);
+  if (!ok) {
+    HRESULT hr = omaha::HRESULTFromLastError();
+    REPORT_LOG(LE, (_T("[VerifyUpdate][CryptHashData failed][%#x]"), hr));
+  }
 }
 
 bool SignatureVerifierWin::VerifyFinal() {
@@ -93,8 +108,11 @@ bool SignatureVerifierWin::VerifyFinal() {
                                  static_cast<DWORD>(signature_.size()),
                                  public_key_, NULL, 0);
   Reset();
-  if (!ok)
+  if (!ok) {
+    HRESULT hr = omaha::HRESULTFromLastError();
+    REPORT_LOG(LE, (_T("[VerifyFinal][CryptVerifySignature failed][%#x]"), hr));
     return false;
+  }
 
   return true;
 }
