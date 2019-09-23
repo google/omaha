@@ -26,6 +26,7 @@
 #include <windows.h>
 #include <atlpath.h>
 #include <atlstr.h>
+#include <memory>
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/synchronized.h"
@@ -33,6 +34,103 @@
 #include "omaha/goopdate/dm_storage.h"
 
 namespace omaha {
+
+class PolicyManagerInterface {
+ public:
+  virtual ~PolicyManagerInterface() {}
+
+  virtual const TCHAR* source() = 0;
+
+  virtual bool IsManaged() = 0;
+
+  virtual HRESULT GetLastCheckPeriodMinutes(DWORD* minutes) = 0;
+  virtual HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
+                                            DWORD* start_min,
+                                            DWORD* duration_min) = 0;
+  virtual HRESULT GetDownloadPreferenceGroupPolicy(
+      CString* download_preference) = 0;
+  virtual HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) = 0;
+  virtual HRESULT GetPackageCacheExpirationTimeDays(
+      DWORD* cache_life_limit) = 0;
+
+  virtual HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
+                                                   DWORD* install_policy) = 0;
+  virtual HRESULT GetEffectivePolicyForAppUpdates(const GUID& app_guid,
+                                                  DWORD* update_policy) = 0;
+  virtual HRESULT GetTargetVersionPrefix(const GUID& app_guid,
+                                         CString* target_version_prefix) = 0;
+  virtual HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
+                                                   bool* rollback_allowed) = 0;
+};
+
+// A version that picks up policy information from Group Policy.
+class GroupPolicyManager : public PolicyManagerInterface {
+ public:
+  GroupPolicyManager() {}
+
+  const TCHAR* source() override { return _T("GroupPolicyManager"); }
+
+  bool IsManaged() override;
+
+  HRESULT GetLastCheckPeriodMinutes(DWORD* minutes) override;
+  HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
+                                    DWORD* start_min,
+                                    DWORD* duration_min) override;
+  HRESULT GetDownloadPreferenceGroupPolicy(
+      CString* download_preference) override;
+  HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) override;
+  HRESULT GetPackageCacheExpirationTimeDays(DWORD* cache_life_limit) override;
+
+  HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
+                                           DWORD* install_policy) override;
+  HRESULT GetEffectivePolicyForAppUpdates(const GUID& app_guid,
+                                          DWORD* update_policy) override;
+  HRESULT GetTargetVersionPrefix(const GUID& app_guid,
+                                 CString* target_version_prefix) override;
+  HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
+                                           bool* rollback_allowed) override;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GroupPolicyManager);
+};
+
+// A version that picks up policy information from a Device Management (DM).
+class DMPolicyManager : public PolicyManagerInterface {
+ public:
+  DMPolicyManager() {}
+
+  const TCHAR* source() override { return _T("DeviceManagement"); }
+
+  bool IsManaged() override;
+
+  HRESULT GetLastCheckPeriodMinutes(DWORD* minutes) override;
+  HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
+                                    DWORD* start_min,
+                                    DWORD* duration_min) override;
+  HRESULT GetDownloadPreferenceGroupPolicy(
+      CString* download_preference) override;
+  HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) override;
+  HRESULT GetPackageCacheExpirationTimeDays(DWORD* cache_life_limit) override;
+
+  HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
+                                           DWORD* install_policy) override;
+  HRESULT GetEffectivePolicyForAppUpdates(const GUID& app_guid,
+                                          DWORD* update_policy) override;
+  HRESULT GetTargetVersionPrefix(const GUID& app_guid,
+                                 CString* target_version_prefix) override;
+  HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
+                                           bool* rollback_allowed) override;
+
+  void set_dm_policy(const CachedOmahaPolicy& dm_policy) {
+    dm_policy_ = dm_policy;
+  }
+  CachedOmahaPolicy dm_policy() { return dm_policy_; }
+
+ private:
+  CachedOmahaPolicy dm_policy_;
+
+  DISALLOW_COPY_AND_ASSIGN(DMPolicyManager);
+};
 
 class ConfigManager {
  public:
@@ -187,7 +285,7 @@ class ConfigManager {
   // ConfigManager for subsequent config queries.
   void SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy);
 
-  CachedOmahaPolicy dm_policy() { return dm_policy_; }
+  CachedOmahaPolicy dm_policy() { return dm_policy_manager_->dm_policy(); }
 
   // Returns the time interval between update checks in seconds.
   // 0 indicates updates are disabled.
@@ -339,7 +437,8 @@ class ConfigManager {
 
   bool is_running_from_official_user_dir_;
   bool is_running_from_official_machine_dir_;
-  CachedOmahaPolicy dm_policy_;
+  std::vector<std::shared_ptr<PolicyManagerInterface>> policies_;  // NOLINT
+  std::shared_ptr<DMPolicyManager> dm_policy_manager_;  // NOLINT
 
   DISALLOW_COPY_AND_ASSIGN(ConfigManager);
 };
