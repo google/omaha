@@ -1286,6 +1286,10 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DMPolicy) {
+  if (IsDomain()) {
+    return;
+  }
+
   EXPECT_EQ(!IsDM(), CanInstallApp(kChromeAppId));
   EXPECT_EQ(IsDM() ? kPolicyDisabled : kPolicyEnabled,
             GetEffectivePolicyForAppInstalls(kChromeAppId));
@@ -1779,6 +1783,10 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_Omaha_AppDisabled) {
 }
 
 TEST_P(ConfigManagerTest, GetEffectivePolicyForAppUpdates_DMPolicy) {
+  if (IsDomain()) {
+    return;
+  }
+
   EXPECT_EQ(IsDM() ? kPolicyAutomaticUpdatesOnly : kPolicyEnabled,
             GetEffectivePolicyForAppUpdates(kChromeAppId));
 }

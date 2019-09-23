@@ -101,147 +101,275 @@ HRESULT GetDir32(int csidl,
   return S_OK;
 }
 
-// The app-specific value overrides the disable all value so read the former
-// first. If it doesn't exist, read the "disable all" value.
-bool GetEffectivePolicyForApp(const TCHAR* apps_default_value_name,
-                              const TCHAR* app_prefix_name,
-                              const GUID& app_guid,
-                              DWORD* effective_policy) {
-  if (!IsEnrolledToDomain()) {
-    return false;
+}  // namespace
+
+bool GroupPolicyManager::IsManaged() {
+  return IsEnrolledToDomain();
+}
+
+HRESULT GroupPolicyManager::GetLastCheckPeriodMinutes(DWORD* minutes) {
+  if (!IsManaged()) {
+    return E_FAIL;
   }
 
-  ASSERT1(apps_default_value_name);
-  ASSERT1(app_prefix_name);
-  ASSERT1(effective_policy);
+  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                                minutes);
+  if (FAILED(hr)) {
+    return hr;
+  }
 
-  CString app_value_name(app_prefix_name);
-  app_value_name.Append(GuidToString(app_guid));
+  CORE_LOG(L5, (_T("[Group Policy check period override %d]"), *minutes));
+  return S_OK;
+}
+
+HRESULT GroupPolicyManager::GetUpdatesSuppressedTimes(DWORD* start_hour,
+                                                      DWORD* start_min,
+                                                      DWORD* duration_min) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
 
   HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                app_value_name,
-                                effective_policy);
-  if (SUCCEEDED(hr)) {
-    return true;
-  } else {
-    CORE_LOG(L4, (_T("[Failed to read Group Policy value][%s]"),
-                  app_value_name));
+                                kRegValueUpdatesSuppressedStartHour,
+                                start_hour);
+  if (FAILED(hr)) {
+    return hr;
   }
 
   hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                        apps_default_value_name,
-                        effective_policy);
+                        kRegValueUpdatesSuppressedStartMin,
+                        start_min);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                        kRegValueUpdatesSuppressedDurationMin,
+                        duration_min);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  return S_OK;
+}
+
+HRESULT GroupPolicyManager::GetDownloadPreferenceGroupPolicy(
+    CString* download_preference) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          kRegValueDownloadPreference,
+                          download_preference);
+}
+
+HRESULT GroupPolicyManager::GetPackageCacheSizeLimitMBytes(
+    DWORD* cache_size_limit) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          kRegValueCacheSizeLimitMBytes,
+                          cache_size_limit);
+}
+
+HRESULT GroupPolicyManager::GetPackageCacheExpirationTimeDays(
+    DWORD* cache_life_limit) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          kRegValueCacheLifeLimitDays,
+                          cache_life_limit);
+}
+
+HRESULT GroupPolicyManager::GetEffectivePolicyForAppInstalls(
+    const GUID& app_guid,
+    DWORD* install_policy) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  CString app_value_name(kRegValueInstallAppPrefix);
+  app_value_name.Append(GuidToString(app_guid));
+  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                app_value_name,
+                                install_policy);
+
+  return SUCCEEDED(hr) ? hr : RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                               kRegValueInstallAppsDefault,
+                                               install_policy);
+}
+
+HRESULT GroupPolicyManager::GetEffectivePolicyForAppUpdates(
+    const GUID& app_guid,
+    DWORD* update_policy) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  CString app_value_name(kRegValueUpdateAppPrefix);
+  app_value_name.Append(GuidToString(app_guid));
+  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                app_value_name,
+                                update_policy);
+
+  return SUCCEEDED(hr) ? hr : RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                               kRegValueUpdateAppsDefault,
+                                               update_policy);
+}
+
+HRESULT GroupPolicyManager::GetTargetVersionPrefix(
+    const GUID& app_guid,
+    CString* target_version_prefix) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  CString app_value_name(kRegValueTargetVersionPrefix);
+  app_value_name.Append(GuidToString(app_guid));
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          app_value_name,
+                          target_version_prefix);
+}
+
+HRESULT GroupPolicyManager::IsRollbackToTargetVersionAllowed(
+    const GUID& app_guid,
+    bool* rollback_allowed) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  CString app_value_name(kRegValueRollbackToTargetVersion);
+  app_value_name.Append(GuidToString(app_guid));
+  DWORD is_rollback_allowed = 0;
+  HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                app_value_name,
+                                &is_rollback_allowed);
   if (SUCCEEDED(hr)) {
-    return true;
-  } else {
-    CORE_LOG(L4, (_T("[Failed to read Group Policy value][%s]"),
-                  apps_default_value_name));
+    *rollback_allowed = !!is_rollback_allowed;
   }
 
-  return false;
+  return hr;
 }
 
-// Gets the raw update check period override value in seconds from DM Policy or
-// the registry.
-// The value must be processed for limits and overflow before using.
-// Checks UpdateDev, DM Policy, and Group Policy.
-// Returns true if one of the overrides was successfully read.
-bool GetLastCheckPeriodSecFromPolicy(const CachedOmahaPolicy& dm_policy,
-                                     DWORD* period_sec) {
-  ASSERT1(period_sec);
-
-  DWORD update_dev_sec = 0;
-  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
-                                 kRegValueLastCheckPeriodSec,
-                                 &update_dev_sec))) {
-    CORE_LOG(L5, (_T("['LastCheckPeriodSec' override %d]"), update_dev_sec));
-    *period_sec = update_dev_sec;
-    return true;
-  }
-
-  DWORD policy_minutes = 0;
-  if (IsEnrolledToDomain()) {
-    if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                                &policy_minutes))) {
-      return false;
-    }
-
-    CORE_LOG(L5, (_T("[Group Policy check period override %d]"),
-                  policy_minutes));
-  } else if (dm_policy.is_initialized) {
-    if (dm_policy.auto_update_check_period_minutes == -1) {
-      return false;
-    }
-
-    policy_minutes =
-        static_cast<DWORD>(dm_policy.auto_update_check_period_minutes);
-    REPORT_LOG(L5, (_T("[DM Policy check period override %d]"),
-                    policy_minutes));
-  } else {
-    OPT_LOG(L5, (_T("[GetLastCheckPeriodSecFromPolicy]")
-                 _T("[Ignoring policy]")
-                 _T("[machine is not part of a domain or Device Management]")));
-    return false;
-  }
-
-  *period_sec = (policy_minutes > UINT_MAX / 60) ?
-                UINT_MAX :
-                policy_minutes * 60;
-  CORE_LOG(L5, (_T("[GetLastCheckPeriodSecFromPolicy][%d]"), *period_sec));
-
-  return true;
+bool DMPolicyManager::IsManaged() {
+  return dm_policy_.is_initialized;
 }
 
-bool GetUpdatesSuppressedTimes(const CachedOmahaPolicy& dm_policy,
-                               DWORD* start_hour,
-                               DWORD* start_min,
-                               DWORD* duration_min) {
-  if (IsEnrolledToDomain()) {
-    if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                kRegValueUpdatesSuppressedStartHour,
-                                start_hour)) ||
-        FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                kRegValueUpdatesSuppressedStartMin,
-                                start_min)) ||
-        FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                kRegValueUpdatesSuppressedDurationMin,
-                                duration_min))) {
-      OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing time][%x][%x][%x]"),
-                  *start_hour, *start_min, *duration_min));
-      return false;
-    }
-  } else if (dm_policy.is_initialized) {
-    if (dm_policy.updates_suppressed.start_hour == -1 ||
-        dm_policy.updates_suppressed.start_minute == -1 ||
-        dm_policy.updates_suppressed.duration_min == -1) {
-      OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing DM time]")));
-      return false;
-    }
-
-    *start_hour = static_cast<DWORD>(dm_policy.updates_suppressed.start_hour);
-    *start_min = static_cast<DWORD>(dm_policy.updates_suppressed.start_minute);
-    *duration_min =
-        static_cast<DWORD>(dm_policy.updates_suppressed.duration_min);
-  } else {
-    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Ignoring policy]")
-                 _T("[machine is not part of a domain or Device Management]")));
-    return false;
+HRESULT DMPolicyManager::GetLastCheckPeriodMinutes(DWORD* minutes) {
+  if (!IsManaged()) {
+    return E_FAIL;
   }
 
-  // UpdatesSuppressedDurationMin is limited to 16 hours.
-  if (*start_hour > 23 || *start_min > 59 || *duration_min > 16 * kMinPerHour) {
-    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Out of bounds][%x][%x][%x]"),
-                *start_hour, *start_min, *duration_min));
-    return false;
+  if (dm_policy_.auto_update_check_period_minutes == -1) {
+    return E_FAIL;
   }
 
-  CORE_LOG(L5, (_T("[GetUpdatesSuppressedTimes][%x][%x][%x]"),
-                *start_hour, *start_min, *duration_min));
-  return true;
+  *minutes = static_cast<DWORD>(dm_policy_.auto_update_check_period_minutes);
+  REPORT_LOG(L5, (_T("[DM Policy check period override %d]"), *minutes));
+  return S_OK;
 }
 
-}  // namespace
+HRESULT DMPolicyManager::GetUpdatesSuppressedTimes(DWORD* start_hour,
+                                                   DWORD* start_min,
+                                                   DWORD* duration_min) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  if (dm_policy_.updates_suppressed.start_hour == -1 ||
+      dm_policy_.updates_suppressed.start_minute == -1 ||
+      dm_policy_.updates_suppressed.duration_min == -1) {
+    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Missing DM time]")));
+    return E_FAIL;
+  }
+
+  *start_hour = static_cast<DWORD>(dm_policy_.updates_suppressed.start_hour);
+  *start_min = static_cast<DWORD>(dm_policy_.updates_suppressed.start_minute);
+  *duration_min =
+      static_cast<DWORD>(dm_policy_.updates_suppressed.duration_min);
+
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::GetDownloadPreferenceGroupPolicy(
+    CString* download_preference) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  *download_preference = dm_policy_.download_preference;
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::GetPackageCacheSizeLimitMBytes(
+    DWORD* cache_size_limit) {
+  UNREFERENCED_PARAMETER(cache_size_limit);
+  return E_FAIL;
+}
+
+HRESULT DMPolicyManager::GetPackageCacheExpirationTimeDays(
+    DWORD* cache_life_limit) {
+  UNREFERENCED_PARAMETER(cache_life_limit);
+  return E_FAIL;
+}
+
+HRESULT DMPolicyManager::GetEffectivePolicyForAppInstalls(
+    const GUID& app_guid,
+    DWORD* install_policy) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  *install_policy = dm_policy_.application_settings.count(app_guid) > 0 ?
+      dm_policy_.application_settings.at(app_guid).install :
+      dm_policy_.install_default;
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid,
+                                                         DWORD* update_policy) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  *update_policy = dm_policy_.application_settings.count(app_guid) ?
+      dm_policy_.application_settings.at(app_guid).update :
+      dm_policy_.update_default;
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::GetTargetVersionPrefix(
+    const GUID& app_guid,
+    CString* target_version_prefix) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  *target_version_prefix =
+      dm_policy_.application_settings.count(app_guid) ?
+      dm_policy_.application_settings.at(app_guid).target_version_prefix :
+      CString();
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::IsRollbackToTargetVersionAllowed(
+    const GUID& app_guid,
+    bool* rollback_allowed) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  *rollback_allowed = dm_policy_.application_settings.count(app_guid) ?
+      dm_policy_.application_settings.at(app_guid).rollback_to_target_version :
+      false;
+  return S_OK;
+}
 
 LLock ConfigManager::lock_;
 ConfigManager* ConfigManager::config_manager_ = NULL;
@@ -258,7 +386,7 @@ void ConfigManager::DeleteInstance() {
   delete config_manager_;
 }
 
-ConfigManager::ConfigManager() {
+ConfigManager::ConfigManager() : dm_policy_manager_(new DMPolicyManager) {
   CString current_module_directory(app_util::GetCurrentModuleDirectory());
 
   CString path;
@@ -285,6 +413,9 @@ ConfigManager::ConfigManager() {
                                       path.GetLength(),
                                       true) == 0) :
                       false;
+
+  policies_.emplace_back(new GroupPolicyManager);
+  policies_.push_back(dm_policy_manager_);
 }
 
 CString ConfigManager::GetUserDownloadStorageDir() const {
@@ -557,7 +688,7 @@ CPath ConfigManager::GetPolicyResponsesDir() const {
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
 
 void ConfigManager::SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy) {
-  dm_policy_ = dm_policy;
+  dm_policy_manager_->set_dm_policy(dm_policy);
 }
 
 // Returns the override from the registry locations if present. Otherwise,
@@ -568,9 +699,32 @@ void ConfigManager::SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy) {
 // when the override is 0, which indicates updates are disabled.
 int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
   ASSERT1(is_overridden);
+
   DWORD policy_period_sec = 0;
-  *is_overridden = GetLastCheckPeriodSecFromPolicy(dm_policy_,
-                                                   &policy_period_sec);
+  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                                 kRegValueLastCheckPeriodSec,
+                                 &policy_period_sec))) {
+    CORE_LOG(L5, (_T("['LastCheckPeriodSec' override %d]"), policy_period_sec));
+    *is_overridden = true;
+  } else {
+    DWORD minutes = 0;
+    HRESULT hr = E_FAIL;
+    for (size_t i = 0; i != policies_.size(); ++i) {
+      if (!policies_[i]->IsManaged()) {
+        continue;
+      }
+
+      hr = policies_[i]->GetLastCheckPeriodMinutes(&minutes);
+      CORE_LOG(L5, (_T("[GetLastCheckPeriodMinutes][%s][%d]"),
+                    policies_[i]->source(), minutes));
+      break;
+    }
+
+    if (*is_overridden = SUCCEEDED(hr)) {
+      policy_period_sec = (minutes > UINT_MAX / 60) ? UINT_MAX : minutes * 60;
+    }
+  }
+
   if (*is_overridden) {
     if (0 == policy_period_sec) {
       CORE_LOG(L5, (_T("[GetLastCheckPeriodSec][0 == policy_period_sec]")));
@@ -1030,16 +1184,22 @@ bool ConfigManager::IsInternalUser() const {
 
 DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid)
     const {
-  DWORD effective_policy = kPolicyDisabled;
-  if (GetEffectivePolicyForApp(kRegValueInstallAppsDefault,
-                               kRegValueInstallAppPrefix,
-                               app_guid,
-                               &effective_policy)) {
-    return effective_policy;
-  } else if (dm_policy_.is_initialized) {
-    return dm_policy_.application_settings.count(app_guid) > 0 ?
-        dm_policy_.application_settings.at(app_guid).install :
-        dm_policy_.install_default;
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
+
+    DWORD effective_policy = kPolicyDisabled;
+    HRESULT hr = policies_[i]->GetEffectivePolicyForAppInstalls(
+        app_guid,
+        &effective_policy);
+    if (SUCCEEDED(hr)) {
+      CORE_LOG(L5, (_T("[GetEffectivePolicyForAppInstalls][%s][%d]"),
+                    policies_[i]->source(), effective_policy));
+      return effective_policy;
+    }
+
+    break;
   }
 
   OPT_LOG(L5, (_T("[GetEffectivePolicyForAppInstalls][Ignoring policy][%s]")
@@ -1050,16 +1210,22 @@ DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid)
 
 DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid)
     const {
-  DWORD effective_policy = kPolicyDisabled;
-  if (GetEffectivePolicyForApp(kRegValueUpdateAppsDefault,
-                               kRegValueUpdateAppPrefix,
-                               app_guid,
-                               &effective_policy)) {
-    return effective_policy;
-  } else if (dm_policy_.is_initialized) {
-    return dm_policy_.application_settings.count(app_guid) ?
-        dm_policy_.application_settings.at(app_guid).update :
-        dm_policy_.update_default;
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
+
+    DWORD effective_policy = kPolicyDisabled;
+    HRESULT hr = policies_[i]->GetEffectivePolicyForAppUpdates(
+        app_guid,
+        &effective_policy);
+    if (SUCCEEDED(hr)) {
+      CORE_LOG(L5, (_T("[GetEffectivePolicyForAppUpdates][%s][%d]"),
+                    policies_[i]->source(), effective_policy));
+      return effective_policy;
+    }
+
+    break;
   }
 
   OPT_LOG(L5, (_T("[GetEffectivePolicyForAppUpdates][Ignoring policy][%s]")
@@ -1069,19 +1235,21 @@ DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid)
 }
 
 CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) const {
-  if (IsEnrolledToDomain()) {
-    CString app_value_name(kRegValueTargetVersionPrefix);
-    app_value_name.Append(GuidToString(app_guid));
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
 
     CString target_version_prefix;
-    RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                     app_value_name,
-                     &target_version_prefix);
-    return target_version_prefix;
-  } else if (dm_policy_.is_initialized) {
-    return dm_policy_.application_settings.count(app_guid) ?
-        dm_policy_.application_settings.at(app_guid).target_version_prefix :
-        CString();
+    HRESULT hr = policies_[i]->GetTargetVersionPrefix(app_guid,
+                                                      &target_version_prefix);
+    if (SUCCEEDED(hr)) {
+      CORE_LOG(L5, (_T("[GetTargetVersionPrefix][%s][%s]"),
+                    policies_[i]->source(), target_version_prefix));
+      return target_version_prefix;
+    }
+
+    break;
   }
 
   OPT_LOG(L5, (_T("[GetTargetVersionPrefix][Ignoring policy][%s]")
@@ -1092,19 +1260,22 @@ CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) const {
 
 bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid)
     const {
-  if (IsEnrolledToDomain()) {
-    CString app_value_name(kRegValueRollbackToTargetVersion);
-    app_value_name.Append(GuidToString(app_guid));
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
 
-    DWORD is_rollback_allowed = 0;
-    RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                     app_value_name,
-                     &is_rollback_allowed);
-    return !!is_rollback_allowed;
-  } else if (dm_policy_.is_initialized) {
-    return dm_policy_.application_settings.count(app_guid) ?
-        dm_policy_.application_settings.at(app_guid).rollback_to_target_version
-        : false;
+    bool rollback_allowed = false;
+    HRESULT hr = policies_[i]->IsRollbackToTargetVersionAllowed(
+        app_guid,
+        &rollback_allowed);
+    if (SUCCEEDED(hr)) {
+      CORE_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][%s][%d]"),
+                    policies_[i]->source(), rollback_allowed));
+      return rollback_allowed;
+    }
+
+    break;
   }
 
   OPT_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][Ignoring policy][%s]")
@@ -1117,10 +1288,29 @@ bool ConfigManager::AreUpdatesSuppressedNow() const {
   DWORD start_hour = 0;
   DWORD start_min = 0;
   DWORD duration_min = 0;
-  if (!GetUpdatesSuppressedTimes(dm_policy_,
-                                 &start_hour,
-                                 &start_min,
-                                 &duration_min)) {
+
+  HRESULT hr = E_FAIL;
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
+
+    hr = policies_[i]->GetUpdatesSuppressedTimes(&start_hour,
+                                                 &start_min,
+                                                 &duration_min);
+    CORE_LOG(L5, (_T("[GetUpdatesSuppressedTimes][%s][%d][%d][%d]"),
+                  policies_[i]->source(), start_hour, start_min, duration_min));
+    break;
+  }
+
+  if (FAILED(hr)) {
+    return false;
+  }
+
+  // UpdatesSuppressedDurationMin is limited to 16 hours.
+  if (start_hour > 23 || start_min > 59 || duration_min > 16 * kMinPerHour) {
+    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Out of bounds][%x][%x][%x]"),
+                start_hour, start_min, duration_min));
     return false;
   }
 
@@ -1194,21 +1384,21 @@ int ConfigManager::MaxCrashUploadsPerDay() const {
 }
 
 CString ConfigManager::GetDownloadPreferenceGroupPolicy() const {
-  CString download_preference;
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
 
-  if (IsEnrolledToDomain()) {
-    HRESULT hr = RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                  kRegValueDownloadPreference,
-                                  &download_preference);
+    CString download_preference;
+    HRESULT hr = policies_[i]->GetDownloadPreferenceGroupPolicy(
+        &download_preference);
     if (SUCCEEDED(hr) && download_preference == kDownloadPreferenceCacheable) {
+      CORE_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy][%s][%s]"),
+                    policies_[i]->source(), download_preference));
       return download_preference;
     }
 
-    return CString();
-  } else if (dm_policy_.is_initialized) {
-    return dm_policy_.download_preference == kDownloadPreferenceCacheable ?
-        dm_policy_.download_preference :
-        CString();
+    break;
   }
 
   OPT_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy]")
