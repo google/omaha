@@ -223,6 +223,7 @@ cc_files = [
     'protobuf/generated_message_util.cc',
     'protobuf/implicit_weak_message.cc',
     'protobuf/io/coded_stream.cc',
+    'protobuf/io/io_win32.cc',
     'protobuf/io/printer.cc',
     'protobuf/io/strtod.cc',
     'protobuf/io/tokenizer.cc',
