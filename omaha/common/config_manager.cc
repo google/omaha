@@ -720,7 +720,8 @@ int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
       break;
     }
 
-    if (*is_overridden = SUCCEEDED(hr)) {
+    *is_overridden = SUCCEEDED(hr);
+    if (*is_overridden) {
       policy_period_sec = (minutes > UINT_MAX / 60) ? UINT_MAX : minutes * 60;
     }
   }
