@@ -323,6 +323,7 @@ if env.Bit('has_device_management'):
                                '$GOOGLE3/third_party/protobuf/src')
   proto_env.Append(
       CCFLAGS=[
+          '/wd4065',
           '/wd4100',
           '/wd4125',
           '/wd4127',
