@@ -447,7 +447,6 @@ if _msc_ver >= omaha_version_utils.VC140:
 win_env.FilterOut(CCFLAGS=['/W3'])
 
 win_env.AppendUnique(
-    # Add Windows specific compiler flags.
     CCFLAGS = [
         '/arch:IA32',
         ('', '/analyze:WX-')[win_env.Bit('analysis')],
@@ -534,7 +533,6 @@ win_env.AppendUnique(
         '/wd28251', # Inconsistent SAL annotations.
     ],
 
-    # Where to look for include files.
     CPPPATH = [
         _atl_server_dir + '/include',
         _wtl_dir +'/include',
@@ -547,17 +545,7 @@ win_env.AppendUnique(
         '$THIRD_PARTY/libzip/lib',
     ],
 
-    # Defines for windows environment.
     CPPDEFINES = [
-        'PSAPI_VERSION=1',
-        # Use _WIN32_WINNT_WIN7 (0x0601)
-        'WINVER=0x0601',
-        '_WIN32_WINNT=0x0601',
-        'WIN32', '_WINDOWS',
-        'UNICODE', '_UNICODE',
-        'WIN32_LEAN_AND_MEAN',
-        'STRICT',
-        'SECURITY_WIN32',
         '_ATL_ALL_WARNINGS',
         '_ATL_CSTRING_EXPLICIT_CONSTRUCTORS',
         '_ATL_CSTRING_NO_CRT',
@@ -572,26 +560,25 @@ win_env.AppendUnique(
         '_ATL_XP_TARGETING',
         '_SECURE_ATL=1',
         '_WTL_NO_CSTRING',  # WTL uses ATL CString instead.
-        'ZIP_STATIC',
 
-        # '_ATL_NO_CONNECTION_POINTS',
-        # '_ATL_NO_DOCHOSTUIHANDLER',
-        # '_ATL_NO_HOSTING',
+        'ARCH_CPU_X86_FAMILY',  # For Chromium code.
+        'LOGGING',   # Logging is enabled in all modes for diagnostics purposes.
 
-        # Set these C_DEFINES when APPVER=5.0
-        # (see win32.mak in Platform SDK)
-        # Target Windows XP SP3. The minimum platform supported is still
-        # Windows XP. Therefore, the code needs to gracefully handle the
-        # cases where some of the functionality enabled by the platform SDK
-        # headers is not available.
-        # Use NTDDI_WIN7 (0x06010000)
-        'NTDDI_VERSION=0x06010000',
+        # For the CRX Verifier protocol buffers code.
+        'GOOGLE_PROTOBUF_NO_RTTI',
+        'GOOGLE_PROTOBUF_SUPPORT_WINDOWS_XP',
 
-        # don't define min and max in windef.h
         'NOMINMAX',
-
-        # Logging is enabled in all modes for diagnostics purposes.
-        'LOGGING',
+        'PSAPI_VERSION=1',
+        '_UNICODE',
+        'UNICODE',
+        'SECURITY_WIN32',
+        'STRICT',
+        '_WINDOWS',
+        'WIN32',
+        'WIN32_LEAN_AND_MEAN',
+        'WINVER=0x0601',  # Windows 7.
+        'ZIP_STATIC',
 
         'FULL_COMPANY_NAME_ANSI=\\"%s\\"' % _FULL_COMPANY_NAME,
         'SHORT_COMPANY_NAME_ANSI=\\"%s\\"' % _SHORT_COMPANY_NAME,
@@ -618,16 +605,8 @@ win_env.AppendUnique(
             omaha_version_info.update_plugin_filename),
         'CRASH_HANDLER_NAME=_T(\\"%s\\")' %
             omaha_version_utils.GetCRASH_HANDLER_NAME(),
-
-        # for Chromium code.
-        'ARCH_CPU_X86_FAMILY',
-
-        # for the CRX Verifier protocol buffers code.
-        'GOOGLE_PROTOBUF_NO_RTTI',
-        'GOOGLE_PROTOBUF_SUPPORT_WINDOWS_XP',
         ],
 
-    # Link in some windows libraries.
     LIBS = [
         'advapi32',
         'comdlg32',
@@ -643,7 +622,6 @@ win_env.AppendUnique(
         'winspool',
         ],
 
-    # Common linker flags.
     LINKFLAGS = [
         '/nologo',
         '/SUBSYSTEM:WINDOWS,5.01',
@@ -656,7 +634,6 @@ win_env.AppendUnique(
         # '/VERBOSE:LIB', # Uncomment to get verbose link info for debugging.
         ],
 
-    # Resource compiler flags.
     # Defines in CCFLAGS are automatically included.
     RCFLAGS = [
         '/l 1033',  # /l == default language ID
