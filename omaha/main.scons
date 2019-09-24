@@ -467,7 +467,6 @@ win_env.AppendUnique(
         '/W4',
         '/Wall',
         '/WX',            # warnings as errors
-        '/Zc:twoPhase-',  # avoids an ICE in service/service_main.h with 16.1.0.
         '/Zo',            # better debugging support for optimized code
 
         #
