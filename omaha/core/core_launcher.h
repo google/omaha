@@ -22,7 +22,7 @@
 
 namespace omaha {
 
-static bool ShouldRunCore(bool is_system);
+bool ShouldRunCore(bool is_system);
 
 HRESULT StartCoreIfNeeded(bool is_system);
 

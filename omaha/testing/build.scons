@@ -455,6 +455,7 @@ omaha_unittest_inputs = [
     '../crashhandler/crash_analyzer_unittest.cc',
 
     # Core unit tests
+    '../core/core_launcher.cc',
     '../core/core_unittest.cc',
     '../core/scheduler_unittest.cc',
     '../core/system_monitor_unittest.cc',

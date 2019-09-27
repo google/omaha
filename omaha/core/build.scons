@@ -41,20 +41,12 @@ core_env['CPPPATH'] += [
     ]
 
 core_env.Append(
-    CCFLAGS = [
-      '/wd5038',
-    ],
     LIBS = [
         'advapi32.lib',
         'crypt32.lib',
-        'delayimp.lib',
         'kernel32.lib',
         'netapi32.lib',
-        'ole32.lib',
         'psapi.lib',
-        'rpcns4.lib',
-        'rpcrt4.lib',
-        'shell32.lib',
         'shlwapi.lib',
         'user32.lib',
         'userenv.lib',
@@ -64,11 +56,8 @@ core_env.Append(
         core_env['atls_libs'][core_env.Bit('debug')],
         core_env['crt_libs'][core_env.Bit('debug')],
         core_env.GetMultiarchLibName('base'),
-        core_env.GetMultiarchLibName('client'),
         core_env.GetMultiarchLibName('common'),
-        core_env.GetMultiarchLibName('core'),
         core_env.GetMultiarchLibName('logging'),
-        core_env.GetMultiarchLibName('omaha3_idl'),
         core_env.GetMultiarchLibName('security'),
         ],
   RCFLAGS = [
@@ -90,7 +79,7 @@ if core_env.Bit('has_device_management'):
 
 google_core_res_target = 'resource.res'
 google_core_res = core_env.RES(source = 'resource.rc',
-                                      target = google_core_res_target)
+                               target = google_core_res_target)
 core_env.Depends(google_core_res, 'GoogleUpdateCore.manifest')
 
 google_core_inputs = [
