@@ -971,36 +971,6 @@ int ConfigManager::GetAutoUpdateJitterMs() const {
   return (random_delay % kMaxJitterMs);
 }
 
-time64 ConfigManager::GetTimeSinceLastCoreRunMs(bool is_machine) const {
-  const time64 now = GetCurrentMsTime();
-  const time64 last_core_run = GetLastCoreRunTimeMs(is_machine);
-
-  if (now < last_core_run) {
-    return ULONG64_MAX;
-  }
-
-  return now - last_core_run;
-}
-
-time64 ConfigManager::GetLastCoreRunTimeMs(bool is_machine) const {
-  const TCHAR* reg_update_key(is_machine ? MACHINE_REG_UPDATE :
-                                           USER_REG_UPDATE);
-  time64 last_core_run_time = 0;
-  if (SUCCEEDED(RegKey::GetValue(reg_update_key,
-                                 kRegValueLastCoreRun,
-                                 &last_core_run_time))) {
-    return last_core_run_time;
-  }
-
-  return 0;
-}
-
-HRESULT ConfigManager::SetLastCoreRunTimeMs(bool is_machine, time64 time) {
-  const TCHAR* reg_update_key(is_machine ? MACHINE_REG_UPDATE :
-                                           USER_REG_UPDATE);
-  return RegKey::SetValue(reg_update_key, kRegValueLastCoreRun, time);
-}
-
 // Overrides CodeRedCheckPeriodMs. Implements a lower bound value. Returns
 // INT_MAX if the registry value exceeds INT_MAX.
 int ConfigManager::GetCodeRedTimerIntervalMs() const {
