@@ -14,12 +14,12 @@
 // ========================================================================
 
 #include <windows.h>
-#include <tchar.h>
-#include <cstringt.h>
-#include "omaha/base/omaha_version.h"
-#include "omaha/core/core.h"
 
-int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int) {
+#include "omaha/base/omaha_version.h"
+#include "omaha/base/utils.h"
+#include "omaha/core/core_launcher.h"
+
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
   omaha::EnableSecureDllLoading();
 
   scoped_co_init init_com_apt(COINIT_MULTITHREADED);
@@ -36,5 +36,5 @@ int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int) {
     return hr;
   }
 
-  return omaha::Core::StartCoreIfNeeded(is_system);
+  return omaha::StartCoreIfNeeded(is_system);
 }
