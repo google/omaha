@@ -524,7 +524,7 @@ interface ICredentialDialog : IUnknown {
   object,
   dual,
   uuid(F63F6F8B-ACD5-413C-A44B-0409136D26CB),
-  helpstring("Google Update IPolicyStatus Interface"),
+  helpstring("IPolicyStatus Interface"),
   pointer_default(unique)
 ]
 interface IPolicyStatus : IDispatch {
@@ -982,6 +982,7 @@ library GoogleUpdate3Lib {
   interface IPackage;
   interface ICurrentState;
 
+  interface IPolicyStatus;
   interface IGoogleUpdate3Web;
   interface IAppBundleWeb;
   interface IAppWeb;
