@@ -331,9 +331,9 @@ class MetaInstaller {
     return true;
   }
 
-  // Create a temp directory under %ProgramFiles%. To avoid possible issues with
-  // anti-malware heuristics, this function returns early and does not try to
-  // create a directory if the user is not an admin.
+  // Create a temp directory under %ProgramFiles%\Google\Update\Temp. To avoid
+  // possible issues with anti-malware heuristics, this function returns early
+  // and does not try to create a directory if the user is not an admin.
   bool CreateProgramFilesTempDir() {
     if (!::IsUserAnAdmin()) {
       return false;
@@ -341,7 +341,7 @@ class MetaInstaller {
 
     CString program_files_dir;
     HRESULT hr = ::SHGetFolderPath(NULL,
-                                   CSIDL_PROGRAM_FILES,
+                                   CSIDL_PROGRAM_FILES | CSIDL_FLAG_CREATE,
                                    NULL,
                                    SHGFP_TYPE_CURRENT,
                                    CStrBuf(program_files_dir, MAX_PATH));
@@ -349,11 +349,24 @@ class MetaInstaller {
       return false;
     }
 
-    if (!CreateTempSubdirectory(program_files_dir)) {
+    CPath google_update_temp_dir(program_files_dir);
+    google_update_temp_dir.Append(kShortCompanyName);
+    if (!::CreateDirectory(google_update_temp_dir, NULL) &&
+        ::GetLastError() != ERROR_ALREADY_EXISTS) {
+      return false;
+    }
+    google_update_temp_dir.Append(PRODUCT_NAME);
+    if (!::CreateDirectory(google_update_temp_dir, NULL) &&
+        ::GetLastError() != ERROR_ALREADY_EXISTS) {
+      return false;
+    }
+    google_update_temp_dir.Append(_T("Temp"));
+
+    if (!CreateTempSubdirectory(google_update_temp_dir)) {
       return false;
     }
 
-    temp_root_dir_ = program_files_dir;
+    temp_root_dir_ = static_cast<const CString&>(google_update_temp_dir);
     return true;
   }
 
@@ -657,4 +670,3 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int) {
   int result = mi.ExtractAndRun();
   return result;
 }
-
