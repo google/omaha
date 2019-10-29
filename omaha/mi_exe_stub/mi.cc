@@ -331,9 +331,9 @@ class MetaInstaller {
     return true;
   }
 
-  // Create a temp directory under %ProgramFiles%\Google\Update\Temp. To avoid
-  // possible issues with anti-malware heuristics, this function returns early
-  // and does not try to create a directory if the user is not an admin.
+  // Create a temp directory under %ProgramFiles%\Google\Temp. To avoid possible
+  // issues with anti-malware heuristics, this function returns early and does
+  // not try to create a directory if the user is not an admin.
   bool CreateProgramFilesTempDir() {
     if (!::IsUserAnAdmin()) {
       return false;
@@ -351,11 +351,6 @@ class MetaInstaller {
 
     CPath google_update_temp_dir(program_files_dir);
     google_update_temp_dir.Append(kShortCompanyName);
-    if (!::CreateDirectory(google_update_temp_dir, NULL) &&
-        ::GetLastError() != ERROR_ALREADY_EXISTS) {
-      return false;
-    }
-    google_update_temp_dir.Append(PRODUCT_NAME);
     if (!::CreateDirectory(google_update_temp_dir, NULL) &&
         ::GetLastError() != ERROR_ALREADY_EXISTS) {
       return false;
