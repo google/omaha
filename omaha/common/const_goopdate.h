@@ -393,6 +393,9 @@ const TCHAR* const kProgIDCredentialDialogUser =
 const TCHAR* const kProgIDCredentialDialogMachine =
     APP_NAME_IDENTIFIER _T(".CredentialDialogMachine");
 
+const TCHAR* const kProgIDPolicyStatus =
+    APP_NAME_IDENTIFIER _T(".PolicyStatus");
+
 // Offline v3 manifest name.
 const TCHAR* const kOfflineManifestFileName = _T("OfflineManifest.gup");
 

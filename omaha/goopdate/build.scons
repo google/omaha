@@ -419,6 +419,7 @@ gd_inputs = [
     'package.cc',
     'package_cache.cc',
     'ping_event_cancel.cc',
+    'policy_status.cc',
     'process_launcher.cc',
     'resource_manager.cc',
     'update3web.cc',

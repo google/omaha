@@ -31,6 +31,7 @@
 #include "omaha/goopdate/google_update3.h"
 #include "omaha/goopdate/omaha3_idl_datax.h"
 #include "omaha/goopdate/ondemand.h"
+#include "omaha/goopdate/policy_status.h"
 #include "omaha/goopdate/process_launcher.h"
 #include "omaha/goopdate/update3web.h"
 #include "omaha/goopdate/worker.h"
@@ -68,6 +69,7 @@ BEGIN_OBJECT_MAP(object_map_ondemand_machine_mode)
   OBJECT_ENTRY(__uuidof(GoogleUpdate3WebMachineFallbackClass),
                Update3WebMachineFallback)
   OBJECT_ENTRY(__uuidof(CredentialDialogMachineClass), CredentialDialogMachine)
+  OBJECT_ENTRY(__uuidof(PolicyStatusClass), PolicyStatus)
 END_OBJECT_MAP()
 
 _ATL_OBJMAP_ENTRY* GoogleUpdate::GetObjectMap() {

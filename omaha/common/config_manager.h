@@ -371,12 +371,16 @@ class ConfigManager {
   bool IsRollbackToTargetVersionAllowed(const GUID& app_guid) const;
 
   // For domain-joined machines, checks the current time against the times that
-  // updates are suppressed. Returns true if the current time falls between the
-  // start time and the duration.
+  // updates are suppressed. Updates are suppressed if the current time falls
+  // between the start time and the duration.
   // The duration does not account for daylight savings time. For instance, if
   // the start time is 22:00 hours, and with a duration of 8 hours, the updates
   // will be suppressed for 8 hours regardless of whether daylight savings time
   // changes happen in between.
+  HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
+                                    DWORD* start_min,
+                                    DWORD* duration_min,
+                                    bool* are_updates_suppressed) const;
   bool AreUpdatesSuppressedNow() const;
 
   // Returns true if installation of the specified app is allowed.

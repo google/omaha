@@ -62,6 +62,7 @@ const IID kIIDsToRegister[] = {
   __uuidof(ICoCreateAsync),
   __uuidof(ICoCreateAsyncStatus),
   __uuidof(ICredentialDialog),
+  __uuidof(IPolicyStatus),
 
   __uuidof(IProcessLauncher2),
 
@@ -195,6 +196,7 @@ class ATL_NO_VTABLE ComProxy
   CComPtr<IUnknown> proxy_manager_;
   CComPtr<IInternalUnknown> proxy_internal_unknown_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(ComProxy);
 };
 

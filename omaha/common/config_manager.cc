@@ -1255,10 +1255,15 @@ bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid)
   return false;
 }
 
-bool ConfigManager::AreUpdatesSuppressedNow() const {
-  DWORD start_hour = 0;
-  DWORD start_min = 0;
-  DWORD duration_min = 0;
+HRESULT ConfigManager::GetUpdatesSuppressedTimes(
+    DWORD* start_hour,
+    DWORD* start_min,
+    DWORD* duration_min,
+    bool* are_updates_suppressed) const {
+  ASSERT1(start_hour);
+  ASSERT1(start_min);
+  ASSERT1(duration_min);
+  ASSERT1(are_updates_suppressed);
 
   HRESULT hr = E_FAIL;
   for (size_t i = 0; i != policies_.size(); ++i) {
@@ -1266,23 +1271,23 @@ bool ConfigManager::AreUpdatesSuppressedNow() const {
       continue;
     }
 
-    hr = policies_[i]->GetUpdatesSuppressedTimes(&start_hour,
-                                                 &start_min,
-                                                 &duration_min);
+    hr = policies_[i]->GetUpdatesSuppressedTimes(start_hour,
+                                                 start_min,
+                                                 duration_min);
     CORE_LOG(L5, (_T("[GetUpdatesSuppressedTimes][%s][%d][%d][%d]"),
-                  policies_[i]->source(), start_hour, start_min, duration_min));
+      policies_[i]->source(), *start_hour, *start_min, *duration_min));
     break;
   }
 
   if (FAILED(hr)) {
-    return false;
+    return hr;
   }
 
   // UpdatesSuppressedDurationMin is limited to 16 hours.
-  if (start_hour > 23 || start_min > 59 || duration_min > 16 * kMinPerHour) {
+  if (*start_hour > 23 || *start_min > 59 || *duration_min > 16 * kMinPerHour) {
     OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Out of bounds][%x][%x][%x]"),
-                start_hour, start_min, duration_min));
-    return false;
+      *start_hour, *start_min, *duration_min));
+    return E_UNEXPECTED;
   }
 
   CTime now(CTime::GetCurrentTime());
@@ -1291,18 +1296,37 @@ bool ConfigManager::AreUpdatesSuppressedNow() const {
 
   // tm_year is relative to 1900. tm_mon is 0-based.
   CTime start_updates_suppressed(local.tm_year + 1900,
-                                 local.tm_mon + 1,
-                                 local.tm_mday,
-                                 start_hour,
-                                 start_min,
-                                 local.tm_sec,
-                                 local.tm_isdst);
-  CTimeSpan duration_updates_suppressed(0, 0, duration_min, 0);
+    local.tm_mon + 1,
+    local.tm_mday,
+    *start_hour,
+    *start_min,
+    local.tm_sec,
+    local.tm_isdst);
+  CTimeSpan duration_updates_suppressed(0, 0, *duration_min, 0);
   CTime end_updates_suppressed =
-      start_updates_suppressed + duration_updates_suppressed;
-  return now >= start_updates_suppressed && now <= end_updates_suppressed;
+    start_updates_suppressed + duration_updates_suppressed;
+  *are_updates_suppressed = now >= start_updates_suppressed &&
+                            now <= end_updates_suppressed;
+
+  return S_OK;
 }
 
+bool ConfigManager::AreUpdatesSuppressedNow() const {
+  DWORD start_hour = 0;
+  DWORD start_min = 0;
+  DWORD duration_min = 0;
+  bool are_updates_suppressed = false;
+
+  HRESULT hr = GetUpdatesSuppressedTimes(&start_hour,
+                                         &start_min,
+                                         &duration_min,
+                                         &are_updates_suppressed);
+  if (FAILED(hr)) {
+    return false;
+  }
+
+  return are_updates_suppressed;
+}
 bool ConfigManager::CanInstallApp(const GUID& app_guid) const {
   // Google Update should never be checking whether it can install itself.
   ASSERT1(!::IsEqualGUID(kGoopdateGuid, app_guid));
