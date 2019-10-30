@@ -235,7 +235,7 @@ class AppBundle
   // The current non-blocking command object if any of them is executing.
   // The class only checks whether the pointer is NULL to determine if a
   // non-blocking call is pending. We use a pointer because it can be useful
-  // for debugging.
+  // for debugging. The object is not owned by this class.
   UserWorkItem* user_work_item_;
 
   std::unique_ptr<WebServicesClientInterface> update_check_client_;

@@ -1971,7 +1971,7 @@ bool CanDisplayUi(CommandLineMode mode, bool is_silent) {
 
 }  // namespace internal
 
-Goopdate* Goopdate::instance_              = NULL;
+Goopdate* Goopdate::instance_ = nullptr;
 
 Goopdate& Goopdate::Instance() {
   ASSERT1(instance_);
@@ -2000,12 +2000,10 @@ HRESULT Goopdate::Main(HINSTANCE instance,
   return impl_->Main(instance, cmd_line, cmd_show);
 }
 
-HRESULT Goopdate::QueueUserWorkItem(UserWorkItem* work_item,
+HRESULT Goopdate::QueueUserWorkItem(std::unique_ptr<UserWorkItem> work_item,
                                     DWORD coinit_flags,
                                     uint32 flags) {
-  return impl_->QueueUserWorkItem(std::unique_ptr<UserWorkItem>(work_item),
-                                  coinit_flags,
-                                  flags);
+  return impl_->QueueUserWorkItem(std::move(work_item), coinit_flags, flags);
 }
 
 void Goopdate::Stop() {

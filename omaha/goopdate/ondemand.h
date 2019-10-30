@@ -174,22 +174,21 @@ class ATL_NO_VTABLE OnDemand
     // Create a thread pool work item for deferred execution of the on demand
     // check. The thread pool owns this call back object. The thread owns the
     // impersonation and primary tokens.
-    typedef StaticThreadPoolCallBack1<internal::OnDemandParameters> Callback;
+    using Callback = StaticThreadPoolCallBack1<internal::OnDemandParameters>;
     Gate on_demand_gate;
-    std::unique_ptr<Callback> callback(
-        new Callback(&OnDemand::DoOnDemandInternal,
-                     internal::OnDemandParameters(
-                         guid,
-                         job_observer_git.Detach(),
-                         is_update_check_only,
-                         session_id_,
-                         dup_impersonation_token.GetHandle(),
-                         dup_primary_token.GetHandle(),
-                         &on_demand_gate)));
-
-    hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
-                                                COINIT_APARTMENTTHREADED,
-                                                WT_EXECUTELONGFUNCTION);
+    hr = Goopdate::Instance().QueueUserWorkItem(
+        std::make_unique<Callback>(
+            &OnDemand::DoOnDemandInternal,
+            internal::OnDemandParameters(
+                guid,
+                job_observer_git.Detach(),
+                is_update_check_only,
+                session_id_,
+                dup_impersonation_token.GetHandle(),
+                dup_primary_token.GetHandle(),
+                &on_demand_gate)),
+        COINIT_APARTMENTTHREADED,
+        WT_EXECUTELONGFUNCTION);
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("[QueueUserWorkItem failed][0x%x]"), hr));
       return hr;
@@ -200,9 +199,7 @@ class ATL_NO_VTABLE OnDemand
       dup_primary_token.Detach();
     }
 
-    callback.release();
     VERIFY1(on_demand_gate.Wait(INFINITE));
-
     return S_OK;
   }
 

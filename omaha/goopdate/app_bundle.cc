@@ -253,16 +253,18 @@ HRESULT AppBundle::SendPingEventsAsync() {
                                                        &token)));
   }
 
-  typedef StaticThreadPoolCallBack1<internal::SendPingEventsParameters> CB;
+  using Callback =
+    StaticThreadPoolCallBack1<internal::SendPingEventsParameters>;
   Gate send_ping_events_gate;
-  std::unique_ptr<CB> callback(new CB(&AppBundle::SendPingEvents,
-                          internal::SendPingEventsParameters(
-                              ping.get(),
-                              token.GetHandle(),
-                              &send_ping_events_gate)));
-  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
-                                                      COINIT_MULTITHREADED,
-                                                      WT_EXECUTELONGFUNCTION);
+  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(
+      std::make_unique<Callback>(
+            &AppBundle::SendPingEvents,
+            internal::SendPingEventsParameters(
+                ping.get(),
+                token.GetHandle(),
+                &send_ping_events_gate)),
+            COINIT_MULTITHREADED,
+            WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[QueueUserWorkItem failed][0x%x]"), hr));
     return hr;
@@ -270,7 +272,6 @@ HRESULT AppBundle::SendPingEventsAsync() {
 
   ping.release();
   token.Detach();
-  callback.release();
   VERIFY1(send_ping_events_gate.Wait(INFINITE));
 
   return S_OK;
