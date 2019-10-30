@@ -127,9 +127,9 @@ HRESULT ThreadPool::QueueUserWorkItem(std::unique_ptr<UserWorkItem> work_item,
   UTIL_LOG(L4, (_T("[ThreadPool::QueueUserWorkItem]")));
   ASSERT1(work_item);
 
- if (is_stopped()) {
-    return E_FAIL;
- }
+  if (is_stopped()) {
+     return E_FAIL;
+  }
 
   work_item->set_shutdown_event(get(shutdown_event_));
   auto context = std::make_unique<Context>(this,
