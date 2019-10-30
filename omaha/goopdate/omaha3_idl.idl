@@ -523,7 +523,7 @@ interface ICredentialDialog : IUnknown {
 [
   object,
   dual,
-  uuid(F63F6F8B-ACD5-413C-A44B-0409136D26CB),
+  uuid(BFA9CB0F-987A-4E8A-A3BE-5988F315F35E),
   helpstring("IPolicyStatus Interface"),
   pointer_default(unique)
 ]
