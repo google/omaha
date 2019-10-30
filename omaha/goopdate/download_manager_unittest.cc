@@ -461,6 +461,8 @@ TEST_F(DownloadManagerUserTest, DownloadApp_Concurrent) {
     }
     return;
   }
+
+  thread_pool.Stop();
 }
 
 // Downloads multiple apps concurrently and cancels the downloads while they
@@ -621,6 +623,8 @@ TEST_F(DownloadManagerUserTest, DISABLED_DownloadApp_Cancel) {
     EXPECT_HRESULT_SUCCEEDED(current_state->get_errorCode(&extra_code1));
     EXPECT_EQ(0, extra_code1);
   }
+
+  thread_pool.Stop();
 }
 
 // Common packages of different apps are not cached by the package cache and
