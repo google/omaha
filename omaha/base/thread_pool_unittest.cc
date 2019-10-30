@@ -60,6 +60,51 @@ class MyJob3 : public UserWorkItem {
   DISALLOW_COPY_AND_ASSIGN(MyJob3);
 };
 
+class ReentrantJob3 : public UserWorkItem {
+ public:
+  explicit ReentrantJob3(ThreadPool* thread_pool)
+      : thread_pool_(thread_pool) {}
+ private:
+  virtual void DoProcess() {
+    EXPECT_TRUE(thread_pool_->HasWorkItems());
+  }
+  ThreadPool* thread_pool_ = nullptr;
+  DISALLOW_COPY_AND_ASSIGN(ReentrantJob3);
+};
+
+class ReentrantJob2 : public UserWorkItem {
+ public:
+  explicit ReentrantJob2(ThreadPool* thread_pool)
+      : thread_pool_(thread_pool) {}
+ private:
+  virtual void DoProcess() {
+    EXPECT_TRUE(thread_pool_->HasWorkItems());
+    thread_pool_->QueueUserWorkItem(
+        std::make_unique<ReentrantJob3>(thread_pool_),
+        COINIT_MULTITHREADED,
+        WT_EXECUTEDEFAULT);
+    thread_pool_->Stop();
+  }
+  ThreadPool* thread_pool_ = nullptr;
+  DISALLOW_COPY_AND_ASSIGN(ReentrantJob2);
+};
+
+class ReentrantJob1 : public UserWorkItem {
+ public:
+  explicit ReentrantJob1(ThreadPool* thread_pool)
+      : thread_pool_(thread_pool) {}
+ private:
+  virtual void DoProcess() {
+    EXPECT_TRUE(thread_pool_->HasWorkItems());
+    thread_pool_->QueueUserWorkItem(
+        std::make_unique<ReentrantJob2>(thread_pool_),
+        COINIT_MULTITHREADED,
+        WT_EXECUTEDEFAULT);
+  }
+  ThreadPool* thread_pool_ = nullptr;
+  DISALLOW_COPY_AND_ASSIGN(ReentrantJob1);
+};
+
 // ThreadPool COM initialization test class. The class tests that the thread
 // pool has COM initialized for the DoProcess method as well as in the Work
 // Item destructor.
@@ -87,53 +132,33 @@ class UserWorkItemCoInitTest : public UserWorkItem {
 };
 
 HRESULT QueueMyJob1(ThreadPool* thread_pool) {
-  std::unique_ptr<MyJob1> job(new MyJob1);
-  HRESULT hr = thread_pool->QueueUserWorkItem(job.get(),
-                                              COINIT_MULTITHREADED,
-                                              WT_EXECUTEDEFAULT);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  job.release();
-  return S_OK;
+  return thread_pool->QueueUserWorkItem(std::make_unique<MyJob1>(),
+                                        COINIT_MULTITHREADED,
+                                        WT_EXECUTEDEFAULT);
+
 }
 
 HRESULT QueueMyJob2(ThreadPool* thread_pool) {
-  std::unique_ptr<MyJob2> job(new MyJob2);
-  HRESULT hr = thread_pool->QueueUserWorkItem(job.get(),
-                                              COINIT_MULTITHREADED,
-                                              WT_EXECUTEDEFAULT);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  job.release();
-  return S_OK;
+  return thread_pool->QueueUserWorkItem(std::make_unique<MyJob2>(),
+                                        COINIT_MULTITHREADED,
+                                        WT_EXECUTEDEFAULT);
 }
 
 HRESULT QueueMyJob3(ThreadPool* thread_pool) {
-  std::unique_ptr<MyJob3> job(new MyJob3);
-  HRESULT hr = thread_pool->QueueUserWorkItem(job.get(),
-                                              COINIT_MULTITHREADED,
-                                              WT_EXECUTEDEFAULT);
-  if (FAILED(hr)) {
-    return hr;
-  }
-  job.release();
-  return S_OK;
+  return thread_pool->QueueUserWorkItem(std::make_unique<MyJob3>(),
+                                        COINIT_MULTITHREADED,
+                                        WT_EXECUTEDEFAULT);
 }
 
 HRESULT QueueUserWorkItemCoInitTest(ThreadPool* thread_pool,
                                     DWORD coinit_flags_workitem,
                                     HRESULT coinit_expected_hresult,
                                     DWORD coinit_flags_threadpool) {
-  std::unique_ptr<UserWorkItemCoInitTest> job(
-      new UserWorkItemCoInitTest(coinit_flags_workitem,
-                                 coinit_expected_hresult));
   EXPECT_HRESULT_SUCCEEDED(
-      thread_pool->QueueUserWorkItem(job.get(),
-                                     coinit_flags_threadpool,
-                                     WT_EXECUTEDEFAULT));
-  job.release();
+      thread_pool->QueueUserWorkItem(std::make_unique<UserWorkItemCoInitTest>(
+          coinit_flags_workitem, coinit_expected_hresult),
+          coinit_flags_threadpool,
+          WT_EXECUTEDEFAULT));
   return S_OK;
 }
 
@@ -161,6 +186,7 @@ TEST(ThreadPoolTest, ThreadPool) {
     ::Sleep(100);
   }
   EXPECT_EQ(g_completed_count, 6 * kNumJobsEachType);
+  thread_pool.Stop();
 }
 
 TEST(ThreadPoolTest, UserWorkItemCoInitTest) {
@@ -199,6 +225,20 @@ TEST(ThreadPoolTest, UserWorkItemCoInitTest) {
          t.GetMilliseconds() < kMaxWaitForJobsMs) {
     ::Sleep(100);
   }
+  thread_pool.Stop();
+}
+
+// Creates a couple of reentrant work items. A work item schedules another,
+// then that work item stops the thread pool, then it schedules one more work
+// item. Expects the work items to complete while the thread pool is spinning
+// in its ThreadPool::Stop function.
+TEST(ThreadPoolTest, Reentrant) {
+  ThreadPool thread_pool;
+  thread_pool.QueueUserWorkItem(std::make_unique<ReentrantJob1>(&thread_pool),
+                                COINIT_MULTITHREADED,
+                                WT_EXECUTEDEFAULT);
+  thread_pool.Stop();
+  EXPECT_FALSE(thread_pool.HasWorkItems());
 }
 
 }   // namespace omaha

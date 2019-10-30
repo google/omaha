@@ -46,6 +46,7 @@
 
 #include <atlstr.h>
 #include <new>
+#include <utility>
 
 #include "omaha/base/app_util.h"
 #include "omaha/base/const_object_names.h"
@@ -210,7 +211,7 @@ class GoopdateImpl {
 
   HRESULT Main(HINSTANCE instance, const TCHAR* cmd_line, int cmd_show);
 
-  HRESULT QueueUserWorkItem(UserWorkItem* work_item,
+  HRESULT QueueUserWorkItem(std::unique_ptr<UserWorkItem> work_item,
                             DWORD coinit_flags,
                             uint32 flags);
 
@@ -398,6 +399,8 @@ GoopdateImpl::~GoopdateImpl() {
 
   Stop();
 
+  thread_pool_.reset();
+
 #if defined(HAS_DEVICE_MANAGEMENT)
   DmStorage::DeleteInstance();
 #endif
@@ -423,20 +426,19 @@ GoopdateImpl::~GoopdateImpl() {
   set_new_handler(NULL);
 }
 
-HRESULT GoopdateImpl::QueueUserWorkItem(UserWorkItem* work_item,
+HRESULT GoopdateImpl::QueueUserWorkItem(std::unique_ptr<UserWorkItem> work_item,
                                         DWORD coinit_flags,
                                         uint32 flags) {
   CORE_LOG(L3, (_T("[GoopdateImpl::QueueUserWorkItem]")));
   ASSERT1(work_item);
-
   ASSERT1(thread_pool_.get());
-
-  return thread_pool_->QueueUserWorkItem(work_item, coinit_flags, flags);
+  return thread_pool_->QueueUserWorkItem(std::move(work_item),
+                                         coinit_flags,
+                                         flags);
 }
 
 void GoopdateImpl::Stop() {
-  // The thread pool destructor waits for any remaining jobs to complete.
-  thread_pool_.reset();
+  thread_pool_->Stop();    // Waits a little for any remaining jobs to complete.
 }
 
 // Assumes the resources are loaded and members are initialized.
@@ -2001,7 +2003,9 @@ HRESULT Goopdate::Main(HINSTANCE instance,
 HRESULT Goopdate::QueueUserWorkItem(UserWorkItem* work_item,
                                     DWORD coinit_flags,
                                     uint32 flags) {
-  return impl_->QueueUserWorkItem(work_item, coinit_flags, flags);
+  return impl_->QueueUserWorkItem(std::unique_ptr<UserWorkItem>(work_item),
+                                  coinit_flags,
+                                  flags);
 }
 
 void Goopdate::Stop() {

@@ -19,6 +19,8 @@
 #include <windows.h>
 #include <objbase.h>
 
+#include <memory>
+
 #include "base/basictypes.h"
 #include "omaha/third_party/smartany/scoped_any.h"
 
@@ -56,24 +58,40 @@ class ThreadPool {
   ~ThreadPool();
 
   HRESULT Initialize(int shutdown_delay);
+  void Stop();
 
-  // Returns true if any work items are still in progress.
-  bool HasWorkItems() const { return (0 != work_item_count_); }
-
-  // Adds a work item to the queue. If the add fails the ownership of the
-  // work items remains with the caller.
-  HRESULT QueueUserWorkItem(UserWorkItem* work_item,
+  // Adds a work item to the queue.
+  HRESULT QueueUserWorkItem(std::unique_ptr<UserWorkItem> work_item,
                             DWORD coinit_flags,
                             uint32 flags);
 
+  bool HasWorkItems() const {
+    return work_item_count_ > 0;
+  }
+
  private:
+  class Context;
+
   // Calls UserWorkItem::Process() in the context of the worker thread.
-  void ProcessWorkItem(UserWorkItem* work_item);
+  void ProcessWorkItemInContext(std::unique_ptr<Context> context);
 
   // This is the thread callback required by the underlying windows API.
   static DWORD WINAPI ThreadProc(void* context);
 
-  // Approximate number of work items in the pool.
+  bool is_stopped() const {
+    return !!is_stopped_;
+  }
+
+  void set_is_stopped(bool is_stopped) {
+    ::InterlockedExchange(&is_stopped_, is_stopped);
+  }
+
+  // True if the |Stop| function has been called and all work items
+  // have been processed, or the |Stop| function has returned with
+  // a timeout.
+  volatile LONG is_stopped_;
+
+  // Number of work items in the pool.
   volatile LONG work_item_count_;
 
   // This event signals when the thread pool destructor is in progress.
