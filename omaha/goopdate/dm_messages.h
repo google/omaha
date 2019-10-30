@@ -78,8 +78,8 @@ struct CachedOmahaPolicy {
 HRESULT GetCachedPolicyInfo(const std::string& raw_response,
                             CachedPolicyInfo* info);
 
-// Interprets the OmahaSettingsProto within the PolicyData and populates the
-// |info| with that information.
+// Interprets the OmahaSettingsClientProto within the PolicyData and populates
+// the |info| with that information.
 HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
                              CachedOmahaPolicy* info);
 

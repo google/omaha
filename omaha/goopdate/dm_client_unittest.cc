@@ -35,8 +35,8 @@
 #include "omaha/goopdate/dm_storage_test_utils.h"
 #include "omaha/net/http_request.h"
 #include "omaha/testing/unit_test.h"
-#include "ccc/hosted/policies/services/chrome/omaha_settings.pb.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
+#include "wireless/android/enterprise/devicemanagement/proto/omaha_settings.pb.h"
 
 using ::testing::_;
 using ::testing::AllArgs;
@@ -513,17 +513,12 @@ class DmClientRequestTest : public ::testing::Test {
   }
 
   void DecodeOmahaPolicies() {
-    ccc_hosted_policies_services_chrome::OmahaSettingsProto omaha_settings;
-    google::protobuf_opensource::Map<
-        std::string,
-        ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto>*
-        app_map =
-            omaha_settings.mutable_application_settings()
-            ->mutable_application_settings();
-    ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto app;
+    wireless_android_enterprise_devicemanagement::ApplicationSettings app;
     app.set_app_guid(CStringA(kChromeAppId));
-    app_map->insert(
-        google::protobuf_opensource::MapPair(std::string("Chrome"), app));
+    wireless_android_enterprise_devicemanagement::OmahaSettingsClientProto
+        omaha_settings;
+    auto repeated_app_settings = omaha_settings.mutable_application_settings();
+    repeated_app_settings->Add(std::move(app));
 
     enterprise_management::PolicyData policy_data;
     policy_data.set_policy_value(omaha_settings.SerializeAsString());
@@ -732,7 +727,7 @@ TEST_F(DmClientRequestTest, FetchPolicies) {
 }
 
 // Test that we are able to successfully encode and then decode a
-// protobuf OmahaSettingsProto into a CachedOmahaPolicy instance.
+// protobuf OmahaSettingsClientProto into a CachedOmahaPolicy instance.
 TEST_F(DmClientRequestTest, DecodePolicies) {
   DecodeOmahaPolicies();
 }

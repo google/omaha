@@ -14,7 +14,6 @@
 
 #include "omaha/goopdate/dm_storage.h"
 
-#include "ccc/hosted/policies/services/chrome/omaha_settings.pb.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
 #include "omaha/base/path.h"
@@ -25,6 +24,7 @@
 #include "omaha/goopdate/dm_storage_test_utils.h"
 #include "omaha/testing/unit_test.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
+#include "wireless/android/enterprise/devicemanagement/proto/omaha_settings.pb.h"
 
 namespace omaha {
 
@@ -71,45 +71,36 @@ class DmStorageTest : public RegistryProtectedTest {
   }
 
   std::string CannedOmahaPolicyFetchResponse() {
-    ccc_hosted_policies_services_chrome::OmahaSettingsProto omaha_settings;
-    google::protobuf_opensource::Map<
-        std::string,
-        ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto>*
-        app_map =
-            omaha_settings.mutable_application_settings()
-            ->mutable_application_settings();
+    wireless_android_enterprise_devicemanagement::OmahaSettingsClientProto
+        omaha_settings;
 
-    omaha_settings.mutable_auto_update_check_period_minutes()
-        ->set_auto_update_check_period_minutes(111);
-    omaha_settings.mutable_download_preference()
-        ->set_download_preference(CStringA(kDownloadPreferenceCacheable));
+    omaha_settings.set_auto_update_check_period_minutes(111);
+    omaha_settings.set_download_preference(
+        CStringA(kDownloadPreferenceCacheable));
     omaha_settings.mutable_updates_suppressed()->set_start_hour(8);
     omaha_settings.mutable_updates_suppressed()->set_start_minute(8);
     omaha_settings.mutable_updates_suppressed()->set_duration_min(47);
-    omaha_settings.mutable_proxy_mode()
-        ->set_proxy_mode(CStringA(kProxyModePacScript));
-    omaha_settings.mutable_proxy_pac_url()->set_proxy_pac_url("foo.c/proxy.pa");
-    omaha_settings.mutable_install_default()->set_install_default(
-        ccc_hosted_policies_services_chrome
-        ::OmahaInstallDefaultProto_InstallDefaultValue_DISABLED);
-    omaha_settings.mutable_update_default()->set_update_default(
-        ccc_hosted_policies_services_chrome::MANUAL_UPDATES_ONLY);
+    omaha_settings.set_proxy_mode(CStringA(kProxyModePacScript));
+    omaha_settings.set_proxy_pac_url("foo.c/proxy.pa");
+    omaha_settings.set_install_default(
+        wireless_android_enterprise_devicemanagement::INSTALL_DISABLED);
+    omaha_settings.set_update_default(
+        wireless_android_enterprise_devicemanagement::MANUAL_UPDATES_ONLY);
 
-    ccc_hosted_policies_services_chrome::OmahaApplicationSettingsProto app;
+    wireless_android_enterprise_devicemanagement::ApplicationSettings app;
     app.set_app_guid(CStringA(kChromeAppId));
 
-    app.mutable_install()->set_install(
-        ccc_hosted_policies_services_chrome
-        ::OmahaInstallProto_InstallValue_DISABLED);
-    app.mutable_update()->set_update(
-        ccc_hosted_policies_services_chrome::AUTOMATIC_UPDATES_ONLY);
-    app.mutable_target_version_prefix()->set_target_version_prefix("3.6.55");
-    app.mutable_rollback_to_target_version()->set_rollback_to_target_version(
-        ccc_hosted_policies_services_chrome
-    ::OmahaRollbackToTargetVersionProto_RollbackToTargetVersionValue_ENABLED);
+    app.set_install(
+        wireless_android_enterprise_devicemanagement::INSTALL_DISABLED);
+    app.set_update(
+        wireless_android_enterprise_devicemanagement::AUTOMATIC_UPDATES_ONLY);
+    app.set_target_version_prefix("3.6.55");
+    app.set_rollback_to_target_version(
+        wireless_android_enterprise_devicemanagement::
+            ROLLBACK_TO_TARGET_VERSION_ENABLED);
 
-    app_map->insert(
-        google::protobuf_opensource::MapPair(std::string("Chrome"), app));
+    auto repeated_app_settings = omaha_settings.mutable_application_settings();
+    repeated_app_settings->Add(std::move(app));
 
     enterprise_management::PolicyData policy_data;
     policy_data.set_policy_value(omaha_settings.SerializeAsString());

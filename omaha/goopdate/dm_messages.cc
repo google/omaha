@@ -18,12 +18,12 @@
 #include <limits>
 #include <utility>
 
-#include "ccc/hosted/policies/services/chrome/omaha_settings.pb.h"
 #include "crypto/signature_verifier_win.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/utils.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
+#include "wireless/android/enterprise/devicemanagement/proto/omaha_settings.pb.h"
 
 namespace omaha {
 
@@ -286,7 +286,8 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
 
   enterprise_management::PolicyFetchResponse response;
   enterprise_management::PolicyData policy_data;
-  ccc_hosted_policies_services_chrome::OmahaSettingsProto omaha_settings;
+  wireless_android_enterprise_devicemanagement::OmahaSettingsClientProto
+      omaha_settings;
   if (raw_response.empty() ||
       !response.ParseFromString(raw_response) ||
       !policy_data.ParseFromString(response.policy_data()) ||
@@ -299,12 +300,11 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
 
   if (omaha_settings.has_auto_update_check_period_minutes()) {
     info->auto_update_check_period_minutes =
-        omaha_settings.auto_update_check_period_minutes()
-          .auto_update_check_period_minutes();
+        omaha_settings.auto_update_check_period_minutes();
   }
   if (omaha_settings.has_download_preference()) {
     info->download_preference = CString(
-        omaha_settings.download_preference().download_preference().c_str());
+        omaha_settings.download_preference().c_str());
   }
   if (omaha_settings.has_updates_suppressed()) {
     info->updates_suppressed.start_hour =
@@ -315,33 +315,24 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
         omaha_settings.updates_suppressed().duration_min();
   }
   if (omaha_settings.has_proxy_mode()) {
-    info->proxy_mode = CString(
-        omaha_settings.proxy_mode().proxy_mode().c_str());
+    info->proxy_mode = CString(omaha_settings.proxy_mode().c_str());
   }
   if (omaha_settings.has_proxy_server()) {
-    info->proxy_server = CString(
-        omaha_settings.proxy_server().proxy_server().c_str());
+    info->proxy_server = CString(omaha_settings.proxy_server().c_str());
   }
   if (omaha_settings.has_proxy_pac_url()) {
-    info->proxy_pac_url =
-        CString(omaha_settings.proxy_pac_url().proxy_pac_url().c_str());
+    info->proxy_pac_url = CString(omaha_settings.proxy_pac_url().c_str());
   }
   if (omaha_settings.has_install_default()) {
-    info->install_default = omaha_settings.install_default().install_default();
+    info->install_default = omaha_settings.install_default();
   }
   if (omaha_settings.has_update_default()) {
-    info->update_default = omaha_settings.update_default().update_default();
+    info->update_default = omaha_settings.update_default();
   }
 
-  if (!omaha_settings.has_application_settings()) {
-    return S_OK;
-  }
+  const auto& repeated_app_settings = omaha_settings.application_settings();
 
-  const auto& app_map =
-      omaha_settings.application_settings().application_settings();
-
-  for (const auto& app : app_map) {
-    const auto& app_settings_proto = app.second;
+  for (const auto& app_settings_proto : repeated_app_settings) {
     if (!app_settings_proto.has_app_guid()) {
       continue;
     }
@@ -354,20 +345,18 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
 
     ApplicationSettings app_settings;
     app_settings.install = app_settings_proto.has_install() ?
-        app_settings_proto.install().install() :
+        app_settings_proto.install() :
         info->install_default;
     app_settings.update = app_settings_proto.has_update() ?
-        app_settings_proto.update().update() :
+        app_settings_proto.update() :
         info->update_default;
     if (app_settings_proto.has_target_version_prefix()) {
       app_settings.target_version_prefix = CString(
-          app_settings_proto.target_version_prefix().target_version_prefix()
-          .c_str());
+          app_settings_proto.target_version_prefix().c_str());
     }
     if (app_settings_proto.has_rollback_to_target_version()) {
       app_settings.rollback_to_target_version =
-          !!app_settings_proto.rollback_to_target_version()
-              .rollback_to_target_version();
+          !!app_settings_proto.rollback_to_target_version();
     }
 
     info->application_settings.insert(std::make_pair(app_guid, app_settings));
