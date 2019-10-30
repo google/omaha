@@ -1079,7 +1079,7 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(521FDB42-7130-4806-822A-FC5163FAD983),
+    uuid(B9AEB1CC-DF9B-45CB-B70B-084D2E869A1C),
     helpstring("PolicyStatusClass Class")
   ]
   coclass PolicyStatusClass {
