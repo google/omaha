@@ -253,16 +253,22 @@ HRESULT AppBundle::SendPingEventsAsync() {
                                                        &token)));
   }
 
+  // We Lock the ATL Module here since we want the process to stick around
+  // until the newly created threadpool item below starts and also completes
+  // execution. The corresponding Unlock of the ATL Module is done at the end
+  // of the threadpool proc.
+  _pAtlModule->Lock();
+  ScopeGuard atl_module_unlock = MakeObjGuard(*_pAtlModule,
+                                              &CAtlModule::Unlock);
+
   using Callback =
     StaticThreadPoolCallBack1<internal::SendPingEventsParameters>;
-  Gate send_ping_events_gate;
   HRESULT hr = Goopdate::Instance().QueueUserWorkItem(
       std::make_unique<Callback>(
             &AppBundle::SendPingEvents,
             internal::SendPingEventsParameters(
                 ping.get(),
-                token.GetHandle(),
-                &send_ping_events_gate)),
+                token.GetHandle())),
             COINIT_MULTITHREADED,
             WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
@@ -270,9 +276,9 @@ HRESULT AppBundle::SendPingEventsAsync() {
     return hr;
   }
 
+  atl_module_unlock.Dismiss();
   ping.release();
   token.Detach();
-  VERIFY1(send_ping_events_gate.Wait(INFINITE));
 
   return S_OK;
 }
@@ -280,14 +286,11 @@ HRESULT AppBundle::SendPingEventsAsync() {
 void AppBundle::SendPingEvents(internal::SendPingEventsParameters params) {
   CORE_LOG(L3, (_T("[AppBundle::SendPingEvents]")));
 
-  _pAtlModule->Lock();
   ON_SCOPE_EXIT_OBJ(*_pAtlModule, &CAtlModule::Unlock);
 
   std::unique_ptr<Ping> ping(params.ping);
   scoped_handle impersonation_token(params.impersonation_token);
   scoped_impersonation impersonate_user(get(impersonation_token));
-
-  VERIFY1(params.send_ping_events_gate->Open());
 
   // TODO(Omaha): Add sample to metric_ping_succeeded_ms or
   // metric_ping_failed_ms based on the result of Send().

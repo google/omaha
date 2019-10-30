@@ -51,19 +51,16 @@ struct OnDemandParameters {
                      bool is_check_only,
                      const CString& sess_id,
                      HANDLE caller_impersonation_token,
-                     HANDLE caller_primary_token,
-                     Gate* gate)
+                     HANDLE caller_primary_token)
       : app_id(guid),
         job_observer_git_cookie(job_observer_cookie),
         is_update_check_only(is_check_only),
         session_id(sess_id),
         impersonation_token(caller_impersonation_token),
-        primary_token(caller_primary_token),
-        on_demand_gate(gate) {
+        primary_token(caller_primary_token) {
     ASSERT1(guid.GetLength() > 0);
     ASSERT1(IsGuid(session_id));
     ASSERT1(job_observer_cookie);
-    ASSERT1(gate);
   }
 
   CString app_id;
@@ -72,7 +69,6 @@ struct OnDemandParameters {
   CString session_id;
   HANDLE impersonation_token;
   HANDLE primary_token;
-  Gate* on_demand_gate;
 };
 
 HRESULT DoOnDemand(bool is_machine,
@@ -171,11 +167,18 @@ class ATL_NO_VTABLE OnDemand
       VERIFY1(SUCCEEDED(GetGuid(&session_id_)));
     }
 
+    // We Lock the ATL Module here since we want the process to stick around
+    // until the newly created threadpool item below starts and also completes
+    // execution. The corresponding Unlock of the ATL Module is done at the end
+    // of the threadpool proc.
+    _pAtlModule->Lock();
+    ScopeGuard atl_module_unlock = MakeObjGuard(*_pAtlModule,
+                                                &CAtlModule::Unlock);
+
     // Create a thread pool work item for deferred execution of the on demand
     // check. The thread pool owns this call back object. The thread owns the
     // impersonation and primary tokens.
     using Callback = StaticThreadPoolCallBack1<internal::OnDemandParameters>;
-    Gate on_demand_gate;
     hr = Goopdate::Instance().QueueUserWorkItem(
         std::make_unique<Callback>(
             &OnDemand::DoOnDemandInternal,
@@ -185,8 +188,7 @@ class ATL_NO_VTABLE OnDemand
                 is_update_check_only,
                 session_id_,
                 dup_impersonation_token.GetHandle(),
-                dup_primary_token.GetHandle(),
-                &on_demand_gate)),
+                dup_primary_token.GetHandle())),
         COINIT_APARTMENTTHREADED,
         WT_EXECUTELONGFUNCTION);
     if (FAILED(hr)) {
@@ -194,12 +196,12 @@ class ATL_NO_VTABLE OnDemand
       return hr;
     }
 
+    atl_module_unlock.Dismiss();
     if (T::is_machine()) {
       dup_impersonation_token.Detach();
       dup_primary_token.Detach();
     }
 
-    VERIFY1(on_demand_gate.Wait(INFINITE));
     return S_OK;
   }
 
@@ -207,10 +209,8 @@ class ATL_NO_VTABLE OnDemand
       internal::OnDemandParameters on_demand_params) {
     CORE_LOG(L2, (_T("[DoOnDemandInternal][%d]"),
                   on_demand_params.is_update_check_only));
-    _pAtlModule->Lock();
-    ON_SCOPE_EXIT_OBJ(*_pAtlModule, &CAtlModule::Unlock);
 
-    VERIFY1(on_demand_params.on_demand_gate->Open());
+    ON_SCOPE_EXIT_OBJ(*_pAtlModule, &CAtlModule::Unlock);
 
     scoped_handle impersonation_token(on_demand_params.impersonation_token);
     scoped_handle primary_token(on_demand_params.primary_token);

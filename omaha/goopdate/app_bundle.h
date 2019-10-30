@@ -29,6 +29,7 @@
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/scope_guard.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/common/ping.h"
 #include "omaha/goopdate/com_wrapper_creator.h"
@@ -58,17 +59,14 @@ namespace internal {
 
 struct SendPingEventsParameters {
  public:
-  SendPingEventsParameters(Ping* p, HANDLE token, Gate* gate)
+  SendPingEventsParameters(Ping* p, HANDLE token)
       : ping(p),
-        impersonation_token(token),
-        send_ping_events_gate(gate) {
+        impersonation_token(token) {
     ASSERT1(ping);
-    ASSERT1(gate);
   }
 
   Ping* ping;
   HANDLE impersonation_token;
-  Gate* send_ping_events_gate;
 };
 
 }  // namespace internal
