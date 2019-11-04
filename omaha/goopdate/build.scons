@@ -309,12 +309,13 @@ if env.Bit('has_device_management'):
   proto_env.Append(PROTO_PATH = '$GOOGLE3')
   proto_env.Append(CPP_OUT = '$TARGET_ROOT/proto_files')
   proto_sources = [
-      '$GOOGLE3/ccc/hosted/policies/services/chrome/omaha_settings.proto',
       '$GOOGLE3/logs/proto/logs_annotations/logs_annotations.proto',
       '$GOOGLE3/net/proto2/bridge/proto/message_set.proto',
       '$GOOGLE3/net/proto2/proto/descriptor.proto',
       '$GOOGLE3/wireless/android/enterprise/devicemanagement/proto/' +
           'dm_api.proto',
+      '$GOOGLE3/wireless/android/enterprise/devicemanagement/proto/' +
+          'omaha_settings.proto',
       ]
   proto_outputs = proto_env.CompileProtoBuf(proto_sources)
 
