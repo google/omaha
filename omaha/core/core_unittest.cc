@@ -29,6 +29,7 @@
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/core/core.h"
+#include "omaha/core/core_launcher.h"
 #include "omaha/goopdate/app_command_test_base.h"
 #include "omaha/setup/setup_service.h"
 #include "omaha/testing/unit_test.h"
@@ -242,7 +243,7 @@ class CoreUtilsTest : public testing::Test {
   }
 
   bool ShouldRunCore() {
-    return Core::ShouldRunCore(is_machine_);
+    return omaha::ShouldRunCore(is_machine_);
   }
 
   bool ShouldRunCodeRed() {

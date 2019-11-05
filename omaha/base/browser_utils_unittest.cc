@@ -39,9 +39,7 @@ class BrowserUtilsDefaultBrowserSavedTest : public testing::Test {
       return;
     }
 
-    EXPECT_SUCCEEDED(RegKey::GetValue(kRegKeyUserDefaultBrowser,
-                                      NULL,
-                                      &default_browser_name_));
+    RegKey::GetValue(kRegKeyUserDefaultBrowser, NULL, &default_browser_name_);
   }
 
   virtual void TearDown() {

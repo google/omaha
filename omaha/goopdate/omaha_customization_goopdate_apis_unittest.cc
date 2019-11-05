@@ -86,6 +86,8 @@ TEST(OmahaCustomizationTest, Constants_ComProgIds) {
   EXPECT_GU_STREQ(_T("GoogleUpdate.CoreClass"), kProgIDGoogleUpdateCoreService);
 
   EXPECT_GU_STREQ(_T("GoogleUpdate.ProcessLauncher"), kProgIDProcessLauncher);
+
+  EXPECT_GU_STREQ(_T("GoogleUpdate.PolicyStatus"), kProgIDPolicyStatus);
 }
 
 }  // namespace omaha
@@ -286,6 +288,16 @@ TEST_F(OmahaCustomizationGoopdateComInterfaceNoTypeLibTest, ICredentialDialog) {
                   __uuidof(ICredentialDialog));
 }
 
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatus) {
+  EXPECT_GU_ID_EQ(_T("{F63F6F8B-ACD5-413C-A44B-0409136D26CB}"),
+                  __uuidof(IPolicyStatus));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("IPolicyStatus")));
+  EXPECT_STREQ(_T("IPolicyStatus Interface"), item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
 TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IGoogleUpdate3Web) {
   EXPECT_GU_ID_EQ(_T("{494B20CF-282E-4BDD-9F5D-B70CB09D351E}"),
                   __uuidof(IGoogleUpdate3Web));
@@ -482,6 +494,17 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 }
 
 TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
+              PolicyStatusClass) {
+  EXPECT_GU_ID_EQ(_T("{521FDB42-7130-4806-822A-FC5163FAD983}"),
+                  __uuidof(PolicyStatusClass));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusClass")));
+  EXPECT_STREQ(_T("PolicyStatusClass Class"), item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
               GoogleComProxyMachineClass) {
   EXPECT_SUCCEEDED(GetDocumentation(_T("GoogleComProxyMachineClass")));
   EXPECT_STREQ(_T("GoogleComProxyMachineClass"), item_doc_string_);
@@ -580,7 +603,7 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 
 // Verifies there are no new interfaces in the TypeLib.
 TEST_F(OmahaCustomizationGoopdateComInterfaceTest, VerifyNoNewInterfaces) {
-  EXPECT_EQ(36, type_lib_->GetTypeInfoCount())
+  EXPECT_EQ(38, type_lib_->GetTypeInfoCount())
       << _T("A new interface may have been added. If so, add the interface to ")
       << _T("to kIIDsToRegister, and add test(s) for new interface(s).");
 }

@@ -29,6 +29,7 @@
 #include "goopdate/omaha3_idl.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
+#include "omaha/base/scope_guard.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/common/ping.h"
 #include "omaha/goopdate/com_wrapper_creator.h"
@@ -58,17 +59,14 @@ namespace internal {
 
 struct SendPingEventsParameters {
  public:
-  SendPingEventsParameters(Ping* p, HANDLE token, Gate* gate)
+  SendPingEventsParameters(Ping* p, HANDLE token)
       : ping(p),
-        impersonation_token(token),
-        send_ping_events_gate(gate) {
+        impersonation_token(token) {
     ASSERT1(ping);
-    ASSERT1(gate);
   }
 
   Ping* ping;
   HANDLE impersonation_token;
-  Gate* send_ping_events_gate;
 };
 
 }  // namespace internal
@@ -235,7 +233,7 @@ class AppBundle
   // The current non-blocking command object if any of them is executing.
   // The class only checks whether the pointer is NULL to determine if a
   // non-blocking call is pending. We use a pointer because it can be useful
-  // for debugging.
+  // for debugging. The object is not owned by this class.
   UserWorkItem* user_work_item_;
 
   std::unique_ptr<WebServicesClientInterface> update_check_client_;

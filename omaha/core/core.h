@@ -113,9 +113,6 @@ class Core
   // Collects ambient core metrics.
   void CollectMetrics()const;
 
-  static bool ShouldRunCore(bool is_system);
-  static HRESULT UpdateLastCoreRunTime(bool is_system);
-
   HRESULT InitializeScheduler(const Scheduler* scheduler);
 
   bool is_system_;

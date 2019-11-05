@@ -4,9 +4,9 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2019 Update 16.2.2 and Windows SDK 10.0.18362.0. ####
+#### Currently, the supported toolchain is Visual Studio 2019 Update 16.3.6 and Windows SDK 10.0.18362.0. ####
 
-Visual Studio 2017 Update 15.9.15 should work too.
+Visual Studio 2017 Update 15.9.16 should work too.
 
 The updater runs on Windows 7, 8, and 10. Windows XP is not supported in the current build configuration due to a number of issues, such as thread-safe initializing of static local variables, etc.
 
@@ -39,7 +39,7 @@ The following packages are required to build Omaha:
     * Get the SCT source [here](http://code.google.com/p/swtoolkit/), either via direct download or via SVN checkout.
   * The GO programming language
     * Download [here](https://golang.org/dl/) 
-  * Google Protocol Buffers (3.6.0 or higher) [here](https://github.com/google/protobuf/releases).
+  * Google Protocol Buffers (3.9.2 or higher) [here](https://github.com/google/protobuf/releases).
     * From the [release page](https://github.com/google/protobuf/releases), download the zip file protoc-$VERSION-win32.zip. It contains the protoc binary. Unzip the contents under C:\protobuf. After that, download the zip file protobuf-cpp-$VERSION.zip. Unzip the "src" sub-directory contents to C:\protobuf\src. If other directory is used, please edit the environment variables in the hammer.bat, specifically, OMAHA_PROTOBUF_BIN_DIR and OMAHA_PROTOBUF_SRC_DIR.
   * Third-party dependencies:
     * breakpad. Source code [here](https://code.google.com/p/google-breakpad/source/checkout)

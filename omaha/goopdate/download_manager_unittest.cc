@@ -400,12 +400,10 @@ TEST_F(DownloadManagerUserTest, DownloadApp_Concurrent) {
     app = app_bundle_->GetApp(i);
     SetAppStateWaitingToDownload(app);
 
-    std::unique_ptr<DownloadAppWorkItem> work_item(
-        new DownloadAppWorkItem(download_manager_.get(), app));
-
     // WT_EXECUTELONGFUNCTION causes the thread pool to use multiple threads.
     ASSERT_HRESULT_SUCCEEDED(thread_pool.QueueUserWorkItem(
-                                 work_item.release(),
+                                 std::make_unique<DownloadAppWorkItem>(
+                                    download_manager_.get(), app),
                                  COINIT_MULTITHREADED,
                                  WT_EXECUTELONGFUNCTION));
   }
@@ -463,6 +461,8 @@ TEST_F(DownloadManagerUserTest, DownloadApp_Concurrent) {
     }
     return;
   }
+
+  thread_pool.Stop();
 }
 
 // Downloads multiple apps concurrently and cancels the downloads while they
@@ -534,12 +534,9 @@ TEST_F(DownloadManagerUserTest, DISABLED_DownloadApp_Cancel) {
   for (int i = 0; i != kNumApps; ++i) {
     app = app_bundle_->GetApp(i);
     SetAppStateWaitingToDownload(app);
-
-    std::unique_ptr<DownloadAppWorkItem> work_item(
-        new DownloadAppWorkItem(download_manager_.get(), app));
-
     ASSERT_HRESULT_SUCCEEDED(thread_pool.QueueUserWorkItem(
-                                 work_item.release(),
+                                 std::make_unique<DownloadAppWorkItem>(
+                                      download_manager_.get(), app),
                                  COINIT_MULTITHREADED,
                                  WT_EXECUTELONGFUNCTION));
   }
@@ -626,6 +623,8 @@ TEST_F(DownloadManagerUserTest, DISABLED_DownloadApp_Cancel) {
     EXPECT_HRESULT_SUCCEEDED(current_state->get_errorCode(&extra_code1));
     EXPECT_EQ(0, extra_code1);
   }
+
+  thread_pool.Stop();
 }
 
 // Common packages of different apps are not cached by the package cache and

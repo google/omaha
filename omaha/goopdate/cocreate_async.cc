@@ -74,23 +74,21 @@ HRESULT CoCreateAsyncStatus::CreateOmahaMachineServerAsync(
   // Create a thread pool work item for deferred execution of the CoCreate. The
   // thread pool owns this call back object.
   using CallBack = ThreadPoolCallBack2<CoCreateAsyncStatus,
-                              const CString,
-                              BOOL>;
-  auto callback = std::make_unique<CallBack>(this,
-                                &CoCreateAsyncStatus::CreateOmahaMachineServer,
-                                origin_url,
-                                create_elevated);
-  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
-                                                      COINIT_MULTITHREADED,
-                                                      WT_EXECUTELONGFUNCTION);
+                                       const CString,
+                                       BOOL>;
+  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(
+      std::make_unique<CallBack>(this,
+                                 &CoCreateAsyncStatus::CreateOmahaMachineServer,
+                                 origin_url,
+                                 create_elevated),
+      COINIT_MULTITHREADED,
+      WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[QueueUserWorkItem failed][0x%x]"), hr));
     return hr;
   }
 
   VERIFY1(thread_started_gate_.Wait(INFINITE));
-
-  callback.release();
   return S_OK;
 }
 

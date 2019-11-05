@@ -1048,19 +1048,21 @@ HRESULT Worker::QueueDeferredFunctionCall0(
   ASSERT1(app_bundle.get());
   ASSERT1(deferred_function);
 
-  using Callback = ThreadPoolCallBack1<Worker, std::shared_ptr<AppBundle> >;
+  using Callback = ThreadPoolCallBack1<Worker, std::shared_ptr<AppBundle>>;
   auto callback = std::make_unique<Callback>(this,
                                              deferred_function,
                                              app_bundle);
-  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
+  UserWorkItem* user_work_item = callback.get();
+  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(std::move(callback),
                                                       COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
     return hr;
   }
 
-  // Transfers the ownership of the callback from Worker to ThreadPool.
-  app_bundle->set_user_work_item(callback.release());
+  // This object is owned by the thread pool but the |app_bundle| maintains
+  // a dependency on it for debugging purposes.
+  app_bundle->set_user_work_item(user_work_item);
   return S_OK;
 }
 
@@ -1079,15 +1081,17 @@ HRESULT Worker::QueueDeferredFunctionCall1(
                                              deferred_function,
                                              app_bundle,
                                              p1);
-  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(callback.get(),
+  UserWorkItem* user_work_item = callback.get();
+  HRESULT hr = Goopdate::Instance().QueueUserWorkItem(std::move(callback),
                                                       COINIT_MULTITHREADED,
                                                       WT_EXECUTELONGFUNCTION);
   if (FAILED(hr)) {
     return hr;
   }
 
-  // Transfers the ownership of the callback from Worker to ThreadPool.
-  app_bundle->set_user_work_item(callback.release());
+  // This object is owned by the thread pool but the |app_bundle| maintains
+  // a dependency on it for debugging purposes.
+  app_bundle->set_user_work_item(user_work_item);
   return S_OK;
 }
 

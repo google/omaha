@@ -1,4 +1,4 @@
-// Copyright 2011 Google Inc.
+// Copyright 2019 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,28 +13,19 @@
 // limitations under the License.
 // ========================================================================
 
-#include <windows.h>
+// Launches the core process by starting the shell exe with /c argument
 
-#include "omaha/base/omaha_version.h"
-#include "omaha/base/utils.h"
-#include "omaha/core/core_launcher.h"
+#ifndef OMAHA_CORE_CORE_LAUNCHER_H_
+#define OMAHA_CORE_CORE_LAUNCHER_H_
 
-int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
-  omaha::EnableSecureDllLoading();
+#include <winerror.h>
 
-  scoped_co_init init_com_apt(COINIT_MULTITHREADED);
-  HRESULT hr = init_com_apt.hresult();
-  if (FAILED(hr)) {
-    return hr;
-  }
+namespace omaha {
 
-  bool is_system = false;
+bool ShouldRunCore(bool is_system);
 
-  omaha::InitializeVersionFromModule(NULL);
-  hr = omaha::IsSystemProcess(&is_system);
-  if (FAILED(hr)) {
-    return hr;
-  }
+HRESULT StartCoreIfNeeded(bool is_system);
 
-  return omaha::StartCoreIfNeeded(is_system);
-}
+}  // namespace omaha
+
+#endif  // OMAHA_CORE_CORE_LAUNCHER_H_

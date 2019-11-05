@@ -346,6 +346,9 @@ Cat_$AppLegalId$=$AppName$
 # pylint: disable-msg=C6310
 # pylint: disable-msg=C6013
 
+ADM_DOMAIN_REQUIREMENT_EN = """\
+This policy is available only on Windows instances that are joined to a Microsoft Active Directory domain."""
+
 # "application's" should be preceded by a different word in different contexts.
 # The word is specified by replacing the $PreApplicationWord$ token.
 STRINGS_UPDATE_POLICY_OPTIONS = """\
@@ -365,17 +368,17 @@ HORIZONTAL_RULE +
 HORIZONTAL_RULE + """
 Explain_Preferences=General policies for Google Update.
 
-Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.
+Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.\\n\\n%(domain_requirement)s
 
-Explain_UpdateCheckSuppressedPeriod=If this setting is enabled, update checks will be suppressed during each day starting from Hour:Minute for a period of Duration (in minutes). Duration does not account for daylight savings time. So for instance, if the start time is 22:00, and with a duration of 480 minutes, the updates will be suppressed for 8 hours regardless of whether daylight savings time changes happen in between.
+Explain_UpdateCheckSuppressedPeriod=If this setting is enabled, update checks will be suppressed during each day starting from Hour:Minute for a period of Duration (in minutes). Duration does not account for daylight savings time. So for instance, if the start time is 22:00, and with a duration of 480 minutes, the updates will be suppressed for 8 hours regardless of whether daylight savings time changes happen in between.\\n\\n%(domain_requirement)s
 
-Explain_DownloadPreference=If enabled, the Google Update server will attempt to provide cache-friendly URLs for update payloads in its responses.
+Explain_DownloadPreference=If enabled, the Google Update server will attempt to provide cache-friendly URLs for update payloads in its responses.\\n\\n%(domain_requirement)s
 
-Explain_ProxyMode=Allows you to specify the proxy server used by Google Update.\\n\\nIf you choose to never use a proxy server and always connect directly, all other options are ignored.\\n\\nIf you choose to use system proxy settings or auto detect the proxy server, all other options are ignored.\\n\\nIf you choose fixed server proxy mode, you can specify further options in 'Address or URL of proxy server'.\\n\\nIf you choose to use a .pac proxy script, you must specify the URL to the script in 'URL to a proxy .pac file'.
-Explain_ProxyServer=You can specify the URL of the proxy server here.\\n\\nThis policy only takes effect if you have selected manual proxy settings at 'Choose how to specify proxy server settings'.
-Explain_ProxyPacUrl=You can specify a URL to a proxy .pac file here.\\n\\nThis policy only takes effect if you have selected manual proxy settings at 'Choose how to specify proxy server settings'.
+Explain_ProxyMode=Allows you to specify the proxy server used by Google Update.\\n\\nIf you choose to never use a proxy server and always connect directly, all other options are ignored.\\n\\nIf you choose to use system proxy settings or auto detect the proxy server, all other options are ignored.\\n\\nIf you choose fixed server proxy mode, you can specify further options in 'Address or URL of proxy server'.\\n\\nIf you choose to use a .pac proxy script, you must specify the URL to the script in 'URL to a proxy .pac file.'\\n\\n%(domain_requirement)s
+Explain_ProxyServer=You can specify the URL of the proxy server here.\\n\\nThis policy only takes effect if you have selected manual proxy settings at 'Choose how to specify proxy server settings'.\\n\\n%(domain_requirement)s
+Explain_ProxyPacUrl=You can specify a URL to a proxy .pac file here.\\n\\nThis policy only takes effect if you have selected manual proxy settings at 'Choose how to specify proxy server settings'.\\n\\n%(domain_requirement)s
 
-""" +
+""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} +
 HORIZONTAL_RULE +
 '; ' + APPLICATIONS_CATEGORY + '\n' +
 HORIZONTAL_RULE + """
@@ -384,17 +387,21 @@ Explain_Applications=Policies for individual applications.\\
 
 Explain_DefaultAllowInstallation=Specifies the default behavior for whether Google software can be installed using Google Update/Google Installer.\\
     \\n\\nCan be overridden by the \"""" + ALLOW_INSTALLATION_POLICY + """\" for individual applications.\\
-    \\n\\nOnly affects installation of Google software using Google Update/Google Installer. Cannot prevent running the application installer directly or installation of Google software that does not use Google Update/Google Installer for installation.
+    \\n\\nOnly affects installation of Google software using Google Update/Google Installer. Cannot prevent running the application installer directly or installation of Google software that does not use Google Update/Google Installer for installation.\\
+    \\n\\n%(domain_requirement)s
 
 Explain_DefaultUpdatePolicy=Specifies the default policy for software updates from Google.\\
-    \\n\\nCan be overridden by the \"""" + UPDATE_POLICY + """\" for individual applications.\\
+    \\n\\nCan be overridden by the \"""" \
+    % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} +
+UPDATE_POLICY + """\" for individual applications.\\
 """ +
 STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'each') + """\\
     \\n\\nOnly affects updates for Google software that uses Google Update for updates. Does not prevent auto-updates of Google software that does not use Google Update for updates.\\
     \\n\\nUpdates for Google Update are not affected by this setting; Google Update will continue to update itself while it is installed.\\
-    \\n\\nWARNING: Disabing updates will also prevent updates of any new Google applications released in the future, possibly including dependencies for future versions of installed applications.
+    \\n\\nWARNING: Disabing updates will also prevent updates of any new Google applications released in the future, possibly including dependencies for future versions of installed applications.\\
+    \\n\\n%(domain_requirement)s
 
-""" +
+""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} +
 HORIZONTAL_RULE +
 '; Individual Applications\n' +
 HORIZONTAL_RULE)
@@ -404,12 +411,14 @@ DEFAULT_ROLLBACK_DISCLAIMER = """This policy is meant to serve as temporary meas
 STRINGS_APP_POLICY_EXPLANATIONS_TEMPLATE = ("""
 ; $AppName$
 Explain_Install$AppLegalId$=Specifies whether $AppName$ can be installed using Google Update/Google Installer.\\
-    \\n\\nIf this policy is not configured, $AppName$ can be installed as specified by \"""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """\".
+    \\n\\nIf this policy is not configured, $AppName$ can be installed as specified by \"""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """\".\\
+    \\n\\n%(domain_requirement)s
 
 Explain_AutoUpdate$AppLegalId$=Specifies how Google Update handles available $AppName$ updates from Google.\\
-    \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" + DEFAULT_UPDATE_POLICY + """\".\\
+    \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} + DEFAULT_UPDATE_POLICY + """\".\\
 """ +
-STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpdateExplainExtra$') + """
+STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpdateExplainExtra$') + """\\
+    \\n\\n%(domain_requirement)s
 
 Explain_TargetVersionPrefix$AppLegalId$=Specifies which version $AppName$ should be updated to.\\
     \\n\\nWhen this policy is enabled, the app will be updated to the version prefixed with this policy value.\\
@@ -417,14 +426,16 @@ Explain_TargetVersionPrefix$AppLegalId$=Specifies which version $AppName$ should
     1) Not configured: app will be updated to the latest version available.\\n\\
     2) Policy value is set to "55.": the app will be updated to any minor version of 55 (e.g., 55.24.34 or 55.60.2).\\n\\
     3) Policy value is "55.2.": the app will be updated to any minor version of 55.2 (e.g., 55.2.34 or 55.2.2).\\n\\
-    4) Policy value is "55.24.34": the app will be updated to this specific version only.
+    4) Policy value is "55.24.34": the app will be updated to this specific version only.\\
+    \\n\\n%(domain_requirement)s
 
-Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should roll installations of $AppName$ back to the version indicated by \"""" + TARGET_VERSION_POLICY + """\".\\
+Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should roll installations of $AppName$ back to the version indicated by \"""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} + TARGET_VERSION_POLICY + """\".\\
     \\n\\nThis policy setting has no effect unless \"""" + TARGET_VERSION_POLICY + """\" is set.\\
     \\n\\nIf this policy is not configured or is disabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be left as-is.\\
     \\n\\nIf this policy is enabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be downgraded to the highest available version that matches the target version.\\
-    \\n\\n$AppRollbackDisclaimer$
-"""
+    \\n\\n$AppRollbackDisclaimer$\\
+    \\n\\n%(domain_requirement)s
+""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN}
 
 # pylint: enable-msg=C6013
 # pylint: enable-msg=C6310

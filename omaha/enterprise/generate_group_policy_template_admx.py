@@ -427,6 +427,10 @@ ADML_DEFAULT_ROLLBACK_DISCLAIMER = (
     'version should be used. When versions are downgraded to older '
     'versions, there could be incompatibilities.')
 
+ADML_DOMAIN_REQUIREMENT_EN = (
+    'This policy is available only on Windows instances that are joined to a '
+    'Microsoft&#x00AE; Active Directory&#x00AE; domain.')
+
 ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Sup_GoogleUpdate1_2_145_5', 'At least Google Update 1.2.145.5'),
     ('Sup_GoogleUpdate1_3_21_81', 'At least Google Update 1.3.21.81'),
@@ -479,17 +483,20 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Explain_AutoUpdateCheckPeriod',
      'Minimum number of minutes between automatic update checks.\n\n'
      'Set the value to 0 if you want to disable all auto-update checks '
-     '(not recommended).'),
+     '(not recommended).\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_DownloadPreference',
      'If enabled, the Google Update server will attempt to provide '
-     'cache-friendly URLs for update payloads in its responses.'),
+     'cache-friendly URLs for update payloads in its responses.\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_UpdateCheckSuppressedPeriod',
      'If this setting is enabled, update checks will be suppressed during '
      'each day starting from Hour:Minute for a period of Duration (in minutes).'
      ' Duration does not account for daylight savings time. So for instance, '
      'if the start time is 22:00, and with a duration of 480 minutes, the '
      'updates will be suppressed for 8 hours regardless of whether daylight '
-     'savings time changes happen in between.'),
+     'savings time changes happen in between.\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_ProxyMode',
      'Allows you to specify the proxy server used by Google Update.\n\n'
      'If you choose to never use a proxy server and always connect directly, '
@@ -499,15 +506,18 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
      'If you choose fixed server proxy mode, you can specify further options '
      'in \'Address or URL of proxy server\'.\n\n'
      'If you choose to use a .pac proxy script, you must specify the URL to '
-     'the script in \'URL to a proxy .pac file\'.'),
+     'the script in \'URL to a proxy .pac file\'.\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_ProxyServer',
      'You can specify the URL of the proxy server here.\n\n'
      'This policy only takes effect if you have selected manual proxy settings '
-     'at \'Choose how to specify proxy server settings\'.'),
+     'at \'Choose how to specify proxy server settings\'.\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_ProxyPacUrl',
      'You can specify a URL to a proxy .pac file here.\n\n'
      'This policy only takes effect if you have selected manual proxy settings '
-     'at \'Choose how to specify proxy server settings\'.'),
+     'at \'Choose how to specify proxy server settings\'.\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_Applications', 'Policies for individual applications.\n\n'
      'An updated ADMX/ADML template will be required to support '
      'Google applications released in the future.'),
@@ -519,7 +529,8 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
      'Only affects installation of Google software using Google Update/Google '
      'Installer. Cannot prevent running the application installer directly or '
      'installation of Google software that does not use Google Update/Google '
-     'Installer for installation.'),
+     'Installer for installation.\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_DefaultUpdatePolicy',
      'Specifies the default policy for software updates from Google.\n\n'
      'Can be overridden by the "Update policy override" for individual '
@@ -543,7 +554,8 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
      'Update will continue to update itself while it is installed.\n\n'
      'WARNING: Disabing updates will also prevent updates of any new Google '
      'applications released in the future, possibly including dependencies for '
-     'future versions of installed applications.'),
+     'future versions of installed applications.\n\n'
+     '%s' % ADML_DOMAIN_REQUIREMENT_EN),
 ]
 
 ADML_PRESENTATIONS = '''\
@@ -649,7 +661,8 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'Specifies whether %s can be installed using Google Update/Google '
         'Installer.\n\n'
         'If this policy is not configured, %s can be installed as specified '
-        'by "Allow installation default".' % (app_name, app_name))
+        'by "Allow installation default".\n\n'
+        '%s' % (app_name, app_name, ADML_DOMAIN_REQUIREMENT_EN))
     string_definition_list.append(app_install_policy_explanation)
 
     app_auto_update_policy_explanation = (
@@ -670,8 +683,9 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'If you select manual updates, you should periodically check for '
         'updates using the application\'s manual update mechanism if '
         'available. If you disable updates, you should periodically check '
-        'for updates and distribute them to users.%s' %
-        (app_name, app_additional_help_msg))
+        'for updates and distribute them to users.%s\n\n'
+        '%s' %
+        (app_name, app_additional_help_msg, ADML_DOMAIN_REQUIREMENT_EN))
     string_definition_list.append(app_auto_update_policy_explanation)
 
     app_target_version_prefix_explanation = (
@@ -686,7 +700,8 @@ def GenerateGroupPolicyTemplateAdml(apps):
         '3) Policy value is "55.2.": the app will be updated to any minor '
         'version of 55.2 (e.g., 55.2.34 or 55.2.2).\n'
         '4) Policy value is "55.24.34": the app will be updated to this '
-        'specific version only.' % app_name)
+        'specific version only.\n\n'
+        '%s' % (app_name, ADML_DOMAIN_REQUIREMENT_EN))
     string_definition_list.append(app_target_version_prefix_explanation)
 
     app_rollback_to_target_version_explanation = (
@@ -701,7 +716,8 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'If this policy is enabled, installs that have a version higher than '
         'that specified by "Target version prefix override" will be downgraded '
         'to the highest available version that matches the target version.\n\n'
-        '%s' % (app_name, rollback_disclaimer))
+        '%s\n\n'
+        '%s' % (app_name, rollback_disclaimer, ADML_DOMAIN_REQUIREMENT_EN))
     string_definition_list.append(app_rollback_to_target_version_explanation)
 
   app_resource_strings = []
