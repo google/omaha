@@ -120,6 +120,12 @@ HRESULT NetworkConfig::Initialize() {
     return hr;
   }
 
+  // Allow TLS1.2 on Windows 7 with KB3140245.
+  http_client_->SetOptionInt(
+    session_.session_handle,
+    WINHTTP_OPTION_SECURE_PROTOCOLS,
+    WINHTTP_FLAG_SECURE_PROTOCOL_ALL | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2);
+
   Add(new UpdateDevProxyDetector);
   Add(new GroupPolicyProxyDetector);
   Add(new DMProxyDetector);
