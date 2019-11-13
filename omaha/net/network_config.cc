@@ -15,6 +15,7 @@
 
 #include "omaha/net/network_config.h"
 
+#include <versionhelpers.h>
 #include <winhttp.h>
 #include <atlconv.h>
 #include <atlsecurity.h>
@@ -38,6 +39,7 @@
 #include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
+#include "omaha/base/system_info.h"
 #include "omaha/base/user_info.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
@@ -120,11 +122,17 @@ HRESULT NetworkConfig::Initialize() {
     return hr;
   }
 
-  // Allow TLS1.2 on Windows 7 with KB3140245.
-  http_client_->SetOptionInt(
-    session_.session_handle,
-    WINHTTP_OPTION_SECURE_PROTOCOLS,
-    WINHTTP_FLAG_SECURE_PROTOCOL_ALL | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2);
+  // Allow TLS1.2 on Windows 7 and Windows 8. See KB3140245.
+  // TLS 1.2 is enabled by default on Windows 8.1 and Windows 10.
+  if (::IsWindows7OrGreater() && !::IsWindows8Point1OrGreater()) {
+    constexpr int kSecureProtocols = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1 |
+                                     WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_1 |
+                                     WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2;
+    http_client_->SetOptionInt(session_.session_handle,
+                               WINHTTP_OPTION_SECURE_PROTOCOLS,
+                               kSecureProtocols);
+  }
+
 
   Add(new UpdateDevProxyDetector);
   Add(new GroupPolicyProxyDetector);
