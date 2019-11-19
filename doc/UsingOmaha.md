@@ -28,4 +28,4 @@ See [CustomizingOmaha](CustomizingOmaha.md) for information on customizing the O
 
 The quoted string after `/install` in the command line above is called the tag. This tag can be added to the metainstaller (`GoogleUpdateSetup.exe`) so that double-clicking the metainstaller will install the application specified by the tag.
 
-See TaggedMetainstallers.
+See [TaggedMetainstallers](TaggedMetainstallers.md).
