@@ -22,7 +22,7 @@ The /silent flag can be used to install with no user interaction. /silent needs 
 
 **Note: Before you can use Omaha for your own application(s), you must have an update server that supports the Omaha ServerProtocol.** Google does not currently provide an update server for external applications.
 
-See CustomizingOmaha for information on customizing the Omaha client to work with your server and applications.
+See [CustomizingOmaha](CustomizingOmaha.md) for information on customizing the Omaha client to work with your server and applications.
 
 # Create a Metainstaller for Your Application #
 
