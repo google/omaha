@@ -139,7 +139,8 @@ TEST(OmahaCustomizationTest, Constants_Filenames) {
 }
 
 TEST(OmahaCustomizationTest, Constants_Certificate) {
-  EXPECT_STREQ(_T("Google Inc"), kCertificateSubjectName);
+  EXPECT_STREQ(_T("Google LLC"), kSha1CertificateSubjectName);
+  EXPECT_STREQ(_T("Google LLC"), kSha256CertificateSubjectName);
 }
 
 TEST(OmahaCustomizationTest, Constants_OmahaAppId_String) {

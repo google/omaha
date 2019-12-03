@@ -350,7 +350,6 @@ void CertList::FindFirstCert(const CertInfo** result_cert_info,
                              const std::vector<CString>& company_name_to_match,
                              const CString &orgn_unit_to_match,
                              const CString &trust_authority_to_match,
-                             bool allow_test_variant,
                              bool check_cert_is_valid_now) const {
   if (!result_cert_info) {
     return;
@@ -362,17 +361,12 @@ void CertList::FindFirstCert(const CertInfo** result_cert_info,
        cert_iter != cert_list_.end();
        ++cert_iter) {
       // Find a match between the name of the certificate and one of the
-      // company names provided as a paramer..
+      // company names provided as a parameter.
       bool names_match = false;
       for (size_t i = 0; i != company_name_to_match.size(); ++i) {
         const TCHAR* certificate_company_name =
             (*cert_iter)->issuing_company_name_;
         names_match = company_name_to_match[i] == certificate_company_name;
-        if (!names_match && allow_test_variant) {
-          CString test_variant = company_name_to_match[i];
-          test_variant += _T(" (TEST)");
-          names_match = test_variant == certificate_company_name;
-        }
         if (names_match) {
           break;
         }
@@ -440,7 +434,6 @@ void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
 // VerifyAuthenticodeSignature that adds WTD_LIFETIME_SIGNING_FLAG.
 HRESULT VerifyCertificate(const wchar_t* signed_file,
                           const std::vector<CString>& subject,
-                          bool allow_test_variant,
                           bool check_cert_is_valid_now,
                           const std::vector<CString>* expected_hashes) {
   CertList cert_list;
@@ -454,7 +447,6 @@ HRESULT VerifyCertificate(const wchar_t* signed_file,
                           subject,
                           CString(),
                           CString(),
-                          allow_test_variant,
                           check_cert_is_valid_now);
   if (required_cert == NULL) {
     return GOOPDATE_E_SIGNATURE_NOT_TRUSTED_SUBJECT;

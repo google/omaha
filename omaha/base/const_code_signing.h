@@ -29,18 +29,19 @@ namespace omaha {
 
 // The company and organization names expected in the code
 // signing certificates which are trusted.
-const TCHAR* const kCertificateSubjectName = _T("Google Inc");
+const TCHAR* const kLegacyCertificateSubjectName = _T("Google Inc");
+const TCHAR* const kSha1CertificateSubjectName = _T("Google LLC");
 const TCHAR* const kSha256CertificateSubjectName = _T("Google LLC");
 
 // The Omaha certificate thumbprint. Used by unit tests.
 const TCHAR* const kCertificateThumbprint =
-    _T("1a6ac0549a4a44264deb6ff003391da2f285b19f");
+    _T("a3958ae522f3c54b878b20d7b0f63711e08666b2");
 const TCHAR* const kSha256CertificateThumbprint =
     _T("cb7e84887f3c6015fe7edfb4f8f36df7dc10590e");
 
 // The SHA256 hash of the Omaha certificate RSA public key.
 const TCHAR* const kCertificatePublicKeyHash =
-    _T("d49de35a2e9fdbed09e2b9a6c1243df414d6aac13690ab221b0017a5cbe1351f");
+    _T("6cb128676c6d0b49d3e8918bd835888694333da7540a0994261c0ec0b3516f9d");
 const TCHAR* const kSha256CertificatePublicKeyHash =
     _T("03e27c19d222043a8f0c64181c23c9339cc84a7ec4ebff8a19adb7caefb0c709");
 
@@ -81,6 +82,12 @@ _T("cd623b2bf2c06940bd480b6bcf4a5c9e1cbe94626fbfa127d001bf19ae5ba9fe"),
 // thumbprint=1a6ac0549a4a44264deb6ff003391da2f285b19f
 // serial=14F8FDD167F92402B1570B5DC495C815
 // SHA1 Fingerprint=1A:6A:C0:54:9A:4A:44:26:4D:EB:6F:F0:03:39:1D:A2:F2:85:B1:9F
+_T("d49de35a2e9fdbed09e2b9a6c1243df414d6aac13690ab221b0017a5cbe1351f"),
+
+// Omaha certificate: sha1 (11/07/2019 to 11/16/2022).
+// thumbprint=a3958ae522f3c54b878b20d7b0f63711e08666b2
+// serial=06aea76bac46a9e8cfe6d29e45aaf033
+// SHA1 Fingerprint=A3:95:8A:E5:22:F3:C5:4B:87:8B:20:D7:B0:F6:37:11:E0:86:66:B2
 kCertificatePublicKeyHash,
 
 // Omaha and Chrome certificate: sha256 (11/06/2018 to 11/17/2021).

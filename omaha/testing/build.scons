@@ -76,6 +76,10 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
     # serial=14F8FDD167F92402B1570B5DC495C815
     'unittest_support/sha1_14F8FDD167F92402B1570B5DC495C815.sys',
 
+    # Omaha certificate: sha1 (11/07/2019 to 11/16/2022).
+    # serial=06aea76bac46a9e8cfe6d29e45aaf033
+    'unittest_support/sha1_06aea76bac46a9e8cfe6d29e45aaf033.sys',
+
     'unittest_support/Sha1_4c40dba5f988fae57a57d6457495f98b_and_sha2_2a9c21acaaa63a3c58a7b9322bee948d.exe',
 
     # Omaha and Chrome certificate: sha256 (12/15/2015 to 12/16/2018).

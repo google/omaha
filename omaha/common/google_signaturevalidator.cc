@@ -39,13 +39,12 @@ HRESULT VerifyGoogleAuthenticodeSignature(const CString& filename,
 
   std::vector<CString> subject;
   subject.push_back(kSha256CertificateSubjectName);
-  subject.push_back(kCertificateSubjectName);
+  subject.push_back(kSha1CertificateSubjectName);
+  subject.push_back(kLegacyCertificateSubjectName);
 
-  const bool allow_test_variant = false;
   const bool check_cert_is_valid_now = false;
   hr = VerifyCertificate(filename,
                          subject,
-                         allow_test_variant,
                          check_cert_is_valid_now,
                          expected_hashes.empty() ? NULL : &expected_hashes);
   if (FAILED(hr)) {
