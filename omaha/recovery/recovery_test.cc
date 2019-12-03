@@ -25,7 +25,6 @@
 #include "omaha/recovery/client/google_update_recovery.h"
 
 using omaha::UpdateDevProxyDetector;
-using omaha::FirefoxProxyDetector;
 using omaha::IEWPADProxyDetector;
 using omaha::IEPACProxyDetector;
 using omaha::IENamedProxyDetector;
@@ -65,7 +64,6 @@ HRESULT DownloadFile(const TCHAR* url, const TCHAR* file_path, void*) {
   }
   network_config->Clear();
   network_config->Add(new UpdateDevProxyDetector);
-  network_config->Add(new FirefoxProxyDetector);
   network_config->Add(new IEWPADProxyDetector);
   network_config->Add(new IEPACProxyDetector);
   network_config->Add(new IENamedProxyDetector);

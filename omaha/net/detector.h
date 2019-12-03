@@ -101,55 +101,6 @@ class DefaultProxyDetector : public ProxyDetectorInterface {
   DISALLOW_COPY_AND_ASSIGN(DefaultProxyDetector);
 };
 
-// Detects proxy information for Firefox.
-// http://www.mozilla.org/quality/networking/docs/netprefs.html
-// It works only when the calling code runs as or it impersonates a user.
-class FirefoxProxyDetector : public ProxyDetectorInterface {
- public:
-  enum ProxyType {
-    PROXY_TYPE_NO_PROXY         = 0,
-    PROXY_TYPE_NAMED_PROXY      = 1,
-    PROXY_TYPE_AUTO_CONFIG_URL  = 2,
-    PROXY_TYPE_AUTO_DETECT      = 4
-  };
-
-  FirefoxProxyDetector();
-
-  HRESULT Detect(ProxyConfig* config) override;
-  const TCHAR* source() override { return _T("Firefox"); }
-
- private:
-  // Parses the prefs.js file.
-  HRESULT ParsePrefsFile(const TCHAR* name,
-                         const TCHAR* file_path,
-                         ProxyConfig* config);
-
-  // Parse one line of the prefs file.
-  void ParsePrefsLine(const char* ansi_line,
-                      CString* proxy_type,
-                      CString* proxy_config_url,
-                      CString* proxy_http_host,
-                      CString* proxy_http_port,
-                      CString* proxy_ssl_host,
-                      CString* proxy_ssl_port);
-
-  // Builds a proxy string out of individual components.
-  HRESULT BuildProxyString(const CString& http_host,
-                           const CString& http_port,
-                           const CString& ssl_host,
-                           const CString& ssl_port,
-                           CString* proxy);
-
-  // Cached configuration values for the current FF profile.
-  CString            cached_prefs_name_;
-  CString            cached_prefs_file_path_;
-  int64              cached_prefs_last_modified_;
-  std::unique_ptr<ProxyConfig> cached_config_;
-
-  friend class FirefoxProxyDetectorTest;
-  DISALLOW_COPY_AND_ASSIGN(FirefoxProxyDetector);
-};
-
 namespace internal {
 
 // Detects wininet proxy information for the current user. The caller must
