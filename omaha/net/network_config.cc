@@ -133,16 +133,9 @@ HRESULT NetworkConfig::Initialize() {
                                kSecureProtocols);
   }
 
-
   Add(new UpdateDevProxyDetector);
   Add(new GroupPolicyProxyDetector);
   Add(new DMProxyDetector);
-  BrowserType browser_type(BROWSER_UNKNOWN);
-  GetDefaultBrowserType(&browser_type);
-  if (browser_type == BROWSER_FIREFOX) {
-    Add(new FirefoxProxyDetector);
-  }
-  // There is no Chrome detector because it uses the same proxy settings as IE.
   Add(new IEWPADProxyDetector);
   Add(new IEPACProxyDetector);
   Add(new IENamedProxyDetector);

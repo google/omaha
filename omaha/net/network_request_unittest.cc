@@ -53,11 +53,6 @@ class NetworkRequestTest
 
     network_config->Clear();
     network_config->Add(new UpdateDevProxyDetector);
-    BrowserType browser_type(BROWSER_UNKNOWN);
-    GetDefaultBrowserType(&browser_type);
-    if (browser_type == BROWSER_FIREFOX) {
-      network_config->Add(new FirefoxProxyDetector);
-    }
     network_config->Add(new IEWPADProxyDetector);
     network_config->Add(new IEPACProxyDetector);
     network_config->Add(new IENamedProxyDetector);

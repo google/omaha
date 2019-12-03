@@ -53,9 +53,6 @@ HRESULT GetDefaultBrowserType(BrowserType* type);
 // Get the default browser path
 HRESULT GetDefaultBrowserPath(CString* path);
 
-// Get the default profile of Firefox
-HRESULT GetFirefoxDefaultProfile(CString* name, CString* path);
-
 // Returns the IExplore.exe path.
 HRESULT GetIEPath(CString* path);
 

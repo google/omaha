@@ -307,7 +307,6 @@ class GoogleUpdateRecoveryTest : public testing::Test {
 
     network_config->Clear();
     network_config->Add(new UpdateDevProxyDetector);
-    network_config->Add(new FirefoxProxyDetector);
     network_config->Add(new IEWPADProxyDetector);
     network_config->Add(new IEPACProxyDetector);
     network_config->Add(new IENamedProxyDetector);
