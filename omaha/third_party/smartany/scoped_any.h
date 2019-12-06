@@ -118,7 +118,7 @@ public:
     {
         static detail::smartany_static_assert<!detail::is_handle<T>::value> const cannot_dereference_a_handle;
         assert( valid() );
-        return smart_types::to_reference( m_t );
+        return safe_types::to_reference( m_t );
     }
     #endif
 

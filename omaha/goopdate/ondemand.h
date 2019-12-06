@@ -31,6 +31,7 @@
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/thread_pool_callback.h"
+#include "omaha/base/user_rights.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/goopdate/com_proxy.h"
