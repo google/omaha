@@ -24,11 +24,20 @@ namespace omaha {
 
 TEST(BuildQueryStringTest, Do) {
   std::vector<QueryElement> params;
-  params.push_back(std::make_pair(_T("one"), _T("1")));
-  params.push_back(std::make_pair(_T("2"), _T("two")));
+  params.push_back(std::make_pair(L"one", L"1"));
+  params.push_back(std::make_pair(L"2", L"two"));
   CString query;
   EXPECT_HRESULT_SUCCEEDED(BuildQueryString(params, &query));
-  EXPECT_STREQ(query, _T("one=1&2=two"));
+  EXPECT_STREQ(query, L"one=1&2=two");
+}
+
+TEST(BuildQueryStringTest, EncodesQueryElements) {
+  std::vector<QueryElement> params;
+  params.push_back(std::make_pair(L"first", L" '`"));
+  params.push_back(std::make_pair(L"second", L"&="));
+  CString query;
+  EXPECT_HRESULT_SUCCEEDED(BuildQueryString(params, &query));
+  EXPECT_STREQ(query, L"first=%20'%60&second=%26=");
 }
 
 }  // namespace omaha

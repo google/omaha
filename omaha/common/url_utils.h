@@ -18,7 +18,7 @@
 
 namespace omaha {
 
-typedef std::pair<CString, CString> QueryElement;
+using QueryElement = std::pair<CString, CString>;
 
 // Assembles the parameters in |query_params| into |query|, escaping the values
 // as appropriate. Returns S_OK on success, or a failure HRESULT otherwise.
