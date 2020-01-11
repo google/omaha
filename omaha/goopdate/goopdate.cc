@@ -610,6 +610,12 @@ HRESULT GoopdateImpl::DoMain(HINSTANCE instance,
     // Continue because we want to load the resources and display an error.
   }
 
+#if defined(HAS_DEVICE_MANAGEMENT)
+  // Reference the DmStorage instance here so the singleton can be created
+  // before use.
+  VERIFY1(SUCCEEDED(DmStorage::CreateInstance(args_.extra.enrollment_token)));
+#endif
+
   // TODO(omaha3): Interactive updates might be useful for debugging or even
   // on-demand updates of all apps. Figure out how to expose this. For now, no
   // install source, which should not happen normally, is used as the trigger.
@@ -772,12 +778,6 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
   ASSERT1(CheckRegisteredVersion(GetVersionString(), is_machine_, mode));
 
   VERIFY1(SUCCEEDED(SetBackgroundPriorityIfNeeded(mode)));
-
-#if defined(HAS_DEVICE_MANAGEMENT)
-  // Reference the DmStorage instance here so the singleton can be created
-  // before use.
-  VERIFY1(SUCCEEDED(DmStorage::CreateInstance(args_.extra.enrollment_token)));
-#endif
 
 #pragma warning(push)
 // C4061: enumerator 'xxx' in switch of enum 'yyy' is not explicitly handled by
