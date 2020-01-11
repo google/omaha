@@ -720,6 +720,32 @@ TEST(StringTest, WideToAnsiDirect) {
   }
 }
 
+TEST(StringTest, Base64) {
+  struct {
+    const char* binary;
+    const char* base64;
+  } test_data[] = {
+    "",                                "",
+    "what",                            "d2hhdA==",
+    "what will print out",             "d2hhdCB3aWxsIHByaW50IG91dA==",
+    "foobar",                          "Zm9vYmFy",
+    "a man, a plan, a canal: panama!", "YSBtYW4sIGEgcGxhbiwgYSBjYW5hbDogcGFuYW1hIQ==",    // NOLINT
+  };
+
+  for (size_t i = 0; i != arraysize(test_data); i++) {
+    CStringA test_e;
+    Base64Escape(test_data[i].binary,
+                 strlen(test_data[i].binary),
+                 &test_e,
+                 true);
+    EXPECT_STREQ(test_e, test_data[i].base64);
+
+    CStringA test_d;
+    ASSERT_GE(Base64Unescape(test_e, &test_d), 0);
+    EXPECT_STREQ(test_d, test_data[i].binary);
+  }
+}
+
 TEST(StringTest, TextToLinesAndBack) {
   const TCHAR sample_input[]  = L"Now is the time\r\nfor all good men\r\nto come to the aid of their country";
   const TCHAR* sample_lines[] = { L"Now is the time", L"for all good men", L"to come to the aid of their country" };

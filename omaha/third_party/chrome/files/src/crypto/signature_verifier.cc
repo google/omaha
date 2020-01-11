@@ -31,7 +31,7 @@
 namespace crypto {
 
 SignatureVerifier::SignatureVerifier() :
-    hasher_(omaha::CryptDetails::CreateHasher(true)) {}
+    hasher_(omaha::CryptDetails::CreateHasher()) {}
 
 SignatureVerifier::~SignatureVerifier() {}
 

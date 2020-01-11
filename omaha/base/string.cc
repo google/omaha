@@ -708,12 +708,6 @@ default:
 
 #define kWebSafeBase64Chars "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
-int Base64Escape(const char *src, int szsrc, char *dest, int szdest) {
-  ASSERT(dest, (L""));
-  ASSERT(src, (L""));
-
-  return Base64EscapeInternal(src, szsrc, dest, szdest, kBase64Chars, true);
-}
 int WebSafeBase64Escape(const char *src, int szsrc, char *dest,
   int szdest, bool do_padding) {
     ASSERT(dest, (L""));
@@ -993,6 +987,15 @@ int Base64Unescape(const char *src, int len_src, char *dest, int len_dest) {
   // }
 
   return Base64UnescapeInternal(src, len_src, dest, len_dest, UnBase64);
+}
+
+int Base64Unescape(const CStringA& src, CStringA* dest) {
+  ASSERT1(dest);
+
+  int len = src.GetLength();
+  int unescape_len = Base64Unescape(src, len, CStrBufA(*dest, len + 1), len);
+  dest->Truncate(unescape_len >= 0 ? unescape_len : 0);
+  return unescape_len;
 }
 
 int WebSafeBase64Unescape(const char *src, int szsrc, char *dest, int szdest) {

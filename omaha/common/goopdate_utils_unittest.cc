@@ -1829,12 +1829,14 @@ TEST(GoopdateUtilsTest, GetMacHashesViaNDIS) {
 
   for (size_t i = 0; i < mac_hashes.size(); ++i) {
     CStringA mac_hash(WideToUtf8(mac_hashes[i]));
-    std::vector<byte> mac;
-    EXPECT_SUCCEEDED(Base64::Decode(mac_hash, &mac));
+    CStringA mac;
+    ASSERT_GE(Base64Unescape(mac_hash, &mac), 0);
 
     CString mac_string;
-    for (size_t j = 0; j < mac.size(); ++j) {
-      mac_string.AppendFormat(_T("%s%02X"), j == 0 ? _T("") : _T(":"), mac[j]);
+    for (int j = 0; j < mac.GetLength(); ++j) {
+      // The cast to uint8 is necessary to prevent sign extension.
+      const uint8 octet = static_cast<uint8>(mac[j]);
+      mac_string.AppendFormat(_T("%s%02X"), j == 0 ? _T("") : _T(":"), octet);
     }
 
     ExpectMacMatchViaWMI(mac_string);

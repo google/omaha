@@ -121,7 +121,6 @@ int CalculateBase64EscapedLen(int input_len);
 //    to escape them.  It also has an extra parameter "do_padding",
 //    which when set to false will prevent padding with "=".
 // ----------------------------------------------------------------------
-int Base64Escape(const char *src, int slen, char *dest, int szdest);
 int WebSafeBase64Escape(const char *src, int slen, char *dest,
                         int szdest, bool do_padding);
 void WebSafeBase64Escape(const CStringA& src, CStringA* dest);
@@ -143,6 +142,7 @@ void WebSafeBase64Escape(const char *src, int szsrc,
 //    destination buffer or -1 in case of a decoding error.
 // ----------------------------------------------------------------------
 int Base64Unescape(const char *src, int slen, char *dest, int len_dest);
+int Base64Unescape(const CStringA& src, CStringA* dest);
 int WebSafeBase64Unescape(const char *src, int slen, char *dest, int szdest);
 
 #ifdef UNICODE
