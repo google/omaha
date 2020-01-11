@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef OMAHA_GOOPDATE_DM_STORAGE_TEST_UTILS_H_
+#define OMAHA_GOOPDATE_DM_STORAGE_TEST_UTILS_H_
+
 #include <tchar.h>
 
 namespace omaha {
@@ -23,6 +26,7 @@ namespace omaha {
 void WriteInstallToken(const TCHAR* enrollment_token);
 void WriteCompanyPolicyToken(const TCHAR* enrollment_token);
 void WriteCompanyDmToken(const char* dm_token);
+void DeleteDmToken();
 
 #if defined(HAS_LEGACY_DM_CLIENT)
 void WriteLegacyPolicyToken(const TCHAR* enrollment_token);
@@ -31,3 +35,6 @@ void WriteLegacyDmToken(const char* dm_token);
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
 
 }  // namespace omaha
+
+#endif  // OMAHA_GOOPDATE_DM_STORAGE_TEST_UTILS_H_
+

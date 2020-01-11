@@ -26,6 +26,7 @@
 #include "omaha/base/safe_format.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system_info.h"
+#include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/common/url_utils.h"
@@ -64,6 +65,11 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage) {
     return S_FALSE;
   }
 
+  if (dm_storage->IsInvalidDMToken()) {
+    OPT_LOG(L1, (_T("[Cannot register since DM Token is invalid]")));
+    return E_FAIL;
+  }
+
   // No work to be done if a DM token was found.
   CStringA dm_token = dm_storage->GetDmToken();
   if (!dm_token.IsEmpty()) {
@@ -91,6 +97,8 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage) {
                                              device_id,
                                              &dm_token);
   if (FAILED(hr)) {
+    internal::HandleDMResponseError(
+        hr, ConfigManager::Instance()->GetPolicyResponsesDir());
     return hr;
   }
 
@@ -114,6 +122,11 @@ HRESULT RefreshPolicies() {
   }
 
   DmStorage* const dm_storage = DmStorage::Instance();
+  if (dm_storage->IsInvalidDMToken()) {
+    REPORT_LOG(L1, (_T("[Skipping RefreshPolicies as DMToken is invalid]")));
+    return E_FAIL;
+  }
+
   const CString dm_token = CString(dm_storage->GetDmToken());
   if (dm_token.IsEmpty()) {
     REPORT_LOG(L1, (_T("[Skipping RefreshPolicies as there is no DMToken]")));
@@ -144,6 +157,8 @@ HRESULT RefreshPolicies() {
                                &responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[FetchPolicies failed][%#x]"), hr));
+
+    internal::HandleDMResponseError(hr, policy_responses_dir);
     return hr;
   }
 
@@ -315,7 +330,7 @@ HRESULT SendDeviceManagementRequest(
   }
 
   const int http_status_code = request->http_status_code();
-  if (http_status_code != 200) {
+  if (http_status_code != HTTP_STATUS_OK) {
     REPORT_LOG(LE, (_T("[NetworkRequest::Post failed][status code %d]"),
                     http_status_code));
     CStringA error_message;
@@ -327,6 +342,16 @@ HRESULT SendDeviceManagementRequest(
   }
 
   return S_OK;
+}
+
+void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir) {
+  ASSERT(hr == HRESULTFromHttpStatusCode(HTTP_STATUS_GONE),
+         (_T("Unexpected HTTP error from the DM Server[%#x]"), hr));
+
+  // HTTP_STATUS_GONE implies that the device has been unenrolled.
+  // Invalidate the DM token and delete cached policies.
+  VERIFY1(SUCCEEDED(DmStorage::Instance()->InvalidateDMToken()));
+  DeleteBeforeOrAfterReboot(policy_responses_dir);
 }
 
 CString GetAgent() {

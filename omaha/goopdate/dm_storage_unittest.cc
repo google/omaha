@@ -294,6 +294,7 @@ TEST_F(DmStorageTest, DmTokenFromCompany) {
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kDmTCompany));
   std::unique_ptr<DmStorage> dm_storage(NewDmStorage((CString())));
   EXPECT_EQ(dm_storage->GetDmToken(), kDmTCompany);
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
 }
 
 #if defined(HAS_LEGACY_DM_CLIENT)
@@ -319,9 +320,14 @@ TEST_F(DmStorageTest, DmTokenPrecedence) {
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kDmTCompany));
   std::unique_ptr<DmStorage> dm_storage(NewDmStorage((CString())));
   EXPECT_EQ(dm_storage->GetDmToken(), kDmTCompany);
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
 }
 
 TEST_F(DmStorageTest, PersistPolicies) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+
   PolicyResponsesMap old_responses = {
     {"google/chrome/machine-level-user", "test-data-chrome"},
     {"google/drive/machine-level-user", "test-data-drive"},
@@ -354,6 +360,36 @@ TEST_F(DmStorageTest, PersistPolicies) {
       policy_responses_dir, "google/drive/machine-level-user").FileExists());
 
   EXPECT_HRESULT_SUCCEEDED(DeleteDirectory(policy_responses_dir));
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+}
+
+TEST_F(DmStorageTest, IsValidDMToken) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+
+  EXPECT_FALSE(DmStorage::Instance()->IsValidDMToken());
+
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+  EXPECT_TRUE(DmStorage::Instance()->IsValidDMToken());
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+}
+
+TEST_F(DmStorageTest, IsInvalidDMToken) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+  EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
+
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->InvalidateDMToken());
+  EXPECT_TRUE(DmStorage::Instance()->IsInvalidDMToken());
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
 }
 
 // This test must access the true registry, so it doesn't use the DmStorageTest

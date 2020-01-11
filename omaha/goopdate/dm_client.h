@@ -16,6 +16,7 @@
 #define OMAHA_GOOPDATE_DM_CLIENT_H__
 
 #include <windows.h>
+#include <atlpath.h>
 #include <atlstr.h>
 #include <utility>
 #include <vector>
@@ -82,6 +83,9 @@ HRESULT SendDeviceManagementRequest(
     const CString& device_id,
     std::vector<std::pair<CString, CString>> query_params,
     std::vector<uint8>* response);
+
+void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir);
+
 CString GetAgent();
 CString GetPlatform();
 CStringA GetOsVersion();

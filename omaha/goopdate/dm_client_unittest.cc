@@ -27,7 +27,10 @@
 #include "crypto/rsa_private_key.h"
 #include "crypto/signature_creator.h"
 #include "gtest/gtest-matchers.h"
+#include "omaha/base/app_util.h"
 #include "omaha/base/constants.h"
+#include "omaha/base/error.h"
+#include "omaha/base/path.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
 #include "omaha/common/config_manager.h"
@@ -427,6 +430,17 @@ class DmClientRequestTest : public ::testing::Test {
     ON_CALL(**request, GetResponse()).WillByDefault(Return(response));
   }
 
+  // Populates |request| with a mock HttpRequest that behaves as if the server
+  // returned a 410 HTTP response.
+  // Note: always wrap calls to this with ASSERT_NO_FATAL_FAILURE.
+  void MakeGoneHttpRequest(MockHttpRequest** request) {
+    *request = new ::testing::NiceMock<MockHttpRequest>();
+
+    // The server responds with 410.
+    ON_CALL(**request, GetHttpStatusCode())
+        .WillByDefault(Return(HTTP_STATUS_GONE));
+  }
+
   struct KeyInfo {
     const std::unique_ptr<crypto::RSAPrivateKey>& signing_private_key;
     const std::string& signing_public_key;
@@ -680,6 +694,19 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
                                                          kDeviceId,
                                                          &dm_token));
   EXPECT_STREQ(dm_token.GetString(), kDmToken);
+
+  // Test DM Token invalidation.
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  MockHttpRequest* mock_gone_request = nullptr;
+  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(&mock_gone_request));
+
+  // Registration should fail.
+  ASSERT_EQ(internal::RegisterWithRequest(mock_gone_request,
+                                          _T("enrollment_token"),
+                                          kDeviceId,
+                                          &dm_token),
+            HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
 }
 
 // Test that DmClient can send a reasonable DevicePolicyRequest and handle a
@@ -726,12 +753,55 @@ TEST_F(DmClientRequestTest, FetchPolicies) {
   // both the hard-coded verification key as well as with the previous private
   // key kSigningPrivateKey.
   RunFetchPolicies(new_signing_key_info, &info);
+
+  // Test DM Token invalidation.
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  MockHttpRequest* mock_gone_request = nullptr;
+  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(&mock_gone_request));
+
+  // Fetch Policies should fail.
+  PolicyResponses responses;
+  ASSERT_EQ(internal::FetchPolicies(mock_gone_request,
+                                    CString(kDmToken),
+                                    kDeviceId,
+                                    info,
+                                    &responses),
+            HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
 }
 
 // Test that we are able to successfully encode and then decode a
 // protobuf OmahaSettingsClientProto into a CachedOmahaPolicy instance.
 TEST_F(DmClientRequestTest, DecodePolicies) {
   DecodeOmahaPolicies();
+}
+
+TEST_F(DmClientRequestTest, HandleDMResponseError) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+
+  const CPath policy_responses_dir = CPath(ConcatenatePath(
+      app_util::GetCurrentModuleDirectory(),
+      _T("Policies")));
+  PolicyResponsesMap responses = {
+    {"google/chrome/machine-level-user", "test-data-chr"},
+    {"google/earth/machine-level-user",
+     "test-data-earth-foo-bar-baz-foo-bar-baz-foo-bar-baz"},
+  };
+
+  PolicyResponses expected_responses = {responses, "expected data"};
+  ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
+                                                      expected_responses));
+
+  EXPECT_TRUE(policy_responses_dir.FileExists());
+  EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
+  internal::HandleDMResponseError(
+      HRESULTFromHttpStatusCode(HTTP_STATUS_GONE), policy_responses_dir);
+  EXPECT_FALSE(policy_responses_dir.FileExists());
+  EXPECT_TRUE(DmStorage::Instance()->IsInvalidDMToken());
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
 }
 
 class DmClientRegistryTest : public RegistryProtectedTest {
@@ -766,6 +836,44 @@ TEST_F(DmClientRegistryTest, GetRegistrationState) {
     EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
     EXPECT_EQ(GetRegistrationState(DmStorage::Instance()), kRegistered);
+  }
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
+}
+
+TEST_F(DmClientRegistryTest, RegisterIfNeeded) {
+  // Invalid DM token exists.
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kInvalidTokenValue));
+  {
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance()), E_FAIL);
+  }
+
+  // Valid DM token exists.
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken("dm_token"));
+  {
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance()), S_FALSE);
+  }
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
+}
+
+TEST_F(DmClientRegistryTest, RefreshPolicies) {
+  // Invalid DM token exists.
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kInvalidTokenValue));
+  {
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(RefreshPolicies(), E_FAIL);
+  }
+
+  // No DM token.
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
+  {
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    EXPECT_EQ(RefreshPolicies(), S_FALSE);
   }
 }
 

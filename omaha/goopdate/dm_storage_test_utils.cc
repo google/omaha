@@ -60,6 +60,14 @@ void WriteCompanyDmToken(const char* dm_token) {
                                          dm_token));
 }
 
+void DeleteDmToken() {
+  ASSERT_HRESULT_SUCCEEDED(RegKey::DeleteKey(kRegKeyCompanyEnrollment, true));
+
+#if defined(HAS_LEGACY_DM_CLIENT)
+  ASSERT_HRESULT_SUCCEEDED(RegKey::DeleteKey(kRegKeyLegacyEnrollment, true));
+#endif
+}
+
 #if defined(HAS_LEGACY_DM_CLIENT)
 
 void WriteLegacyPolicyToken(const TCHAR* enrollment_token) {
@@ -84,4 +92,4 @@ void WriteLegacyDmToken(const char* dm_token) {
 
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
 
-}  // namespace
+}  // namespace omaha

@@ -238,6 +238,22 @@ CStringA DmStorage::GetDmToken() {
   return dm_token_;
 }
 
+bool DmStorage::IsValidDMToken() {
+  if (IsInvalidDMToken()) {
+    return false;
+  }
+
+  return !GetDmToken().IsEmpty();
+}
+
+HRESULT DmStorage::InvalidateDMToken() {
+  return StoreDmToken(kInvalidTokenValue);
+}
+
+bool DmStorage::IsInvalidDMToken() {
+  return GetDmToken() == kInvalidTokenValue;
+}
+
 HRESULT DmStorage::StoreDmToken(const CStringA& dm_token) {
   HRESULT hr = StoreDmTokenInKey(dm_token, kRegKeyCompanyEnrollment);
   if (SUCCEEDED(hr)) {
@@ -313,6 +329,11 @@ HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
                                             CachedPolicyInfo* info) {
   ASSERT1(info);
 
+  if (!DmStorage::Instance()->IsValidDMToken()) {
+    REPORT_LOG(L1, (_T("[Skip ReadCachedPolicyInfoFile DMToken not valid]")));
+    return E_FAIL;
+  }
+
   CPath policy_info_file(policy_responses_dir);
   policy_info_file.Append(kCachedPolicyInfoFileName);
 
@@ -347,6 +368,11 @@ HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
 HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
                                          CachedOmahaPolicy* info) {
   ASSERT1(info);
+
+  if (!DmStorage::Instance()->IsValidDMToken()) {
+    REPORT_LOG(L1, (_T("[Skip ReadCachedOmahaPolicy DMToken not valid]")));
+    return E_FAIL;
+  }
 
   CStringA encoded_policy_response_dirname;
   Base64Escape(kGoogleUpdatePolicyType,
