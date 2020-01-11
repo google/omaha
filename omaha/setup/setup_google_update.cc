@@ -510,10 +510,11 @@ HRESULT SetupGoogleUpdate::InstallUserLaunchMechanisms() {
 // Sets a value in the Run key in the user registry to start the core.
 HRESULT SetupGoogleUpdate::ConfigureUserRunAtStartup(bool install) {
   SETUP_LOG(L3, (_T("SetupGoogleUpdate::ConfigureUserRunAtStartup")));
-  // Always send false argument as this method is only called for user
-  // goopdate installs.
-  CString core_cmd = BuildCoreProcessCommandLine();
-  return ConfigureRunAtStartup(USER_KEY_NAME, kRunValueName, core_cmd, install);
+
+  return ConfigureRunAtStartup(USER_KEY_NAME,
+                               kRunValueName,
+                               BuildCoreProcessCommandLine(),
+                               install);
 }
 
 HRESULT SetupGoogleUpdate::RegisterOrUnregisterCOMLocalServer(bool reg) {
@@ -657,7 +658,9 @@ CString SetupGoogleUpdate::BuildCoreProcessCommandLine() const {
   CPath full_file_path(goopdate_utils::BuildInstallDirectory(
       is_machine_, GetVersionString()));
   VERIFY1(full_file_path.Append(kOmahaCoreFileName));
-  return full_file_path;
+  CString core_command_line(full_file_path);
+  EnclosePath(&core_command_line);
+  return core_command_line;
 }
 
 HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {

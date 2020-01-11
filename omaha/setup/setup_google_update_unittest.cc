@@ -303,10 +303,11 @@ class SetupGoogleUpdateTest : public testing::Test {
 class SetupGoogleUpdateUserTest : public SetupGoogleUpdateTest {
  protected:
   SetupGoogleUpdateUserTest() : SetupGoogleUpdateTest(false) {
-    CString expected_shell_path =
-        ConcatenatePath(GetGoogleUpdateUserPath(), GetVersionString());
-    expected_run_key_value_ = ConcatenatePath(expected_shell_path,
-                                              kOmahaCoreFileName);
+    CString expected_core_command_line = ConcatenatePath(
+        ConcatenatePath(GetGoogleUpdateUserPath(), GetVersionString()),
+        kOmahaCoreFileName);
+    EnclosePath(&expected_core_command_line);
+    expected_run_key_value_ = expected_core_command_line;
   }
 
   void SetUp() override {
