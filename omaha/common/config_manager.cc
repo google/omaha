@@ -119,7 +119,7 @@ HRESULT GroupPolicyManager::GetLastCheckPeriodMinutes(DWORD* minutes) {
     return hr;
   }
 
-  CORE_LOG(L5, (_T("[Group Policy check period override %d]"), *minutes));
+  OPT_LOG(L5, (_T("[Group Policy check period override %d]"), *minutes));
   return S_OK;
 }
 
@@ -717,8 +717,8 @@ int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
       }
 
       hr = policies_[i]->GetLastCheckPeriodMinutes(&minutes);
-      CORE_LOG(L5, (_T("[GetLastCheckPeriodMinutes][%s][%d]"),
-                    policies_[i]->source(), minutes));
+      OPT_LOG(L5, (_T("[GetLastCheckPeriodMinutes][%s][%d]"),
+                   policies_[i]->source(), minutes));
       break;
     }
 
@@ -730,7 +730,7 @@ int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
 
   if (*is_overridden) {
     if (0 == policy_period_sec) {
-      CORE_LOG(L5, (_T("[GetLastCheckPeriodSec][0 == policy_period_sec]")));
+      OPT_LOG(L5, (_T("[GetLastCheckPeriodSec][0 == policy_period_sec]")));
       return 0;
     }
     const int period_sec = policy_period_sec > INT_MAX ?
@@ -740,7 +740,7 @@ int ConfigManager::GetLastCheckPeriodSec(bool* is_overridden) const {
     if (period_sec < kMinLastCheckPeriodSec) {
       return kMinLastCheckPeriodSec;
     }
-    CORE_LOG(L5, (_T("[GetLastCheckPeriodSec][period_sec][%d]"), period_sec));
+    OPT_LOG(L5, (_T("[GetLastCheckPeriodSec][period_sec][%d]"), period_sec));
     return period_sec;
   }
 
@@ -1167,12 +1167,12 @@ DWORD ConfigManager::GetEffectivePolicyForAppInstalls(const GUID& app_guid)
         app_guid,
         &effective_policy);
     if (SUCCEEDED(hr)) {
-      CORE_LOG(L5, (_T("[GetEffectivePolicyForAppInstalls][%s][%d]"),
-                    policies_[i]->source(), effective_policy));
+      OPT_LOG(L5, (_T("[GetEffectivePolicyForAppInstalls][%s][%d]"),
+                   policies_[i]->source(), effective_policy));
       return effective_policy;
     }
 
-    break;
+    return kInstallPolicyDefault;
   }
 
   OPT_LOG(L5, (_T("[GetEffectivePolicyForAppInstalls][Ignoring policy][%s]")
@@ -1193,12 +1193,12 @@ DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid)
         app_guid,
         &effective_policy);
     if (SUCCEEDED(hr)) {
-      CORE_LOG(L5, (_T("[GetEffectivePolicyForAppUpdates][%s][%d]"),
-                    policies_[i]->source(), effective_policy));
+      OPT_LOG(L5, (_T("[GetEffectivePolicyForAppUpdates][%s][%d]"),
+                   policies_[i]->source(), effective_policy));
       return effective_policy;
     }
 
-    break;
+    return kUpdatePolicyDefault;
   }
 
   OPT_LOG(L5, (_T("[GetEffectivePolicyForAppUpdates][Ignoring policy][%s]")
@@ -1217,12 +1217,12 @@ CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) const {
     HRESULT hr = policies_[i]->GetTargetVersionPrefix(app_guid,
                                                       &target_version_prefix);
     if (SUCCEEDED(hr)) {
-      CORE_LOG(L5, (_T("[GetTargetVersionPrefix][%s][%s]"),
-                    policies_[i]->source(), target_version_prefix));
+      OPT_LOG(L5, (_T("[GetTargetVersionPrefix][%s][%s]"),
+                   policies_[i]->source(), target_version_prefix));
       return target_version_prefix;
     }
 
-    break;
+    return CString();
   }
 
   OPT_LOG(L5, (_T("[GetTargetVersionPrefix][Ignoring policy][%s]")
@@ -1243,12 +1243,12 @@ bool ConfigManager::IsRollbackToTargetVersionAllowed(const GUID& app_guid)
         app_guid,
         &rollback_allowed);
     if (SUCCEEDED(hr)) {
-      CORE_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][%s][%d]"),
-                    policies_[i]->source(), rollback_allowed));
+      OPT_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][%s][%d]"),
+                   policies_[i]->source(), rollback_allowed));
       return rollback_allowed;
     }
 
-    break;
+    return false;
   }
 
   OPT_LOG(L5, (_T("[IsRollbackToTargetVersionAllowed][Ignoring policy][%s]")
@@ -1276,8 +1276,8 @@ HRESULT ConfigManager::GetUpdatesSuppressedTimes(
     hr = policies_[i]->GetUpdatesSuppressedTimes(start_hour,
                                                  start_min,
                                                  duration_min);
-    CORE_LOG(L5, (_T("[GetUpdatesSuppressedTimes][%s][%d][%d][%d]"),
-      policies_[i]->source(), *start_hour, *start_min, *duration_min));
+    OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][%s][%d][%d][%d]"),
+        policies_[i]->source(), *start_hour, *start_min, *duration_min));
     break;
   }
 
@@ -1288,7 +1288,7 @@ HRESULT ConfigManager::GetUpdatesSuppressedTimes(
   // UpdatesSuppressedDurationMin is limited to 16 hours.
   if (*start_hour > 23 || *start_min > 59 || *duration_min > 16 * kMinPerHour) {
     OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][Out of bounds][%x][%x][%x]"),
-      *start_hour, *start_min, *duration_min));
+                 *start_hour, *start_min, *duration_min));
     return E_UNEXPECTED;
   }
 
@@ -1390,12 +1390,12 @@ CString ConfigManager::GetDownloadPreferenceGroupPolicy() const {
     HRESULT hr = policies_[i]->GetDownloadPreferenceGroupPolicy(
         &download_preference);
     if (SUCCEEDED(hr) && download_preference == kDownloadPreferenceCacheable) {
-      CORE_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy][%s][%s]"),
-                    policies_[i]->source(), download_preference));
+      OPT_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy][%s][%s]"),
+                   policies_[i]->source(), download_preference));
       return download_preference;
     }
 
-    break;
+    return CString();
   }
 
   OPT_LOG(L5, (_T("[GetDownloadPreferenceGroupPolicy]")

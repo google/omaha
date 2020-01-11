@@ -273,7 +273,7 @@ HRESULT ExtraArgsParser::HandleToken(const CString& token,
     args->runtime_only = true;
 #if defined(HAS_DEVICE_MANAGEMENT)
   } else if (name.CompareNoCase(kExtraArgEnrollmentToken) == 0) {
-    if (!IsGuid(value)) {
+    if (!IsUuid(value)) {
       return E_INVALIDARG;
     }
     args->enrollment_token = value;
