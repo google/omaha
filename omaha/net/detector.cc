@@ -153,7 +153,7 @@ HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
 }
 
 bool GroupPolicyProxyDetector::IsManaged() {
-  return IsEnrolledToDomain();
+  return IsEnrolledToDomain() && RegKey::HasKey(kRegKeyGoopdateGroupPolicy);
 }
 
 HRESULT GroupPolicyProxyDetector::GetProxyMode(CString* proxy_mode) {

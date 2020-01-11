@@ -104,7 +104,7 @@ HRESULT GetDir32(int csidl,
 }  // namespace
 
 bool GroupPolicyManager::IsManaged() {
-  return IsEnrolledToDomain();
+  return IsEnrolledToDomain() && RegKey::HasKey(kRegKeyGoopdateGroupPolicy);
 }
 
 HRESULT GroupPolicyManager::GetLastCheckPeriodMinutes(DWORD* minutes) {
