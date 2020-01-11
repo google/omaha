@@ -283,6 +283,7 @@ HRESULT SendDeviceManagementRequest(
   // Create a network request and configure its headers.
   std::unique_ptr<NetworkRequest> request(
       new NetworkRequest(network_config->session()));
+  request->AddHeader(_T("Content-Type"), kProtobufContentType);
   request->AddHeader(_T("Authorization"), authorization_header);
 
   // Set it up

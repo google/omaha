@@ -475,7 +475,8 @@ class DmClientRequestTest : public ::testing::Test {
     // Expect that the request headers contain the DMToken.
     EXPECT_CALL(*mock_http_request,
                 set_additional_headers(
-                    CStringHasSubstr(_T("Authorization: GoogleDMToken ")
+                    CStringHasSubstr(_T("Content-Type: application/protobuf")
+                                     _T("\r\nAuthorization: GoogleDMToken ")
                                      _T("token=dm_token"))));
 
     // Expect that the body of the request contains a well-formed fetch policies
@@ -663,7 +664,8 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
   // Expect that the request headers contain the enrollment token.
   EXPECT_CALL(*mock_http_request,
               set_additional_headers(
-                  CStringHasSubstr(_T("Authorization: GoogleEnrollmentToken ")
+                  CStringHasSubstr(_T("Content-Type: application/protobuf\r\n")
+                                   _T("Authorization: GoogleEnrollmentToken ")
                                    _T("token=enrollment_token"))));
 
   // Expect that the body of the request contains a well-formed register browser

@@ -32,6 +32,9 @@ namespace dm_client {
 // applications from the DMServer.
 const char kGoogleUpdateMachineLevelApps[] = "google/machine-level-apps";
 
+// The content-type for all protocol buffer requests.
+const TCHAR kProtobufContentType[] = _T("application/protobuf");
+
 enum RegistrationState {
   // This client appears to not be managed. In particular, neither a device
   // management token nor an enrollment token can be found.
