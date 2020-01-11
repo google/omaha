@@ -157,13 +157,18 @@ class DmStorageTest : public RegistryProtectedTest {
   }
 };
 
-const TCHAR DmStorageTest::kETRuntime[] = _T("runtime");
-const TCHAR DmStorageTest::kETInstall[] = _T("install");
-const TCHAR DmStorageTest::kETCompanyPolicy[] = _T("company_policy");
+const TCHAR DmStorageTest::kETRuntime[] =
+    _T("57FEBE8F-48D0-487B-A788-CF1019DCD452");
+const TCHAR DmStorageTest::kETInstall[] =
+    _T("075688CE-FECC-43DA-BBFB-228BF9C75758");
+const TCHAR DmStorageTest::kETCompanyPolicy[] =
+    _T("098BF4B2-361C-4855-900E-2FB967136C64");
 const char DmStorageTest::kDmTCompany[] = "company";
 #if defined(HAS_LEGACY_DM_CLIENT)
-const TCHAR DmStorageTest::kETLegacyPolicy[] = _T("legacy_policy");
-const TCHAR DmStorageTest::kETOldLegacyPolicy[] = _T("old_legacy_policy");
+const TCHAR DmStorageTest::kETLegacyPolicy[] =
+    _T("55A78AF7-BA8F-4BE0-A93F-148093050293");
+const TCHAR DmStorageTest::kETOldLegacyPolicy[] =
+    _T("1FFFB822-E79B-4A8C-85B3-00DB4C7E3785");
 const char DmStorageTest::kDmTLegacy[] = "legacy";
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
 

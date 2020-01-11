@@ -1408,7 +1408,8 @@ CString ConfigManager::GetCloudManagementEnrollmentToken() const {
   CString enrollment_token;
   HRESULT hr = RegKey::GetValue(kRegKeyCloudManagementGroupPolicy,
                                 kRegValueEnrollmentToken, &enrollment_token);
-  return SUCCEEDED(hr) ? enrollment_token : CString();
+  return (SUCCEEDED(hr) && IsUuid(enrollment_token)) ? enrollment_token :
+                                                       CString();
 }
 
 bool ConfigManager::IsCloudManagementEnrollmentMandatory() const {

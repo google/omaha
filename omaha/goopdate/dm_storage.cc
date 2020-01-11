@@ -44,7 +44,7 @@ CString LoadEnrollmentTokenFromInstall() {
                                                kGoogleUpdateAppId),
       kRegValueCloudManagementEnrollmentToken,
       &value);
-  return SUCCEEDED(hr) ? value : CString();
+  return (SUCCEEDED(hr) && IsUuid(value)) ? value : CString();
 }
 
 // Returns an enrollment token provisioned to the computer via Group Policy, or
@@ -63,7 +63,7 @@ CString LoadEnrollmentTokenFromLegacyPolicy() {
   HRESULT hr = RegKey::GetValue(kRegKeyLegacyGroupPolicy,
                                 kRegValueCloudManagementEnrollmentTokenPolicy,
                                 &value);
-  return SUCCEEDED(hr) ? value : CString();
+  return (SUCCEEDED(hr) && IsUuid(value)) ? value : CString();
 }
 
 // Returns an enrollment token provisioned to the computer via Group Policy for
@@ -75,7 +75,7 @@ CString LoadEnrollmentTokenFromOldLegacyPolicy() {
       kRegKeyLegacyGroupPolicy,
       kRegValueMachineLevelUserCloudPolicyEnrollmentToken,
       &value);
-  return SUCCEEDED(hr) ? value : CString();
+  return (SUCCEEDED(hr) && IsUuid(value)) ? value : CString();
 }
 
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
@@ -413,9 +413,16 @@ HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
 }
 
 DmStorage::DmStorage(const CString& runtime_enrollment_token)
-    : runtime_enrollment_token_(runtime_enrollment_token),
+    : runtime_enrollment_token_(IsUuid(runtime_enrollment_token) ?
+                                runtime_enrollment_token :
+                                CString()),
       enrollment_token_source_(kETokenSourceNone),
       dm_token_source_(kDmTokenSourceNone) {
+  if (!IsUuid(runtime_enrollment_token)) {
+    REPORT_LOG(LE, (_T("[DmStorage::DmStorage]")
+                    _T("[runtime_enrollment_token is not a guid][%s]"),
+                    runtime_enrollment_token));
+  }
 }
 
 void DmStorage::LoadEnrollmentTokenFromStorage() {

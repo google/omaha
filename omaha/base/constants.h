@@ -415,13 +415,6 @@ const TCHAR* const kDefaultCountryCode = _T("us");
 // the max length of the extra info we can store inside the install stubs.
 const int kExtraMaxLength = 64 * 1024;  // 64 KB
 
-#if defined(HAS_DEVICE_MANAGEMENT)
-
-// The maximum length of an enrollment token.
-const int kEnrollmentTokenMaxLength = 1024;
-
-#endif  // defined(HAS_DEVICE_MANAGEMENT)
-
 // Default brand code value when one is not specified.
 // This has been specifically assigned to Omaha.
 const TCHAR* const kDefaultGoogleUpdateBrandCode = _T("GGLS");

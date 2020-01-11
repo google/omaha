@@ -680,7 +680,8 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
               set_additional_headers(
                   CStringHasSubstr(_T("Content-Type: application/protobuf\r\n")
                                    _T("Authorization: GoogleEnrollmentToken ")
-                                   _T("token=enrollment_token"))));
+                                   _T("token=57FEBE8F-48D0-487B-A788-")
+                                   _T("CF1019DCD452"))));
 
   // Expect that the body of the request contains a well-formed register browser
   // request.
@@ -689,10 +690,11 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
 
   // Registration should succeed, providing the expected DMToken.
   CStringA dm_token;
-  ASSERT_HRESULT_SUCCEEDED(internal::RegisterWithRequest(mock_http_request,
-                                                         _T("enrollment_token"),
-                                                         kDeviceId,
-                                                         &dm_token));
+  ASSERT_HRESULT_SUCCEEDED(internal::RegisterWithRequest(
+      mock_http_request,
+      _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"),
+      kDeviceId,
+      &dm_token));
   EXPECT_STREQ(dm_token.GetString(), kDmToken);
 
   // Test DM Token invalidation.
@@ -702,10 +704,11 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
   ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(&mock_gone_request));
 
   // Registration should fail.
-  ASSERT_EQ(internal::RegisterWithRequest(mock_gone_request,
-                                          _T("enrollment_token"),
-                                          kDeviceId,
-                                          &dm_token),
+  ASSERT_EQ(internal::RegisterWithRequest(
+                mock_gone_request,
+                _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"),
+                kDeviceId,
+                &dm_token),
             HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
 }
 
@@ -817,7 +820,8 @@ TEST_F(DmClientRegistryTest, GetRegistrationState) {
 
   // Enrollment token without device management token.
   {
-    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    EXPECT_HRESULT_SUCCEEDED(
+        DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
     EXPECT_EQ(GetRegistrationState(DmStorage::Instance()),
               kRegistrationPending);
@@ -826,7 +830,8 @@ TEST_F(DmClientRegistryTest, GetRegistrationState) {
   // Enrollment token and device management token.
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken("dm_token"));
   {
-    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    EXPECT_HRESULT_SUCCEEDED(
+        DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
     EXPECT_EQ(GetRegistrationState(DmStorage::Instance()), kRegistered);
   }
@@ -844,7 +849,8 @@ TEST_F(DmClientRegistryTest, RegisterIfNeeded) {
   // Invalid DM token exists.
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kInvalidTokenValue));
   {
-    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    EXPECT_HRESULT_SUCCEEDED(
+        DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
     EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance()), E_FAIL);
   }
@@ -852,7 +858,8 @@ TEST_F(DmClientRegistryTest, RegisterIfNeeded) {
   // Valid DM token exists.
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken("dm_token"));
   {
-    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    EXPECT_HRESULT_SUCCEEDED(
+        DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
     EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance()), S_FALSE);
   }
@@ -863,7 +870,8 @@ TEST_F(DmClientRegistryTest, RefreshPolicies) {
   // Invalid DM token exists.
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kInvalidTokenValue));
   {
-    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    EXPECT_HRESULT_SUCCEEDED(
+        DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
     EXPECT_EQ(RefreshPolicies(), E_FAIL);
   }
@@ -871,7 +879,8 @@ TEST_F(DmClientRegistryTest, RefreshPolicies) {
   // No DM token.
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
   {
-    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(_T("enrollment_token")));
+    EXPECT_HRESULT_SUCCEEDED(
+        DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
     EXPECT_EQ(RefreshPolicies(), S_FALSE);
   }
