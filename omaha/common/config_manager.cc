@@ -689,6 +689,8 @@ CPath ConfigManager::GetPolicyResponsesDir() const {
 
 void ConfigManager::SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy) {
   dm_policy_manager_->set_dm_policy(dm_policy);
+  REPORT_LOG(L1, (_T("[ConfigManager::SetOmahaDMPolicies][%s]"),
+                  dm_policy.ToString()));
 }
 
 // Returns the override from the registry locations if present. Otherwise,
