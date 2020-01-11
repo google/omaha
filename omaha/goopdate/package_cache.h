@@ -25,8 +25,6 @@
 
 namespace omaha {
 
-struct FileHash;
-
 class PackageCache {
  public:
   // Defines the key that uniquely identifies the packages in the cache.
@@ -67,13 +65,13 @@ class PackageCache {
 
   HRESULT Put(const Key& key,
               const CString& source_file,
-              const FileHash& hash);
+              const CString& hash);
 
   HRESULT Get(const Key& key,
               const CString& destination_file,
-              const FileHash& hash) const;
+              const CString& hash) const;
 
-  bool IsCached(const Key& key, const FileHash& hash) const;
+  bool IsCached(const Key& key, const CString& hash) const;
 
   HRESULT Purge(const Key& key);
 
@@ -98,7 +96,7 @@ class PackageCache {
   CString cache_root() const;
 
   static HRESULT VerifyHash(const CString& filename,
-                            const FileHash& expected_hash);
+                            const CString& expected_hash);
 
  private:
   friend class PackageCacheTest;

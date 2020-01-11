@@ -211,10 +211,9 @@ HRESULT BuildApp(const xml::UpdateResponse* update_response,
   for (size_t i = 0; i < update_check.install_manifest.packages.size(); ++i) {
     const xml::InstallPackage& package(
         update_check.install_manifest.packages[i]);
-    FileHash hash;
-    hash.sha1 = package.hash_sha1;
-    hash.sha256 = package.hash_sha256;
-    HRESULT hr = next_version->AddPackage(package.name, package.size, hash);
+    HRESULT hr = next_version->AddPackage(package.name,
+                                          package.size,
+                                          package.hash_sha256);
     if (FAILED(hr)) {
       return hr;
     }
