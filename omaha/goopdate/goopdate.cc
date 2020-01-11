@@ -33,12 +33,10 @@
 //      /ua
 //  * Core:
 //      /c
-//  * Cod Red check:
+//  * Code Red check:
 //      /cr
-//  * Cod Red repair:
+//  * Code Red repair:
 //      /recover [/machine]
-//  * OneClick:
-//      /pi "http://www.google.com/" "/install%20%22appguid=%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D%26lang=en%26appname=Google%2520Chrome%26needsadmin=false" /installsource oneclick  // NOLINT
 //  * COM server:
 //      -Embedding
 
@@ -81,7 +79,6 @@
 #include "omaha/common/oem_install_utils.h"
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/common/stats_uploader.h"
-#include "omaha/common/webplugin_utils.h"
 #include "omaha/core/core.h"
 #include "omaha/goopdate/code_red_check.h"
 #include "omaha/goopdate/crash.h"
@@ -140,7 +137,6 @@ bool CheckRegisteredVersion(const CString& version,
     case COMMANDLINE_MODE_INSTALL:
     case COMMANDLINE_MODE_UPDATE:
     case COMMANDLINE_MODE_RECOVER:
-    case COMMANDLINE_MODE_WEBPLUGIN:
     case COMMANDLINE_MODE_REGISTER_PRODUCT:
     case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
     case COMMANDLINE_MODE_SERVICE_REGISTER:
@@ -247,9 +243,6 @@ class GoopdateImpl {
 
   // Handles error conditions by showing UI if appropriate.
   void HandleError(HRESULT hr, bool has_ui_been_displayed);
-
-  // Handles response to /pi command.
-  HRESULT HandleWebPlugin();
 
   // Handles responses to /cr command.
   HRESULT HandleCodeRedCheck();
@@ -862,9 +855,6 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
           NetworkConfigManager::Instance();
 
           switch (mode) {
-            case COMMANDLINE_MODE_WEBPLUGIN:
-              return HandleWebPlugin();
-
             case COMMANDLINE_MODE_CODE_RED_CHECK:
               return HandleCodeRedCheck();
 
@@ -1001,7 +991,6 @@ bool GoopdateImpl::ShouldCheckShutdownEvent(CommandLineMode mode) {
 
     case COMMANDLINE_MODE_INSTALL:
     case COMMANDLINE_MODE_UPDATE:
-    case COMMANDLINE_MODE_WEBPLUGIN:
     case COMMANDLINE_MODE_CODE_RED_CHECK:
     case COMMANDLINE_MODE_REGISTER_PRODUCT:
     case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
@@ -1074,7 +1063,6 @@ HRESULT GoopdateImpl::LoadResourceDllIfNecessary(CommandLineMode mode,
     case COMMANDLINE_MODE_UNREGSERVER:
     case COMMANDLINE_MODE_CRASH:
     case COMMANDLINE_MODE_REPORTCRASH:
-    case COMMANDLINE_MODE_WEBPLUGIN:
     case COMMANDLINE_MODE_CODE_RED_CHECK:
     case COMMANDLINE_MODE_REGISTER_PRODUCT:
     case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
@@ -1150,19 +1138,6 @@ HRESULT GoopdateImpl::HandleCodeRedCheck() {
 
   CheckForCodeRed(is_machine, GetVersionString());
   return S_OK;
-}
-
-// Even though http://b/1135173 is fixed, there is still a possibility that only
-// some of the files will be copied if Setup is currently running.
-// TODO(omaha3): If we save and use the metainstaller for OneClick, that may
-// address this.
-
-// If we're called with the /webplugin command, we need to handle it and exit.
-// This is called from the browser and the command line arguments come from the
-// website so we need to be restrictive of what we let past. If everything from
-// the plugin is valid, we'll relaunch goopdate with the proper commands.
-HRESULT GoopdateImpl::HandleWebPlugin() {
-  return webplugin_utils::DoOneClickInstall(args_);
 }
 
 HRESULT GoopdateImpl::DoInstall(bool* has_ui_been_displayed) {
@@ -1586,7 +1561,6 @@ bool GoopdateImpl::ShouldSetBackgroundPriority(CommandLineMode mode) {
     case COMMANDLINE_MODE_SERVICE_REGISTER:
     case COMMANDLINE_MODE_SERVICE_UNREGISTER:
     case COMMANDLINE_MODE_INSTALL:
-    case COMMANDLINE_MODE_WEBPLUGIN:
     case COMMANDLINE_MODE_REGISTER_PRODUCT:
     case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
     case COMMANDLINE_MODE_PING:
@@ -1844,17 +1818,6 @@ bool IsMachineProcess(CommandLineMode mode,
     case COMMANDLINE_MODE_COMBROKER:
       return is_running_from_official_machine_directory;
 
-    // The following always runs as the user and is user-initiated.
-    case COMMANDLINE_MODE_WEBPLUGIN:
-      // The install location determines user vs. machine.
-      // This may not be the desired value when doing a cross-install or using
-      // the opposite plugin (i.e. user plugin is often used before the machine
-      // one).
-      ASSERT1(goopdate_utils::IsRunningFromOfficialGoopdateDir(false) ||
-              goopdate_utils::IsRunningFromOfficialGoopdateDir(true) ||
-              _T("omaha_unittest.exe") == app_util::GetCurrentModuleName());
-      return is_running_from_official_machine_directory;
-
     // The following all run silently as the user for user installs or Local
     // System for machine installs.
     case COMMANDLINE_MODE_UPDATE:
@@ -1948,7 +1911,6 @@ bool CanDisplayUi(CommandLineMode mode, bool is_silent) {
     case COMMANDLINE_MODE_REPORTCRASH:
     case COMMANDLINE_MODE_UPDATE:
     case COMMANDLINE_MODE_RECOVER:
-    case COMMANDLINE_MODE_WEBPLUGIN:
     case COMMANDLINE_MODE_CODE_RED_CHECK:
     case COMMANDLINE_MODE_COMSERVER:
     case COMMANDLINE_MODE_REGISTER_PRODUCT:

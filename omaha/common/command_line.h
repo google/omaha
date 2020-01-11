@@ -70,7 +70,7 @@ enum CommandLineMode {
   // Obsolete: COMMANDLINE_MODE_UG = 13,
   COMMANDLINE_MODE_UA = 14,
   COMMANDLINE_MODE_RECOVER = 15,
-  COMMANDLINE_MODE_WEBPLUGIN = 16,
+  // Obsolete: COMMANDLINE_MODE_WEBPLUGIN = 16,
   COMMANDLINE_MODE_CODE_RED_CHECK = 17,
   COMMANDLINE_MODE_COMSERVER = 18,
   // Obsolete: COMMANDLINE_MODE_LEGACYUI = 19,
@@ -142,8 +142,6 @@ struct CommandLineArgs {
   CString crash_filename;
   CString custom_info_filename;
   CString legacy_manifest_path;
-  CString webplugin_urldomain;
-  CString webplugin_args;
   CString code_red_metainstaller_path;
   CString ping_string;
   CString offline_dir_name;

@@ -593,16 +593,8 @@ win_env.AppendUnique(
         'TEST_CERTIFICATE=%d' % win_env.Bit('test_certificate'),
         'ONECLICK_PLUGIN_NAME=_T(\\"%s\\")' % (
             omaha_version_utils.GetONECLICK_PLUGIN_NAME()),
-        'ONECLICK_PLUGIN_VERSION_ANSI=\\"%d\\"' % (
-            omaha_version_info.oneclick_plugin_version),
-        'ONECLICK_PLUGIN_FILENAME=_T(\\"%s\\")' % (
-            omaha_version_info.oneclick_plugin_filename),
         'UPDATE_PLUGIN_NAME=_T(\\"%s\\")' % (
             omaha_version_utils.GetUPDATE_PLUGIN_NAME()),
-        'UPDATE_PLUGIN_VERSION_ANSI=\\"%d\\"' % (
-            omaha_version_info.update_plugin_version),
-        'UPDATE_PLUGIN_FILENAME=_T(\\"%s\\")' % (
-            omaha_version_info.update_plugin_filename),
         'CRASH_HANDLER_NAME=_T(\\"%s\\")' %
             omaha_version_utils.GetCRASH_HANDLER_NAME(),
         ],
@@ -739,7 +731,6 @@ _base_dirs = [
 _normal_dirs = [
     'installers',
     'mi_exe_stub',
-    'plugins',
     'recovery',
     ]
 

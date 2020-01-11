@@ -81,8 +81,7 @@ void CopyFilesRequiredByFinishInstall(bool is_machine, const CString& version) {
                           kPSFileNameMachine,
                           kPSFileNameMachine64,
                           kPSFileNameUser,
-                          kPSFileNameUser64,
-                          UPDATE_PLUGIN_FILENAME};
+                          kPSFileNameUser64};
   for (size_t i = 0; i < arraysize(files); ++i) {
     ASSERT_SUCCEEDED(File::Copy(
         ConcatenatePath(app_util::GetCurrentModuleDirectory(),

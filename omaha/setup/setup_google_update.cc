@@ -172,8 +172,8 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
 
     // Fall through for installs. Omaha will attempt to install using the
     // in-proc mode. Not installing the launch mechanisms does mean that Omaha
-    // will not be able to update itself or the product. But OneClick and
-    // Handoffs should continue to work.
+    // will not be able to update itself or the product. But  Handoffs should
+    // continue to work.
     //
     // extra_code1_ contains the HRESULT from the Scheduled Task install
     // failure, but it is more useful to send the service install failure in the
@@ -198,8 +198,6 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
 
   ASSERT1(SUCCEEDED(VerifyCOMLocalServerRegistration(is_machine_)));
 
-  // We would prefer to uninstall previous versions last, but the web plugin
-  // requires that the old plugin is uninstalled before installing the new one.
   VERIFY1(SUCCEEDED(UninstallPreviousVersions()));
 
   // Set the LastOSVersion to the currently installed OS version.  This is used
@@ -610,38 +608,6 @@ HRESULT SetupGoogleUpdate::UninstallMsiHelper() {
   return S_OK;
 }
 
-HRESULT SetupGoogleUpdate::InstallBrowserPlugins() {
-  SETUP_LOG(L3, (_T("[SetupGoogleUpdate::InstallBrowserPlugins]")));
-  ASSERT1(have_called_uninstall_previous_versions_);
-  // Failure of registration of optional components is acceptable in release
-  // builds.
-  HRESULT hr = S_OK;
-
-  CString plugin_path =
-      BuildSupportFileInstallPath(UPDATE_PLUGIN_FILENAME);
-  hr = RegisterDll(plugin_path);
-  if (FAILED(hr)) {
-    SETUP_LOG(L1, (_T("[Register plugin DLL failed][0x%08x]"), hr));
-  }
-
-  return hr;
-}
-
-HRESULT SetupGoogleUpdate::UninstallBrowserPlugins() {
-  SETUP_LOG(L3, (_T("[SetupGoogleUpdate::UninstallBrowserPlugins]")));
-  // Unregistration. Failure is acceptable in release builds.
-  HRESULT hr = S_OK;
-
-  CString plugin_path =
-      BuildSupportFileInstallPath(UPDATE_PLUGIN_FILENAME);
-  hr = UnregisterDll(plugin_path);
-  if (FAILED(hr)) {
-    SETUP_LOG(L1, (_T("[Unregister plugin DLL failed][0x%08x]"), hr));
-  }
-
-  return hr;
-}
-
 CString SetupGoogleUpdate::BuildSupportFileInstallPath(
     const CString& filename) const {
   SETUP_LOG(L3, (_T("[SetupGoogleUpdate::BuildSupportFileInstallPath][%s]"),
@@ -773,12 +739,6 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
 void SetupGoogleUpdate::Uninstall() {
   OPT_LOG(L1, (_T("[SetupGoogleUpdate::Uninstall]")));
 
-  HRESULT hr = UninstallBrowserPlugins();
-  if (FAILED(hr)) {
-    SETUP_LOG(LW, (_T("[UninstallBrowserPlugins failed][0x%08x]"), hr));
-    ASSERT1(HRESULT_FROM_WIN32(ERROR_MOD_NOT_FOUND) == hr);
-  }
-
   // If running from the installed location instead of a temporary location,
   // we assume that Omaha had been properly installed and can verify the COM
   // registration.
@@ -786,7 +746,7 @@ void SetupGoogleUpdate::Uninstall() {
     ASSERT1(SUCCEEDED(VerifyCOMLocalServerRegistration(is_machine_)));
   }
 
-  hr = RegisterOrUnregisterCOMLocalServer(false);
+  HRESULT hr = RegisterOrUnregisterCOMLocalServer(false);
   if (FAILED(hr)) {
     SETUP_LOG(LW,
               (_T("[RegisterOrUnregisterCOMLocalServer failed][0x%08x]"), hr));

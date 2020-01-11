@@ -76,7 +76,6 @@ def BuildCOMForwarder(cmd_line_switch,
 # Build the broker/legacy on-demand/WebPlugin forwarders.
 BuildCOMForwarder('/broker', 'GoogleUpdateBroker', False)
 BuildCOMForwarder('/ondemand', 'GoogleUpdateOnDemand', False)
-BuildCOMForwarder('/pi', 'GoogleUpdateWebPlugin', True)
 
 def BuildCOMRegisterShell64():
   com_register_shell_env = env.CloneAndMake64Bit()

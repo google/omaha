@@ -129,7 +129,6 @@ namespace omaha {
 // Shortcuts for different logging categories - no need to specify the category.
 #define CORE_LOG(x, y)         LC_LOG_DEBUG(omaha::LC_CORE, x, y)
 #define NET_LOG(x, y)          LC_LOG_DEBUG(omaha::LC_NET, x, y)
-#define PLUGIN_LOG(x, y)       LC_LOG_DEBUG(omaha::LC_PLUGIN, x, y)
 #define SERVICE_LOG(x, y)      LC_LOG_DEBUG(omaha::LC_SERVICE, x, y)
 #define SETUP_LOG(x, y)        LC_LOG_DEBUG(omaha::LC_SETUP, x, y)
 #define SHELL_LOG(x, y)        LC_LOG_DEBUG(omaha::LC_SHELL, x, y)
@@ -154,7 +153,6 @@ enum LogCategory {
   LC_SHELL,
   LC_CORE,
   LC_JS,
-  LC_PLUGIN,
   LC_SERVICE,
   LC_OPT,
   LC_NET,

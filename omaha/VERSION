@@ -6,6 +6,3 @@ version_major = 1    # 1-65535
 version_minor = 3    # 0-65535
 version_build = 99   # 1-65535
 version_patch = 0    # 0-65535
-
-oneclick_plugin_version = 9
-update_plugin_version = 3

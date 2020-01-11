@@ -33,7 +33,6 @@ lib_inputs = [
     'data_dumper_app_manager.cc',
     'data_dumper_goopdate.cc',
     'data_dumper_network.cc',
-    'data_dumper_oneclick.cc',
     'data_dumper_osdata.cc',
     'dump_log.cc',
     'goopdump.cc',
