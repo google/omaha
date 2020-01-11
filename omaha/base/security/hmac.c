@@ -19,7 +19,6 @@
 #include "util.h"
 
 #include <string.h>
-#include "sha.h"
 #include "sha256.h"
 
 static void HMAC_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
@@ -44,11 +43,6 @@ static void HMAC_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
   for (i = 0; i < sizeof(ctx->opad); ++i) {
     ctx->opad[i] ^= (0x36 ^ 0x5c);
   }
-}
-
-void HMAC_SHA_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
-  SHA_init(&ctx->hash);
-  HMAC_init(ctx, key, len);
 }
 
 void HMAC_SHA256_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len) {
