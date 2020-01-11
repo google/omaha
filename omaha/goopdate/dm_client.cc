@@ -345,8 +345,10 @@ HRESULT SendDeviceManagementRequest(
 }
 
 void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir) {
-  ASSERT(hr == HRESULTFromHttpStatusCode(HTTP_STATUS_GONE),
-         (_T("Unexpected HTTP error from the DM Server[%#x]"), hr));
+  if (hr != HRESULTFromHttpStatusCode(HTTP_STATUS_GONE)) {
+    REPORT_LOG(LE, (_T("Unexpected HTTP error from the DM Server[%#x]"), hr));
+    return;
+  }
 
   // HTTP_STATUS_GONE implies that the device has been unenrolled.
   // Invalidate the DM token and delete cached policies.
