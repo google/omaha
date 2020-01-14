@@ -20,11 +20,12 @@
 #include <atlpath.h>
 #include <atlsecurity.h>
 #include <atlstr.h>
+
 #include <map>
 #include <vector>
+#include <regex>
 
 #include "omaha/base/app_util.h"
-#include "omaha/base/atl_regexp.h"
 #include "omaha/base/browser_utils.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/const_utils.h"
@@ -896,17 +897,18 @@ TEST(GoopdateUtilsTest, GetOSInfo) {
   CString os_version = SystemInfo::GetKernel32OSVersion();
   EXPECT_TRUE(!os_version.IsEmpty());
 
-  const AtlRE major_minor_build = _T("{\\d+\\.\\d+\\.\\d+}");
+  const std::wregex major_minor_build { _T("\\d+\\.\\d+\\.\\d+") };
 
-  CString expected_os_version;
-  CString actual_os_version;
-  EXPECT_TRUE(AtlRE::PartialMatch(os_version,
-                                  major_minor_build,
-                                  &expected_os_version));
-  EXPECT_TRUE(AtlRE::PartialMatch(os_version_getosinfo,
-                                  major_minor_build,
-                                  &actual_os_version));
-  EXPECT_STREQ(expected_os_version, actual_os_version);
+  std::wcmatch expected_os_version;
+  EXPECT_TRUE(std::regex_search(os_version.GetString(),
+                                expected_os_version,
+                                major_minor_build));
+  std::wcmatch actual_os_version;
+  EXPECT_TRUE(std::regex_search(os_version.GetString(),
+                                actual_os_version,
+                                major_minor_build));
+  EXPECT_STREQ(expected_os_version.str(0).c_str(),
+               actual_os_version.str(0).c_str());
 }
 
 class GoopdateUtilsRegistryProtectedTest : public testing::Test {

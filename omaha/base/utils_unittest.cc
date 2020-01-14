@@ -16,11 +16,12 @@
 #include <ATLComTime.h>
 #include <atltypes.h>
 #include <atlwin.h>
+
 #include <map>
 #include <vector>
+
 #include "base/rand_util.h"
 #include "omaha/base/app_util.h"
-#include "omaha/base/atl_regexp.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/dynamic_link_kernel32.h"
 #include "omaha/base/file.h"
@@ -696,38 +697,29 @@ TEST(UtilsTest, interlocked_exchange_pointer) {
   EXPECT_EQ(static_cast<int*>(NULL), pi);
 }
 
-TEST(UtilsTest, GetGuid)  {
+TEST(UtilsTest, GetGuid) {
   CString guid;
   EXPECT_HRESULT_SUCCEEDED(GetGuid(&guid));
 
-  // ATL regexp has many problems including:
-  // * not supporting {n} to repeat a previous item n times.
-  // * not allowing matching on - unless the items around the dash are
-  // enclosed in {}.
-  AtlRE guid_regex(_T("^{\\{{\\h\\h\\h\\h\\h\\h\\h\\h}-{\\h\\h\\h\\h}-{\\h\\h\\h\\h}-{\\h\\h\\h\\h}-{\\h\\h\\h\\h\\h\\h\\h\\h\\h\\h\\h\\h}\\}}$"));   // NOLINT
-
-  CString matched_guid;
-  EXPECT_TRUE(AtlRE::PartialMatch(guid, guid_regex, &matched_guid));
-  EXPECT_STREQ(guid, matched_guid);
+  IID iid = {0};
+  EXPECT_HRESULT_SUCCEEDED(::IIDFromString(guid, &iid));
 
   // Missing {}.
-  guid = _T("5F5280C6-9674-429b-9FEB-551914EF96B8");
-  EXPECT_FALSE(AtlRE::PartialMatch(guid, guid_regex));
+  EXPECT_HRESULT_FAILED(
+      ::IIDFromString(_T("5F5280C6-9674-429b-9FEB-551914EF96B8"), &iid));
 
   // Missing -.
-  guid = _T("{5F5280C6.9674-429b-9FEB-551914EF96B8}");
-  EXPECT_FALSE(AtlRE::PartialMatch(guid, guid_regex));
+  EXPECT_HRESULT_FAILED(
+      ::IIDFromString(_T("{5F5280C6.9674-429b-9FEB-551914EF96B8}"), &iid));
 
   // Whitespaces.
-  guid = _T(" {5F5280C6.9674-429b-9FEB-551914EF96B8}");
-  EXPECT_FALSE(AtlRE::PartialMatch(guid, guid_regex));
-
-  guid = _T("{5F5280C6.9674-429b-9FEB-551914EF96B8} ");
-  EXPECT_FALSE(AtlRE::PartialMatch(guid, guid_regex));
+  EXPECT_HRESULT_FAILED(
+      ::IIDFromString(_T(" {5F5280C6-9674-429b-9FEB-551914EF96B8}"), &iid));
+  EXPECT_HRESULT_FAILED(
+      ::IIDFromString(_T("{5F5280C6-9674-429b-9FEB-551914EF96B8} "), &iid));
 
   // Empty string.
-  guid = _T("");
-  EXPECT_FALSE(AtlRE::PartialMatch(guid, guid_regex));
+    EXPECT_HRESULT_FAILED(::IIDFromString(_T(""), &iid));
 }
 
 TEST(UtilsTest, GetMessageForSystemErrorCode) {

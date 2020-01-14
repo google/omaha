@@ -28,7 +28,6 @@ local_env = env.Clone()
 inputs = [
     'apply_tag.cc',
     'app_util.cc',
-    'atl_regexp.cc',
     'browser_utils.cc',
     'cgi.cc',
     'clipboard.cc',
@@ -61,7 +60,6 @@ inputs = [
     'queue_timer.cc',
     'reactor.cc',
     'reg_key.cc',
-    'regexp.cc',
     'registry_monitor_manager.cc',
     'safe_format.cc',
     'service_utils.cc',

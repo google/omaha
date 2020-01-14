@@ -48,9 +48,6 @@ goto set_env_variables
 :: Directory where the Go programming language toolchain is installed.
 set GOROOT=C:\go
 
-:: Directory where AtlServer files are.
-set OMAHA_ATL_SERVER_DIR=c:\atl_server\files
-
 :: This will depend on your OS. If this version of the .Net framework came with
 :: the OS, then set it to the framework directory
 :: (something like C:\Windows\Microsoft.NET\Framework\v2.0.50727).

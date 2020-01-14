@@ -109,11 +109,7 @@ if (_sdk_dir is None):
      omaha_version_utils.VC80:'platformsdk/v6_1' }[_msc_ver])
 
 _sdk_version = os.getenv('OMAHA_WINDOWS_SDK_10_0_VERSION', None)
-
-_atl_server_dir = os.getenv('OMAHA_ATL_SERVER_DIR',
-                            '$THIRD_PARTY/atl_server/files')
 _wtl_dir = os.getenv('OMAHA_WTL_DIR', '$THIRD_PARTY/wtl/files')
-
 _signtool_path = ('python $MAIN_DIR/tools/retry.py 10 5 \"%s/%s\"' %
                   (os.getenv('OMAHA_SIGNTOOL_SDK_DIR'), 'signtool.exe'))
 
@@ -534,7 +530,6 @@ win_env.AppendUnique(
     ],
 
     CPPPATH = [
-        _atl_server_dir + '/include',
         _wtl_dir +'/include',
         '$GOOGLECLIENT',
         '$MAIN_DIR',
