@@ -4,7 +4,7 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2019 Update 16.3.6 and Windows SDK 10.0.18362.0. ####
+#### Currently, the supported toolchain is Visual Studio 2019 Update 16.4.3 and Windows SDK 10.0.18362.0. ####
 
 Visual Studio 2017 Update 15.9.16 should work too.
 
@@ -16,8 +16,6 @@ The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
   * Microsoft Visual Studio 2017 or 2019. The free Visual Studio Community edition is sufficient to build.
     * Download [here](https://visualstudio.microsoft.com/downloads)
-  * ATL Server headers
-    * Download [here](http://atlserver.codeplex.com). Omaha needs this library for regular expression support.
   * Windows 10 SDK.
     * Download Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
   * Microsoft .NET Framework 2.0
