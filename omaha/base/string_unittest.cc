@@ -746,6 +746,12 @@ TEST(StringTest, Base64) {
   }
 }
 
+TEST(StringTest, Base64Unescape) {
+  CStringA input("AAAAAAAA");
+  CStringA output;
+  ASSERT_EQ(Base64Unescape(input, &output), input.GetLength() * 3 / 4);
+}
+
 TEST(StringTest, TextToLinesAndBack) {
   const TCHAR sample_input[]  = L"Now is the time\r\nfor all good men\r\nto come to the aid of their country";
   const TCHAR* sample_lines[] = { L"Now is the time", L"for all good men", L"to come to the aid of their country" };

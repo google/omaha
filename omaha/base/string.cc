@@ -993,8 +993,8 @@ int Base64Unescape(const CStringA& src, CStringA* dest) {
   ASSERT1(dest);
 
   int len = src.GetLength();
-  int unescape_len = Base64Unescape(src, len, CStrBufA(*dest, len + 1), len);
-  dest->Truncate(unescape_len >= 0 ? unescape_len : 0);
+  int unescape_len = Base64Unescape(src, len, dest->GetBuffer(len + 1), len);
+  dest->ReleaseBufferSetLength(unescape_len >= 0 ? unescape_len : 0);
   return unescape_len;
 }
 
@@ -2239,4 +2239,3 @@ bool SafeHexStringToVector(const CStringW& str, std::vector<uint8>* vec_out) {
 }
 
 }  // namespace omaha
-
