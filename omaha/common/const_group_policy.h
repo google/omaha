@@ -50,6 +50,8 @@ const TCHAR* const kRegValueUpdatesSuppressedStartMin    =
     _T("UpdatesSuppressedStartMin");
 const TCHAR* const kRegValueUpdatesSuppressedDurationMin =
     _T("UpdatesSuppressedDurationMin");
+const TCHAR* const kRegValueCloudPolicyOverridesPlatformPolicy =
+    _T("CloudPolicyOverridesPlatformPolicy");
 
 // This policy specifies what kind of download URLs could be returned to the
 // client in the update response and in which order of priority. The client

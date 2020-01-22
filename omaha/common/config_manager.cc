@@ -414,8 +414,17 @@ ConfigManager::ConfigManager() : dm_policy_manager_(new DMPolicyManager) {
                                       true) == 0) :
                       false;
 
-  policies_.emplace_back(new GroupPolicyManager);
-  policies_.push_back(dm_policy_manager_);
+  DWORD cloud_policy_preferred(0);
+  if (SUCCEEDED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                                 kRegValueCloudPolicyOverridesPlatformPolicy,
+                                 &cloud_policy_preferred)) &&
+      cloud_policy_preferred) {
+    policies_.push_back(dm_policy_manager_);
+    policies_.emplace_back(new GroupPolicyManager);
+  } else {
+    policies_.emplace_back(new GroupPolicyManager);
+    policies_.push_back(dm_policy_manager_);
+  }
 }
 
 CString ConfigManager::GetUserDownloadStorageDir() const {
