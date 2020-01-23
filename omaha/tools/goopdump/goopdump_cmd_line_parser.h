@@ -29,14 +29,12 @@ struct GoopdumpCmdLineArgs {
         is_user(false),
         is_monitor(false),
         is_dump_app_manager(false),
-        is_dump_oneclick(false),
         is_dump_general(false),
         is_write_to_file(false) {}
   bool is_machine;            // Display per-machine data.
   bool is_user;               // Display per-user data (for current user only).
   bool is_monitor;            // Is monitor mode (monitors real time activity).
   bool is_dump_app_manager;   // Dump AppManager data.
-  bool is_dump_oneclick;      // Dump OneClick data.
   bool is_dump_general;       // Dump general OS and Omaha data.
   bool is_write_to_file;      // Dump data to file.
   CString log_filename;       // Filename of log to write to.

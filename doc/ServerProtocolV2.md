@@ -180,7 +180,7 @@ _Request Attributes_
   * client (optional): Similar to brand code.
   * iid (optional): A random GUID used to uniquely count install attempts. For example, if a user fails to install then re-runs the installer and succeeds, we might want to count that as one "attempt".
   * installage (optional): The number of days since the app was first installed.
-  * installsource (optional): Specifies the source of the request. Examples include "oneclick", "clickonce", "ondemandupdate", "ondemandcheckforupdate", "offline", "scheduler", "core". This value is specified to the Omaha client on the command line.
+  * installsource (optional): Specifies the source of the request. Examples include "clickonce", "ondemandupdate", "ondemandcheckforupdate", "offline", "scheduler", "core". This value is specified to the Omaha client on the command line.
   * fp (optional): Specifies a version-agnostic identifier for the last downloaded binary for this app. Usually "1.X" where X is the sha-256 hash of the downloaded binary.
 
 _Response Attributes_

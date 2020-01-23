@@ -260,24 +260,6 @@ TEST(CommandLineBuilder, BuildCodeRedCheck) {
   EXPECT_STREQ(_T("/cr"), cmd_line);
 }
 
-TEST(CommandLineBuilder, BuildWebPlugin) {
-  CommandLineBuilder builder(COMMANDLINE_MODE_WEBPLUGIN);
-  ExpectAsserts expect_asserts;
-  CString cmd_line = builder.GetCommandLineArgs();
-  EXPECT_STREQ(_T(""), cmd_line);
-}
-
-TEST(CommandLineBuilder, BuildWebPluginWithUrlArgsAndInstallSource) {
-  CommandLineBuilder builder(COMMANDLINE_MODE_WEBPLUGIN);
-  builder.set_webplugin_args(_T("piargs"));
-  builder.set_webplugin_url_domain(_T("http://www.google.com/"));
-  builder.set_install_source(_T("oneclick"));
-  CString cmd_line = builder.GetCommandLineArgs();
-  EXPECT_STREQ(_T("/pi \"http://www.google.com/\" \"piargs\"")
-               _T(" /installsource oneclick"),
-               cmd_line);
-}
-
 TEST(CommandLineBuilder, BuildRecover) {
   CommandLineBuilder builder(COMMANDLINE_MODE_RECOVER);
   ExpectAsserts expect_asserts;

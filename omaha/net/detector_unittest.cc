@@ -52,12 +52,19 @@ class GroupPolicyProxyDetectorTest
         kRegValueIsEnrolledToDomain,
         IsManaged() && !IsUsingDMProxyDetector() ? 1UL : 0UL));
 
+    if (IsManaged() && !IsUsingDMProxyDetector()) {
+      RegKey::CreateKey(kRegKeyGoopdateGroupPolicy);
+    } else {
+      RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
+    }
+
     detector_.reset(IsUsingDMProxyDetector() ? new DMProxyDetector :
                                                new GroupPolicyProxyDetector);
   }
 
   virtual void TearDown() {
     ResetCachedOmahaPolicy();
+    RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
     EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
                                          kRegValueIsEnrolledToDomain));
 

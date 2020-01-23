@@ -28,7 +28,6 @@ typedef struct LITE_HMAC_CTX {
   uint8_t opad[64];
 } LITE_HMAC_CTX;
 
-void HMAC_SHA_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len);
 void HMAC_SHA256_init(LITE_HMAC_CTX* ctx, const void* key, unsigned int len);
 const uint8_t* HMAC_final(LITE_HMAC_CTX* ctx);
 

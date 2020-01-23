@@ -44,7 +44,7 @@ CString LoadEnrollmentTokenFromInstall() {
                                                kGoogleUpdateAppId),
       kRegValueCloudManagementEnrollmentToken,
       &value);
-  return SUCCEEDED(hr) ? value : CString();
+  return (SUCCEEDED(hr) && IsUuid(value)) ? value : CString();
 }
 
 // Returns an enrollment token provisioned to the computer via Group Policy, or
@@ -63,7 +63,7 @@ CString LoadEnrollmentTokenFromLegacyPolicy() {
   HRESULT hr = RegKey::GetValue(kRegKeyLegacyGroupPolicy,
                                 kRegValueCloudManagementEnrollmentTokenPolicy,
                                 &value);
-  return SUCCEEDED(hr) ? value : CString();
+  return (SUCCEEDED(hr) && IsUuid(value)) ? value : CString();
 }
 
 // Returns an enrollment token provisioned to the computer via Group Policy for
@@ -75,7 +75,7 @@ CString LoadEnrollmentTokenFromOldLegacyPolicy() {
       kRegKeyLegacyGroupPolicy,
       kRegValueMachineLevelUserCloudPolicyEnrollmentToken,
       &value);
-  return SUCCEEDED(hr) ? value : CString();
+  return (SUCCEEDED(hr) && IsUuid(value)) ? value : CString();
 }
 
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
@@ -238,6 +238,22 @@ CStringA DmStorage::GetDmToken() {
   return dm_token_;
 }
 
+bool DmStorage::IsValidDMToken() {
+  if (IsInvalidDMToken()) {
+    return false;
+  }
+
+  return !GetDmToken().IsEmpty();
+}
+
+HRESULT DmStorage::InvalidateDMToken() {
+  return StoreDmToken(kInvalidTokenValue);
+}
+
+bool DmStorage::IsInvalidDMToken() {
+  return GetDmToken() == kInvalidTokenValue;
+}
+
 HRESULT DmStorage::StoreDmToken(const CStringA& dm_token) {
   HRESULT hr = StoreDmTokenInKey(dm_token, kRegKeyCompanyEnrollment);
   if (SUCCEEDED(hr)) {
@@ -313,6 +329,11 @@ HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
                                             CachedPolicyInfo* info) {
   ASSERT1(info);
 
+  if (!DmStorage::Instance()->IsValidDMToken()) {
+    REPORT_LOG(L1, (_T("[Skip ReadCachedPolicyInfoFile DMToken not valid]")));
+    return E_FAIL;
+  }
+
   CPath policy_info_file(policy_responses_dir);
   policy_info_file.Append(kCachedPolicyInfoFileName);
 
@@ -347,6 +368,11 @@ HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
 HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
                                          CachedOmahaPolicy* info) {
   ASSERT1(info);
+
+  if (!DmStorage::Instance()->IsValidDMToken()) {
+    REPORT_LOG(L1, (_T("[Skip ReadCachedOmahaPolicy DMToken not valid]")));
+    return E_FAIL;
+  }
 
   CStringA encoded_policy_response_dirname;
   Base64Escape(kGoogleUpdatePolicyType,
@@ -387,9 +413,16 @@ HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
 }
 
 DmStorage::DmStorage(const CString& runtime_enrollment_token)
-    : runtime_enrollment_token_(runtime_enrollment_token),
+    : runtime_enrollment_token_(IsUuid(runtime_enrollment_token) ?
+                                runtime_enrollment_token :
+                                CString()),
       enrollment_token_source_(kETokenSourceNone),
       dm_token_source_(kDmTokenSourceNone) {
+  if (!IsUuid(runtime_enrollment_token)) {
+    REPORT_LOG(LE, (_T("[DmStorage::DmStorage]")
+                    _T("[runtime_enrollment_token is not a guid][%s]"),
+                    runtime_enrollment_token));
+  }
 }
 
 void DmStorage::LoadEnrollmentTokenFromStorage() {

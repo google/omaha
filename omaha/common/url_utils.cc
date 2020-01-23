@@ -25,9 +25,8 @@ HRESULT BuildQueryString(const std::vector<QueryElement>& query_params,
   CString query_part;
 
   CString encoded_value;
-  for (std::vector<QueryElement>::const_iterator scan = query_params.begin();
-       scan != query_params.end(); ++scan) {
-    HRESULT hr = StringEscape(scan->second, false, &encoded_value);
+  for (auto const&[key, value] : query_params) {
+    HRESULT hr = StringEscape(value, false, &encoded_value);
     if (FAILED(hr)) {
       return hr;
     }
@@ -35,7 +34,7 @@ HRESULT BuildQueryString(const std::vector<QueryElement>& query_params,
     if (!query_part.IsEmpty()) {
       query_part.AppendChar(_T('&'));
     }
-    query_part.Append(scan->first);
+    query_part.Append(key);
     query_part.AppendChar(_T('='));
     query_part.Append(encoded_value);
   }

@@ -19,11 +19,6 @@
 
 #include "components/crx_file/crx_verifier.h"
 
-#pragma warning(disable : 4245)
-// C4245 : conversion from 'type1' to 'type2', signed/unsigned mismatch
-#include <atlenc.h>
-#pragma warning(default : 4245)
-
 #include <cstring>
 #include <iterator>
 #include <memory>
@@ -38,6 +33,7 @@
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/security/sha256.h"
 #include "omaha/base/signatures.h"
+#include "omaha/base/string.h"
 #include "omaha/base/utils.h"
 #include "omaha/net/cup_ecdsa_utils.h"
 #include "third_party/chrome/files/src/components/crx_file/crx3.pb.h"
@@ -242,11 +238,11 @@ VerifierResult VerifyCrx3(
     return VerifierResult::ERROR_SIGNATURE_VERIFICATION_FAILED;
   }
 
-  const std::vector<byte> v(
-      public_key_bytes.c_str(),
-      public_key_bytes.c_str() + public_key_bytes.length());
   CStringA encoded;
-  VERIFY1(SUCCEEDED(omaha::Base64::Encode(v, &encoded, false)));
+  omaha::Base64Escape(public_key_bytes.c_str(),
+                      public_key_bytes.length(),
+                      &encoded,
+                      true);
   *public_key = encoded;
   *crx_id = declared_crx_id;
   return VerifierResult::OK_FULL;
@@ -433,7 +429,7 @@ VerifierResult Verify(
   }
 
   std::shared_ptr<omaha::CryptDetails::HashInterface> file_hash(
-      omaha::CryptDetails::CreateHasher(true));
+      omaha::CryptDetails::CreateHasher());
 
   // Magic number.
   bool diff = false;

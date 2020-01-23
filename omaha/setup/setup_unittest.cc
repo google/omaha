@@ -1043,7 +1043,7 @@ TEST_F(SetupRegistryProtectedUserTest,
 
   CopyGoopdateFiles(omaha_path_, this_version_);
   CString path = ConcatenatePath(ConcatenatePath(omaha_path_, this_version_),
-                                 UPDATE_PLUGIN_FILENAME);
+                                 kPSFileNameMachine64);
   ASSERT_SUCCEEDED(File::Remove(path));
   ASSERT_FALSE(File::Exists(path));
 

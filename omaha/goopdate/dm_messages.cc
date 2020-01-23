@@ -14,14 +14,12 @@
 
 #include "omaha/goopdate/dm_messages.h"
 
-#include <inttypes.h>
 #include <limits>
 #include <utility>
 
 #include "crypto/signature_verifier_win.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/utils.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
 #include "wireless/android/enterprise/devicemanagement/proto/omaha_settings.pb.h"
 

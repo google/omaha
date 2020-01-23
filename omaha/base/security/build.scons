@@ -36,7 +36,6 @@ security_inputs = [
     'p256_ec.c',
     'p256_ecdsa.c',
     'p256_prng.c',
-    'sha.c',
     'sha256.c',
     'util.c',
     ]

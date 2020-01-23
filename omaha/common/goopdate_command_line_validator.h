@@ -67,7 +67,6 @@ class GoopdateCommandLineValidator {
   HRESULT OnUpdateApps();
   HRESULT OnReportCrash();
   HRESULT OnReportCrashInteractive();
-  HRESULT OnWebPlugin();
   HRESULT OnCodeRed();
   HRESULT OnRecover();
   HRESULT OnRecoverMachine();

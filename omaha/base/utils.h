@@ -859,6 +859,23 @@ inline bool IsLocalSystemSid(const TCHAR* sid) {
   return _tcsicmp(sid, kLocalSystemSid) == 0;
 }
 
+// Returns true if the argument is a uuid. In Microsoft parlance, a UUID is a
+// GUID without the curly braces, as defined by ::UuidFromString().
+inline bool IsUuid(const CString& s) {
+  if (s.IsEmpty()) {
+    return false;
+  }
+
+  // We can use ::UuidFromString() instead of the following code. However,
+  // ::UuidFromString() requires taking a dependency on Rpcrt4.lib, and also
+  // uses NT types such as RPC_STATUS for the return code and RPC_WSTR for the
+  // input string. So this code reuses IsGuid() instead.
+  CString guid(s);
+  guid.Insert(0, _T('{'));
+  guid.AppendChar(_T('}'));
+  return IsGuid(guid);
+}
+
 // Deletes an object. The functor is useful in for_each algorithms.
 struct DeleteFun {
   template <class T> void operator()(T ptr) { delete ptr; }

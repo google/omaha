@@ -29,7 +29,6 @@
 #include "omaha/base/time.h"
 #include "omaha/common/progress_sampler.h"
 #include "omaha/goopdate/com_wrapper_creator.h"
-#include "omaha/goopdate/file_hash.h"
 #include "omaha/goopdate/model_object.h"
 // TODO(omaha): Consider implementing the NetworkRequestCallback portion in a
 // PImpl or similar pattern. As it is, every file that includes model.h also
@@ -60,14 +59,14 @@ class Package
   virtual void OnRequestBegin();
   virtual void OnRequestRetryScheduled(time64 next_download_retry_time);
 
-  void SetFileInfo(const CString& filename, uint64 size, const FileHash& hash);
+  void SetFileInfo(const CString& filename, uint64 size, const CString& hash);
 
   // Returns the name of the file specified in the manifest.
   CString filename() const;
   // Returns the expected size of the file in bytes.
   uint64 expected_size() const;
   // Returns expected file hashes.
-  FileHash expected_hash() const;
+  CString expected_hash() const;
 
   uint64 bytes_downloaded() const;
 
@@ -85,7 +84,7 @@ class Package
   // The name of the package as it appears in the manifest.
   CString filename_;
   uint64 expected_size_;
-  FileHash expected_hash_;
+  CString expected_hash_;
 
   int bytes_downloaded_;
   int bytes_total_;
@@ -108,7 +107,6 @@ class ATL_NO_VTABLE PackageWrapper
                            kMajorTypeLibVersion,
                            kMinorTypeLibVersion> {
  public:
-
   // IPackage.
   STDMETHOD(get)(BSTR dir);
   STDMETHOD(get_isAvailable)(VARIANT_BOOL* is_available);

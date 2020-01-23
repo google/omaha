@@ -157,13 +157,18 @@ class DmStorageTest : public RegistryProtectedTest {
   }
 };
 
-const TCHAR DmStorageTest::kETRuntime[] = _T("runtime");
-const TCHAR DmStorageTest::kETInstall[] = _T("install");
-const TCHAR DmStorageTest::kETCompanyPolicy[] = _T("company_policy");
+const TCHAR DmStorageTest::kETRuntime[] =
+    _T("57FEBE8F-48D0-487B-A788-CF1019DCD452");
+const TCHAR DmStorageTest::kETInstall[] =
+    _T("075688CE-FECC-43DA-BBFB-228BF9C75758");
+const TCHAR DmStorageTest::kETCompanyPolicy[] =
+    _T("098BF4B2-361C-4855-900E-2FB967136C64");
 const char DmStorageTest::kDmTCompany[] = "company";
 #if defined(HAS_LEGACY_DM_CLIENT)
-const TCHAR DmStorageTest::kETLegacyPolicy[] = _T("legacy_policy");
-const TCHAR DmStorageTest::kETOldLegacyPolicy[] = _T("old_legacy_policy");
+const TCHAR DmStorageTest::kETLegacyPolicy[] =
+    _T("55A78AF7-BA8F-4BE0-A93F-148093050293");
+const TCHAR DmStorageTest::kETOldLegacyPolicy[] =
+    _T("1FFFB822-E79B-4A8C-85B3-00DB4C7E3785");
 const char DmStorageTest::kDmTLegacy[] = "legacy";
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
 
@@ -294,6 +299,7 @@ TEST_F(DmStorageTest, DmTokenFromCompany) {
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kDmTCompany));
   std::unique_ptr<DmStorage> dm_storage(NewDmStorage((CString())));
   EXPECT_EQ(dm_storage->GetDmToken(), kDmTCompany);
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
 }
 
 #if defined(HAS_LEGACY_DM_CLIENT)
@@ -319,9 +325,14 @@ TEST_F(DmStorageTest, DmTokenPrecedence) {
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(kDmTCompany));
   std::unique_ptr<DmStorage> dm_storage(NewDmStorage((CString())));
   EXPECT_EQ(dm_storage->GetDmToken(), kDmTCompany);
+  ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
 }
 
 TEST_F(DmStorageTest, PersistPolicies) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+
   PolicyResponsesMap old_responses = {
     {"google/chrome/machine-level-user", "test-data-chrome"},
     {"google/drive/machine-level-user", "test-data-drive"},
@@ -354,6 +365,36 @@ TEST_F(DmStorageTest, PersistPolicies) {
       policy_responses_dir, "google/drive/machine-level-user").FileExists());
 
   EXPECT_HRESULT_SUCCEEDED(DeleteDirectory(policy_responses_dir));
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+}
+
+TEST_F(DmStorageTest, IsValidDMToken) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+
+  EXPECT_FALSE(DmStorage::Instance()->IsValidDMToken());
+
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+  EXPECT_TRUE(DmStorage::Instance()->IsValidDMToken());
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+}
+
+TEST_F(DmStorageTest, IsInvalidDMToken) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+  EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
+
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->InvalidateDMToken());
+  EXPECT_TRUE(DmStorage::Instance()->IsInvalidDMToken());
+
+  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
 }
 
 // This test must access the true registry, so it doesn't use the DmStorageTest

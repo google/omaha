@@ -83,8 +83,7 @@ void CommandLineBuilder::set_app_args(const CString& app_args) {
 }
 
 void CommandLineBuilder::set_install_source(const CString& install_source) {
-  ASSERT1(mode_ == COMMANDLINE_MODE_WEBPLUGIN ||
-          mode_ == COMMANDLINE_MODE_INSTALL ||
+  ASSERT1(mode_ == COMMANDLINE_MODE_INSTALL ||
           mode_ == COMMANDLINE_MODE_HANDOFF_INSTALL ||
           mode_ == COMMANDLINE_MODE_UA);
   install_source_ = install_source;
@@ -106,17 +105,6 @@ void CommandLineBuilder::set_custom_info_filename(
     const CString& custom_info_filename) {
   ASSERT1(mode_ == COMMANDLINE_MODE_REPORTCRASH);
   custom_info_filename_ = custom_info_filename;
-}
-
-void CommandLineBuilder::set_webplugin_url_domain(
-    const CString& webplugin_url_domain) {
-  ASSERT1(mode_ == COMMANDLINE_MODE_WEBPLUGIN);
-  webplugin_url_domain_ = webplugin_url_domain;
-}
-
-void CommandLineBuilder::set_webplugin_args(const CString& webplugin_args) {
-  ASSERT1(mode_ == COMMANDLINE_MODE_WEBPLUGIN);
-  webplugin_args_ = webplugin_args;
 }
 
 void CommandLineBuilder::set_code_red_metainstaller_path(
@@ -185,9 +173,6 @@ CString CommandLineBuilder::GetCommandLineArgs() const {
       break;
     case COMMANDLINE_MODE_RECOVER:
       cmd_line_args = GetRecover();
-      break;
-    case COMMANDLINE_MODE_WEBPLUGIN:
-      cmd_line_args = GetWebPlugin();
       break;
     case COMMANDLINE_MODE_CODE_RED_CHECK:
       cmd_line_args = GetCodeRedCheck();
@@ -454,30 +439,6 @@ CString CommandLineBuilder::GetRecover() const {
   SafeCStringFormat(&cmd_line, _T("/%s %s"),
                     kCmdLineRecover,
                     code_red_metainstaller_path_.GetString());
-  return cmd_line;
-}
-
-CString CommandLineBuilder::GetWebPlugin() const {
-  ASSERT1(!webplugin_url_domain_.IsEmpty());
-  ASSERT1(!webplugin_args_.IsEmpty());
-  ASSERT1(!install_source_.IsEmpty());
-  if (webplugin_url_domain_.IsEmpty() ||
-      webplugin_args_.IsEmpty() ||
-      install_source_.IsEmpty()) {
-    return CString();
-  }
-  CString cmd_line;
-  CString enclosed_webplugin_url_domain_(webplugin_url_domain_);
-  CString enclosed_webplugin_args_(webplugin_args_);
-  EnclosePath(&enclosed_webplugin_url_domain_);
-  EnclosePath(&enclosed_webplugin_args_);
-  // TODO(omaha): Do we want this to handle the urlencoding for us?
-  SafeCStringFormat(&cmd_line, _T("/%s %s %s /%s %s"),
-                    kCmdLineWebPlugin,
-                    enclosed_webplugin_url_domain_.GetString(),
-                    enclosed_webplugin_args_.GetString(),
-                    kCmdLineInstallSource,
-                    install_source_.GetString());
   return cmd_line;
 }
 

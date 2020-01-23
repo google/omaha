@@ -14,8 +14,9 @@
 // ========================================================================
 
 #include <string>
+#include <regex>
+
 #include "omaha/base/app_util.h"
-#include "omaha/base/atl_regexp.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/const_object_names.h"
@@ -152,7 +153,7 @@ TEST_F(CrashReporterTest, DISABLED_Report_OmahaCrash) {
 
 // Tests sending an out-of-process crash.
 // This test will write an entry with the source "Chrome" in the Event Log.
-// TODO(omaha): This test is disabled because it hangs on Zerg machines with
+// TODO(omaha): This test is disabled because it hangs on machines with
 // network connectivity issues. A google_breakpad::RESULT_FAILED causes a 1 hour
 // ::Sleep().
 TEST_F(CrashReporterTest, DISABLED_Report_ProductCrash) {
@@ -184,9 +185,8 @@ TEST_F(CrashReporterTest, DISABLED_Report_ProductCrash) {
   const CString strings = GetLastCrashEventStrings();
 
   // Verify that the strings include the Id token.
-  AtlRE crash_id_regex(_T("Id={\\h+}."));
-  CString crash_id;
-  EXPECT_TRUE(AtlRE::PartialMatch(strings, crash_id_regex, &crash_id));
+  const std::wregex crash_id_regex {_T("Id=[[:xdigit:]]+\\.")};
+  EXPECT_TRUE(std::regex_search(strings.GetString(), crash_id_regex));
 
   // The crash artifacts should be deleted after the crash is reported.
   EXPECT_FALSE(File::Exists(crash_filename));

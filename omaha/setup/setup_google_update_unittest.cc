@@ -81,8 +81,7 @@ void CopyFilesRequiredByFinishInstall(bool is_machine, const CString& version) {
                           kPSFileNameMachine,
                           kPSFileNameMachine64,
                           kPSFileNameUser,
-                          kPSFileNameUser64,
-                          UPDATE_PLUGIN_FILENAME};
+                          kPSFileNameUser64};
   for (size_t i = 0; i < arraysize(files); ++i) {
     ASSERT_SUCCEEDED(File::Copy(
         ConcatenatePath(app_util::GetCurrentModuleDirectory(),
@@ -303,10 +302,11 @@ class SetupGoogleUpdateTest : public testing::Test {
 class SetupGoogleUpdateUserTest : public SetupGoogleUpdateTest {
  protected:
   SetupGoogleUpdateUserTest() : SetupGoogleUpdateTest(false) {
-    CString expected_shell_path =
-        ConcatenatePath(GetGoogleUpdateUserPath(), GetVersionString());
-    expected_run_key_value_ = ConcatenatePath(expected_shell_path,
-                                              kOmahaCoreFileName);
+    CString expected_core_command_line = ConcatenatePath(
+        ConcatenatePath(GetGoogleUpdateUserPath(), GetVersionString()),
+        kOmahaCoreFileName);
+    EnclosePath(&expected_core_command_line);
+    expected_run_key_value_ = expected_core_command_line;
   }
 
   void SetUp() override {

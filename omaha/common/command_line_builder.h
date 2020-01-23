@@ -66,12 +66,6 @@ class CommandLineBuilder {
   CString custom_info_filename() const { return custom_info_filename_; }
   void set_custom_info_filename(const CString& custom_info_filename);
 
-  CString webplugin_url_domain() const { return webplugin_url_domain_; }
-  void set_webplugin_url_domain(const CString& webplugin_url_domain);
-
-  CString webplugin_args() const { return webplugin_args_; }
-  void set_webplugin_args(const CString& webplugin_args);
-
   CString code_red_metainstaller_path() const {
     return code_red_metainstaller_path_;
   }
@@ -114,7 +108,6 @@ class CommandLineBuilder {
   CString GetHandoffInstall() const;
   CString GetUA() const;
   CString GetRecover() const;
-  CString GetWebPlugin() const;
   CString GetCodeRedCheck() const;
   CString GetComServer() const;
   CString GetComBroker() const;
@@ -138,8 +131,6 @@ class CommandLineBuilder {
   CString install_source_;
   CString crash_filename_;
   CString custom_info_filename_;
-  CString webplugin_url_domain_;
-  CString webplugin_args_;
   CString code_red_metainstaller_path_;
   CString ping_string_;
   CString offline_dir_name_;

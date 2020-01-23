@@ -65,26 +65,9 @@ TEST(OmahaCustomizationTest, Constants_BuildFiles) {
   EXPECT_TRUE(::IsEqualGUID(kProxyClsidIsUserGuid,
                             kActualProxyClsidIsUserGuid));
 
-  // VERSION file values. Only the relatively stable ones are tested.
-  // The versions may or may not match in non-Google Update builds.
-#ifdef GOOGLE_UPDATE_BUILD
-  EXPECT_STREQ("9", ONECLICK_PLUGIN_VERSION_ANSI);
-  // TODO(omaha): Change the name to ANSI.
-  EXPECT_STREQ("3", UPDATE_PLUGIN_VERSION_ANSI);
-#else
-  std::wcout << _T("Did not test version values.") << std::endl;
-#endif
-
   // Primary omaha_version_utils values.
   EXPECT_STREQ(_T("npGoogleOneClick"), ONECLICK_PLUGIN_NAME);
   EXPECT_STREQ(_T("npGoogleUpdate"), UPDATE_PLUGIN_NAME);
-
-  // Filenames from omaha_version_utils.
-  EXPECT_STREQ(
-      _T("npGoogleOneClick") _T(ONECLICK_PLUGIN_VERSION_ANSI) _T(".dll"),
-      ONECLICK_PLUGIN_FILENAME);
-  EXPECT_STREQ(_T("npGoogleUpdate") _T(UPDATE_PLUGIN_VERSION_ANSI) _T(".dll"),
-               UPDATE_PLUGIN_FILENAME);
 }
 
 TEST(OmahaCustomizationTest, Constants_Names) {
@@ -128,7 +111,6 @@ TEST(OmahaCustomizationTest, Constants_Filenames) {
   EXPECT_STREQ(_T("GoogleUpdateBroker.exe"), kOmahaBrokerFileName);
   EXPECT_STREQ(_T("GoogleUpdateCore.exe"), kOmahaCoreFileName);
   EXPECT_STREQ(_T("GoogleUpdateOnDemand.exe"), kOmahaOnDemandFileName);
-  EXPECT_STREQ(_T("GoogleUpdateWebPlugin.exe"), kOmahaWebPluginFileName);
   EXPECT_STREQ(_T("GoogleUpdateSetup.exe"), kOmahaMetainstallerFileName);
   EXPECT_STREQ(_T("GoogleUpdateComRegisterShell64.exe"),
                kOmahaCOMRegisterShell64);
@@ -313,23 +295,6 @@ TEST(OmahaCustomizationTest, Constants_Services) {
 TEST(OmahaCustomizationTest, Constants_ScheduledTasks) {
   EXPECT_GU_STREQ(_T("GoogleUpdateTaskUser"), kScheduledTaskNameUserPrefix);
   EXPECT_GU_STREQ(_T("GoogleUpdateTaskMachine"), kScheduledTaskNameMachinePrefix);    // NOLINT
-}
-
-TEST(OmahaCustomizationTest, Constants_Plugins) {
-  EXPECT_GU_STREQ(_T("Google.OneClickCtrl.") _T(ONECLICK_PLUGIN_VERSION_ANSI),
-                  kOneClickProgId);
-  EXPECT_STREQ(
-      "application/x-vnd.google.oneclickctrl." ONECLICK_PLUGIN_VERSION_ANSI,
-      kOneClickPluginMimeTypeAnsi);
-}
-
-TEST(OmahaCustomizationTest, Constants_HostCheck) {
-  EXPECT_EQ(5, arraysize(kSiteLockPatternStrings));
-  EXPECT_STREQ(_T("^(gears)|(mail)|(tools)|(www)|(desktop)|(pack)|(chrome)|(drive)\\.google\\.com$"), kSiteLockPatternStrings[0]);  // NOLINT
-  EXPECT_STREQ(_T("^www\\.google\\.(ad)|(bg)|(ca)|(cn)|(cz)|(de)|(es)|(fi)|(fr)|(gr)|(hr)|(hu)|(it)|(ki)|(kr)|(lt)|(lv)|(nl)|(no)|(pl)|(pt)|(ro)|(ru)|(sk)|(sg)|(sl)|(sr)|(vn)$"), kSiteLockPatternStrings[1]);  // NOLINT
-  EXPECT_STREQ(_T("^www\\.google\\.co\\.(hu)|(id)|(il)|(it)|(jp)|(kr)|(th)|(uk)$"), kSiteLockPatternStrings[2]);  // NOLINT
-  EXPECT_STREQ(_T("^www\\.google\\.com\\.(ar)|(au)|(br)|(cn)|(et)|(gr)|(hr)|(ki)|(lv)|(om)|(pl)|(pt)|(ru)|(sg)|(sv)|(tr)|(vn)$"), kSiteLockPatternStrings[3]);  // NOLINT
-  EXPECT_STREQ(_T("^(www\\.)?chrome\\.com$"), kSiteLockPatternStrings[4]);
 }
 
 //

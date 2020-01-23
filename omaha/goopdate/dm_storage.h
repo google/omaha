@@ -25,6 +25,10 @@
 
 namespace omaha {
 
+// This DM Token value is written into the registry if the server asks the
+// client to invalidate the DM Token.
+constexpr char kInvalidTokenValue[] = "INVALID_DM_TOKEN";
+
 // This is the standard name for the file that PersistPolicies() uses for each
 // {policy_type} that it receives from the DMServer.
 const TCHAR kPolicyResponseFileName[] = _T("PolicyFetchResponse");
@@ -81,6 +85,16 @@ class DmStorage {
   // Returns the device management token, reading from sources as-needed to find
   // one. Returns an empty string if no device management token is found.
   CStringA GetDmToken();
+
+  // Returns true if the DM Token is valid, where valid is defined as non-blank
+  // and not invalidated.
+  bool IsValidDMToken();
+
+  // Writes |kInvalidTokenValue| into the registry.
+  HRESULT InvalidateDMToken();
+
+  // Returns true if the DM Token has been invalidated.
+  bool IsInvalidDMToken();
 
   // Writes |dm_token| into the registry.
   HRESULT StoreDmToken(const CStringA& dm_token);

@@ -31,7 +31,6 @@ omaha\
         mi_exe_stub\            Produces a stub EXE, mi_exe_stub.exe, that will be combined
                                 with a TAR to produce the untagged meta-installer.  (The script to
                                 actually do the merge lives in installers\, mentioned below.)
-plugins\                        Produces the browser plugin, npGoogleUpdate3.dll.
 	recovery\               Produces tools for “Code Red” - a mechanism that the apps being
                                 managed by Omaha can use to check Omaha’s integrity, and
                                 restore it if it appears broken.

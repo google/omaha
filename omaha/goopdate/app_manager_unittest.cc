@@ -1485,8 +1485,6 @@ TEST_F(AppManagerTest, ConvertCommandLineToProductData_Succeeds) {
   args.is_crash_handler_disabled = true;  // Not used.
   args.is_eula_required_set = true;
   args.is_eula_required_set = true;  // Not used.
-  args.webplugin_urldomain = _T("http://nothing.google.com");  // Not used.
-  args.webplugin_args = _T("blah");  // Not used.
   args.install_source = _T("one_click");
   args.code_red_metainstaller_path = _T("foo.exe");  // Not used.
   args.legacy_manifest_path = _T("bar.exe");  // Not used.

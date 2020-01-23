@@ -16,6 +16,7 @@
 #define OMAHA_GOOPDATE_DM_CLIENT_H__
 
 #include <windows.h>
+#include <atlpath.h>
 #include <atlstr.h>
 #include <utility>
 #include <vector>
@@ -31,6 +32,9 @@ namespace dm_client {
 // The policy type that supports getting the policies for all Machine
 // applications from the DMServer.
 const char kGoogleUpdateMachineLevelApps[] = "google/machine-level-apps";
+
+// The content-type for all protocol buffer requests.
+const TCHAR kProtobufContentType[] = _T("application/protobuf");
 
 enum RegistrationState {
   // This client appears to not be managed. In particular, neither a device
@@ -79,6 +83,9 @@ HRESULT SendDeviceManagementRequest(
     const CString& device_id,
     std::vector<std::pair<CString, CString>> query_params,
     std::vector<uint8>* response);
+
+void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir);
+
 CString GetAgent();
 CString GetPlatform();
 CStringA GetOsVersion();

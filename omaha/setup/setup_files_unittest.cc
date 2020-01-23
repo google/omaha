@@ -37,7 +37,7 @@ namespace {
 const int kNumberOfLanguageDlls = 55;
 const int kNumberOfCoreFiles = 11;
 const int kNumberOfMetainstallerFiles = 1;
-const int kNumberOfOptionalFiles = 4;
+const int kNumberOfOptionalFiles = 2;
 const int kNumberOfInstalledRequiredFiles =
     kNumberOfLanguageDlls + kNumberOfCoreFiles;
 // FindFiles returns "." and ".." in addition to the actual files.
@@ -73,8 +73,6 @@ void CopyGoopdateFiles(const CString& omaha_path, const CString& version) {
                           kOmahaMetainstallerFileName,
                           kOmahaBrokerFileName,
                           kOmahaOnDemandFileName,
-                          kOmahaWebPluginFileName,
-                          UPDATE_PLUGIN_FILENAME,
                           kPSFileNameMachine,
                           kPSFileNameMachine64,
                           kPSFileNameUser,
@@ -186,7 +184,6 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(kHelperInstallerName, files[file_index++]);
     EXPECT_STREQ(kOmahaOnDemandFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaMetainstallerFileName, files[file_index++]);
-    EXPECT_STREQ(kOmahaWebPluginFileName, files[file_index++]);
     EXPECT_STREQ(kOmahaDllName, files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_am.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_ar.dll"), files[file_index++]);
@@ -243,7 +240,6 @@ class SetupFilesTest : public testing::Test {
     EXPECT_STREQ(_T("goopdateres_vi.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_zh-CN.dll"), files[file_index++]);
     EXPECT_STREQ(_T("goopdateres_zh-TW.dll"), files[file_index++]);
-    EXPECT_STREQ(UPDATE_PLUGIN_FILENAME, files[file_index++]);
     EXPECT_STREQ(kPSFileNameMachine, files[file_index++]);
     EXPECT_STREQ(kPSFileNameMachine64, files[file_index++]);
     EXPECT_STREQ(kPSFileNameUser, files[file_index++]);

@@ -155,6 +155,12 @@ class ConfigManagerTest
     EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                       kRegValueIsEnrolledToDomain,
                                       IsDomain() ? 1UL : 0UL));
+    if (IsDomain()) {
+      RegKey::CreateKey(kRegKeyGoopdateGroupPolicy);
+    } else {
+      RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
+    }
+
     if (IsDM()) {
       SetCannedCachedOmahaPolicy();
     }
@@ -164,6 +170,7 @@ class ConfigManagerTest
     if (IsDM()) {
       ResetCachedOmahaPolicy();
     }
+    RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
     EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
                                          kRegValueIsEnrolledToDomain));
     RestoreRegistryHives();

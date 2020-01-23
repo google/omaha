@@ -30,8 +30,6 @@ class SetupGoogleUpdate {
 
   HRESULT FinishInstall();
 
-  HRESULT InstallBrowserPlugins();
-
   // Installs the helper (MSI).
   HRESULT InstallMsiHelper();
 
@@ -82,8 +80,6 @@ class SetupGoogleUpdate {
 
   // Uninstalls the helper (MSI).
   HRESULT UninstallMsiHelper();
-
-  HRESULT UninstallBrowserPlugins();
 
   // Build the install file path for support files. For example,
   CString BuildSupportFileInstallPath(const CString& filename) const;

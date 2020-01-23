@@ -159,7 +159,7 @@ bool Process::Running() const {
 HANDLE Process::AssignToJob() {
   // Make sure that the process handle is valid
   if (!get(process_)) {
-    return false;
+    return nullptr;
   }
 
   // Create a job
@@ -168,7 +168,7 @@ HANDLE Process::AssignToJob() {
     UTIL_LOG(LEVEL_ERROR,
              (_T("[Process::AssignToJob - CreateJobObject failed][0x%x]"),
               HRESULTFromLastError()));
-    return false;
+    return nullptr;
   }
 
   // Assign the process to the job
@@ -176,7 +176,7 @@ HANDLE Process::AssignToJob() {
     UTIL_LOG(LEVEL_ERROR,
              (_T("[Process::AssignToJob-AssignProcessToJobObject fail][0x%x]"),
               HRESULTFromLastError()));
-    return false;
+    return nullptr;
   }
 
   return release(job);

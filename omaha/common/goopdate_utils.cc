@@ -37,7 +37,6 @@
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/service_utils.h"
-#include "omaha/base/signatures.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
 #include "omaha/base/system_info.h"
@@ -1554,7 +1553,7 @@ HRESULT GetMacHashesViaNDIS(std::vector<CString>* mac_hashes) {
     }
 
     DWORD query = OID_802_3_PERMANENT_ADDRESS;
-    BYTE mac_address[6];
+    char mac_address[6];
     DWORD mac_size = sizeof(mac_address);
     if (!::DeviceIoControl(get(file_handle),
                            IOCTL_NDIS_QUERY_GLOBAL_STATS,
@@ -1570,11 +1569,11 @@ HRESULT GetMacHashesViaNDIS(std::vector<CString>* mac_hashes) {
       continue;
     }
 
-    std::vector<byte> mac_address_buffer(arraysize(mac_address));
-    ::memcpy(&mac_address_buffer.front(), mac_address, arraysize(mac_address));
-
     CStringA hashed_mac_address;
-    Base64::Encode(mac_address_buffer, &hashed_mac_address, false);
+    Base64Escape(mac_address,
+                 arraysize(mac_address),
+                 &hashed_mac_address,
+                 true);
     mac_hashes->push_back(AnsiToWideString(hashed_mac_address,
                                            hashed_mac_address.GetLength()));
   }

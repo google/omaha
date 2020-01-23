@@ -123,7 +123,6 @@ void IncrementProcessWaitFailCount(CommandLineMode mode) {
     case COMMANDLINE_MODE_CRASH:
     case COMMANDLINE_MODE_INSTALL:
     case COMMANDLINE_MODE_RECOVER:
-    case COMMANDLINE_MODE_WEBPLUGIN:
     case COMMANDLINE_MODE_COMSERVER:
     case COMMANDLINE_MODE_REGISTER_PRODUCT:
     case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
@@ -582,14 +581,6 @@ HRESULT Setup::SetupGoogleUpdate() {
     if (FAILED(start_hr)) {
       SETUP_LOG(LW, (_T("[StartCore failed][0x%x]"), start_hr));
     }
-  }
-
-  // Registration of browser plugins is only done after the shutdown event has
-  // been released; this prevents race conditions where a browser could start
-  // a new install while the shutdown event was still being held.
-  HRESULT plugin_hr = setup_google_update.InstallBrowserPlugins();
-  if (FAILED(plugin_hr)) {
-    SETUP_LOG(LE, (_T("[InstallBrowserPlugins failed][0x%08x]"), plugin_hr));
   }
 
   // Setup is now complete.
