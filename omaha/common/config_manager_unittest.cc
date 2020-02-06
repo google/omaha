@@ -138,12 +138,14 @@ class ConfigManagerNoOverrideTest : public testing::Test {
   ConfigManager* cm_;
 };
 
-// This class is parameterized for Domain and Device Management using
-// ::testing::WithParamInterface<std::tuple<bool, bool>>. The first parameter
-// is the bool for Domain, and the second the bool for DM (Device Management).
+// This class is parameterized for Domain, Device Management, and
+// CloudPolicyOverridesPlatformPolicy using
+// ::testing::WithParamInterface<std::tuple<bool, bool, bool>>. The first
+// parameter is the bool for Domain, the second the bool for DM (Device
+// Management), and the third the bool for CloudPolicyOverridesPlatformPolicy.
 class ConfigManagerTest
     : public ConfigManagerNoOverrideTest,
-      public ::testing::WithParamInterface<std::tuple<bool, bool>> {
+      public ::testing::WithParamInterface<std::tuple<bool, bool, bool>> {
  protected:
   ConfigManagerTest()
       : hive_override_key_name_(kRegistryHiveOverrideRoot) {
@@ -160,6 +162,17 @@ class ConfigManagerTest
     } else {
       RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
     }
+
+    if (IsCloudPolicyOverridesPlatformPolicy()) {
+      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                       kRegValueCloudPolicyOverridesPlatformPolicy,
+                       1UL);
+    }
+
+    // Re-create the ConfigManager instance, since the registry entries above
+    // need to be accounted for within the ConfigManager constructor.
+    ConfigManager::DeleteInstance();
+    cm_ = ConfigManager::Instance();
 
     if (IsDM()) {
       SetCannedCachedOmahaPolicy();
@@ -185,8 +198,16 @@ class ConfigManagerTest
     return std::get<1>(GetParam());
   }
 
+  bool IsCloudPolicyOverridesPlatformPolicy() {
+    return IsDomain() && std::get<2>(GetParam());
+  }
+
+  bool IsDomainPredominant() {
+    return IsDomain() && (!IsCloudPolicyOverridesPlatformPolicy() || !IsDM());
+  }
+
   void ExpectTrueOnlyIfDomain(bool condition) {
-    if (IsDomain()) {
+    if (IsDomainPredominant()) {
       EXPECT_TRUE(condition);
     } else if (IsDM()) {
       return;
@@ -472,9 +493,10 @@ TEST_F(ConfigManagerNoOverrideTest, IsRunningFromMachineGoopdateInstallDir) {
   EXPECT_FALSE(cm_->IsRunningFromMachineGoopdateInstallDir());
 }
 
-INSTANTIATE_TEST_CASE_P(IsDomainIsDM,
+INSTANTIATE_TEST_CASE_P(IsDomainIsDMIsCloudPolicyOverridesPlatformPolicy,
                         ConfigManagerTest,
                         ::testing::Combine(::testing::Bool(),
+                                           ::testing::Bool(),
                                            ::testing::Bool()));
 
 // Tests the GetUpdateCheckUrl override.
@@ -621,7 +643,7 @@ TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_PolicyOverride) {
                              kOverrideMinutes));
   bool is_overridden = false;
 
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(kExpectedSeconds, cm_->GetLastCheckPeriodSec(&is_overridden));
     EXPECT_TRUE(is_overridden);
   } else if (IsDM()) {
@@ -640,7 +662,7 @@ TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GroupPolicyOverride_TooLow) {
   bool is_overridden = false;
   const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
 
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(kMinLastCheckPeriodSec, check_period);
   }
 
@@ -657,7 +679,7 @@ TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GPO_Zero_Domain_NonDomain) {
   bool is_overridden = false;
   const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
 
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(kExpectedSecondsDomain, check_period);
   }
 
@@ -674,7 +696,7 @@ TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_GPO_High_Domain_NonDomain) {
   bool is_overridden = false;
   const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
 
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(kExpectedSecondsDomain, check_period);
   }
 
@@ -688,7 +710,7 @@ TEST_P(ConfigManagerTest,
                              kOverrideMinutes));
   bool is_overridden = false;
   int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(INT_MAX, check_period);
   }
 
@@ -699,7 +721,7 @@ TEST_P(ConfigManagerTest,
                              kOverrideMinutes2));
   is_overridden = false;
   check_period = cm_->GetLastCheckPeriodSec(&is_overridden);
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(INT_MAX, check_period);
   }
 
@@ -710,7 +732,7 @@ TEST_P(ConfigManagerTest,
                              kOverrideMinutes3));
   is_overridden = false;
   check_period = cm_->GetLastCheckPeriodSec(&is_overridden);
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(INT_MAX, check_period);
   }
 
@@ -727,7 +749,7 @@ TEST_P(ConfigManagerTest,
                              kOverrideMinutes));
   bool is_overridden = false;
   const int check_period(cm_->GetLastCheckPeriodSec(&is_overridden));
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     EXPECT_EQ(INT_MAX, check_period);
   }
 
@@ -1293,7 +1315,7 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DMPolicy) {
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     return;
   }
 
@@ -1790,7 +1812,7 @@ TEST_P(ConfigManagerTest, CanUpdateApp_Manual_Omaha_AppDisabled) {
 }
 
 TEST_P(ConfigManagerTest, GetEffectivePolicyForAppUpdates_DMPolicy) {
-  if (IsDomain()) {
+  if (IsDomainPredominant()) {
     return;
   }
 
@@ -1801,7 +1823,8 @@ TEST_P(ConfigManagerTest, GetEffectivePolicyForAppUpdates_DMPolicy) {
 TEST_P(ConfigManagerTest, GetTargetVersionPrefix) {
   EXPECT_SUCCEEDED(SetPolicyString(_T("TargetVersionPrefix") CHROME_APP_ID,
                    _T("4.67.5")));
-  EXPECT_STREQ(IsDomain() ? _T("4.67.5") : IsDM() ? _T("3.6.55") : _T(""),
+  EXPECT_STREQ(IsDomainPredominant() ? _T("4.67.5") : IsDM() ? _T("3.6.55") :
+                                                               _T(""),
                GetTargetVersionPrefix(kChromeAppId));
 }
 
@@ -2125,12 +2148,14 @@ TEST_P(ConfigManagerTest, GetAutoUpdateJitterMs) {
 }
 
 TEST_P(ConfigManagerTest, GetDownloadPreferenceGroupPolicy) {
-  EXPECT_STREQ(!IsDomain() && IsDM() ? kDownloadPreferenceCacheable : _T(""),
+  EXPECT_STREQ(!IsDomainPredominant() && IsDM() ? kDownloadPreferenceCacheable :
+                                                  _T(""),
                cm_->GetDownloadPreferenceGroupPolicy());
 
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
                                    _T("unknown")));
-  EXPECT_STREQ(!IsDomain() && IsDM() ? kDownloadPreferenceCacheable : _T(""),
+  EXPECT_STREQ(!IsDomainPredominant() && IsDM() ? kDownloadPreferenceCacheable :
+                                                  _T(""),
                cm_->GetDownloadPreferenceGroupPolicy());
 
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,

@@ -384,6 +384,7 @@ ConfigManager* ConfigManager::Instance() {
 
 void ConfigManager::DeleteInstance() {
   delete config_manager_;
+  config_manager_ = NULL;
 }
 
 ConfigManager::ConfigManager() : dm_policy_manager_(new DMPolicyManager) {
