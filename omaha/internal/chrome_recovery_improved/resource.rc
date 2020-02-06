@@ -1,0 +1,94 @@
+// Copyright 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ========================================================================
+
+#include <windows.h>
+#include <winres.h>
+#include <winresrc.h>
+#include "../../google_update/resource.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+1 RT_MANIFEST "../../google_update/GoogleUpdate.manifest"
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_APP   ICON    "../../google_update/google_update.ico"
+
+VS_VERSION_INFO VERSIONINFO
+// Resource Editor does not handle constants from main.scons.
+#ifndef APSTUDIO_INVOKED
+ FILEVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+ PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_BUILD,VERSION_PATCH
+#endif  // APSTUDIO_INVOKED
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#if defined _DEBUG && OFFICIAL_BUILD
+ FILEFLAGS VS_FF_DEBUG
+#elif defined _DEBUG
+ FILEFLAGS VS_FF_DEBUG | VS_FF_PRIVATEBUILD
+#elif !OFFICIAL_BUILD
+ FILEFLAGS VS_FF_PRIVATEBUILD
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+// Requires constants from mains.scons that cannot be loaded in Resource Editor.
+#ifndef APSTUDIO_INVOKED
+
+  // Strings that get localized must appear as literals so the tools can replace
+  // them. For open source builds, which don't use these tools, use constants.
+  #ifdef GOOGLE_UPDATE_BUILD
+            VALUE "CompanyName", "Google LLC"
+            VALUE "FileDescription", "Google Update Recovery Probe"
+  #else
+            VALUE "CompanyName", FULL_COMPANY_NAME_ANSI
+            VALUE "FileDescription", OMAHA_APP_NAME_ANSI
+  #endif
+            VALUE "FileVersion", VERSION_NUMBER_STRING
+            VALUE "InternalName", OMAHA_APP_NAME_ANSI
+            VALUE "LegalCopyright", "Copyright 2018 Google LLC"
+            VALUE "OriginalFilename", MAIN_EXE_BASE_NAME_ANSI ".exe"
+  #ifdef GOOGLE_UPDATE_BUILD
+            VALUE "ProductName", "Google Update"
+  #else
+            VALUE "ProductName", OMAHA_APP_NAME_ANSI
+  #endif
+            VALUE "ProductVersion", VERSION_NUMBER_STRING
+  #ifdef _DEBUG
+            VALUE "Debug", ""
+  #endif
+  #if !OFFICIAL_BUILD
+            VALUE "PrivateBuild", BUILD_NUMBER
+  #endif
+
+#else
+            VALUE "_SpecialView",
+                  "Most values are not shown in Resource Editor because they "
+                  "require build file constants."
+#endif  // APSTUDIO_INVOKED
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

@@ -1,0 +1,113 @@
+# Copyright 2017 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ========================================================================
+
+Import('env')
+
+exe_env = env.Clone()
+omaha_version_info = exe_env['omaha_versions_info'][0]
+exe_env['CPPPATH'] += [
+    '$OBJ_ROOT',
+    ]
+exe_env.Append(
+    CCFLAGS = [
+        '/wd4548',
+    ],
+    LIBS = [
+        'advapi32.lib',
+        'bits.lib',
+        'comctl32.lib',
+        'crypt32.lib',
+        'delayimp.lib',
+        'imagehlp.lib',
+        'iphlpapi.lib',
+        'kernel32.lib',
+        'msi.lib',
+        'msimg32.lib',
+        'mstask.lib',
+        'netapi32.lib',
+        'ole32.lib',
+        'psapi.lib',
+        'rpcns4.lib',
+        'rpcrt4.lib',
+        'shell32.lib',
+        'shlwapi.lib',
+        'taskschd.lib',
+        'user32.lib',
+        'userenv.lib',
+        'uxtheme.lib',
+        'version.lib',
+        'wininet.lib',
+        'wintrust.lib',
+        'ws2_32.lib',
+        'wtsapi32.lib',
+        exe_env['atls_libs'][exe_env.Bit('debug')],
+        exe_env['crt_libs'][exe_env.Bit('debug')],
+        exe_env.GetMultiarchLibName('base'),
+        exe_env.GetMultiarchLibName('breakpad'),
+        exe_env.GetMultiarchLibName('client'),
+        exe_env.GetMultiarchLibName('common'),
+        exe_env.GetMultiarchLibName('core'),
+        exe_env.GetMultiarchLibName('crash_handler'),
+        exe_env.GetMultiarchLibName('crx_file'),
+        exe_env.GetMultiarchLibName('google_update_recovery'),
+        exe_env.GetMultiarchLibName('goopdate_lib'),
+        exe_env.GetMultiarchLibName('libprotobuf'),
+        exe_env.GetMultiarchLibName('logging'),
+        exe_env.GetMultiarchLibName('net'),
+        exe_env.GetMultiarchLibName('omaha3_idl'),
+        exe_env.GetMultiarchLibName('security'),
+        exe_env.GetMultiarchLibName('service'),
+        exe_env.GetMultiarchLibName('setup'),
+        exe_env.GetMultiarchLibName('statsreport'),
+        exe_env.GetMultiarchLibName('ui'),
+        ],
+  RCFLAGS = [
+      '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
+      '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
+      '/DVERSION_BUILD=%d' % omaha_version_info.version_build,
+      '/DVERSION_PATCH=%d' % omaha_version_info.version_patch,
+      '/DVERSION_NUMBER_STRING=\\"%s\\"' % (
+          omaha_version_info.GetVersionString()),
+      ],
+)
+if exe_env.Bit('has_device_management'):
+  exe_env.Append(
+      LIBS = [
+          exe_env.GetMultiarchLibName('dm_proto'),
+      ],
+  )
+
+exe_res = exe_env.RES(source = 'resource.rc',
+                      target = 'resource.res')
+exe_env.Depends(exe_res, '../../google_update/GoogleUpdate.manifest')
+
+exe_inputs = [
+    'command_line.cc',
+    'recovery.cc',
+    'winmain.cc',
+    exe_res,
+    ]
+exe_name = 'ChromeRecoveryImproved'
+unsigned_exe = exe_env.ComponentProgram(
+    prog_name='%s_unsigned.exe' % exe_name,
+    source=exe_inputs,
+)
+signed_exe = exe_env.DualSignedBinary(
+    target='%s.exe' % exe_name,
+    source=unsigned_exe,
+)
+
+env.Replicate('$STAGING_DIR', signed_exe)
+
