@@ -69,8 +69,8 @@ int print_octets(const unsigned char* octets, size_t len, int version) {
       "//     * Gy coordinate (256-bit integer, big-endian)\n",
       get_curr_year());
 
-  printf("{0x%02d,\n", (unsigned int) version);
-  printf("0x%02d,", (unsigned int) octets[0]);
+  printf("{0x%02x,\n", (unsigned int) version);
+  printf("0x%02x,", (unsigned int) octets[0]);
 
   const unsigned char* point_octets = octets + 1;
   const size_t point_octets_len = len - 1;
