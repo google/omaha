@@ -418,7 +418,8 @@ DmStorage::DmStorage(const CString& runtime_enrollment_token)
                                 CString()),
       enrollment_token_source_(kETokenSourceNone),
       dm_token_source_(kDmTokenSourceNone) {
-  if (!IsUuid(runtime_enrollment_token)) {
+  if (!runtime_enrollment_token.IsEmpty() &&
+      !IsUuid(runtime_enrollment_token)) {
     REPORT_LOG(LE, (_T("[DmStorage::DmStorage]")
                     _T("[runtime_enrollment_token is not a guid][%s]"),
                     runtime_enrollment_token));
