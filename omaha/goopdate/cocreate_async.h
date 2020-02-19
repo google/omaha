@@ -94,8 +94,6 @@ class ATL_NO_VTABLE CoCreateAsyncStatus
   void SetCreateInstanceResults(const HRESULT& hr,
                                 const CComPtr<IDispatch>& ptr);
 
-  Gate thread_started_gate_;
-
   bool is_done_;
   HRESULT hr_;
   CComPtr<IDispatch> ptr_;

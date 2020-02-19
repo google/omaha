@@ -71,6 +71,13 @@ CoCreateAsyncStatus::CoCreateAsyncStatus() : is_done_(false), hr_(E_PENDING) {
 HRESULT CoCreateAsyncStatus::CreateOmahaMachineServerAsync(
     BSTR origin_url,
     BOOL create_elevated) {
+  // We AddRef here on behalf of the threadpool item below, since we want the
+  // object and the process to stick around until the newly created threadpool
+  // item below starts and also completes execution. The corresponding Release
+  // is done at the end of the threadpool proc.
+  AddRef();
+  ScopeGuard addref_guard = MakeObjGuard(*this, &CoCreateAsyncStatus::Release);
+
   // Create a thread pool work item for deferred execution of the CoCreate. The
   // thread pool owns this call back object.
   using CallBack = ThreadPoolCallBack2<CoCreateAsyncStatus,
@@ -88,7 +95,7 @@ HRESULT CoCreateAsyncStatus::CreateOmahaMachineServerAsync(
     return hr;
   }
 
-  VERIFY1(thread_started_gate_.Wait(INFINITE));
+  addref_guard.Dismiss();
   return S_OK;
 }
 
@@ -96,10 +103,7 @@ void CoCreateAsyncStatus::CreateOmahaMachineServer(const CString origin_url,
                                                    BOOL create_elevated) {
   CORE_LOG(L3, (_T("[CoCreateAsyncStatus::CreateOmahaMachineServer][%s][%d]"),
                 origin_url, create_elevated));
-  AddRef();
   ON_SCOPE_EXIT_OBJ(*this, &CoCreateAsyncStatus::Release);
-
-  VERIFY1(thread_started_gate_.Open());
 
   HRESULT hr = E_FAIL;
   CComPtr<IDispatch> ptr;
