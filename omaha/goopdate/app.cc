@@ -538,6 +538,16 @@ HRESULT App::GetInstallProgress(LONG* install_progress_percentage,
   return S_OK;
 }
 
+HRESULT App::ResetInstallProgress() {
+  ASSERT1(model()->IsLockedByCaller());
+
+  const CString base_key_name(ConfigManager::Instance()->registry_client_state(
+      app_bundle_->is_machine()));
+  const CString app_id_key_name(AppendRegKeyPath(base_key_name,
+                                                 app_guid_string()));
+  return RegKey::DeleteValue(app_id_key_name, kRegValueInstallerProgress);
+}
+
 AppBundle* App::app_bundle() {
   __mutexScope(model()->lock());
   return app_bundle_;

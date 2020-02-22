@@ -35,6 +35,7 @@ void AppStateInit::QueueUpdateCheck(App* app) {
   // an important debug check to ensure that duplicate pings are not sent.
   ASSERT1(!::IsEqualGUID(kGoopdateGuid, app->app_guid()) || app->is_update());
 
+  app->ResetInstallProgress();
   AppManager::Instance()->ResetCurrentStateKey(app->app_guid_string());
 
   ChangeState(app, new AppStateWaitingToCheckForUpdate);

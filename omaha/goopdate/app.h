@@ -380,6 +380,9 @@ class App : public ModelObject {
   // Returns the time interval between update is available and user cancel.
   int GetTimeSinceDownloadStart() const;
 
+  // Deletes "InstallerProgress" under Google\\Update\\ClientState\\{AppID}.
+  HRESULT ResetInstallProgress();
+
  private:
   // TODO(omaha): accessing directly the data members bypasses locking. Review
   // the places where members are accessed by friends and check the caller locks
