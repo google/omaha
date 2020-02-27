@@ -619,6 +619,7 @@ win_env.AppendUnique(
         '/NXCOMPAT',      # Enable NX support. See http://goo.gl/k2IE.
         '/SAFESEH',
         # '/VERBOSE:LIB', # Uncomment to get verbose link info for debugging.
+        '/WX',            # Treat warnings as errors.
         ],
 
     # Defines in CCFLAGS are automatically included.
@@ -823,7 +824,8 @@ windows_optimized_env.AppendUnique(
         '/O1',        # Optimize for small size.
         '/Oy-',       # Disable frame pointer omission.
         '/GL',        # Global optimization goes with link flag '/LTCG'
-        '/MT',
+        '/MT',        # Use the multithread, 
+                      # static version of the run-time library.
         ],
     CPPDEFINES = [
         'NDEBUG',
@@ -833,10 +835,10 @@ windows_optimized_env.AppendUnique(
         '/LTCG',      # Set LTCG for creation of .lib files too.
         ],
     LINKFLAGS = [
-        '/incremental:no',
-        '/opt:ref',
-        '/opt:icf=32',
-        '/LTCG',      # Link-time code generation goes with cl flag '/GL'
+        '/INCREMENTAL:NO', # Disable incremental linking.
+        '/OPT:REF',   # Eliminates functions and data that are never referenced.
+        '/OPT:ICF=32',# Perform identical COMDAT folding (32 iterations).
+        '/LTCG',      # Link-time code generation goes with cl flag '/GL'.
         ],
 )
 
