@@ -167,6 +167,17 @@ APPLICATIONS_HEADER = """
         EXPLAIN !!Explain_Applications
 """
 
+INSTALL_POLICY_ITEMLIST = """\
+            ITEMLIST
+              NAME  !!Name_InstallsEnabled
+              VALUE NUMERIC 1
+              NAME  !!Name_InstallsEnabledMachineOnly
+              VALUE NUMERIC 4
+              NAME  !!Name_InstallsDisabled
+              VALUE NUMERIC 0
+            END ITEMLIST
+            REQUIRED"""
+
 UPDATE_POLICY_ITEMLIST = """\
             ITEMLIST
               NAME  !!Name_UpdatesEnabled
@@ -186,9 +197,11 @@ APPLICATION_DEFAULTS = ("""
             SUPPORTED !!Sup_GoogleUpdate1_2_145_5
           #endif
           EXPLAIN !!Explain_DefaultAllowInstallation
-          VALUENAME InstallDefault
-          VALUEOFF  NUMERIC 0
-          VALUEON   NUMERIC 1
+          PART !!Part_InstallPolicy DROPDOWNLIST
+            VALUENAME InstallDefault
+""" +
+INSTALL_POLICY_ITEMLIST + """
+          END PART
         END POLICY
 
         POLICY !!Pol_DefaultUpdatePolicy
@@ -213,9 +226,11 @@ APP_POLICIES_TEMPLATE = ("""
               SUPPORTED !!Sup_GoogleUpdate1_2_145_5
             #endif
             EXPLAIN !!Explain_Install$AppLegalId$
-            VALUENAME Install$AppGuid$
-            VALUEOFF  NUMERIC 0
-            VALUEON   NUMERIC 1
+            PART !!Part_InstallPolicy DROPDOWNLIST
+              VALUENAME Install$AppGuid$
+""" +
+INSTALL_POLICY_ITEMLIST.replace('            ', '              ') + """
+            END PART
           END POLICY
 
           POLICY !!Pol_UpdatePolicy
@@ -321,8 +336,13 @@ Part_DisableAllAutoUpdateChecks=Disable all auto-update checks (not recommended)
 Part_ProxyMode=Choose how to specify proxy server settings
 Part_ProxyServer=Address or URL of proxy server
 Part_ProxyPacUrl=URL to a proxy .pac file
+Part_InstallPolicy=Policy
 Part_UpdatePolicy=Policy
 Part_TargetVersionPrefix=Target version prefix
+
+Name_InstallsEnabled=Always allow Installs (recommended)
+Name_InstallsEnabledMachineOnly=Always allow Machine-Wide Installs, but not Per-User Installs
+Name_InstallsDisabled=Installs disabled
 
 Name_UpdatesEnabled=""" + UPDATES_ENABLED + """ (recommended)
 Name_ManualUpdatesOnly=""" + MANUAL_UPDATES_ONLY + """

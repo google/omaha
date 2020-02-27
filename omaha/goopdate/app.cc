@@ -939,7 +939,8 @@ HRESULT App::CheckGroupPolicy() const {
       return GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY;
     }
   } else {
-    if (!ConfigManager::Instance()->CanInstallApp(app_guid_)) {
+    if (!ConfigManager::Instance()->CanInstallApp(app_guid_,
+                                                  app_bundle_->is_machine())) {
       return GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY;
     }
   }

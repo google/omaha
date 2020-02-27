@@ -1339,11 +1339,13 @@ bool ConfigManager::AreUpdatesSuppressedNow() const {
 
   return are_updates_suppressed;
 }
-bool ConfigManager::CanInstallApp(const GUID& app_guid) const {
+bool ConfigManager::CanInstallApp(const GUID& app_guid, bool is_machine) const {
   // Google Update should never be checking whether it can install itself.
   ASSERT1(!::IsEqualGUID(kGoopdateGuid, app_guid));
 
-  return kPolicyDisabled != GetEffectivePolicyForAppInstalls(app_guid);
+  auto policy = GetEffectivePolicyForAppInstalls(app_guid);
+  return kPolicyDisabled != policy &&
+         (is_machine || kPolicyEnabledMachineOnly != policy);
 }
 
 // Self-updates cannot be disabled.

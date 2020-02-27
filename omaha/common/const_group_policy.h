@@ -115,6 +115,7 @@ const TCHAR* const kRegValueRollbackToTargetVersion
 
 const int kPolicyDisabled              = 0;
 const int kPolicyEnabled               = 1;
+const int kPolicyEnabledMachineOnly    = 4;
 const int kPolicyManualUpdatesOnly     = 2;
 const int kPolicyAutomaticUpdatesOnly  = 3;
 

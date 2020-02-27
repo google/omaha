@@ -384,7 +384,7 @@ class ConfigManager {
   bool AreUpdatesSuppressedNow() const;
 
   // Returns true if installation of the specified app is allowed.
-  bool CanInstallApp(const GUID& app_guid) const;
+  bool CanInstallApp(const GUID& app_guid, bool is_machine) const;
 
   // Returns true if updates are allowed for the specified app. The 'is_manual'
   // parameter is needed for context, because the update policy can be one of

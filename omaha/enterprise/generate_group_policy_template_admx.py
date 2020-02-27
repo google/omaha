@@ -198,11 +198,29 @@ ADMX_POLICIES = r'''
         displayName="$(string.Pol_DefaultAllowInstallation)"
         explainText="$(string.Explain_DefaultAllowInstallation)"
         presentation="$(presentation.Pol_DefaultAllowInstallation)"
-        key="%(RootPolicyKey)s" valueName="InstallDefault">
+        key="%(RootPolicyKey)s">
       <parentCategory ref="Cat_Applications" />
       <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
-      <enabledValue><decimal value="1" /></enabledValue>
-      <disabledValue><decimal value="0" /></disabledValue>
+      <elements>
+        <enum id="Part_InstallPolicy" key="%(RootPolicyKey)s"
+            valueName="InstallDefault" required="true">
+          <item displayName="$(string.Name_InstallsEnabled)">
+            <value>
+              <decimal value="1" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_InstallsEnabledMachineOnly)">
+            <value>
+              <decimal value="4" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_InstallsDisabled)">
+            <value>
+              <decimal value="0" />
+            </value>
+          </item>
+        </enum>
+      </elements>
     </policy>
     <policy name="Pol_DefaultUpdatePolicy" class="Machine"
         displayName="$(string.Pol_DefaultUpdatePolicy)"
@@ -246,12 +264,29 @@ ADMX_APP_POLICY_TEMPLATE = '''\
         displayName="$(string.Pol_AllowInstallation)"
         explainText="$(string.Explain_Install%(AppLegalId)s)"
         presentation="$(presentation.Pol_AllowInstallation)"
-        key="%(RootPolicyKey)s"
-        valueName="Install%(AppGuid)s">
+        key="%(RootPolicyKey)s">
       <parentCategory ref="Cat_%(AppLegalId)s" />
       <supportedOn ref="Sup_GoogleUpdate1_2_145_5" />
-      <enabledValue><decimal value="1" /></enabledValue>
-      <disabledValue><decimal value="0" /></disabledValue>
+      <elements>
+        <enum id="Part_InstallPolicy"
+             valueName="Install%(AppGuid)s" required="true">
+          <item displayName="$(string.Name_InstallsEnabled)">
+            <value>
+              <decimal value="1" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_InstallsEnabledMachineOnly)">
+            <value>
+              <decimal value="4" />
+            </value>
+          </item>
+          <item displayName="$(string.Name_InstallsDisabled)">
+            <value>
+              <decimal value="0" />
+            </value>
+          </item>
+        </enum>
+      </elements>
     </policy>
     <policy name="Pol_UpdatePolicy%(AppLegalId)s" class="Machine"
         displayName="$(string.Pol_UpdatePolicy)"
@@ -465,6 +500,11 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Part_ProxyMode', 'Choose how to specify proxy server settings'),
     ('Part_ProxyServer', 'Address or URL of proxy server'),
     ('Part_ProxyPacUrl', 'URL to a proxy .pac file'),
+    ('Part_InstallPolicy', 'Policy'),
+    ('Name_InstallsEnabled', 'Always allow Installs (recommended)'),
+    ('Name_InstallsEnabledMachineOnly',
+     'Always allow Machine-Wide Installs, but not Per-User Installs.'),
+    ('Name_InstallsDisabled', 'Installs disabled'),
     ('Part_UpdatePolicy', 'Policy'),
     ('Part_TargetVersionPrefix', 'Target version prefix'),
     ('Name_UpdatesEnabled', 'Always allow updates (recommended)'),
@@ -592,16 +632,22 @@ ADML_PRESENTATIONS = '''\
           <defaultValue></defaultValue>
         </textBox>
       </presentation>
-      <presentation id="Pol_DefaultAllowInstallation" />
+      <presentation id="Pol_DefaultAllowInstallation">
+        <dropdownList refId="Part_InstallPolicy"
+            defaultItem="0">Policy</dropdownList>
+      </presentation>
       <presentation id="Pol_DefaultUpdatePolicy">
         <dropdownList refId="Part_UpdatePolicy"
             defaultItem="0">Policy</dropdownList>
       </presentation>
-      <presentation id="Pol_AllowInstallation" />
+      <presentation id="Pol_AllowInstallation">
+        <dropdownList refId="Part_InstallPolicy"
+            defaultItem="0">Policy</dropdownList>
+      </presentation>
       <presentation id="Pol_UpdatePolicy">
         <dropdownList refId="Part_UpdatePolicy"
             defaultItem="0">Policy</dropdownList>
-      </presentation>\
+      </presentation>
       <presentation id="Pol_TargetVersionPrefix">
         <textBox refId="Part_TargetVersionPrefix">
           <label>Target version prefix</label>

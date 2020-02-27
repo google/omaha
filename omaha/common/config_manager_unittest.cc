@@ -107,8 +107,8 @@ class ConfigManagerNoOverrideTest : public testing::Test {
       : cm_(ConfigManager::Instance()) {
   }
 
-  bool CanInstallApp(const TCHAR* guid) {
-    return cm_->CanInstallApp(StringToGuid(guid));
+  bool CanInstallApp(const TCHAR* guid, bool is_machine) {
+    return cm_->CanInstallApp(StringToGuid(guid), is_machine);
   }
 
   bool CanUpdateApp(const TCHAR* guid, bool is_manual) {
@@ -1227,38 +1227,38 @@ TEST_P(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DifferentAppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, 0));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
-  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1, true));
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
                          kPolicyDisabled);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) == 2);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
-  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1, true));
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
                          kPolicyDisabled);
 }
@@ -1266,7 +1266,7 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_NoAppValue) {
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
-  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1, true));
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
                          kPolicyDisabled);
 }
@@ -1274,7 +1274,7 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppDisabled) {
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
@@ -1282,20 +1282,20 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppEnabled) {
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) == 2);
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 0));
-  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1));
+  ExpectFalseOnlyIfDomain(CanInstallApp(kAppGuid1, true));
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) ==
                          kPolicyDisabled);
 }
@@ -1303,15 +1303,25 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppDisabled) {
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, false));
   EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 2));
-  EXPECT_TRUE(CanInstallApp(kAppGuid1));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   ExpectTrueOnlyIfDomain(GetEffectivePolicyForAppInstalls(kAppGuid1) == 2);
+}
+
+TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppEnabledMachineOnly) {
+  EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
+  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 4));
+  EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
+  ExpectTrueOnlyIfDomain(!CanInstallApp(kAppGuid1, false));
+  ExpectTrueOnlyIfDomain(kPolicyEnabledMachineOnly ==
+                         GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DMPolicy) {
@@ -1319,7 +1329,7 @@ TEST_P(ConfigManagerTest, CanInstallApp_DMPolicy) {
     return;
   }
 
-  EXPECT_EQ(!IsDM(), CanInstallApp(kChromeAppId));
+  EXPECT_EQ(!IsDM(), CanInstallApp(kChromeAppId, true));
   EXPECT_EQ(IsDM() ? kPolicyDisabled : kPolicyEnabled,
             GetEffectivePolicyForAppInstalls(kChromeAppId));
 }
