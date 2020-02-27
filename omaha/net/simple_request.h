@@ -185,6 +185,7 @@ class SimpleRequest : public HttpRequestInterface {
   std::unique_ptr<TransientRequestState> request_state_;
   scoped_event event_resume_;
   bool download_completed_;
+  int resend_count_;
 
   DISALLOW_COPY_AND_ASSIGN(SimpleRequest);
 };

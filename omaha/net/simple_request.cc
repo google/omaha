@@ -49,6 +49,13 @@
 
 namespace omaha {
 
+namespace {
+
+// How many times should we retry when we get ERROR_WINHTTP_RESEND_REQUEST.
+constexpr const int kMaxResendAttempts = 3;
+
+}  // namespace
+
 SimpleRequest::TransientRequestState::TransientRequestState()
     : port(0),
       is_https(false),
@@ -73,7 +80,8 @@ SimpleRequest::SimpleRequest()
       proxy_auth_config_(NULL, CString()),
       low_priority_(false),
       callback_(NULL),
-      download_completed_(false) {
+      download_completed_(false),
+      resend_count_(0) {
   SafeCStringFormat(&user_agent_, _T("%s;winhttp"),
                     NetworkConfig::GetUserAgent());
 
@@ -477,13 +485,20 @@ HRESULT SimpleRequest::SendRequest() {
 #if DEBUG
     LogResponseHeaders();
 #endif
-    if (hr == ERROR_WINHTTP_RESEND_REQUEST) {
+    if (hr == HRESULT_FROM_WIN32(ERROR_WINHTTP_RESEND_REQUEST)) {
       // Resend the request if needed, likely because the authentication
       // scheme requires many transactions on the same handle.
+  
+      // Avoid infinite resend loop.
+      if (++resend_count_ >= kMaxResendAttempts)
+        return hr;
+    
       continue;
     } else if (FAILED(hr)) {
       return hr;
     }
+
+    resend_count_ = 0;
 
     hr = winhttp_adapter_->QueryRequestHeadersInt(
         WINHTTP_QUERY_STATUS_CODE,
