@@ -824,7 +824,7 @@ windows_optimized_env.AppendUnique(
         '/O1',        # Optimize for small size.
         '/Oy-',       # Disable frame pointer omission.
         '/GL',        # Global optimization goes with link flag '/LTCG'
-        '/MT',        # Use the multithread, 
+        '/MT',        # Use the multithread,
                       # static version of the run-time library.
         ],
     CPPDEFINES = [

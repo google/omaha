@@ -488,11 +488,11 @@ HRESULT SimpleRequest::SendRequest() {
     if (hr == HRESULT_FROM_WIN32(ERROR_WINHTTP_RESEND_REQUEST)) {
       // Resend the request if needed, likely because the authentication
       // scheme requires many transactions on the same handle.
-  
+
       // Avoid infinite resend loop.
       if (++resend_count_ >= kMaxResendAttempts)
         return hr;
-    
+
       continue;
     } else if (FAILED(hr)) {
       return hr;
