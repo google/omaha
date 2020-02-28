@@ -103,7 +103,7 @@ class Ping {
   // TODO(omaha): Consider moving everything except the functionality that
   // actually sends the pings out of the Ping class into builder classes. A
   // dependency on the model App is not desirable here.
-  void BuildRequest(const App* app, bool is_update_check);
+  void BuildRequest(const App* app);
 
   // Loads app data from a location other than the Omaha state machine.
   void LoadAppDataFromExtraArgs(const CommandLineExtraArgs& extra_args);

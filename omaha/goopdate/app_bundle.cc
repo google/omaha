@@ -206,13 +206,13 @@ void AppBundle::BuildPing(std::unique_ptr<Ping>* my_ping) {
 
   for (size_t i = 0; i != apps_.size(); ++i) {
     if (apps_[i]->is_eula_accepted()) {
-      ping->BuildRequest(apps_[i], false);
+      ping->BuildRequest(apps_[i]);
     }
   }
 
   for (size_t i = 0; i != uninstalled_apps_.size(); ++i) {
     if (uninstalled_apps_[i]->is_eula_accepted()) {
-      ping->BuildRequest(uninstalled_apps_[i], false);
+      ping->BuildRequest(uninstalled_apps_[i]);
     }
   }
 

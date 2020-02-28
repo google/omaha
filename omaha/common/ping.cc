@@ -88,8 +88,8 @@ void Ping::Initialize(bool is_machine,
 Ping::~Ping() {
 }
 
-void Ping::BuildRequest(const App* app, bool is_update_check) {
-  update_request_utils::BuildRequest(app, is_update_check, ping_request_.get());
+void Ping::BuildRequest(const App* app) {
+  update_request_utils::BuildRequest(app, false, ping_request_.get());
 }
 
 void Ping::LoadAppDataFromExtraArgs(const CommandLineExtraArgs& extra_args) {
