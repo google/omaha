@@ -715,6 +715,21 @@ HRESULT SimpleRequest::PrepareRequest(HANDLE* file_handle) {
 HRESULT SimpleRequest::RequestData(HANDLE file_handle) {
   HRESULT hr = SendRequest();
   if (FAILED(hr)) {
+    // WININET_E_DECODING_FAILED is equivalent to
+    // HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_FAILURE) as well as
+    // HRESULT_FROM_WIN32(ERROR_INTERNET_DECODING_FAILED). Distinguish the two.
+    if (hr == WININET_E_DECODING_FAILED) {
+      HRESULT secure_status_hr =
+          winhttp_adapter_->GetErrorFromSecureStatusFlag();
+
+      if (FAILED(secure_status_hr)) {
+        OPT_LOG(LE, (L"[SimpleRequest::RequestData]"
+                     L"[Changing hresult from: 0x%8x to: 0x%8x]",
+                     hr, secure_status_hr));
+        hr = secure_status_hr;
+      }
+    }
+
     return hr;
   }
 
