@@ -26,6 +26,8 @@
 
 namespace omaha {
 
+class WinHttpAdapterTest;
+
 // Provides a sync-async adapter between the caller and the asynchronous
 // WinHttp client. Solves the issue of reliably canceling of WinHttp calls by
 // closing the handles and avoding the race condition between handle closing
@@ -114,6 +116,9 @@ class WinHttpAdapter {
 
   CString server_name() const { return server_name_; }
   CString server_ip() const { return server_ip_; }
+  DWORD secure_status_flag() const { return secure_status_flag_; }
+
+  HRESULT GetErrorFromSecureStatusFlag() const;
 
  private:
 
@@ -146,10 +151,13 @@ class WinHttpAdapter {
   DWORD                  async_bytes_read_;
   scoped_event           async_completion_event_;
   scoped_event           async_handle_closing_event_;
+  DWORD                  secure_status_flag_;
 
   LLock                  lock_;
 
   DISALLOW_COPY_AND_ASSIGN(WinHttpAdapter);
+
+  friend class WinHttpAdapterTest;
 };
 
 }  // namespace omaha

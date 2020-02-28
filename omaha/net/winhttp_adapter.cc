@@ -28,7 +28,8 @@ WinHttpAdapter::WinHttpAdapter()
       async_call_type_(0),
       async_call_is_error_(0),
       async_bytes_available_(0),
-      async_bytes_read_(0) {
+      async_bytes_read_(0),
+      secure_status_flag_(0) {
   memset(&async_call_result_, 0, sizeof(async_call_result_));
   NET_LOG(L3, (_T("[WinHttpAdapter::WinHttpAdapter][0x%p]"), this));
 }
@@ -505,12 +506,17 @@ void __stdcall WinHttpAdapter::WinHttpStatusCallback(HINTERNET handle,
     case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR:
       status_string = _T("request error");
       break;
-    case WINHTTP_CALLBACK_STATUS_SECURE_FAILURE:
+    case WINHTTP_CALLBACK_STATUS_SECURE_FAILURE: {
+      DWORD detail_flag = *reinterpret_cast<DWORD*>(info);
+      OPT_LOG(LE, (L"[WinHTTP Secure failure: 0x%x", detail_flag));
+      http_adapter->secure_status_flag_ = detail_flag;
+
       status_string = _T("https failure");
       ASSERT1(info);
       ASSERT1(info_len == sizeof(DWORD));
-      SafeCStringFormat(&info_string, _T("0x%x"), *static_cast<DWORD*>(info));
+      SafeCStringFormat(&info_string, _T("0x%x"), detail_flag);
       break;
+    }
     default:
       break;
   }
@@ -531,6 +537,32 @@ void __stdcall WinHttpAdapter::WinHttpStatusCallback(HINTERNET handle,
   http_adapter->StatusCallback(handle, status, info, info_len);
 }
 
+// Return new error base on bit in |secure_status_flag| returned by WinHttp.
+HRESULT WinHttpAdapter::GetErrorFromSecureStatusFlag() const {
+  DWORD status;
+  if (secure_status_flag() & WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED) {
+    status = ERROR_WINHTTP_SECURE_CERT_REV_FAILED;
+  } else if (secure_status_flag() & WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT) {
+    status = ERROR_WINHTTP_SECURE_INVALID_CERT;
+  } else if (secure_status_flag() & WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED) {
+    status = ERROR_WINHTTP_SECURE_CERT_REVOKED;
+  } else if (secure_status_flag() & WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA) {
+    status = ERROR_WINHTTP_SECURE_INVALID_CA;
+  } else if (secure_status_flag() &
+             WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID) {
+    status = ERROR_WINHTTP_SECURE_CERT_CN_INVALID;
+  } else if (secure_status_flag() &
+             WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID) {
+    status = ERROR_WINHTTP_SECURE_CERT_DATE_INVALID;
+  } else if (secure_status_flag() &
+             WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR) {
+    status = ERROR_WINHTTP_SECURE_CHANNEL_ERROR;
+  } else {
+    return S_OK;
+  }
+
+  return HRESULT_FROM_WIN32(status);
+}
 
 }  // namespace omaha
 

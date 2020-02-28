@@ -92,4 +92,54 @@ TEST(WinHttpAdapter, OpenRequestClose) {
   EXPECT_HRESULT_SUCCEEDED(http_client->Close(session_handle));
 }
 
+class WinHttpAdapterTest : public testing::Test {
+public:
+ WinHttpAdapterTest() {}
+protected:
+ void SetSecureStatus(WinHttpAdapter* adapter, uint32_t flag) {
+   adapter->secure_status_flag_ = flag;
+ }
+};
+
+TEST_F(WinHttpAdapterTest, ErrorFromSecureStatusFlag) {
+  WinHttpAdapter winhttp_adapter;
+  EXPECT_HRESULT_SUCCEEDED(winhttp_adapter.GetErrorFromSecureStatusFlag());
+
+  SetSecureStatus(&winhttp_adapter,
+                  WINHTTP_CALLBACK_STATUS_FLAG_CERT_REV_FAILED);
+  EXPECT_EQ(winhttp_adapter.GetErrorFromSecureStatusFlag(),
+            HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_CERT_REV_FAILED));
+
+  SetSecureStatus(&winhttp_adapter, WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CERT);
+  EXPECT_EQ(winhttp_adapter.GetErrorFromSecureStatusFlag(),
+            HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_INVALID_CERT));
+
+  SetSecureStatus(&winhttp_adapter, WINHTTP_CALLBACK_STATUS_FLAG_CERT_REVOKED);
+  EXPECT_EQ(winhttp_adapter.GetErrorFromSecureStatusFlag(),
+            HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_CERT_REVOKED));
+
+  SetSecureStatus(&winhttp_adapter, WINHTTP_CALLBACK_STATUS_FLAG_INVALID_CA);
+  EXPECT_EQ(winhttp_adapter.GetErrorFromSecureStatusFlag(),
+            HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_INVALID_CA));
+
+  SetSecureStatus(&winhttp_adapter,
+                  WINHTTP_CALLBACK_STATUS_FLAG_CERT_CN_INVALID);
+  EXPECT_EQ(winhttp_adapter.GetErrorFromSecureStatusFlag(),
+            HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_CERT_CN_INVALID));
+
+  SetSecureStatus(&winhttp_adapter,
+                  WINHTTP_CALLBACK_STATUS_FLAG_CERT_DATE_INVALID);
+  EXPECT_EQ(winhttp_adapter.GetErrorFromSecureStatusFlag(),
+            HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_CERT_DATE_INVALID));
+
+  SetSecureStatus(&winhttp_adapter,
+                  WINHTTP_CALLBACK_STATUS_FLAG_SECURITY_CHANNEL_ERROR);
+  EXPECT_EQ(winhttp_adapter.GetErrorFromSecureStatusFlag(),
+            HRESULT_FROM_WIN32(ERROR_WINHTTP_SECURE_CHANNEL_ERROR));
+
+  // Not a valid WINHTTP_CALLBACK_STATUS_FLAG_* value.
+  SetSecureStatus(&winhttp_adapter, 0x00000400);
+  EXPECT_HRESULT_SUCCEEDED(winhttp_adapter.GetErrorFromSecureStatusFlag());
+}
+
 }  // namespace omaha
