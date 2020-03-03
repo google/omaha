@@ -4,7 +4,7 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2019 Update 16.4.3 and Windows SDK 10.0.18362.0. ####
+#### Currently, the supported toolchain is Visual Studio 2019 Update 16.4.5 and Windows SDK 10.0.18362.0. ####
 
 Visual Studio 2017 Update 15.9.16 should work too.
 
@@ -17,8 +17,9 @@ The following packages are required to build Omaha:
   * Microsoft Visual Studio 2017 or 2019. The free Visual Studio Community edition is sufficient to build.
     * Download [here](https://visualstudio.microsoft.com/downloads)
   * Windows 10 SDK.
-    * Download Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
-  * Microsoft .NET Framework 2.0
+    * Visual Studio copy of Windows 10 SDK is sufficient to build with, if desired.
+    * Optionally, download and intall Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
+  * Microsoft .NET Framework 2.0 (This dependency is going to be deprecated soon).
     * This should be pre-installed on Windows Vista and Windows 7. This old version of SDK is needed for click-once compatibility with Windows XP systems.
     * To verify, see if the file %WINDIR%\Microsoft.NET\Framework\v2.0.50727\csc.exe exists on your system.
     * Download [here](https://www.microsoft.com/en-us/download/details.aspx?id=19988).
@@ -34,17 +35,17 @@ The following packages are required to build Omaha:
   * SCons 1.3.x (Be sure to use **1.3**, the 2.0 series is not backwards-compatible!)
     * Download SCons [here](http://sourceforge.net/projects/scons/files/scons/1.3.1/).
   * Google Software Construction Toolkit
-    * Get the SCT source [here](http://code.google.com/p/swtoolkit/), either via direct download or via SVN checkout.
+    * Get the SCT source [here](https://code.google.com/archive/p/swtoolkit/downloads), either via direct download or via SVN checkout.
   * The GO programming language
     * Download [here](https://golang.org/dl/) 
   * Google Protocol Buffers (3.9.2 or higher) [here](https://github.com/google/protobuf/releases).
     * From the [release page](https://github.com/google/protobuf/releases), download the zip file protoc-$VERSION-win32.zip. It contains the protoc binary. Unzip the contents under C:\protobuf. After that, download the zip file protobuf-cpp-$VERSION.zip. Unzip the "src" sub-directory contents to C:\protobuf\src. If other directory is used, please edit the environment variables in the hammer.bat, specifically, OMAHA_PROTOBUF_BIN_DIR and OMAHA_PROTOBUF_SRC_DIR.
   * Third-party dependencies:
-    * breakpad. Source code [here](https://code.google.com/p/google-breakpad/source/checkout)
+    * breakpad. Source code [here](https://chromium.googlesource.com/breakpad/breakpad)
     * googletest. Source code [here](https://github.com/google/googletest). This includes both gtest and gmock frameworks.
     * Use git clone, git svn clone, or other way to get the source code for these projects into the third_party directory in the root of this repository.
-    * libzip 1.5.2. Source code [here](https://libzip.org/download/libzip-1.5.2.tar.xz). Unzip the contents of libzip-1.5.2.tar.gz\libzip-1.5.2.tar\libzip-1.5.2\ into the directory googleclient\third_party\libzip. The Omaha repository contains two generated configuration files in `base\libzip`, or one could build the libzip library and generate the files. A change has been made to config.h to disable zip crypto `#undef HAVE_CRYPTO`, or else the zip code won't build because of a compile time bug.
-    * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\ into the directory googleclient\third_party\zlib\v1_2_11.       
+    * libzip 1.5.2. Source code [here](https://libzip.org/download/libzip-1.5.2.tar.xz). Unzip the contents of `libzip-1.5.2.tar.gz\libzip-1.5.2.tar\libzip-1.5.2\` into the directory `googleclient\third_party\libzip`. The Omaha repository contains two generated configuration files in `base\libzip`, or one could build the libzip library and generate the files. A change has been made to config.h to disable zip crypto `#undef HAVE_CRYPTO`, or else the zip code won't build because of a compile time bug.
+    * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of `zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\` into the directory `googleclient\third_party\zlib\v1_2_11`.       
 
 To run the unit tests, one more package is needed. Download the Windows Sysinternals PSTools suite [here](https://technet.microsoft.com/en-us/sysinternals/bb897553) and save psexec.exe somewhere. Then, set a system environment variable named OMAHA_PSEXEC_DIR to the directory containing psexec.exe.
 
@@ -66,10 +67,11 @@ To run the unit tests, one more package is needed. Download the Windows Sysinter
       d---rwx---+ 1 sorin Domain Users   0 Jun 30 17:58 third_party
 
       d:\src\omahaopensource\omaha>ls -l third_party
-      total 16
-      d---rwx---+ 1 sorin          Domain Users 0 Jul 14 12:52 breakpad
-      drwxrwx---+ 1 Administrators Domain Users 0 Sep  1 11:52 googletest
-      d---rwx---+ 1 sorin          Domain Users 0 Aug  7 18:58 lzma
+      drwxrwxrwx 1 sorin sorin 4096 Mar  1 19:37 breakpad
+      drwxrwxrwx 1 sorin sorin 4096 Mar  1 19:41 googletest
+      drwxrwxrwx 1 sorin sorin 4096 Mar  1 19:58 libzip
+      drwxrwxrwx 1 sorin sorin 4096 Mar  1 16:30 lzma
+      drwxrwxrwx 1 sorin sorin 4096 Mar  1 20:07 zlib
 ```
 
 ## Environment Variables ##
