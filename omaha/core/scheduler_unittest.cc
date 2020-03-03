@@ -102,7 +102,7 @@ TEST_F(SchedulerTest, DeleteWhenCallbackExpires) {
 TEST_F(SchedulerTest, DeleteSoonBeforeCallbackExpires) {
   int call_count = 0;
   constexpr int kInterval = 500;
-  constexpr int kTimeout = kInterval - 10;
+  constexpr int kTimeout = kInterval - 50;
   scoped_handle callback_fired(::CreateEvent(NULL, true, false, NULL));
   {
     Scheduler scheduler;
