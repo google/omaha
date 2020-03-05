@@ -19,10 +19,6 @@ The following packages are required to build Omaha:
   * Windows 10 SDK.
     * Visual Studio copy of Windows 10 SDK is sufficient to build with, if desired.
     * Optionally, download and intall Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
-  * Microsoft .NET Framework 2.0 (This dependency is going to be deprecated soon).
-    * This should be pre-installed on Windows Vista and Windows 7. This old version of SDK is needed for click-once compatibility with Windows XP systems.
-    * To verify, see if the file %WINDIR%\Microsoft.NET\Framework\v2.0.50727\csc.exe exists on your system.
-    * Download [here](https://www.microsoft.com/en-us/download/details.aspx?id=19988).
   * The Windows Template Library (WTL)
     * Download WTL [here](http://sourceforge.net/projects/wtl/).
   * The Windows Install XML (WiX) Toolkit, version 3.0 or later.
