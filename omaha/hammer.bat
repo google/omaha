@@ -48,20 +48,6 @@ goto set_env_variables
 :: Directory where the Go programming language toolchain is installed.
 set GOROOT=C:\go
 
-:: This will depend on your OS. If this version of the .Net framework came with
-:: the OS, then set it to the framework directory
-:: (something like C:\Windows\Microsoft.NET\Framework\v2.0.50727).
-:: Otherwise, set it to the directory where the .NET framework is installed.
-set OMAHA_NET_DIR=%WINDIR%\Microsoft.NET\Framework\v2.0.50727
-
-:: This directory is needed to find mage.exe tool, which is the .Net manifest
-:: generating tool. This tool ships as part of the Windows SDK.
-:: However, newer versions of mage.exe can't targer older versions of .Net
-:: framework. If there is a need for the click-once application to run on older
-:: versions of the .Net framework, then an older version of the Windows SDK
-:: needs to be installed and this environment variable point to that directory.
-set OMAHA_NETFX_TOOLS_DIR=%WindowsSDK_ExecutablePath_x86%
-
 :: This directory is needed to find protoc.exe, which is the protocol buffer
 :: compiler. From the release page https://github.com/google/protobuf/releases,
 :: download the zip file protoc-$VERSION-win32.zip. It contains the protoc
