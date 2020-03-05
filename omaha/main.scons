@@ -156,9 +156,8 @@ win_env['ENV']['GOROOT'] = os.getenv('GOROOT',
                                      '\\..\\third_party\\go\\files')
 win_env['ENV']['LocalAppData'] = os.getenv('LocalAppData')
 
-# Append paths for supporting tools such as uuidgen.exe and mage.exe.
+# Append paths for supporting tools such as uuidgen.exe.
 win_env.AppendENVPath('PATH', (os.environ['WindowsSdkVerBinPath'] + '\\x86\\'))
-win_env.AppendENVPath('PATH', os.getenv('OMAHA_NETFX_TOOLS_DIR'))
 
 # Remove this value because it conflicts with a #define
 # in shlwapi.h in the Vista SDK
@@ -682,9 +681,6 @@ for mid_dir in ['', 'vc']:
       win_env.PrependENVPath(env_var, var_path)
 
 if not win_env.Bit('official_installers'):
-  # Make sure csc.exe can be located.
-  win_env.AppendENVPath('PATH', os.environ['OMAHA_NET_DIR'])
-
   sys.path.append('tools')  # for import proxy_clsid_utils.py
   import proxy_clsid_utils
 
@@ -708,7 +704,6 @@ if win_env.Bit('suppress_light_validation'):
 _base_dirs = [
     '.',
     'base',
-    'clickonce',
     'client',
     'common',
     'core',

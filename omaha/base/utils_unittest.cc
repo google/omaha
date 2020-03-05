@@ -384,10 +384,6 @@ TEST(UtilsTest, IsUserLoggedOn) {
   ASSERT_TRUE(is_logged_on);
 }
 
-TEST(UtilsTest, IsClickOnceDisabled) {
-  EXPECT_FALSE(IsClickOnceDisabled());
-}
-
 TEST(UtilsTest, ConfigureRunAtStartup) {
   const TCHAR kRunKeyPath[] =
       _T("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run");

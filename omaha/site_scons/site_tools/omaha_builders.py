@@ -27,42 +27,6 @@ from subprocess import PIPE,Popen
 
 import omaha_version_utils
 
-def SignDotNetManifest(env, target, unsigned_manifest):
-  """Signs a .NET manifest.
-
-  Args:
-    env: The environment.
-    target: Name of signed manifest.
-    unsigned_manifest: Unsigned manifest.
-
-  Returns:
-    Output node list from env.Command().
-  """
-  mage_sign_path = ('python $MAIN_DIR/tools/retry.py 10 15 %s/%s' %
-                    (os.getenv('OMAHA_NETFX_TOOLS_DIR'), 'mage.exe -Sign'))
-  sign_manifest_cmd = (mage_sign_path +
-                       ' $SOURCE -ToFile $TARGET -TimestampUri ' +
-                       '$TIMESTAMP_SERVER ')
-
-  if env.Bit('build_server'):
-    # If signing fails with the following error, the hash may not match any
-    # certificates: "Internal error, please try again. Object reference not set
-    # to an instance of an object."
-    sign_manifest_cmd += ('-CertHash ' + env['CERTIFICATE_HASH'])
-  else:
-    sign_manifest_cmd += '-CertFile %s -Password %s' % (
-        env.GetOption('authenticode_file'),
-        env.GetOption('authenticode_password'))
-
-  signed_manifest = env.Command(
-      target=target,
-      source=unsigned_manifest,
-      action=sign_manifest_cmd
-  )
-
-  return signed_manifest
-
-
 def OmahaCertificateTagExe(env, target, source):
   """Adds a superfluous certificate with a magic signature to an EXE. The file
   must be signed with Authenticode in order for Certificate Tagging to succeed.
@@ -423,7 +387,6 @@ def CompileProtoBuf(env, input_proto_files):
 # NOTE: SCons requires the use of this name, which fails gpylint.
 def generate(env):  # pylint: disable-msg=C6409
   """SCons entry point for this tool."""
-  env.AddMethod(SignDotNetManifest)
   env.AddMethod(OmahaCertificateTagExe)
   env.AddMethod(OmahaTagExe)
   env.AddMethod(IsBuildingModule)

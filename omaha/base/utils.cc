@@ -1809,29 +1809,6 @@ HRESULT IsUserLoggedOn(bool* is_logged_on) {
   return UserRights::UserIsLoggedOnInteractively(is_logged_on);
 }
 
-bool IsClickOnceDisabled() {
-  CComPtr<IInternetZoneManager> zone_mgr;
-  HRESULT hr =  zone_mgr.CoCreateInstance(CLSID_InternetZoneManager);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[InternetZoneManager CreateInstance fail][0x%08x]"), hr));
-    return true;
-  }
-
-  DWORD policy = URLPOLICY_DISALLOW;
-  const DWORD policy_size = sizeof(policy);
-  hr = zone_mgr->GetZoneActionPolicy(URLZONE_INTERNET,
-                                     URLACTION_MANAGED_UNSIGNED,
-                                     reinterpret_cast<BYTE*>(&policy),
-                                     policy_size,
-                                     URLZONEREG_DEFAULT);
-  if (FAILED(hr)) {
-    UTIL_LOG(LE, (_T("[GetZoneActionPolicy failed][0x%08x]"), hr));
-    return true;
-  }
-
-  return policy == URLPOLICY_DISALLOW;
-}
-
 bool ShellExecuteExEnsureParent(LPSHELLEXECUTEINFO shell_exec_info) {
   UTIL_LOG(L3, (_T("[ShellExecuteExEnsureParent]")));
 

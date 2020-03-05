@@ -151,10 +151,6 @@ HRESULT IsSystemProcess(bool* is_system_process);
 // interactive session: console, terminal services, or fast user switching.
 HRESULT IsUserLoggedOn(bool* is_logged_on);
 
-// Returns true if URLACTION_MANAGED_UNSIGNED is disabled for the Internet zone
-// for the current user.
-bool IsClickOnceDisabled();
-
 // Wrapper around ::GetProcAddress().
 template <typename T>
 bool GPA(HMODULE module, const char* function_name, T* function_pointer) {

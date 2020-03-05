@@ -28,94 +28,6 @@ from installers import build_metainstaller
 _RECOVERY_MARKUP_DLL_BASE_NAME = 'recovery_markup'
 _RECOVERY_MARKUP_DLL = _RECOVERY_MARKUP_DLL_BASE_NAME + '.dll'
 
-_CLICKONCE_DEPLOY_DIR = '$TARGET_ROOT/clickonce_deployment'
-
-# This will be of the form 'GoogleInstaller_en.application'.
-def _GetClickOnceDeploymentName(language):
-  return 'GoogleInstaller_%s.application' % (language)
-
-# Generate a ClickOnce deployment manifest personalized with the localized
-# display name of 'Google Installer'.
-def _GenerateDeploymentForOneLanguage(omaha_version_info, language):
-  clickonce_deployment_name = _GetClickOnceDeploymentName(language)
-
-  clickonce_manifest_name = 'clickonce_bootstrap.exe.manifest'
-  clickonce_manifest = '%s/%s' % (_CLICKONCE_DEPLOY_DIR,
-                                  clickonce_manifest_name)
-
-  # Generate the deployment manifest with a dummy name of 'xxxXXXxxx'. The
-  # Python commands module does not work with Unicode strings, so we will
-  # substitute the name in the add_trusturlparams_and_name_command below.
-  generate_deploy_manifest_command = (
-      '@mage -New Deployment -Install false -ToFile $TARGET -Name xxxXXXxxx'
-      ' -Version %s -Processor x86 -AppManifest $SOURCE -AppCodeBase %s' %
-      (omaha_version_info.GetVersionString(), clickonce_manifest_name))
-
-
-  # Have to set up a clear chain of source->target1->target2->target3->etc so
-  # that declarative Hammer will know the order in which to run each command.
-  clickonce_target_1 = env.Command(
-      target=clickonce_deployment_name + '.base',
-      source=clickonce_manifest,
-      action=generate_deploy_manifest_command,
-  )
-
-  # Get the localized 'Google Installer' string.
-  mi_generated_resource = (
-      '$MAIN_DIR/mi_exe_stub/mi_generated_resources_%s.rc' % language)
-  f_in = codecs.open(env.File(mi_generated_resource).abspath, 'r', 'utf16')
-  mi_resource_contents = f_in.read()
-  f_in.close()
-
-  # Get and format strings necessary to generate the display name.
-  # index() will throw and abort the build if there is no match.
-
-  # First, get the company name.
-  company_name_start = (mi_resource_contents.index('IDS_FRIENDLY_COMPANY_NAME'))
-  company_name_start = mi_resource_contents.index('"', company_name_start)
-  company_name_end = mi_resource_contents.index('"', company_name_start + 1)
-  # Since it is inserted into the display name, the quotes must be dropped.
-  company_name = mi_resource_contents[company_name_start + 1:company_name_end]
-  if -1 != company_name.find('"'):
-    raise Exception('Slice indexes are incorrect!')
-
-  # Now get the installer display name and replace the placeholder with the
-  # company name.
-  display_name_start = (
-      mi_resource_contents.index('IDS_INSTALLER_DISPLAY_NAME'))
-  display_name_start = mi_resource_contents.index('"', display_name_start)
-  display_name_end = mi_resource_contents.index('"', display_name_start + 1)
-  display_name = mi_resource_contents[display_name_start:display_name_end + 1]
-  display_name = display_name.replace('%1!s!', company_name)
-
-  # display_name is utf8 encoded to allow the commands and the default codec to
-  # pass it through.
-  display_name = display_name.encode('utf8')
-
-  # mage.exe does not provide a way to add the trustURLParameters attribute to
-  # an application manifest. This script fills that gap. It also adds in the
-  # localized display name, to get around issues with the Python commands
-  # module.
-  add_trusturlparams_and_name_command = (
-      '@python %s --manifest_file=$SOURCE --output_file=$TARGET --display_name='
-      '%s' % (env.File('$MAIN_DIR/clickonce/add_trusturlparams.py').abspath,
-      display_name))
-
-  # This is the next step in the target chain
-  clickonce_target_2 = env.Command(
-      target=clickonce_deployment_name + '.unsigned',
-      source=clickonce_target_1,
-      action=add_trusturlparams_and_name_command,
-  )
-
-  # Sign the deployment manifest.
-  # This will be of the form
-  # 'scons-out\dbg-win\clickonce_deployment\GoogleInstaller_en.application'.
-  manifest_target = '%s/%s' % (_CLICKONCE_DEPLOY_DIR, clickonce_deployment_name)
-  env.SignDotNetManifest(manifest_target, clickonce_target_2)
-
-
-
 def _BuildSetup(omaha_versions_info, is_repair = False):
   # Build the meta-installer for each version.
   _PRODUCT_NAME = 'GoogleUpdate'
@@ -180,25 +92,6 @@ def _BuildSetupVersion(omaha_version_info,
       prefix=prefix,
   )
 
-  # Generate the i18n ClickOnce deployment manifest for languages that we
-  # support.
-  if env.Bit('all') or 'OMAHA_BUILD_CLICKONCE' in os.environ.keys():
-    for language in omaha_version_info.GetSupportedLanguages():
-      _GenerateDeploymentForOneLanguage(omaha_version_info, language)
-
-    # zh-HK needs a deployment file, but it is not in
-    # omaha_version_info.GetSupportedLanguages() and there is no
-    # mi_generated_resources_zh-HK.rc file. The few translations are inherited
-    # from zh-TW, and there are no language code-specific values in the
-    # deployment file, so just copy the zh-TW file to zh-HK.
-    env.Command(
-        target='%s/%s' % (_CLICKONCE_DEPLOY_DIR,
-                          _GetClickOnceDeploymentName('zh-HK')),
-        source='%s/%s' % (_CLICKONCE_DEPLOY_DIR,
-                          _GetClickOnceDeploymentName('zh-TW')),
-        action='@copy /y $SOURCES $TARGET'
-    )
-
 if not env.Bit('official_installers'):
   omaha_versions_info = env['omaha_versions_info']
 
@@ -207,7 +100,6 @@ if not env.Bit('official_installers'):
 
   env.Replicate(
       target=[
-          '$TARGET_ROOT/clickonce_deployment/bin/',
           '$STAGING_DIR',
           ],
       source='$OBJ_ROOT/installers/GoogleUpdateSetup.exe',

@@ -409,8 +409,6 @@ void Worker::CollectAmbientUsageStats() {
       SUCCEEDED(vista_util::IsUACOn(&is_uac_on))) {
     metric_worker_is_uac_disabled.Set(!is_uac_on);
   }
-
-  metric_worker_is_clickonce_disabled.Set(IsClickOnceDisabled());
 }
 
 HRESULT Worker::CheckForUpdateAsync(AppBundle* app_bundle) {
