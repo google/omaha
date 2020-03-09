@@ -20,7 +20,7 @@ The following items **MUST** be changed before releasing a fork of Omaha.  Prefe
 
 > Modify **`kGlobalPrefix`** at the top of the file to contain your company name.
 
-  * **`omaha\base\const_goopdate.h`**
+  * **`omaha\common\const_goopdate.h`**
 
 > Modify the names of the service names (examples: **`omaha_task_name_c`**, **`omaham_service_name`**, etc.) to contain your product's name.
 
