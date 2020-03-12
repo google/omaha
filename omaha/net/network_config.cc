@@ -757,7 +757,7 @@ void NetworkConfigManager::DeleteInstance() {
 NetworkConfigManager& NetworkConfigManager::Instance() {
   __mutexScope(instance_lock_);
   if (!instance_) {
-    VERIFY1(SUCCEEDED(NetworkConfigManager::CreateInstance()));
+    VERIFY_SUCCEEDED(NetworkConfigManager::CreateInstance());
   }
   return *instance_;
 }

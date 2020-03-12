@@ -832,7 +832,7 @@ class LocalCallAccessPermissionHelper {
 
     RegKey key;
     RET_IF_FAILED(key.Open(key_app_id.Key(), T::GetAppIdT(), KEY_WRITE));
-    VERIFY1(SUCCEEDED(key.DeleteValue(_T("AccessPermission"))));
+    VERIFY_SUCCEEDED(key.DeleteValue(_T("AccessPermission")));
 
     // Now, call the base ATL module implementation to unregister the AppId
     RET_IF_FAILED(T::UpdateRegistryAppId(FALSE));

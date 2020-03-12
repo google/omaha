@@ -605,12 +605,12 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
     StringFormatter formatter(app->app_bundle()->display_language());
 
     CString company_name;
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_FRIENDLY_COMPANY_NAME,
-                                           &company_name)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_FRIENDLY_COMPANY_NAME,
+                                           &company_name));
 
-    VERIFY1(SUCCEEDED(formatter.FormatMessage(&app->display_name_,
+    VERIFY_SUCCEEDED(formatter.FormatMessage(&app->display_name_,
                                               IDS_DEFAULT_APP_DISPLAY_NAME,
-                                              company_name)));
+                                              company_name));
   }
 
   // If ClientState registry key doesn't exist, the function could return.
@@ -656,8 +656,8 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
     client_state_key.GetValue(kRegValueLanguage, &app->language_);
   }
 
-  VERIFY1(SUCCEEDED(ReadAppDefinedAttributes(GuidToString(app_guid),
-                                             &app->app_defined_attributes_)));
+  VERIFY_SUCCEEDED(ReadAppDefinedAttributes(GuidToString(app_guid),
+                                             &app->app_defined_attributes_));
 
   client_state_key.GetValue(kRegValueAdditionalParams, &app->ap_);
   client_state_key.GetValue(kRegValueTTToken, &app->tt_token_);
@@ -818,7 +818,7 @@ HRESULT AppManager::WritePreInstallData(const App& app) {
   // impossible to do an accurate user count in the presence of system reimage.
   if (!client_state_key.HasValue(kRegValuePingFreshness)) {
     GUID ping_freshness = GUID_NULL;
-    VERIFY1(SUCCEEDED(::CoCreateGuid(&ping_freshness)));
+    VERIFY_SUCCEEDED(::CoCreateGuid(&ping_freshness));
     client_state_key.SetValue(kRegValuePingFreshness,
                                GuidToString(ping_freshness));
   }
@@ -837,43 +837,43 @@ HRESULT AppManager::WritePreInstallData(const App& app) {
   }
 
   if (!app.language().IsEmpty()) {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueLanguage,
-                                                app.language())));
+    VERIFY_SUCCEEDED(client_state_key.SetValue(kRegValueLanguage,
+                                                app.language()));
   }
 
   if (app.ap().IsEmpty()) {
-    VERIFY1(SUCCEEDED(client_state_key.DeleteValue(kRegValueAdditionalParams)));
+    VERIFY_SUCCEEDED(client_state_key.DeleteValue(kRegValueAdditionalParams));
   } else {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueAdditionalParams,
-                                                app.ap())));
+    VERIFY_SUCCEEDED(client_state_key.SetValue(kRegValueAdditionalParams,
+                                                app.ap()));
   }
 
   CString state_key_path = GetClientStateKeyName(app.app_guid());
-  VERIFY1(SUCCEEDED(app_registry_utils::SetAppBranding(
+  VERIFY_SUCCEEDED(app_registry_utils::SetAppBranding(
       state_key_path,
       app.brand_code(),
       app.client_id(),
       app.referral_id(),
-      app.day_of_last_response())));
+      app.day_of_last_response()));
 
   if (oem_install_utils::IsOemInstalling(is_machine_)) {
     ASSERT1(is_machine_);
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueOemInstall, _T("1"))));
+    VERIFY_SUCCEEDED(client_state_key.SetValue(kRegValueOemInstall, _T("1")));
   }
 
   if (BROWSER_UNKNOWN == app.browser_type()) {
-    VERIFY1(SUCCEEDED(client_state_key.DeleteValue(kRegValueBrowser)));
+    VERIFY_SUCCEEDED(client_state_key.DeleteValue(kRegValueBrowser));
   } else {
     DWORD browser_type = app.browser_type();
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueBrowser,
-                                                browser_type)));
+    VERIFY_SUCCEEDED(client_state_key.SetValue(kRegValueBrowser,
+                                                browser_type));
   }
 
   if (TRISTATE_NONE != app.usage_stats_enable()) {
-    VERIFY1(SUCCEEDED(app_registry_utils::SetUsageStatsEnable(
+    VERIFY_SUCCEEDED(app_registry_utils::SetUsageStatsEnable(
                           is_machine_,
                           app.app_guid_string(),
-                          app.usage_stats_enable())));
+                          app.usage_stats_enable()));
   }
 
   return S_OK;
@@ -1062,9 +1062,9 @@ void AppManager::PersistSuccessfulUpdateCheckResponse(
                 _T("[%s][%d]"), app.app_guid_string(), is_update_available));
   __mutexScope(registry_access_lock_);
 
-  VERIFY1(SUCCEEDED(SetTTToken(app)));
+  VERIFY_SUCCEEDED(SetTTToken(app));
 
-  VERIFY1(SUCCEEDED(WriteCohort(app)));
+  VERIFY_SUCCEEDED(WriteCohort(app));
 
   const CString client_state_key = GetClientStateKeyName(app.app_guid());
 
@@ -1121,22 +1121,22 @@ void AppManager::PersistSuccessfulInstall(const App& app) {
   ASSERT1(!::IsEqualGUID(kGoopdateGuid, app.app_guid()));
 
   RegKey client_state_key;
-  VERIFY1(SUCCEEDED(CreateClientStateKey(app.app_guid(), &client_state_key)));
+  VERIFY_SUCCEEDED(CreateClientStateKey(app.app_guid(), &client_state_key));
 
-  VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueProductVersion,
-                                              app.next_version()->version())));
+  VERIFY_SUCCEEDED(client_state_key.SetValue(kRegValueProductVersion,
+                                              app.next_version()->version()));
 
   if (!app.language().IsEmpty()) {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValueLanguage,
-                                                app.language())));
+    VERIFY_SUCCEEDED(client_state_key.SetValue(kRegValueLanguage,
+                                                app.language()));
   }
 
   if (::IsEqualGUID(app.iid(), GUID_NULL)) {
-    VERIFY1(SUCCEEDED(client_state_key.DeleteValue(kRegValueInstallationId)));
+    VERIFY_SUCCEEDED(client_state_key.DeleteValue(kRegValueInstallationId));
   } else {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+    VERIFY_SUCCEEDED(client_state_key.SetValue(
                           kRegValueInstallationId,
-                          GuidToString(app.iid()))));
+                          GuidToString(app.iid())));
   }
 
   const CString client_state_key_path = GetClientStateKeyName(app.app_guid());
@@ -1319,14 +1319,14 @@ void AppManager::ClearOemInstalled(const AppIdVector& app_ids) {
       continue;
     }
 
-    VERIFY1(SUCCEEDED(state_key.DeleteValue(kRegValueOemInstall)));
+    VERIFY_SUCCEEDED(state_key.DeleteValue(kRegValueOemInstall));
 
     // The current time is close to when OEM activation has happened. Treat the
     // current time as the real install time by resetting InstallTime.
     const DWORD now = Time64ToInt32(GetCurrent100NSTime());
-    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now)));
-    VERIFY1(SUCCEEDED(app_registry_utils::SetInitialDayOfValues(
-        GetClientStateKeyName(app_guid), -1)));
+    VERIFY_SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now));
+    VERIFY_SUCCEEDED(app_registry_utils::SetInitialDayOfValues(
+        GetClientStateKeyName(app_guid), -1));
   }
 }
 
@@ -1347,16 +1347,16 @@ void AppManager::UpdateUpdateAvailableStats(const GUID& app_guid) const {
     update_available_count = 0;
   }
   ++update_available_count;
-  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueUpdateAvailableCount,
-                                       update_available_count)));
+  VERIFY_SUCCEEDED(state_key.SetValue(kRegValueUpdateAvailableCount,
+                                       update_available_count));
 
   DWORD64 update_available_since_time(0);
   hr = state_key.GetValue(kRegValueUpdateAvailableSince,
                           &update_available_since_time);
   if (FAILED(hr)) {
     // There is no existing value, so this must be the first update notice.
-    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueUpdateAvailableSince,
-                                         GetCurrent100NSTime())));
+    VERIFY_SUCCEEDED(state_key.SetValue(kRegValueUpdateAvailableSince,
+                                         GetCurrent100NSTime()));
 
     // TODO(omaha): It would be nice to report the version that we were first
     // told to update to. This is available in UpdateResponse but we do not
@@ -1486,32 +1486,32 @@ void AppManager::SetLastPingTimeMetrics(
   const bool did_send_active_ping = (app.did_run() == ACTIVE_RUN &&
                                      app.days_since_last_active_ping() != 0);
   if (did_send_active_ping) {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+    VERIFY_SUCCEEDED(client_state_key.SetValue(
         kRegValueActivePingDayStartSec,
-        static_cast<DWORD>(now - elapsed_seconds_since_day_start))));
+        static_cast<DWORD>(now - elapsed_seconds_since_day_start)));
   }
 
   const bool did_send_roll_call = (app.days_since_last_roll_call() != 0);
   if (did_send_roll_call) {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+    VERIFY_SUCCEEDED(client_state_key.SetValue(
         kRegValueRollCallDayStartSec,
-        static_cast<DWORD>(now - elapsed_seconds_since_day_start))));
+        static_cast<DWORD>(now - elapsed_seconds_since_day_start)));
   }
 
   // Update new-style counting metrics.
   const bool did_send_day_of_last_activity = (app.did_run() == ACTIVE_RUN &&
                                               app.day_of_last_activity() != 0);
   if (did_send_active_ping || did_send_day_of_last_activity) {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+    VERIFY_SUCCEEDED(client_state_key.SetValue(
         kRegValueDayOfLastActivity,
-        static_cast<DWORD>(elapsed_days_since_datum))));
+        static_cast<DWORD>(elapsed_days_since_datum)));
   }
 
   const bool did_send_day_of_roll_call = (app.day_of_last_roll_call() != 0);
   if (did_send_roll_call || did_send_day_of_roll_call) {
-    VERIFY1(SUCCEEDED(client_state_key.SetValue(
+    VERIFY_SUCCEEDED(client_state_key.SetValue(
         kRegValueDayOfLastRollCall,
-        static_cast<DWORD>(elapsed_days_since_datum))));
+        static_cast<DWORD>(elapsed_days_since_datum)));
   }
 
   // Update the ping freshness value for this ping data. The purpose of the
@@ -1520,9 +1520,9 @@ void AppManager::SetLastPingTimeMetrics(
   // generates a new freshness value, which remains constant until the
   // user counts are sent to the server.
   GUID ping_freshness = GUID_NULL;
-  VERIFY1(SUCCEEDED(::CoCreateGuid(&ping_freshness)));
-  VERIFY1(SUCCEEDED(client_state_key.SetValue(kRegValuePingFreshness,
-                                              GuidToString(ping_freshness))));
+  VERIFY_SUCCEEDED(::CoCreateGuid(&ping_freshness));
+  VERIFY_SUCCEEDED(client_state_key.SetValue(kRegValuePingFreshness,
+                                              GuidToString(ping_freshness)));
 }
 
 void AppManager::UpdateDayOfInstallIfNecessary(
@@ -1543,9 +1543,9 @@ void AppManager::UpdateDayOfInstallIfNecessary(
                                            &existing_day_of_install))) {
     // Update DayOfInstall only if its value is -1.
     if (existing_day_of_install == static_cast<DWORD>(-1)) {
-      VERIFY1(SUCCEEDED(client_state_key.SetValue(
+      VERIFY_SUCCEEDED(client_state_key.SetValue(
           kRegValueDayOfInstall,
-          static_cast<DWORD>(elapsed_days_since_datum))));
+          static_cast<DWORD>(elapsed_days_since_datum)));
     }
   }
 }
@@ -1563,14 +1563,14 @@ HRESULT AppManager::PersistUpdateCheckSuccessfullySent(
 
   ApplicationUsageData app_usage(app.app_bundle()->is_machine(),
                                  vista_util::IsVistaOrLater());
-  VERIFY1(SUCCEEDED(app_usage.ResetDidRun(app.app_guid_string())));
+  VERIFY_SUCCEEDED(app_usage.ResetDidRun(app.app_guid_string()));
 
   SetLastPingTimeMetrics(
       app, elapsed_days_since_datum, elapsed_seconds_since_day_start);
   UpdateDayOfInstallIfNecessary(app, elapsed_days_since_datum);
 
   // Handle the installation id.
-  VERIFY1(SUCCEEDED(ClearInstallationId(app)));
+  VERIFY_SUCCEEDED(ClearInstallationId(app));
 
   return S_OK;
 }

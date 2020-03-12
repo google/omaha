@@ -199,12 +199,13 @@ class ReportIds : public GLock {
   void TraceError(DWORD error);
   inline void TraceLastError() { TraceError(GetLastError()); }
 
-  /**
-  * Iterates through HKEY_CLASSES_ROOT\Interface and calls QI for
-  * all the interfaces there.  Useful for finding out what type of
-  * object you're dealing with :-)
-  */
-  void DumpInterface(IUnknown* unknown);
+  #define VERIFY_SUCCEEDED(hr)                        \
+  do {                                                \
+    const auto hResult = (hr);                        \
+    if (FAILED(hResult)) {                            \
+      VERIFY(false, (L"FAILED(hr): %#08x", hResult)); \
+    }                                                 \
+  } while (0)
 
 #else  // #ifdef _DEBUG
 
@@ -224,6 +225,8 @@ class ReportIds : public GLock {
     do {                   \
       (expr);              \
     } while (0)
+  #define VERIFY_SUCCEEDED(hr) do { HRESULT hResult = (hr); } while(0)
+
   #define REPORT(expr, type, msg, id) \
       ((expr) ? 0 : g_report_ids.ReleaseReport(id))
   void ReleaseAbort(const TCHAR* msg,

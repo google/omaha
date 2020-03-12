@@ -70,9 +70,9 @@ int ChromeRecoveryImprovedMain() {
   custom_info_map[kCrashCustomInfoCommandLineMode] = command_line_mode;
 
   std::unique_ptr<OmahaExceptionHandler> crash_handler;
-  VERIFY1(SUCCEEDED(OmahaExceptionHandler::Create(is_machine,
+  VERIFY_SUCCEEDED(OmahaExceptionHandler::Create(is_machine,
                                                   custom_info_map,
-                                                  &crash_handler)));
+                                                  &crash_handler));
   NamedObjectAttributes attrs;
   GetNamedObjectAttributes(kRecoveryProbeSingleInstance, is_machine, &attrs);
   ProgramInstance instance(attrs.name);

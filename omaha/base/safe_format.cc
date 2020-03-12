@@ -105,7 +105,7 @@ void SafeCStringWFormatV(CStringW* dest_str,
                          va_list arg_list) {
   ASSERT1(dest_str);
   ASSERT1(format_str);
-  VERIFY1(SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list)));
+  VERIFY_SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list));
 }
 
 void SafeCStringAFormatV(CStringA* dest_str,
@@ -113,7 +113,7 @@ void SafeCStringAFormatV(CStringA* dest_str,
                          va_list arg_list) {
   ASSERT1(dest_str);
   ASSERT1(format_str);
-  VERIFY1(SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list)));
+  VERIFY_SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list));
 }
 
 void SafeCStringWFormat(CStringW* dest_str, LPCWSTR format_str, ...) {
@@ -122,7 +122,7 @@ void SafeCStringWFormat(CStringW* dest_str, LPCWSTR format_str, ...) {
 
   va_list arg_list;
   va_start(arg_list, format_str);
-  VERIFY1(SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list)));
+  VERIFY_SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list));
   va_end(arg_list);
 }
 
@@ -132,7 +132,7 @@ void SafeCStringAFormat(CStringA* dest_str, LPCSTR format_str, ...) {
 
   va_list arg_list;
   va_start(arg_list, format_str);
-  VERIFY1(SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list)));
+  VERIFY_SUCCEEDED(InternalCStringVPrintf(*dest_str, format_str, arg_list));
   va_end(arg_list);
 }
 
@@ -144,7 +144,7 @@ void SafeCStringWAppendFormat(CStringW* dest_str, LPCWSTR format_str, ...) {
   va_start(arg_list, format_str);
 
   CStringW append_str;
-  VERIFY1(SUCCEEDED(InternalCStringVPrintf(append_str, format_str, arg_list)));
+  VERIFY_SUCCEEDED(InternalCStringVPrintf(append_str, format_str, arg_list));
   dest_str->Append(append_str);
 
   va_end(arg_list);
@@ -158,7 +158,7 @@ void SafeCStringAAppendFormat(CStringA* dest_str, LPCSTR format_str, ...) {
   va_start(arg_list, format_str);
 
   CStringA append_str;
-  VERIFY1(SUCCEEDED(InternalCStringVPrintf(append_str, format_str, arg_list)));
+  VERIFY_SUCCEEDED(InternalCStringVPrintf(append_str, format_str, arg_list));
   dest_str->Append(append_str);
 
   va_end(arg_list);

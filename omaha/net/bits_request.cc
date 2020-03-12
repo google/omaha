@@ -200,7 +200,7 @@ HRESULT BitsRequest::Cancel() {
 
     is_canceled_ = true;
     if (request_state_.get()) {
-      VERIFY1(SUCCEEDED(CancelBitsJob(request_state_->bits_job)));
+      VERIFY_SUCCEEDED(CancelBitsJob(request_state_->bits_job));
     }
   }
 
@@ -212,7 +212,7 @@ HRESULT BitsRequest::Pause() {
   NET_LOG(L3, (_T("[BitsRequest::Pause]")));
   __mutexBlock(lock_) {
     if (request_state_.get()) {
-      VERIFY1(SUCCEEDED(PauseBitsJob(request_state_->bits_job)));
+      VERIFY_SUCCEEDED(PauseBitsJob(request_state_->bits_job));
     }
   }
   return S_OK;
@@ -222,7 +222,7 @@ HRESULT BitsRequest::Resume() {
   NET_LOG(L3, (_T("[BitsRequest::Resume]")));
   __mutexBlock(lock_) {
     if (request_state_.get()) {
-      VERIFY1(SUCCEEDED(ResumeBitsJob(request_state_->bits_job)));
+      VERIFY_SUCCEEDED(ResumeBitsJob(request_state_->bits_job));
     }
   }
   return S_OK;
@@ -235,7 +235,7 @@ HRESULT BitsRequest::Send() {
 
   __mutexBlock(lock_) {
     if (request_state_.get()) {
-      VERIFY1(SUCCEEDED(CancelBitsJob(request_state_->bits_job)));
+      VERIFY_SUCCEEDED(CancelBitsJob(request_state_->bits_job));
     }
     request_state_.reset(new TransientRequestState);
   }
@@ -619,8 +619,8 @@ HRESULT BitsRequest::DoSend() {
               return hr;
             }
 
-            VERIFY1(SUCCEEDED(network_config->SetProxyAuthScheme(
-                proxy_config_.proxy, is_https, win_http_scheme)));
+            VERIFY_SUCCEEDED(network_config->SetProxyAuthScheme(
+                proxy_config_.proxy, is_https, win_http_scheme));
           }
 
           return S_OK;

@@ -89,9 +89,9 @@ bool IsAppEulaAccepted(bool is_machine,
     return false;
   }
 
-  VERIFY1(SUCCEEDED(RegKey::SetValue(state_key,
+  VERIFY_SUCCEEDED(RegKey::SetValue(state_key,
                                      kRegValueEulaAccepted,
-                                     eula_accepted)));
+                                     eula_accepted));
   return true;
 }
 
@@ -201,16 +201,16 @@ HRESULT SetInitialDayOfValues(const CString& client_state_key_path,
   if (num_days_since_datum == 0) {
     initial_day_of_install = kInitialValue;
   }
-  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueDayOfInstall,
-                                       initial_day_of_install)));
+  VERIFY_SUCCEEDED(state_key.SetValue(kRegValueDayOfInstall,
+                                       initial_day_of_install));
 
   if (!state_key.HasValue(kRegValueDayOfLastActivity)) {
-    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueDayOfLastActivity,
-                                         kInitialValue)));
+    VERIFY_SUCCEEDED(state_key.SetValue(kRegValueDayOfLastActivity,
+                                         kInitialValue));
   }
   if (!state_key.HasValue(kRegValueDayOfLastRollCall)) {
-    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueDayOfLastRollCall,
-                                         kInitialValue)));
+    VERIFY_SUCCEEDED(state_key.SetValue(kRegValueDayOfLastRollCall,
+                                         kInitialValue));
   }
   return S_OK;
 }
@@ -242,7 +242,7 @@ HRESULT SetGoogleUpdateBranding(const CString& client_state_key_path,
   if (FAILED(state_key.GetValue(kRegValueInstallTimeSec, &install_time)) ||
       !install_time) {
     const DWORD now = Time64ToInt32(GetCurrent100NSTime());
-    VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now)));
+    VERIFY_SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now));
     CORE_LOG(L3, (_T("[InstallTime missing. Setting it here.][%u]"), now));
   }
 
@@ -279,8 +279,8 @@ HRESULT SetAppBranding(const CString& client_state_key_path,
     ASSERT1(SUCCEEDED(hr));
     if (existing_brand_code.GetLength() > kBrandIdLength) {
       // Bug 1358852: Brand code garbled with one click.
-      VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueBrandCode,
-                            existing_brand_code.Left(kBrandIdLength))));
+      VERIFY_SUCCEEDED(state_key.SetValue(kRegValueBrandCode,
+                            existing_brand_code.Left(kBrandIdLength)));
     }
     return S_OK;
   }
@@ -308,9 +308,9 @@ HRESULT SetAppBranding(const CString& client_state_key_path,
   }
 
   const DWORD now = Time64ToInt32(GetCurrent100NSTime());
-  VERIFY1(SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now)));
-  VERIFY1(SUCCEEDED(SetInitialDayOfValues(client_state_key_path,
-                                          num_days_since_datum)));
+  VERIFY_SUCCEEDED(state_key.SetValue(kRegValueInstallTimeSec, now));
+  VERIFY_SUCCEEDED(SetInitialDayOfValues(client_state_key_path,
+                                          num_days_since_datum));
   return S_OK;
 }
 
@@ -337,9 +337,9 @@ void PersistSuccessfulInstall(const CString& client_state_key_path,
 
   if (is_update) {
     const DWORD now = Time64ToInt32(GetCurrent100NSTime());
-    VERIFY1(SUCCEEDED(RegKey::SetValue(client_state_key_path,
+    VERIFY_SUCCEEDED(RegKey::SetValue(client_state_key_path,
                                        kRegValueLastUpdateTimeSec,
-                                       now)));
+                                       now));
   }
 }
 
@@ -347,9 +347,9 @@ void PersistSuccessfulUpdateCheck(const CString& client_state_key_path) {
   CORE_LOG(L3, (_T("[app_registry_utils::PersistSuccessfulUpdateCheck][%s]"),
                 client_state_key_path));
   const DWORD now = Time64ToInt32(GetCurrent100NSTime());
-  VERIFY1(SUCCEEDED(RegKey::SetValue(client_state_key_path,
+  VERIFY_SUCCEEDED(RegKey::SetValue(client_state_key_path,
                                      kRegValueLastSuccessfulCheckSec,
-                                     now)));
+                                     now));
 }
 
 void ClearUpdateAvailableStats(const CString& client_state_key_path) {
@@ -362,8 +362,8 @@ void ClearUpdateAvailableStats(const CString& client_state_key_path) {
     return;
   }
 
-  VERIFY1(SUCCEEDED(state_key.DeleteValue(kRegValueUpdateAvailableCount)));
-  VERIFY1(SUCCEEDED(state_key.DeleteValue(kRegValueUpdateAvailableSince)));
+  VERIFY_SUCCEEDED(state_key.DeleteValue(kRegValueUpdateAvailableCount));
+  VERIFY_SUCCEEDED(state_key.DeleteValue(kRegValueUpdateAvailableSince));
 }
 
 HRESULT GetNumClients(bool is_machine, size_t* num_clients) {
@@ -575,8 +575,8 @@ HRESULT WriteCohort(bool is_machine,
     return hr;
   }
 
-  VERIFY1(SUCCEEDED(cohort_key.SetValue(kRegValueCohortHint, cohort.hint)));
-  VERIFY1(SUCCEEDED(cohort_key.SetValue(kRegValueCohortName, cohort.name)));
+  VERIFY_SUCCEEDED(cohort_key.SetValue(kRegValueCohortHint, cohort.hint));
+  VERIFY_SUCCEEDED(cohort_key.SetValue(kRegValueCohortName, cohort.name));
 
   return S_OK;
 }

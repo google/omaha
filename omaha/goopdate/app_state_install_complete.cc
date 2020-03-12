@@ -37,8 +37,8 @@ AppStateInstallComplete::AppStateInstallComplete(App* app)
     goopdate_utils::StartCrashHandler(is_machine);
   }
 
-  VERIFY1(SUCCEEDED(app->model()->PurgeAppLowerVersions(
-      app->app_guid_string(), app->next_version()->version())));
+  VERIFY_SUCCEEDED(app->model()->PurgeAppLowerVersions(
+      app->app_guid_string(), app->next_version()->version()));
 }
 
 // Omaha installs and updates are two-step processes. Omaha is handled as a

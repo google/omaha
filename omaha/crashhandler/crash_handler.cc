@@ -107,10 +107,10 @@ HRESULT CrashHandler::Main(bool is_system) {
                       COMMANDLINE_MODE_CRASH_HANDLER);
     custom_info_map[kCrashCustomInfoCommandLineMode] = command_line_mode;
 
-    VERIFY1(SUCCEEDED(
+    VERIFY_SUCCEEDED(
         OmahaExceptionHandler::Create(is_system,
                                       custom_info_map,
-                                      &exception_handler_)));
+                                      &exception_handler_));
 
     // Are we allowed to monitor crashes?
     if (!ConfigManager::Instance()->CanCollectStats(is_system)) {
@@ -638,7 +638,7 @@ HRESULT CrashHandler::RunUntilShutdown() {
   // Trim the process working set to minimum. It does not need a more complex
   // algorithm for now. Likely the working set will increase slightly over time
   // as the CrashHandler is handling events.
-  VERIFY1(SUCCEEDED(System::EmptyProcessWorkingSet()));
+  VERIFY_SUCCEEDED(System::EmptyProcessWorkingSet());
 
   // Pump messages.  If the shutdown event is set, a WM_QUIT will be posted to
   // this thread (from a thread pool thread running Shutdown(), below) to exit.

@@ -67,11 +67,11 @@ void WinHttpAdapter::CloseHandles() {
   __mutexScope(lock_);
 
   if (request_handle_) {
-    VERIFY1(SUCCEEDED(http_client_->Close(request_handle_)));
+    VERIFY_SUCCEEDED(http_client_->Close(request_handle_));
     request_handle_ = NULL;
   }
   if (connection_handle_) {
-    VERIFY1(SUCCEEDED(http_client_->Close(connection_handle_)));
+    VERIFY_SUCCEEDED(http_client_->Close(connection_handle_));
     connection_handle_ = NULL;
   }
 }

@@ -198,15 +198,15 @@ void PersistUpdateErrorInfo(bool is_machine,
                             const CString& version) {
   const TCHAR* update_key_name =
       ConfigManager::Instance()->registry_update(is_machine);
-  VERIFY1(SUCCEEDED(RegKey::SetValue(update_key_name,
+  VERIFY_SUCCEEDED(RegKey::SetValue(update_key_name,
                                      kRegValueSelfUpdateErrorCode,
-                                     static_cast<DWORD>(error))));
-  VERIFY1(SUCCEEDED(RegKey::SetValue(update_key_name,
+                                     static_cast<DWORD>(error)));
+  VERIFY_SUCCEEDED(RegKey::SetValue(update_key_name,
                                      kRegValueSelfUpdateExtraCode1,
-                                     static_cast<DWORD>(extra_code1))));
-  VERIFY1(SUCCEEDED(RegKey::SetValue(update_key_name,
+                                     static_cast<DWORD>(extra_code1)));
+  VERIFY_SUCCEEDED(RegKey::SetValue(update_key_name,
                                      kRegValueSelfUpdateVersion,
-                                     version)));
+                                     version));
 }
 
 }  // namespace internal
@@ -235,14 +235,14 @@ bool ReadAndClearUpdateErrorInfo(bool is_machine,
     return false;
   }
 
-  VERIFY1(SUCCEEDED(update_key.GetValue(kRegValueSelfUpdateErrorCode,
-                                        error_code)));
+  VERIFY_SUCCEEDED(update_key.GetValue(kRegValueSelfUpdateErrorCode,
+                                        error_code));
   ASSERT1(FAILED(*error_code));
 
-  VERIFY1(SUCCEEDED(update_key.GetValue(kRegValueSelfUpdateExtraCode1,
-                                        extra_code1)));
+  VERIFY_SUCCEEDED(update_key.GetValue(kRegValueSelfUpdateExtraCode1,
+                                        extra_code1));
 
-  VERIFY1(SUCCEEDED(update_key.GetValue(kRegValueSelfUpdateVersion, version)));
+  VERIFY_SUCCEEDED(update_key.GetValue(kRegValueSelfUpdateVersion, version));
 
   if (FAILED(update_key.DeleteValue(kRegValueSelfUpdateErrorCode)) ||
       FAILED(update_key.DeleteValue(kRegValueSelfUpdateExtraCode1)) ||
@@ -293,14 +293,14 @@ HRESULT InstallSelf(bool is_machine,
       ConfigManager::Instance()->registry_client_state_goopdate(is_machine);
 
   // TODO(omaha): move SetInstallationId to app_registry_utils
-  VERIFY1(SUCCEEDED(internal::SetInstallationId(omaha_client_state_key_path,
-                                                extra_args.installation_id)));
-  VERIFY1(SUCCEEDED(ExperimentLabels::WriteRegistry(
-      is_machine, kGoogleUpdateAppId, extra_args.experiment_labels)));
-  VERIFY1(SUCCEEDED(app_registry_utils::SetGoogleUpdateBranding(
+  VERIFY_SUCCEEDED(internal::SetInstallationId(omaha_client_state_key_path,
+                                                extra_args.installation_id));
+  VERIFY_SUCCEEDED(ExperimentLabels::WriteRegistry(
+      is_machine, kGoogleUpdateAppId, extra_args.experiment_labels));
+  VERIFY_SUCCEEDED(app_registry_utils::SetGoogleUpdateBranding(
       omaha_client_state_key_path,
       extra_args.brand_code,
-      extra_args.client_id)));
+      extra_args.client_id));
 
   if (is_eula_required || is_oem_install || is_enterprise_install) {
     return S_OK;

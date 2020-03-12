@@ -66,7 +66,7 @@ xml::UpdateResponseResult GetUpdateResponseResult(
       update_response_utils::IsOmahaUpdateAvailable(update_response)) {
     StringFormatter formatter(language);
     CString text;
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_NO_UPDATE_RESPONSE, &text)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_NO_UPDATE_RESPONSE, &text));
     update_response_result = std::make_pair(GOOPDATE_E_UPDATE_DEFERRED, text);
   }
 
@@ -153,8 +153,8 @@ void AppStateCheckingForUpdate::HandleUpdateAvailable(App* app,
     const CString language = app->app_bundle()->display_language();
     StringFormatter formatter(language);
     CString error_message;
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION,
-                                           &error_message)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION,
+                                           &error_message));
     Error(app, ErrorContext(hr), error_message);
     return;
   }
@@ -205,9 +205,9 @@ void AppStateCheckingForUpdate::HandleNoUpdate(App* app,
     return;
   }
 
-  VERIFY1(SUCCEEDED(update_response_utils::BuildApp(update_response_,
+  VERIFY_SUCCEEDED(update_response_utils::BuildApp(update_response_,
                                                     code,
-                                                    app)));
+                                                    app));
   AppManager::Instance()->PersistSuccessfulUpdateCheckResponse(*app, false);
 
   app->SetNoUpdate(ErrorContext(S_OK), message);
@@ -272,8 +272,8 @@ void AppStateCheckingForUpdate::PersistUpdateCheckValuesOnFailure(App* app) {
 
   AppManager& app_manager = *AppManager::Instance();
   app->set_day_of_last_response(daynum);
-  VERIFY1(SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
-      *app, daynum, daystart)));
+  VERIFY_SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
+      *app, daynum, daystart));
 }
 
 void AppStateCheckingForUpdate::PersistUpdateCheckSuccessfullySent(
@@ -286,10 +286,10 @@ void AppStateCheckingForUpdate::PersistUpdateCheckSuccessfullySent(
   }
 
   AppManager& app_manager = *AppManager::Instance();
-  VERIFY1(SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
+  VERIFY_SUCCEEDED(app_manager.PersistUpdateCheckSuccessfullySent(
       app,
       update_response_->GetElapsedDaysSinceDatum(),
-      update_response_->GetElapsedSecondsSinceDayStart())));
+      update_response_->GetElapsedSecondsSinceDayStart()));
 
   // Here we assume that some of the members in app object
   // (days_since_last_active_ping_, days_since_last_roll_call_,

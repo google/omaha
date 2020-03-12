@@ -502,7 +502,7 @@ HRESULT Setup::DoProtectedGoogleUpdateInstall(SetupFiles* setup_files) {
 
 // TODO(omaha3): Enable. Prefer to move out of Setup if possible.
 #if 0
-  VERIFY1(SUCCEEDED(ResetMetrics(is_machine_)));
+  VERIFY_SUCCEEDED(ResetMetrics(is_machine_));
 #endif
 
   hr = RegKey::GetValue(
@@ -544,14 +544,14 @@ void Setup::RollBack(SetupFiles* setup_files) {
     SETUP_LOG(L1, (_T("[Rolling back version to %s]"), saved_version_));
     ++metric_setup_rollback_version;
 
-    VERIFY1(SUCCEEDED(RegKey::SetValue(
+    VERIFY_SUCCEEDED(RegKey::SetValue(
         ConfigManager::Instance()->registry_clients_goopdate(is_machine_),
         kRegValueProductVersion,
-        saved_version_)));
+        saved_version_));
   }
 
   // TODO(omaha3): Rollback SetupGoogleUpdate.
-  VERIFY1(SUCCEEDED(setup_files->RollBack()));
+  VERIFY_SUCCEEDED(setup_files->RollBack());
 }
 
 // Assumes the caller is ensuring this is the only running instance of setup.
@@ -634,7 +634,7 @@ HRESULT Setup::DoProtectedUninstall(bool send_uninstall_ping) {
   }
 
   if (FAILED(hr)) {
-    VERIFY1(SUCCEEDED(AggregateMetrics(is_machine_)));
+    VERIFY_SUCCEEDED(AggregateMetrics(is_machine_));
     return hr;
   }
   hr = AggregateAndReportMetrics(is_machine_, true);
@@ -1340,7 +1340,7 @@ HRESULT Setup::SendUninstallPing() {
   // network activity on a no-clients case, we will have to start passing the
   // session ID from /ua to /uninstall in the future.
   CString session_id;
-  VERIFY1(SUCCEEDED(GetGuid(&session_id)));
+  VERIFY_SUCCEEDED(GetGuid(&session_id));
 
   // Send uninstall ping for uninstalled apps.
   HRESULT hr = S_OK;

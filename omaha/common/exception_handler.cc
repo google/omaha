@@ -116,7 +116,7 @@ HRESULT OmahaExceptionHandler::Initialize(
 // for OOP, otherwise Omaha crashes will be handled in-process.
 HRESULT OmahaExceptionHandler::InstallHandler() {
   CString pipe_name;
-  VERIFY1(SUCCEEDED(crash_utils::GetCrashPipeName(&pipe_name)));
+  VERIFY_SUCCEEDED(crash_utils::GetCrashPipeName(&pipe_name));
   UTIL_LOG(L6, (_T("[crash pipe][%s]"), pipe_name));
 
   // If the machine is internal to Google, include full memory in the minidump;

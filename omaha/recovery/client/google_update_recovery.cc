@@ -226,7 +226,7 @@ HRESULT ResetRecoveryDir(CPath* recovery_dir) {
   *recovery_dir += kRecoveryDirectory;
 
   if (recovery_dir->IsDirectory()) {
-    VERIFY1(SUCCEEDED(DeleteDirectoryContents(*recovery_dir)));
+    VERIFY_SUCCEEDED(DeleteDirectoryContents(*recovery_dir));
     return S_OK;
   }
 

@@ -58,7 +58,7 @@ SetupFiles::~SetupFiles() {
 
   if (!saved_shell_path_.IsEmpty()) {
     // Delete the saved copy of the previous shell.
-    VERIFY1(SUCCEEDED(File::Remove(saved_shell_path_)));
+    VERIFY_SUCCEEDED(File::Remove(saved_shell_path_));
   }
 }
 
@@ -196,7 +196,7 @@ HRESULT SetupFiles::CopyShell() {
   if (should_copy) {
     if (already_exists) {
       ++metric_setup_files_replace_shell;
-      VERIFY1(SUCCEEDED(SaveShellForRollback(shell_path)));
+      VERIFY_SUCCEEDED(SaveShellForRollback(shell_path));
     }
 
     std::vector<CString> shell_files;
@@ -408,7 +408,7 @@ HRESULT SetupFiles::CopyAndValidateFiles(
     for (size_t i = 0; i != destination_file_paths.size(); ++i) {
       const CString cur_file = destination_file_paths[i];
       const CString dot_old(cur_file + _T(".old"));
-      VERIFY1(SUCCEEDED(File::Remove(dot_old)));
+      VERIFY_SUCCEEDED(File::Remove(dot_old));
       HRESULT hr = File::Move(cur_file, dot_old, true);
       if (SUCCEEDED(hr)) {
         // Delete after reboot only works for admins. .old files will be left
@@ -456,7 +456,7 @@ HRESULT SetupFiles::CopyAndValidateFiles(
       OPT_LOG(LE, (_T("[postcopy verification failed][from=%s][to=%s][0x%x]"),
                    source_file, destination_file, hr));
       ++metric_setup_files_verification_failed_post;
-      VERIFY1(SUCCEEDED(File::Remove(destination_file)));
+      VERIFY_SUCCEEDED(File::Remove(destination_file));
       return hr;
     }
   }

@@ -242,10 +242,10 @@ HRESULT RegisterOrUnregisterProxies(void* data, bool is_register) {
   CORE_LOG(L3, (_T("[RegisterOrUnregisterProxies][%d][%d]"),
                 is_machine, is_register));
 
-  VERIFY1(SUCCEEDED(RegisterOrUnregisterProxies64(is_machine, is_register)) ||
-                    !is_register);
-  VERIFY1(SUCCEEDED(RegisterOrUnregisterProxies32(is_machine, is_register)) ||
-                    !is_register);
+  HRESULT hr = RegisterOrUnregisterProxies64(is_machine, is_register);
+  VERIFY1(SUCCEEDED(hr) || !is_register);
+  hr = RegisterOrUnregisterProxies32(is_machine, is_register);
+  VERIFY1(SUCCEEDED(hr) || !is_register);
   return S_OK;
 }
 

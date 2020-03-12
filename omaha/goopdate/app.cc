@@ -352,11 +352,11 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
                                &download_time_remaining_ms,
                                &next_download_retry_time);
       if (SUCCEEDED(hr)) {
-        VERIFY1(SUCCEEDED(AppManager::Instance()->WriteDownloadProgress(
+        VERIFY_SUCCEEDED(AppManager::Instance()->WriteDownloadProgress(
                 *this,
                 bytes_downloaded,
                 total_bytes_to_download,
-                download_time_remaining_ms)));
+                download_time_remaining_ms));
       }
       break;
     case STATE_WAITING_TO_INSTALL:
@@ -366,8 +366,8 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
       // we ignore any read errors.
       GetInstallProgress(&install_progress_percentage,
                          &install_time_remaining_ms);
-      VERIFY1(SUCCEEDED(AppManager::Instance()->WriteInstallProgress(
-              *this, install_progress_percentage, install_time_remaining_ms)));
+      VERIFY_SUCCEEDED(AppManager::Instance()->WriteInstallProgress(
+              *this, install_progress_percentage, install_time_remaining_ms));
       break;
     case STATE_INSTALL_COMPLETE:
       install_progress_percentage = 100;
@@ -378,8 +378,8 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
       ASSERT1(completion_result_ == PingEvent::EVENT_RESULT_SUCCESS ||
               completion_result_ == PingEvent::EVENT_RESULT_SUCCESS_REBOOT);
 
-      VERIFY1(SUCCEEDED(AppManager::Instance()->WriteInstallProgress(
-              *this, install_progress_percentage, install_time_remaining_ms)));
+      VERIFY_SUCCEEDED(AppManager::Instance()->WriteInstallProgress(
+              *this, install_progress_percentage, install_time_remaining_ms));
       break;
     case STATE_PAUSED:
       break;
@@ -399,7 +399,7 @@ STDMETHODIMP App::get_currentState(IDispatch** current_state) {
       break;
   }
 
-  VERIFY1(SUCCEEDED(AppManager::Instance()->WriteStateValue(*this, state())));
+  VERIFY_SUCCEEDED(AppManager::Instance()->WriteStateValue(*this, state()));
 
   if (FAILED(hr)) {
     return hr;
@@ -917,7 +917,7 @@ void App::AddPingEvent(const PingEventPtr& ping_event) {
 
   CORE_LOG(L3, (_T("[ping event added][%s]"), ping_event->ToString()));
 
-  VERIFY1(SUCCEEDED(app_bundle()->BuildAndPersistPing()));
+  VERIFY_SUCCEEDED(app_bundle()->BuildAndPersistPing());
 }
 
 HRESULT App::CheckGroupPolicy() const {
@@ -1052,7 +1052,7 @@ void App::QueueUpdateCheck() {
   if (is_eula_accepted_ == TRISTATE_NONE) {
     CString message;
     StringFormatter formatter(app_bundle_->display_language());
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message));
     Error(ErrorContext(GOOPDATE_E_CALL_UNEXPECTED), message);
   }
 

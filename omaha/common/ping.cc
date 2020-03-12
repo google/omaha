@@ -62,7 +62,7 @@ Ping::Ping(bool is_machine,
            const CString& session_id,
            const CString& install_source) {
   CString request_id;
-  VERIFY1(SUCCEEDED(GetGuid(&request_id)));
+  VERIFY_SUCCEEDED(GetGuid(&request_id));
   Initialize(is_machine, session_id, install_source, request_id);
 }
 
@@ -448,7 +448,7 @@ HRESULT Ping::DeletePersistedPing(bool is_machine,
 
 void Ping::DeletePersistedPingOnSuccess(const HRESULT& hr) {
   if (SUCCEEDED(hr)) {
-    VERIFY1(SUCCEEDED(DeletePersistedPing(is_machine_, request_id_)));
+    VERIFY_SUCCEEDED(DeletePersistedPing(is_machine_, request_id_));
   }
 }
 
@@ -516,8 +516,8 @@ HRESULT Ping::SendPersistedPings(bool is_machine) {
 
     if (SUCCEEDED(hr) || IsPingExpired(persisted_time)) {
       CORE_LOG(L3, (_T("[Deleting persisted ping][0x%x]"), hr));
-      VERIFY1(SUCCEEDED(DeletePersistedPing(is_machine,
-                                            persisted_subkey_name)));
+      VERIFY_SUCCEEDED(DeletePersistedPing(is_machine,
+                                            persisted_subkey_name));
     }
   }
 
@@ -562,9 +562,9 @@ HRESULT Ping::SendString(bool is_machine,
 
   // Registry writes to HKLM need admin.
   scoped_revert_to_self revert_to_self;
-  VERIFY1(SUCCEEDED(update_response_utils::ApplyExperimentLabelDeltas(
+  VERIFY_SUCCEEDED(update_response_utils::ApplyExperimentLabelDeltas(
       is_machine,
-      response.get())));
+      response.get()));
 
   return S_OK;
 }
@@ -599,7 +599,7 @@ HRESULT SendReliablePing(Ping* ping, bool is_fire_and_forget) {
   CORE_LOG(L6, (_T("[Ping::SendReliablePing]")));
   ASSERT1(ping);
 
-  VERIFY1(SUCCEEDED(ping->PersistPing()));
+  VERIFY_SUCCEEDED(ping->PersistPing());
   return ping->Send(is_fire_and_forget);
 }
 

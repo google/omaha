@@ -430,46 +430,46 @@ ConfigManager::ConfigManager() : dm_policy_manager_(new DMPolicyManager) {
 
 CString ConfigManager::GetUserDownloadStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
                              CString(OMAHA_REL_DOWNLOAD_STORAGE_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetUserInstallWorkingDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
                              CString(OMAHA_REL_INSTALL_WORKING_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetUserOfflineStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
                              CString(OMAHA_REL_OFFLINE_STORAGE_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetUserGoopdateInstallDirNoCreate() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
                              CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
                              false,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetUserGoopdateInstallDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
                              CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
@@ -479,46 +479,46 @@ bool ConfigManager::IsRunningFromUserGoopdateInstallDir() const {
 
 CString ConfigManager::GetUserCrashReportsDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
                              CString(OMAHA_REL_CRASH_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetMachineCrashReportsDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
                              CString(OMAHA_REL_CRASH_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetMachineSecureDownloadStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
                              CString(OMAHA_REL_DOWNLOAD_STORAGE_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetMachineInstallWorkingDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
                              CString(OMAHA_REL_INSTALL_WORKING_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetMachineSecureOfflineStorageDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
                              CString(OMAHA_REL_OFFLINE_STORAGE_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
@@ -580,19 +580,19 @@ int ConfigManager::GetPackageCacheExpirationTimeDays() const {
 
 CString ConfigManager::GetMachineGoopdateInstallDirNoCreate() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
                              CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
                              false,
-                             &path)));
+                             &path));
   return path;
 }
 
 CString ConfigManager::GetMachineGoopdateInstallDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
                              CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
                              true,
-                             &path)));
+                             &path));
   return path;
 }
 
@@ -688,10 +688,10 @@ HRESULT ConfigManager::GetDeviceManagementUrl(CString* url) const {
 
 CPath ConfigManager::GetPolicyResponsesDir() const {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
                              CString(OMAHA_REL_POLICY_RESPONSES_DIR),
                              true,
-                             &path)));
+                             &path));
   return CPath(path);
 }
 

@@ -145,10 +145,10 @@ HRESULT CrashReporter::Report(const CString& crash_filename,
       is_out_of_process,
       can_upload,
       crash_filename);
-  VERIFY1(SUCCEEDED(WriteToWindowsEventLog(EVENTLOG_ERROR_TYPE,
+  VERIFY_SUCCEEDED(WriteToWindowsEventLog(EVENTLOG_ERROR_TYPE,
                                            kCrashReportEventId,
                                            product_name,
-                                           event_text)));
+                                           event_text));
   // Upload the crash.
   CString report_id;
   HRESULT hr = DoSendCrashReport(can_upload,
@@ -222,7 +222,7 @@ HRESULT CrashReporter::DoSendCrashReport(bool can_upload,
   }
 
   CString product_name = ReadMapProductName(parameters);
-  VERIFY1(SUCCEEDED(SaveLastCrash(crash_filename, product_name)));
+  VERIFY_SUCCEEDED(SaveLastCrash(crash_filename, product_name));
 
   HRESULT hr = S_OK;
   if (can_upload) {
@@ -308,10 +308,10 @@ HRESULT CrashReporter::UploadCrash(bool is_out_of_process,
     event_type = EVENTLOG_WARNING_TYPE;
     SafeCStringFormat(&event_text, _T("Crash not uploaded. Error=0x%x."), hr);
   }
-  VERIFY1(SUCCEEDED(WriteToWindowsEventLog(event_type,
+  VERIFY_SUCCEEDED(WriteToWindowsEventLog(event_type,
                                            kCrashUploadEventId,
                                            product_name,
-                                           event_text)));
+                                           event_text));
 
   UpdateCrashUploadMetrics(is_out_of_process, hr);
 

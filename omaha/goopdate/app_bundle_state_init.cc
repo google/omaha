@@ -113,8 +113,8 @@ HRESULT AppBundleStateInit::Initialize(AppBundle* app_bundle) {
 
   ASSERT1(!app_bundle->update_check_client_.get());
   CString update_check_url;
-  VERIFY1(SUCCEEDED(
-      ConfigManager::Instance()->GetUpdateCheckUrl(&update_check_url)));
+  VERIFY_SUCCEEDED(
+      ConfigManager::Instance()->GetUpdateCheckUrl(&update_check_url));
   auto web_service_client = std::make_unique<WebServicesClient>(
       app_bundle->is_machine());
   hr = web_service_client->Initialize(update_check_url, HeadersVector(), true);

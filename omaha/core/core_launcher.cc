@@ -86,7 +86,7 @@ HRESULT StartCoreIfNeeded(bool is_system) {
     return hr;
   }
 
-  VERIFY1(SUCCEEDED(UpdateLastCoreRunTime(is_system)));
+  VERIFY_SUCCEEDED(UpdateLastCoreRunTime(is_system));
   return S_OK;
 }
 

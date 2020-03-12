@@ -71,8 +71,8 @@ InstallManager::InstallManager(const Lockable* model_lock, bool is_machine)
       ConfigManager::Instance()->GetUserInstallWorkingDir();
   CORE_LOG(L3, (_T("[install_working_dir][%s]"), install_working_dir()));
 
-  VERIFY1(SUCCEEDED(CreateDir(install_working_dir_, NULL)));
-  VERIFY1(SUCCEEDED(DeleteDirectoryContents(install_working_dir_)));
+  VERIFY_SUCCEEDED(CreateDir(install_working_dir_, NULL));
+  VERIFY_SUCCEEDED(DeleteDirectoryContents(install_working_dir_));
 
   installer_wrapper_.reset(new InstallerWrapper(is_machine_));
 }
@@ -361,9 +361,9 @@ void InstallManager::PopulateSuccessfulInstallResultInfo(
   // Load message based on post install action if not overridden.
   if (result_info->text.IsEmpty()) {
     StringFormatter formatter(app->app_bundle()->display_language());
-    VERIFY1(SUCCEEDED(formatter.LoadString(
+    VERIFY_SUCCEEDED(formatter.LoadString(
                           IDS_APPLICATION_INSTALLED_SUCCESSFULLY,
-                          &result_info->text)));
+                          &result_info->text));
   }
 }
 

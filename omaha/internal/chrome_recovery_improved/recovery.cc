@@ -88,7 +88,7 @@ HRESULT ChromeRecoveryImproved::DoRepair() {
   }
 
 
-  VERIFY1(SUCCEEDED(TriggerUpdateCheck()));
+  VERIFY_SUCCEEDED(TriggerUpdateCheck());
 
   return S_OK;
 }
@@ -331,8 +331,8 @@ HRESULT ChromeRecoveryImproved::WaitAndGetExitCode(HANDLE process,
 
 void ChromeRecoveryImproved::SetExperimentLabel(const CString& label) {
   OPT_LOG(L1, (_T("[SetExperimentLabel][%s]"), label));
-  VERIFY1(SUCCEEDED(SetLabelOnApp(label, kGoogleUpdateAppId)));
-  VERIFY1(SUCCEEDED(SetLabelOnApp(label, browser_guid_)));
+  VERIFY_SUCCEEDED(SetLabelOnApp(label, kGoogleUpdateAppId));
+  VERIFY_SUCCEEDED(SetLabelOnApp(label, browser_guid_));
 }
 
 }  // namespace omaha

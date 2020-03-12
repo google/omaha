@@ -247,7 +247,7 @@ HRESULT Core::DoMain(bool is_system, bool is_crash_handler_enabled) {
   }
 
   std::unique_ptr<SystemMonitor> system_monitor(new SystemMonitor(is_system_));
-  VERIFY1(SUCCEEDED(system_monitor->Initialize(true)));
+  VERIFY_SUCCEEDED(system_monitor->Initialize(true));
   system_monitor->set_observer(this);
 
   // Start processing messages and events from the system.
@@ -283,12 +283,12 @@ HRESULT Core::ShutdownInternal() const {
 
 void Core::LastCheckedDeleted() {
   OPT_LOG(L1, (_T("[Core::LastCheckedDeleted]")));
-  VERIFY1(SUCCEEDED(StartUpdateWorker()));
+  VERIFY_SUCCEEDED(StartUpdateWorker());
 }
 
 void Core::NoRegisteredClients() {
   OPT_LOG(L1, (_T("[Core::NoRegisteredClients]")));
-  VERIFY1(SUCCEEDED(StartUpdateWorker()));
+  VERIFY_SUCCEEDED(StartUpdateWorker());
 }
 
 HRESULT Core::DoRun() {
@@ -297,7 +297,7 @@ HRESULT Core::DoRun() {
   // Trim the process working set to minimum. It does not need a more complex
   // algorithm for now. Likely the working set will increase slightly over time
   // as the core is handling events.
-  VERIFY1(SUCCEEDED(System::EmptyProcessWorkingSet()));
+  VERIFY_SUCCEEDED(System::EmptyProcessWorkingSet());
 
   return DoHandleEvents();
 }
@@ -378,7 +378,7 @@ HRESULT Core::StartCodeRed() const {
   HRESULT hr = System::StartProcessWithArgs(exe_path, cmd_line);
   if (SUCCEEDED(hr)) {
     ++metric_core_cr_succeeded;
-    VERIFY1(SUCCEEDED(UpdateLastCodeRedCheckTime()));
+    VERIFY_SUCCEEDED(UpdateLastCodeRedCheckTime());
   } else {
     CORE_LOG(LE, (_T("[can't start Code Red worker][0x%08x]"), hr));
   }
@@ -434,7 +434,7 @@ void Core::LaunchAppCommandsOnOSUpgrade() const {
 
   // Generate a session ID for any pings that might be generated.
   CString session_id;
-  VERIFY1(SUCCEEDED(GetGuid(&session_id)));
+  VERIFY_SUCCEEDED(GetGuid(&session_id));
 
   // Enumerate all registered app commands.  If any of them fail to launch, we
   // record the failure but continue enumerating.
@@ -494,7 +494,7 @@ void Core::LaunchAppCommandsOnOSUpgrade() const {
 
   // Save the current OS as the old OS version, preventing this code from
   // running until the OS version changes again.
-  VERIFY1(SUCCEEDED(app_registry_utils::SetLastOSVersion(is_system_, NULL)));
+  VERIFY_SUCCEEDED(app_registry_utils::SetLastOSVersion(is_system_, NULL));
   ++metric_core_osupgrade_completed;
 }
 
@@ -514,7 +514,7 @@ HRESULT Core::StartCrashHandler() const {
 void Core::AggregateMetrics() const {
   CORE_LOG(L2, (_T("[aggregate core metrics]")));
   CollectMetrics();
-  VERIFY1(SUCCEEDED(omaha::AggregateMetrics(is_system_)));
+  VERIFY_SUCCEEDED(omaha::AggregateMetrics(is_system_));
 }
 
 // Collects: working set, peak working set, handle count, process uptime,
@@ -522,10 +522,10 @@ void Core::AggregateMetrics() const {
 // user time.
 void Core::CollectMetrics() const {
   uint64 working_set(0), peak_working_set(0);
-  VERIFY1(SUCCEEDED(System::GetProcessMemoryStatistics(&working_set,
+  VERIFY_SUCCEEDED(System::GetProcessMemoryStatistics(&working_set,
                                                        &peak_working_set,
                                                        NULL,
-                                                       NULL)));
+                                                       NULL));
   metric_core_working_set      = working_set;
   metric_core_peak_working_set = peak_working_set;
 
@@ -557,10 +557,10 @@ void Core::CollectMetrics() const {
   uint64 free_bytes_all_users(0);
 
   CString directory_name(app_util::GetCurrentModuleDirectory());
-  VERIFY1(SUCCEEDED(System::GetDiskStatistics(directory_name,
+  VERIFY_SUCCEEDED(System::GetDiskStatistics(directory_name,
                                               &free_bytes_current_user,
                                               &total_bytes_current_user,
-                                              &free_bytes_all_users)));
+                                              &free_bytes_all_users));
   metric_core_disk_space_available = free_bytes_current_user;
 }
 

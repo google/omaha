@@ -346,9 +346,9 @@ HRESULT SimpleRequest::Connect() {
 
   // Disable redirects for POST requests.
   if (IsPostRequest()) {
-    VERIFY1(SUCCEEDED(
+    VERIFY_SUCCEEDED(
         winhttp_adapter_->SetRequestOptionInt(WINHTTP_OPTION_DISABLE_FEATURE,
-                                              WINHTTP_DISABLE_REDIRECTS)));
+                                              WINHTTP_DISABLE_REDIRECTS));
   }
 
   CString additional_headers = additional_headers_;
@@ -462,9 +462,9 @@ HRESULT SimpleRequest::SendRequest() {
                                 kHeaderXProxyManualAuth);
       }
       uint32 flags = WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE;
-      VERIFY1(SUCCEEDED(winhttp_adapter_->AddRequestHeaders(headers,
+      VERIFY_SUCCEEDED(winhttp_adapter_->AddRequestHeaders(headers,
                                                             -1,
-                                                            flags)));
+                                                            flags));
     }
 
     const DWORD bytes_to_send = static_cast<DWORD>(request_buffer_length_);
@@ -587,9 +587,9 @@ HRESULT SimpleRequest::SendRequest() {
           NetworkConfig* network_config = NULL;
           hr = network_manager.GetUserNetworkConfig(&network_config);
           if (SUCCEEDED(hr)) {
-            VERIFY1(SUCCEEDED(network_config->SetProxyAuthScheme(
+            VERIFY_SUCCEEDED(network_config->SetProxyAuthScheme(
                 request_state_->proxy, request_state_->is_https,
-                request_scheme)));
+                request_scheme));
           }
         }
         done = true;

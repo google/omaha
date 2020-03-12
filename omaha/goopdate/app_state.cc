@@ -117,7 +117,7 @@ void AppState::Cancel(App* app) {
   CString message;
 
   StringFormatter formatter(app->app_bundle()->display_language());
-  VERIFY1(SUCCEEDED(formatter.LoadString(IDS_CANCELED, &message)));
+  VERIFY_SUCCEEDED(formatter.LoadString(IDS_CANCELED, &message));
   app->SetError(ErrorContext(hr), message);
   app->set_state_cancelled(state());
   app->SetCurrentTimeAs(App::TIME_CANCELLED);
@@ -155,7 +155,7 @@ void AppState::HandleInvalidStateTransition(App* app,
   const HRESULT hr = GOOPDATE_E_INVALID_STATE_TRANSITION;
   StringFormatter formatter(app->app_bundle()->display_language());
   CString message;
-  VERIFY1(SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message)));
+  VERIFY_SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message));
   AppState::Error(app, ErrorContext(hr, state_), message);
 }
 
@@ -175,9 +175,9 @@ void AppState::HandleGroupPolicyError(App* app, HRESULT code) {
 
   StringFormatter formatter(app->app_bundle()->display_language());
   CString error_message;
-  VERIFY1(SUCCEEDED(formatter.LoadString(
+  VERIFY_SUCCEEDED(formatter.LoadString(
                         IDS_APP_INSTALL_DISABLED_BY_GROUP_POLICY,
-                        &error_message)));
+                        &error_message));
   Error(app, ErrorContext(code), error_message);
 }
 

@@ -32,7 +32,7 @@ ShutdownHandler::ShutdownHandler()
 
 ShutdownHandler::~ShutdownHandler() {
   if (get(shutdown_event_)) {
-    VERIFY1(SUCCEEDED(reactor_->UnregisterHandle(get(shutdown_event_))));
+    VERIFY_SUCCEEDED(reactor_->UnregisterHandle(get(shutdown_event_)));
   }
 }
 

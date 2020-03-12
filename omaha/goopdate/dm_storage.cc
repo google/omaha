@@ -145,7 +145,7 @@ HRESULT DeleteObsoletePolicies(
     CPath path = policy_responses_dir;
     VERIFY1(path.Append(file));
     REPORT_LOG(L1, (_T("[DeleteObsoletePolicies][Deleting][%s]"), path));
-    VERIFY1(SUCCEEDED(DeleteBeforeOrAfterReboot(path)));
+    VERIFY_SUCCEEDED(DeleteBeforeOrAfterReboot(path));
   }
 
   return S_OK;
@@ -320,8 +320,8 @@ HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
     }
   }
 
-  VERIFY1(SUCCEEDED(DeleteObsoletePolicies(policy_responses_dir,
-                                           policy_types_base64)));
+  VERIFY_SUCCEEDED(DeleteObsoletePolicies(policy_responses_dir,
+                                           policy_types_base64));
   return S_OK;
 }
 

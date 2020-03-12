@@ -64,7 +64,7 @@ void AppStateWaitingToCheckForUpdate::PreUpdateCheck(
 
   AppManager* app_manager(AppManager::Instance());
 
-  VERIFY1(SUCCEEDED(app_manager->SynchronizeClientState(app->app_guid())));
+  VERIFY_SUCCEEDED(app_manager->SynchronizeClientState(app->app_guid()));
 
   // Handle the normal flow and return. Abnormal cases are below.
   if (app->is_eula_accepted()) {
@@ -92,7 +92,7 @@ void AppStateWaitingToCheckForUpdate::PreUpdateCheck(
 
   StringFormatter formatter(app->app_bundle()->display_language());
   CString message;
-  VERIFY1(SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message)));
+  VERIFY_SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message));
   Error(app,
         ErrorContext(GOOPDATE_E_APP_UPDATE_DISABLED_EULA_NOT_ACCEPTED),
         message);

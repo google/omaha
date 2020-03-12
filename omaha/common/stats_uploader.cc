@@ -223,7 +223,7 @@ HRESULT DoAggregateAndReportMetrics(bool is_machine, bool force_report) {
     return hr;
   }
 
-  VERIFY1(SUCCEEDED(ResetPersistentMetrics(&key)));
+  VERIFY_SUCCEEDED(ResetPersistentMetrics(&key));
   CORE_LOG(L3, (_T("[Stats upload successful]")));
   return S_OK;
 }

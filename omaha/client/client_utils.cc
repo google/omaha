@@ -111,7 +111,7 @@ bool DisplayError(bool is_machine,
   // browser launch from the link will fail. Don't display a link that will not
   // work.
   if (CanLaunchBrowser()) {
-    VERIFY1(SUCCEEDED(url_builder.BuildUrl(app_install_result, &help_url)));
+    VERIFY_SUCCEEDED(url_builder.BuildUrl(app_install_result, &help_url));
   }
 
   HRESULT hr = error_wnd.Initialize();
@@ -152,7 +152,7 @@ bool DisplayContinueAsNonAdmin(const CString& bundle_name,
     return button_id != 0;
   }
 
-  VERIFY1(SUCCEEDED(continue_dialog.Show()));
+  VERIFY_SUCCEEDED(continue_dialog.Show());
   message_loop.Run();
 
   *should_continue = continue_dialog.yes_clicked();

@@ -73,7 +73,7 @@ void AppStateWaitingToInstall::Install(
   if (FAILED(hr)) {
     StringFormatter formatter(app->app_bundle()->display_language());
     CString message;
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_INSTALL_FAILED, &message));
     Error(app, ErrorContext(hr), message);
   }
 }

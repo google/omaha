@@ -352,7 +352,7 @@ void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir) {
 
   // HTTP_STATUS_GONE implies that the device has been unenrolled.
   // Invalidate the DM token and delete cached policies.
-  VERIFY1(SUCCEEDED(DmStorage::Instance()->InvalidateDMToken()));
+  VERIFY_SUCCEEDED(DmStorage::Instance()->InvalidateDMToken());
   DeleteBeforeOrAfterReboot(policy_responses_dir);
 }
 

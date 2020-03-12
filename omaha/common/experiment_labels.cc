@@ -182,8 +182,8 @@ HRESULT ExperimentLabels::ReadFromRegistry(bool is_machine,
   const CString state_key(
       app_registry_utils::GetAppClientStateKey(is_machine, app_id));
   if (RegKey::HasValue(state_key, kRegValueExperimentLabels)) {
-    VERIFY1(SUCCEEDED(RegKey::GetValue(
-        state_key, kRegValueExperimentLabels, &label_list)));
+    VERIFY_SUCCEEDED(RegKey::GetValue(
+        state_key, kRegValueExperimentLabels, &label_list));
   }
 
   if (!Deserialize(label_list)) {
@@ -199,8 +199,8 @@ HRESULT ExperimentLabels::ReadFromRegistry(bool is_machine,
   const CString med_state_key(
       app_registry_utils::GetAppClientStateMediumKey(true, app_id));
   if (RegKey::HasValue(med_state_key, kRegValueExperimentLabels)) {
-    VERIFY1(SUCCEEDED(RegKey::GetValue(
-        med_state_key, kRegValueExperimentLabels, &label_list)));
+    VERIFY_SUCCEEDED(RegKey::GetValue(
+        med_state_key, kRegValueExperimentLabels, &label_list));
   }
 
   if (!label_list.IsEmpty()) {
@@ -344,7 +344,7 @@ bool ExperimentLabels::MergeLabelSets(const CString& old_label_list,
 
 CString ExperimentLabels::ReadRegistry(bool is_machine, const CString& app_id) {
   ExperimentLabels stored_labels;
-  VERIFY1(SUCCEEDED(stored_labels.ReadFromRegistry(is_machine, app_id)));
+  VERIFY_SUCCEEDED(stored_labels.ReadFromRegistry(is_machine, app_id));
   return stored_labels.Serialize(SerializeOptions::INCLUDE_TIMESTAMPS);
 }
 
@@ -377,8 +377,8 @@ HRESULT ExperimentLabels::WriteRegistry(bool is_machine,
   if (is_machine) {
     const CString med_state_key(
         app_registry_utils::GetAppClientStateMediumKey(is_machine, app_id));
-    VERIFY1(SUCCEEDED(RegKey::DeleteValue(med_state_key,
-                                          kRegValueExperimentLabels)));
+    VERIFY_SUCCEEDED(RegKey::DeleteValue(med_state_key,
+                                          kRegValueExperimentLabels));
   }
 
   return hr;
@@ -386,7 +386,7 @@ HRESULT ExperimentLabels::WriteRegistry(bool is_machine,
 
 CString ExperimentLabels::RemoveTimestamps(const CString& labels) {
   ExperimentLabels stored_labels;
-  VERIFY1(SUCCEEDED(stored_labels.Deserialize(labels)));
+  VERIFY_SUCCEEDED(stored_labels.Deserialize(labels));
 
   return stored_labels.Serialize(SerializeOptions::EXCLUDE_TIMESTAMPS);
 }

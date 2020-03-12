@@ -185,9 +185,9 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
   // Reset kRegValueIsMSIHelperRegistered so that the MSI helper is registered
   // on the next UA run.
   const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  VERIFY1(SUCCEEDED(RegKey::SetValue(key_name,
+  VERIFY_SUCCEEDED(RegKey::SetValue(key_name,
                                      kRegValueIsMSIHelperRegistered,
-                                     static_cast<DWORD>(0))));
+                                     static_cast<DWORD>(0)));
 
   hr = RegisterOrUnregisterCOMLocalServer(true);
   if (FAILED(hr)) {
@@ -198,11 +198,11 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
 
   ASSERT1(SUCCEEDED(VerifyCOMLocalServerRegistration(is_machine_)));
 
-  VERIFY1(SUCCEEDED(UninstallPreviousVersions()));
+  VERIFY_SUCCEEDED(UninstallPreviousVersions());
 
   // Set the LastOSVersion to the currently installed OS version.  This is used
   // by the core to determine when an OS upgrade has occurred.
-  VERIFY1(SUCCEEDED(app_registry_utils::SetLastOSVersion(is_machine_, NULL)));
+  VERIFY_SUCCEEDED(app_registry_utils::SetLastOSVersion(is_machine_, NULL));
 
   // Writing this value indicates that this Omaha version was successfully
   // installed. This is an artifact of Omaha 2 when pv was set earlier in Setup.
@@ -221,8 +221,8 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
 
   // The LastCodeRedCheck value is cleaned up on every install/update of Omaha.
   const ConfigManager* cm = ConfigManager::Instance();
-  VERIFY1(SUCCEEDED(RegKey::DeleteValue(
-      cm->registry_update(is_machine_), kRegValueLastCodeRedCheck)));
+  VERIFY_SUCCEEDED(RegKey::DeleteValue(
+      cm->registry_update(is_machine_), kRegValueLastCodeRedCheck));
 
   return S_OK;
 }
@@ -307,19 +307,19 @@ HRESULT SetupGoogleUpdate::InstallRegistryValues() {
     ASSERT1(false);
     omaha_name = kAppName;
   }
-  VERIFY1(SUCCEEDED(RegKey::SetValue(omaha_clients_key_path,
+  VERIFY_SUCCEEDED(RegKey::SetValue(omaha_clients_key_path,
                                      kRegValueAppName,
-                                     omaha_name)));
+                                     omaha_name));
 
   // Set pv in ClientState for consistency. Optional, so ignore errors.
   const CString omaha_client_state_key_path =
       cm->registry_client_state_goopdate(is_machine_);
-  VERIFY1(SUCCEEDED(RegKey::SetValue(omaha_client_state_key_path,
+  VERIFY_SUCCEEDED(RegKey::SetValue(omaha_client_state_key_path,
                                      kRegValueProductVersion,
-                                     this_version_)));
+                                     this_version_));
 
   if (is_machine_) {
-    VERIFY1(SUCCEEDED(goopdate_utils::EnableSEHOP(true)));
+    VERIFY_SUCCEEDED(goopdate_utils::EnableSEHOP(true));
   }
 
   return S_OK;
@@ -401,10 +401,10 @@ void SetupGoogleUpdate::UninstallLaunchMechanisms() {
   } else {
     // We only need to do this in case of the user goopdate, as
     // there is no machine Run at startup installation.
-    VERIFY1(SUCCEEDED(ConfigureUserRunAtStartup(false)));  // delete entry
+    VERIFY_SUCCEEDED(ConfigureUserRunAtStartup(false));  // delete entry
   }
 
-  VERIFY1(SUCCEEDED(scheduled_task_utils::UninstallGoopdateTasks(is_machine_)));
+  VERIFY_SUCCEEDED(scheduled_task_utils::UninstallGoopdateTasks(is_machine_));
 }
 
 HRESULT SetupGoogleUpdate::InstallScheduledTask() {
@@ -634,8 +634,8 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
   have_called_uninstall_previous_versions_ = true;
 #endif
 
-  VERIFY1(SUCCEEDED(
-      scheduled_task_utils::UninstallLegacyGoopdateTasks(is_machine_)));
+  VERIFY_SUCCEEDED(
+      scheduled_task_utils::UninstallLegacyGoopdateTasks(is_machine_));
 
   CString install_path(
       is_machine_ ? ConfigManager::Instance()->GetMachineGoopdateInstallDir() :
@@ -695,7 +695,7 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
       if (found_oneclick) {
         CPath old_oneclick_file(file_or_directory);
         VERIFY1(old_oneclick_file.Append(old_oneclick_file_data.cFileName));
-        VERIFY1(SUCCEEDED(UnregisterDll(old_oneclick_file)));
+        VERIFY_SUCCEEDED(UnregisterDll(old_oneclick_file));
       }
 
       // Unregister the previous version of the plugin if it exists. Ignore
@@ -708,7 +708,7 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
       if (found_plugin) {
         CPath old_plugin_file(file_or_directory);
         VERIFY1(old_plugin_file.Append(old_plugin_file_data.cFileName));
-        VERIFY1(SUCCEEDED(UnregisterDll(old_plugin_file)));
+        VERIFY_SUCCEEDED(UnregisterDll(old_plugin_file));
       }
 
       // Delete entire sub-directory.
@@ -772,7 +772,7 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
   OPT_LOG(L3, (_T("[SetupGoogleUpdate::DeleteRegistryKeys]")));
 
   if (is_machine_) {
-    VERIFY1(SUCCEEDED(goopdate_utils::EnableSEHOP(false)));
+    VERIFY_SUCCEEDED(goopdate_utils::EnableSEHOP(false));
   }
 
   CString root_key = ConfigManager::Instance()->registry_update(is_machine_);
@@ -798,7 +798,7 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
   ASSERT1(num_keys == static_cast<int>(sub_keys.size()));
   // Delete all the sub keys of the root key.
   for (int i = 0; i < num_keys; ++i) {
-    VERIFY1(SUCCEEDED(root.RecurseDeleteSubKey(sub_keys[i])));
+    VERIFY_SUCCEEDED(root.RecurseDeleteSubKey(sub_keys[i]));
   }
 
   // Now delete all the values of the root key.
@@ -826,11 +826,11 @@ HRESULT SetupGoogleUpdate::DeleteRegistryKeys() {
   }
 
   for (size_t i = 0; i < value_names.size(); ++i) {
-    VERIFY1(SUCCEEDED(root.DeleteValue(value_names[i])));
+    VERIFY_SUCCEEDED(root.DeleteValue(value_names[i]));
   }
 
   if (0 == root.GetValueCount() && 0 == root.GetSubkeyCount()) {
-    VERIFY1(SUCCEEDED(RegKey::DeleteKey(root_key, false)));
+    VERIFY_SUCCEEDED(RegKey::DeleteKey(root_key, false));
   }
 
   return S_OK;

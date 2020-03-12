@@ -805,7 +805,7 @@ class RecordUpdateAvailableUsageStatsTest : public testing::Test {
   int GetNumProducts() {
     AppManager& app_manager = *AppManager::Instance();
     AppIdVector registered_app_ids;
-    VERIFY1(SUCCEEDED(app_manager.GetRegisteredApps(&registered_app_ids)));
+    VERIFY_SUCCEEDED(app_manager.GetRegisteredApps(&registered_app_ids));
     return static_cast<int>(registered_app_ids.size());
   }
 

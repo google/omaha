@@ -34,8 +34,8 @@ Scheduler::SchedulerItem::SchedulerItem(HANDLE timer_queue,
   if (timer_queue) {
     timer_.reset(
         new QueueTimer(timer_queue, &SchedulerItem::TimerCallback, this));
-    VERIFY1(SUCCEEDED(
-        ScheduleNext(timer_.get(), debug_timer_.get(), start_delay_ms)));
+    VERIFY_SUCCEEDED(
+        ScheduleNext(timer_.get(), debug_timer_.get(), start_delay_ms));
   }
 }
 
