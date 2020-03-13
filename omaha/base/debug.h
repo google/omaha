@@ -27,6 +27,10 @@
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 
+#define CONCATENATE_DIRECT(s1, s2) s1##s2
+#define CONCATENATE(s1, s2) CONCATENATE_DIRECT(s1, s2)
+#define ANONYMOUS_VARIABLE(str) CONCATENATE(str, __LINE__)
+
 namespace omaha {
 
 // hash table for counts of the number of times REPORTs occur
@@ -201,9 +205,9 @@ class ReportIds : public GLock {
 
   #define VERIFY_SUCCEEDED(hr)                        \
   do {                                                \
-    const auto hResult = (hr);                        \
-    if (FAILED(hResult)) {                            \
-      VERIFY(false, (L"FAILED(hr): %#08x", hResult)); \
+    const auto ANONYMOUS_VARIABLE(__hr) = (hr);                        \
+    if (FAILED(ANONYMOUS_VARIABLE(__hr))) {                            \
+      VERIFY(false, (L"FAILED(hr): %#08x", ANONYMOUS_VARIABLE(__hr))); \
     }                                                 \
   } while (0)
 
@@ -225,7 +229,7 @@ class ReportIds : public GLock {
     do {                   \
       (expr);              \
     } while (0)
-  #define VERIFY_SUCCEEDED(hr) do { HRESULT hResult = (hr); } while(0)
+  #define VERIFY_SUCCEEDED(hr) do { (hr); } while(0)
 
   #define REPORT(expr, type, msg, id) \
       ((expr) ? 0 : g_report_ids.ReleaseReport(id))

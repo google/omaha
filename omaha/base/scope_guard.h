@@ -51,8 +51,10 @@
 
 // TODO(omaha): provide support to run with or without exceptions enabled.
 // For now it assumes that the code is not throwing exceptions.
-#ifndef SCOPEGUARD_H_
-#define SCOPEGUARD_H_
+#ifndef OMAHA_BASE_SCOPE_GUARD_H_
+#define OMAHA_BASE_SCOPE_GUARD_H_
+
+#include "omaha/base/debug.h"
 
 namespace omaha {
 
@@ -357,13 +359,9 @@ inline ObjScopeGuardImpl3<Obj, MemFun, P1, P2, P3> MakeObjGuard(Obj& obj, MemFun
   return ObjScopeGuardImpl3<Obj, MemFun, P1, P2, P3>::MakeObjGuard(obj, memFun, p1, p2, p3);
 }
 
-#define CONCATENATE_DIRECT(s1, s2) s1##s2
-#define CONCATENATE(s1, s2) CONCATENATE_DIRECT(s1, s2)
-#define ANONYMOUS_VARIABLE(str) CONCATENATE(str, __LINE__)
-
 #define ON_SCOPE_EXIT ScopeGuard ANONYMOUS_VARIABLE(scopeGuard) = MakeGuard
 #define ON_SCOPE_EXIT_OBJ ScopeGuard ANONYMOUS_VARIABLE(scopeGuard) = MakeObjGuard
 
 }  // namespace omaha
 
-#endif //SCOPEGUARD_H_
+#endif //OMAHA_BASE_SCOPE_GUARD_H_
