@@ -865,7 +865,7 @@ HRESULT RegKey::RenameValue(const TCHAR* old_value_name,
     return hr;
   }
 
-  VERIFY1(SUCCEEDED(DeleteValue(old_value_name)));
+  VERIFY_SUCCEEDED(DeleteValue(old_value_name));
   return S_OK;
 }
 
@@ -1342,7 +1342,7 @@ HRESULT RegKeyWatcher::EnsureEventSetup() {
 
     if (allow_creation_ && !RegKey::HasKey(reg_key_string_)) {
       RegKey key;
-      VERIFY1(SUCCEEDED(key.Create(reg_key_string_)));
+      VERIFY_SUCCEEDED(key.Create(reg_key_string_));
     }
 
     HRESULT hr = local_reg_key->Open(reg_key_string_, KEY_NOTIFY);

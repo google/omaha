@@ -217,18 +217,18 @@ CString DownloadManager::GetMessageForError(const ErrorContext& error_context,
     case GOOPDATEDOWNLOAD_E_FILE_SIZE_ZERO:
     case GOOPDATEDOWNLOAD_E_FILE_SIZE_SMALLER:
     case GOOPDATEDOWNLOAD_E_FILE_SIZE_LARGER:
-      VERIFY1(SUCCEEDED(formatter.LoadString(IDS_DOWNLOAD_HASH_MISMATCH,
-                                             &message)));
+      VERIFY_SUCCEEDED(formatter.LoadString(IDS_DOWNLOAD_HASH_MISMATCH,
+                                             &message));
       break;
     case GOOPDATEDOWNLOAD_E_CACHING_FAILED:
-      VERIFY1(SUCCEEDED(formatter.FormatMessage(
-          &message, IDS_CACHING_ERROR, error_context.extra_code1, &message)));
+      VERIFY_SUCCEEDED(formatter.FormatMessage(
+          &message, IDS_CACHING_ERROR, error_context.extra_code1, &message));
       break;
     default:
       if (!worker_utils::FormatMessageForNetworkError(error_context.error_code,
                                                       language,
                                                       &message)) {
-        VERIFY1(SUCCEEDED(formatter.LoadString(IDS_DOWNLOAD_ERROR, &message)));
+        VERIFY_SUCCEEDED(formatter.LoadString(IDS_DOWNLOAD_ERROR, &message));
       }
       break;
   }
@@ -286,7 +286,7 @@ HRESULT DownloadManager::DownloadApp(App* app) {
     ++metric_worker_download_succeeded;
   }
 
-  VERIFY1(SUCCEEDED(DeleteStateForApp(app)));
+  VERIFY_SUCCEEDED(DeleteStateForApp(app));
 
   return hr;
 }
@@ -410,7 +410,7 @@ HRESULT DownloadManager::DoDownloadPackage(Package* package, State* state) {
       }
     }
 
-    VERIFY1(SUCCEEDED(network_request->Close()));
+    VERIFY_SUCCEEDED(network_request->Close());
     DeleteBeforeOrAfterReboot(unique_filename_path);
     app->SetCurrentTimeAs(App::TIME_DOWNLOAD_COMPLETE);
 
@@ -483,7 +483,7 @@ void DownloadManager::Cancel(App* app) {
 
   for (size_t i = 0; i != download_state_.size(); ++i) {
     if (app == download_state_[i]->app()) {
-      VERIFY1(SUCCEEDED(download_state_[i]->CancelNetworkRequest()));
+      VERIFY_SUCCEEDED(download_state_[i]->CancelNetworkRequest());
     }
   }
 }
@@ -494,7 +494,7 @@ void DownloadManager::CancelAll() {
   __mutexScope(lock());
 
   for (size_t i = 0; i != download_state_.size(); ++i) {
-    VERIFY1(SUCCEEDED(download_state_[i]->CancelNetworkRequest()));
+    VERIFY_SUCCEEDED(download_state_[i]->CancelNetworkRequest());
   }
 }
 

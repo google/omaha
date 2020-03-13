@@ -165,10 +165,10 @@ bool CheckRegisteredVersion(const CString& version,
     default:
       // This binary's version should be the installed version.
       CString installed_version;
-      VERIFY1(SUCCEEDED(RegKey::GetValue(
+      VERIFY_SUCCEEDED(RegKey::GetValue(
           ConfigManager::Instance()->registry_update(is_machine),
           kRegValueInstalledVersion,
-          &installed_version)));
+          &installed_version));
       return version == installed_version;
   }
 }
@@ -359,7 +359,7 @@ GoopdateImpl::GoopdateImpl(Goopdate* goopdate, bool is_local_system)
   // Install the exception handler.  If GoogleCrashHandler is running, this will
   // connect to it for out-of-process handling; if not, it will install an
   // in-process breakpad crash handler with a callback to upload it.
-  VERIFY1(SUCCEEDED(InstallExceptionHandler()));
+  VERIFY_SUCCEEDED(InstallExceptionHandler());
 
   // Hints network configure manager how to create its singleton.
   NetworkConfigManager::set_is_machine(is_machine_);
@@ -510,9 +510,9 @@ HRESULT GoopdateImpl::Main(HINSTANCE instance,
     did_install_uninstall_fail = FAILED(UninstallIfNecessary());
   } else if (!has_uninstalled_) {
     if (args_.mode == COMMANDLINE_MODE_UA) {
-      VERIFY1(SUCCEEDED(AggregateAndReportMetrics(is_machine_, false)));
+      VERIFY_SUCCEEDED(AggregateAndReportMetrics(is_machine_, false));
     } else if (!is_machine_ || vista_util::IsUserAdmin()) {
-      VERIFY1(SUCCEEDED(AggregateMetrics(is_machine_)));
+      VERIFY_SUCCEEDED(AggregateMetrics(is_machine_));
     }
   }
 
@@ -573,11 +573,11 @@ HRESULT GoopdateImpl::DoMain(HINSTANCE instance,
   // The system terminates the process without displaying a retry dialog box
   // for the user. GoogleUpdate has no user state to be saved, therefore
   // prompting the user for input is meaningless.
-  VERIFY1(SUCCEEDED(SetProcessSilentShutdown()));
+  VERIFY_SUCCEEDED(SetProcessSilentShutdown());
 
-  VERIFY1(SUCCEEDED(CaptureOSMetrics()));
+  VERIFY_SUCCEEDED(CaptureOSMetrics());
 
-  VERIFY1(SUCCEEDED(vista_util::EnableProcessHeapMetadataProtection()));
+  VERIFY_SUCCEEDED(vista_util::EnableProcessHeapMetadataProtection());
 
   CString module_path = app_util::GetModulePath(module_instance_);
   ASSERT1(!module_path.IsEmpty());
@@ -606,7 +606,7 @@ HRESULT GoopdateImpl::DoMain(HINSTANCE instance,
 #if defined(HAS_DEVICE_MANAGEMENT)
   // Reference the DmStorage instance here so the singleton can be created
   // before use.
-  VERIFY1(SUCCEEDED(DmStorage::CreateInstance(args_.extra.enrollment_token)));
+  VERIFY_SUCCEEDED(DmStorage::CreateInstance(args_.extra.enrollment_token));
 #endif
 
   // TODO(omaha3): Interactive updates might be useful for debugging or even
@@ -635,7 +635,7 @@ HRESULT GoopdateImpl::DoMain(HINSTANCE instance,
     return hr;
   }
 
-  VERIFY1(SUCCEEDED(CaptureUserMetrics()));
+  VERIFY_SUCCEEDED(CaptureUserMetrics());
 
   // The resources are now loaded and available if applicable for this instance.
   // If there was no bundle name specified on the command line, we take the
@@ -691,7 +691,7 @@ HRESULT GoopdateImpl::InitializeGoopdateAndLoadResources() {
 
   // After parsing the command line, reinstall the crash handler to match the
   // state of the process.
-  VERIFY1(SUCCEEDED(InstallExceptionHandler()));
+  VERIFY_SUCCEEDED(InstallExceptionHandler());
 
   // We have parsed the command line, and we are now resetting is_machine.
   NetworkConfigManager::set_is_machine(
@@ -710,9 +710,9 @@ HRESULT GoopdateImpl::InitializeGoopdateAndLoadResources() {
 
   // Set the usage stats as soon as possible, which is after the command line
   // has been parsed, so that we can report crashes and other stats.
-  VERIFY1(SUCCEEDED(SetUsageStatsEnable()));
+  VERIFY_SUCCEEDED(SetUsageStatsEnable());
 
-  VERIFY1(SUCCEEDED(internal::PromoteAppEulaAccepted(is_machine_)));
+  VERIFY_SUCCEEDED(internal::PromoteAppEulaAccepted(is_machine_));
 
   if (ShouldCheckShutdownEvent(args_.mode) && IsShutdownEventSet()) {
     return GOOPDATE_E_SHUTDOWN_SIGNALED;
@@ -770,7 +770,7 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
 
   ASSERT1(CheckRegisteredVersion(GetVersionString(), is_machine_, mode));
 
-  VERIFY1(SUCCEEDED(SetBackgroundPriorityIfNeeded(mode)));
+  VERIFY_SUCCEEDED(SetBackgroundPriorityIfNeeded(mode));
 
 #pragma warning(push)
 // C4061: enumerator 'xxx' in switch of enum 'yyy' is not explicitly handled by
@@ -955,12 +955,12 @@ bool GoopdateImpl::IsMachineProcess() {
 
 HRESULT GoopdateImpl::HandleReportCrash() {
   ++metric_goopdate_handle_report_crash;
-  VERIFY1(SUCCEEDED(AggregateMetrics(is_machine_)));
+  VERIFY_SUCCEEDED(AggregateMetrics(is_machine_));
 
   ConfigManager* cm = ConfigManager::Instance();
 
   CString upload_url;
-  VERIFY1(SUCCEEDED(cm->GetCrashReportUrl(&upload_url)));
+  VERIFY_SUCCEEDED(cm->GetCrashReportUrl(&upload_url));
   ASSERT1(!upload_url.IsEmpty());
 
   CrashReporter reporter;
@@ -1284,7 +1284,7 @@ HRESULT GoopdateImpl::DoHandoff(bool* has_ui_been_displayed) {
   // prior version does a handoff to a newer version.)
   CString session_id = args_.session_id;
   if (session_id.IsEmpty()) {
-    VERIFY1(SUCCEEDED(GetGuid(&session_id)));
+    VERIFY_SUCCEEDED(GetGuid(&session_id));
   }
 
   hr = InstallApps(is_machine_,
@@ -1461,9 +1461,9 @@ HRESULT GoopdateImpl::HandleHealthCheck() {
 HRESULT GoopdateImpl::HandleRegisterMsiHelper() {
   const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
   DWORD is_registered(0);
-  VERIFY1(SUCCEEDED(RegKey::GetValue(key_name,
+  VERIFY_SUCCEEDED(RegKey::GetValue(key_name,
                                      kRegValueIsMSIHelperRegistered,
-                                     &is_registered)));
+                                     &is_registered));
   if (is_registered) {
     return S_OK;
   }
@@ -1477,9 +1477,9 @@ HRESULT GoopdateImpl::HandleRegisterMsiHelper() {
     return hr;
   }
 
-  VERIFY1(SUCCEEDED(RegKey::SetValue(key_name,
+  VERIFY_SUCCEEDED(RegKey::SetValue(key_name,
                                      kRegValueIsMSIHelperRegistered,
-                                     static_cast<DWORD>(1))));
+                                     static_cast<DWORD>(1)));
 
   return S_OK;
 }

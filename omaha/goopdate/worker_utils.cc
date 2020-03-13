@@ -39,26 +39,26 @@ bool FormatMessageForNetworkError(HRESULT error,
 
   switch (error) {
     case GOOPDATE_E_NO_NETWORK:
-      VERIFY1(SUCCEEDED(formatter.FormatMessage(msg,
+      VERIFY_SUCCEEDED(formatter.FormatMessage(msg,
                                                 IDS_NO_NETWORK_PRESENT_ERROR,
-                                                kOmahaShellFileName)));
+                                                kOmahaShellFileName));
       break;
     case GOOPDATE_E_NETWORK_UNAUTHORIZED:
-      VERIFY1(SUCCEEDED(
-          formatter.LoadString(IDS_ERROR_HTTPSTATUS_UNAUTHORIZED, msg)));
+      VERIFY_SUCCEEDED(
+          formatter.LoadString(IDS_ERROR_HTTPSTATUS_UNAUTHORIZED, msg));
       break;
     case GOOPDATE_E_NETWORK_FORBIDDEN:
-      VERIFY1(SUCCEEDED(
-          formatter.LoadString(IDS_ERROR_HTTPSTATUS_FORBIDDEN, msg)));
+      VERIFY_SUCCEEDED(
+          formatter.LoadString(IDS_ERROR_HTTPSTATUS_FORBIDDEN, msg));
       break;
     case GOOPDATE_E_NETWORK_PROXYAUTHREQUIRED:
-      VERIFY1(SUCCEEDED(
-          formatter.LoadString(IDS_ERROR_HTTPSTATUS_PROXY_AUTH_REQUIRED, msg)));
+      VERIFY_SUCCEEDED(
+          formatter.LoadString(IDS_ERROR_HTTPSTATUS_PROXY_AUTH_REQUIRED, msg));
       break;
     default:
-      VERIFY1(SUCCEEDED(formatter.FormatMessage(msg,
+      VERIFY_SUCCEEDED(formatter.FormatMessage(msg,
                                                 IDS_NO_NETWORK_PRESENT_ERROR,
-                                                kOmahaShellFileName)));
+                                                kOmahaShellFileName));
       return false;
   }
 

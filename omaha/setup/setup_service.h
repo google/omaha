@@ -114,8 +114,8 @@ class SetupService {
       return hr;
     }
 
-    VERIFY1(SUCCEEDED(SetDescription(GetServiceDescription())));
-    VERIFY1(SUCCEEDED(SetDelayedAutoStart()));
+    VERIFY_SUCCEEDED(SetDescription(GetServiceDescription()));
+    VERIFY_SUCCEEDED(SetDelayedAutoStart());
 
     return InstallCOMService();
   }
@@ -132,7 +132,7 @@ class SetupService {
       ASSERT1(HRESULT_FROM_WIN32(ERROR_SERVICE_DOES_NOT_EXIST) == hr);
     }
 
-    VERIFY1(SUCCEEDED(UninstallCOMService()));
+    VERIFY_SUCCEEDED(UninstallCOMService());
 
     hr = DeleteService();
     if (FAILED(hr)) {
@@ -187,8 +187,8 @@ class SetupService {
 
       // Delete the previous version of the service. Then create a new service
       // name, and fall through to install that.
-      VERIFY1(SUCCEEDED(DeleteService()));
-      VERIFY1(SUCCEEDED(CreateAndSetVersionedServiceNameInRegistry()));
+      VERIFY_SUCCEEDED(DeleteService());
+      VERIFY_SUCCEEDED(CreateAndSetVersionedServiceNameInRegistry());
       ASSERT1(!IsServiceInstalled());
     }
 

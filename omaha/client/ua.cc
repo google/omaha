@@ -103,9 +103,9 @@ void WriteUpdateAppsStartEvent(bool is_machine) {
 HRESULT RegisterMSIHelperIfNeeded(bool is_machine) {
   const TCHAR* key_name = is_machine ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
   DWORD is_registered(0);
-  VERIFY1(SUCCEEDED(RegKey::GetValue(key_name,
+  VERIFY_SUCCEEDED(RegKey::GetValue(key_name,
                                      kRegValueIsMSIHelperRegistered,
-                                     &is_registered)));
+                                     &is_registered));
   if (is_registered) {
     return S_OK;
   }
@@ -254,17 +254,17 @@ HRESULT UpdateApps(bool is_machine,
     return GOOPDATE_E_UA_ALREADY_RUNNING;
   }
 
-  VERIFY1(SUCCEEDED(ConfigManager::Instance()->SetLastStartedAU(is_machine)));
+  VERIFY_SUCCEEDED(ConfigManager::Instance()->SetLastStartedAU(is_machine));
 
-  VERIFY1(SUCCEEDED(RegisterMSIHelperIfNeeded(is_machine)));
+  VERIFY_SUCCEEDED(RegisterMSIHelperIfNeeded(is_machine));
 
   if (ConfigManager::Instance()->CanUseNetwork(is_machine)) {
-    VERIFY1(SUCCEEDED(Ping::SendPersistedPings(is_machine)));
+    VERIFY_SUCCEEDED(Ping::SendPersistedPings(is_machine));
   }
 
   // Generate a session ID for network accesses.
   CString session_id;
-  VERIFY1(SUCCEEDED(GetGuid(&session_id)));
+  VERIFY_SUCCEEDED(GetGuid(&session_id));
 
   // A tentative uninstall check is done here. There are stronger checks,
   // protected by locks, which are done by Setup.

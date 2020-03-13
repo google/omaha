@@ -515,7 +515,7 @@ HRESULT V1ScheduledTasks::UninstallScheduledTask(const CString& task_name) {
   }
 
   // Stop the task before deleting it. Ignore return value.
-  VERIFY1(SUCCEEDED(StopScheduledTask(task_name)));
+  VERIFY_SUCCEEDED(StopScheduledTask(task_name));
 
   // delete the task.
   hr = scheduler->Delete(task_name);
@@ -830,7 +830,7 @@ HRESULT V2ScheduledTasks::InstallScheduledTask(const CString& task_name,
   const CString start_time(plus_5min.Format(_T("%Y-%m-%dT%H:%M:%S")));
 
   CString task_xml;
-  VERIFY1(SUCCEEDED(CreateScheduledTaskXml(
+  VERIFY_SUCCEEDED(CreateScheduledTaskXml(
                              task_path,
                              task_parameters,
                              task_description,
@@ -838,7 +838,7 @@ HRESULT V2ScheduledTasks::InstallScheduledTask(const CString& task_name,
                              is_machine,
                              create_logon_trigger,
                              create_hourly_trigger,
-                             &task_xml)));
+                             &task_xml));
 
   CComPtr<IRegisteredTask> registered_task;
   return task_folder->RegisterTask(
@@ -1066,7 +1066,7 @@ CString GetOmaha2LegacyTaskName(bool is_machine) {
 
   CString task_name_user = kLegacyOmaha2TaskNameUserPrefix;
   CString user_sid;
-  VERIFY1(SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid)));
+  VERIFY_SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid));
   task_name_user += user_sid;
   return task_name_user;
 }
@@ -1110,7 +1110,7 @@ CString GetDefaultGoopdateTaskName(bool is_machine, CommandLineMode mode) {
   } else {
     task_name = kScheduledTaskNameUserPrefix;
     CString user_sid;
-    VERIFY1(SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid)));
+    VERIFY_SUCCEEDED(user_info::GetProcessUser(NULL, NULL, &user_sid));
     task_name += user_sid;
   }
 
@@ -1154,12 +1154,12 @@ HRESULT InstallGoopdateTaskForMode(const CString& task_path,
 
   // Create a new task name and fall through to install that.
   if (mode == COMMANDLINE_MODE_CORE) {
-    VERIFY1(SUCCEEDED(
-    internal::CreateAndSetVersionedTaskNameCoreInRegistry(is_machine)));
+    VERIFY_SUCCEEDED(
+    internal::CreateAndSetVersionedTaskNameCoreInRegistry(is_machine));
     task_name = internal::GetCurrentTaskNameCore(is_machine);
   } else {
-    VERIFY1(SUCCEEDED(
-    internal::CreateAndSetVersionedTaskNameUAInRegistry(is_machine)));
+    VERIFY_SUCCEEDED(
+    internal::CreateAndSetVersionedTaskNameUAInRegistry(is_machine));
     task_name = internal::GetCurrentTaskNameUA(is_machine);
   }
   ASSERT1(!internal::Instance().IsInstalledScheduledTask(task_name));
@@ -1187,32 +1187,32 @@ HRESULT InstallGoopdateTasks(const CString& task_path, bool is_machine) {
 }
 
 HRESULT UninstallGoopdateTasks(bool is_machine) {
-  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTask(
-      internal::GetCurrentTaskNameCore(is_machine))));
-  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTask(
-      internal::GetCurrentTaskNameUA(is_machine))));
+  VERIFY_SUCCEEDED(internal::Instance().UninstallScheduledTask(
+      internal::GetCurrentTaskNameCore(is_machine)));
+  VERIFY_SUCCEEDED(internal::Instance().UninstallScheduledTask(
+      internal::GetCurrentTaskNameUA(is_machine)));
 
   // Try to uninstall any tasks that we failed to update during a previous
   // overinstall. It is possible that we fail to uninstall these again here.
-  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTasks(
+  VERIFY_SUCCEEDED(internal::Instance().UninstallScheduledTasks(
       scheduled_task_utils::GetDefaultGoopdateTaskName(
-          is_machine, COMMANDLINE_MODE_CORE))));
-  VERIFY1(SUCCEEDED(internal::Instance().UninstallScheduledTasks(
+          is_machine, COMMANDLINE_MODE_CORE)));
+  VERIFY_SUCCEEDED(internal::Instance().UninstallScheduledTasks(
       scheduled_task_utils::GetDefaultGoopdateTaskName(
-          is_machine, COMMANDLINE_MODE_UA))));
+          is_machine, COMMANDLINE_MODE_UA)));
   return S_OK;
 }
 
 HRESULT UninstallLegacyGoopdateTasks(bool is_machine) {
   const CString& legacy_omaha1_task =
       internal::GetOmaha1LegacyTaskName(is_machine);
-  VERIFY1(SUCCEEDED(
-      internal::Instance().UninstallScheduledTask(legacy_omaha1_task)));
+  VERIFY_SUCCEEDED(
+      internal::Instance().UninstallScheduledTask(legacy_omaha1_task));
 
   const CString& legacy_omaha2_task =
       internal::GetOmaha2LegacyTaskName(is_machine);
-  VERIFY1(SUCCEEDED(
-      internal::Instance().UninstallScheduledTask(legacy_omaha2_task)));
+  VERIFY_SUCCEEDED(
+      internal::Instance().UninstallScheduledTask(legacy_omaha2_task));
 
   return S_OK;
 }

@@ -38,7 +38,7 @@ HRESULT HelpUrlBuilder::BuildUrl(const std::vector<AppResult>& app_results,
   help_url->Empty();
 
   CString more_info_url;
-  VERIFY1(SUCCEEDED(ConfigManager::Instance()->GetMoreInfoUrl(&more_info_url)));
+  VERIFY_SUCCEEDED(ConfigManager::Instance()->GetMoreInfoUrl(&more_info_url));
 
   const TCHAR* const kHelpLinkSourceId = _T("gethelp");
   HRESULT hr = BuildHttpGetString(more_info_url,

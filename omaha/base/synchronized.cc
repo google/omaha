@@ -501,9 +501,9 @@ void CreateSyncId(const TCHAR* id, SyncScope scope, CString* sync_id) {
       } else {
         ASSERT1(scope == SYNC_USER);
         // make the postfix the sid
-        VERIFY1(SUCCEEDED(omaha::user_info::GetProcessUser(NULL,
+        VERIFY_SUCCEEDED(omaha::user_info::GetProcessUser(NULL,
                                                            NULL,
-                                                           &postfix)));
+                                                           &postfix));
       }
       break;
   }

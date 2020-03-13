@@ -407,7 +407,7 @@ void GetNamedObjectAttributes(const TCHAR* base_name,
 
   if (!is_machine) {
     CString user_sid;
-    VERIFY1(SUCCEEDED(omaha::user_info::GetProcessUser(NULL, NULL, &user_sid)));
+    VERIFY_SUCCEEDED(omaha::user_info::GetProcessUser(NULL, NULL, &user_sid));
     attr->name += user_sid;
     VERIFY1(GetCurrentUserDefaultSecurityAttributes(&attr->sa));
   } else {
@@ -1538,13 +1538,13 @@ void VariantToStringList(VARIANT var, std::vector<CString>* list) {
   ASSERT1(obj);
 
   CComVariant var_length;
-  VERIFY1(SUCCEEDED(obj.GetPropertyByName(_T("length"), &var_length)));
+  VERIFY_SUCCEEDED(obj.GetPropertyByName(_T("length"), &var_length));
   ASSERT1(V_VT(&var_length) == VT_I4);
   int length = V_I4(&var_length);
 
   for (int i = 0; i < length; ++i) {
     CComVariant value;
-    VERIFY1(SUCCEEDED(obj.GetPropertyByName(itostr(i), &value)));
+    VERIFY_SUCCEEDED(obj.GetPropertyByName(itostr(i), &value));
     if (V_VT(&value) == VT_BSTR) {
       list->push_back(V_BSTR(&value));
     } else {

@@ -178,7 +178,7 @@ HRESULT AddUninstalledAppsPings(AppBundle* app_bundle) {
     // AppBundle's lifetime is controlled by the client. Improving the ping
     // architecture, such as having a ping queue managed by the Worker, may
     // enable this.
-    VERIFY1(SUCCEEDED(app_manager.RemoveClientState(app->app_guid())));
+    VERIFY_SUCCEEDED(app_manager.RemoveClientState(app->app_guid()));
   }
 
   return S_OK;
@@ -453,8 +453,8 @@ void Worker::CheckForUpdateHelper(AppBundle* app_bundle,
   *is_check_successful = false;
 
   if (ConfigManager::Instance()->CanUseNetwork(is_machine_)) {
-    VERIFY1(SUCCEEDED(internal::SendOemInstalledPing(
-        is_machine_, app_bundle->session_id())));
+    VERIFY_SUCCEEDED(internal::SendOemInstalledPing(
+        is_machine_, app_bundle->session_id()));
   }
 
   scoped_impersonation impersonate_user(app_bundle->impersonation_token());
@@ -510,7 +510,7 @@ void Worker::CheckForUpdateHelper(AppBundle* app_bundle,
                     hr);
   CString event_text;
   CString url;
-  VERIFY1(SUCCEEDED(ConfigManager::Instance()->GetUpdateCheckUrl(&url)));
+  VERIFY_SUCCEEDED(ConfigManager::Instance()->GetUpdateCheckUrl(&url));
   SafeCStringFormat(&event_text, _T("url=%s\n%s"),
                     url,
                     app_bundle->FetchAndResetLogText());
@@ -999,9 +999,9 @@ void Worker::DoPostUpdateCheck(AppBundle* app_bundle,
   ASSERT1(app_bundle);
   ASSERT1(update_response);
 
-  VERIFY1(SUCCEEDED(update_response_utils::ApplyExperimentLabelDeltas(
+  VERIFY_SUCCEEDED(update_response_utils::ApplyExperimentLabelDeltas(
       is_machine_,
-      update_response)));
+      update_response));
 
   PersistRetryAfter(app_bundle->update_check_client()->retry_after_sec());
 
@@ -1016,8 +1016,8 @@ void Worker::DoPostUpdateCheck(AppBundle* app_bundle,
   }
 
   if (app_bundle->is_offline_install()) {
-    VERIFY1(SUCCEEDED(CacheOfflinePackages(app_bundle)));
-    VERIFY1(SUCCEEDED(DeleteDirectory(app_bundle->offline_dir())));
+    VERIFY_SUCCEEDED(CacheOfflinePackages(app_bundle));
+    VERIFY_SUCCEEDED(DeleteDirectory(app_bundle->offline_dir()));
   }
 }
 

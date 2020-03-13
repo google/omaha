@@ -349,16 +349,14 @@ inline void WINAPI NullAPCFunc(ULONG_PTR) {}
 void EnsureRasmanLoaded();
 
 // Returns if the HRESULT argument is a COM error
-// TODO(omaha): use an ANONYMOUS_VARIABLE to avoid the situation in which the
-// macro gets called like RET_IF_FAILED(hr);
 // For now, use a quick fix hr -> __hr. Leading underscore names are not to be
 // used in application code.
-#define RET_IF_FAILED(x)    \
-    do {                    \
-      HRESULT __hr(x);      \
-      if (FAILED(__hr)) {   \
-        return __hr;        \
-      }                     \
+#define RET_IF_FAILED(x)                     \
+    do {                                     \
+      auto ANONYMOUS_VARIABLE(__hr)(x);      \
+      if (FAILED(ANONYMOUS_VARIABLE(__hr))) {\
+        return ANONYMOUS_VARIABLE(__hr);     \
+      }                                      \
     } while (false)
 
 // return error if the first argument evaluates to false
@@ -387,36 +385,35 @@ void EnsureRasmanLoaded();
 
 // return if the HRESULT argument evaluates to FAILED - but also assert
 // if failed
-#define RET_IF_FAILED_ASSERT(x, msg) \
-    do {                             \
-      HRESULT hr(x);                 \
-      if (FAILED(hr)) {              \
-        ASSERT(false, msg);          \
-        return hr;                   \
-      }                              \
+#define RET_IF_FAILED_ASSERT(x, msg)          \
+    do {                                      \
+     auto ANONYMOUS_VARIABLE(__hr)(x);        \
+      if (FAILED(ANONYMOUS_VARIABLE(__hr))) { \
+        ASSERT(false, msg);                   \
+        return ANONYMOUS_VARIABLE(__hr);      \
+      }                                       \
     } while (false)
-
 
 // return if the HRESULT argument evaluates to FAILED - but also log an error
 // message if failed
-#define RET_IF_FAILED_LOG(x, cat, msg) \
-    do {                               \
-      HRESULT hr(x);                   \
-      if (FAILED(hr)) {                \
-        LC_LOG(cat, LEVEL_ERROR, msg); \
-        return hr;                     \
-      }                                \
+#define RET_IF_FAILED_LOG(x, cat, msg)        \
+    do {                                      \
+      auto ANONYMOUS_VARIABLE(__hr)(x);       \
+      if (FAILED(ANONYMOUS_VARIABLE(__hr))) { \
+        LC_LOG(cat, LEVEL_ERROR, msg);        \
+        return ANONYMOUS_VARIABLE(__hr);      \
+      }                                       \
     } while (false)
 
 // return if the HRESULT argument evaluates to FAILED - but also REPORT an error
 // message if failed
-#define RET_IF_FAILED_REPORT(x, msg, n) \
-    do {                                \
-      HRESULT hr(x);                    \
-      if (FAILED(hr)) {                 \
-        REPORT(false, R_ERROR, msg, n); \
-        return hr;                      \
-      }                                 \
+#define RET_IF_FAILED_REPORT(x, msg, n)       \
+    do {                                      \
+      ANONYMOUS_VARIABLE(__hr)(x);            \
+      if (FAILED(ANONYMOUS_VARIABLE(__hr))) { \
+        REPORT(false, R_ERROR, msg, n);       \
+        return ANONYMOUS_VARIABLE(__hr);      \
+      }                                       \
     } while (false)
 
 // Initializes a POD to zero.
@@ -832,7 +829,7 @@ class LocalCallAccessPermissionHelper {
 
     RegKey key;
     RET_IF_FAILED(key.Open(key_app_id.Key(), T::GetAppIdT(), KEY_WRITE));
-    VERIFY1(SUCCEEDED(key.DeleteValue(_T("AccessPermission"))));
+    VERIFY_SUCCEEDED(key.DeleteValue(_T("AccessPermission")));
 
     // Now, call the base ATL module implementation to unregister the AppId
     RET_IF_FAILED(T::UpdateRegistryAppId(FALSE));

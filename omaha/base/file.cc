@@ -90,7 +90,7 @@ File::File()
 
 File::~File() {
   if (handle_ != INVALID_HANDLE_VALUE) {
-    VERIFY1(SUCCEEDED(Close()));
+    VERIFY_SUCCEEDED(Close());
   }
 }
 
@@ -1050,7 +1050,7 @@ HRESULT File::SetLength(const uint32 n, bool zero_data) {
   HRESULT hr = S_OK;
 
   uint32 len = 0;
-  VERIFY1(SUCCEEDED(GetLength(&len)));
+  VERIFY_SUCCEEDED(GetLength(&len));
 
   if (len == n) {
     return S_OK;

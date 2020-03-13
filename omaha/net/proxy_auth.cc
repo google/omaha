@@ -364,11 +364,11 @@ bool ProxyAuth::ReadFromPreIE7(const CString& server) {
   // the item_name returned by this iterator was a microsoft patent application:
   // http://www.patentstorm.us/patents/6272631-description.html
   CComPtr<IPStore> pstore;
-  VERIFY1(SUCCEEDED(hr = PStoreCreateInstance_fn(&pstore, NULL, NULL, 0)));
+  VERIFY_SUCCEEDED(hr = PStoreCreateInstance_fn(&pstore, NULL, NULL, 0));
   if (SUCCEEDED(hr)) {
     CComPtr<IEnumPStoreTypes> enum_types;
-    VERIFY1(SUCCEEDED(hr = pstore->EnumTypes(PST_KEY_CURRENT_USER, 0,
-                                             &enum_types)));
+    VERIFY_SUCCEEDED(hr = pstore->EnumTypes(PST_KEY_CURRENT_USER, 0,
+                                             &enum_types));
     if (SUCCEEDED(hr)) {
       GUID type_guid = { 0 };
       // Get the types one at a time
@@ -377,8 +377,8 @@ bool ProxyAuth::ReadFromPreIE7(const CString& server) {
           continue;
 
         CComPtr<IEnumPStoreTypes> enum_subtypes;
-        VERIFY1(SUCCEEDED(hr = pstore->EnumSubtypes(PST_KEY_CURRENT_USER,
-          &type_guid, 0, &enum_subtypes)));
+        VERIFY_SUCCEEDED(hr = pstore->EnumSubtypes(PST_KEY_CURRENT_USER,
+          &type_guid, 0, &enum_subtypes));
         if (SUCCEEDED(hr)) {
           GUID subtype_guid = { 0 };
           // Get the subtypes one at a time
@@ -387,8 +387,8 @@ bool ProxyAuth::ReadFromPreIE7(const CString& server) {
               continue;
 
             CComPtr<IEnumPStoreItems> enum_items;
-            VERIFY1(SUCCEEDED(hr = pstore->EnumItems(PST_KEY_CURRENT_USER,
-              &type_guid, &subtype_guid, 0, &enum_items)));
+            VERIFY_SUCCEEDED(hr = pstore->EnumItems(PST_KEY_CURRENT_USER,
+              &type_guid, &subtype_guid, 0, &enum_items));
             if (SUCCEEDED(hr)) {
               wchar_t* item_name = NULL;
               // Get the items one at a time
@@ -396,9 +396,9 @@ bool ProxyAuth::ReadFromPreIE7(const CString& server) {
                 DWORD data_length = 0;
                 byte* data = NULL;
 
-                VERIFY1(SUCCEEDED(hr = pstore->ReadItem(PST_KEY_CURRENT_USER,
+                VERIFY_SUCCEEDED(hr = pstore->ReadItem(PST_KEY_CURRENT_USER,
                   &type_guid, &subtype_guid, item_name, &data_length, &data,
-                  NULL, 0)));
+                  NULL, 0));
                 if (SUCCEEDED(hr)) {
                   found = ParseCredsFromRawBuffer(data, data_length,
                                                   &username, &password);

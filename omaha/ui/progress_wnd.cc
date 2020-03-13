@@ -93,7 +93,7 @@ InstallStoppedWnd::InstallStoppedWnd(CMessageLoop* message_loop, HWND parent)
 InstallStoppedWnd::~InstallStoppedWnd() {
   CORE_LOG(L3, (_T("[InstallStoppedWnd::~InstallStoppedWnd]")));
   if (IsWindow()) {
-    VERIFY1(SUCCEEDED(CloseWindow()));
+    VERIFY_SUCCEEDED(CloseWindow());
   }
 }
 
@@ -190,12 +190,12 @@ LRESULT ProgressWnd::OnInitDialog(UINT message,
 
   InitializeDialog();
 
-  VERIFY1(SUCCEEDED(SetMarqueeMode(true)));
+  VERIFY_SUCCEEDED(SetMarqueeMode(true));
 
   CString state_text;
   VERIFY1(state_text.LoadString(IDS_INITIALIZING));
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), state_text));
-  VERIFY1(SUCCEEDED(ChangeControlState()));
+  VERIFY_SUCCEEDED(ChangeControlState());
 
   metrics_timer_.reset(new HighresTimer);
 
@@ -247,7 +247,7 @@ bool ProgressWnd::MaybeCloseWindow() {
     }
   }
 
-  VERIFY1(SUCCEEDED(CloseWindow()));
+  VERIFY_SUCCEEDED(CloseWindow());
   return true;
 }
 
@@ -316,7 +316,7 @@ LRESULT ProgressWnd::OnClickedButton(WORD notify_code,
   // code does anything that might delay the UI response. This should be true
   // since we won't actually be restarting browsers, etc. from the UI.
   handled = true;
-  VERIFY1(SUCCEEDED(CloseWindow()));
+  VERIFY_SUCCEEDED(CloseWindow());
 
   return 0;
 }
@@ -389,7 +389,7 @@ void ProgressWnd::OnCheckingForUpdate() {
   VERIFY1(s.LoadString(IDS_WAITING_TO_CONNECT));
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-  VERIFY1(SUCCEEDED(ChangeControlState()));
+  VERIFY_SUCCEEDED(ChangeControlState());
 }
 
 void ProgressWnd::OnUpdateAvailable(const CString& app_id,
@@ -440,7 +440,7 @@ void ProgressWnd::OnWaitingToDownload(const CString& app_id,
   VERIFY1(s.LoadString(IDS_WAITING_TO_DOWNLOAD));
   VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-  VERIFY1(SUCCEEDED(ChangeControlState()));
+  VERIFY_SUCCEEDED(ChangeControlState());
 }
 
 // May be called repeatedly during download.
@@ -494,12 +494,12 @@ void ProgressWnd::OnDownloading(const CString& app_id,
     VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
   }
 
-  VERIFY1(SUCCEEDED(ChangeControlState()));
+  VERIFY_SUCCEEDED(ChangeControlState());
 
   // When the network is connecting keep the marquee moving, otherwise
   // the user has no indication something is still going on.
   // TODO(omaha): when resuming an incomplete download this will not work.
-  VERIFY1(SUCCEEDED(SetMarqueeMode(pos == 0)));
+  VERIFY_SUCCEEDED(SetMarqueeMode(pos == 0));
   if (pos > 0) {
     SendDlgItemMessage(IDC_PROGRESS, PBM_SETPOS, pos, 0);
   }
@@ -525,7 +525,7 @@ void ProgressWnd::OnWaitingRetryDownload(const CString& app_id,
         static_cast<int>(CeilingDivide(next_retry_time - now, kSecsTo100ns));
     s.FormatMessage(IDS_DOWNLOAD_RETRY, retry_time_in_sec);
     VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
-    VERIFY1(SUCCEEDED(ChangeControlState()));
+    VERIFY_SUCCEEDED(ChangeControlState());
   }
 }
 
@@ -549,7 +549,7 @@ void ProgressWnd::OnWaitingToInstall(const CString& app_id,
     VERIFY1(s.LoadString(IDS_WAITING_TO_INSTALL));
     VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-    VERIFY1(SUCCEEDED(ChangeControlState()));
+    VERIFY_SUCCEEDED(ChangeControlState());
   }
 
   // If we want to instead close the window and start install, call
@@ -583,10 +583,10 @@ void ProgressWnd::OnInstalling(const CString& app_id,
     VERIFY1(s.LoadString(IDS_INSTALLING));
     VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
 
-    VERIFY1(SUCCEEDED(ChangeControlState()));
+    VERIFY_SUCCEEDED(ChangeControlState());
   }
 
-  VERIFY1(SUCCEEDED(SetMarqueeMode(pos <= 0)));
+  VERIFY_SUCCEEDED(SetMarqueeMode(pos <= 0));
   if (pos > 0) {
     SendDlgItemMessage(IDC_PROGRESS, PBM_SETPOS, pos, 0);
   }
@@ -616,7 +616,7 @@ void ProgressWnd::OnPause() {
 
   // TODO(omaha): implement time left.
 
-  VERIFY1(SUCCEEDED(ChangeControlState()));
+  VERIFY_SUCCEEDED(ChangeControlState());
 }
 
 void ProgressWnd::DeterminePostInstallUrls(const ObserverCompletionInfo& info) {
@@ -703,7 +703,7 @@ void ProgressWnd::OnComplete(const ObserverCompletionInfo& observer_info) {
     case COMPLETION_CODE_ERROR:
       // If all apps are canceled, no need to display any dialog.
       if (AreAllAppsCanceled(observer_info.apps_info)) {
-        VERIFY1(SUCCEEDED(CloseWindow()));
+        VERIFY_SUCCEEDED(CloseWindow());
         return;
       } else {
         cur_state_ = STATE_COMPLETE_ERROR;
@@ -767,7 +767,7 @@ void ProgressWnd::OnComplete(const ObserverCompletionInfo& observer_info) {
     case COMPLETION_CODE_EXIT_SILENTLY_ON_LAUNCH_COMMAND:
       cur_state_ = STATE_COMPLETE_SUCCESS;
       if (launch_commands_succeeded) {
-        VERIFY1(SUCCEEDED(CloseWindow()));
+        VERIFY_SUCCEEDED(CloseWindow());
         return;
       }
 
@@ -777,14 +777,14 @@ void ProgressWnd::OnComplete(const ObserverCompletionInfo& observer_info) {
       break;
     case COMPLETION_CODE_EXIT_SILENTLY:
       cur_state_ = STATE_COMPLETE_SUCCESS;
-      VERIFY1(SUCCEEDED(CloseWindow()));
+      VERIFY_SUCCEEDED(CloseWindow());
       return;
     default:
       ASSERT1(false);
       break;
   }
 
-  VERIFY1(SUCCEEDED(ChangeControlState()));
+  VERIFY_SUCCEEDED(ChangeControlState());
 }
 
 HRESULT ProgressWnd::LaunchCmdLine(const AppCompletionInfo& app_info) {
@@ -861,7 +861,7 @@ bool ProgressWnd::IsInstallStoppedWindowPresent() {
 
 bool ProgressWnd::CloseInstallStoppedWindow() {
   if (IsInstallStoppedWindowPresent()) {
-    VERIFY1(SUCCEEDED(install_stopped_wnd_->CloseWindow()));
+    VERIFY_SUCCEEDED(install_stopped_wnd_->CloseWindow());
     install_stopped_wnd_.reset();
     return true;
   } else {

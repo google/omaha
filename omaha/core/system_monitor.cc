@@ -40,19 +40,19 @@ HRESULT SystemMonitor::Initialize(bool monitor_registry) {
     registry_monitor_.reset(new RegistryMonitor);
     if (SUCCEEDED(registry_monitor_->Initialize())) {
       HKEY root_key = is_machine_ ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER;
-      VERIFY1(SUCCEEDED(registry_monitor_->MonitorValue(
+      VERIFY_SUCCEEDED(registry_monitor_->MonitorValue(
           root_key,
           GOOPDATE_MAIN_KEY,
           kRegValueLastChecked,
           REG_DWORD,
           RegistryValueChangeCallback,
-          this)));
-      VERIFY1(SUCCEEDED(registry_monitor_->MonitorKey(
+          this));
+      VERIFY_SUCCEEDED(registry_monitor_->MonitorKey(
           root_key,
           GOOPDATE_REG_RELATIVE_CLIENTS,
           RegistryKeyChangeCallback,
-          this)));
-      VERIFY1(SUCCEEDED(registry_monitor_->StartMonitoring()));
+          this));
+      VERIFY_SUCCEEDED(registry_monitor_->StartMonitoring());
     }
   }
 

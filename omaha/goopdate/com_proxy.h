@@ -205,7 +205,7 @@ class StdMarshalInfo : public IStdMarshalInfo {
   explicit StdMarshalInfo(bool is_machine) : is_machine_(is_machine) {
     CORE_LOG(L6, (_T("[StdMarshalInfo::StdMarshalInfo][%d]"), is_machine));
 
-    VERIFY1(SUCCEEDED(ComProxy::RegisterProxyStubs()));
+    VERIFY_SUCCEEDED(ComProxy::RegisterProxyStubs());
   }
 
   // IStdMarshalInfo.

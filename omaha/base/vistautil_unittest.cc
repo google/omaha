@@ -50,7 +50,7 @@ TEST(VistaUtilTest, IsUACOn) {
 
 TEST(VistaUtilTest, IsElevatedWithUACOn) {
   bool is_elevated_with_uac_on(false);
-  VERIFY1(SUCCEEDED(vista_util::IsElevatedWithUACOn(&is_elevated_with_uac_on)));
+  VERIFY_SUCCEEDED(vista_util::IsElevatedWithUACOn(&is_elevated_with_uac_on));
   EXPECT_EQ(IsElevatedWithEnableLUAOn(), is_elevated_with_uac_on);
 }
 

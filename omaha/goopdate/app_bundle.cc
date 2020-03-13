@@ -57,7 +57,7 @@ AppBundle::AppBundle(bool is_machine, Model* model)
   CORE_LOG(L3, (_T("[AppBundle::AppBundle][0x%p]"), this));
   app_bundle_state_.reset(new fsm::AppBundleStateInit);
 
-  VERIFY1(SUCCEEDED(GetGuid(&request_id_)));
+  VERIFY_SUCCEEDED(GetGuid(&request_id_));
 }
 
 AppBundle::~AppBundle() {
@@ -248,9 +248,9 @@ HRESULT AppBundle::SendPingEventsAsync() {
 
   CAccessToken token;
   if (impersonation_token()) {
-    VERIFY1(SUCCEEDED(DuplicateTokenIntoCurrentProcess(::GetCurrentProcess(),
+    VERIFY_SUCCEEDED(DuplicateTokenIntoCurrentProcess(::GetCurrentProcess(),
                                                        impersonation_token(),
-                                                       &token)));
+                                                       &token));
   }
 
   // We Lock the ATL Module here since we want the process to stick around
@@ -752,7 +752,7 @@ void AppBundle::CompleteAsyncCall() {
 
   ASSERT1(is_pending_non_blocking_call());
 
-  VERIFY1(SUCCEEDED(app_bundle_state_->CompleteAsyncCall(this)));
+  VERIFY_SUCCEEDED(app_bundle_state_->CompleteAsyncCall(this));
 
   user_work_item_ = NULL;
 }

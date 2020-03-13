@@ -67,9 +67,9 @@ HRESULT GetDir(int csidl, const CString& path_tail, CString* dir) {
 // Creates machine wide goopdate install dir: "Program Files/Google/Update".
 CString GetMachineGoopdateInstallDir() {
   CString path;
-  VERIFY1(SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
+  VERIFY_SUCCEEDED(GetDir(CSIDL_PROGRAM_FILES,
                            CString(OMAHA_REL_GOOPDATE_INSTALL_DIR),
-                           &path)));
+                           &path));
   return path;
 }
 

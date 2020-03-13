@@ -191,15 +191,15 @@ class VistaProxyRegistrar {
 
   ~VistaProxyRegistrar() {
     if (googleupdate_cookie_) {
-      VERIFY1(SUCCEEDED(::CoRevokeClassObject(googleupdate_cookie_)));
+      VERIFY_SUCCEEDED(::CoRevokeClassObject(googleupdate_cookie_));
     }
 
     if (jobobserver_cookie_) {
-      VERIFY1(SUCCEEDED(::CoRevokeClassObject(jobobserver_cookie_)));
+      VERIFY_SUCCEEDED(::CoRevokeClassObject(jobobserver_cookie_));
     }
 
     if (progresswndevents_cookie_) {
-      VERIFY1(SUCCEEDED(::CoRevokeClassObject(progresswndevents_cookie_)));
+      VERIFY_SUCCEEDED(::CoRevokeClassObject(progresswndevents_cookie_));
     }
 
     if (is_impersonated) {

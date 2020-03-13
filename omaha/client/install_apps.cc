@@ -277,13 +277,13 @@ bool InstallAppsWndEvents::DoRestartBrowser(bool terminate_all_browsers,
   TerminateBrowserResult browser_res;
   TerminateBrowserResult default_res;
   if (terminate_all_browsers) {
-    VERIFY1(SUCCEEDED(goopdate_utils::TerminateAllBrowsers(browser,
+    VERIFY_SUCCEEDED(goopdate_utils::TerminateAllBrowsers(browser,
                                                            &browser_res,
-                                                           &default_res)));
+                                                           &default_res));
   } else {
-    VERIFY1(SUCCEEDED(goopdate_utils::TerminateBrowserProcesses(browser,
+    VERIFY_SUCCEEDED(goopdate_utils::TerminateBrowserProcesses(browser,
                                                                 &browser_res,
-                                                                &default_res)));
+                                                                &default_res));
   }
 
   BrowserType default_browser_type = BROWSER_UNKNOWN;

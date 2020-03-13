@@ -165,7 +165,7 @@ class ATL_NO_VTABLE OnDemand
     }
 
     if (session_id_.IsEmpty()) {
-      VERIFY1(SUCCEEDED(GetGuid(&session_id_)));
+      VERIFY_SUCCEEDED(GetGuid(&session_id_));
     }
 
     // We Lock the ATL Module here since we want the process to stick around

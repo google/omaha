@@ -1375,7 +1375,7 @@ HRESULT WriteNameValuePairsToHandle(const HANDLE file_handle,
 bool IsAppInstallWorkerRunning(bool is_machine) {
   CORE_LOG(L3, (_T("[IsAppInstallWorkerRunning][%d]"), is_machine));
   std::vector<uint32> processes;
-  VERIFY1(SUCCEEDED(GetInstallWorkerProcesses(is_machine, &processes)));
+  VERIFY_SUCCEEDED(GetInstallWorkerProcesses(is_machine, &processes));
   return !processes.empty();
 }
 
@@ -1463,7 +1463,7 @@ HANDLE GetImpersonationTokenForMachineProcess(bool is_machine) {
   }
 
   bool is_local_system(false);
-  VERIFY1(SUCCEEDED(IsSystemProcess(&is_local_system)));
+  VERIFY_SUCCEEDED(IsSystemProcess(&is_local_system));
   if (!is_local_system) {
     return NULL;
   }
@@ -1603,7 +1603,7 @@ HRESULT ResetMacHashesInRegistry(bool is_machine,
   ASSERT1(!mac_hashes.empty());
 
   GLock user_id_lock;
-  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  VERIFY_SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock));
   __mutexScope(user_id_lock);
 
   const ConfigManager& config_manager = *ConfigManager::Instance();
@@ -1612,7 +1612,7 @@ HRESULT ResetMacHashesInRegistry(bool is_machine,
   reg_path = AppendRegKeyPath(reg_path, kRegSubkeyUserId);
 
   // Delete any leftover/old MAC hashes.
-  VERIFY1(SUCCEEDED(RegKey::DeleteKey(reg_path)));
+  VERIFY_SUCCEEDED(RegKey::DeleteKey(reg_path));
 
   RegKey reg_key_uid;
   DWORD disposition = 0;
@@ -1670,23 +1670,23 @@ HRESULT ResetUserIdIfMacMismatch(bool is_machine) {
 
 HRESULT ResetUserId(bool is_machine, bool is_legacy) {
   GLock user_id_lock;
-  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  VERIFY_SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock));
   __mutexScope(user_id_lock);
 
   RegKey update_key;
-  VERIFY1(SUCCEEDED(update_key.Open(
-      ConfigManager::Instance()->registry_update(is_machine))));
+  VERIFY_SUCCEEDED(update_key.Open(
+      ConfigManager::Instance()->registry_update(is_machine)));
   if (update_key.HasValue(kRegValueOldUserId)) {
-    VERIFY1(SUCCEEDED(update_key.DeleteValue(kRegValueUserId)));
+    VERIFY_SUCCEEDED(update_key.DeleteValue(kRegValueUserId));
   } else {
-    VERIFY1(SUCCEEDED(update_key.RenameValue(kRegValueUserId,
-                                             kRegValueOldUserId)));
+    VERIFY_SUCCEEDED(update_key.RenameValue(kRegValueUserId,
+                                             kRegValueOldUserId));
 
     if (is_legacy) {
       CString uid;
-      VERIFY1(SUCCEEDED(update_key.GetValue(kRegValueOldUserId, &uid)));
+      VERIFY_SUCCEEDED(update_key.GetValue(kRegValueOldUserId, &uid));
       uid.Append(kRegValueDataLegacyUserId);
-      VERIFY1(SUCCEEDED(update_key.SetValue(kRegValueOldUserId, uid)));
+      VERIFY_SUCCEEDED(update_key.SetValue(kRegValueOldUserId, uid));
     }
   }
 
@@ -1696,15 +1696,15 @@ HRESULT ResetUserId(bool is_machine, bool is_legacy) {
 void RecordNewUserIdCreated(const RegKey& update_key) {
   // UID creation timestamp.
   DWORD now = Time64ToInt32(GetCurrent100NSTime());
-  VERIFY1(SUCCEEDED(update_key.SetValue(kRegValueUserIdCreateTime, now)));
+  VERIFY_SUCCEEDED(update_key.SetValue(kRegValueUserIdCreateTime, now));
   CORE_LOG(L3, (_T("[New UID creation time: %d]"), now));
 
   // Increment number of UID rotations.
   DWORD num_rotations(0);
   update_key.GetValue(kRegValueUserIdNumRotations, &num_rotations);
   ++num_rotations;
-  VERIFY1(SUCCEEDED(update_key.SetValue(kRegValueUserIdNumRotations,
-                                        num_rotations)));
+  VERIFY_SUCCEEDED(update_key.SetValue(kRegValueUserIdNumRotations,
+                                        num_rotations));
 }
 
 DEFINE_METRIC_count(opt_in_uid_generated);
@@ -1716,7 +1716,7 @@ HRESULT CreateUserId(bool is_machine) {
   }
 
   GLock user_id_lock;
-  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  VERIFY_SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock));
   __mutexScope(user_id_lock);
 
   RegKey update_key;
@@ -1765,7 +1765,7 @@ void DeleteUserId(bool is_machine) {
   }
 
   GLock user_id_lock;
-  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  VERIFY_SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock));
   __mutexScope(user_id_lock);
 
   RegKey update_key;
@@ -1775,9 +1775,9 @@ void DeleteUserId(bool is_machine) {
     return;
   }
 
-  VERIFY1(SUCCEEDED(update_key.DeleteValue(kRegValueUserId)));
-  VERIFY1(SUCCEEDED(update_key.DeleteValue(kRegValueOldUserId)));
-  VERIFY1(SUCCEEDED(update_key.DeleteSubKey(kRegSubkeyUserId)));
+  VERIFY_SUCCEEDED(update_key.DeleteValue(kRegValueUserId));
+  VERIFY_SUCCEEDED(update_key.DeleteValue(kRegValueOldUserId));
+  VERIFY_SUCCEEDED(update_key.DeleteSubKey(kRegSubkeyUserId));
 }
 
 CString GetUserIdLazyInit(bool is_machine) {
@@ -1804,7 +1804,7 @@ CString GetUserIdLazyInit(bool is_machine) {
 
 CString GetUserIdHistory(bool is_machine) {
   GLock user_id_lock;
-  VERIFY1(SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock)));
+  VERIFY_SUCCEEDED(InitializeUserIdLock(is_machine, &user_id_lock));
   __mutexScope(user_id_lock);
 
   CString old_uid;

@@ -395,7 +395,7 @@ void KeyWatcher::HandleEvent(HANDLE handle) {
     }
   }
 
-  VERIFY1(SUCCEEDED(StartWatching()));
+ VERIFY_SUCCEEDED(StartWatching());
 }
 
 HRESULT KeyWatcher::EnsureOpen() {
@@ -403,7 +403,7 @@ HRESULT KeyWatcher::EnsureOpen() {
   // deleted and recreated back.
   if (!IsKeyValid()) {
     UTIL_LOG(L3, (_T("[key '%s' is not valid]"), key_id_.key_name()));
-    VERIFY1(SUCCEEDED(key_.Close()));
+   VERIFY_SUCCEEDED(key_.Close());
   }
 
   // Open the key if not already open or create the key if needed.
@@ -530,7 +530,7 @@ void RegistryMonitorImpl::Run() {
   std::unique_ptr<HANDLE[]> handles(new HANDLE[kNumHandles]);
   for (size_t i = 0; i != watchers_.size(); ++i) {
     handles[i] = watchers_[i].second->notification_event();
-    VERIFY1(SUCCEEDED(watchers_[i].second->StartWatching()));
+   VERIFY_SUCCEEDED(watchers_[i].second->StartWatching());
   }
   handles[kStopMonitoringHandleIndex] = get(stop_monitoring_);
 

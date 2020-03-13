@@ -152,7 +152,7 @@ class CloseIeUsingShellRunnable : public Runnable {
     UTIL_LOG(L3, (_T("[CloseIeUsingShellRunnable][%s]"), sid_));
 
     scoped_co_init co_init(COINIT_MULTITHREADED);
-    VERIFY1(SUCCEEDED(co_init.hresult()));
+    VERIFY_SUCCEEDED(co_init.hresult());
 
     CloseIeUsingShell(sid_);
     delete this;

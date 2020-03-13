@@ -224,7 +224,7 @@ int RunTests(bool is_medium_or_large_test,
   InitializeVersionFromModule(NULL);
 
   scoped_co_init co_init(COINIT_MULTITHREADED);
-  VERIFY1(SUCCEEDED(co_init.hresult()));
+  VERIFY_SUCCEEDED(co_init.hresult());
 
   const bool is_build_system = IsBuildSystem();
 
@@ -246,7 +246,7 @@ int RunTests(bool is_medium_or_large_test,
       _tprintf(_T("\nCopying '%s' to '%s'.\n"),
                static_cast<const TCHAR*>(source_path),
                static_cast<const TCHAR*>(target_path));
-      VERIFY1(SUCCEEDED(File::Copy(source_path, target_path, false)));
+      VERIFY_SUCCEEDED(File::Copy(source_path, target_path, false));
     }
   }
 

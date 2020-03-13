@@ -797,7 +797,7 @@ HRESULT BundleInstaller::HandleProcessingState() {
         return HandleUpdateAvailable();
       case STATE_WAITING_TO_DOWNLOAD: {
         CComBSTR app_id;
-        VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+        VERIFY_SUCCEEDED(app->get_appId(&app_id));
         observer_->OnWaitingToDownload(app_id.m_str,
                                        internal::GetAppDisplayName(app));
         return S_OK;
@@ -855,7 +855,7 @@ HRESULT BundleInstaller::NotifyUpdateAvailable(IApp* app) {
   CORE_LOG(L3, (_T("[Next Version Update Available][%s]"), CString(ver)));
 
   CComBSTR app_id;
-  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+  VERIFY_SUCCEEDED(app->get_appId(&app_id));
 
   // TODO(omaha3): Until we force app teams to provide a version, the string
   // may be empty.
@@ -879,7 +879,7 @@ HRESULT BundleInstaller::NotifyDownloadProgress(IApp* app,
                          &percentage,
                          &next_retry_time);
   CComBSTR app_id;
-  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+  VERIFY_SUCCEEDED(app->get_appId(&app_id));
 
   if (next_retry_time != 0) {
     observer_->OnWaitingRetryDownload(app_id.m_str,
@@ -902,7 +902,7 @@ HRESULT BundleInstaller::NotifyWaitingToInstall(IApp* app) {
   ASSERT1(observer_);
 
   CComBSTR app_id;
-  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+  VERIFY_SUCCEEDED(app->get_appId(&app_id));
 
   // can_start_install is ignored because download and install are no longer
   // discrete phases.
@@ -926,7 +926,7 @@ HRESULT BundleInstaller::NotifyInstallProgress(IApp* app,
   GetAppInstallProgress(icurrent_state, &time_remaining_ms, &percentage);
 
   CComBSTR app_id;
-  VERIFY1(SUCCEEDED(app->get_appId(&app_id)));
+  VERIFY_SUCCEEDED(app->get_appId(&app_id));
   observer_->OnInstalling(app_id.m_str,
                           internal::GetAppDisplayName(app),
                           time_remaining_ms,
@@ -1053,7 +1053,7 @@ HRESULT BundleInstaller::HandleUpdateCheckResults(int* num_updates) {
     }
 
     ++*num_updates;
-    VERIFY1(SUCCEEDED(NotifyUpdateAvailable(app)));
+    VERIFY_SUCCEEDED(NotifyUpdateAvailable(app));
   }
 
   return S_OK;
@@ -1115,10 +1115,10 @@ void BundleInstaller::GetAppInstallProgress(ICurrentState* icurrent_state,
   ASSERT1(percentage);
 
   LONG local_time_remaining_ms = kCurrentStateProgressUnknown;
-  VERIFY1(SUCCEEDED(
-      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms)));
+  VERIFY_SUCCEEDED(
+      icurrent_state->get_installTimeRemainingMs(&local_time_remaining_ms));
   LONG local_percentage = kCurrentStateProgressUnknown;
-  VERIFY1(SUCCEEDED(icurrent_state->get_installProgress(&local_percentage)));
+  VERIFY_SUCCEEDED(icurrent_state->get_installProgress(&local_percentage));
 
   ASSERT1(local_percentage <= 100);
   *time_remaining_ms = local_time_remaining_ms;
@@ -1131,7 +1131,7 @@ void BundleInstaller::GetAppInstallProgress(ICurrentState* icurrent_state,
 void BundleInstaller::CancelBundle() {
   CORE_LOG(L1, (_T("[BundleInstaller::CancelBundle]")));
   if (app_bundle_) {
-    VERIFY1(SUCCEEDED(app_bundle_->stop()));
+    VERIFY_SUCCEEDED(app_bundle_->stop());
   }
 }
 
@@ -1155,8 +1155,8 @@ void BundleInstaller::Complete(const BundleCompletionInfo& bundle_info) {
     }
 
     if (help_url_builder_.get()) {
-      VERIFY1(SUCCEEDED(help_url_builder_->BuildUrl(app_install_results,
-                                                    &help_url)));
+      VERIFY_SUCCEEDED(help_url_builder_->BuildUrl(app_install_results,
+                                                    &help_url));
       ASSERT1(!help_url.IsEmpty());
     }
   }

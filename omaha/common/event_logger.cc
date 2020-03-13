@@ -141,7 +141,7 @@ HRESULT EventLogger::ReportEvent(const TCHAR* src_name,
   // logging provides for logging the sid at no cost so that the user shows up
   // in the event log.
   CString sid_string;
-  VERIFY1(SUCCEEDED(user_info::GetEffectiveUserSid(&sid_string)));
+  VERIFY_SUCCEEDED(user_info::GetEffectiveUserSid(&sid_string));
   PSID psid = NULL;
   if (!sid_string.IsEmpty()) {
     VERIFY1(::ConvertStringSidToSid(sid_string, &psid));

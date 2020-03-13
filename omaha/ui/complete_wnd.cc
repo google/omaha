@@ -94,7 +94,7 @@ LRESULT CompleteWnd::OnClickedButton(WORD notify_code,
   ASSERT1(is_complete());
   handled = true;
 
-  VERIFY1(SUCCEEDED(CloseWindow()));
+  VERIFY_SUCCEEDED(CloseWindow());
 
   return 0;
 }
@@ -128,7 +128,7 @@ LRESULT CompleteWnd::OnClickedGetHelp(WORD notify_code,
 }
 
 bool CompleteWnd::MaybeCloseWindow() {
-  VERIFY1(SUCCEEDED(CloseWindow()));
+  VERIFY_SUCCEEDED(CloseWindow());
   return true;
 }
 
@@ -167,7 +167,7 @@ void CompleteWnd::DisplayCompletionDialog(bool is_success,
     }
   }
 
-  VERIFY1(SUCCEEDED(SetControlState(is_success)));
+  VERIFY_SUCCEEDED(SetControlState(is_success));
 
   return;
 }

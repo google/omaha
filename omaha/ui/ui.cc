@@ -83,9 +83,9 @@ void OmahaWnd::InitializeDialog() {    // NOLINT
   VERIFY1(SetWindowText(client_utils::GetInstallerDisplayName(bundle_name_)));
 
   VERIFY1(CenterWindow(NULL));
-  VERIFY1(SUCCEEDED(WindowUtils::SetWindowIcon(m_hWnd,
+  VERIFY_SUCCEEDED(WindowUtils::SetWindowIcon(m_hWnd,
                                                IDI_APP,
-                                               address(hicon_))));
+                                               address(hicon_)));
 
   // Disable the Maximize System Menu item.
   HMENU menu = ::GetSystemMenu(*this, false);
@@ -206,7 +206,7 @@ bool OmahaWnd::OnComplete() {
 
   is_complete_ = true;
 
-  VERIFY1(SUCCEEDED(EnableClose(true)));
+  VERIFY_SUCCEEDED(EnableClose(true));
 
   return true;
 }

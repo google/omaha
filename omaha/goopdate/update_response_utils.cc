@@ -192,7 +192,7 @@ HRESULT BuildApp(const xml::UpdateResponse* update_response,
   ASSERT1(response_app);
   const xml::response::UpdateCheck& update_check = response_app->update_check;
 
-  VERIFY1(SUCCEEDED(app->put_ttToken(CComBSTR(update_check.tt_token))));
+  VERIFY_SUCCEEDED(app->put_ttToken(CComBSTR(update_check.tt_token)));
 
   Cohort cohort;
   cohort.cohort = response_app->cohort;
@@ -268,7 +268,7 @@ xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
 
   if (!response_app) {
     CORE_LOG(L1, (_T("[UpdateResponse::GetResult][app not found][%s]"), appid));
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION, &text)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION, &text));
     return std::make_pair(GOOPDATE_E_NO_SERVER_RESPONSE, text);
   }
 
@@ -287,50 +287,50 @@ xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
 
   // noupdate
   if (_tcsicmp(xml::response::kStatusNoUpdate, status) == 0) {
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_NO_UPDATE_RESPONSE, &text)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_NO_UPDATE_RESPONSE, &text));
     return std::make_pair(GOOPDATE_E_NO_UPDATE_RESPONSE, text);
   }
 
   // "restricted"
   if (_tcsicmp(xml::response::kStatusRestrictedExportCountry, status) == 0) {
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_RESTRICTED_RESPONSE_FROM_SERVER,
-                                           &text)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_RESTRICTED_RESPONSE_FROM_SERVER,
+                                           &text));
     return std::make_pair(GOOPDATE_E_RESTRICTED_SERVER_RESPONSE, text);
   }
 
   // "error-UnKnownApplication"
   if (_tcsicmp(xml::response::kStatusUnKnownApplication, status) == 0) {
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION, &text)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_UNKNOWN_APPLICATION, &text));
     return std::make_pair(GOOPDATE_E_UNKNOWN_APP_SERVER_RESPONSE, text);
   }
 
   // "error-hwnotsupported"
   if (_tcsicmp(xml::response::kStatusHwNotSupported, status) == 0) {
-    VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
+    VERIFY_SUCCEEDED(formatter.FormatMessage(&text,
                                               IDS_HW_NOT_SUPPORTED,
-                                              app_name)));
+                                              app_name));
     return std::make_pair(GOOPDATE_E_HW_NOT_SUPPORTED, text);
   }
 
   // "error-osnotsupported"
   if (_tcsicmp(xml::response::kStatusOsNotSupported, status) == 0) {
-    VERIFY1(SUCCEEDED(formatter.LoadString(IDS_OS_NOT_SUPPORTED, &text)));
+    VERIFY_SUCCEEDED(formatter.LoadString(IDS_OS_NOT_SUPPORTED, &text));
     return std::make_pair(GOOPDATE_E_OS_NOT_SUPPORTED, text);
   }
 
   // "error-internal"
   if (_tcsicmp(xml::response::kStatusInternalError, status) == 0) {
-    VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
+    VERIFY_SUCCEEDED(formatter.FormatMessage(&text,
                                               IDS_NON_OK_RESPONSE_FROM_SERVER,
-                                              status)));
+                                              status));
     return std::make_pair(GOOPDATE_E_INTERNAL_ERROR_SERVER_RESPONSE, text);
   }
 
   // "error-hash"
   if (_tcsicmp(xml::response::kStatusHashError, status) == 0) {
-    VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
+    VERIFY_SUCCEEDED(formatter.FormatMessage(&text,
                                               IDS_NON_OK_RESPONSE_FROM_SERVER,
-                                              status)));
+                                              status));
     return std::make_pair(GOOPDATE_E_SERVER_RESPONSE_NO_HASH, text);
   }
 
@@ -340,16 +340,16 @@ xml::UpdateResponseResult GetResult(const xml::UpdateResponse* update_response,
     // just the publisher name. If it was a link, we could use point to a
     // redirect URL and provide the app GUID rather than somehow obtaining the
     // app-specific URL.
-    VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
+    VERIFY_SUCCEEDED(formatter.FormatMessage(&text,
                                               IDS_INSTALLER_OLD,
-                                              kShortCompanyName)));
+                                              kShortCompanyName));
     return std::make_pair(GOOPDATE_E_SERVER_RESPONSE_UNSUPPORTED_PROTOCOL,
                           text);
   }
 
-  VERIFY1(SUCCEEDED(formatter.FormatMessage(&text,
+  VERIFY_SUCCEEDED(formatter.FormatMessage(&text,
                                             IDS_NON_OK_RESPONSE_FROM_SERVER,
-                                            status)));
+                                            status));
   return std::make_pair(GOOPDATE_E_UNKNOWN_SERVER_RESPONSE, text);
 }
 
@@ -401,7 +401,7 @@ xml::UpdateResponseResult CheckSystemRequirements(
     return std::make_pair(S_OK, CString());
   }
 
-  VERIFY1(SUCCEEDED(formatter.LoadString(IDS_OS_NOT_SUPPORTED, &text)));
+  VERIFY_SUCCEEDED(formatter.LoadString(IDS_OS_NOT_SUPPORTED, &text));
   return std::make_pair(GOOPDATE_E_OS_NOT_SUPPORTED, text);
 }
 
