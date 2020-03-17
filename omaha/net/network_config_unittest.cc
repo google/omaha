@@ -303,7 +303,7 @@ TEST_P(NetworkConfigPolicyTest, ProxyConfig) {
   // Detect the configurations.
   ASSERT_HRESULT_SUCCEEDED(network_config->Detect());
   network_config->GetConfigurations().swap(proxy_configurations);
-  EXPECT_EQ(IsDomain() + IsDM(), proxy_configurations.size());
+  EXPECT_LE(IsDomain() + IsDM(), static_cast<int>(proxy_configurations.size()));
   if (IsDomainPredominant()) {
     EXPECT_STREQ(_T("GroupPolicy"), proxy_configurations[0].source);
     EXPECT_TRUE(proxy_configurations[0].auto_detect);
