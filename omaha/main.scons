@@ -520,6 +520,12 @@ win_env.AppendUnique(
         '/wd5042',  # function declarations at block scope cannot be specified
                     # 'inline' in standard C++
         '/wd5045',  # Compiler will insert Spectre mitigation for memory load
+        # Warnings introduced in VS 2019 16.5
+        '/wd5204',  # class has virtual functions, but its trivial destructor 
+                    # is not virtual; instances of objects derived from this
+                    # class may not be destructed correctly
+        '/wd5205',  # delete of an abstract class ... that has a non-virtual
+                    # destructor results in undefined behavior
         #
         # Disable static analysis warnings.
         #
