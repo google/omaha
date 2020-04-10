@@ -4,7 +4,7 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2019 Update 16.5.0 and Windows SDK 10.0.18362.0. ####
+#### Currently, the supported toolchain is Visual Studio 2019 Update 16.5.3 and Windows SDK 10.0.18362.0. ####
 
 Visual Studio 2017 Update 15.9.16 should work too.
 
@@ -89,7 +89,7 @@ A larger suite of unit tests is also included in the Omaha source.
 
 ## Running Unit Tests ##
 
-The Omaha build proces includes building an automated unit test suite, based on the [GTest](https://github.com/google/googletest) framework.  In order to run it, there are two pieces of preparation you must do:
+The Omaha build process includes building an automated unit test suite, based on the [GTest](https://github.com/google/googletest) framework.  In order to run it, there are two pieces of preparation you must do:
 
 * Create the following registry key: `HKEY_LOCAL_MACHINE\SOFTWARE\OmahaCompanyName\UpdateDev`. Then, add a string value named `TestSource` with the value `ossdev`. (Note: If you are on 64 bit Windows and are using `regedit` to create the value then you need to place it in `HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\OmahaCompanyName\UpdateDev`. [This allows 32 bit processes to read it.](https://support.microsoft.com/en-us/kb/305097)).
 * Download the Windows Sysinternals PSTools suite (available [here](http://technet.microsoft.com/en-us/sysinternals/bb897553)) and save `psexec.exe` somewhere. Then, set an environment variable named `OMAHA_PSEXEC_DIR` to the directory containing `psexec.exe`.
