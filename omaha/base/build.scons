@@ -225,7 +225,6 @@ cc_files = [
     'protobuf/io/printer.cc',
     'protobuf/io/strtod.cc',
     'protobuf/io/tokenizer.cc',
-    'protobuf/io/strtod.cc',
     'protobuf/io/zero_copy_stream.cc',
     'protobuf/io/zero_copy_stream_impl.cc',
     'protobuf/io/zero_copy_stream_impl_lite.cc',
