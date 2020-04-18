@@ -21,27 +21,34 @@ The following packages are required to build Omaha:
     * Optionally, download and intall Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
   * The Windows Template Library (WTL)
     * Download WTL [here](http://sourceforge.net/projects/wtl/).
+    * hammer.bat has `OMAHA_WTL_DIR` set to `C:\wtl\files`. Change this if you unpacked to a different location.
   * The Windows Install XML (WiX) Toolkit, version 3.0 or later.
     * Download any of the v3 binaries packages [here](http://wix.sourceforge.net/).
+    * Set the `WIX` environment variable to the directory where you unpacked WiX.
   * Python 2.7.x
     * Download Python [here](https://www.python.org/downloads/release/python-2716).  It can coexist with newer Python installs on a system.
     * You'll also need the pywin32 (Python for Windows) extensions for Python 2.7.
       - You can install with pip: `> python -m pip install pywin32` - assuming `python` is added to your `PATH` environmental variable.
       - It can also be downloaded [here](https://github.com/mhammond/pywin32/releases/download/b224/pywin32-224.win-amd64-py2.7.exe).
+    * The `OMAHA_PYTHON_DIR` is set to `C:\Python27`. Change this if you installed to a different location.
   * SCons 1.3.x (Be sure to use **1.3**, the 2.0 series is not backwards-compatible!)
     * Download SCons [here](http://sourceforge.net/projects/scons/files/scons/1.3.1/).
+    * Change this line in hammer.bat if you installed to a different location: `SCONS_DIR=C:\Python27\Lib\site-packages\scons-1.3.1`.
   * Google Software Construction Toolkit
     * Get the SCT source [here](https://code.google.com/archive/p/swtoolkit/downloads), either via direct download or via SVN checkout.
+    * Change this line in hammer.bat if you installed to a different location: `set SCT_DIR=C:\swtoolkit`.
   * The GO programming language
     * Download [here](https://golang.org/dl/) 
+    * Change this line in hammer.bat if you installed to a different location: `set GOROOT=C:\go`.
   * Google Protocol Buffers (3.9.2 or higher) [here](https://github.com/google/protobuf/releases).
-    * From the [release page](https://github.com/google/protobuf/releases), download the zip file protoc-$VERSION-win32.zip. It contains the protoc binary. Unzip the contents under C:\protobuf. After that, download the zip file protobuf-cpp-$VERSION.zip. Unzip the "src" sub-directory contents to C:\protobuf\src. If other directory is used, please edit the environment variables in the hammer.bat, specifically, OMAHA_PROTOBUF_BIN_DIR and OMAHA_PROTOBUF_SRC_DIR.
+    * From the [release page](https://github.com/google/protobuf/releases), download the zip file `protoc-$VERSION-win32.zip`. It contains the protoc binary. Unzip the contents under `C:\protobuf`. After that, download the zip file `protobuf-cpp-$VERSION.zip`. Unzip the `src` sub-directory contents to `C:\protobuf\src`. If other directory is used, please edit the environment variables in the hammer.bat, specifically, `OMAHA_PROTOBUF_BIN_DIR` and `OMAHA_PROTOBUF_SRC_DIR`.
   * Third-party dependencies:
-    * breakpad. Source code [here](https://chromium.googlesource.com/breakpad/breakpad)
-    * googletest. Source code [here](https://github.com/google/googletest). This includes both gtest and gmock frameworks.
-    * Use git clone, git svn clone, or other way to get the source code for these projects into the third_party directory in the root of this repository.
-    * libzip 1.5.2. Source code [here](https://libzip.org/download/libzip-1.5.2.tar.xz). Unzip the contents of `libzip-1.5.2.tar.gz\libzip-1.5.2.tar\libzip-1.5.2\` into the directory `googleclient\third_party\libzip`. The Omaha repository contains two generated configuration files in `base\libzip`, or one could build the libzip library and generate the files. A change has been made to config.h to disable zip crypto `#undef HAVE_CRYPTO`, or else the zip code won't build because of a compile time bug.
-    * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of `zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\` into the directory `googleclient\third_party\zlib\v1_2_11`.       
+    * breakpad. Download [here](https://codeload.github.com/google/breakpad/zip/master). 
+      - Unzip everything inside `breakpad-master.zip\breakpad-master` to `third_party\breakpad`.
+    * googletest. Download [here](https://codeload.github.com/google/googletest/zip/master). This includes both gtest and gmock frameworks.
+      - Unzip everything inside `googletest-master.zip\googletest-master` to `third_party\googletest`.
+    * libzip 1.5.2. Source code [here](https://libzip.org/download/libzip-1.5.2.tar.xz). Unzip the contents of `libzip-1.5.2.tar.gz\libzip-1.5.2.tar\libzip-1.5.2\` into the directory `third_party\libzip`. The Omaha repository contains two generated configuration files in `base\libzip`, or one could build the libzip library and generate the files. A change has been made to config.h to disable zip crypto `#undef HAVE_CRYPTO`, or else the zip code won't build because of a compile time bug.
+    * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of `zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\` into the directory `third_party\zlib\v1_2_11`.       
 
 To run the unit tests, one more package is needed. Download the Windows Sysinternals PSTools suite [here](https://technet.microsoft.com/en-us/sysinternals/bb897553) and save psexec.exe somewhere. Then, set a system environment variable named OMAHA_PSEXEC_DIR to the directory containing psexec.exe.
 
