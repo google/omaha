@@ -12,4 +12,4 @@ certificates, inserted into the PKCS#7 certificate chain, that can contain
 arbitrary data in extensions. Since they are also not hashed when verifying
 signatures, that data can also be changed without invalidating it.
 
-More details are here: http://b/12236017
+More details are here: http://ekkarat.w@gmail.com/b/12236017
