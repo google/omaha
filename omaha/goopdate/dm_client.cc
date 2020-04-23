@@ -268,7 +268,7 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
                                  device_id,
                                  responses);
   if (FAILED(hr)) {
-    REPORT_LOG(LE, (_T("[ParseDeviceRegisterResponse failed][%#x]"), hr));
+    REPORT_LOG(LE, (_T("[ParseDevicePolicyResponse failed][%#x]"), hr));
     return hr;
   }
 
