@@ -55,6 +55,7 @@ def _SetMsvcCompiler(
   platform_sdk_dir = os.environ.get('OMAHA_PLATFORM_SDK_DIR')
 
   env['GOOGLECLIENT'] = '$MAIN_DIR/..'
+  env['GOOGLE3'] = '$GOOGLECLIENT'
   env['THIRD_PARTY'] = '$GOOGLECLIENT/third_party/'
 
   env.Replace(

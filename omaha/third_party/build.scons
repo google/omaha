@@ -21,7 +21,8 @@ Import('env')
 # Build BreakPad library.
 #
 breakpad_env = env.Clone()
-breakpad_env.Dir('breakpad').addRepository(env.Dir('$THIRD_PARTY/breakpad'))
+breakpad_env.Dir('breakpad').addRepository(
+    env.Dir('$GOOGLE3/third_party/breakpad'))
 breakpad_env.Append(
     CCFLAGS = [
         '/wd4061',  # enumerator in switch is not handled by a case label
@@ -54,7 +55,7 @@ breakpad_env.ComponentStaticLibraryMultiarch(target_name, breakpad_inputs)
 #
 gtest_env = env.Clone()
 
-_gtest_repository ='$THIRD_PARTY/googletest/googletest'
+_gtest_repository ='$GOOGLE3/third_party/googletest/googletest'
 gtest_env.Dir('gtest').addRepository(env.Dir(_gtest_repository))
 gtest_env.Append(
     CCFLAGS = [
@@ -86,7 +87,7 @@ gtest_env.ComponentLibrary(
 gmock_env = env.Clone()
 
 
-_gmock_repository ='$THIRD_PARTY/googletest/googlemock'
+_gmock_repository ='$GOOGLE3/third_party/googletest/googlemock'
 gmock_env.Dir('gmock').addRepository(env.Dir(_gmock_repository))
 gmock_env.Append(
     CCFLAGS = [

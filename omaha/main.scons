@@ -100,7 +100,7 @@ _msc_ver = int(os.getenv('OMAHA_MSC_VER', "1920"))
 
 _sdk_dir = os.getenv('WindowsSdkDir', os.getenv('OMAHA_PLATFORM_SDK_DIR'))
 if (_sdk_dir is None):
-    _sdk_dir = ('$THIRD_PARTY/%s/files' %
+    _sdk_dir = ('$GOOGLE3/third_party/%s/files' %
    { omaha_version_utils.VC160:'windows_sdk/windows_sdk_10',
      omaha_version_utils.VC150:'windows_sdk/windows_sdk_10',
      omaha_version_utils.VC140:'windows_sdk/windows_sdk_10',
@@ -109,7 +109,7 @@ if (_sdk_dir is None):
      omaha_version_utils.VC80:'platformsdk/v6_1' }[_msc_ver])
 
 _sdk_version = os.getenv('OMAHA_WINDOWS_SDK_10_0_VERSION', None)
-_wtl_dir = os.getenv('OMAHA_WTL_DIR', '$THIRD_PARTY/wtl/files')
+_wtl_dir = os.getenv('OMAHA_WTL_DIR', '$GOOGLE3/third_party/wtl/files')
 _signtool_path = ('python $MAIN_DIR/tools/retry.py 10 5 \"%s/%s\"' %
                   (os.getenv('OMAHA_SIGNTOOL_SDK_DIR'), 'signtool.exe'))
 
@@ -521,7 +521,7 @@ win_env.AppendUnique(
                     # 'inline' in standard C++
         '/wd5045',  # Compiler will insert Spectre mitigation for memory load
         # Warnings introduced in VS 2019 16.5
-        '/wd5204',  # class has virtual functions, but its trivial destructor 
+        '/wd5204',  # class has virtual functions, but its trivial destructor
                     # is not virtual; instances of objects derived from this
                     # class may not be destructed correctly
         '/wd5205',  # delete of an abstract class ... that has a non-virtual
@@ -536,13 +536,14 @@ win_env.AppendUnique(
 
     CPPPATH = [
         _wtl_dir +'/include',
+        '$GOOGLE3',
         '$GOOGLECLIENT',
         '$MAIN_DIR',
         '$MAIN_DIR/third_party/chrome/files/src',
-        '$THIRD_PARTY/breakpad/src',
-        '$THIRD_PARTY/googletest/googlemock/include',
-        '$THIRD_PARTY/googletest/googletest/include',
-        '$THIRD_PARTY/libzip/lib',
+        '$GOOGLE3/third_party/breakpad/src',
+        '$GOOGLE3/third_party/googletest/googlemock/include',
+        '$GOOGLE3/third_party/googletest/googletest/include',
+        '$GOOGLE3/third_party/libzip/lib',
     ],
 
     CPPDEFINES = [

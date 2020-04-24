@@ -88,6 +88,7 @@ def _SetMsvcCompilerVersion(env, vc_version, vc_flavor='x64_x86'):
   platform_sdk_lib_dir = platform_sdk_dir + 'lib/' + platform_sdk_version
 
   env['GOOGLECLIENT'] = '$MAIN_DIR/..'
+  env['GOOGLE3'] = '$GOOGLECLIENT'
   env['THIRD_PARTY'] = '$GOOGLECLIENT/third_party/'
 
   env.Replace(

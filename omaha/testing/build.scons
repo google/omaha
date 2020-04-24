@@ -243,7 +243,6 @@ if omaha_unittest_env.Bit('has_device_management'):
   omaha_unittest_libs.append('$LIB_DIR/dm_proto.lib')
   omaha_unittest_env.Append(
       CPPPATH = [
-          '$GOOGLE3',
           protobuf_src_dir,
           '$TARGET_ROOT/proto_files',
       ],
@@ -274,8 +273,6 @@ omaha_unittest_libs += omaha_unittest_env.GetAllInOneUnittestLibs()
 omaha_unittest_env.Append(
     CPPPATH = [
         '$OBJ_ROOT',                        # Needed for the generated files
-        '$THIRD_PARTY/googletest/googlemock/include',
-        '$THIRD_PARTY/googletest/googletest/include',
         ],
     CCFLAGS = [
         '/wd4100',  # unreferenced formal parameter

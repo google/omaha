@@ -341,7 +341,6 @@ if env.Bit('has_device_management'):
           '/wd4996',
           ],
       CPPPATH=[
-          '$GOOGLE3',
           protobuf_src_dir,
           '$TARGET_ROOT/proto_files',
       ],
@@ -456,7 +455,6 @@ for omaha_version_info in env['omaha_versions_info']:
 
   temp_env.Append(
       CPPPATH = [
-          '$MAIN_DIR/third_party/breakpad/src/',
           '$OBJ_ROOT',
           ],
 
