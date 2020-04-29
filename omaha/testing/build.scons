@@ -354,7 +354,6 @@ unittest_base_env.ComponentLibrary(
 omaha_unittest_inputs = [
     # Base unit tests
     '../base/app_util_unittest.cc',
-    '../base/atlassert_unittest.cc',
     '../base/browser_utils_unittest.cc',
     '../base/cgi_unittest.cc',
     '../base/command_line_parser_unittest.cc',

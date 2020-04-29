@@ -23,7 +23,6 @@
 //
 // #define ASSERT_IN_RELEASE
 
-#include "omaha/base/atlassert.h"
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 
@@ -47,6 +46,20 @@ extern volatile LONG g_debugassertrecursioncheck;
 extern bool g_always_assert;
 
 const int kMaxStackTraceDialogLen = 512;  // too long and dialog box fails
+
+enum ReportType {
+  R_INFO = 1,   // Not an error, used for accumulating statistics.
+  R_WARNING,    // May or may not be an error.
+  R_ERROR,      // Definitely an error.
+  R_FATAL       // halt program == ASSERT for release mode.
+};
+
+enum DebugReportKind {
+  DEBUGREPORT_NONE   = 0,
+  DEBUGREPORT_ASSERT = 1,
+  DEBUGREPORT_REPORT = 2,
+  DEBUGREPORT_ABORT  = 3
+};
 
 // TODO(omaha): consider merging this into DebugObserver.
 //
