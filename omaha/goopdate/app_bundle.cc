@@ -78,6 +78,10 @@ AppBundle::~AppBundle() {
     delete apps_[i];
   }
 
+  for (size_t i = 0; i < uninstalled_apps_.size(); ++i) {
+    delete uninstalled_apps_[i];
+  }
+
   // If the thread running this AppBundle does not exit before the
   // NetworkConfigManager::DeleteInstance() happens in GoopdateImpl::Main, the
   // update_check_client_ destructor will crash. Resetting here explicitly.
