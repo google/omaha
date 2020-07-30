@@ -651,8 +651,9 @@ HRESULT DeleteDirectory(const TCHAR* dir_name) {
     else
       return HRESULTFromLastError();
   }
-  // Confirm it is a directory
-  if (!(dir_attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+  // Confirm it is a non-redirected directory.
+  if (!(dir_attributes & FILE_ATTRIBUTE_DIRECTORY) ||
+      (dir_attributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
     return E_FAIL;
   }
 
@@ -757,7 +758,7 @@ HRESULT DeleteBeforeOrAfterReboot(const TCHAR* targetname) {
     // DeleteDirectory will schedule deletion at next reboot if it cannot delete
     // immediately.
     hr = DeleteDirectory(targetname);
-  } else  {
+  } else if (!File::IsReparsePoint(targetname)) {
     hr = File::Remove(targetname);
     // If failed, schedule deletion at next reboot
     if (FAILED(hr)) {

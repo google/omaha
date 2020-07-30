@@ -47,6 +47,7 @@ class File {
 
     static bool Exists(const TCHAR* file_name);
     static bool IsDirectory(const TCHAR *file_name);
+    static bool IsReparsePoint(const TCHAR* file_name);
     static HRESULT GetWildcards(const TCHAR* dir, const TCHAR* wildcard,
                                 std::vector<CString>* matching_paths);
     // returns S_OK on successful removal or if not existing

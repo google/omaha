@@ -684,7 +684,8 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
                _tcscmp(file_data.cFileName, _T(".")) &&
                _tcsicmp(file_data.cFileName, this_version_) &&
                _tcsicmp(file_data.cFileName, download_dir) &&
-               _tcsicmp(file_data.cFileName, install_dir)) {
+               _tcsicmp(file_data.cFileName, install_dir) &&
+               !(file_data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
       // Unregister the previous version OneClick if it exists. Ignore
       // failures. The file is named npGoogleOneClick*.dll.
       CPath old_oneclick(file_or_directory);

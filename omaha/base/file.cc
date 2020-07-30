@@ -183,6 +183,21 @@ bool File::IsDirectory(const TCHAR* file_name) {
   return (attrs.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
+bool File::IsReparsePoint(const TCHAR* file_name) {
+  ASSERT1(file_name && *file_name);
+
+  WIN32_FILE_ATTRIBUTE_DATA attrs;
+  SetZero(attrs);
+  if (!::GetFileAttributesEx(file_name, ::GetFileExInfoStandard, &attrs)) {
+    UTIL_LOG(LEVEL_ERROR,
+             (_T("[File::IsDirectory - GetFileAttributesEx failed][%s][0x%x]"),
+              file_name, HRESULTFromLastError()));
+    return false;
+  }
+
+  return (attrs.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+}
+
 HRESULT File::GetWildcards(const TCHAR* dir,
                            const TCHAR* wildcard,
                            std::vector<CString>* matching_paths) {
