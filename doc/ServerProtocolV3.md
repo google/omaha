@@ -171,6 +171,7 @@ Each product that is contained in the request is represented by exactly one `<ap
   * `cohort`: A machine-readable string identifying the release cohort (channel) that the app belongs to. Limited to ASCII characters 32 to 126 (inclusive) and a maximum length of 1024 characters. Default: "".
   * `cohorthint`: An machine-readable enum indicating that the client has a desire to switch to a different release cohort. The exact legal values are app-specific and should be shared between the server and app implementations. Limited to ASCII characters 32 to 126 (inclusive) and a maximum length of 1024 characters. Default: "".
   * `cohortname`: A stable non-localized human-readable enum indicating which (if any) set of messages the app should display to the user. For example, an app with a cohortname of "beta" might display beta-specific branding to the user. Limited to ASCII characters 32 to 127 (inclusive) and a maximum length of 1024 characters. Default: "".
+  * `release_channel`: A string indicating to the server which release channel this installation of the application should receive future updates from. Examples include "stable", "beta", "dev". An empty string indicates no preference. Default: "".
 
 ##### Legal Child Elements #####
   * Any number of `<data>`.
