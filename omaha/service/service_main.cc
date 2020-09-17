@@ -33,6 +33,7 @@ END_OBJECT_MAP()
 BEGIN_OBJECT_MAP(object_map_google_update_medium)
   OBJECT_ENTRY(__uuidof(OnDemandMachineAppsServiceClass), OnDemandService)
   OBJECT_ENTRY(__uuidof(GoogleUpdate3WebServiceClass), Update3WebService)
+  OBJECT_ENTRY(__uuidof(PolicyStatusMachineServiceClass), PolicyStatusService)
   OBJECT_ENTRY(__uuidof(GoogleUpdateCoreClass), GoogleUpdateCoreService)
 END_OBJECT_MAP()
 

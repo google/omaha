@@ -131,6 +131,7 @@ class ATL_NO_VTABLE BrokerClassFactoryRegistrar
 
 extern TCHAR kOnDemandMachineBrokerProgId[];
 extern TCHAR kUpdate3WebMachineBrokerProgId[];
+extern TCHAR kPolicyStatusMachineBrokerProgId[];
 
 // An OnDemand client CoCreates OnDemandMachineAppsClass, which
 // instantiates the class factory for the OnDemandMachineBroker typedef below.
@@ -152,6 +153,18 @@ typedef BrokerClassFactoryRegistrar<
     __uuidof(GoogleUpdate3WebMachineClass),
     kUpdate3WebMachineBrokerProgId>
     Update3WebMachineBroker;
+
+// A Policy Status client CoCreates PolicyStatusMachineClass, which
+// instantiates the class factory for the PolicyStatusMachineBroker typedef
+// below.
+// The class factory in turn passes the CreateInstance through to
+// PolicyStatusMachineServiceClass. If the CreateInstance fails, it instantiates
+// PolicyStatusMachineFallbackClass instead.
+typedef BrokerClassFactoryRegistrar<__uuidof(PolicyStatusMachineServiceClass),
+                                    __uuidof(PolicyStatusMachineFallbackClass),
+                                    __uuidof(PolicyStatusMachineClass),
+                                    kPolicyStatusMachineBrokerProgId>
+                                    PolicyStatusMachineBroker;
 
 }  // namespace omaha
 

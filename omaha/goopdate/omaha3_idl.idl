@@ -606,8 +606,10 @@ interface IPolicyStatus2 : IPolicyStatus {
   [propget] HRESULT updaterVersion([out, retval] BSTR* version);
 
   // Returns the last time that the Updater successfully checked for updates.
-  [propget] HRESULT lastCheckedTime([in] VARIANT_BOOL is_machine,
-                                    [out, retval] DATE* last_checked);
+  [propget] HRESULT lastCheckedTime([out, retval] DATE* last_checked);
+
+  // Gets the latest policies from the DM Server.
+  HRESULT refreshPolicies();
 
   // Returns the currently active policy manager source for enterprise policies,
   // or an empty string if the machine is not managed.
@@ -1109,10 +1111,34 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(B9AEB1CC-DF9B-45CB-B70B-084D2E869A1C),
-    helpstring("PolicyStatusClass Class")
+    uuid(6DDCE70D-A4AE-4E97-908C-BE7B2DB750AD),
+    helpstring("Policy Status for per-user applications.")
   ]
-  coclass PolicyStatusClass {
+  coclass PolicyStatusUserClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(B9AEB1CC-DF9B-45CB-B70B-084D2E869A1C),
+    helpstring("Policy Status pass-through broker for machine applications.")
+  ]
+  coclass PolicyStatusMachineClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(1C4CDEFF-756A-4804-9E77-3E8EB9361016),
+    helpstring("Policy Status for per-machine applications.")
+  ]
+  coclass PolicyStatusMachineServiceClass {
+    [default] interface IUnknown;
+  }
+
+  [
+    uuid(ADDF22CF-3E9B-4CD7-9139-8169EA6636E4),
+    helpstring("Fallback for if PolicyStatusMachineServiceClass fails.")
+  ]
+  coclass PolicyStatusMachineFallbackClass {
     [default] interface IUnknown;
   }
 

@@ -68,6 +68,7 @@
 #include "omaha/goopdate/google_update3.h"
 #include "omaha/goopdate/non_localized_resource.h"
 #include "omaha/goopdate/ondemand.h"
+#include "omaha/goopdate/policy_status.h"
 #include "omaha/goopdate/update3web.h"
 #include "omaha/goopdate/worker.h"
 #include "omaha/net/network_config.h"
@@ -370,8 +371,8 @@ class ServiceModule
 
     while (true) {
       ::WaitForSingleObject(this->m_hEventShutdown, INFINITE);
-      SERVICE_LOG(L4, (_T("[Infinite Wait][%d][%d]"), this->m_bActivity, this->m_nLockCnt));
-
+      SERVICE_LOG(L4, (_T("[Infinite Wait][%d][%d]"),
+                       this->m_bActivity, this->m_nLockCnt));
       DWORD wait = 0;
       do {
         this->m_bActivity = false;

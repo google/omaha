@@ -41,6 +41,7 @@ namespace omaha {
 // Template arguments need to be non-const TCHAR arrays.
 TCHAR kOnDemandMachineBrokerProgId[] = kProgIDOnDemandMachine;
 TCHAR kUpdate3WebMachineBrokerProgId[] = kProgIDUpdate3WebMachine;
+TCHAR kPolicyStatusMachineBrokerProgId[] = kProgIDPolicyStatusMachine;
 TCHAR kHKRootUser[] = _T("HKCU");
 TCHAR kHKRootMachine[] = _T("HKLM");
 TCHAR kProgIDUpdate3COMClassUserLocal[] = kProgIDUpdate3COMClassUser;
@@ -52,12 +53,14 @@ END_OBJECT_MAP()
 BEGIN_OBJECT_MAP(object_map_broker_machine_mode)
   OBJECT_ENTRY(__uuidof(OnDemandMachineAppsClass), OnDemandMachineBroker)
   OBJECT_ENTRY(__uuidof(GoogleUpdate3WebMachineClass), Update3WebMachineBroker)
+  OBJECT_ENTRY(__uuidof(PolicyStatusMachineClass), PolicyStatusMachineBroker)
   OBJECT_ENTRY(__uuidof(CoCreateAsyncClass), CoCreateAsync)
 END_OBJECT_MAP()
 
 BEGIN_OBJECT_MAP(object_map_ondemand_user_mode)
   OBJECT_ENTRY(__uuidof(GoogleUpdate3WebUserClass), Update3WebUser)
   OBJECT_ENTRY(__uuidof(OnDemandUserAppsClass), OnDemandUser)
+  OBJECT_ENTRY(__uuidof(PolicyStatusUserClass), PolicyStatusUser)
   OBJECT_ENTRY(__uuidof(CredentialDialogUserClass), CredentialDialogUser)
 END_OBJECT_MAP()
 
@@ -68,8 +71,9 @@ BEGIN_OBJECT_MAP(object_map_ondemand_machine_mode)
                OnDemandMachineFallback)
   OBJECT_ENTRY(__uuidof(GoogleUpdate3WebMachineFallbackClass),
                Update3WebMachineFallback)
+  OBJECT_ENTRY(__uuidof(PolicyStatusMachineFallbackClass),
+               PolicyStatusMachineFallback)
   OBJECT_ENTRY(__uuidof(CredentialDialogMachineClass), CredentialDialogMachine)
-  OBJECT_ENTRY(__uuidof(PolicyStatusClass), PolicyStatus)
 END_OBJECT_MAP()
 
 _ATL_OBJMAP_ENTRY* GoogleUpdate::GetObjectMap() {

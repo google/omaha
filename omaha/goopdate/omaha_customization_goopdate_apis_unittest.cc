@@ -69,7 +69,12 @@ TEST(OmahaCustomizationTest, Constants_ComProgIds) {
 
   EXPECT_GU_STREQ(_T("GoogleUpdate.ProcessLauncher"), kProgIDProcessLauncher);
 
-  EXPECT_GU_STREQ(_T("GoogleUpdate.PolicyStatus"), kProgIDPolicyStatus);
+  EXPECT_GU_STREQ(_T("GoogleUpdate.PolicyStatusUser"), kProgIDPolicyStatusUser);
+  EXPECT_GU_STREQ(_T("GoogleUpdate.PolicyStatusMachine"),
+                  kProgIDPolicyStatusMachine);
+  EXPECT_GU_STREQ(_T("GoogleUpdate.PolicyStatusMachineFallback"),
+                  kProgIDPolicyStatusMachineFallback);
+  EXPECT_GU_STREQ(_T("GoogleUpdate.PolicyStatusSvc"), kProgIDPolicyStatusSvc);
 }
 
 }  // namespace omaha
@@ -486,12 +491,50 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 }
 
 TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
-              PolicyStatusClass) {
-  EXPECT_GU_ID_EQ(_T("{521FDB42-7130-4806-822A-FC5163FAD983}"),
-                  __uuidof(PolicyStatusClass));
+              PolicyStatusUserClass) {
+  EXPECT_GU_ID_EQ(_T("{6DDCE70D-A4AE-4E97-908C-BE7B2DB750AD}"),
+                  __uuidof(PolicyStatusUserClass));
 
-  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusClass")));
-  EXPECT_STREQ(_T("PolicyStatusClass Class"), item_doc_string_);
+  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusUserClass")));
+  EXPECT_STREQ(_T("Policy Status for per-user applications."),
+               item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
+              PolicyStatusMachineClass) {
+  EXPECT_GU_ID_EQ(_T("{521FDB42-7130-4806-822A-FC5163FAD983}"),
+                  __uuidof(PolicyStatusMachineClass));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusMachineClass")));
+  EXPECT_STREQ(_T("Policy Status pass-through broker ")
+               _T("for machine applications."),
+               item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
+              PolicyStatusMachineServiceClass) {
+  EXPECT_GU_ID_EQ(_T("{1C4CDEFF-756A-4804-9E77-3E8EB9361016}"),
+                  __uuidof(PolicyStatusMachineServiceClass));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusMachineServiceClass")));
+  EXPECT_STREQ(_T("Policy Status for per-machine applications."),
+               item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
+              PolicyStatusMachineFallbackClass) {
+  EXPECT_GU_ID_EQ(_T("{ADDF22CF-3E9B-4CD7-9139-8169EA6636E4}"),
+                  __uuidof(PolicyStatusMachineFallbackClass));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusMachineFallbackClass")));
+  EXPECT_STREQ(_T("Fallback for if PolicyStatusMachineServiceClass fails."),
+               item_doc_string_);
   EXPECT_EQ(0, help_context_);
   EXPECT_TRUE(!help_file_);
 }
@@ -595,7 +638,7 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 
 // Verifies there are no new interfaces in the TypeLib.
 TEST_F(OmahaCustomizationGoopdateComInterfaceTest, VerifyNoNewInterfaces) {
-  EXPECT_EQ(39, type_lib_->GetTypeInfoCount())
+  EXPECT_EQ(42, type_lib_->GetTypeInfoCount())
       << _T("A new interface may have been added. If so, add the interface to ")
       << _T("to kIIDsToRegister, and add test(s) for new interface(s).");
 }
