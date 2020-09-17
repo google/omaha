@@ -98,12 +98,7 @@ class DmStorageTest : public RegistryProtectedTest {
     app.set_rollback_to_target_version(
         wireless_android_enterprise_devicemanagement::
             ROLLBACK_TO_TARGET_VERSION_ENABLED);
-
-    // TODO(omaha): This code needs to be enabled once omaha_settings.proto is
-    // updated to include target_channel.
-#if 0
     app.set_target_channel("beta");
-#endif
 
     auto repeated_app_settings = omaha_settings.mutable_application_settings();
     repeated_app_settings->Add(std::move(app));
@@ -137,12 +132,7 @@ class DmStorageTest : public RegistryProtectedTest {
     EXPECT_EQ(kPolicyAutomaticUpdatesOnly, app.update);
     EXPECT_STREQ(_T("3.6.55"), app.target_version_prefix);
     EXPECT_TRUE(app.rollback_to_target_version);
-
-// TODO(omaha): This code needs to be enabled once omaha_settings.proto is
-// updated to include target_channel.
-#if 0
     EXPECT_STREQ(_T("beta"), app.target_channel);
-#endif
   }
 
   void VerifyPolicies(const CPath& policy_responses_dir,

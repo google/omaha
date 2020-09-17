@@ -349,15 +349,10 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
         app_settings_proto.update() :
         info->update_default;
 
-    // TODO(omaha): This code needs to be enabled once omaha_settings.proto is
-    // updated to include target_channel.
-#if 0
     if (app_settings_proto.has_target_channel()) {
       app_settings.target_channel = CString(
           app_settings_proto.target_channel().c_str());
     }
-#endif
-
     if (app_settings_proto.has_target_version_prefix()) {
       app_settings.target_version_prefix = CString(
           app_settings_proto.target_version_prefix().c_str());
