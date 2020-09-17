@@ -1890,7 +1890,8 @@ TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_TooSmall) {
 
 TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_Valid) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheSizeLimitMBytes, 250));
-  EXPECT_EQ(IsDomain() ? 250 : 500, cm_->GetPackageCacheSizeLimitMBytes());
+  EXPECT_EQ(IsDomainPredominant() ? 250 : 500,
+            cm_->GetPackageCacheSizeLimitMBytes());
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Default) {
@@ -1909,7 +1910,8 @@ TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_TooSmall) {
 
 TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_Valid) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheLifeLimitDays, 60));
-  EXPECT_EQ(IsDomain() ? 60 : 180, cm_->GetPackageCacheExpirationTimeDays());
+  EXPECT_EQ(IsDomainPredominant() ? 60 : 180,
+            cm_->GetPackageCacheExpirationTimeDays());
 }
 
 TEST_P(ConfigManagerTest, LastCheckedTime) {

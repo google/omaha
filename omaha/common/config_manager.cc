@@ -599,7 +599,7 @@ int ConfigManager::GetPackageCacheExpirationTimeDays() const {
     }
 
     DWORD cache_life_limit = 0;
-    HRESULT hr = policies_[i]->GetPackageCacheSizeLimitMBytes(
+    HRESULT hr = policies_[i]->GetPackageCacheExpirationTimeDays(
         &cache_life_limit);
     if (SUCCEEDED(hr)) {
       if (cache_life_limit <= kMaxCacheLifeTimeInDays && cache_life_limit > 0) {
