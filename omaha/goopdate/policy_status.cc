@@ -14,10 +14,14 @@
 // ========================================================================
 
 #include "omaha/goopdate/policy_status.h"
+
+#include <atlcomtime.h>
+
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
+#include "omaha/base/omaha_version.h"
 #include "omaha/common/config_manager.h"
 
 namespace omaha {
@@ -154,6 +158,29 @@ STDMETHODIMP PolicyStatus::get_isRollbackToTargetVersionAllowed(
           VARIANT_TRUE :
           VARIANT_FALSE;
 
+  return S_OK;
+}
+
+STDMETHODIMP PolicyStatus::get_updaterVersion(BSTR* version) {
+  ASSERT1(version);
+
+  *version = CString(GetVersionString()).AllocSysString();
+  return S_OK;
+}
+
+STDMETHODIMP PolicyStatus::get_lastCheckedTime(VARIANT_BOOL is_machine,
+                                               DATE* last_checked) {
+  ASSERT1(last_checked);
+
+  const DWORD value =
+      ConfigManager::Instance()->GetLastCheckedTime(is_machine == VARIANT_TRUE);
+  if (!value) {
+    return E_FAIL;
+  }
+
+  FILETIME ft = {};
+  Time64ToFileTime(Int32ToTime64(value), &ft);
+  *last_checked = ATL::COleDateTime(ft);
   return S_OK;
 }
 

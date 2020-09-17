@@ -600,6 +600,17 @@ interface IPolicyStatus : IDispatch {
   pointer_default(unique)
 ]
 interface IPolicyStatus2 : IPolicyStatus {
+  // Global Update Status.
+
+  // Returns the running version of the Updater. For instance, 1.3.35.454.
+  [propget] HRESULT updaterVersion([out, retval] BSTR* version);
+
+  // Returns the last time that the Updater successfully checked for updates.
+  [propget] HRESULT lastCheckedTime([in] VARIANT_BOOL is_machine,
+                                    [out, retval] DATE* last_checked);
+
+  // Application Update Policies.
+
   // Returns the target channel for the app, if the machine is joined to a
   // domain and has the corresponding policy set.
   [propget] HRESULT targetChannel([in] BSTR app_id,

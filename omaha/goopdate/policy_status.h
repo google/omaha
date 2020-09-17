@@ -71,7 +71,7 @@ class ATL_NO_VTABLE PolicyStatus
     COM_INTERFACE_ENTRY(IStdMarshalInfo)
   END_COM_MAP()
 
-  // IPolicyStatus/IPolicyStatus2.
+  // IPolicyStatus.
   // Global Update Policies.
   STDMETHOD(get_lastCheckPeriodMinutes)(DWORD* minutes);
   STDMETHOD(get_updatesSuppressedTimes)(DWORD* start_hour,
@@ -90,6 +90,10 @@ class ATL_NO_VTABLE PolicyStatus
   STDMETHOD(get_isRollbackToTargetVersionAllowed)(
       BSTR app_id,
       VARIANT_BOOL* rollback_allowed);
+
+  // IPolicyStatus2.
+  STDMETHOD(get_updaterVersion)(BSTR* version);
+  STDMETHOD(get_lastCheckedTime)(VARIANT_BOOL is_machine, DATE* last_check);
   STDMETHOD(get_targetChannel)(BSTR app_id, BSTR* channel);
 
  private:
