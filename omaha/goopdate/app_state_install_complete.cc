@@ -73,7 +73,7 @@ const PingEvent* AppStateInstallComplete::CreatePingEvent(
   return can_ping ? new PingEvent(event_type,
                                   GetCompletionResult(*app),
                                   error_code,
-                                  0,
+                                  app->installer_result_extra_code1(),
                                   app->source_url_index(),
                                   app->GetUpdateCheckTimeMs(),
                                   app->GetDownloadTimeMs(),
