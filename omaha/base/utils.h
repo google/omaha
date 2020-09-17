@@ -19,6 +19,7 @@
 #include <windows.h>
 #include <accctrl.h>
 #include <aclapi.h>
+#include <lm.h>
 #include <ras.h>
 #include <sddl.h>
 #include <shellapi.h>
@@ -182,7 +183,11 @@ inline result_type function##Wrap proto {                                   \
     return result_error;                                                    \
   }                                                                         \
   function##_pointer fn = NULL;                                             \
-  return GPA(get(dll), #function, &fn) ? (*fn) call : result_error;         \
+  if (GPA(get(dll), #function, &fn)) {                                      \
+    return (*fn) call;                                                      \
+  } else {                                                                  \
+    return result_error;                                                    \
+  }                                                                         \
 }
 
 GPA_WRAP(RasApi32.dll,
@@ -966,8 +971,28 @@ GPA_WRAP(kernel32.dll,
          BOOL,
          FALSE);
 
+GPA_WRAP(NetApi32.dll,
+         NetGetAadJoinInformation,
+         (LPCWSTR tenant_id, PDSREG_JOIN_INFO* join_info),
+         (tenant_id, join_info),
+         NET_API_FUNCTION,
+         HRESULT,
+         E_FAIL);
+
+GPA_WRAP(NetApi32.dll,
+         NetFreeAadJoinInformation,
+         (PDSREG_JOIN_INFO join_info),
+         (join_info),
+         NET_API_FUNCTION,
+         VOID,
+         /* No return value for void function */);
+
 // Returns true if the machine is being managed by an MDM system.
 bool IsDeviceRegisteredWithManagement();
+
+// Returns true if the device is joined to Azure AD or the current user added
+// Azure AD work accounts.
+bool IsJoinedToAzureAD();
 
 // Returns true if the current machine is considered enterprise managed in some
 // fashion.  A machine is considered managed if it is either domain enrolled

@@ -2169,6 +2169,28 @@ bool IsDeviceRegisteredWithManagement() {
   return g_registered_state == REGISTERED;
 }
 
+enum AzureADState {AZUREAD_NOT_KNOWN = -1, AZUREAD_NOT_JOINED, AZUREAD_JOINED};
+static volatile LONG g_azure_ad_state = AZUREAD_NOT_KNOWN;
+
+bool IsJoinedToAzureAD() {
+  if (g_azure_ad_state == AZUREAD_NOT_KNOWN) {
+    PDSREG_JOIN_INFO join_info = NULL;
+
+    // |join_info| is non-NULL if the device is joined to Azure AD or the
+    // current user added Azure AD work accounts.
+    HRESULT hr(NetGetAadJoinInformationWrap(NULL, &join_info));
+    ::InterlockedCompareExchange(&g_azure_ad_state,
+                                 SUCCEEDED(hr) && join_info ?
+                                     AZUREAD_JOINED : AZUREAD_NOT_JOINED,
+                                 AZUREAD_NOT_KNOWN);
+    if (SUCCEEDED(hr)) {
+      NetFreeAadJoinInformationWrap(join_info);
+    }
+  }
+
+  return g_azure_ad_state == AZUREAD_JOINED;
+}
+
 static volatile LONG g_os_version_type = SUITE_LAST;
 
 bool IsEnterpriseManaged() {
@@ -2179,8 +2201,10 @@ bool IsEnterpriseManaged() {
   }
 
   bool is_enterprise_version = (g_os_version_type != SUITE_HOME);
+
   return IsEnrolledToDomain() ||
-         (IsDeviceRegisteredWithManagement() && is_enterprise_version);
+         (is_enterprise_version &&
+          (IsDeviceRegisteredWithManagement() || IsJoinedToAzureAD()));
 }
 
 }  // namespace omaha
