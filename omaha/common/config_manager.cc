@@ -710,6 +710,18 @@ HRESULT ConfigManager::GetUsageStatsReportUrl(CString* url) const {
   return S_OK;
 }
 
+CString ConfigManager::GetPolicySource() const {
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
+
+    return policies_[i]->source();
+  }
+
+  return CString();
+}
+
 #if defined(HAS_DEVICE_MANAGEMENT)
 
 HRESULT ConfigManager::GetDeviceManagementUrl(CString* url) const {

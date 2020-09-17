@@ -184,6 +184,13 @@ STDMETHODIMP PolicyStatus::get_lastCheckedTime(VARIANT_BOOL is_machine,
   return S_OK;
 }
 
+STDMETHODIMP PolicyStatus::get_policySource(BSTR* source) {
+  ASSERT1(source);
+
+  *source = ConfigManager::Instance()->GetPolicySource().AllocSysString();
+  return S_OK;
+}
+
 STDMETHODIMP PolicyStatus::get_targetChannel(BSTR app_id, BSTR* channel) {
   ASSERT1(channel);
 

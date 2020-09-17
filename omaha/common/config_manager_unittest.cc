@@ -574,6 +574,13 @@ TEST_P(ConfigManagerTest, GetUsageStatsReportUrl) {
   EXPECT_STREQ(url, _T("http://usagestatsreport/"));
 }
 
+TEST_P(ConfigManagerTest, GetPolicySource) {
+  EXPECT_STREQ(IsDomainPredominant() ? _T("Group Policy") :
+                                       IsDM() ? _T("Device Management") :
+                                                _T(""),
+               cm_->GetPolicySource());
+}
+
 // Tests LastCheckPeriodSec override.
 TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_Default) {
   if (IsDM()) {

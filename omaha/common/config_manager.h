@@ -70,7 +70,7 @@ class GroupPolicyManager : public PolicyManagerInterface {
  public:
   GroupPolicyManager() {}
 
-  const TCHAR* source() override { return _T("GroupPolicyManager"); }
+  const TCHAR* source() override { return _T("Group Policy"); }
 
   bool IsManaged() override;
 
@@ -103,7 +103,7 @@ class DMPolicyManager : public PolicyManagerInterface {
  public:
   DMPolicyManager() {}
 
-  const TCHAR* source() override { return _T("DeviceManagement"); }
+  const TCHAR* source() override { return _T("Device Management"); }
 
   bool IsManaged() override;
 
@@ -277,6 +277,10 @@ class ConfigManager {
 
   // Returns the service endpoint where the usage stats requests are sent.
   HRESULT GetUsageStatsReportUrl(CString* url) const;
+
+  // Returns the currently active policy manager source for enterprise policies,
+  // or an empty string if the machine is not managed.
+  CString GetPolicySource() const;
 
 #if defined(HAS_DEVICE_MANAGEMENT)
   // Returns the Device Management API url.

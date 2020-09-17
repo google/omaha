@@ -609,6 +609,10 @@ interface IPolicyStatus2 : IPolicyStatus {
   [propget] HRESULT lastCheckedTime([in] VARIANT_BOOL is_machine,
                                     [out, retval] DATE* last_checked);
 
+  // Returns the currently active policy manager source for enterprise policies,
+  // or an empty string if the machine is not managed.
+  [propget] HRESULT policySource([out, retval] BSTR* source);
+
   // Application Update Policies.
 
   // Returns the target channel for the app, if the machine is joined to a

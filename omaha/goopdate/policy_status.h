@@ -94,6 +94,7 @@ class ATL_NO_VTABLE PolicyStatus
   // IPolicyStatus2.
   STDMETHOD(get_updaterVersion)(BSTR* version);
   STDMETHOD(get_lastCheckedTime)(VARIANT_BOOL is_machine, DATE* last_check);
+  STDMETHOD(get_policySource)(BSTR* source);
   STDMETHOD(get_targetChannel)(BSTR app_id, BSTR* channel);
 
  private:
