@@ -30,7 +30,7 @@ PolicyStatus::~PolicyStatus() {
   CORE_LOG(L6, (_T("[PolicyStatus::~PolicyStatus]")));
 }
 
-// IPolicyStatus
+// IPolicyStatus/IPolicyStatus2.
 // Global Update Policies
 STDMETHODIMP PolicyStatus::get_lastCheckPeriodMinutes(DWORD* minutes) {
   ASSERT1(minutes);
@@ -153,6 +153,21 @@ STDMETHODIMP PolicyStatus::get_isRollbackToTargetVersionAllowed(
       ConfigManager::Instance()->IsRollbackToTargetVersionAllowed(app_guid) ?
           VARIANT_TRUE :
           VARIANT_FALSE;
+
+  return S_OK;
+}
+
+STDMETHODIMP PolicyStatus::get_targetChannel(BSTR app_id, BSTR* channel) {
+  ASSERT1(channel);
+
+  GUID app_guid = GUID_NULL;
+  HRESULT hr = StringToGuidSafe(app_id, &app_guid);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  *channel = ConfigManager::Instance()->GetTargetChannel(app_guid)
+                .AllocSysString();
 
   return S_OK;
 }

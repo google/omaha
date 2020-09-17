@@ -1485,6 +1485,16 @@ HRESULT XmlParser::BuildUpdateCheckElement(const request::App& app,
     }
   }
 
+  if (!app.update_check.target_channel.IsEmpty()) {
+    hr = AddXMLAttributeNode(element,
+                             kXmlNamespace,
+                             xml::attribute::kTargetChannel,
+                             app.update_check.target_channel);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
   hr = parent_node->appendChild(element, NULL);
   if (FAILED(hr)) {
     return hr;

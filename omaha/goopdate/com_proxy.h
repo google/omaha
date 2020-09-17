@@ -63,6 +63,7 @@ const IID kIIDsToRegister[] = {
   __uuidof(ICoCreateAsyncStatus),
   __uuidof(ICredentialDialog),
   __uuidof(IPolicyStatus),
+  __uuidof(IPolicyStatus2),
 
   __uuidof(IProcessLauncher2),
 

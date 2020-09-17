@@ -948,6 +948,12 @@ HRESULT App::CheckGroupPolicy() const {
   return S_OK;
 }
 
+CString App::GetTargetChannel() const {
+  __mutexScope(model()->lock());
+
+  return ConfigManager::Instance()->GetTargetChannel(app_guid_);
+}
+
 bool App::IsRollbackToTargetVersionAllowed() const {
   __mutexScope(model()->lock());
 

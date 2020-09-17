@@ -52,6 +52,8 @@ ADMX_ENVIRONMENT = '''
           displayName="$(string.Sup_GoogleUpdate1_3_33_5)" />
       <definition name="Sup_GoogleUpdate1_3_34_3"
           displayName="$(string.Sup_GoogleUpdate1_3_34_3)" />
+      <definition name="Sup_GoogleUpdate1_3_35_453"
+          displayName="$(string.Sup_GoogleUpdate1_3_35_453)" />
     </definitions>
   </supportedOn>
 '''
@@ -321,6 +323,18 @@ ADMX_APP_POLICY_TEMPLATE = '''\
         </enum>
       </elements>
     </policy>
+    <policy name="Pol_TargetChannel%(AppLegalId)s" class="Machine"
+        displayName="$(string.Pol_TargetChannel)"
+        explainText="$(string.Explain_TargetChannel%(AppLegalId)s)"
+        presentation="$(presentation.Pol_TargetChannel)"
+        key="%(RootPolicyKey)s">
+      <parentCategory ref="Cat_%(AppLegalId)s" />
+      <supportedOn ref="Sup_GoogleUpdate1_3_35_453" />
+      <elements>
+        <text id="Part_TargetChannel"
+            valueName="TargetChannel%(AppGuid)s" />
+      </elements>
+    </policy>
     <policy name="Pol_TargetVersionPrefix%(AppLegalId)s" class="Machine"
         displayName="$(string.Pol_TargetVersionPrefix)"
         explainText="$(string.Explain_TargetVersionPrefix%(AppLegalId)s)"
@@ -472,6 +486,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Sup_GoogleUpdate1_3_26_0', 'At least Google Update 1.3.26.0'),
     ('Sup_GoogleUpdate1_3_33_5', 'At least Google Update 1.3.33.5'),
     ('Sup_GoogleUpdate1_3_34_3', 'At least Google Update 1.3.34.3'),
+    ('Sup_GoogleUpdate1_3_35_453', 'At least Google Update 1.3.35.453'),
     ('Cat_GoogleUpdate', 'Google Update'),
     ('Cat_Preferences', 'Preferences'),
     ('Cat_ProxyServer', 'Proxy Server'),
@@ -488,6 +503,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Pol_AllowInstallation', 'Allow installation'),
     ('Pol_DefaultUpdatePolicy', 'Update policy override default'),
     ('Pol_UpdatePolicy', 'Update policy override'),
+    ('Pol_TargetChannel', 'Target Channel override'),
     ('Pol_TargetVersionPrefix', 'Target version prefix override'),
     ('Pol_RollbackToTargetVersion', 'Rollback to Target version'),
     ('Part_AutoUpdateCheckPeriod', 'Minutes between update checks'),
@@ -506,6 +522,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
      'Always allow Machine-Wide Installs, but not Per-User Installs.'),
     ('Name_InstallsDisabled', 'Installs disabled'),
     ('Part_UpdatePolicy', 'Policy'),
+    ('Part_TargetChannel', 'Target Channel'),
     ('Part_TargetVersionPrefix', 'Target version prefix'),
     ('Name_UpdatesEnabled', 'Always allow updates (recommended)'),
     ('Name_ManualUpdatesOnly', 'Manual updates only'),
@@ -648,6 +665,12 @@ ADML_PRESENTATIONS = '''\
         <dropdownList refId="Part_UpdatePolicy"
             defaultItem="0">Policy</dropdownList>
       </presentation>
+      <presentation id="Pol_TargetChannel">
+        <textBox refId="Part_TargetChannel">
+          <label>Target Channel</label>
+          <defaultValue></defaultValue>
+        </textBox>
+      </presentation>
       <presentation id="Pol_TargetVersionPrefix">
         <textBox refId="Part_TargetVersionPrefix">
           <label>Target version prefix</label>
@@ -733,6 +756,22 @@ def GenerateGroupPolicyTemplateAdml(apps):
         '%s' %
         (app_name, app_additional_help_msg, ADML_DOMAIN_REQUIREMENT_EN))
     string_definition_list.append(app_auto_update_policy_explanation)
+
+    app_target_channel_explanation = (
+        'Explain_TargetChannel' + app_legal_id,
+        'Specifies which Channel %s should be updated to.\n\n'
+        'When this policy is enabled, the app will be updated to the Channel '
+        'with this policy value.\n\nSome examples:\n'
+        '1) Not configured: app will be updated to the latest version '
+        'available in the default Channel for the app.\n'
+        '2) Policy value is set to "stable": the app will be updated to the '
+        'latest stable version.\n'
+        '2) Policy value is set to "beta": the app will be updated to the '
+        'latest beta version.\n'
+        '2) Policy value is set to "dev": the app will be updated to the '
+        'latest dev version.\n'
+        '%s' % (app_name, ADML_DOMAIN_REQUIREMENT_EN))
+    string_definition_list.append(app_target_channel_explanation)
 
     app_target_version_prefix_explanation = (
         'Explain_TargetVersionPrefix' + app_legal_id,

@@ -85,6 +85,8 @@ struct UpdateCheck {
   bool is_rollback_allowed;
 
   CString target_version_prefix;
+
+  CString target_channel;
 };
 
 

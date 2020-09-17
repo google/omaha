@@ -53,6 +53,7 @@ struct UpdatesSuppressed {
 struct ApplicationSettings {
   int install = kInstallPolicyDefault;
   int update = kUpdatePolicyDefault;
+  CString target_channel;
   CString target_version_prefix;
   bool rollback_to_target_version = false;
 
@@ -60,6 +61,8 @@ struct ApplicationSettings {
     CString result(_T("[ApplicationSettings]"));
     SafeCStringAppendFormat(&result, _T("[install][%d]"), install);
     SafeCStringAppendFormat(&result, _T("[update][%d]"), update);
+    SafeCStringAppendFormat(&result, _T("[target_channel][%s]"),
+                                     target_channel);
     SafeCStringAppendFormat(&result, _T("[target_version_prefix][%s]"),
                                      target_version_prefix);
     SafeCStringAppendFormat(&result, _T("[rollback_to_target_version][%d]"),

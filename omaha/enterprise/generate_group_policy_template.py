@@ -245,6 +245,17 @@ UPDATE_POLICY_ITEMLIST.replace('            ', '              ') + """
             END PART
           END POLICY
 
+          POLICY !!Pol_TargetChannel
+            #if version >= 4
+              SUPPORTED !!Sup_GoogleUpdate1_3_35_453
+            #endif
+            EXPLAIN !!Explain_TargetChannel$AppLegalId$
+
+            PART !!Part_TargetChannel EDITTEXT
+              VALUENAME "TargetChannel$AppGuid$"
+            END PART
+          END POLICY
+
           POLICY !!Pol_TargetVersionPrefix
             #if version >= 4
               SUPPORTED !!Sup_GoogleUpdate1_3_33_5
@@ -281,6 +292,7 @@ APPLICATIONS_FOOTER = """
 ALLOW_INSTALLATION_POLICY = 'Allow installation'
 DEFAULT_ALLOW_INSTALLATION_POLICY = ALLOW_INSTALLATION_POLICY + ' default'
 UPDATE_POLICY = 'Update policy override'
+TARGET_CHANNEL_POLICY = 'Target Channel override'
 TARGET_VERSION_POLICY = 'Target version prefix override'
 ROLLBACK_VERSION_POLICY = 'Rollback to Target version'
 DEFAULT_UPDATE_POLICY = UPDATE_POLICY + ' default'
@@ -307,6 +319,7 @@ Sup_GoogleUpdate1_3_21_81=At least Google Update 1.3.21.81
 Sup_GoogleUpdate1_3_26_0=At least Google Update 1.3.26.0
 Sup_GoogleUpdate1_3_33_5=At least Google Update 1.3.33.5
 Sup_GoogleUpdate1_3_34_3=At least Google Update 1.3.34.3
+Sup_GoogleUpdate1_3_35_453=At least Google Update 1.3.35.453
 
 Cat_Google=Google
 Cat_GoogleUpdate=Google Update
@@ -324,6 +337,7 @@ Pol_DefaultAllowInstallation=""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """
 Pol_AllowInstallation=""" + ALLOW_INSTALLATION_POLICY + """
 Pol_DefaultUpdatePolicy=""" + DEFAULT_UPDATE_POLICY + """
 Pol_UpdatePolicy=""" + UPDATE_POLICY + """
+Pol_TargetChannel=""" + TARGET_CHANNEL_POLICY + """
 Pol_TargetVersionPrefix=""" + TARGET_VERSION_POLICY + """
 Pol_RollbackToTargetVersion=""" + ROLLBACK_VERSION_POLICY + """
 
@@ -338,6 +352,7 @@ Part_ProxyServer=Address or URL of proxy server
 Part_ProxyPacUrl=URL to a proxy .pac file
 Part_InstallPolicy=Policy
 Part_UpdatePolicy=Policy
+Part_TargetChannel=Target Channel
 Part_TargetVersionPrefix=Target version prefix
 
 Name_InstallsEnabled=Always allow Installs (recommended)
@@ -438,6 +453,15 @@ Explain_AutoUpdate$AppLegalId$=Specifies how Google Update handles available $Ap
     \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} + DEFAULT_UPDATE_POLICY + """\".\\
 """ +
 STRINGS_UPDATE_POLICY_OPTIONS.replace('$PreApplicationWord$', 'the') + '$AppUpdateExplainExtra$') + """\\
+    \\n\\n%(domain_requirement)s
+
+Explain_TargetChannel$AppLegalId$=Specifies which Channel $AppName$ should be updated to.\\
+    \\n\\nWhen this policy is enabled, the app will be updated to the Channel with this policy value.\\
+    \\n\\nSome examples:\\n\\
+    1) Not configured: app will be updated to the latest version available in the default Channel for the app.\\n\\
+    2) Policy value is set to "stable": the app will be updated to the latest stable version.\\n\\
+    2) Policy value is set to "beta": the app will be updated to the latest beta version.\\n\\
+    3) Policy value is "dev": the app will be updated to the latest dev version.\\n\\
     \\n\\n%(domain_requirement)s
 
 Explain_TargetVersionPrefix$AppLegalId$=Specifies which version $AppName$ should be updated to.\\

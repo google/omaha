@@ -123,6 +123,10 @@ class ConfigManagerNoOverrideTest : public testing::Test {
     return cm_->GetEffectivePolicyForAppUpdates(StringToGuid(guid));
   }
 
+  CString GetTargetChannel(const TCHAR* guid) {
+    return cm_->GetTargetChannel(StringToGuid(guid));
+  }
+
   CString GetTargetVersionPrefix(const TCHAR* guid) {
     return cm_->GetTargetVersionPrefix(StringToGuid(guid));
   }
@@ -235,6 +239,7 @@ class ConfigManagerTest
     ApplicationSettings app;
     app.install = kPolicyDisabled;
     app.update = kPolicyAutomaticUpdatesOnly;
+    app.target_channel = _T("dev");
     app.target_version_prefix = _T("3.6.55");
     app.rollback_to_target_version = true;
     info.application_settings.insert(std::make_pair(StringToGuid(kChromeAppId),
@@ -1828,6 +1833,14 @@ TEST_P(ConfigManagerTest, GetEffectivePolicyForAppUpdates_DMPolicy) {
 
   EXPECT_EQ(IsDM() ? kPolicyAutomaticUpdatesOnly : kPolicyEnabled,
             GetEffectivePolicyForAppUpdates(kChromeAppId));
+}
+
+TEST_P(ConfigManagerTest, GetTargetChannel) {
+  EXPECT_SUCCEEDED(SetPolicyString(_T("TargetChannel") CHROME_APP_ID,
+                   _T("beta")));
+  EXPECT_STREQ(IsDomainPredominant() ? _T("beta") : IsDM() ? _T("dev") :
+                                                             _T(""),
+               GetTargetChannel(kChromeAppId));
 }
 
 TEST_P(ConfigManagerTest, GetTargetVersionPrefix) {

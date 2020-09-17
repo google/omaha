@@ -57,6 +57,8 @@ class PolicyManagerInterface {
                                                    DWORD* install_policy) = 0;
   virtual HRESULT GetEffectivePolicyForAppUpdates(const GUID& app_guid,
                                                   DWORD* update_policy) = 0;
+  virtual HRESULT GetTargetChannel(const GUID& app_guid,
+                                   CString* target_channel) = 0;
   virtual HRESULT GetTargetVersionPrefix(const GUID& app_guid,
                                          CString* target_version_prefix) = 0;
   virtual HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
@@ -85,6 +87,8 @@ class GroupPolicyManager : public PolicyManagerInterface {
                                            DWORD* install_policy) override;
   HRESULT GetEffectivePolicyForAppUpdates(const GUID& app_guid,
                                           DWORD* update_policy) override;
+  HRESULT GetTargetChannel(const GUID& app_guid,
+                           CString* target_channel) override;
   HRESULT GetTargetVersionPrefix(const GUID& app_guid,
                                  CString* target_version_prefix) override;
   HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
@@ -116,6 +120,8 @@ class DMPolicyManager : public PolicyManagerInterface {
                                            DWORD* install_policy) override;
   HRESULT GetEffectivePolicyForAppUpdates(const GUID& app_guid,
                                           DWORD* update_policy) override;
+  HRESULT GetTargetChannel(const GUID& app_guid,
+                           CString* target_channel) override;
   HRESULT GetTargetVersionPrefix(const GUID& app_guid,
                                  CString* target_version_prefix) override;
   HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
@@ -355,6 +361,18 @@ class ConfigManager {
   // Otherwise, returns one of kPolicyDisabled, kPolicyManualUpdatesOnly, or
   // kPolicyAutomaticUpdatesOnly.
   DWORD GetEffectivePolicyForAppUpdates(const GUID& app_guid) const;
+
+  // Returns the target channel for the app, if the machine is joined to a
+  // domain and has the corresponding policy set.
+  //
+  // TargetChannel specifies which channel the app should be updated to.
+  //
+  // When this policy is set, the binaries returned by Google Update are the
+  // binaries for the specified channel. If this policy is not set, the default
+  // channel is used.
+  //
+  // The possible values for the Chrome app are {dev|beta|stable}.
+  CString GetTargetChannel(const GUID& app_guid) const;
 
   // Returns the target version prefix for the app, if the machine is joined to
   // a domain and has the corresponding policy set.

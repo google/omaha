@@ -94,6 +94,7 @@ void BuildRequest(const App* app,
         app->IsRollbackToTargetVersionAllowed();
     request_app.update_check.target_version_prefix =
         app->GetTargetVersionPrefix();
+    request_app.update_check.target_channel = app->GetTargetChannel();
   }
 
   request_app.ping_events = app->ping_events();

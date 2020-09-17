@@ -223,6 +223,20 @@ HRESULT GroupPolicyManager::GetEffectivePolicyForAppUpdates(
                                                update_policy);
 }
 
+HRESULT GroupPolicyManager::GetTargetChannel(
+    const GUID& app_guid,
+    CString* target_channel) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  CString app_value_name(kRegValueTargetChannel);
+  app_value_name.Append(GuidToString(app_guid));
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          app_value_name,
+                          target_channel);
+}
+
 HRESULT GroupPolicyManager::GetTargetVersionPrefix(
     const GUID& app_guid,
     CString* target_version_prefix) {
@@ -341,6 +355,20 @@ HRESULT DMPolicyManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid,
   *update_policy = dm_policy_.application_settings.count(app_guid) ?
       dm_policy_.application_settings.at(app_guid).update :
       dm_policy_.update_default;
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::GetTargetChannel(
+    const GUID& app_guid,
+    CString* target_channel) {
+  if (!IsManaged()) {
+    return E_FAIL;
+  }
+
+  *target_channel =
+      dm_policy_.application_settings.count(app_guid) ?
+      dm_policy_.application_settings.at(app_guid).target_channel :
+      CString();
   return S_OK;
 }
 
@@ -1215,6 +1243,29 @@ DWORD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid)
                _T("[machine is not part of a domain or Device Management]"),
                GuidToString(app_guid)));
   return kUpdatePolicyDefault;
+}
+
+CString ConfigManager::GetTargetChannel(const GUID& app_guid) const {
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
+
+    CString target_channel;
+    HRESULT hr = policies_[i]->GetTargetChannel(app_guid, &target_channel);
+    if (SUCCEEDED(hr)) {
+      OPT_LOG(L5, (_T("[GetTargetChannel][%s][%s]"),
+                   policies_[i]->source(), target_channel));
+      return target_channel;
+    }
+
+    return CString();
+  }
+
+  OPT_LOG(L5, (_T("[GetTargetChannel][Ignoring policy][%s]")
+               _T("[machine is not part of a domain or Device Management]"),
+               GuidToString(app_guid)));
+  return CString();
 }
 
 CString ConfigManager::GetTargetVersionPrefix(const GUID& app_guid) const {

@@ -331,6 +331,10 @@ class App : public ModelObject {
   // disabled by Group Policy.
   HRESULT CheckGroupPolicy() const;
 
+  // Returns the target channel for the app, if the machine is joined to a
+  // domain and has the corresponding policy set.
+  CString GetTargetChannel() const;
+
   // Returns whether the RollbackToTargetVersion policy has been set for the
   // app.
   bool IsRollbackToTargetVersionAllowed() const;

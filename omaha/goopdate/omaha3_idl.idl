@@ -592,6 +592,20 @@ interface IPolicyStatus : IDispatch {
       [out, retval] VARIANT_BOOL* rollback_allowed);
 };
 
+[
+  object,
+  dual,
+  uuid(7155AF0C-BC82-4AC4-A361-486E91B31106),
+  helpstring("IPolicyStatus2 Interface"),
+  pointer_default(unique)
+]
+interface IPolicyStatus2 : IPolicyStatus {
+  // Returns the target channel for the app, if the machine is joined to a
+  // domain and has the corresponding policy set.
+  [propget] HRESULT targetChannel([in] BSTR app_id,
+                                  [out, retval] BSTR* channel);
+};
+
 // BEGIN gupdatem interfaces.
 
 // The following interfaces are exposed as a narrower version of the
@@ -983,6 +997,7 @@ library GoogleUpdate3Lib {
   interface ICurrentState;
 
   interface IPolicyStatus;
+  interface IPolicyStatus2;
   interface IGoogleUpdate3Web;
   interface IAppBundleWeb;
   interface IAppWeb;

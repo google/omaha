@@ -27,24 +27,6 @@
 #include "goopdate/omaha3_idl.h"
 #include "omaha/testing/omaha_customization_test.h"
 
-// TODO(omaha): Add tests for to detect interface changes that would require
-// rolling _OMAHA3_IDL_PROXY_CLSID_IS. These include:
-// 1) interface changes invovlving the number or signature of methods
-// 2) or that new interfaces have been added
-// For #2, we already have the InvalidIndex test for interfaces in the TypeLib,
-// so we just need to add checks for interfaces not in the TypeLib.
-//
-// ITypeLib and ITypeInfo methods might be useful. See:
-// http://msdn.microsoft.com/en-us/library/aa912648.aspx
-// http://msdn.microsoft.com/en-us/library/aa909031.aspx
-//
-// I do not know how to get information about interfaces not in a TypeLib.
-// Fortunately, most Omaha 3 interfaces are in one.
-//
-// If we can not get all the information we need, we can always save a "golden"
-// idl.h file and diff against it.
-
-
 // Most of the tests are intentionally not using the omaha namespace. Most of
 // the values being tested are not in this namespace, and being in the global
 // namespace is required by TEST_GU_INT_F to catch conflicts with Google types
@@ -294,6 +276,16 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatus) {
 
   EXPECT_SUCCEEDED(GetDocumentation(_T("IPolicyStatus")));
   EXPECT_STREQ(_T("IPolicyStatus Interface"), item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatus2) {
+  EXPECT_GU_ID_EQ(_T("{7155AF0C-BC82-4AC4-A361-486E91B31106}"),
+                  __uuidof(IPolicyStatus2));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("IPolicyStatus2")));
+  EXPECT_STREQ(_T("IPolicyStatus2 Interface"), item_doc_string_);
   EXPECT_EQ(0, help_context_);
   EXPECT_TRUE(!help_file_);
 }
@@ -603,7 +595,7 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 
 // Verifies there are no new interfaces in the TypeLib.
 TEST_F(OmahaCustomizationGoopdateComInterfaceTest, VerifyNoNewInterfaces) {
-  EXPECT_EQ(38, type_lib_->GetTypeInfoCount())
+  EXPECT_EQ(39, type_lib_->GetTypeInfoCount())
       << _T("A new interface may have been added. If so, add the interface to ")
       << _T("to kIIDsToRegister, and add test(s) for new interface(s).");
 }

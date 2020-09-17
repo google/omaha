@@ -41,8 +41,8 @@ const TCHAR* const kPolicyStatusDescription =
 class ATL_NO_VTABLE PolicyStatus
     : public CComObjectRootEx<CComMultiThreadModel>,
       public CComCoClass<PolicyStatus, &__uuidof(PolicyStatusClass)>,
-      public IDispatchImpl<IPolicyStatus,
-                           &__uuidof(IPolicyStatus),
+      public IDispatchImpl<IPolicyStatus2,
+                           &__uuidof(IPolicyStatus2),
                            &CAtlModule::m_libid,
                            kMajorTypeLibVersion,
                            kMinorTypeLibVersion>,
@@ -67,11 +67,12 @@ class ATL_NO_VTABLE PolicyStatus
 
   BEGIN_COM_MAP(PolicyStatus)
     COM_INTERFACE_ENTRY(IPolicyStatus)
+    COM_INTERFACE_ENTRY(IPolicyStatus2)
     COM_INTERFACE_ENTRY(IStdMarshalInfo)
   END_COM_MAP()
 
-  // IPolicyStatus
-  // Global Update Policies
+  // IPolicyStatus/IPolicyStatus2.
+  // Global Update Policies.
   STDMETHOD(get_lastCheckPeriodMinutes)(DWORD* minutes);
   STDMETHOD(get_updatesSuppressedTimes)(DWORD* start_hour,
                                         DWORD* start_min,
@@ -82,13 +83,14 @@ class ATL_NO_VTABLE PolicyStatus
   STDMETHOD(get_packageCacheSizeLimitMBytes)(DWORD* limit);
   STDMETHOD(get_packageCacheExpirationTimeDays)(DWORD* days);
 
-  // Application Update Policies
+  // Application Update Policies.
   STDMETHOD(get_effectivePolicyForAppInstalls)(BSTR app_id, DWORD* policy);
   STDMETHOD(get_effectivePolicyForAppUpdates)(BSTR app_id, DWORD* policy);
   STDMETHOD(get_targetVersionPrefix)(BSTR app_id, BSTR* prefix);
   STDMETHOD(get_isRollbackToTargetVersionAllowed)(
       BSTR app_id,
       VARIANT_BOOL* rollback_allowed);
+  STDMETHOD(get_targetChannel)(BSTR app_id, BSTR* channel);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PolicyStatus);
