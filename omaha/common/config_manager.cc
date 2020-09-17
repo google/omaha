@@ -104,7 +104,7 @@ HRESULT GetDir32(int csidl,
 }  // namespace
 
 bool GroupPolicyManager::IsManaged() {
-  return IsEnrolledToDomain() && RegKey::HasKey(kRegKeyGoopdateGroupPolicy);
+  return IsEnterpriseManaged() && RegKey::HasKey(kRegKeyGoopdateGroupPolicy);
 }
 
 HRESULT GroupPolicyManager::GetLastCheckPeriodMinutes(DWORD* minutes) {
@@ -565,45 +565,57 @@ int ConfigManager::GetPackageCacheSizeLimitMBytes() const {
   DWORD kDefaultCacheStorageLimit = 500;  // 500 MB
   DWORD kMaxCacheStorageLimit = 5000;     // 5 GB
 
-  if (!IsEnrolledToDomain()) {
-    OPT_LOG(L5, (_T("[GetPackageCacheSizeLimitMBytes][Ignoring group policy]")
-                 _T("[machine is not part of a domain]")));
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
+
+    DWORD cache_size_limit = 0;
+    HRESULT hr = policies_[i]->GetPackageCacheSizeLimitMBytes(
+        &cache_size_limit);
+    if (SUCCEEDED(hr)) {
+      if (cache_size_limit <= kMaxCacheStorageLimit && cache_size_limit > 0) {
+        OPT_LOG(L5, (_T("[GetPackageCacheSizeLimitMBytes][%s][%d]"),
+                     policies_[i]->source(), cache_size_limit));
+        return static_cast<int>(cache_size_limit);
+      }
+    }
+
     return kDefaultCacheStorageLimit;
   }
 
-  DWORD cache_size_limit = 0;
-  if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                              kRegValueCacheSizeLimitMBytes,
-                              &cache_size_limit)) ||
-      cache_size_limit > kMaxCacheStorageLimit ||
-      cache_size_limit == 0) {
-    cache_size_limit = kDefaultCacheStorageLimit;
-  }
-
-  return static_cast<int>(cache_size_limit);
+  OPT_LOG(L5, (_T("[GetPackageCacheSizeLimitMBytes][Ignoring policy]")
+               _T("[machine is not part of a domain or Device Management]")));
+  return kDefaultCacheStorageLimit;
 }
 
 int ConfigManager::GetPackageCacheExpirationTimeDays() const {
   DWORD kDefaultCacheLifeTimeInDays = 180;  // 180 days.
   DWORD kMaxCacheLifeTimeInDays = 1800;     // Roughly 5 years.
 
-  if (!IsEnrolledToDomain()) {
-    OPT_LOG(L5, (_T("[GetPackageCacheExpirationTimeDays]")
-                 _T("[Ignoring group policy]")
-                 _T("[machine is not part of a domain]")));
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    if (!policies_[i]->IsManaged()) {
+      continue;
+    }
+
+    DWORD cache_life_limit = 0;
+    HRESULT hr = policies_[i]->GetPackageCacheSizeLimitMBytes(
+        &cache_life_limit);
+    if (SUCCEEDED(hr)) {
+      if (cache_life_limit <= kMaxCacheLifeTimeInDays && cache_life_limit > 0) {
+        OPT_LOG(L5, (_T("[GetPackageCacheExpirationTimeDays][%s][%d]"),
+                     policies_[i]->source(), cache_life_limit));
+        return static_cast<int>(cache_life_limit);
+      }
+    }
+
     return kDefaultCacheLifeTimeInDays;
   }
 
-  DWORD cache_life_limit = 0;
-  if (FAILED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                              kRegValueCacheLifeLimitDays,
-                              &cache_life_limit)) ||
-      cache_life_limit > kMaxCacheLifeTimeInDays ||
-      cache_life_limit == 0) {
-    cache_life_limit = kDefaultCacheLifeTimeInDays;
-  }
-
-  return static_cast<int>(cache_life_limit);
+  OPT_LOG(L5, (_T("[GetPackageCacheExpirationTimeDays]")
+               _T("[Ignoring policy]")
+               _T("[machine is not part of a domain or Device Management]")));
+  return kDefaultCacheLifeTimeInDays;
 }
 
 CString ConfigManager::GetMachineGoopdateInstallDirNoCreate() const {

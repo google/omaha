@@ -2153,9 +2153,6 @@ bool IsEnrolledToDomain() {
   return g_domain_state == ENROLLED;
 }
 
-// TODO(omaha): This code needs to be used instead of IsEnrolledToDomain() once
-// Chrome enables IsDeviceRegisteredWithManagement.
-
 enum DeviceRegisteredState {NOT_KNOWN = -1, NOT_REGISTERED, REGISTERED};
 static volatile LONG g_registered_state = NOT_KNOWN;
 
@@ -2172,8 +2169,18 @@ bool IsDeviceRegisteredWithManagement() {
   return g_registered_state == REGISTERED;
 }
 
+static volatile LONG g_os_version_type = SUITE_LAST;
+
 bool IsEnterpriseManaged() {
-  return IsEnrolledToDomain() || IsDeviceRegisteredWithManagement();
+  if (g_os_version_type == SUITE_LAST) {
+    ::InterlockedCompareExchange(&g_os_version_type,
+                                 SystemInfo::GetOSVersionType(),
+                                 SUITE_LAST);
+  }
+
+  bool is_enterprise_version = (g_os_version_type != SUITE_HOME);
+  return IsEnrolledToDomain() ||
+         (IsDeviceRegisteredWithManagement() && is_enterprise_version);
 }
 
 }  // namespace omaha

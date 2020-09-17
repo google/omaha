@@ -27,6 +27,15 @@
 
 namespace omaha {
 
+enum VersionType {
+  SUITE_HOME = 0,
+  SUITE_PROFESSIONAL,
+  SUITE_SERVER,
+  SUITE_ENTERPRISE,
+  SUITE_EDUCATION,
+  SUITE_LAST,
+};
+
 // TODO(omaha): refactor to use a namespace.
 class SystemInfo {
  public:
@@ -81,6 +90,12 @@ class SystemInfo {
 
   // Retrieves a full OSVERSIONINFOEX struct describing the current OS.
   static HRESULT GetOSVersion(OSVERSIONINFOEX* os_out);
+
+  // Returns a rough bucketing of the type of version of Windows. This is used
+  // to distinguish enterprise enabled versions from home versions
+  // and potentially server versions. Keep this code in sync with Chromium's
+  // base/win/windows_version.cc.
+  static VersionType GetOSVersionType();
 
   // Compares the current OS to the supplied version.  The value of |oper|
   // should be one of the predicate values from VerSetConditionMask() -- for

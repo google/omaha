@@ -958,12 +958,20 @@ GPA_WRAP(MDMRegistration.dll,
          HRESULT,
          E_FAIL);
 
+GPA_WRAP(kernel32.dll,
+         GetProductInfo,
+         (DWORD major_version, DWORD minor_version, DWORD sp_major, DWORD sp_minor, PDWORD product_type),  // NOLINT
+         (major_version, minor_version, sp_major, sp_minor, product_type),
+         WINAPI,
+         BOOL,
+         FALSE);
+
 // Returns true if the machine is being managed by an MDM system.
 bool IsDeviceRegisteredWithManagement();
 
 // Returns true if the current machine is considered enterprise managed in some
 // fashion.  A machine is considered managed if it is either domain enrolled
-// or registered with an MDM.
+// or an enterprise Windows SKU registered with an MDM.
 bool IsEnterpriseManaged();
 
 }  // namespace omaha

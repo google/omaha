@@ -177,5 +177,9 @@ TEST(SystemInfoTest, GetKernel32OSVersion) {
       String_StartsWith(SystemInfo::GetKernel32OSVersion(), os_version, true));
 }
 
+TEST(SystemInfoTest, GetOSVersionType) {
+  EXPECT_LT(SystemInfo::GetOSVersionType(), SUITE_LAST);
+}
+
 }  // namespace omaha
 

@@ -21,6 +21,7 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/process.h"
 #include "omaha/base/string.h"
+#include "omaha/base/utils.h"
 
 namespace omaha {
 
@@ -170,6 +171,89 @@ HRESULT SystemInfo::GetOSVersion(OSVERSIONINFOEX* os_out) {
   }
 
   return S_OK;
+}
+
+// Keep this code in sync with Chromium's  // base/win/windows_version.cc.
+VersionType SystemInfo::GetOSVersionType() {
+  OSVERSIONINFOEX version_info = {sizeof(version_info)};
+  if (!::GetVersionEx(reinterpret_cast<OSVERSIONINFO*>(&version_info))) {
+    // Windows version is XP SP1 or older, so we return a safe default.
+    return SUITE_HOME;
+  }
+
+  if (version_info.dwMajorVersion == 6 || version_info.dwMajorVersion == 10) {
+    DWORD os_type = 0;
+    if (!GetProductInfoWrap(version_info.dwMajorVersion,
+                            version_info.dwMinorVersion,
+                            0,
+                            0,
+                            &os_type)) {
+      // We return a safe default.
+      return SUITE_HOME;
+    }
+
+    switch (os_type) {
+      case PRODUCT_CLUSTER_SERVER:
+      case PRODUCT_DATACENTER_SERVER:
+      case PRODUCT_DATACENTER_SERVER_CORE:
+      case PRODUCT_ENTERPRISE_SERVER:
+      case PRODUCT_ENTERPRISE_SERVER_CORE:
+      case PRODUCT_ENTERPRISE_SERVER_IA64:
+      case PRODUCT_SMALLBUSINESS_SERVER:
+      case PRODUCT_SMALLBUSINESS_SERVER_PREMIUM:
+      case PRODUCT_STANDARD_SERVER:
+      case PRODUCT_STANDARD_SERVER_CORE:
+      case PRODUCT_WEB_SERVER:
+        return SUITE_SERVER;
+
+      case PRODUCT_PROFESSIONAL:
+      case PRODUCT_ULTIMATE:
+        return SUITE_PROFESSIONAL;
+
+      case PRODUCT_ENTERPRISE:
+      case PRODUCT_ENTERPRISE_E:
+      case PRODUCT_ENTERPRISE_EVALUATION:
+      case PRODUCT_ENTERPRISE_N:
+      case PRODUCT_ENTERPRISE_N_EVALUATION:
+      case PRODUCT_ENTERPRISE_S:
+      case PRODUCT_ENTERPRISE_S_EVALUATION:
+      case PRODUCT_ENTERPRISE_S_N:
+      case PRODUCT_ENTERPRISE_S_N_EVALUATION:
+      case PRODUCT_BUSINESS:
+      case PRODUCT_BUSINESS_N:
+        return SUITE_ENTERPRISE;
+
+      case PRODUCT_EDUCATION:
+      case PRODUCT_EDUCATION_N:
+        return SUITE_EDUCATION;
+
+      case PRODUCT_HOME_BASIC:
+      case PRODUCT_HOME_PREMIUM:
+      case PRODUCT_STARTER:
+      default:
+        return SUITE_HOME;
+    }
+  } else if (version_info.dwMajorVersion == 5 &&
+             version_info.dwMinorVersion == 2) {
+    if (version_info.wProductType == VER_NT_WORKSTATION &&
+        SystemInfo::GetProcessorArchitecture() ==
+        PROCESSOR_ARCHITECTURE_AMD64) {
+      return SUITE_PROFESSIONAL;
+    } else if (version_info.wSuiteMask & VER_SUITE_WH_SERVER) {
+      return SUITE_HOME;
+    } else {
+      return SUITE_SERVER;
+    }
+  } else if (version_info.dwMajorVersion == 5 &&
+             version_info.dwMinorVersion == 1) {
+    if (version_info.wSuiteMask & VER_SUITE_PERSONAL)
+      return SUITE_HOME;
+    else
+      return SUITE_PROFESSIONAL;
+  } else {
+    // Windows is pre XP so we don't care but pick a safe default.
+    return SUITE_HOME;
+  }
 }
 
 bool SystemInfo::CompareOSVersionsInternal(OSVERSIONINFOEX* os,

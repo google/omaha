@@ -71,7 +71,7 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
 
   request.dlpref = cm->GetDownloadPreferenceGroupPolicy();
 
-  request.domain_joined = IsEnrolledToDomain();
+  request.domain_joined = IsEnterpriseManaged();
 
   // Hardware platform attributes.
   //
