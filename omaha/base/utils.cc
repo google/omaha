@@ -2123,11 +2123,6 @@ DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout) {
   return abandoned ? WAIT_ABANDONED_0 : WAIT_OBJECT_0;
 }
 
-// The following code is cloned/derived from
-// https://cs.chromium.org/chromium/src/base/win/win_util.cc.
-enum DomainEnrollementState {UNKNOWN = -1, NOT_ENROLLED, ENROLLED};
-static volatile LONG g_domain_state = UNKNOWN;
-
 bool IsEnrolledToDomain() {
   DWORD is_enrolled(false);
   if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
@@ -2136,21 +2131,31 @@ bool IsEnrolledToDomain() {
     return !!is_enrolled;
   }
 
+  return EnrolledToDomainStatus() == ENROLLED;
+}
+
+// The following code is cloned/derived from
+// https://cs.chromium.org/chromium/src/base/win/win_util.cc.
+static volatile LONG g_domain_state = UNKNOWN;
+
+DomainEnrollmentState EnrolledToDomainStatus() {
   if (g_domain_state == UNKNOWN) {
     LPWSTR domain;
     NETSETUP_JOIN_STATUS join_status;
     if (::NetGetJoinInformation(NULL, &domain, &join_status) != NERR_Success) {
-      return false;
+      return UNKNOWN;
     }
 
     ::NetApiBufferFree(domain);
     ::InterlockedCompareExchange(&g_domain_state,
                                  join_status == ::NetSetupDomainName ?
-                                     ENROLLED : NOT_ENROLLED,
+                                     ENROLLED :
+                                     (join_status == ::NetSetupUnknownStatus ?
+                                      UNKNOWN_ENROLLED : NOT_ENROLLED),
                                  UNKNOWN);
   }
 
-  return g_domain_state == ENROLLED;
+  return static_cast<DomainEnrollmentState>(g_domain_state);
 }
 
 enum DeviceRegisteredState {NOT_KNOWN = -1, NOT_REGISTERED, REGISTERED};
@@ -2204,7 +2209,9 @@ bool IsEnterpriseManaged() {
 
   return IsEnrolledToDomain() ||
          (is_enterprise_version &&
-          (IsDeviceRegisteredWithManagement() || IsJoinedToAzureAD()));
+          ((EnrolledToDomainStatus() == UNKNOWN_ENROLLED) ||
+           IsDeviceRegisteredWithManagement() ||
+           IsJoinedToAzureAD()));
 }
 
 }  // namespace omaha

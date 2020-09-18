@@ -987,6 +987,18 @@ GPA_WRAP(NetApi32.dll,
          VOID,
          /* No return value for void function */);
 
+enum DomainEnrollmentState {
+  UNKNOWN = -1,
+  NOT_ENROLLED,
+  UNKNOWN_ENROLLED,
+  ENROLLED,
+};
+
+// Returns ENROLLED if ::NetGetJoinInformation() returns ::NetSetupDomainName.
+// Returns UNKNOWN_ENROLLED if ::NetGetJoinInformation() returns
+// ::NetSetupUnknownStatus. Returns NOT_ENROLLED in other cases.
+DomainEnrollmentState EnrolledToDomainStatus();
+
 // Returns true if the machine is being managed by an MDM system.
 bool IsDeviceRegisteredWithManagement();
 
