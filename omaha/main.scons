@@ -520,12 +520,21 @@ win_env.AppendUnique(
         '/wd5042',  # function declarations at block scope cannot be specified
                     # 'inline' in standard C++
         '/wd5045',  # Compiler will insert Spectre mitigation for memory load
-        # Warnings introduced in VS 2019 16.5
+        '/wd5054',  # operator '*': deprecated between enumerations of different
+                    # types
         '/wd5204',  # class has virtual functions, but its trivial destructor
                     # is not virtual; instances of objects derived from this
                     # class may not be destructed correctly
         '/wd5205',  # delete of an abstract class ... that has a non-virtual
                     # destructor results in undefined behavior
+        '/wd5214',  # applying '++' to an operand with a volatile qualified type
+                    # is deprecated in C++20'
+        '/wd5219',  # implicit conversion from 'size_t' to 'const float',
+                    # possible loss of data
+        '/wd5220',  # a non-static data member with a volatile qualified type no
+                    # longer implies that compiler generated copy/move
+                    # constructors and copy/move assignment operators are non
+                    # trivial
         #
         # Disable static analysis warnings.
         #
@@ -556,7 +565,6 @@ win_env.AppendUnique(
         '_ATL_NO_GLOBAL_SOCKET_STARTUP',
         '_ATL_NO_PERF_SUPPORT',
         '_ATL_NO_TRACK_HEAP',
-        '_ATL_NO_UUIDOF',
         '_ATL_STATIC_REGISTRY',
         '_ATL_XP_TARGETING',
         '_SECURE_ATL=1',

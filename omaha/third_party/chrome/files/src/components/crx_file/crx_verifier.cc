@@ -47,7 +47,7 @@ namespace {
 const uint32_t kMaxHeaderSize = 1 << 18;
 
 // The context for Crx3 signing, encoded in UTF8.
-const unsigned char kSignatureContext[] = u8"CRX3 SignedData";
+const unsigned char kSignatureContext[] = "CRX3 SignedData";
 
 // The SHA256 hash of the "ecdsa_2017_public" Crx3 key.
 const uint8_t kPublisherKeyHash[] = {

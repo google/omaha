@@ -1495,7 +1495,7 @@ TEST(GoopdateUtilsTest, WriteInstallerDataToTempFile) {
 
   for (size_t i = 0; i < list_installer_data.size(); ++i) {
     CString installer_data = list_installer_data[i];
-    SCOPED_TRACE(installer_data);
+    SCOPED_TRACE(installer_data.GetString());
 
     CString file_path;
     HRESULT hr = WriteInstallerDataToTempFile(installer_data, &file_path);
