@@ -33,7 +33,7 @@
 namespace omaha {
 
 // Maximum file size allowed for performing authentication.
-constexpr size_t kMaxFileSizeForAuthentication = 512 * 1024 * 1024;  // 512MB
+constexpr size_t kMaxFileSizeForAuthentication = 1024 * 1024 * 1024;  // 1GB.
 
 // Buffer size used to read files from disk.
 constexpr size_t kFileReadBufferSize = 128 * 1024;
@@ -161,7 +161,7 @@ HRESULT CryptoHash::ComputeOrValidate(const std::vector<CString>& filepaths,
       if (curr_len > max_len) {
         UTIL_LOG(LE, (_T("[exceed max len][curr_len=%lu][max_len=%lu]"),
                       curr_len, max_len));
-        return E_FAIL;
+        return SIGS_E_FILE_SIZE_TOO_BIG;
       }
     }
 
