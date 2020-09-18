@@ -36,7 +36,7 @@ namespace omaha {
 constexpr size_t kMaxFileSizeForAuthentication = 1024 * 1024 * 1024;  // 1GB.
 
 // Buffer size used to read files from disk.
-constexpr size_t kFileReadBufferSize = 128 * 1024;
+constexpr size_t kFileReadBufferSize = 1024 * 1024;  // 1MB.
 
 namespace CryptDetails {
 
