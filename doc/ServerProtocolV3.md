@@ -2,7 +2,7 @@
 
 This document describes version 3 of the Omaha client-server protocol.  Omaha launched on Windows with this version of the protocol in May 2011.  (Version 2 of the protocol launched in May 2007 on Windows and May 2008 on Mac; Version 1 of the protocol was never deployed publicly.)
 
-Version 2 is documented [here](ServerProtocolV2.md). An older description of the V3 protocol is [here](ServerProtocol.md).
+Version 2 is documented [here](ServerProtocolV2.md). An older description of the V3 protocol is [here](ServerProtocol.md). Version 3.1 is documented [here](https://chromium.googlesource.com/chromium/src.git/+/master/docs/updater/protocol_3_1.md).
 
 ## Introduction ##
 The Omaha protocol is designed to facilitate the acquisition, delivery, and metrics of software updates over the Internet. It is an application-layer protocol on top of HTTP.
