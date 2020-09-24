@@ -163,26 +163,6 @@ TEST_P(WebServicesClientTest, SendUsingCup) {
                                                     GetVersionString());
   EXPECT_STREQ(expected_updater_header, updater_header);
 
-  // A CUP transaction has either a request or a response CUP cookie and
-  // the ETag response header.
-  CString request_cookie;
-  network_request->QueryHeadersString(
-      WINHTTP_QUERY_COOKIE | WINHTTP_QUERY_FLAG_REQUEST_HEADERS,
-      WINHTTP_HEADER_NAME_BY_INDEX,
-      &request_cookie);
-  const bool has_cup_request_cookie = request_cookie.Find(_T("c=")) != -1;
-
-  CString response_cookie;
-  network_request->QueryHeadersString(WINHTTP_QUERY_SET_COOKIE,
-                                      WINHTTP_HEADER_NAME_BY_INDEX,
-                                      &response_cookie);
-  const bool has_cup_response_cookie = response_cookie.Find(_T("c=")) != -1;
-
-  CString etag;
-  EXPECT_HRESULT_SUCCEEDED(network_request->QueryHeadersString(
-      WINHTTP_QUERY_ETAG, WINHTTP_HEADER_NAME_BY_INDEX, &etag));
-  EXPECT_FALSE(etag.IsEmpty());
-
   // Check the custom headers after the response has been received.
   EXPECT_LT(0, web_service_client_->http_xdaystart_header_value());
   EXPECT_LT(0, web_service_client_->http_xdaynum_header_value());
