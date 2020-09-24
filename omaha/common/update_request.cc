@@ -69,7 +69,7 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
     request.check_period_sec = check_period_sec;
   }
 
-  request.dlpref = cm->GetDownloadPreferenceGroupPolicy();
+  request.dlpref = cm->GetDownloadPreferenceGroupPolicy(NULL);
 
   request.domain_joined = IsEnterpriseManaged();
 

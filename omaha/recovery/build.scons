@@ -68,6 +68,7 @@ test_env.Append(
         '$LIB_DIR/common.lib',
         '$LIB_DIR/crx_file.lib',
         '$LIB_DIR/google_update_recovery.lib',
+        '$LIB_DIR/goopdate_lib.lib',
         '$LIB_DIR/libprotobuf.lib',
         '$LIB_DIR/security.lib',
         test_env['atls_libs'][test_env.Bit('debug')],

@@ -28,6 +28,7 @@
 #include "omaha/goopdate/com_proxy.h"
 #include "omaha/goopdate/current_state.h"
 #include "omaha/goopdate/omaha3_idl_datax.h"
+#include "omaha/goopdate/policy_status_value.h"
 
 namespace omaha {
 
@@ -37,9 +38,11 @@ namespace omaha {
 #if IS_MACHINE_HANDLER
   OBJECT_ENTRY_AUTO(__uuidof(GoogleComProxyMachineClass), ComProxy)
   OBJECT_ENTRY_AUTO(__uuidof(CurrentStateMachineClass), CurrentAppState)
+  OBJECT_ENTRY_AUTO(__uuidof(PolicyStatusValueMachineClass), PolicyStatusValue)
 #else
   OBJECT_ENTRY_AUTO(__uuidof(GoogleComProxyUserClass), ComProxy)
   OBJECT_ENTRY_AUTO(__uuidof(CurrentStateUserClass), CurrentAppState)
+  OBJECT_ENTRY_AUTO(__uuidof(PolicyStatusValueUserClass), PolicyStatusValue)
 #endif
 
 namespace {

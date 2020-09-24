@@ -116,23 +116,23 @@ class ConfigManagerNoOverrideTest : public testing::Test {
   }
 
   DWORD GetEffectivePolicyForAppInstalls(const TCHAR* guid) {
-    return cm_->GetEffectivePolicyForAppInstalls(StringToGuid(guid));
+    return cm_->GetEffectivePolicyForAppInstalls(StringToGuid(guid), NULL);
   }
 
   DWORD GetEffectivePolicyForAppUpdates(const TCHAR* guid) {
-    return cm_->GetEffectivePolicyForAppUpdates(StringToGuid(guid));
+    return cm_->GetEffectivePolicyForAppUpdates(StringToGuid(guid), NULL);
   }
 
   CString GetTargetChannel(const TCHAR* guid) {
-    return cm_->GetTargetChannel(StringToGuid(guid));
+    return cm_->GetTargetChannel(StringToGuid(guid), NULL);
   }
 
   CString GetTargetVersionPrefix(const TCHAR* guid) {
-    return cm_->GetTargetVersionPrefix(StringToGuid(guid));
+    return cm_->GetTargetVersionPrefix(StringToGuid(guid), NULL);
   }
 
   bool IsRollbackToTargetVersionAllowed(const TCHAR* guid) {
-    return cm_->IsRollbackToTargetVersionAllowed(StringToGuid(guid));
+    return cm_->IsRollbackToTargetVersionAllowed(StringToGuid(guid), NULL);
   }
 
   bool AreUpdatesSuppressedNow() {
@@ -572,13 +572,6 @@ TEST_P(ConfigManagerTest, GetUsageStatsReportUrl) {
   url.Empty();
   EXPECT_SUCCEEDED(cm_->GetUsageStatsReportUrl(&url));
   EXPECT_STREQ(url, _T("http://usagestatsreport/"));
-}
-
-TEST_P(ConfigManagerTest, GetPolicySource) {
-  EXPECT_STREQ(IsDomainPredominant() ? _T("Group Policy") :
-                                       IsDM() ? _T("Device Management") :
-                                                _T(""),
-               cm_->GetPolicySource());
 }
 
 // Tests LastCheckPeriodSec override.
@@ -1875,43 +1868,42 @@ TEST_P(ConfigManagerTest, AreUpdatesSuppressedNow) {
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Default) {
-  EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes());
+  EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes(NULL));
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_TooBig) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheSizeLimitMBytes, 8192));
-  EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes());
+  EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes(NULL));
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_TooSmall) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheSizeLimitMBytes, 0));
-  EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes());
+  EXPECT_EQ(500, cm_->GetPackageCacheSizeLimitMBytes(NULL));
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Override_Valid) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheSizeLimitMBytes, 250));
-  EXPECT_EQ(IsDomainPredominant() ? 250 : 500,
-            cm_->GetPackageCacheSizeLimitMBytes());
+  EXPECT_EQ(IsDomain() ? 250 : 500, cm_->GetPackageCacheSizeLimitMBytes(NULL));
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Default) {
-  EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays());
+  EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays(NULL));
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_TooBig) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheLifeLimitDays, 3600));
-  EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays());
+  EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays(NULL));
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_TooSmall) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheLifeLimitDays, 0));
-  EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays());
+  EXPECT_EQ(180, cm_->GetPackageCacheExpirationTimeDays(NULL));
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheExpirationTimeDays_Override_Valid) {
   EXPECT_SUCCEEDED(SetPolicy(kRegValueCacheLifeLimitDays, 60));
-  EXPECT_EQ(IsDomainPredominant() ? 60 : 180,
-            cm_->GetPackageCacheExpirationTimeDays());
+  EXPECT_EQ(IsDomain() ? 60 : 180,
+            cm_->GetPackageCacheExpirationTimeDays(NULL));
 }
 
 TEST_P(ConfigManagerTest, LastCheckedTime) {
@@ -2180,20 +2172,18 @@ TEST_P(ConfigManagerTest, GetAutoUpdateJitterMs) {
 }
 
 TEST_P(ConfigManagerTest, GetDownloadPreferenceGroupPolicy) {
-  EXPECT_STREQ(!IsDomainPredominant() && IsDM() ? kDownloadPreferenceCacheable :
-                                                  _T(""),
-               cm_->GetDownloadPreferenceGroupPolicy());
+  EXPECT_STREQ(IsDM() ? kDownloadPreferenceCacheable : _T(""),
+               cm_->GetDownloadPreferenceGroupPolicy(NULL));
 
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
                                    _T("unknown")));
-  EXPECT_STREQ(!IsDomainPredominant() && IsDM() ? kDownloadPreferenceCacheable :
-                                                  _T(""),
-               cm_->GetDownloadPreferenceGroupPolicy());
+  EXPECT_STREQ(IsDM() ? kDownloadPreferenceCacheable : _T(""),
+               cm_->GetDownloadPreferenceGroupPolicy(NULL));
 
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
                                    kDownloadPreferenceCacheable));
   EXPECT_STREQ(IsDomain() || IsDM() ? kDownloadPreferenceCacheable : _T(""),
-               cm_->GetDownloadPreferenceGroupPolicy());
+               cm_->GetDownloadPreferenceGroupPolicy(NULL));
 }
 
 #if defined(HAS_DEVICE_MANAGEMENT)

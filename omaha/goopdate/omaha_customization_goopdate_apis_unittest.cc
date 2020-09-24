@@ -285,8 +285,18 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatus) {
   EXPECT_TRUE(!help_file_);
 }
 
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatusValue) {
+  EXPECT_GU_ID_EQ(_T("{27634814-8E41-4C35-8577-980134A96544}"),
+                  __uuidof(IPolicyStatusValue));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("IPolicyStatusValue")));
+  EXPECT_STREQ(_T("IPolicyStatusValue Interface"), item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
 TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatus2) {
-  EXPECT_GU_ID_EQ(_T("{7155AF0C-BC82-4AC4-A361-486E91B31106}"),
+  EXPECT_GU_ID_EQ(_T("{34527502-D3DB-4205-A69B-789B27EE0414}"),
                   __uuidof(IPolicyStatus2));
 
   EXPECT_SUCCEEDED(GetDocumentation(_T("IPolicyStatus2")));
@@ -491,6 +501,28 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 }
 
 TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
+              PolicyStatusValueUserClass) {
+  EXPECT_GU_ID_EQ(_T("{85D8EE2F-794F-41F0-BB03-49D56A23BEF4}"),
+                  __uuidof(PolicyStatusValueUserClass));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusValueUserClass")));
+  EXPECT_STREQ(_T("PolicyStatusValueUserClass"), item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
+              PolicyStatusValueMachineClass) {
+  EXPECT_GU_ID_EQ(_T("{C6271107-A214-4F11-98C0-3F16BC670D28}"),
+                  __uuidof(PolicyStatusValueMachineClass));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("PolicyStatusValueMachineClass")));
+  EXPECT_STREQ(_T("PolicyStatusValueMachineClass"), item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
               PolicyStatusUserClass) {
   EXPECT_GU_ID_EQ(_T("{6DDCE70D-A4AE-4E97-908C-BE7B2DB750AD}"),
                   __uuidof(PolicyStatusUserClass));
@@ -638,7 +670,7 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 
 // Verifies there are no new interfaces in the TypeLib.
 TEST_F(OmahaCustomizationGoopdateComInterfaceTest, VerifyNoNewInterfaces) {
-  EXPECT_EQ(42, type_lib_->GetTypeInfoCount())
+  EXPECT_EQ(45, type_lib_->GetTypeInfoCount())
       << _T("A new interface may have been added. If so, add the interface to ")
       << _T("to kIIDsToRegister, and add test(s) for new interface(s).");
 }

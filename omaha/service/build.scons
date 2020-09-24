@@ -19,12 +19,6 @@ Import('env')
 # unaffected by changes made here.
 local_env = env.Clone()
 
-local_env.Append(
-    CPPPATH = [
-        '$OBJ_ROOT',    # Needed for generated files.
-        ],
-)
-
 inputs = [
     'service_main.cc',
     ]

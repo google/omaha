@@ -271,9 +271,6 @@ if omaha_unittest_env.IsBuildingModule('enterprise'):
 omaha_unittest_libs += omaha_unittest_env.GetAllInOneUnittestLibs()
 
 omaha_unittest_env.Append(
-    CPPPATH = [
-        '$OBJ_ROOT',                        # Needed for the generated files
-        ],
     CCFLAGS = [
         '/wd4100',  # unreferenced formal parameter
         '/wd4244',  # possible loss of data
@@ -644,9 +641,6 @@ omaha_unittest_env.Depends(test, '$TESTS_DIR/goopdate.dll')
 if env.Bit('all'):
   save_args_env = env.Clone()
   save_args_env.Append(
-      CPPPATH = [
-          '$OBJ_ROOT',    # Needed for the generated files
-          ],
       LIBS = [
           save_args_env['atls_libs'][save_args_env.Bit('debug')],
           save_args_env['crt_libs'][save_args_env.Bit('debug')],

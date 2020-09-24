@@ -87,6 +87,7 @@ def BuildCrashHandler(local_env):
           gch_env.GetMultiarchLibName('breakpad'),
           gch_env.GetMultiarchLibName('common'),
           gch_env.GetMultiarchLibName('crash_handler'),
+          gch_env.GetMultiarchLibName('goopdate_lib'),
           gch_env.GetMultiarchLibName('net'),
           gch_env.GetMultiarchLibName('security'),
           gch_env.GetMultiarchLibName('statsreport'),

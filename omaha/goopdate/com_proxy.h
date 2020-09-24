@@ -64,6 +64,7 @@ const IID kIIDsToRegister[] = {
   __uuidof(ICredentialDialog),
   __uuidof(IPolicyStatus),
   __uuidof(IPolicyStatus2),
+  __uuidof(IPolicyStatusValue),
 
   __uuidof(IProcessLauncher2),
 

@@ -206,9 +206,6 @@ def BuildGoogleUpdateHandlerDll(handler_env,
         '/wd4426',
         '/wd5038',
       ],
-      CPPPATH = [
-          '$OBJ_ROOT',  # Needed for generated files.
-      ],
       LIBS = [
           handler_env.GetMultiarchLibName('base'),
           handler_env.GetMultiarchLibName('goopdate_lib'),
@@ -419,6 +416,7 @@ gd_inputs = [
     'package_cache.cc',
     'ping_event_cancel.cc',
     'policy_status.cc',
+    'policy_status_value.cc',
     'process_launcher.cc',
     'resource_manager.cc',
     'update3web.cc',

@@ -18,10 +18,6 @@ Import('env')
 def BuildCommonLib(env):
   local_env = env.Clone()
 
-  local_env['CPPPATH'] += [
-      '$OBJ_ROOT',  # Needed for generated files.
-      ]
-
   inputs = [
       'app_registry_utils.cc',
       'command_line.cc',

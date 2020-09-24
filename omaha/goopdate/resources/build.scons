@@ -36,9 +36,6 @@ for omaha_version_info in local_env['omaha_versions_info']:
                 omaha_version_info.GetVersionString()),
             '/DLANGUAGE_STRING=\\"%s\\"' % lang
             ],
-        CPPPATH = [
-            '$OBJ_ROOT/goopdate',  # Needed for the tlb
-            ],
         LINKFLAGS = [
             '/ENTRY:DllEntry',
             '/MERGE:.rdata=.text',

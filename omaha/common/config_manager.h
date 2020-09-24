@@ -32,8 +32,15 @@
 #include "omaha/base/synchronized.h"
 #include "omaha/base/time.h"
 #include "omaha/goopdate/dm_storage.h"
+#include "goopdate/omaha3_idl.h"
 
 namespace omaha {
+
+struct UpdatesSuppressedTimes {
+  DWORD start_hour = 0;
+  DWORD start_min = 0;
+  DWORD duration_min = 0;
+};
 
 class PolicyManagerInterface {
  public:
@@ -44,9 +51,7 @@ class PolicyManagerInterface {
   virtual bool IsManaged() = 0;
 
   virtual HRESULT GetLastCheckPeriodMinutes(DWORD* minutes) = 0;
-  virtual HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
-                                            DWORD* start_min,
-                                            DWORD* duration_min) = 0;
+  virtual HRESULT GetUpdatesSuppressedTimes(UpdatesSuppressedTimes* times) = 0;
   virtual HRESULT GetDownloadPreferenceGroupPolicy(
       CString* download_preference) = 0;
   virtual HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) = 0;
@@ -75,9 +80,7 @@ class GroupPolicyManager : public PolicyManagerInterface {
   bool IsManaged() override;
 
   HRESULT GetLastCheckPeriodMinutes(DWORD* minutes) override;
-  HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
-                                    DWORD* start_min,
-                                    DWORD* duration_min) override;
+  HRESULT GetUpdatesSuppressedTimes(UpdatesSuppressedTimes* times) override;
   HRESULT GetDownloadPreferenceGroupPolicy(
       CString* download_preference) override;
   HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) override;
@@ -108,9 +111,7 @@ class DMPolicyManager : public PolicyManagerInterface {
   bool IsManaged() override;
 
   HRESULT GetLastCheckPeriodMinutes(DWORD* minutes) override;
-  HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
-                                    DWORD* start_min,
-                                    DWORD* duration_min) override;
+  HRESULT GetUpdatesSuppressedTimes(UpdatesSuppressedTimes* times) override;
   HRESULT GetDownloadPreferenceGroupPolicy(
       CString* download_preference) override;
   HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) override;
@@ -197,11 +198,13 @@ class ConfigManager {
 
   // Gets the total disk size limit for cached packages. When this limit is hit,
   // packages should be deleted from oldest until total size is below the limit.
-  int GetPackageCacheSizeLimitMBytes() const;
+  int GetPackageCacheSizeLimitMBytes(
+      IPolicyStatusValue** policy_status_value) const;
 
   // Gets the package cache life limit. If a cached package is older than this
   // limit, it should be removed.
-  int GetPackageCacheExpirationTimeDays() const;
+  int GetPackageCacheExpirationTimeDays(
+      IPolicyStatusValue** policy_status_value) const;
 
   // Creates download data dir:
   // %UserProfile%/Application Data/Google/Update/Download
@@ -278,10 +281,6 @@ class ConfigManager {
   // Returns the service endpoint where the usage stats requests are sent.
   HRESULT GetUsageStatsReportUrl(CString* url) const;
 
-  // Returns the currently active policy manager source for enterprise policies,
-  // or an empty string if the machine is not managed.
-  CString GetPolicySource() const;
-
 #if defined(HAS_DEVICE_MANAGEMENT)
   // Returns the Device Management API url.
   HRESULT GetDeviceManagementUrl(CString* url) const;
@@ -300,6 +299,11 @@ class ConfigManager {
   // Returns the time interval between update checks in seconds.
   // 0 indicates updates are disabled.
   int GetLastCheckPeriodSec(bool* is_overridden) const;
+  // |policy_status_value| will be returned in minutes. This is because the
+  // LastCheckPeriodMinutes policy is in minutes, and therefore the
+  // IPolicyStatusValue interface needs to return values in minutes.
+  int GetLastCheckPeriodSec(bool* is_overridden,
+                            IPolicyStatusValue** policy_status_value) const;
 
   // Returns the number of seconds since the last successful update check.
   int GetTimeSinceLastCheckedSec(bool is_machine) const;
@@ -359,12 +363,14 @@ class ConfigManager {
 
   // Returns kPolicyEnabled if installation of the specified app is allowed.
   // Otherwise, returns kPolicyDisabled.
-  DWORD GetEffectivePolicyForAppInstalls(const GUID& app_guid) const;
+  DWORD GetEffectivePolicyForAppInstalls(
+      const GUID& app_guid, IPolicyStatusValue** policy_status_value) const;
 
   // Returns kPolicyEnabled if updates of the specified app is allowed.
   // Otherwise, returns one of kPolicyDisabled, kPolicyManualUpdatesOnly, or
   // kPolicyAutomaticUpdatesOnly.
-  DWORD GetEffectivePolicyForAppUpdates(const GUID& app_guid) const;
+  DWORD GetEffectivePolicyForAppUpdates(
+      const GUID& app_guid, IPolicyStatusValue** policy_status_value) const;
 
   // Returns the target channel for the app, if the machine is joined to a
   // domain and has the corresponding policy set.
@@ -376,7 +382,8 @@ class ConfigManager {
   // channel is used.
   //
   // The possible values for the Chrome app are {dev|beta|stable}.
-  CString GetTargetChannel(const GUID& app_guid) const;
+  CString GetTargetChannel(const GUID& app_guid,
+                           IPolicyStatusValue** policy_status_value) const;
 
   // Returns the target version prefix for the app, if the machine is joined to
   // a domain and has the corresponding policy set.
@@ -385,12 +392,14 @@ class ConfigManager {
   // * "55.": update to any minor version of 55 (e.g. 55.24.34 or 55.60.2).
   // * "55.2.": update to any minor version of 55.2 (e.g. 55.2.34 or 55.2.2).
   // * "55.24.34": update to this specific version only.
-  CString GetTargetVersionPrefix(const GUID& app_guid) const;
+  CString GetTargetVersionPrefix(
+      const GUID& app_guid, IPolicyStatusValue** policy_status_value) const;
 
   // Returns whether the RollbackToTargetVersion policy has been set for the
   // app. If RollbackToTargetVersion is set, the TargetVersionPrefix policy
   // governs the version to rollback clients with higher versions to.
-  bool IsRollbackToTargetVersionAllowed(const GUID& app_guid) const;
+  bool IsRollbackToTargetVersionAllowed(
+      const GUID& app_guid, IPolicyStatusValue** policy_status_value) const;
 
   // For domain-joined machines, checks the current time against the times that
   // updates are suppressed. Updates are suppressed if the current time falls
@@ -399,10 +408,10 @@ class ConfigManager {
   // the start time is 22:00 hours, and with a duration of 8 hours, the updates
   // will be suppressed for 8 hours regardless of whether daylight savings time
   // changes happen in between.
-  HRESULT GetUpdatesSuppressedTimes(DWORD* start_hour,
-                                    DWORD* start_min,
-                                    DWORD* duration_min,
-                                    bool* are_updates_suppressed) const;
+  HRESULT GetUpdatesSuppressedTimes(
+      UpdatesSuppressedTimes* times,
+      bool* are_updates_suppressed,
+      IPolicyStatusValue** policy_status_value) const;
   bool AreUpdatesSuppressedNow() const;
 
   // Returns true if installation of the specified app is allowed.
@@ -423,7 +432,8 @@ class ConfigManager {
   // Returns the value of the "DownloadPreference" group policy or an
   // empty string if the group policy does not exist, the policy is unknown, or
   // an error happened.
-  CString GetDownloadPreferenceGroupPolicy() const;
+  CString GetDownloadPreferenceGroupPolicy(
+      IPolicyStatusValue** policy_status_value) const;
 
 #if defined(HAS_DEVICE_MANAGEMENT)
 

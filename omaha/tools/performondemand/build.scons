@@ -25,9 +25,6 @@ def BuildPerformOnDemand(local_env):
           'UNICODE',
           '_UNICODE'
           ],
-      CPPPATH = [
-          '$OBJ_ROOT',
-          ],
       LIBS = [
           local_env['atls_libs'][local_env.Bit('debug')],
           local_env['crt_libs'][local_env.Bit('debug')],

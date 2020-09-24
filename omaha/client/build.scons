@@ -17,10 +17,6 @@ Import('env')
 
 local_env = env.Clone()
 
-local_env['CPPPATH'] += [
-    '$OBJ_ROOT',  # Needed for generated files.
-    ]
-
 inputs = [
     'bundle_creator.cc',
     'bundle_installer.cc',

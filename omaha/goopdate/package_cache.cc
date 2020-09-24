@@ -145,10 +145,10 @@ void SortPackageInfoByTime(std::vector<PackageInfo>* packages_info) {
 
 PackageCache::PackageCache() {
   cache_time_limit_days_ =
-    ConfigManager::Instance()->GetPackageCacheExpirationTimeDays();
+    ConfigManager::Instance()->GetPackageCacheExpirationTimeDays(NULL);
 
   cache_size_limit_bytes_ = 1024 * 1024 * static_cast<uint64>(
-    ConfigManager::Instance()->GetPackageCacheSizeLimitMBytes());
+    ConfigManager::Instance()->GetPackageCacheSizeLimitMBytes(NULL));
 }
 
 PackageCache::~PackageCache() {

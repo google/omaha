@@ -27,7 +27,6 @@ local_env.FilterOut(LINKFLAGS = ['/NODEFAULTLIB'])
 
 local_env.Append(
     CPPPATH = [
-        '$OBJ_ROOT',                    # Needed for the generated files
         '$MAIN_DIR/goopdate/resources',
         '$THIRD_PARTY/gtest/include',
         ],

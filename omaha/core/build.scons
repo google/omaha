@@ -36,9 +36,6 @@ local_env.ComponentLibrary('core', inputs)
 
 core_env = env.Clone()
 omaha_version_info = core_env['omaha_versions_info'][0]
-core_env['CPPPATH'] += [
-    '$OBJ_ROOT',
-    ]
 
 core_env.Append(
     LIBS = [
@@ -57,6 +54,7 @@ core_env.Append(
         core_env['crt_libs'][core_env.Bit('debug')],
         core_env.GetMultiarchLibName('base'),
         core_env.GetMultiarchLibName('common'),
+        core_env.GetMultiarchLibName('goopdate_lib'),
         core_env.GetMultiarchLibName('logging'),
         core_env.GetMultiarchLibName('security'),
         ],

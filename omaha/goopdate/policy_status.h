@@ -54,6 +54,11 @@ template <typename T>
 class ATL_NO_VTABLE PolicyStatus
     : public CComObjectRootEx<CComMultiThreadModel>,
       public CComCoClass<PolicyStatus<T>>,
+      public IDispatchImpl<IPolicyStatus,
+                           &__uuidof(IPolicyStatus),
+                           &CAtlModule::m_libid,
+                           kMajorTypeLibVersion,
+                           kMinorTypeLibVersion>,
       public IDispatchImpl<IPolicyStatus2,
                            &__uuidof(IPolicyStatus2),
                            &CAtlModule::m_libid,
@@ -97,8 +102,9 @@ class ATL_NO_VTABLE PolicyStatus
     ASSERT1(minutes);
 
     bool is_overridden = false;
-    int period =
-        ConfigManager::Instance()->GetLastCheckPeriodSec(&is_overridden);
+    int period = ConfigManager::Instance()->GetLastCheckPeriodSec(
+        &is_overridden,
+        NULL);
     *minutes = static_cast<DWORD>(period) / kSecPerMin;
     return S_OK;
   }
@@ -113,16 +119,20 @@ class ATL_NO_VTABLE PolicyStatus
     ASSERT1(duration_min);
     ASSERT1(are_updates_suppressed);
 
+    UpdatesSuppressedTimes times;
     bool updates_suppressed = false;
+
     HRESULT hr = ConfigManager::Instance()->GetUpdatesSuppressedTimes(
-                     start_hour,
-                     start_min,
-                     duration_min,
-                     &updates_suppressed);
+        &times,
+        &updates_suppressed,
+        NULL);
     if (FAILED(hr)) {
       return hr;
     }
 
+    *start_hour = times.start_hour;
+    *start_min = times.start_min;
+    *duration_min = times.duration_min;
     *are_updates_suppressed = updates_suppressed ? VARIANT_TRUE : VARIANT_FALSE;
 
     return S_OK;
@@ -131,7 +141,7 @@ class ATL_NO_VTABLE PolicyStatus
   STDMETHODIMP get_downloadPreferenceGroupPolicy(BSTR* pref) {
     ASSERT1(pref);
 
-    *pref = ConfigManager::Instance()->GetDownloadPreferenceGroupPolicy()
+    *pref = ConfigManager::Instance()->GetDownloadPreferenceGroupPolicy(NULL)
                 .AllocSysString();
     return S_OK;
   }
@@ -140,7 +150,7 @@ class ATL_NO_VTABLE PolicyStatus
     ASSERT1(limit);
 
     *limit = static_cast<DWORD>(
-        ConfigManager::Instance()->GetPackageCacheSizeLimitMBytes());
+        ConfigManager::Instance()->GetPackageCacheSizeLimitMBytes(NULL));
     return S_OK;
   }
 
@@ -148,7 +158,7 @@ class ATL_NO_VTABLE PolicyStatus
     ASSERT1(days);
 
     *days = static_cast<DWORD>(
-        ConfigManager::Instance()->GetPackageCacheExpirationTimeDays());
+        ConfigManager::Instance()->GetPackageCacheExpirationTimeDays(NULL));
     return S_OK;
   }
 
@@ -162,7 +172,8 @@ class ATL_NO_VTABLE PolicyStatus
     }
 
     *policy = static_cast<DWORD>(
-        ConfigManager::Instance()->GetEffectivePolicyForAppInstalls(app_guid));
+        ConfigManager::Instance()->GetEffectivePolicyForAppInstalls(app_guid,
+                                                                    NULL));
 
     return S_OK;
   }
@@ -177,7 +188,8 @@ class ATL_NO_VTABLE PolicyStatus
     }
 
     *policy = static_cast<DWORD>(
-        ConfigManager::Instance()->GetEffectivePolicyForAppUpdates(app_guid));
+        ConfigManager::Instance()->GetEffectivePolicyForAppUpdates(app_guid,
+                                                                   NULL));
 
     return S_OK;
   }
@@ -191,7 +203,7 @@ class ATL_NO_VTABLE PolicyStatus
       return hr;
     }
 
-    *prefix = ConfigManager::Instance()->GetTargetVersionPrefix(app_guid)
+    *prefix = ConfigManager::Instance()->GetTargetVersionPrefix(app_guid, NULL)
                   .AllocSysString();
 
     return S_OK;
@@ -209,7 +221,8 @@ class ATL_NO_VTABLE PolicyStatus
     }
 
     *rollback_allowed =
-        ConfigManager::Instance()->IsRollbackToTargetVersionAllowed(app_guid) ?
+        ConfigManager::Instance()->IsRollbackToTargetVersionAllowed(app_guid,
+                                                                    NULL) ?
             VARIANT_TRUE :
             VARIANT_FALSE;
 
@@ -247,8 +260,69 @@ class ATL_NO_VTABLE PolicyStatus
 #endif  // #if defined(HAS_DEVICE_MANAGEMENT)
   }
 
-  STDMETHODIMP get_targetChannel(BSTR app_id, BSTR* channel) {
-    ASSERT1(channel);
+  STDMETHODIMP get_lastCheckPeriodMinutes(IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    bool is_overridden = false;
+
+    // |value| will be returned in minutes.
+    int period =
+        ConfigManager::Instance()->GetLastCheckPeriodSec(&is_overridden,
+                                                         value);
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_updatesSuppressedTimes(
+      IPolicyStatusValue** value,
+      VARIANT_BOOL* are_updates_suppressed) {
+    ASSERT1(value);
+    ASSERT1(are_updates_suppressed);
+
+    UpdatesSuppressedTimes times;
+    bool updates_suppressed = false;
+
+    HRESULT hr = ConfigManager::Instance()->GetUpdatesSuppressedTimes(
+        &times,
+        &updates_suppressed,
+        value);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ASSERT1(*value);
+    *are_updates_suppressed = updates_suppressed ? VARIANT_TRUE : VARIANT_FALSE;
+
+    return S_OK;
+  }
+
+  STDMETHODIMP get_downloadPreferenceGroupPolicy(IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    ConfigManager::Instance()->GetDownloadPreferenceGroupPolicy(value);
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_packageCacheSizeLimitMBytes(IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    ConfigManager::Instance()->GetPackageCacheSizeLimitMBytes(value);
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_packageCacheExpirationTimeDays(IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    ConfigManager::Instance()->GetPackageCacheExpirationTimeDays(value);
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_effectivePolicyForAppInstalls(BSTR app_id,
+                                                 IPolicyStatusValue** value) {
+    ASSERT1(value);
 
     GUID app_guid = GUID_NULL;
     HRESULT hr = StringToGuidSafe(app_id, &app_guid);
@@ -256,16 +330,75 @@ class ATL_NO_VTABLE PolicyStatus
       return hr;
     }
 
-    *channel = ConfigManager::Instance()->GetTargetChannel(app_guid)
-                  .AllocSysString();
+    ConfigManager::Instance()->GetEffectivePolicyForAppInstalls(app_guid,
+                                                                value);
 
+    ASSERT1(*value);
     return S_OK;
   }
 
-  STDMETHODIMP get_policySource(BSTR* source) {
-    ASSERT1(source);
+  STDMETHODIMP get_effectivePolicyForAppUpdates(BSTR app_id,
+                                                IPolicyStatusValue** value) {
+    ASSERT1(value);
 
-    *source = ConfigManager::Instance()->GetPolicySource().AllocSysString();
+    GUID app_guid = GUID_NULL;
+    HRESULT hr = StringToGuidSafe(app_id, &app_guid);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ConfigManager::Instance()->GetEffectivePolicyForAppUpdates(app_guid, value);
+
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_targetVersionPrefix(BSTR app_id,
+                                       IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    GUID app_guid = GUID_NULL;
+    HRESULT hr = StringToGuidSafe(app_id, &app_guid);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ConfigManager::Instance()->GetTargetVersionPrefix(app_guid, value);
+
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_isRollbackToTargetVersionAllowed(
+      BSTR app_id,
+      IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    GUID app_guid = GUID_NULL;
+    HRESULT hr = StringToGuidSafe(app_id, &app_guid);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ConfigManager::Instance()->IsRollbackToTargetVersionAllowed(app_guid,
+                                                                value);
+
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_targetChannel(BSTR app_id, IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    GUID app_guid = GUID_NULL;
+    HRESULT hr = StringToGuidSafe(app_id, &app_guid);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ConfigManager::Instance()->GetTargetChannel(app_guid, value);
+
+    ASSERT1(*value);
     return S_OK;
   }
 
