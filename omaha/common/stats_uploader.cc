@@ -106,6 +106,17 @@ HRESULT UploadMetrics(bool is_machine,
     return GOOPDATE_E_CANNOT_USE_NETWORK;
   }
 
+#if defined(GOOGLE_UPDATE_BUILD)
+  // The usagestats collection, aggregation, and reporting features are
+  // deprecated and may be removed from the code base in the future.
+  // Omaha uses the completion pings for telemetry and quality of service.
+  // There is no need to collect and report a different kind of usagestats.
+  UNREFERENCED_PARAMETER(is_machine);
+  UNREFERENCED_PARAMETER(extra_url_data);
+  UNREFERENCED_PARAMETER(content);
+  OPT_LOG(L3, (_T("[Stats not uploaded because the feature is deprecated.]")));
+  return S_FALSE;
+#else
   const TCHAR* version = GetVersionString();
   CString test_source(ConfigManager::Instance()->GetTestSource());
 
@@ -139,6 +150,7 @@ HRESULT UploadMetrics(bool is_machine,
 
   std::vector<uint8> response_buffer;
   return network_request.PostString(url, content, &response_buffer);
+#endif  // GOOGLE_UPDATE_BUILD
 }
 
 HRESULT ReportMetrics(bool is_machine,
