@@ -600,7 +600,7 @@ interface IPolicyStatus : IDispatch {
 [
   object,
   dual,
-  uuid(27634814-8E41-4C35-8577-980134A96544),
+  uuid(EF69FA43-6F9C-42E2-B6C0-A4FDC525EB07),
   helpstring("IPolicyStatusValue Interface"),
   pointer_default(unique)
 ]
@@ -624,7 +624,7 @@ interface IPolicyStatusValue : IDispatch {
 [
   object,
   dual,
-  uuid(34527502-D3DB-4205-A69B-789B27EE0414),
+  uuid(7C0204A9-287C-478E-94DC-0337E0241CFB),
   helpstring("IPolicyStatus2 Interface"),
   pointer_default(unique)
 ]
@@ -1204,7 +1204,7 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(85D8EE2F-794F-41F0-BB03-49D56A23BEF4),
+    uuid(D7EE9B13-6F14-4182-9505-DEDC3EE3F3FC),
     helpstring("PolicyStatusValueUserClass")
   ]
   coclass PolicyStatusValueUserClass {
@@ -1212,7 +1212,7 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(C6271107-A214-4F11-98C0-3F16BC670D28),
+    uuid(FBFA21E1-BBB8-46B3-95EB-791E29BA42F3),
     helpstring("PolicyStatusValueMachineClass")
   ]
   coclass PolicyStatusValueMachineClass {
@@ -1220,7 +1220,7 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(6DDCE70D-A4AE-4E97-908C-BE7B2DB750AD),
+    uuid(2F08D2B0-EFA6-46A2-84DD-1245F752CBF1),
     helpstring("Policy Status for per-user applications.")
   ]
   coclass PolicyStatusUserClass {
@@ -1236,7 +1236,7 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(1C4CDEFF-756A-4804-9E77-3E8EB9361016),
+    uuid(F1ED0E3A-971D-4DFD-ACF2-BAC8BA03E5D7),
     helpstring("Policy Status for per-machine applications.")
   ]
   coclass PolicyStatusMachineServiceClass {
@@ -1244,7 +1244,7 @@ library GoogleUpdate3Lib {
   }
 
   [
-    uuid(ADDF22CF-3E9B-4CD7-9139-8169EA6636E4),
+    uuid(B0F9B7EB-997F-47B9-AC2F-9718EDD705D9),
     helpstring("Fallback for if PolicyStatusMachineServiceClass fails.")
   ]
   coclass PolicyStatusMachineFallbackClass {
