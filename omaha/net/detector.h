@@ -59,33 +59,19 @@ class UpdateDevProxyDetector : public ProxyDetectorInterface {
   DISALLOW_COPY_AND_ASSIGN(UpdateDevProxyDetector);
 };
 
-// A version that picks up proxy override from a group policy.
-class GroupPolicyProxyDetector : public ProxyDetectorInterface {
+// A version that picks up proxy override from Enterprise Policy.
+class PolicyProxyDetector : public ProxyDetectorInterface {
  public:
-  GroupPolicyProxyDetector() {}
+  PolicyProxyDetector() {}
   HRESULT Detect(ProxyConfig* config) override;
-  const TCHAR* source() override { return _T("GroupPolicy"); }
+  const TCHAR* source() override { return _T("Policy"); }
 
-  virtual bool IsManaged();
-  virtual HRESULT GetProxyMode(CString* proxy_mode);
-  virtual HRESULT GetProxyPacUrl(CString* proxy_pac_url);
-  virtual HRESULT GetProxyServer(CString* proxy_server);
  private:
-  DISALLOW_COPY_AND_ASSIGN(GroupPolicyProxyDetector);
-};
+  HRESULT GetProxyMode(CString* proxy_mode);
+  HRESULT GetProxyPacUrl(CString* proxy_pac_url);
+  HRESULT GetProxyServer(CString* proxy_server);
 
-// A version that picks up proxy override from a Device Management (DM).
-class DMProxyDetector : public GroupPolicyProxyDetector {
- public:
-  DMProxyDetector() {}
-  const TCHAR* source() override { return _T("DeviceManagement"); }
-
-  bool IsManaged() override;
-  HRESULT GetProxyMode(CString* proxy_mode) override;
-  HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
-  HRESULT GetProxyServer(CString* proxy_server) override;
- private:
-  DISALLOW_COPY_AND_ASSIGN(DMProxyDetector);
+  DISALLOW_COPY_AND_ASSIGN(PolicyProxyDetector);
 };
 
 // Detects winhttp proxy information. This is what the winhttp proxy

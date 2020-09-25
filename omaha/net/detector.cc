@@ -115,13 +115,8 @@ UpdateDevProxyDetector::UpdateDevProxyDetector()
     : registry_detector_(MACHINE_REG_UPDATE_DEV) {
 }
 
-HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
+HRESULT PolicyProxyDetector::Detect(ProxyConfig* config) {
   ASSERT1(config);
-
-  if (!IsManaged()) {
-    OPT_LOG(L5, (_T("[%s][Ignoring policy][Machine not Managed]"), source()));
-    return E_FAIL;
-  }
 
   CString proxy_mode;
   HRESULT hr = GetProxyMode(&proxy_mode);
@@ -152,77 +147,16 @@ HRESULT GroupPolicyProxyDetector::Detect(ProxyConfig* config) {
   }
 }
 
-bool GroupPolicyProxyDetector::IsManaged() {
-  return IsEnterpriseManaged() && RegKey::HasKey(kRegKeyGoopdateGroupPolicy);
+HRESULT PolicyProxyDetector::GetProxyMode(CString* proxy_mode) {
+  return ConfigManager::Instance()->GetProxyMode(proxy_mode, NULL);
 }
 
-HRESULT GroupPolicyProxyDetector::GetProxyMode(CString* proxy_mode) {
-  ASSERT1(proxy_mode);
-
-  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                          kRegValueProxyMode,
-                          proxy_mode);
+HRESULT PolicyProxyDetector::GetProxyPacUrl(CString* proxy_pac_url) {
+  return ConfigManager::Instance()->GetProxyPacUrl(proxy_pac_url, NULL);
 }
 
-HRESULT GroupPolicyProxyDetector::GetProxyPacUrl(CString* proxy_pac_url) {
-  ASSERT1(proxy_pac_url);
-
-  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                          kRegValueProxyPacUrl,
-                          proxy_pac_url);
-}
-
-HRESULT GroupPolicyProxyDetector::GetProxyServer(CString* proxy_server) {
-  ASSERT1(proxy_server);
-
-  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                          kRegValueProxyServer,
-                          proxy_server);
-}
-
-bool DMProxyDetector::IsManaged() {
-  const CachedOmahaPolicy& dm_policy = ConfigManager::Instance()->dm_policy();
-  return dm_policy.is_initialized;
-}
-
-HRESULT DMProxyDetector::GetProxyMode(CString* proxy_mode) {
-  ASSERT1(proxy_mode);
-
-  const CachedOmahaPolicy& dm_policy = ConfigManager::Instance()->dm_policy();
-  if (!dm_policy.is_initialized) {
-    return E_FAIL;
-  }
-
-  *proxy_mode = dm_policy.proxy_mode;
-  return S_OK;
-}
-
-HRESULT DMProxyDetector::GetProxyPacUrl(CString* proxy_pac_url) {
-  ASSERT1(proxy_pac_url);
-
-  const CachedOmahaPolicy& dm_policy = ConfigManager::Instance()->dm_policy();
-  if (!dm_policy.is_initialized ||
-      dm_policy.proxy_mode.CompareNoCase(kProxyModePacScript) != 0 ||
-      dm_policy.proxy_pac_url.IsEmpty()) {
-    return E_FAIL;
-  }
-
-  *proxy_pac_url = dm_policy.proxy_pac_url;
-  return S_OK;
-}
-
-HRESULT DMProxyDetector::GetProxyServer(CString* proxy_server) {
-  ASSERT1(proxy_server);
-
-  const CachedOmahaPolicy& dm_policy = ConfigManager::Instance()->dm_policy();
-  if (!dm_policy.is_initialized ||
-      dm_policy.proxy_mode.CompareNoCase(kProxyModeFixedServers) != 0 ||
-      dm_policy.proxy_server.IsEmpty()) {
-    return E_FAIL;
-  }
-
-  *proxy_server = dm_policy.proxy_server;
-  return S_OK;
+HRESULT PolicyProxyDetector::GetProxyServer(CString* proxy_server) {
+  return ConfigManager::Instance()->GetProxyServer(proxy_server, NULL);
 }
 
 HRESULT DefaultProxyDetector::Detect(ProxyConfig* config) {

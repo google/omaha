@@ -297,6 +297,24 @@ HRESULT GroupPolicyManager::GetPackageCacheExpirationTimeDays(
                           cache_life_limit);
 }
 
+HRESULT GroupPolicyManager::GetProxyMode(CString* proxy_mode) {
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          kRegValueProxyMode,
+                          proxy_mode);
+}
+
+HRESULT GroupPolicyManager::GetProxyPacUrl(CString* proxy_pac_url) {
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          kRegValueProxyPacUrl,
+                          proxy_pac_url);
+}
+
+HRESULT GroupPolicyManager::GetProxyServer(CString* proxy_server) {
+  return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
+                          kRegValueProxyServer,
+                          proxy_server);
+}
+
 HRESULT GroupPolicyManager::GetEffectivePolicyForAppInstalls(
     const GUID& app_guid,
     DWORD* install_policy) {
@@ -422,6 +440,37 @@ HRESULT DMPolicyManager::GetPackageCacheExpirationTimeDays(
     DWORD* cache_life_limit) {
   UNREFERENCED_PARAMETER(cache_life_limit);
   return E_NOTIMPL;
+}
+
+HRESULT DMPolicyManager::GetProxyMode(CString* proxy_mode) {
+  if (!dm_policy_.is_initialized) {
+    return E_FAIL;
+  }
+
+  *proxy_mode = dm_policy_.proxy_mode;
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::GetProxyPacUrl(CString* proxy_pac_url) {
+  if (!dm_policy_.is_initialized ||
+      dm_policy_.proxy_mode.CompareNoCase(kProxyModePacScript) != 0 ||
+      dm_policy_.proxy_pac_url.IsEmpty()) {
+    return E_FAIL;
+  }
+
+  *proxy_pac_url = dm_policy_.proxy_pac_url;
+  return S_OK;
+}
+
+HRESULT DMPolicyManager::GetProxyServer(CString* proxy_server) {
+  if (!dm_policy_.is_initialized ||
+      dm_policy_.proxy_mode.CompareNoCase(kProxyModeFixedServers) != 0 ||
+      dm_policy_.proxy_server.IsEmpty()) {
+    return E_FAIL;
+  }
+
+  *proxy_server = dm_policy_.proxy_server;
+  return S_OK;
 }
 
 HRESULT DMPolicyManager::GetEffectivePolicyForAppInstalls(
@@ -706,6 +755,93 @@ int ConfigManager::GetPackageCacheExpirationTimeDays(
   OPT_LOG(L5, (_T("[GetPackageCacheExpirationTimeDays][%s]"), v.ToString()));
 
   return v.value();
+}
+
+HRESULT ConfigManager::GetProxyMode(
+    CString* proxy_mode,
+    IPolicyStatusValue** policy_status_value) const {
+  ASSERT1(proxy_mode);
+
+  PolicyValue<CString> v;
+
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    CString mode;
+    HRESULT hr = policies_[i]->GetProxyMode(&mode);
+    if (SUCCEEDED(hr)) {
+      v.Update(policies_[i]->IsManaged(), policies_[i]->source(), mode);
+    }
+  }
+
+  if (v.source().IsEmpty()) {
+    // No managed source had a value set for this policy. There is no local
+    // default value for this policy. So we return failure.
+    return E_FAIL;
+  }
+
+  v.UpdateFinal(CString(), policy_status_value);
+
+  OPT_LOG(L5, (_T("[GetProxyMode][%s]"), v.ToString()));
+
+  *proxy_mode = v.value();
+  return S_OK;
+}
+
+HRESULT ConfigManager::GetProxyPacUrl(
+    CString* proxy_pac_url,
+    IPolicyStatusValue** policy_status_value) const {
+  ASSERT1(proxy_pac_url);
+
+  PolicyValue<CString> v;
+
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    CString pac_url;
+    HRESULT hr = policies_[i]->GetProxyPacUrl(&pac_url);
+    if (SUCCEEDED(hr)) {
+      v.Update(policies_[i]->IsManaged(), policies_[i]->source(), pac_url);
+    }
+  }
+
+  if (v.source().IsEmpty()) {
+    // No managed source had a value set for this policy. There is no local
+    // default value for this policy. So we return failure.
+    return E_FAIL;
+  }
+
+  v.UpdateFinal(CString(), policy_status_value);
+
+  OPT_LOG(L5, (_T("[GetProxyPacUrl][%s]"), v.ToString()));
+
+  *proxy_pac_url = v.value();
+  return S_OK;
+}
+
+HRESULT ConfigManager::GetProxyServer(
+    CString* proxy_server,
+    IPolicyStatusValue** policy_status_value) const {
+  ASSERT1(proxy_server);
+
+  PolicyValue<CString> v;
+
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    CString server;
+    HRESULT hr = policies_[i]->GetProxyServer(&server);
+    if (SUCCEEDED(hr)) {
+      v.Update(policies_[i]->IsManaged(), policies_[i]->source(), server);
+    }
+  }
+
+  if (v.source().IsEmpty()) {
+    // No managed source had a value set for this policy. There is no local
+    // default value for this policy. So we return failure.
+    return E_FAIL;
+  }
+
+  v.UpdateFinal(CString(), policy_status_value);
+
+  OPT_LOG(L5, (_T("[GetProxyServer][%s]"), v.ToString()));
+
+  *proxy_server = v.value();
+  return S_OK;
 }
 
 CString ConfigManager::GetMachineGoopdateInstallDirNoCreate() const {
@@ -1473,6 +1609,7 @@ bool ConfigManager::AreUpdatesSuppressedNow() const {
                                          NULL);
   return SUCCEEDED(hr) && are_updates_suppressed;
 }
+
 bool ConfigManager::CanInstallApp(const GUID& app_guid, bool is_machine) const {
   // Google Update should never be checking whether it can install itself.
   ASSERT1(!::IsEqualGUID(kGoopdateGuid, app_guid));

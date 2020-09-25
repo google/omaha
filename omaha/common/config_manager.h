@@ -57,6 +57,9 @@ class PolicyManagerInterface {
   virtual HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) = 0;
   virtual HRESULT GetPackageCacheExpirationTimeDays(
       DWORD* cache_life_limit) = 0;
+  virtual HRESULT GetProxyMode(CString* proxy_mode) = 0;
+  virtual HRESULT GetProxyPacUrl(CString* proxy_pac_url) = 0;
+  virtual HRESULT GetProxyServer(CString* proxy_server) = 0;
 
   virtual HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                                    DWORD* install_policy) = 0;
@@ -85,6 +88,9 @@ class GroupPolicyManager : public PolicyManagerInterface {
       CString* download_preference) override;
   HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) override;
   HRESULT GetPackageCacheExpirationTimeDays(DWORD* cache_life_limit) override;
+  HRESULT GetProxyMode(CString* proxy_mode) override;
+  HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
+  HRESULT GetProxyServer(CString* proxy_server) override;
 
   HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                            DWORD* install_policy) override;
@@ -116,6 +122,9 @@ class DMPolicyManager : public PolicyManagerInterface {
       CString* download_preference) override;
   HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) override;
   HRESULT GetPackageCacheExpirationTimeDays(DWORD* cache_life_limit) override;
+  HRESULT GetProxyMode(CString* proxy_mode) override;
+  HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
+  HRESULT GetProxyServer(CString* proxy_server) override;
 
   HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                            DWORD* install_policy) override;
@@ -205,6 +214,14 @@ class ConfigManager {
   // limit, it should be removed.
   int GetPackageCacheExpirationTimeDays(
       IPolicyStatusValue** policy_status_value) const;
+
+  // Gets the proxy policy values.
+  HRESULT GetProxyMode(CString* proxy_mode,
+                       IPolicyStatusValue** policy_status_value) const;
+  HRESULT GetProxyPacUrl(CString* proxy_pac_url,
+                         IPolicyStatusValue** policy_status_value) const;
+  HRESULT GetProxyServer(CString* proxy_server,
+                         IPolicyStatusValue** policy_status_value) const;
 
   // Creates download data dir:
   // %UserProfile%/Application Data/Google/Update/Download

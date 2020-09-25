@@ -32,14 +32,14 @@
 namespace omaha {
 
 // This class is parameterized for Managed and whether the tests use the Device
-// Management (DM) proxy detector. The first parameter is a bool that indicates
+// Management (DM) proxy detection. The first parameter is a bool that indicates
 // "Managed", which when true means that the tests run with Policy turned on.
 // The second parameter indicates whether the tests are using the DM proxy
-// detector class or the GPO proxy detector class.
-class GroupPolicyProxyDetectorTest
+// detection or the GPO proxy detection.
+class PolicyProxyDetectorTest
     : public testing::TestWithParam<std::tuple<bool, bool>>  {
  protected:
-  GroupPolicyProxyDetectorTest()
+  PolicyProxyDetectorTest()
       : hive_override_key_name_(kRegistryHiveOverrideRoot) {
   }
 
@@ -50,16 +50,15 @@ class GroupPolicyProxyDetectorTest
     EXPECT_SUCCEEDED(RegKey::SetValue(
         MACHINE_REG_UPDATE_DEV,
         kRegValueIsEnrolledToDomain,
-        IsManaged() && !IsUsingDMProxyDetector() ? 1UL : 0UL));
+        IsManaged() && !IsUsingDMProxyDetection() ? 1UL : 0UL));
 
-    if (IsManaged() && !IsUsingDMProxyDetector()) {
+    if (IsManaged() && !IsUsingDMProxyDetection()) {
       RegKey::CreateKey(kRegKeyGoopdateGroupPolicy);
     } else {
       RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
     }
 
-    detector_.reset(IsUsingDMProxyDetector() ? new DMProxyDetector :
-                                               new GroupPolicyProxyDetector);
+    detector_.reset(new PolicyProxyDetector);
   }
 
   virtual void TearDown() {
@@ -76,19 +75,8 @@ class GroupPolicyProxyDetectorTest
     return std::get<0>(GetParam());
   }
 
-  bool IsUsingDMProxyDetector() {
+  bool IsUsingDMProxyDetection() {
     return std::get<1>(GetParam());
-  }
-
-  CString GetSourceString() {
-    const TCHAR kGpoSourceString[] = _T("GroupPolicy");
-    const TCHAR kDMSourceString[] = _T("DeviceManagement");
-
-    if (!IsManaged()) {
-      return CString();
-    }
-
-    return IsUsingDMProxyDetector() ? kDMSourceString : kGpoSourceString;
   }
 
   void SetValidGroupPolicyValue(const CString& entry, const CString& val) {
@@ -102,7 +90,7 @@ class GroupPolicyProxyDetectorTest
   void SetPolicy(const CString& proxy_mode,
                  const CString& proxy_pac_url,
                  const CString& proxy_server) {
-    if (IsManaged() && IsUsingDMProxyDetector()) {
+    if (IsManaged() && IsUsingDMProxyDetection()) {
       CachedOmahaPolicy info;
       info.is_initialized = true;
       info.proxy_mode = proxy_mode;
@@ -121,96 +109,92 @@ class GroupPolicyProxyDetectorTest
   }
 
   CString hive_override_key_name_;
-  std::unique_ptr<GroupPolicyProxyDetector> detector_;
+  std::unique_ptr<PolicyProxyDetector> detector_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(GroupPolicyProxyDetectorTest);
+  DISALLOW_COPY_AND_ASSIGN(PolicyProxyDetectorTest);
 };
 
-INSTANTIATE_TEST_CASE_P(IsManagedIsUsingDMProxyDetector,
-                        GroupPolicyProxyDetectorTest,
+INSTANTIATE_TEST_CASE_P(IsManagedIsUsingDMProxyDetection,
+                        PolicyProxyDetectorTest,
                         ::testing::Combine(::testing::Bool(),
                                            ::testing::Bool()));
 
-TEST_P(GroupPolicyProxyDetectorTest, NoPolicy) {
+TEST_P(PolicyProxyDetectorTest, NoPolicy) {
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, InvalidPolicyString) {
+TEST_P(PolicyProxyDetectorTest, InvalidPolicyString) {
   SetPolicy(_T("this_is_never_a_real_policy"), CString(), CString());
 
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, PolicyDirect) {
+TEST_P(PolicyProxyDetectorTest, PolicyDirect) {
   SetPolicy(kProxyModeDirect, CString(), CString());
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
-  EXPECT_STREQ(GetSourceString(), config.source);
   EXPECT_FALSE(config.auto_detect);
   EXPECT_TRUE(config.auto_config_url.IsEmpty());
   EXPECT_TRUE(config.proxy.IsEmpty());
   EXPECT_TRUE(config.proxy_bypass.IsEmpty());
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, PolicyAutoDetect) {
+TEST_P(PolicyProxyDetectorTest, PolicyAutoDetect) {
   SetPolicy(kProxyModeAutoDetect, CString(), CString());
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
-  EXPECT_STREQ(GetSourceString(), config.source);
   EXPECT_EQ(IsManaged(), config.auto_detect);
   EXPECT_TRUE(config.auto_config_url.IsEmpty());
   EXPECT_TRUE(config.proxy.IsEmpty());
   EXPECT_TRUE(config.proxy_bypass.IsEmpty());
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, PolicyPacUrlNoData) {
+TEST_P(PolicyProxyDetectorTest, PolicyPacUrlNoData) {
   SetPolicy(kProxyModePacScript, CString(), CString());
 
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, PolicyPacUrlHasData) {
+TEST_P(PolicyProxyDetectorTest, PolicyPacUrlHasData) {
   const TCHAR* const kUnitTestPacUrl = _T("http://unittest/testurl.pac");
 
   SetPolicy(kProxyModePacScript, kUnitTestPacUrl, CString());
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
-  EXPECT_STREQ(GetSourceString(), config.source);
   EXPECT_FALSE(config.auto_detect);
   EXPECT_STREQ(IsManaged() ? kUnitTestPacUrl : _T(""), config.auto_config_url);
   EXPECT_TRUE(config.proxy.IsEmpty());
   EXPECT_TRUE(config.proxy_bypass.IsEmpty());
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, PolicyFixedNoData) {
+TEST_P(PolicyProxyDetectorTest, PolicyFixedNoData) {
   SetPolicy(kProxyModeFixedServers, CString(), CString());
 
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, PolicyFixedHasData) {
-  const TCHAR* const kUnitTestFixedServer = _T("unitTEST_Pixedserver:8080");
+TEST_P(PolicyProxyDetectorTest, PolicyFixedHasData) {
+  const TCHAR* const kUnitTestFixedServer = _T("unittest_fixedserver:8080");
 
   SetPolicy(kProxyModeFixedServers, CString(), kUnitTestFixedServer);
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
-  EXPECT_STREQ(GetSourceString(), config.source);
   EXPECT_FALSE(config.auto_detect);
   EXPECT_TRUE(config.auto_config_url.IsEmpty());
   EXPECT_STREQ(IsManaged() ? kUnitTestFixedServer : _T(""), config.proxy);
   EXPECT_TRUE(config.proxy_bypass.IsEmpty());
 }
 
-TEST_P(GroupPolicyProxyDetectorTest, PolicySystem) {
+TEST_P(PolicyProxyDetectorTest, PolicySystem) {
   SetPolicy(kProxyModeSystem, CString(), CString());
 
   ProxyConfig config;

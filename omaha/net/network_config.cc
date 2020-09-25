@@ -134,19 +134,7 @@ HRESULT NetworkConfig::Initialize() {
   }
 
   Add(new UpdateDevProxyDetector);
-
-  DWORD cloud_policy_preferred(0);
-  if (SUCCEEDED(RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
-                                 kRegValueCloudPolicyOverridesPlatformPolicy,
-                                 &cloud_policy_preferred)) &&
-      cloud_policy_preferred) {
-    Add(new DMProxyDetector);
-    Add(new GroupPolicyProxyDetector);
-  } else {
-    Add(new GroupPolicyProxyDetector);
-    Add(new DMProxyDetector);
-  }
-
+  Add(new PolicyProxyDetector);
   Add(new IEWPADProxyDetector);
   Add(new IEPACProxyDetector);
   Add(new IENamedProxyDetector);

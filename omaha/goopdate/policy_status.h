@@ -320,6 +320,50 @@ class ATL_NO_VTABLE PolicyStatus
     return S_OK;
   }
 
+  STDMETHODIMP get_proxyMode(IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    CString proxy_mode;
+
+    HRESULT hr = ConfigManager::Instance()->GetProxyMode(&proxy_mode, value);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_proxyPacUrl(IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    CString proxy_pac_url;
+
+    HRESULT hr = ConfigManager::Instance()->GetProxyPacUrl(&proxy_pac_url,
+                                                           value);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_proxyServer(IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    CString proxy_server;
+
+    HRESULT hr = ConfigManager::Instance()->GetProxyServer(&proxy_server,
+                                                           value);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    ASSERT1(*value);
+    return S_OK;
+  }
+
   STDMETHODIMP get_effectivePolicyForAppInstalls(BSTR app_id,
                                                  IPolicyStatusValue** value) {
     ASSERT1(value);

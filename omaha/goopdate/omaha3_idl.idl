@@ -677,6 +677,11 @@ interface IPolicyStatus2 : IDispatch {
   [propget] HRESULT packageCacheExpirationTimeDays(
       [out, retval] IPolicyStatusValue** value);
 
+  // Gets the proxy policy values.
+  [propget] HRESULT proxyMode([out, retval] IPolicyStatusValue** value);
+  [propget] HRESULT proxyPacUrl([out, retval] IPolicyStatusValue** value);
+  [propget] HRESULT proxyServer([out, retval] IPolicyStatusValue** value);
+
   // Application Update Policies
 
   // Returns 1 if installation of the specified app is allowed.
