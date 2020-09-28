@@ -253,6 +253,11 @@ class NetworkConfigPolicyTest :
                        1UL);
     }
 
+    // Delete the ConfigManager instance so it is recreated, since the registry
+    // entries above need to be accounted for within the ConfigManager
+    // constructor.
+    ConfigManager::DeleteInstance();
+
     if (IsDM()) {
       CachedOmahaPolicy info;
       info.is_initialized = true;
@@ -303,15 +308,11 @@ TEST_P(NetworkConfigPolicyTest, ProxyConfig) {
   // Detect the configurations.
   ASSERT_HRESULT_SUCCEEDED(network_config->Detect());
   network_config->GetConfigurations().swap(proxy_configurations);
-  EXPECT_LE(IsDomain() + IsDM(), static_cast<int>(proxy_configurations.size()));
   if (IsDomainPredominant()) {
-    EXPECT_STREQ(_T("GroupPolicy"), proxy_configurations[0].source);
     EXPECT_TRUE(proxy_configurations[0].auto_detect);
   } else if (IsDM()) {
-    EXPECT_STREQ(_T("DeviceManagement"), proxy_configurations[0].source);
     EXPECT_STREQ(_T("https://PS/"), proxy_configurations[0].auto_config_url);
   }
 }
 
 }  // namespace omaha
-
