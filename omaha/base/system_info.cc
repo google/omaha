@@ -150,7 +150,8 @@ bool SystemInfo::Is64BitWindows() {
 HRESULT SystemInfo::GetOSVersion(OSVERSIONINFOEX* os_out) {
   ASSERT1(os_out);
 
-  scoped_library ntdll(::LoadLibrary(_T("ntdll.dll")));
+  scoped_library ntdll(
+      ::LoadLibraryEx(_T("ntdll.dll"), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
   if (!ntdll) {
     return HRESULTFromLastError();
   }

@@ -22,9 +22,11 @@ bool WinHttpVTable::Load() {
     return true;
   }
   Clear();
-  library_ = ::LoadLibrary(_T("winhttp"));
+  library_ =
+      ::LoadLibraryEx(_T("winhttp"), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
   if (!library_) {
-    library_ = ::LoadLibrary(_T("winhttp5"));
+    library_ =
+        ::LoadLibraryEx(_T("winhttp5"), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (!library_) {
       return false;
     }
