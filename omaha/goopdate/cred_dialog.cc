@@ -87,7 +87,7 @@ DWORD CredentialDialogBase::DisplayDialog(
     CString* username_out,
     CString* password_out) {
   scoped_library credui_lib(
-      ::LoadLibraryExW(L"credui.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
+      ::LoadLibraryEx(_T("credui.dll"), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
   ASSERT1(credui_lib);
   if (!credui_lib) {
     CORE_LOG(L3, (_T("[CredUIPromptForCredentialsW not available]")));
