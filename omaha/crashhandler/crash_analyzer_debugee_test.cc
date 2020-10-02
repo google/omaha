@@ -43,7 +43,8 @@ void MaxExecMappings() {
 }
 
 void NtFunctionsOnStack() {
-  HMODULE ntdll = ::LoadLibraryA("ntdll.dll");
+  HMODULE ntdll =
+      ::LoadLibraryExA("ntdll.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
   FARPROC ptr = ::GetProcAddress(ntdll, "ZwProtectVirtualMemory");
   AwaitTheReaper();
 }
@@ -62,7 +63,8 @@ void TestWildStackPointer() {
 
 void TestPENotInModuleList() {
   MEMORY_BASIC_INFORMATION mbi = {0};
-  BYTE* ntdll = reinterpret_cast<BYTE*>(::LoadLibraryA("ntdll.dll"));
+  BYTE* ntdll = reinterpret_cast<BYTE*>(
+      ::LoadLibraryExA("ntdll.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
   ::VirtualQuery(ntdll, &mbi, sizeof(mbi));
   LPVOID buffer = ::VirtualAlloc(NULL,
                                  mbi.RegionSize,

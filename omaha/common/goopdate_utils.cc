@@ -681,7 +681,8 @@ HRESULT RegisterTypeLibForUser(ITypeLib* lib,
   // help_dir can be NULL.
 
   const TCHAR* library_name = _T("oleaut32.dll");
-  scoped_library module(static_cast<HINSTANCE>(::LoadLibrary(library_name)));
+  scoped_library module(static_cast<HINSTANCE>(
+      ::LoadLibraryEx(library_name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32)));
   if (!module) {
     HRESULT hr = HRESULTFromLastError();
     CORE_LOG(LEVEL_ERROR,
@@ -720,7 +721,8 @@ HRESULT UnRegisterTypeLibForUser(REFGUID lib_id,
   CORE_LOG(L3, (_T("[UnRegisterTypeLibForUser]")));
 
   const TCHAR* library_name = _T("oleaut32.dll");
-  scoped_library module(static_cast<HINSTANCE>(::LoadLibrary(library_name)));
+  scoped_library module(static_cast<HINSTANCE>(
+      ::LoadLibraryEx(library_name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32)));
   if (!module) {
     HRESULT hr = HRESULTFromLastError();
     CORE_LOG(LEVEL_ERROR,

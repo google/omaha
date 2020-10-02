@@ -93,7 +93,8 @@ HRESULT GetCommandLineFromHandleWithMemory(HANDLE process_handle,
   }
 
   // Initialize data area for remote process.
-  scoped_library hmodule_kernel32(::LoadLibrary(L"kernel32.dll"));
+  scoped_library hmodule_kernel32(
+      ::LoadLibraryEx(L"kernel32.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
   if (!hmodule_kernel32) {
     return HRESULTFromLastError();
   }
