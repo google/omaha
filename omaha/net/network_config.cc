@@ -601,7 +601,8 @@ GPA_WRAP(jsproxy.dll,
 HRESULT NetworkConfig::GetProxyForUrlLocal(const CString& url,
                                            const CString& path_to_pac_file,
                                            HttpClient::ProxyInfo* proxy_info) {
-  scoped_library jsproxy_lib(::LoadLibrary(_T("jsproxy.dll")));
+  scoped_library jsproxy_lib(::LoadLibraryEx(_T("jsproxy.dll"), nullptr,
+                                             LOAD_LIBRARY_SEARCH_SYSTEM32));
   ASSERT1(jsproxy_lib);
   if (!jsproxy_lib) {
     HRESULT hr = HRESULTFromLastError();

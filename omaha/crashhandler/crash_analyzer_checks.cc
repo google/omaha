@@ -92,8 +92,10 @@ CrashAnalysisResult NtFunctionsOnStack::Run() {
   // Because the crash handler process is running on the same system
   // as the process which crashed we can assume that they are mapped
   // in the same location in both processes.
-  HMODULE ntdll = ::LoadLibraryA("ntdll.dll");
-  HMODULE kernel32 = ::LoadLibraryA("kernel32.dll");
+  HMODULE ntdll =
+      ::LoadLibraryEx(_T("ntdll.dll"), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+  HMODULE kernel32 = ::LoadLibraryEx(_T("kernel32.dll"), nullptr,
+      LOAD_LIBRARY_SEARCH_SYSTEM32);
   std::vector<BYTE*> functions;
   functions.push_back(reinterpret_cast<BYTE*>(
       ::GetProcAddress(kernel32, "HeapCreate")));

@@ -177,8 +177,9 @@ bool GPA(HMODULE module, const char* function_name, T* function_pointer) {
                  result_error)                                              \
 typedef result_type (calling_convention *function##_pointer) proto;         \
 inline result_type function##Wrap proto {                                   \
-  scoped_library dll(::LoadLibrary(_T(#module)));                           \
-  ASSERT1(dll);                                                             \
+  scoped_library dll(::LoadLibraryEx(_T(#module), nullptr,                  \
+                                     LOAD_LIBRARY_SEARCH_SYSTEM32));        \
+  ASSERT(dll, (_T("::GetLastError[%d]"), ::GetLastError()));                \
   if (!dll) {                                                               \
     return result_error;                                                    \
   }                                                                         \
