@@ -41,7 +41,7 @@ var (
 	// sourceExe contains the path to a Chrome installer exe file.
 	sourceExe string
 	// sourceMSI* contains the path to a signed MSI file.
-	sourceMSI1, sourceMSI2, sourceMSI3 string
+	sourceMSI1, sourceMSI2, sourceMSI3, sourceMSI4 string
 )
 
 // existingTagSubstring is a segment of the superfluous-cert tag that's already
@@ -54,6 +54,7 @@ func init() {
 	sourceMSI1 = filepath.Join("testdata/googlechromestandaloneenterprise.msi")
 	sourceMSI2 = filepath.Join("testdata/test7zSigned.msi")
 	sourceMSI3 = filepath.Join("testdata/OmahaTestSigned.msi")
+	sourceMSI4 = filepath.Join("testdata/test7zSigned-smallcert.msi")
 }
 
 func TestPrintAppendedTag(t *testing.T) {
@@ -659,6 +660,7 @@ func TestFindTag(t *testing.T) {
 		{sourceMSI2, 1000},
 		{sourceMSI2, 256},
 		{sourceMSI3, 2048},
+		{sourceMSI4, 2048},
 	}
 	for i, e := range expect2 {
 		contents, err := ioutil.ReadFile(e.infile)

@@ -695,6 +695,7 @@ const (
 	numHeaderTotalBytes   = 512
 	numDifatHeaderEntries = 109
 	numDirEntryBytes      = 128
+	miniStreamSectorSize  = 64
 	miniStreamCutoffSize  = 4096
 	// Constants and names from https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cfb/
 	fatFreesect   = 0xFFFFFFFF // An unallocated sector (used in the FAT or DIFAT).
@@ -723,6 +724,71 @@ func newSectorFormat(sectorShift uint16) (format SectorFormat, err error) {
 // This does not apply to the last entry stored in the MSI header.
 func (format SectorFormat) isLastInSector(index int) bool {
 	return index > numDifatHeaderEntries && (index-numDifatHeaderEntries+1)%format.Ints == 0
+}
+
+// readStream reads the stream starting at the given start sector. The name is optional,
+// it is only used for error reporting.
+func (bin *MSIBinary) readStream(name string, start secT, streamSize offT, forceFAT, freeData bool) (stream []byte, err error) {
+	var sectorSize offT
+	var fatEntries []secT // May be FAT or mini FAT.
+	var contents []byte   // May be file contents or mini stream.
+	if forceFAT || streamSize >= miniStreamCutoffSize {
+		fatEntries = bin.fatEntries
+		contents = bin.contents
+		sectorSize = bin.sector.Size
+	} else {
+		// Load the mini FAT.
+		s, err := bin.readStream("mini FAT", secT(bin.header.FirstMiniFatSector), offT(bin.header.NumMiniFatSectors)*bin.sector.Size, true, false)
+		if err != nil {
+			return nil, err
+		}
+		for offset := 0; offset < len(s); offset += 4 {
+			fatEntries = append(fatEntries, secT(binary.LittleEndian.Uint32(s[offset:])))
+		}
+		// Load the mini stream. (root directory's stream, root must be dir entry zero)
+		root := &MSIDirEntry{}
+		offset := offT(bin.header.FirstDirSector) * bin.sector.Size
+		binary.Read(bytes.NewBuffer(bin.contents[offset:]), binary.LittleEndian, root)
+		contents, err = bin.readStream("mini stream", secT(root.StreamFirstSector), offT(root.StreamSize), true, false)
+		if err != nil {
+			return nil, err
+		}
+		sectorSize = miniStreamSectorSize
+	}
+	sector := start
+	size := streamSize
+	for size > 0 {
+		if sector == fatEndofchain || sector == fatFreesect {
+			return nil, fmt.Errorf("msi readStream: ran out of sectors in copying stream %q", name)
+		}
+		n := size
+		if n > sectorSize {
+			n = sectorSize
+		}
+		offset := sectorSize * offT(sector)
+		stream = append(stream, contents[offset:offset+n]...)
+		size -= n
+
+		// Zero out the existing stream bytes, if requested.
+		// For example, new signedData will be written at the end of
+		// the file (which may be where the existing stream is, but this works regardless).
+		// The stream bytes could be left as unused junk, but unused bytes in an MSI file are
+		// typically zeroed.
+
+		// Set the data in the sector to zero.
+		if freeData {
+			for i := offT(0); i < n; i++ {
+				contents[offset+i] = 0
+			}
+		}
+		// Find the next sector, then free the FAT entry of the current sector.
+		old := sector
+		sector = fatEntries[sector]
+		if freeData {
+			fatEntries[old] = fatFreesect
+		}
+	}
+	return stream, nil
 }
 
 // Parse-time functionality is broken out into populate*() methods for clarity.
@@ -819,50 +885,16 @@ func (bin *MSIBinary) populateSignatureDirEntry() error {
 
 // populateSignedData does what it says and should only be called from NewMSIBinary().
 func (bin *MSIBinary) populateSignedData() (err error) {
-	var signedDataBytes []byte
 	sector := secT(bin.sigDirEntry.StreamFirstSector)
 	size := offT(bin.sigDirEntry.StreamSize)
 	if bin.header.DllVersion == 3 {
 		size = size & 0x7FFFFFFF
 	}
-	if size < miniStreamCutoffSize {
-		// The signedData is small enough (<4k bytes) to be stored in the "mini stream". This is very
-		// unlikely to happen for our use case; the current signedData size is around 7k.
-		// If this does happen, the quick fix is to add more certificates to the Windows signing
-		// command, to make the SignedData section bigger.
-		// Else, write code here to parse the mini FAT and read the SignedData stream from the mini
-		// stream. After adding the 8k dummy certificate, the SignedData will need to be written
-		// back as a regular FAT stream, which is handled correctly by current code (even if the
-		// SignedData didn't come from there).
-		return errors.New("MSI: signature stream is stored in the mini stream, which is not supported")
+	stream, err := bin.readStream("signedData", sector, size, false, true)
+	if err != nil {
+		return err
 	}
-	for size > 0 {
-		if sector == fatEndofchain || sector == fatFreesect {
-			return errors.New("msi: ran out of sectors in copying signature stream")
-		}
-		n := size
-		if n > bin.sector.Size {
-			n = bin.sector.Size
-		}
-		offset := bin.sector.Size * offT(sector)
-		signedDataBytes = append(signedDataBytes, bin.contents[offset:offset+n]...)
-		size -= n
-
-		// Zero out the existing signedData stream bytes. New signedData will be written at the end of
-		// the file (which may be where the existing stream is, but this works regardless).
-		// The stream bytes could be left as unused junk, but unused bytes in an MSI file are
-		// typically zeroed.
-
-		// Set the data in the sector to zero.
-		for i := offT(0); i < n; i++ {
-			bin.contents[offset+i] = 0
-		}
-		// Find the next sector, then free the fat entry of the current sector.
-		old := sector
-		sector = bin.fatEntries[sector]
-		bin.fatEntries[old] = fatFreesect
-	}
-	bin.signedDataBytes = signedDataBytes
+	bin.signedDataBytes = stream
 	bin.signedData, err = parseSignedData(bin.signedDataBytes)
 	if err != nil {
 		return err
