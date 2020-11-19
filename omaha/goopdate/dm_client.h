@@ -55,7 +55,11 @@ RegistrationState GetRegistrationState(DmStorage* dm_storage);
 // Returns S_OK if registration takes place and succeeds, S_FALSE if
 // registration was not needed (either it has already been done, or no
 // enrollment token is found), or a failure HRESULT in case of error.
-HRESULT RegisterIfNeeded(DmStorage* dm_storage);
+// If |is_foreground| is false, RegisterIfNeeded applies a wait before running
+// the registration, since the DM server is rate-limited. The wait is a random
+// value in the range [0, 60000] milisecond.
+// (up to one minute).
+HRESULT RegisterIfNeeded(DmStorage* dm_storage, bool is_foreground);
 
 // Retrieve and persist locally the policies from the Device Management Server.
 HRESULT RefreshPolicies();

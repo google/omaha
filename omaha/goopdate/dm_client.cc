@@ -54,9 +54,9 @@ RegistrationState GetRegistrationState(DmStorage* dm_storage) {
 // Log categories are used within this function as follows:
 // OPT: diagnostic messages to be included in the log file in release builds.
 // REPORT: error messages to be included in the Windows Event Log.
-HRESULT RegisterIfNeeded(DmStorage* dm_storage) {
+HRESULT RegisterIfNeeded(DmStorage* dm_storage, bool is_foreground) {
   ASSERT1(dm_storage);
-  OPT_LOG(L1, (_T("[DmClient::RegisterIfNeeded]")));
+  OPT_LOG(L1, (_T("[DmClient::RegisterIfNeeded][%d]"), is_foreground));
 
   // No work to be done if the process is not running as an administrator, since
   // we will not be able to persist anything.
@@ -89,6 +89,16 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage) {
   if (device_id.IsEmpty()) {
     REPORT_LOG(LE, (_T("[Device ID not found]")));
     return E_FAIL;
+  }
+
+  if (!is_foreground) {
+    // Waits a while before registration. We are reusing the AutoUpdateJitterMs
+    // for simplicity.
+    const int dm_jitter_ms(ConfigManager::Instance()->GetAutoUpdateJitterMs());
+    if (dm_jitter_ms > 0) {
+      OPT_LOG(L1, (_T("[Applying DM Registration jitter][%d]"), dm_jitter_ms));
+      ::Sleep(dm_jitter_ms);
+    }
   }
 
   // RegisterWithRequest owns the SimpleRequest being created here.

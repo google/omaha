@@ -852,7 +852,7 @@ TEST_F(DmClientRegistryTest, RegisterIfNeeded) {
     EXPECT_HRESULT_SUCCEEDED(
         DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
-    EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance()), E_FAIL);
+    EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance(), true), E_FAIL);
   }
 
   // Valid DM token exists.
@@ -861,7 +861,7 @@ TEST_F(DmClientRegistryTest, RegisterIfNeeded) {
     EXPECT_HRESULT_SUCCEEDED(
         DmStorage::CreateInstance(_T("57FEBE8F-48D0-487B-A788-CF1019DCD452")));
     ON_SCOPE_EXIT(DmStorage::DeleteInstance);
-    EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance()), S_FALSE);
+    EXPECT_EQ(RegisterIfNeeded(DmStorage::Instance(), true), S_FALSE);
   }
   ASSERT_NO_FATAL_FAILURE(WriteCompanyDmToken(""));
 }
