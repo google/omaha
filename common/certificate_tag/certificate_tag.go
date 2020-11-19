@@ -469,6 +469,7 @@ type Binary interface {
 	SetAppendedTag(tagContents []byte) (contents []byte, err error)
 	getSuperfluousCert() (cert *x509.Certificate, index int, err error)
 	SetSuperfluousCertTag(tag []byte) (contents []byte, err error)
+	certificateOffset() int64
 }
 
 // PE32Binary represents a PE binary.
@@ -481,7 +482,8 @@ type PE32Binary struct {
 	signedData     *signedData // the parsed SignedData structure.
 }
 
-// NewBinary returns a Binary that contains details of the PE32 or MSI binary given in contents.
+// NewBinary returns a Binary that contains details of the PE32 or MSI binary given in |contents|.
+// |contents| is modified if it is an MSI file.
 func NewBinary(contents []byte) (Binary, error) {
 	pe, peErr := NewPE32Binary(contents)
 	if peErr == nil {
@@ -520,6 +522,10 @@ func NewPE32Binary(contents []byte) (*PE32Binary, error) {
 		appendedTag:    appendedTag,
 		signedData:     signedData,
 	}, nil
+}
+
+func (bin *PE32Binary) certificateOffset() int64 {
+	return int64(bin.attrCertOffset)
 }
 
 func (bin *PE32Binary) asn1Data() []byte {
@@ -581,6 +587,12 @@ func (bin *PE32Binary) SetAppendedTag(tagContents []byte) (contents []byte, err 
 // oidChromeTag is an OID that we use for the extension in the superfluous
 // certificate. It's in the Google arc, but not officially assigned.
 var oidChromeTag = asn1.ObjectIdentifier([]int{1, 3, 6, 1, 4, 1, 11129, 2, 1, 9999})
+
+// oidChromeTagSearchBytes is used to find the final location of the tag buffer.
+// This is followed by the 2-byte length of the buffer, and then the buffer itself.
+// x060b - OID and length; 11 bytes of OID; x0482 - Octet string, 2-byte length prefix.
+// (In practice our tags are 8206 bytes, so the size fits in two bytes.)
+var oidChromeTagSearchBytes = []byte{0x06, 0x0b, 0x2b, 0x06, 0x01, 0x04, 0x01, 0xd6, 0x79, 0x02, 0x01, 0xce, 0x0f, 0x04, 0x82}
 
 func (bin *PE32Binary) getSuperfluousCert() (cert *x509.Certificate, index int, err error) {
 	return getSuperfluousCert(bin.signedData)
@@ -863,7 +875,8 @@ var (
 	msiHeaderClsid     = make([]byte, 16)
 )
 
-// NewMSIBinary returns a Binary that contains details of the MSI binary given in contents.
+// NewMSIBinary returns a Binary that contains details of the MSI binary given in |contents|.
+// |contents| is modified; the region occupied by the cert section is zeroed out.
 func NewMSIBinary(fileContents []byte) (*MSIBinary, error) {
 	// Parses the MSI header, the directory entry for the SignedData, and the SignedData itself.
 	// Makes copies of the list of FAT and DIFAT entries, for easier manipulation.
@@ -1138,6 +1151,37 @@ func (bin *MSIBinary) SetSuperfluousCertTag(tag []byte) (contents []byte, err er
 	return bin.buildBinary(asn1Bytes, nil)
 }
 
+func (bin *MSIBinary) certificateOffset() int64 {
+	// The signedData will be written at the first free sector at the end of file.
+	return int64(offT(bin.firstFreeFatEntry()) * bin.sector.Size)
+}
+
+// findTag returns the offset of the superfluous-cert tag in |contents|, or (-1, 0) if not found.
+// The caller should restrict the search to the certificate section of the contents, if known.
+func findTag(contents []byte, start int64) (offset, length int64, err error) {
+	// An MSI can have a tagged Omaha inside of it, but that is the wrong tag -- it should be the
+	// one on the outermost container, or none.
+	contents = contents[start:]
+	lenContents := int64(len(contents))
+
+	// Find the oidChromeTag in the contents. The search string includes everything up to the
+	// asn1 length specification right before the Omaha2.0 marker.
+	offset = int64(bytes.LastIndex(contents, oidChromeTagSearchBytes))
+	if offset < 0 { // Not an error, simply not found.
+		return -1, 0, nil
+	}
+	offset += int64(len(oidChromeTagSearchBytes))
+	if offset > lenContents-2 {
+		return -1, 0, fmt.Errorf("failed in findTag, want offset plus tag size bytes to fit in file size %d, but offset %d is too large", lenContents, offset)
+	}
+	length = int64(binary.BigEndian.Uint16(contents[offset:]))
+	offset += 2
+	if offset+length > lenContents {
+		return -1, 0, fmt.Errorf("failed in findTag, want tag buffer to fit in file size %d, but offset (%d) plus length (%d) is %d", lenContents, offset, length, offset+length)
+	}
+	return start + offset, length, nil
+}
+
 var (
 	dumpAppendedTag       *bool   = flag.Bool("dump-appended-tag", false, "If set, any appended tag is dumped to stdout.")
 	removeAppendedTag     *bool   = flag.Bool("remove-appended-tag", false, "If set, any appended tag is removed and the binary rewritten.")
@@ -1146,6 +1190,7 @@ var (
 	paddedLength          *int    = flag.Int("padded-length", 0, "A superfluous cert tag will be padded with zeros to at least this number of bytes")
 	savePKCS7             *string = flag.String("save-pkcs7", "", "If set to a filename, the PKCS7 data from the original binary will be written to that file.")
 	outFilename           *string = flag.String("out", "", "If set, the updated binary is written to this file. Otherwise the binary is updated in place.")
+	printTagDetails       *bool   = flag.Bool("print-tag-details", false, "IF set, print to stdout the location and size of the superfluous cert's Gact2.0 marker plus buffer.")
 )
 
 func main() {
@@ -1171,6 +1216,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	var finalContents []byte
 	didSomething := false
 
 	if len(*savePKCS7) > 0 {
@@ -1201,6 +1247,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error while writing updated file: %s\n", err)
 			os.Exit(1)
 		}
+		finalContents = contents
 		didSomething = true
 	}
 
@@ -1219,6 +1266,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error while writing updated file: %s\n", err)
 			os.Exit(1)
 		}
+		finalContents = contents
 		didSomething = true
 	}
 
@@ -1238,6 +1286,15 @@ func main() {
 		for len(tagContents) < *paddedLength {
 			tagContents = append(tagContents, 0)
 		}
+		// print-tag-details only works if the length requires 2 bytes to specify. (The length bytes
+		// length is part of the search string.)
+		// Lorry only tags properly (aside from tag-in-zip) if the length is 8206 or more. b/173139534
+		// Omaha may or may not have a practical buffer size limit; 8206 is known to work.
+		if len(tagContents) < 0x100 || len(tagContents) > 0xffff {
+			fmt.Fprintf(os.Stderr, "Want final tag length in range [256, 65535], got %d\n", len(tagContents))
+			os.Exit(1)
+		}
+
 		contents, err := bin.SetSuperfluousCertTag(tagContents)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while setting superfluous certificate tag: %s\n", err)
@@ -1247,6 +1304,24 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error while writing updated file: %s\n", err)
 			os.Exit(1)
 		}
+		finalContents = contents
+		didSomething = true
+	}
+
+	if *printTagDetails {
+		if finalContents == nil {
+			// Re-read the input, as NewBinary() may modify it.
+			finalContents, err = ioutil.ReadFile(inFilename)
+			if err != nil {
+				panic(err)
+			}
+		}
+		offset, length, err := findTag(finalContents, bin.certificateOffset())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error while searching for tag in file bytes: %s\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Omaha Tag offset, length: (%d, %d)\n", offset, length)
 		didSomething = true
 	}
 

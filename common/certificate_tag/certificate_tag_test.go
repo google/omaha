@@ -84,7 +84,7 @@ func tempFileName(t *testing.T) string {
 func SetSuperfluousCertTagHelper(t *testing.T, source string) {
 	out := tempFileName(t)
 
-	const expected = "34cf251b916a54dc9351b832bb0ac7ce"
+	expected := "34cf251b916a54dc9351b832bb0ac7ce" + strings.Repeat(" ", 256)
 	cmd := exec.Command(tagBinary, "--out", out, "--set-superfluous-cert-tag", expected, source)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("Test input %s, error executing %q: %v; output:\n%s", source, tagBinary, err, output)
@@ -101,7 +101,7 @@ func SetSuperfluousCertTagHelper(t *testing.T, source string) {
 		t.Errorf("Test input %s, output still contains old tag that should have been replaced", source)
 	}
 
-	cmd = exec.Command(tagBinary, "--out", out, "--set-superfluous-cert-tag", expected, "--padded-length", "256", source)
+	cmd = exec.Command(tagBinary, "--out", out, "--set-superfluous-cert-tag", expected, "--padded-length", "512", source)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("Test input %s, error executing %q: %v; output:\n%s", source, tagBinary, err, output)
 	}
@@ -560,7 +560,7 @@ func (bin MSIBinary) Validate(other *MSIBinary) (bool, error) {
 }
 
 func TestMsiSuperfluousCert(t *testing.T) {
-	const tag = "258c 6320 e4c4 0258 169b 481a def0 8856"
+	const tag = "258c 6320 e4c4 0258 169b 481a def0 8856" // Random data
 	expect := []struct {
 		infile string
 	}{
@@ -604,6 +604,114 @@ func TestMsiSuperfluousCert(t *testing.T) {
 			t.Errorf("Tagged binary doesn't validate, created from test input %s: %v", e.infile, err)
 		} else if !hasDummy {
 			t.Errorf("Tagged binary doesn't have the dummy cert (it should), created from test input %s", e.infile)
+		}
+	}
+}
+
+func TestFindTag(t *testing.T) {
+	oid := []byte{
+		0x06, 0x0b, 0x2b, 0x06, 0x01, 0x04, 0x01, 0xd6, 0x79, 0x02, 0x01, 0xce, 0x0f, 0x04, 0x82}
+	oidStr := string(oid)
+	oidSize := int64(len(oid) + 2) // includes size bytes
+	marker := []byte{0x47, 0x61, 0x63, 0x74, 0x32, 0x2e, 0x30, 0x4f, 0x6d, 0x61, 0x68, 0x61}
+
+	// Create test strings.
+	expect := []struct {
+		name   string
+		in     string
+		start  int64
+		offset int64
+		length int64
+		hasErr bool
+	}{
+		{"no padding", oidStr + "\x00\x10" + strings.Repeat("0", 16), 0, oidSize, 16, false},
+		{"start padding", "1111" + oidStr + "\x00\x10" + strings.Repeat("1", 16), 0, 4 + oidSize, 16, false},
+		{"start and end padding", "2222" + oidStr + "\x00\x10" + strings.Repeat("2", 20), 0, 4 + oidSize, 16, false},
+		{"no tag", "3333" + "\x00\x10" + strings.Repeat("3", 20), 0, -1, 0, false},
+		{"tag prior to search start", "4444" + oidStr + "\x00\x10" + strings.Repeat("4", 20), 10, -1, 0, false},
+		{"error no length bytes", "5555" + oidStr, 0, -1, 0, true},
+		{"error length too long", "6666" + oidStr + "\x00\x10" + strings.Repeat("6", 15), 0, -1, 0, true},
+	}
+
+	for _, e := range expect {
+		offset, length, err := findTag([]byte(e.in), e.start)
+		if offset != e.offset {
+			t.Errorf("test %s, got offset %d, want %d", e.name, offset, e.offset)
+		}
+		if length != e.length {
+			t.Errorf("test %s, got length %d, want %d", e.name, length, e.length)
+		}
+		if (err != nil) != e.hasErr {
+			t.Errorf("test %s, got error %v, want %v", e.name, err, e.hasErr)
+		}
+	}
+
+	// Test end-to-end with testdata files.
+	expect2 := []struct {
+		infile string
+		size   int64
+	}{
+		{sourceExe, 2048},
+		{sourceExe, 1000},
+		{sourceExe, 256},
+		{sourceMSI1, 2048},
+		{sourceMSI2, 2048},
+		{sourceMSI2, 1000},
+		{sourceMSI2, 256},
+		{sourceMSI3, 2048},
+	}
+	for i, e := range expect2 {
+		contents, err := ioutil.ReadFile(e.infile)
+		if err != nil {
+			t.Fatalf("Case %d, error reading test input %s: %v", i, e.infile, err)
+		}
+		bin, err := NewBinary(contents)
+		if err != nil {
+			t.Fatalf("Case %d, error creating MSIBinary from test input %s: %v", i, e.infile, err)
+		}
+		// NewBinary may modify |contents|.
+		contents, err = ioutil.ReadFile(e.infile)
+		if err != nil {
+			t.Fatalf("Case %d, error reading test input %s: %v", i, e.infile, err)
+		}
+
+		// No tag before tagging.
+		offset, _, err := findTag(contents, bin.certificateOffset())
+		if err != nil {
+			t.Errorf("Case %d, error in findTag for untagged source %s: %v", i, e.infile, err)
+		}
+		if offset != -1 {
+			t.Errorf("Case %d, found tag in untagged input %s, want offset -1 got %d", i, e.infile, offset)
+		}
+
+		// Apply a tag; find tag in contents; verify it's at marker with right size.
+		tag := make([]byte, e.size)
+		copy(tag[:], marker)
+		contents, err = bin.SetSuperfluousCertTag(tag)
+		if err != nil {
+			t.Fatalf("Case %d, error tagging source %s: %v", i, e.infile, err)
+		}
+		offset, length, err := findTag(contents, bin.certificateOffset())
+		if err != nil {
+			t.Errorf("Case %d, error in findTag for source %s: %v", i, e.infile, err)
+		}
+		if length != e.size {
+			t.Errorf("Case %d, error in findTag for source %s: wanted returned length %d, got %d", i, e.infile, e.size, length)
+		}
+		if offset < 0 {
+			t.Errorf("Case %d, error in findTag for source %s: wanted returned offset >=0, got %d", i, e.infile, offset)
+		} else {
+			// Expect to find size bytes just prior to offset.
+			size := int64(binary.BigEndian.Uint16(contents[offset-2:]))
+			if size != e.size {
+				// Either the size is wrong, or (more likely) we found the wrong offset.
+				t.Errorf("Case %d, error in findTag for source %s, offset %d: wanted embedded size %d, got %d", i, e.infile, offset, e.size, size)
+			}
+			// Expect to find the marker at |offset|
+			idx := bytes.Index(contents[offset:], marker)
+			if idx != 0 {
+				t.Errorf("Case %d, error in findTag for source %s: after offset %d, wanted to find marker at idx 0, got %d", i, e.infile, offset, idx)
+			}
 		}
 	}
 }
