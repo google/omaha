@@ -13,73 +13,35 @@
 // limitations under the License.
 // ========================================================================
 
+#include "omaha/enterprise/installer/custom_actions/msi_tag_extractor.h"
+
 #include <atlpath.h>
 #include <time.h>
+
 #include <fstream>
 #include <vector>
+
 #include "omaha/base/app_util.h"
 #include "omaha/base/file.h"
 #include "omaha/base/utils.h"
 #include "omaha/testing/unit_test.h"
 
-#include "omaha/enterprise/installer/custom_actions/msi_tag_extractor.h"
-
 namespace omaha {
-
-namespace {
-
-const TCHAR kSourceMsi[] = _T("GoogleUpdateHelper.msi");
-const TCHAR kTaggedMsi[] = _T("tagged_GoogleUpdateHelper.msi");
-
-}  // namesapce
 
 class MsiTagExtractorTest : public testing::Test {
  protected:
   virtual void SetUp() {
     unittest_file_path_ = app_util::GetModuleDirectory(NULL);
     EXPECT_TRUE(::PathAppend(CStrBuf(unittest_file_path_, MAX_PATH),
-                             _T("..\\staging\\unittest_support")));
+                             _T("..\\staging\\unittest_support\\tagged_msi")));
     EXPECT_TRUE(File::Exists(unittest_file_path_));
   }
 
-  virtual void TearDown() {
-    File::Remove(GetTaggedMsiPath());
-  }
-
-  CString GetSourceMsiPath() const {
-    CString source_msi_path(unittest_file_path_);
-    EXPECT_TRUE(::PathAppend(CStrBuf(source_msi_path, MAX_PATH), kSourceMsi));
-    EXPECT_TRUE(File::Exists(source_msi_path));
-    return source_msi_path;
-  }
-
-  CString GetTaggedMsiPath() const {
+  CString GetMsiFilePath(const CString& file_name) const {
     CString tagged_msi_path(unittest_file_path_);
-    EXPECT_TRUE(::PathAppend(CStrBuf(tagged_msi_path, MAX_PATH), kTaggedMsi));
+    EXPECT_TRUE(::PathAppend(CStrBuf(tagged_msi_path, MAX_PATH), file_name));
+    EXPECT_TRUE(File::Exists(tagged_msi_path));
     return tagged_msi_path;
-  }
-
-  HRESULT CreateMsiFileWithTag(const uint8* tag_buffer,
-                               size_t size) const {
-    const CString& source_msi(GetSourceMsiPath());
-    const CString& output_msi(GetTaggedMsiPath());
-    std::ifstream in;
-    std::ofstream out;
-
-    in.open(source_msi, std::ifstream::in | std::ifstream::binary);
-    out.open(output_msi, std::ofstream::out | std::ofstream::binary);
-    if (!in.is_open() || !out.is_open()) {
-      return E_FAIL;
-    }
-
-    // Copy MSI package first.
-    out << in.rdbuf();
-
-    if (tag_buffer) {
-      out.write(reinterpret_cast<const char*>(tag_buffer),
-                static_cast<std::streamsize>(size));
-    }
-    return S_OK;
   }
 
  private:
@@ -87,15 +49,8 @@ class MsiTagExtractorTest : public testing::Test {
 };
 
 TEST_F(MsiTagExtractorTest, ValidTag) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 10,  // Tag string length.
-    'b', 'r', 'a', 'n', 'd', '=', 'Q', 'A', 'Q', 'A',  // BRAND=QAQA.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-brand-only.msi's tag:BRAND=QAQA
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-brand-only.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
@@ -110,15 +65,8 @@ TEST_F(MsiTagExtractorTest, ValidTag) {
 }
 
 TEST_F(MsiTagExtractorTest, ValidTag_AmpersandAtEnd) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 11,  // Tag string length.
-    'b', 'r', 'a', 'n', 'd', '=', 'Q', 'A', 'Q', 'A', '&', 0,  // brand=QAQA.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-ampersand-ending.msi's tag: BRAND=QAQA&
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-ampersand-ending.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
@@ -128,54 +76,13 @@ TEST_F(MsiTagExtractorTest, ValidTag_AmpersandAtEnd) {
 }
 
 TEST_F(MsiTagExtractorTest, MultiValidTags) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 206,  // Tag string length.
-
-    // appguid={8A69D345-D564-463C-AFF1-A69D9E530F96}&
-    'a', 'p', 'p', 'g', 'u', 'i', 'd', '=',
-    '{', '8', 'A', '6', '9', 'D', '3', '4', '5', '-',
-    'D', '5', '6', '4', '-', '4', '6', '3', 'C', '-',
-    'A', 'F', 'F', '1', '-',
-    'A', '6', '9', 'D', '9', 'E', '5', '3', '0', 'F', '9', '6', '}', '&',
-
-    // iid={2D8C18E9-8D3A-4EFC-6D61-AE23E3530EA2}&
-    'i', 'i', 'd', '=',
-    '{', '2', 'D', '8', 'C', '1', '8', 'E', '9', '-',
-    '8', 'D', '3', 'A', '-', '4', 'E', 'F', 'C', '-',
-    '6', 'D', '6', '1', '-',
-    'A', 'E', '2', '3', 'E', '3', '5', '3', '0', 'E', 'A', '2', '}', '&',
-
-    // lang=en&
-    'l', 'a', 'n', 'g', '=', 'e', 'n', '&',
-
-    // browser=4&
-    'b', 'r', 'o', 'w', 's', 'e', 'r', '=', '4', '&',
-
-    // usagestats=0&
-    'u', 's', 'a', 'g', 'e', 's', 't', 'a', 't', 's', '=', '0', '&',
-
-    // appname=Google%20Chrome&
-    'a', 'p', 'p', 'n', 'a', 'm', 'e', '=', 'G', 'o', 'o', 'g', 'l', 'e',
-    '%', '2', '0', 'C', 'h', 'r', 'o', 'm', 'e', '&',
-
-    // needsadmin=prefers&
-    'n', 'e', 'e', 'd', 's', 'a', 'd', 'm', 'i', 'n', '=',
-    'p', 'r', 'e', 'f', 'e', 'r', 's', '&',
-
-    // brand=CHMB&
-    'b', 'r', 'a', 'n', 'd', '=', 'C', 'H', 'M', 'B', '&',
-
-    // installdataindex=defaultbrowser
-    'i', 'n', 's', 't', 'a', 'l', 'l', 'd', 'a', 't', 'a', 'i', 'n', 'd', 'e',
-    'x', '=', 'd', 'e', 'f', 'a', 'u', 'l', 't', 'b', 'r', 'o', 'w', 's', 'e',
-    'r',
-
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // File GUH-multiple.msi has tag:
+  //   appguid={8A69D345-D564-463C-AFF1-A69D9E530F96}&
+  //   iid={2D8C18E9-8D3A-4EFC-6D61-AE23E3530EA2}&
+  //   lang=en&browser=4&usagestats=0&appname=Google%20Chrome&
+  //   needsadmin=prefers&brand=CHMB&
+  //   installdataindex=defaultbrowser
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-multiple.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
@@ -209,188 +116,92 @@ TEST_F(MsiTagExtractorTest, MultiValidTags) {
 }
 
 TEST_F(MsiTagExtractorTest, EmptyKey) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 18,  // Tag string length.
-    '=', 'V', 'a', 'l', 'u', 'e', '&',  // =Value
-    'B', 'R', 'A', 'N', 'D', '=', 'Q', 'A', 'Q', 'A',  0,  // BRAND=QAQA.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-empty-key.msi's tag: =value&BRAND=QAQA
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-empty-key.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
   std::string brand_code;
-  EXPECT_TRUE(tag_extractor.GetValue("BRAND", &brand_code));
+  EXPECT_TRUE(tag_extractor.GetValue("brand", &brand_code));
   EXPECT_EQ(brand_code.compare("QAQA"), 0);
 }
 
 TEST_F(MsiTagExtractorTest, EmptyValue) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 7,  // Tag string length.
-    'B', 'R', 'A', 'N', 'D', '=', 0,  // BRAND=.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-empty-value.msi's tag: BRAND=
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-empty-value.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
   std::string brand_code;
-  EXPECT_TRUE(tag_extractor.GetValue("BRAND", &brand_code));
+  EXPECT_TRUE(tag_extractor.GetValue("brand", &brand_code));
   EXPECT_TRUE(brand_code.empty());
 }
 
 TEST_F(MsiTagExtractorTest, NoTagString) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 0,  // Tag string length.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-empty-tag.msi's tag:(empty string)
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-empty-tag.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
   std::string brand_code;
-  EXPECT_FALSE(tag_extractor.GetValue("BRAND", &brand_code));
+  EXPECT_FALSE(tag_extractor.GetValue("brand", &brand_code));
 }
 
 TEST_F(MsiTagExtractorTest, NoTag) {
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(NULL, 0));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // The original MSI is in parent folder.
+  std::wstring tagged_msi(GetMsiFilePath(_T("..\\GoogleUpdateHelper.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_FALSE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 }
 
 TEST_F(MsiTagExtractorTest, InvalidMagicNumber) {
-  const uint8 tag[] = {
-    '_', 'a', 'c', 't',  // Invalid magic number.
-    0, 10,  // Tag string length.
-    'B', 'R', 'A', 'N', 'D', '=', 'Q', 'A', 'Q', 'A',  // BRAND=QAQA.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-invalid-marker.msi's has invalid magic number "Gact2.0Foo".
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-invalid-marker.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_FALSE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
-
   std::string brand_code;
-  EXPECT_FALSE(tag_extractor.GetValue("BRAND", &brand_code));
+  EXPECT_FALSE(tag_extractor.GetValue("brand", &brand_code));
 }
 
-
-TEST_F(MsiTagExtractorTest, InvalidTagLength) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 88,  // Invalid tag length.
-    'B', 'R', 'A', 'N', 'D', '=', 'Q', 'A', 'Q', 'A',  0,  // BRAND=QAQA.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
-  custom_action::MsiTagExtractor tag_extractor;
-  EXPECT_FALSE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
-
-  std::string brand_code;
-  EXPECT_FALSE(tag_extractor.GetValue("BRAND", &brand_code));
-}
 
 TEST_F(MsiTagExtractorTest, InvalidTagCharacterInKey) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 10,  // Tag string length.
-    'B', 'R', '*', 'N', 'D', '=', 'Q', 'A', 'Q', 'A',  // BR*ND=QAQA.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-invalid-key.msi's has invalid charaters in the tag key.
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-invalid-key.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
   std::string brand_code;
-  EXPECT_FALSE(tag_extractor.GetValue("BR*ND", &brand_code));
+  EXPECT_FALSE(tag_extractor.GetValue("br*nd", &brand_code));
 }
 
 TEST_F(MsiTagExtractorTest, InvalidTagCharacterInValue) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 10,  // Tag string length.
-    'B', 'R', 'A', 'N', 'D', '=', 'Q', 'A', '*', 'A',  // BRAND=QA*A.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-invalid-value.msi's has invalid charaters in the tag value.
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-invalid-value.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
   std::string brand_code;
-  EXPECT_FALSE(tag_extractor.GetValue("BRAND", &brand_code));
+  EXPECT_FALSE(tag_extractor.GetValue("brand", &brand_code));
 }
 
 TEST_F(MsiTagExtractorTest, InvalidTagFormat) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 5,  // Tag string length.
-    'B', 'R', 'A', 'N', 'D',  // No '='.
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-bad-format.msi's has invalid tag format.
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-bad-format.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
   std::string brand_code;
-  EXPECT_FALSE(tag_extractor.GetValue("BRAND", &brand_code));
+  EXPECT_FALSE(tag_extractor.GetValue("brand", &brand_code));
 }
 
 TEST_F(MsiTagExtractorTest, InvalidTagFormat2) {
-  const uint8 tag[] = {
-    'G', 'a', 'c', 't',  // magic number.
-    0, 24,  // Tag string length.
-    '=', '=', '=', '=', '=', '=', '=', '&',
-    '=', '=', '=', '=', '=', '=', '=', '&',
-    '&', '&', '=', '&', '&', '&', '&', '0',
-    0, 0, 0, 0,  // 4 bytes of 0s.
-  };
-  EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-
-  std::wstring tagged_msi(GetTaggedMsiPath());
+  // GUH-bad-format2.msi's has invalid tag format.
+  std::wstring tagged_msi(GetMsiFilePath(_T("GUH-bad-format.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_TRUE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 
   std::string brand_code;
-  EXPECT_FALSE(tag_extractor.GetValue("BRAND", &brand_code));
-}
-
-// Verifies that tag extractor won't crash with garbage tag.
-TEST_F(MsiTagExtractorTest, RandomTag) {
-  const int kNumPassesToRun = 10;
-  srand(static_cast<unsigned int>(time(NULL)));
-
-  uint8 tag[1024];
-  for (int i = 0; i < kNumPassesToRun; ++i) {
-    // Fill tag with random data.
-    for (int j = 0; j < arraysize(tag); ++j) {
-      tag[j] = static_cast<char>(rand() % 0x100);  // NOLINT
-    }
-
-    EXPECT_SUCCEEDED(CreateMsiFileWithTag(tag, arraysize(tag)));
-    std::wstring tagged_msi(GetTaggedMsiPath());
-    custom_action::MsiTagExtractor tag_extractor;
-    tag_extractor.ReadTagFromFile(tagged_msi.c_str());
-  }
+  EXPECT_FALSE(tag_extractor.GetValue("brand", &brand_code));
 }
 
 }  // namespace omaha

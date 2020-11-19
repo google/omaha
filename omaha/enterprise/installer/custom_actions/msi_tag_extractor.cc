@@ -15,8 +15,8 @@
 
 #include "omaha/enterprise/installer/custom_actions/msi_tag_extractor.h"
 
-#include <windows.h>
 #include <string.h>
+#include <windows.h>
 
 #include <algorithm>
 
@@ -24,23 +24,24 @@ namespace {
 
 // A fixed string serves as the magic number to identify whether it's the start
 // of a valid tag.
-const char kTagMagicNumber[] = "Gact";
+const char kTagMagicNumber[] = "Gact2.0Omaha";
 
 const size_t kMagicNumberLength = arraysize(kTagMagicNumber) - 1;
 const char kStringMapDelimeter = '&';
 const char kKeyValueDelimeter = '=';
 
-const DWORD kMaxTagStringLengthAllowed = 4096;
+const DWORD kMaxTagStringLengthAllowed = 81920;  // 80K
 
-// The smallest meaningful tag is 'Gact00', indicating a zero-length payload.
-const DWORD kMinTagLengthAllowed = static_cast<DWORD>(
-    kMagicNumberLength + sizeof(uint16));  // NOLINT
+// The smallest meaningful tag is 'Gact2.0Omaha\0\0', indicating a zero-length
+// payload.
+const DWORD kMinTagLengthAllowed =
+    static_cast<DWORD>(kMagicNumberLength + sizeof(uint16));
 
 const DWORD kMaxTagLength = kMaxTagStringLengthAllowed + kMinTagLengthAllowed;
 
 // Read a value from the given buffer. The layout is assumed to be
 // big-endian. Caller must make sure the buffer has enough length.
-template<typename T>
+template <typename T>
 T GetValueFromBuffer(const void* buffer) {
   const uint8* value_buffer = static_cast<const uint8*>(buffer);
   T value = T();
@@ -52,9 +53,7 @@ T GetValueFromBuffer(const void* buffer) {
   return value;
 }
 
-bool is_not_alnum(char c) {
-  return !isalnum(c);
-}
+bool is_not_alnum(char c) { return !isalnum(c); }
 
 bool IsValidTagKey(const std::string& str) {
   return find_if(str.begin(), str.end(), is_not_alnum) == str.end();
@@ -76,27 +75,26 @@ bool IsValidTagValue(const std::string& str) {
 
 namespace custom_action {
 
-MsiTagExtractor::MsiTagExtractor() {
-}
+MsiTagExtractor::MsiTagExtractor() {}
 
 bool MsiTagExtractor::ReadTagFromFile(const wchar_t* filename) {
   HANDLE file_handle = NULL;
 
   file_handle = ::CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL,
-      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_handle == INVALID_HANDLE_VALUE) {
     return false;
   }
 
   std::vector<char> tag_buffer;
-  bool result = ReadTagToBuffer(file_handle, &tag_buffer) &&
-                ParseTagBuffer(tag_buffer);
+  bool result =
+      ReadTagToBuffer(file_handle, &tag_buffer) && ParseTagBuffer(tag_buffer);
 
   ::CloseHandle(file_handle);
   return result;
 }
 
-// Load last 4K bytes from file, search for magic number 'Gact' in the
+// Load last 80K bytes from file, search for magic number 'Gact2.0Omaha' in the
 // buffer. If found, assume that's the start of tag and continue parsing.
 bool MsiTagExtractor::ReadTagToBuffer(HANDLE file_handle,
                                       std::vector<char>* tag) const {
@@ -124,27 +122,24 @@ bool MsiTagExtractor::ReadTagToBuffer(HANDLE file_handle,
   // Add one extra zero at the end to prevent out-of-bounds reads.
   std::vector<char> buffer(bytes_to_read + 1);
   DWORD num_bytes_read = 0;
-  if (!::ReadFile(file_handle,
-                  &buffer[0],
-                  bytes_to_read,
-                  &num_bytes_read,
+  if (!::ReadFile(file_handle, &buffer[0], bytes_to_read, &num_bytes_read,
                   NULL) ||
       num_bytes_read != bytes_to_read) {
     return false;
   }
 
-  // Search for the magic number in the loaded buffer.
-  char* magic_number_pos = std::search(&buffer[0],
-                                       &buffer[bytes_to_read],
-                                       kTagMagicNumber,
-                                       kTagMagicNumber + kMagicNumberLength);
+  // Search for the last occurrence of the magic number in the loaded buffer.
+  auto magic_number_pos =
+      std::find_end(buffer.begin(), buffer.end(), kTagMagicNumber,
+                    kTagMagicNumber + kMagicNumberLength);
+
   // Make sure we found the magic number, and the buffer after it is no less
   // than the required minimum tag size (kMinTagLengthAllowed).
-  if (&buffer[bytes_to_read] - magic_number_pos < kMinTagLengthAllowed) {
+  if (std::distance(buffer.end(), magic_number_pos) < kMinTagLengthAllowed) {
     return false;
   }
 
-  tag->assign(magic_number_pos, &buffer[bytes_to_read]);
+  tag->assign(magic_number_pos, buffer.end());
   return true;
 }
 
@@ -167,21 +162,20 @@ bool MsiTagExtractor::ParseTagBuffer(const std::vector<char>& tag_buffer) {
   return true;
 }
 
-bool MsiTagExtractor::ParseMagicNumber(
-    const std::vector<char>& tag_buffer, size_t* parse_position) const {
+bool MsiTagExtractor::ParseMagicNumber(const std::vector<char>& tag_buffer,
+                                       size_t* parse_position) const {
   if (tag_buffer.size() <= kMagicNumberLength + *parse_position) {
     return false;
   }
 
-  bool result = memcmp(&tag_buffer[*parse_position],
-                       kTagMagicNumber,
+  bool result = memcmp(&tag_buffer[*parse_position], kTagMagicNumber,
                        kMagicNumberLength) == 0;
   *parse_position += kMagicNumberLength;
   return result;
 }
 
-uint16 MsiTagExtractor::ParseTagLength(
-    const std::vector<char>& tag_buffer, size_t* parse_position) const {
+uint16 MsiTagExtractor::ParseTagLength(const std::vector<char>& tag_buffer,
+                                       size_t* parse_position) const {
   uint16 tag_length = GetValueFromBuffer<uint16>(&tag_buffer[*parse_position]);
   *parse_position += sizeof(tag_length);
   return tag_length;
@@ -192,8 +186,7 @@ uint16 MsiTagExtractor::ParseTagLength(
 // 2. All key/value must be alpha-numeric strings, while value can be empty.
 // Unrecognized tag will be ignored.
 void MsiTagExtractor::ParseSimpleAsciiStringMap(
-    const std::vector<char>& tag_buffer,
-    size_t* parse_position,
+    const std::vector<char>& tag_buffer, size_t* parse_position,
     size_t tag_length) {
   // Construct a string with at most |tag_length| characters, but stop at the
   // first '\0' if it comes before that.
@@ -235,4 +228,3 @@ bool MsiTagExtractor::GetValue(const char* key, std::string* value) const {
 }
 
 }  // namespace custom_action
-

@@ -31,7 +31,7 @@ namespace custom_action {
 //
 // Tag specification:
 //   - When reading multi-byte numbers, it's in big endian.
-//   - Tag area begins with magic number 'Gact'.
+//   - Tag area begins with magic number 'Gact2.0Omaha'.
 //   - The next 2-bytes is tag string length.
 //   - Then follows the real tag string. The string is in format of:
 //     "key1=value1&key2=value2". Both the key and the value must be
@@ -41,17 +41,21 @@ namespace custom_action {
 // +-------------------------------------+
 // ~    ..............................   ~
 // |    ..............................   |
-// | End of MSI file                     | End of raw MSI.
+// |    Other parts of MSI file          |
 // +-------------------------------------+
-// | Magic number 'Gact'                 | Tag starts
-// | Tag string length                   |
+// | Start of the dummy certficate       |
+// ~    ..............................   ~
+// ~    ..............................   ~
+// | Magic number 'Gact2.0Omaha'         | Tag starts
+// | Tag length (2 bytes in big-endian)) |
 // | tag string                          |
 // +-------------------------------------+
 //
-// A real example (MSI file tagged with 'brand=CDCD&key2=Test'):
+// A real example (an MSI file tagged with 'brand=CDCD&key2=Test'):
 // +-----------------------------------------------------------------+
-// |  G   a   c   t  \0 024   b   r   a   n   d   =   C   D   C   D  |
-// |  &   k   e   y   2   =   T   e   s   t                          |
+// |  G   a   c   t   2   .   0   O   m   a   h   a  0x0 0x14 b   r  |
+// |  a   n   d   =   C   D   C   D   &   k   e   y   2   =   T   e  |
+// |  s   t                                                          |
 // +-----------------------------------------------------------------+
 class MsiTagExtractor {
  public:
