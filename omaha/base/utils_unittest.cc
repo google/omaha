@@ -955,5 +955,12 @@ TEST(UtilsTest, DeleteDirectoryContents_FilesAndDirs) {
   EXPECT_SUCCEEDED(DeleteDirectory(source_dir));
 }
 
+TEST(UtilsTest, LoadSystemLibrary) {
+ scoped_library winhttp_dll(LoadSystemLibrary(_T("winhttp.dll")));
+ EXPECT_TRUE(winhttp_dll);
+ scoped_library no_dll(LoadSystemLibrary(_T("no_such_dll.dll")));
+ EXPECT_FALSE(no_dll);
+}
+
 }  // namespace omaha
 

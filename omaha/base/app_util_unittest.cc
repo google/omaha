@@ -71,8 +71,7 @@ TEST(AppUtilTest, AppUtil) {
   // Use kernel32.dll
 
   // Get the loading address of kernel32.
-  HMODULE kernel32Module =
-      ::LoadLibraryEx(kKernel32Name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+  HMODULE kernel32Module = LoadSystemLibrary(kKernel32Name);
   EXPECT_TRUE(kernel32Module != NULL);
 
   // Test the dll module handle using an address.
@@ -91,8 +90,7 @@ TEST(AppUtilTest, AppUtil) {
 
   // DLL versioning.
   // For the tests to succeed, shell32.dll must be loaded in memory.
-  HMODULE shell32Module =
-      ::LoadLibraryEx(kShell32Name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+  HMODULE shell32Module = LoadSystemLibrary(kShell32Name);
   EXPECT_NE(0, DllGetVersion(GetSystemDir() + L"\\" + kShell32Name));
   EXPECT_NE(0, DllGetVersion(kShell32Name));
   EXPECT_NE(0, SystemDllGetVersion(kShell32Name));
@@ -100,8 +98,7 @@ TEST(AppUtilTest, AppUtil) {
   // For the tests to succeed, comctl32.dll must be loaded in memory.
   // ComCtl32 may be loaded from a side-by-side (WinSxS) directory, so it is not
   // practical to do a full-path or SystemDllGetVersion test with it.
-  HMODULE comctl32_module =
-      ::LoadLibraryEx(kComCtl32Name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+  HMODULE comctl32_module = LoadSystemLibrary(kComCtl32Name);
   EXPECT_NE(0, DllGetVersion(kComCtl32Name));
 
   // kernel32 does not export DllGetVersion.
@@ -148,8 +145,7 @@ TEST(AppUtilTest, GetModuleHandleFromAddress) {
   EXPECT_EQ(GetModuleHandle(NULL), module);
 
   // Get the address of a function in kernel32.
-  HMODULE kernel32_module =
-      ::LoadLibraryEx(_T("kernel32"), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+  HMODULE kernel32_module = LoadSystemLibrary(_T("kernel32"));
   ASSERT_TRUE(kernel32_module);
 
   HMODULE readfile_module = GetModuleHandleFromAddress(

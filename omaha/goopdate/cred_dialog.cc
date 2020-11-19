@@ -19,6 +19,7 @@
 #include "omaha/base/logging.h"
 #include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/system_info.h"
+#include "omaha/base/utils.h"
 #include "omaha/common/goopdate_utils.h"
 #include "omaha/client/resource.h"
 #include "omaha/goopdate/cred_dialog.h"
@@ -86,8 +87,7 @@ DWORD CredentialDialogBase::DisplayDialog(
     LPCTSTR caption,
     CString* username_out,
     CString* password_out) {
-  scoped_library credui_lib(
-      ::LoadLibraryEx(_T("credui.dll"), nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
+  scoped_library credui_lib(LoadSystemLibrary(_T("credui.dll")));
   ASSERT1(credui_lib);
   if (!credui_lib) {
     CORE_LOG(L3, (_T("[CredUIPromptForCredentialsW not available]")));

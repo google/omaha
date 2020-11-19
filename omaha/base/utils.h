@@ -76,6 +76,11 @@ ULONGLONG VersionFromString(const CString& s);
 
 CString StringFromVersion(ULONGLONG version);
 
+// Loads a DLL from the system directory, using LOAD_LIBRARY_SEARCH_SYSTEM32, if
+// the flag is supported by the OS. The presence of the feature is detected at
+// runtime. `library_name` constains the name of the DLL, without the path.
+HMODULE LoadSystemLibrary(const TCHAR* library_name);
+
 // Gets current directory
 CString GetCurrentDir();
 
@@ -177,8 +182,7 @@ bool GPA(HMODULE module, const char* function_name, T* function_pointer) {
                  result_error)                                              \
 typedef result_type (calling_convention *function##_pointer) proto;         \
 inline result_type function##Wrap proto {                                   \
-  scoped_library dll(::LoadLibraryEx(_T(#module), nullptr,                  \
-                                     LOAD_LIBRARY_SEARCH_SYSTEM32));        \
+  scoped_library dll(LoadSystemLibrary(_T(#module)));                       \
   ASSERT(dll, (_T("::GetLastError[%d]"), ::GetLastError()));                \
   if (!dll) {                                                               \
     return result_error;                                                    \
