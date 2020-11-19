@@ -35,6 +35,10 @@ var (
 	sourceExe string
 )
 
+// existingTagSubstring is a segment of the superfluous-cert tag that's already
+// in ChromeSetup.exe.
+const existingTagSubstring = ".....Gact.?omah"
+
 func init() {
 	tagBinary = filepath.Join(googletest.TestSrcDir, directory, "certificate_tag")
 	sourceExe = filepath.Join(googletest.TestSrcDir, directory, "testdata/ChromeSetup.exe")
@@ -44,12 +48,11 @@ func TestPrintAppendedTag(t *testing.T) {
 	cmd := exec.Command(tagBinary, "--dump-appended-tag", sourceExe)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Error executing %q: %v; output:\n%s", tagBinary, err, output)
 	}
 
-	const expected = ".....Gact.?omah"
-	if out := string(output); !strings.Contains(out, expected) {
-		t.Errorf("Output of --dump-appended-tag didn't contain %s, as expected. Got:\n%s", expected, out)
+	if out := string(output); !strings.Contains(out, existingTagSubstring) {
+		t.Errorf("Output of --dump-appended-tag didn't contain %s, as expected. Got:\n%s", existingTagSubstring, out)
 	}
 }
 
@@ -71,8 +74,8 @@ func TestSetSuperfluousCertTag(t *testing.T) {
 
 	const expected = "34cf251b916a54dc9351b832bb0ac7ce"
 	cmd := exec.Command(tagBinary, "--out", out, "--set-superfluous-cert-tag", expected, sourceExe)
-	if err := cmd.Run(); err != nil {
-		t.Fatal(err)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Error executing %q: %v; output:\n%s", tagBinary, err, output)
 	}
 
 	contents, err := ioutil.ReadFile(out)
@@ -82,10 +85,13 @@ func TestSetSuperfluousCertTag(t *testing.T) {
 	if !bytes.Contains(contents, []byte(expected)) {
 		t.Error("Output doesn't contain expected bytes")
 	}
+	if bytes.Contains(contents, []byte(existingTagSubstring)) {
+		t.Error("Output still contains old tag that should have been replaced")
+	}
 
 	cmd = exec.Command(tagBinary, "--out", out, "--set-superfluous-cert-tag", expected, "--padded-length", "256", sourceExe)
-	if err = cmd.Run(); err != nil {
-		t.Fatal(err)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("Error executing %q: %v; output:\n%s", tagBinary, err, output)
 	}
 
 	contents, err = ioutil.ReadFile(out)

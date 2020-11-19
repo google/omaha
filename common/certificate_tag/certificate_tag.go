@@ -369,7 +369,7 @@ func NewBinary(contents []byte) (*Binary, error) {
 	}
 
 	if !bytes.Equal(der, asn1Data) {
-		return nil, errors.New("authenticodetag: ASN.1 parse/unparse test failed: " + err.Error())
+		return nil, errors.New("authenticodetag: ASN.1 parse/unparse test failed")
 	}
 
 	return &Binary{
@@ -436,23 +436,25 @@ func (bin *Binary) SetAppendedTag(tagContents []byte) (contents []byte, err erro
 // certificate. It's in the Google arc, but not officially assigned.
 var oidChromeTag = asn1.ObjectIdentifier([]int{1, 3, 6, 1, 4, 1, 11129, 2, 1, 9999})
 
-func (bin *Binary) getSuperfluousCert() (cert *x509.Certificate, err error) {
+func (bin *Binary) getSuperfluousCert() (cert *x509.Certificate, index int, err error) {
 	n := len(bin.signedData.PKCS7.Certs)
 	if n == 0 {
-		return nil, nil
+		return nil, -1, nil
 	}
 
-	if cert, err = x509.ParseCertificate(bin.signedData.PKCS7.Certs[n-1].FullBytes); err != nil {
-		return nil, err
-	}
+	for index, certASN1 := range bin.signedData.PKCS7.Certs {
+		if cert, err = x509.ParseCertificate(certASN1.FullBytes); err != nil {
+			return nil, -1, err
+		}
 
-	for _, ext := range cert.Extensions {
-		if !ext.Critical && ext.Id.Equal(oidChromeTag) {
-			return cert, nil
+		for _, ext := range cert.Extensions {
+			if !ext.Critical && ext.Id.Equal(oidChromeTag) {
+				return cert, index, nil
+			}
 		}
 	}
 
-	return nil, nil
+	return nil, -1, nil
 }
 
 func parseUnixTimeOrDie(unixTime string) time.Time {
@@ -466,10 +468,19 @@ func parseUnixTimeOrDie(unixTime string) time.Time {
 // SetSuperfluousCertTag returns a PE binary based on bin, but where the
 // superfluous certificate contains the given tag data.
 func (bin *Binary) SetSuperfluousCertTag(tag []byte) (contents []byte, err error) {
-	cert, err := bin.getSuperfluousCert()
+	cert, index, err := bin.getSuperfluousCert()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't identity if any existing certificates are superfluous because of parse error: %w", err)
+	}
+
 	if cert != nil {
 		pkcs7 := &bin.signedData.PKCS7
-		pkcs7.Certs = pkcs7.Certs[:len(pkcs7.Certs)-1]
+		certs := pkcs7.Certs
+
+		var newCerts []asn1.RawValue
+		newCerts = append(newCerts, certs[:index]...)
+		newCerts = append(newCerts, certs[index+1:]...)
+		pkcs7.Certs = newCerts
 	}
 
 	notBefore := parseUnixTimeOrDie(notBeforeTime)
@@ -491,7 +502,7 @@ func (bin *Binary) SetSuperfluousCertTag(tag []byte) (contents []byte, err error
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		SignatureAlgorithm:    x509.SHA1WithRSA,
 		BasicConstraintsValid: true,
-		IsCA: true,
+		IsCA:                  true,
 	}
 
 	template := x509.Certificate{
@@ -508,7 +519,7 @@ func (bin *Binary) SetSuperfluousCertTag(tag []byte) (contents []byte, err error
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 		SignatureAlgorithm:    x509.SHA1WithRSA,
 		BasicConstraintsValid: true,
-		IsCA: false,
+		IsCA:                  false,
 		ExtraExtensions: []pkix.Extension{
 			{
 				// This includes the tag in an extension in the
