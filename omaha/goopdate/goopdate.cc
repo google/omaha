@@ -1323,7 +1323,7 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
   // installs/updates and policy fetch. Once we have the Firebase Messaging
   // feature solidified, we can move the policy fetch logic over there.
   if (is_machine_) {
-    hr = dm_client::RegisterIfNeeded(DmStorage::Instance());
+    hr = dm_client::RegisterIfNeeded(DmStorage::Instance(), false);
     if (FAILED(hr)) {
       OPT_LOG(LE, (_T("[Registration failed][%#x]"), hr));
       // Emit to the Event Log. The entry will include details by way of
@@ -1650,7 +1650,7 @@ HRESULT GoopdateImpl::RegisterForDeviceManagement() {
     return S_FALSE;
   }
 
-  HRESULT hr = dm_client::RegisterIfNeeded(dm_storage);
+  HRESULT hr = dm_client::RegisterIfNeeded(dm_storage, true);
 
   // Exit early if no work was needed.
   if (hr == S_FALSE) {

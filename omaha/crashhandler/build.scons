@@ -134,7 +134,15 @@ def BuildCrashAnalysisTest(local_env):
   td_env.Append(
       CPPPATH = [],
       LIBS = [
+          td_env['atls_libs'][td_env.Bit('debug')],
           td_env['crt_libs'][td_env.Bit('debug')],
+          td_env.GetMultiarchLibName('base'),
+          'netapi32.lib',
+          'psapi.lib',
+          'shlwapi.lib',
+          'userenv.lib',
+          'version.lib',
+          'wtsapi32.lib',
           ],
       RCFLAGS = [
           '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,

@@ -13,3 +13,9 @@ arbitrary data in extensions. Since they are also not hashed when verifying
 signatures, that data can also be changed without invalidating it.
 
 More details are here: http://b/12236017
+
+The tool was updated in 2020 to support MSI files: b/172261939, b/165818147.
+
+The test file is integrated from google3, but is modified here to make it
+easier to run outside of google3; see the comment near the beginning of
+certificate_tag_test.go

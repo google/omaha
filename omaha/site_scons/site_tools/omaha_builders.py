@@ -17,9 +17,11 @@
 
 """Omaha builders tool for SCons."""
 
+import binascii
 from copy import copy
 from copy import deepcopy
 import os.path
+import struct
 import SCons.Action
 import SCons.Builder
 import SCons.Tool
@@ -27,9 +29,12 @@ from subprocess import PIPE,Popen
 
 import omaha_version_utils
 
-def OmahaCertificateTagExe(env, target, source):
-  """Adds a superfluous certificate with a magic signature to an EXE. The file
-  must be signed with Authenticode in order for Certificate Tagging to succeed.
+
+def OmahaCertificateTag(env, target, source):
+  """Adds a superfluous certificate with a magic signature to an EXE or MSI.
+
+  The file must be signed with Authenticode in order for Certificate Tagging to
+  succeed.
 
   Args:
     env: The environment.
@@ -41,15 +46,66 @@ def OmahaCertificateTagExe(env, target, source):
   """
 
   certificate_tag = ('"' + env['ENV']['GOROOT'] + '/bin/go.exe' + '"' +
-      ' run $MAIN_DIR/../common/certificate_tag/certificate_tag.go')
+                     ' run ' +
+                     '$MAIN_DIR/../common/certificate_tag/certificate_tag.go')
   magic_bytes = 'Gact2.0Omaha'
   padded_length = len(magic_bytes) + 2 + 8192
   certificate_tag_cmd = env.Command(
       target=target,
       source=source,
-      action=certificate_tag +
-             ' -set-superfluous-cert-tag=' + magic_bytes +
-             ' -padded-length=' + str(padded_length) + ' -out $TARGET $SOURCE',
+      action=certificate_tag + ' -set-superfluous-cert-tag=' + magic_bytes +
+      ' -padded-length=' + str(padded_length) + ' -out $TARGET $SOURCE',
+  )
+
+  return certificate_tag_cmd
+
+
+def OmahaCertificateTagForTesting(env,
+                                  target,
+                                  source,
+                                  magic_bytes=None,
+                                  tag='',
+                                  tag_length=None):
+  """Adds a superfluous certificate with a magic signature to an EXE or MSI.
+
+  The file must be signed with Authenticode in order for Certificate Tagging to
+  succeed.
+  This function allows caller to overwrite some parts of the tag with invalid
+  values for testing purpose.
+
+  Args:
+    env: The environment.
+    target: Name of the certificate-tagged file.
+    source: Name of the file to be certificate-tagged.
+    magic_bytes: Optional customized magic bytes.
+    tag: Optional tag value.
+    tag_length: Optional tag length (only last two bytes are accountable).
+
+  Returns:
+    Output node list from env.Command().
+  """
+
+  certificate_tag = ('"' + env['ENV']['GOROOT'] + '/bin/go.exe' + '"' +
+                     ' run ' +
+                     '$MAIN_DIR/../common/certificate_tag/certificate_tag.go')
+  if magic_bytes is None:
+    magic_bytes = 'Gact2.0Omaha'
+  if tag_length is None:
+    tag_length = len(tag)
+  if tag_length > 0xFFFF:
+    raise ValueError('Input tag is too long')
+
+  bin_tag = bytearray(binascii.hexlify(magic_bytes.encode()))
+  bin_tag.extend(binascii.hexlify(struct.pack('>H', tag_length)))
+  bin_tag.extend(binascii.hexlify(tag.encode()))
+  full_tag_encoded = '0x' + bin_tag.decode()
+  padded_length = len(bin_tag) + 8192
+  certificate_tag_cmd = env.Command(
+      target=target,
+      source=source,
+      action=certificate_tag + ' -set-superfluous-cert-tag=' +
+      full_tag_encoded + ' -padded-length=' + str(padded_length) +
+      ' -out $TARGET $SOURCE',
   )
 
   return certificate_tag_cmd
@@ -385,9 +441,10 @@ def CompileProtoBuf(env, input_proto_files):
 
 
 # NOTE: SCons requires the use of this name, which fails gpylint.
-def generate(env):  # pylint: disable-msg=C6409
+def generate(env):  # pylint: disable=C6409
   """SCons entry point for this tool."""
-  env.AddMethod(OmahaCertificateTagExe)
+  env.AddMethod(OmahaCertificateTag)
+  env.AddMethod(OmahaCertificateTagForTesting)
   env.AddMethod(OmahaTagExe)
   env.AddMethod(IsBuildingModule)
   env.AddMethod(GetAllInOneUnittestSources)

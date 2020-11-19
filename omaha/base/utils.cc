@@ -34,6 +34,7 @@
 #include "omaha/base/const_timeouts.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/file.h"
+#include "omaha/base/path.h"
 #include "omaha/base/process.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
@@ -111,6 +112,28 @@ bool EnsurePrivateNamespaceAvailable() {
   ASSERT(namespace_handle, (_T("[Could not open private namespace][%d]"),
                             ::GetLastError()));
   return false;
+}
+
+// Returns true if AddDllDirectory function is available, meaning
+// LOAD_LIBRARY_SEARCH_* flags are available on the host system.
+bool AreSearchFlagsAvailable() {
+  // The LOAD_LIBRARY_SEARCH_* flags are available on systems that have
+  // KB2533623 installed. To determine whether the flags are available, use
+  // GetProcAddress to get the address of the AddDllDirectory,
+  // RemoveDllDirectory, or SetDefaultDllDirectories function. If GetProcAddress
+  // succeeds, the LOAD_LIBRARY_SEARCH_* flags can be used with LoadLibraryEx.
+  static const auto add_dll_dir_func =
+      reinterpret_cast<decltype(AddDllDirectory)*>(
+          GetProcAddress(GetModuleHandle(_T("kernel32.dll")),
+                                         "AddDllDirectory"));
+  return !!add_dll_dir_func;
+}
+
+HMODULE LoadSystemLibraryHelper(const CString& library_path) {
+  const DWORD kFlags = AreSearchFlagsAvailable()
+      ? LOAD_LIBRARY_SEARCH_SYSTEM32
+      : LOAD_WITH_ALTERED_SEARCH_PATH;
+  return ::LoadLibraryExW(library_path.GetString(), nullptr, kFlags);
 }
 
 }  // namespace
@@ -2212,6 +2235,15 @@ bool IsEnterpriseManaged() {
           ((EnrolledToDomainStatus() == UNKNOWN_ENROLLED) ||
            IsDeviceRegisteredWithManagement() ||
            IsJoinedToAzureAD()));
+}
+
+HMODULE LoadSystemLibrary(const TCHAR* library_name) {
+  ASSERT1(!IsAbsolutePath(library_name));
+  const CString system_dir = app_util::GetSystemDir();
+  if (system_dir.IsEmpty()) {
+    return nullptr;
+  }
+  return LoadSystemLibraryHelper(ConcatenatePath(system_dir, library_name));
 }
 
 }  // namespace omaha

@@ -166,8 +166,7 @@ def BuildMetaInstaller(
   merged_output = env.Command(
       target='unsigned_' + target_name,
       source=[empty_metainstaller_path, dll_output_name],
-      action= '%s --copyappend $SOURCES $TARGET' % resmerge_path
-  )
+      action='%s --copyappend $SOURCES $TARGET' % resmerge_path)
 
   authenticode_signed_target_prefix = 'authenticode_'
   authenticode_signed_exe = env.DualSignedBinary(
@@ -175,7 +174,7 @@ def BuildMetaInstaller(
       source=merged_output,
       )
 
-  ready_for_tagging_exe = env.OmahaCertificateTagExe(
+  ready_for_tagging_exe = env.OmahaCertificateTag(
       target=target_name,
       source=authenticode_signed_exe,
   )

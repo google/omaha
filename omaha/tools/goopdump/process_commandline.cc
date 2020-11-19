@@ -15,6 +15,7 @@
 
 #include "omaha/tools/goopdump/process_commandline.h"
 
+#include "omaha/base/utils.h"
 #include "omaha/common/debug.h"
 #include "omaha/common/error.h"
 #include "omaha/common/scoped_any.h"
@@ -93,8 +94,7 @@ HRESULT GetCommandLineFromHandleWithMemory(HANDLE process_handle,
   }
 
   // Initialize data area for remote process.
-  scoped_library hmodule_kernel32(
-      ::LoadLibraryEx(L"kernel32.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
+  scoped_library hmodule_kernel32(LoadSystemLibrary(L"kernel32.dll");
   if (!hmodule_kernel32) {
     return HRESULTFromLastError();
   }

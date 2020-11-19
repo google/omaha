@@ -25,6 +25,7 @@
 #include "omaha/base/smart_handle.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system_info.h"
+#include "omaha/base/utils.h"
 #include "omaha/goopdate/cred_dialog.h"
 #include "omaha/third_party/smartany/scoped_any.h"
 
@@ -248,9 +249,7 @@ HRESULT ProxyAuth::SetProxyAuthScheme(const CString& proxy_server,
 // This approach (the key in particular) comes from a securityfocus posting:
 // http://www.securityfocus.com/archive/1/458115/30/0/threaded
 bool ProxyAuth::ReadFromIE7(const CString& server) {
-  scoped_library crypt_lib(::LoadLibraryEx(_T("crypt32.dll"),
-                                           nullptr,
-                                           LOAD_LIBRARY_SEARCH_SYSTEM32));
+  scoped_library crypt_lib(LoadSystemLibrary(_T("crypt32.dll")));
   ASSERT1(crypt_lib);
   if (!crypt_lib)
     return false;
@@ -266,9 +265,7 @@ bool ProxyAuth::ReadFromIE7(const CString& server) {
 
   // Load CredEnumerate and CredFree dynamically because they don't exist on
   // Win2K and so loading the GoogleDesktopCommon.dll otherwise.
-  scoped_library advapi_lib(::LoadLibraryEx(_T("advapi32.dll"),
-                                            nullptr,
-                                            LOAD_LIBRARY_SEARCH_SYSTEM32));
+  scoped_library advapi_lib(LoadSystemLibrary(_T("advapi32.dll")));
   ASSERT1(advapi_lib);
   if (!advapi_lib)
     return false;
@@ -343,9 +340,7 @@ bool ProxyAuth::ReadFromIE7(const CString& server) {
 // reading credentials from the IE6 is not supported anymore.
 bool ProxyAuth::ReadFromPreIE7(const CString& server) {
 #if (_MSC_VER < 1800)
-  scoped_library pstore_lib(::LoadLibraryEx(_T("pstorec.dll"),
-                                            nullptr,
-                                            LOAD_LIBRARY_SEARCH_SYSTEM32));
+  scoped_library pstore_lib(LoadSystemLibrary(_T("pstorec.dll"));
   ASSERT1(pstore_lib);
   if (!pstore_lib)
     return false;
