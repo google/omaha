@@ -1,6 +1,6 @@
 This directory contains a couple of stand-alone crypto implementations.
 
-These implemenations have no Google3, stl or OpenSSL dependencies and
+These implementations have no Google3, stl or OpenSSL dependencies and
 are endian-neutral.
 
 The Android code base has code derived from this code, notably a
