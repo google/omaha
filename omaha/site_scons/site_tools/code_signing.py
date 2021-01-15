@@ -59,11 +59,11 @@ def generate(env):
       # No certificate password by default.
       CERTIFICATE_PASSWORD='',
       # The default timestamp server.
-      TIMESTAMP_SERVER='http://timestamp.verisign.com/scripts/timestamp.dll',
+      TIMESTAMP_SERVER='http://timestamp.digicert.com',
       # The default timestamp server when dual-signing.
-      SHA1_TIMESTAMP_SERVER='http://timestamp.comodoca.com/authenticode',
+      SHA1_TIMESTAMP_SERVER='http://timestamp.digicert.com',
       # The default timestamp server for sha256 timestamps.
-      SHA2_TIMESTAMP_SERVER='http://timestamp.comodoca.com/rfc3161',
+      SHA2_TIMESTAMP_SERVER='http://timestamp.digicert.com',
       # The default certificate store.
       CERTIFICATE_STORE='my',
       # Set the certificate name from the command line.
