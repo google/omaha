@@ -42,7 +42,6 @@ local_env.Append(
         '$LIB_DIR/google_update_recovery.lib',
         '$LIB_DIR/logging.lib',
         '$LIB_DIR/net.lib',
-        '$LIB_DIR/repair_goopdate.lib',
         '$LIB_DIR/security.lib',
         '$LIB_DIR/service.lib',
         '$LIB_DIR/statsreport.lib',

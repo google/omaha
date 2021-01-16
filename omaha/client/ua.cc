@@ -99,39 +99,6 @@ void WriteUpdateAppsStartEvent(bool is_machine) {
   update_event.WriteEvent();
 }
 
-// If kRegValueIsMSIHelperRegistered is 0, the MSI helper is registered.
-HRESULT RegisterMSIHelperIfNeeded(bool is_machine) {
-  const TCHAR* key_name = is_machine ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  DWORD is_registered(0);
-  VERIFY_SUCCEEDED(RegKey::GetValue(key_name,
-                                     kRegValueIsMSIHelperRegistered,
-                                     &is_registered));
-  if (is_registered) {
-    return S_OK;
-  }
-
-  CommandLineBuilder builder(COMMANDLINE_MODE_REGISTER_MSI_HELPER);
-  const CString cmd_line = builder.GetCommandLineArgs();
-  scoped_process process;
-  const HRESULT hr(goopdate_utils::StartGoogleUpdateWithArgs(is_machine,
-                                                             cmd_line,
-                                                             address(process)));
-  if (FAILED(hr)) {
-    SETUP_LOG(LE, (_T("[RegisterMsiHelper mode failed to start][%#x]"), hr));
-    return hr;
-  }
-
-  const int kMaxWaitForRegisterMsiProcessMs = 30000;
-  const DWORD result(::WaitForSingleObject(get(process),
-                     kMaxWaitForRegisterMsiProcessMs));
-  DWORD exit_code(static_cast<DWORD>(E_UNEXPECTED));
-  VERIFY1(result == WAIT_OBJECT_0 &&
-          ::GetExitCodeProcess(get(process), &exit_code) &&
-          SUCCEEDED(exit_code));
-
-  return exit_code;
-}
-
 // Ensures there is only one instance of /ua per session per Omaha instance.
 bool EnsureSingleUAProcess(bool is_machine,
                            std::unique_ptr<ProgramInstance>* instance) {
@@ -255,8 +222,6 @@ HRESULT UpdateApps(bool is_machine,
   }
 
   VERIFY_SUCCEEDED(ConfigManager::Instance()->SetLastStartedAU(is_machine));
-
-  VERIFY_SUCCEEDED(RegisterMSIHelperIfNeeded(is_machine));
 
   if (ConfigManager::Instance()->CanUseNetwork(is_machine)) {
     VERIFY_SUCCEEDED(Ping::SendPersistedPings(is_machine));

@@ -179,10 +179,8 @@ win_env['COMPONENT_TEST_SUBSYSTEM_WINDOWS'] = 1
 
 # Declare command line options relating to code signing
 # authenticode_file and authenticode_password are used by the normal signing
-# tool and to sign manifests for ClickOnce.
-# patching_certificate is used to create patchable MSI installers and MSPs.
+# tool.
 # authenticode_file and authenticode_password are only used if !build_server.
-# patching_certificate is used in all cases.
 AddOption(
     '--authenticode_file',
     action='store',
@@ -232,14 +230,6 @@ AddOption(
     nargs=1,
     type='string',
     default=default_sha2_cert_password
-)
-
-AddOption(
-    '--patching_certificate',
-    action='store',
-    nargs=1,
-    type='string',
-    default='$MAIN_DIR/data/OmahaTestCert.cer'
 )
 
 # Declare option for specifying path to new official build files

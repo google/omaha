@@ -33,7 +33,6 @@
 #include "omaha/common/const_cmd_line.h"
 #include "omaha/common/const_goopdate.h"
 #include "omaha/common/scheduled_task_utils.h"
-#include "omaha/setup/msi_test_utils.h"
 #include "omaha/setup/setup_google_update.h"
 #include "omaha/testing/unit_test.h"
 #include "omaha/third_party/smartany/scoped_any.h"
@@ -42,20 +41,11 @@ namespace omaha {
 
 namespace {
 
-const TCHAR kMsiInstallRegValue[] = _T("MsiStubRun");
-const TCHAR kMsiUninstallParentKey[] =
-    _T("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\")
-    _T("Uninstall\\");
 const TCHAR kRunKey[] =
     _T("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run");
 
 const TCHAR* const kAppId1 = _T("{B7E61EF9-AAE5-4cdf-A2D3-E4C8DF975145}");
 const TCHAR* const kAppId2 = _T("{35F1A986-417D-4039-8718-781DD418232A}");
-
-CString GetMsiUninstallKey() {
-  CString msi_uninstall_parent_key(kMsiUninstallParentKey);
-  return msi_uninstall_parent_key + kHelperInstallerProductGuid;
-}
 
 // Copies the shell and DLLs that FinishInstall needs.
 // Does not replace files if they already exist.
@@ -75,8 +65,7 @@ void CopyFilesRequiredByFinishInstall(bool is_machine, const CString& version) {
 
   ASSERT_SUCCEEDED(CreateDir(version_path, NULL));
 
-  const TCHAR* files[] = {kHelperInstallerName,
-                          kOmahaDllName,
+  const TCHAR* files[] = {kOmahaDllName,
                           kOmahaCOMRegisterShell64,
                           kPSFileNameMachine,
                           kPSFileNameMachine64,
@@ -285,14 +274,6 @@ class SetupGoogleUpdateTest : public testing::Test {
 
   HRESULT CreateClientStateMedium() {
     return setup_google_update_->CreateClientStateMedium();
-  }
-
-  HRESULT InstallMsiHelper() {
-    return setup_google_update_->InstallMsiHelper();
-  }
-
-  HRESULT UninstallMsiHelper() {
-    return setup_google_update_->UninstallMsiHelper();
   }
 
   bool is_machine_;
@@ -642,124 +623,6 @@ TEST_F(SetupGoogleUpdateUserTest, InstallLaunchMechanisms_RunKeyDoesNotExist) {
   UninstallLaunchMechanisms();
   EXPECT_FALSE(RegKey::HasValue(kRunKey, _T(OMAHA_APP_NAME_ANSI)));
   EXPECT_FALSE(scheduled_task_utils::IsInstalledGoopdateTaskUA(false));
-}
-
-// The helper can be installed when the test begins.
-// It will not be installed when the test successfully completes.
-TEST_F(SetupGoogleUpdateMachineTest, InstallAndUninstallMsiHelper) {
-  const TCHAR* MsiInstallRegValueKey =
-      ConfigManager::Instance()->machine_registry_update();
-
-  CopyFilesRequiredByFinishInstall(is_machine_, GetVersionString());
-
-  if (vista_util::IsUserAdmin()) {
-    // Prepare for the test - make sure the helper isn't installed.
-    EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
-
-    RegKey::DeleteValue(MsiInstallRegValueKey, kMsiInstallRegValue);
-    RegKey::DeleteKey(GetMsiUninstallKey());
-
-    // Verify installation.
-    DWORD reg_value = 0xffffffff;
-    EXPECT_HRESULT_SUCCEEDED(InstallMsiHelper());
-    EXPECT_TRUE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-    EXPECT_HRESULT_SUCCEEDED(RegKey::GetValue(MsiInstallRegValueKey,
-                                              kMsiInstallRegValue,
-                                              &reg_value));
-    EXPECT_EQ(0, reg_value);
-    EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
-
-    // Verify over-install.
-    EXPECT_HRESULT_SUCCEEDED(InstallMsiHelper());
-    EXPECT_TRUE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-    EXPECT_HRESULT_SUCCEEDED(RegKey::GetValue(MsiInstallRegValueKey,
-                                              kMsiInstallRegValue,
-                                              &reg_value));
-    EXPECT_EQ(0, reg_value);
-    EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
-
-    // Verify uninstall.
-    EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
-    EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-    EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
-
-    // Verify uninstall when not currently installed.
-    EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
-  } else {
-    {
-      // This method expects to be called elevated and makes an assumption
-      // about a return value.
-      ExpectAsserts expect_asserts;
-      EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_INSTALL_PACKAGE_REJECTED),
-                InstallMsiHelper());
-    }
-    if (IsMsiHelperInstalled()) {
-      // If the MSI is installed UninstallMsiHelper returns
-      // ERROR_INSTALL_FAILURE.
-      EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_INSTALL_FAILURE),
-                UninstallMsiHelper());
-    } else {
-      // If the MSI is not installed UninstallMsiHelper returns S_OK.
-      EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
-    }
-  }
-}
-
-// This test installs a different build of the helper installer then calls
-// InstallMsiHelper to install the one that has been built.
-// If run without the REINSTALL property, ERROR_PRODUCT_VERSION would occur.
-// This test verifies that such overinstalls are correctly handled and that the
-// registry value is correctly changed.
-// Note: The name of the installer cannot be different. MSI tries to find the
-// original filename in the new directory.
-// The helper can be installed when the test begins.
-// It will not be installed when the test successfully completes.
-TEST_F(SetupGoogleUpdateMachineTest,
-       InstallMsiHelper_OverinstallDifferentMsiBuild) {
-  if (!vista_util::IsUserAdmin()) {
-    std::wcout << _T("\tThis test did not run because it must be run as admin.")
-               << std::endl;
-    return;
-  }
-
-  const TCHAR kDifferentMsi[] =
-      _T("unittest_support\\GoogleUpdateHelper.msi");
-  const TCHAR* MsiInstallRegValueKey =
-      ConfigManager::Instance()->machine_registry_update();
-
-  CopyFilesRequiredByFinishInstall(is_machine_, GetVersionString());
-
-  CString different_msi_path(app_util::GetCurrentModuleDirectory());
-  ASSERT_TRUE(::PathAppend(CStrBuf(different_msi_path, MAX_PATH),
-                           kDifferentMsi));
-
-  // Prepare for the test - make sure the helper is not installed.
-  EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
-  EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-  EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
-
-  // Install an older version of the MSI.
-  DWORD reg_value = 0xffffffff;
-  ::MsiSetInternalUI(INSTALLUILEVEL_NONE, NULL);
-  EXPECT_EQ(ERROR_SUCCESS, ::MsiInstallProduct(different_msi_path, _T("")));
-  EXPECT_TRUE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-  EXPECT_HRESULT_SUCCEEDED(
-      RegKey::GetValue(MsiInstallRegValueKey, kMsiInstallRegValue, &reg_value));
-  EXPECT_EQ(9, reg_value);
-  EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
-
-  // Over-install.
-  EXPECT_HRESULT_SUCCEEDED(InstallMsiHelper());
-  EXPECT_TRUE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-  EXPECT_HRESULT_SUCCEEDED(
-      RegKey::GetValue(MsiInstallRegValueKey, kMsiInstallRegValue, &reg_value));
-  EXPECT_EQ(0, reg_value);
-  EXPECT_TRUE(RegKey::HasKey(GetMsiUninstallKey()));
-
-  // Clean up.
-  EXPECT_HRESULT_SUCCEEDED(UninstallMsiHelper());
-  EXPECT_FALSE(RegKey::HasValue(MsiInstallRegValueKey, kMsiInstallRegValue));
-  EXPECT_FALSE(RegKey::HasKey(GetMsiUninstallKey()));
 }
 
 TEST_F(SetupGoogleUpdateMachineTest, WriteClientStateMedium) {

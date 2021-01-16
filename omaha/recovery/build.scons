@@ -101,5 +101,3 @@ test_env.ComponentTestProgram(target_name,
                               test_inputs,
                               COMPONENT_TEST_DISABLED=True)
 
-
-env.BuildSConscript('repair_exe')
