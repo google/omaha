@@ -74,7 +74,10 @@ HRESULT Update3ServiceMode::PreMessageLoop() {
   SERVICE_LOG(L1, (_T("[Starting Google Update core...]")));
   CommandLineBuilder builder(COMMANDLINE_MODE_CORE);
   CString args = builder.GetCommandLineArgs();
-  return goopdate_utils::StartGoogleUpdateWithArgs(true, args, NULL);
+  return goopdate_utils::StartGoogleUpdateWithArgs(true,
+                                                   StartMode::kBackground,
+                                                   args,
+                                                   NULL);
 }
 
 CommandLineMode UpdateMediumServiceMode::commandline_mode() {

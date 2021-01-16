@@ -228,6 +228,7 @@ HRESULT ChromeRecoveryImproved::TriggerUpdateCheck() {
   const CString cmd_line_args = builder.GetCommandLineArgs();
 
   HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_machine_,
+                                                         StartMode::kBackground,
                                                          cmd_line_args,
                                                          NULL);
   if (FAILED(hr)) {

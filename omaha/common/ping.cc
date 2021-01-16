@@ -295,6 +295,7 @@ HRESULT Ping::SendUsingGoogleUpdate(const CString& request_string,
 
   scoped_process ping_process;
   HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_machine_,
+                                                         StartMode::kBackground,
                                                          args,
                                                          address(ping_process));
   if (FAILED(hr)) {

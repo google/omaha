@@ -23,7 +23,7 @@
 
 #include <map>
 #include <vector>
-#include <regex>
+#include <regex>  // NOLINT
 
 #include "omaha/base/app_util.h"
 #include "omaha/base/browser_utils.h"
@@ -1177,7 +1177,10 @@ TEST_F(GoopdateUtilsRegistryProtectedWithMachineFolderPathsTest,
                                     _T("pv"),
                                     _T("1.2.3.4")));
   const TCHAR* kArgs = _T("/cr");
-  HRESULT hr = StartGoogleUpdateWithArgs(true, kArgs, NULL);
+  HRESULT hr =
+      StartGoogleUpdateWithArgs(true, StartMode::kForeground, kArgs, NULL);
+  EXPECT_TRUE(S_OK == hr || HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
+  hr = StartGoogleUpdateWithArgs(true, StartMode::kBackground, kArgs, NULL);
   EXPECT_TRUE(S_OK == hr || HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
 }
 
@@ -1193,7 +1196,10 @@ TEST_F(GoopdateUtilsRegistryProtectedWithUserFolderPathsTest,
                                     _T("pv"),
                                     _T("1.2.3.4")));
   const TCHAR* kArgs = _T("/cr");
-  HRESULT hr = StartGoogleUpdateWithArgs(false, kArgs, NULL);
+  HRESULT hr =
+      StartGoogleUpdateWithArgs(false, StartMode::kForeground, kArgs, NULL);
+  EXPECT_TRUE(S_OK == hr || HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
+  hr = StartGoogleUpdateWithArgs(false, StartMode::kBackground, kArgs, NULL);
   EXPECT_TRUE(S_OK == hr || HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
 }
 

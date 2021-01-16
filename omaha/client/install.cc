@@ -472,6 +472,7 @@ HRESULT LaunchHandoffProcess(bool is_machine,
   CString cmd_line = builder.GetCommandLineArgs();
 
   HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_machine,
+                                                         StartMode::kForeground,
                                                          cmd_line,
                                                          process);
   if (FAILED(hr)) {
