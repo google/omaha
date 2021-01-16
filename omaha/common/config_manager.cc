@@ -422,7 +422,7 @@ HRESULT DMPolicyManager::GetUpdatesSuppressedTimes(
 
 HRESULT DMPolicyManager::GetDownloadPreferenceGroupPolicy(
     CString* download_preference) {
-  if (!dm_policy_.is_initialized) {
+  if (!dm_policy_.is_initialized || dm_policy_.download_preference.IsEmpty()) {
     return E_FAIL;
   }
 
@@ -443,7 +443,7 @@ HRESULT DMPolicyManager::GetPackageCacheExpirationTimeDays(
 }
 
 HRESULT DMPolicyManager::GetProxyMode(CString* proxy_mode) {
-  if (!dm_policy_.is_initialized) {
+  if (!dm_policy_.is_initialized || dm_policy_.proxy_mode.IsEmpty()) {
     return E_FAIL;
   }
 
@@ -480,9 +480,17 @@ HRESULT DMPolicyManager::GetEffectivePolicyForAppInstalls(
     return E_FAIL;
   }
 
-  *install_policy = dm_policy_.application_settings.count(app_guid) > 0 ?
-      dm_policy_.application_settings.at(app_guid).install :
-      dm_policy_.install_default;
+  if (dm_policy_.application_settings.count(app_guid) &&
+      dm_policy_.application_settings.at(app_guid).install != -1) {
+    *install_policy = dm_policy_.application_settings.at(app_guid).install;
+    return S_OK;
+  }
+
+  if (dm_policy_.install_default == -1) {
+    return E_FAIL;
+  }
+
+  *install_policy = dm_policy_.install_default;
   return S_OK;
 }
 
@@ -492,50 +500,60 @@ HRESULT DMPolicyManager::GetEffectivePolicyForAppUpdates(const GUID& app_guid,
     return E_FAIL;
   }
 
-  *update_policy = dm_policy_.application_settings.count(app_guid) ?
-      dm_policy_.application_settings.at(app_guid).update :
-      dm_policy_.update_default;
+  if (dm_policy_.application_settings.count(app_guid) &&
+      dm_policy_.application_settings.at(app_guid).update != -1) {
+    *update_policy = dm_policy_.application_settings.at(app_guid).update;
+    return S_OK;
+  }
+
+  if (dm_policy_.update_default == -1) {
+    return E_FAIL;
+  }
+
+  *update_policy = dm_policy_.update_default;
   return S_OK;
 }
 
 HRESULT DMPolicyManager::GetTargetChannel(
     const GUID& app_guid,
     CString* target_channel) {
-  if (!dm_policy_.is_initialized) {
+  if (!dm_policy_.is_initialized ||
+      !dm_policy_.application_settings.count(app_guid) ||
+      dm_policy_.application_settings.at(app_guid).target_channel.IsEmpty()) {
     return E_FAIL;
   }
 
-  *target_channel =
-      dm_policy_.application_settings.count(app_guid) ?
-      dm_policy_.application_settings.at(app_guid).target_channel :
-      CString();
+  *target_channel = dm_policy_.application_settings.at(app_guid).target_channel;
   return S_OK;
 }
 
 HRESULT DMPolicyManager::GetTargetVersionPrefix(
     const GUID& app_guid,
     CString* target_version_prefix) {
-  if (!dm_policy_.is_initialized) {
+  if (!dm_policy_.is_initialized ||
+      !dm_policy_.application_settings.count(app_guid) ||
+      dm_policy_.application_settings.at(app_guid).target_version_prefix.
+          IsEmpty()) {
     return E_FAIL;
   }
 
   *target_version_prefix =
-      dm_policy_.application_settings.count(app_guid) ?
-      dm_policy_.application_settings.at(app_guid).target_version_prefix :
-      CString();
+      dm_policy_.application_settings.at(app_guid).target_version_prefix;
   return S_OK;
 }
 
 HRESULT DMPolicyManager::IsRollbackToTargetVersionAllowed(
     const GUID& app_guid,
     bool* rollback_allowed) {
-  if (!dm_policy_.is_initialized) {
+  if (!dm_policy_.is_initialized ||
+      !dm_policy_.application_settings.count(app_guid) ||
+      dm_policy_.application_settings.at(app_guid).
+          rollback_to_target_version == -1) {
     return E_FAIL;
   }
 
-  *rollback_allowed = dm_policy_.application_settings.count(app_guid) ?
-      dm_policy_.application_settings.at(app_guid).rollback_to_target_version :
-      false;
+  *rollback_allowed =
+      !!dm_policy_.application_settings.at(app_guid).rollback_to_target_version;
   return S_OK;
 }
 
