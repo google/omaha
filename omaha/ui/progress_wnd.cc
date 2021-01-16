@@ -189,12 +189,13 @@ LRESULT ProgressWnd::OnInitDialog(UINT message,
   UNREFERENCED_PARAMETER(handled);
 
   InitializeDialog();
+  GetWindowText(CStrBuf(base_window_title_, 256), 256);
 
   VERIFY_SUCCEEDED(SetMarqueeMode(true));
 
   CString state_text;
   VERIFY1(state_text.LoadString(IDS_INITIALIZING));
-  VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), state_text));
+  DisplayNewState(state_text);
   VERIFY_SUCCEEDED(ChangeControlState());
 
   metrics_timer_.reset(new HighresTimer);
@@ -360,7 +361,7 @@ LRESULT ProgressWnd::OnInstallStopped(UINT msg,
 void ProgressWnd::HandleCancelRequest() {
   CString s;
   VERIFY1(s.LoadString(IDS_CANCELING));
-  VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+  DisplayNewState(s);
 
   if (is_canceled_) {
     return;
@@ -387,7 +388,7 @@ void ProgressWnd::OnCheckingForUpdate() {
 
   CString s;
   VERIFY1(s.LoadString(IDS_WAITING_TO_CONNECT));
-  VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+  DisplayNewState(s);
 
   VERIFY_SUCCEEDED(ChangeControlState());
 }
@@ -438,7 +439,7 @@ void ProgressWnd::OnWaitingToDownload(const CString& app_id,
 
   CString s;
   VERIFY1(s.LoadString(IDS_WAITING_TO_DOWNLOAD));
-  VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+  DisplayNewState(s);
 
   VERIFY_SUCCEEDED(ChangeControlState());
 }
@@ -491,7 +492,7 @@ void ProgressWnd::OnDownloading(const CString& app_id,
   // Reduces flicker by only updating the control if the text has changed.
   CString orig_text;
   if (!GetDlgItemText(IDC_INSTALLER_STATE_TEXT, orig_text) || s != orig_text) {
-    VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+    DisplayNewState(s);
   }
 
   VERIFY_SUCCEEDED(ChangeControlState());
@@ -524,7 +525,7 @@ void ProgressWnd::OnWaitingRetryDownload(const CString& app_id,
     int retry_time_in_sec =
         static_cast<int>(CeilingDivide(next_retry_time - now, kSecsTo100ns));
     s.FormatMessage(IDS_DOWNLOAD_RETRY, retry_time_in_sec);
-    VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+    DisplayNewState(s);
     VERIFY_SUCCEEDED(ChangeControlState());
   }
 }
@@ -547,7 +548,7 @@ void ProgressWnd::OnWaitingToInstall(const CString& app_id,
 
     CString s;
     VERIFY1(s.LoadString(IDS_WAITING_TO_INSTALL));
-    VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+    DisplayNewState(s);
 
     VERIFY_SUCCEEDED(ChangeControlState());
   }
@@ -581,7 +582,7 @@ void ProgressWnd::OnInstalling(const CString& app_id,
 
     CString s;
     VERIFY1(s.LoadString(IDS_INSTALLING));
-    VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), s));
+    DisplayNewState(s);
 
     VERIFY_SUCCEEDED(ChangeControlState());
   }
@@ -855,6 +856,16 @@ HRESULT ProgressWnd::SetMarqueeMode(bool is_marquee) {
   return S_OK;
 }
 
+void ProgressWnd::DisplayNewState(const CString& state) {
+  VERIFY1(::SetWindowText(GetDlgItem(IDC_INSTALLER_STATE_TEXT), state));
+
+  CString title;
+  title.FormatMessage(IDS_APPLICATION_NAME_CONCATENATION,
+                      state,
+                      base_window_title_);
+  SetWindowText(title);
+}
+
 bool ProgressWnd::IsInstallStoppedWindowPresent() {
   return install_stopped_wnd_.get() && install_stopped_wnd_->IsWindow();
 }
@@ -870,4 +881,3 @@ bool ProgressWnd::CloseInstallStoppedWindow() {
 }
 
 }  // namespace omaha
-
