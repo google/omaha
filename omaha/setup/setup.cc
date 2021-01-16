@@ -466,6 +466,7 @@ bool Setup::ShouldOverinstall() {
   CString cmd_line = builder.GetCommandLineArgs();
   scoped_process process;
   HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_machine_,
+                                                         StartMode::kBackground,
                                                          cmd_line,
                                                          address(process));
   if (FAILED(hr)) {

@@ -79,7 +79,9 @@ HRESULT StartCoreIfNeeded(bool is_system) {
   CommandLineBuilder builder(omaha::COMMANDLINE_MODE_CORE);
   CString cmd_line(builder.GetCommandLineArgs());
   scoped_process process;
-  HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_system, cmd_line,
+  HRESULT hr = goopdate_utils::StartGoogleUpdateWithArgs(is_system,
+                                                         StartMode::kBackground,
+                                                         cmd_line,
                                                          address(process));
   if (FAILED(hr)) {
     CORE_LOG(LE, (L"[Unable to start Core][%#x]", hr));

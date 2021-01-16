@@ -358,20 +358,30 @@ CString GetInstalledShellVersion(bool is_machine) {
 }
 
 HRESULT StartGoogleUpdateWithArgs(bool is_machine,
+                                  StartMode start_mode,
                                   const TCHAR* args,
                                   HANDLE* process) {
-  CORE_LOG(L3, (_T("[StartGoogleUpdateWithArgs][%d][%s]"),
-                is_machine, args ? args : _T("")));
+  CORE_LOG(L3, (_T("[StartGoogleUpdateWithArgs][%d][%d][%s]"),
+                is_machine, start_mode, args ? args : _T("")));
 
   CString exe_path = BuildGoogleUpdateExePath(is_machine);
 
   CORE_LOG(L3, (_T("[command line][%s][%s]"), exe_path, args ? args : _T("")));
 
-  HRESULT hr = System::ShellExecuteProcess(exe_path, args, NULL, process);
+  PROCESS_INFORMATION pi = {0};
+  HRESULT hr = start_mode == StartMode::kForeground ?
+                   System::ShellExecuteProcess(exe_path, args, NULL, process) :
+                   System::StartProcessWithArgsAndInfo(exe_path, args, &pi);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[can't start process][%s][0x%08x]"), exe_path, hr));
     return hr;
   }
+
+  if (start_mode != StartMode::kForeground) {
+    *process = pi.hProcess;
+    ::CloseHandle(pi.hThread);
+  }
+
   return S_OK;
 }
 

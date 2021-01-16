@@ -34,6 +34,10 @@ class NetworkRequest;
 class UpdateResponse;
 struct NamedObjectAttributes;
 
+// The enum for the values of the |start_mode| parameter for the function
+// StartGoogleUpdateWithArgs().
+enum class StartMode { kForeground, kBackground };
+
 // Represents the Result of an attempt to terminate the browser.
 struct TerminateBrowserResult {
   TerminateBrowserResult()
@@ -85,10 +89,10 @@ CString GetHKRoot();
 CString GetInstalledShellVersion(bool is_machine);
 
 // Starts an instance of the Google Update version found in the registry.
-// Only use to start interactive processes because it uses ::ShellExecuteEx().
 // args can be NULL.
 // process can be NULL. If not NULL, caller is responsible for closing handle.
 HRESULT StartGoogleUpdateWithArgs(bool is_machine,
+                                  StartMode start_mode,
                                   const TCHAR* args,
                                   HANDLE* process);
 
