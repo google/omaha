@@ -51,11 +51,11 @@ struct UpdatesSuppressed {
 };
 
 struct ApplicationSettings {
-  int install = kInstallPolicyDefault;
-  int update = kUpdatePolicyDefault;
+  int install = -1;
+  int update = -1;
   CString target_channel;
   CString target_version_prefix;
-  bool rollback_to_target_version = false;
+  int rollback_to_target_version = -1;
 
   CString ToString() const {
     CString result(_T("[ApplicationSettings]"));
@@ -86,8 +86,8 @@ struct CachedOmahaPolicy {
   CString proxy_mode;
   CString proxy_server;
   CString proxy_pac_url;
-  int install_default = kInstallPolicyDefault;
-  int update_default = kUpdatePolicyDefault;
+  int install_default = -1;
+  int update_default = -1;
 
   std::map<GUID, ApplicationSettings, GUIDCompare> application_settings;
 
