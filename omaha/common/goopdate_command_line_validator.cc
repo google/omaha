@@ -188,10 +188,6 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineHealthCheck);
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnHealthCheck);
 
-  // gu.exe /registermsihelper
-  SafeCStringFormat(&cmd_line, _T("/%s"), kCmdLineRegisterMsiHelper);
-  CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnRegisterMsiHelper);
-
   return S_OK;
 }
 
@@ -454,11 +450,6 @@ HRESULT GoopdateCommandLineValidator::OnPing() {
 
 HRESULT GoopdateCommandLineValidator::OnHealthCheck() {
   args_->mode = COMMANDLINE_MODE_HEALTH_CHECK;
-  return S_OK;
-}
-
-HRESULT GoopdateCommandLineValidator::OnRegisterMsiHelper() {
-  args_->mode = COMMANDLINE_MODE_REGISTER_MSI_HELPER;
   return S_OK;
 }
 

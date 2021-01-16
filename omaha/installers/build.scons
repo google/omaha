@@ -70,9 +70,6 @@ def _BuildSetupRepairVersion(omaha_version_info,
       omaha_files_path='$STAGING_DIR',
       prefix = prefix,
       suffix = '_repair',
-      additional_payload_contents = [
-          '$STAGING_DIR/GoogleUpdateHelperPatch.msp',
-          ],
   )
 
 

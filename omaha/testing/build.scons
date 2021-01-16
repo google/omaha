@@ -287,12 +287,6 @@ if omaha_unittest_env.IsBuildingModule('plugins'):
       '$LIB_DIR/update_test_helpers.lib',
   ]
 
-if omaha_unittest_env.IsBuildingModule('recovery'):
-  omaha_unittest_libs += [
-      '$LIB_DIR/executecustomaction_lib',
-      '$LIB_DIR/repair_goopdate.lib',
-  ]
-
 if omaha_unittest_env.IsBuildingModule('enterprise'):
   omaha_unittest_libs.append('$LIB_DIR/custom_actions_test_lib.lib')
 
@@ -540,7 +534,6 @@ omaha_unittest_inputs = [
     '../recovery/client/google_update_recovery_unittest.cc',
 
     # Setup unit tests.
-    '../setup/msi_test_utils.cc',
     '../setup/setup_unittest.cc',
     '../setup/setup_files_unittest.cc',
     '../setup/setup_google_update_unittest.cc',
@@ -587,14 +580,6 @@ if omaha_unittest_env.IsBuildingModule('mi_exe_stub'):
   omaha_unittest_inputs += [
       # Bcj2 encoder unitests.
       '../mi_exe_stub/x86_encoder/bcj2_encoder_unittest.cc',
-  ]
-
-if omaha_unittest_env.IsBuildingModule('recovery'):
-  omaha_unittest_inputs += [
-      # Recovery unit tests.
-      '../recovery/repair_exe/custom_action/execute_repair_file_unittest.cc',
-      '../recovery/repair_exe/mspexecutableelevator_unittest.cc',
-      '../recovery/repair_exe/repair_goopdate_unittest.cc',
   ]
 
 if omaha_unittest_env.IsBuildingModule('enterprise'):

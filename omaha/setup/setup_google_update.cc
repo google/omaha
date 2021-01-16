@@ -531,53 +531,22 @@ HRESULT SetupGoogleUpdate::RegisterOrUnregisterCOMLocalServer(bool reg) {
   return S_OK;
 }
 
-// Assumes that the MSI is in the current directory.
-// To debug MSI failures, use the following statement:
-// ::MsiEnableLog(INSTALLLOGMODE_VERBOSE, _T("C:\\msi.log"), NULL);
-HRESULT SetupGoogleUpdate::InstallMsiHelper() {
-  SETUP_LOG(L3, (_T("[SetupGoogleUpdate::InstallMsiHelper]")));
+HRESULT SetupGoogleUpdate::UninstallLegacyMsiHelper() {
+  SETUP_LOG(L3, (_T("[SetupGoogleUpdate::UninstallLegacyMsiHelper]")));
   if (!is_machine_) {
     return S_OK;
   }
 
-  ++metric_setup_helper_msi_install_total;
-  HighresTimer metrics_timer;
-
-  const CPath msi_path(BuildSupportFileInstallPath(kHelperInstallerName));
-  ASSERT1(File::Exists(msi_path));
-
-  // Setting INSTALLUILEVEL_NONE causes installation to be silent and not
-  // create a restore point.
-  ::MsiSetInternalUI(INSTALLUILEVEL_NONE, NULL);
-
-  // Try a normal install.
-  UINT res = ::MsiInstallProduct(msi_path, kMsiSuppressAllRebootsCmdLine);
-  if (ERROR_PRODUCT_VERSION == res) {
-    // The product may already be installed. Force a reinstall of everything.
-    SETUP_LOG(L3, (_T("[ERROR_PRODUCT_VERSION returned - forcing reinstall]")));
-    CString force_install_cmd_line;
-    SafeCStringFormat(&force_install_cmd_line,
-                      _T("REINSTALL=ALL REINSTALLMODE=vamus %s"),
-                      kMsiSuppressAllRebootsCmdLine);
-    res = ::MsiInstallProduct(msi_path, force_install_cmd_line);
-  }
-
-  HRESULT hr = HRESULT_FROM_WIN32(res);
-  if (FAILED(hr)) {
-    SETUP_LOG(L1, (_T("[MsiInstallProduct failed][0x%08x][%u]"), hr, res));
-    return hr;
-  }
-
-  metric_setup_helper_msi_install_ms.AddSample(metrics_timer.GetElapsedMs());
-  ++metric_setup_helper_msi_install_succeeded;
-  return S_OK;
-}
-
-// The MSI is uninstalled.
-// TODO(omaha): Make sure this works after deleting the MSI.
-HRESULT SetupGoogleUpdate::UninstallMsiHelper() {
-  SETUP_LOG(L3, (_T("[SetupGoogleUpdate::UninstallMsiHelper]")));
-  if (!is_machine_) {
+  bool is_msi_installed = (ERROR_SUCCESS == ::MsiEnumProductsEx(
+                                                kLegacyHelperInstallerGuid,
+                                                NULL,
+                                                MSIINSTALLCONTEXT_MACHINE,
+                                                0,
+                                                NULL,
+                                                NULL,
+                                                NULL,
+                                                NULL));
+  if (!is_msi_installed) {
     return S_OK;
   }
 
@@ -591,7 +560,7 @@ HRESULT SetupGoogleUpdate::UninstallMsiHelper() {
   CString uninstall_cmd_line;
   SafeCStringFormat(&uninstall_cmd_line, _T("REMOVE=ALL %s"),
                     kMsiSuppressAllRebootsCmdLine);
-  UINT res = ::MsiConfigureProductEx(kHelperInstallerProductGuid,
+  UINT res = ::MsiConfigureProductEx(kLegacyHelperInstallerGuid,
                                      INSTALLLEVEL_DEFAULT,
                                      INSTALLSTATE_DEFAULT,
                                      uninstall_cmd_line);
@@ -633,6 +602,8 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
 #ifdef _DEBUG
   have_called_uninstall_previous_versions_ = true;
 #endif
+
+  UninstallLegacyMsiHelper();
 
   VERIFY_SUCCEEDED(
       scheduled_task_utils::UninstallLegacyGoopdateTasks(is_machine_));
@@ -753,12 +724,6 @@ void SetupGoogleUpdate::Uninstall() {
               (_T("[RegisterOrUnregisterCOMLocalServer failed][0x%08x]"), hr));
     ASSERT1(GOOGLEUPDATE_E_DLL_NOT_FOUND == hr ||
             HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr);
-  }
-
-  hr = UninstallMsiHelper();
-  if (FAILED(hr)) {
-    SETUP_LOG(L1, (_T("[UninstallMsiHelper failed][0x%08x]"), hr));
-    ASSERT1(HRESULT_FROM_WIN32(ERROR_INSTALL_SERVICE_FAILURE) == hr);
   }
 
   UninstallLaunchMechanisms();

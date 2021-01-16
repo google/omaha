@@ -128,15 +128,8 @@ const TCHAR* const kPSFileNameUser64   = _T("psuser_64.dll");
 // TODO(omaha): Replace the following literal in clickonce\build.scons.
 // '%s/GoogleUpdateSetup.exe'
 
-// These must be in sync with the WiX files.
-// TODO(omaha): Make these constants in main.scons and use them in the .wxs
-// files, kMsiUninstallKey, and elsewhere this GUID appears.
-const TCHAR* const kHelperInstallerName = MAIN_EXE_BASE_NAME _T("Helper.msi");
-const TCHAR* const kHelperInstallerProductGuid =
+const TCHAR* const kLegacyHelperInstallerGuid =
     _T("{A92DAB39-4E2C-4304-9AB6-BC44E68B55E2}");
-const TCHAR* const kHelperPatchName = MAIN_EXE_BASE_NAME _T("HelperPatch.msp");
-const TCHAR* const kHelperPatchGuid =
-    _T("{E0D0D2C9-5836-4023-AB1D-54EC3B90AD03}");
 
 // The value that is used in the run key.
 const TCHAR* const kRunValueName = kAppName;

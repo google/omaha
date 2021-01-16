@@ -213,9 +213,6 @@ CString CommandLineBuilder::GetCommandLineArgs() const {
     case COMMANDLINE_MODE_HEALTH_CHECK:
       cmd_line_args = GetHealthCheck();
       break;
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
-      cmd_line_args = GetRegisterMsiHelper();
-      break;
     case COMMANDLINE_MODE_UNKNOWN:
     default:
       ASSERT1(false);
@@ -485,10 +482,6 @@ CString CommandLineBuilder::GetPing() const {
 
 CString CommandLineBuilder::GetHealthCheck() const {
   return GetSingleSwitch(kCmdLineHealthCheck);
-}
-
-CString CommandLineBuilder::GetRegisterMsiHelper() const {
-  return GetSingleSwitch(kCmdLineRegisterMsiHelper);
 }
 
 }  // namespace omaha

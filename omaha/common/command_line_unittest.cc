@@ -1214,13 +1214,4 @@ TEST_F(CommandLineTest, ParseCommandLine_HealthCheck) {
   VerifyCommandLineArgs(expected_, args_);
 }
 
-// Parse: <path> /registermsihelper
-TEST_F(CommandLineTest, ParseCommandLine_RegisterMsiHelper) {
-  const TCHAR* kCmdLine = _T("goopdate.exe /registermsihelper");
-  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
-
-  expected_.mode = COMMANDLINE_MODE_REGISTER_MSI_HELPER;
-  VerifyCommandLineArgs(expected_, args_);
-}
-
 }  // namespace omaha

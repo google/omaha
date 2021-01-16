@@ -308,8 +308,6 @@ HRESULT SetupFiles::BuildFileLists() {
   // files using wildcards.
   ResourceManager::GetSupportedLanguageDllNames(&core_program_files_);
 
-  core_program_files_.push_back(kHelperInstallerName);
-
   core_program_files_.push_back(kPSFileNameUser);
   core_program_files_.push_back(kPSFileNameUser64);
   core_program_files_.push_back(kPSFileNameMachine);

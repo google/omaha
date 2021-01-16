@@ -143,7 +143,6 @@ bool CheckRegisteredVersion(const CString& version,
     case COMMANDLINE_MODE_SERVICE_UNREGISTER:
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
       return true;
 
     // COM servers and services that should only run after installation.
@@ -278,11 +277,6 @@ class GoopdateImpl {
   // The "healthcheck" switch allows the installed version of Omaha to indicate
   // whether it is installed and functioning correctly by returning S_OK.
   HRESULT HandleHealthCheck();
-
-  // The "registermsihelper" switch allows installing the MSI Helper in a
-  // separate process, isolating any crashes in MSI registration from affecting
-  // the rest of the codebase.
-  HRESULT HandleRegisterMsiHelper();
 
   // TODO(omaha): Reconcile the two uninstall functions and paths.
   void MaybeUninstallGoogleUpdate();
@@ -546,7 +540,6 @@ HRESULT GoopdateImpl::Main(HINSTANCE instance,
       COMMANDLINE_MODE_SERVICE_REGISTER != args_.mode &&
       COMMANDLINE_MODE_SERVICE_UNREGISTER != args_.mode &&
       COMMANDLINE_MODE_HEALTH_CHECK != args_.mode &&
-      COMMANDLINE_MODE_REGISTER_MSI_HELPER != args_.mode &&
       COMMANDLINE_MODE_UNKNOWN != args_.mode &&
       !(COMMANDLINE_MODE_INSTALL == args_.mode &&
         is_machine_ &&
@@ -921,9 +914,6 @@ HRESULT GoopdateImpl::ExecuteMode(bool* has_ui_been_displayed) {
             case COMMANDLINE_MODE_HEALTH_CHECK:
               return HandleHealthCheck();
 
-            case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
-              return HandleRegisterMsiHelper();
-
             default:
               // We have a COMMANDLINE_MODE_ that isn't being handled.
               ASSERT1(false);
@@ -996,7 +986,6 @@ bool GoopdateImpl::ShouldCheckShutdownEvent(CommandLineMode mode) {
     case COMMANDLINE_MODE_UNREGISTER_PRODUCT:
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
     case COMMANDLINE_MODE_UA:
       return false;
 
@@ -1071,7 +1060,6 @@ HRESULT GoopdateImpl::LoadResourceDllIfNecessary(CommandLineMode mode,
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
     default:
       // These modes do not need the resource DLL.
       ASSERT1(!internal::CanDisplayUi(mode, false));
@@ -1458,32 +1446,6 @@ HRESULT GoopdateImpl::HandleHealthCheck() {
   return S_OK;
 }
 
-HRESULT GoopdateImpl::HandleRegisterMsiHelper() {
-  const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  DWORD is_registered(0);
-  VERIFY_SUCCEEDED(RegKey::GetValue(key_name,
-                                     kRegValueIsMSIHelperRegistered,
-                                     &is_registered));
-  if (is_registered) {
-    return S_OK;
-  }
-
-  SetupGoogleUpdate setup_google_update(is_machine_, false);
-  HRESULT hr = setup_google_update.InstallMsiHelper();
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[InstallMsiHelper failed][%#x]"), hr));
-    ASSERT1(HRESULT_FROM_WIN32(ERROR_INSTALL_SERVICE_FAILURE) == hr ||
-            HRESULT_FROM_WIN32(ERROR_INSTALL_ALREADY_RUNNING) == hr);
-    return hr;
-  }
-
-  VERIFY_SUCCEEDED(RegKey::SetValue(key_name,
-                                     kRegValueIsMSIHelperRegistered,
-                                     static_cast<DWORD>(1)));
-
-  return S_OK;
-}
-
 // TODO(omaha3): In Omaha 2, this was also called when /ig failed. There is a
 // separate call to UninstallSelf for /install in goopdate.cc. Should we call
 // this instead to ensure we ping? Should we try to only call from one location?
@@ -1572,7 +1534,6 @@ bool GoopdateImpl::ShouldSetBackgroundPriority(CommandLineMode mode) {
     case COMMANDLINE_MODE_MEDIUM_SERVICE:
     case COMMANDLINE_MODE_HANDOFF_INSTALL:
     case COMMANDLINE_MODE_HEALTH_CHECK:
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
       return false;
 
     default:
@@ -1872,7 +1833,6 @@ bool IsMachineProcess(CommandLineMode mode,
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
       ASSERT1(goopdate_utils::IsRunningFromOfficialGoopdateDir(false) ||
               goopdate_utils::IsRunningFromOfficialGoopdateDir(true) ||
               _T("omaha_unittest.exe") == app_util::GetCurrentModuleName());
@@ -1924,7 +1884,6 @@ bool CanDisplayUi(CommandLineMode mode, bool is_silent) {
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
     default:
       // These modes are always silent.
       return false;

@@ -135,7 +135,6 @@ void IncrementProcessWaitFailCount(CommandLineMode mode) {
     case COMMANDLINE_MODE_UNINSTALL:
     case COMMANDLINE_MODE_PING:
     case COMMANDLINE_MODE_HEALTH_CHECK:
-    case COMMANDLINE_MODE_REGISTER_MSI_HELPER:
     default:
       ++metric_setup_process_wait_failed_other;
       break;
