@@ -71,6 +71,11 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
                             const CString& device_id,
                             CStringA* dm_token);
 
+// Sends policy validation result back to DM Server.
+HRESULT SendPolicyValidationResultReportIfNeeded(
+    HttpRequestInterface* http_request, const CString& dm_token,
+    const CString& device_id, const PolicyValidationResult& validation_result);
+
 // Fetch policies from the DMServer. The policies are returned in |responses|
 // containing elements in the following format:
 //   {policy_type}=>{SerializeToString-PolicyFetchResponse}.

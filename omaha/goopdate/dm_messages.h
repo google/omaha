@@ -17,6 +17,7 @@
 
 #include <atlstr.h>
 #include <inttypes.h>
+
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -29,6 +30,55 @@
 #include "omaha/common/const_group_policy.h"
 
 namespace omaha {
+
+struct PolicyValueValidationIssue {
+  enum class Severity { kWarning, kError };
+  std::string policy_name;
+  Severity severity = Severity::kWarning;
+  std::string message;
+};
+
+struct PolicyValidationResult {
+  enum class Status {
+    // Indicates successful validation.
+    kValidationOK,
+    // Bad signature on the initial key.
+    kValidationBadInitialSignature,
+    // Bad signature.
+    kValidationBadSignature,
+    // Policy blob contains error code.
+    kValidationErrorCodePresent,
+    // Policy payload failed to decode.
+    kValidationPayloadParseError,
+    // Unexpected policy type.
+    kValidationWrongPolicyType,
+    // Unexpected settings entity id.
+    kValidationWrongSettingsEntityID,
+    // Timestamp is missing or is older than expected.
+    kValidationBadTimestamp,
+    // DM token is empty or doesn't match.
+    kValidationBadDMToken,
+    // Device id is empty or doesn't match.
+    kValidationBadDeviceID,
+    // User id doesn't match.
+    kValidationBadUser,
+    // Policy payload protobuf parse error.
+    kValidationPolicyParseError,
+    // Policy key signature could not be verified using the hard-coded
+    // verification key.
+    kValidationBadKeyVerificationSignature,
+    // Policy value validation raised warning(s).
+    kValidationValueWarning,
+    // Policy value validation failed with error(s).
+    kValidationValueError,
+  };
+
+  std::string policy_type;
+  std::string policy_token;
+
+  Status status = Status::kValidationOK;
+  std::vector<PolicyValueValidationIssue> issues;
+};
 
 // Maps policy types to their corresponding serialized PolicyFetchResponses.
 using PolicyResponsesMap = std::map<std::string, std::string>;
@@ -62,11 +112,11 @@ struct ApplicationSettings {
     SafeCStringAppendFormat(&result, _T("[install][%d]"), install);
     SafeCStringAppendFormat(&result, _T("[update][%d]"), update);
     SafeCStringAppendFormat(&result, _T("[target_channel][%s]"),
-                                     target_channel);
+                            target_channel);
     SafeCStringAppendFormat(&result, _T("[target_version_prefix][%s]"),
-                                     target_version_prefix);
+                            target_version_prefix);
     SafeCStringAppendFormat(&result, _T("[rollback_to_target_version][%d]"),
-                                     rollback_to_target_version);
+                            rollback_to_target_version);
     return result;
   }
 };
@@ -93,30 +143,30 @@ struct CachedOmahaPolicy {
 
   CString ToString() const {
     CString result(_T("[CachedOmahaPolicy]"));
-    SafeCStringAppendFormat(&result,
-        _T("[is_initialized][%d]"), is_initialized);
-    SafeCStringAppendFormat(&result,
-        _T("[auto_update_check_period_minutes][%" _T(PRId64) "]"),
+    SafeCStringAppendFormat(&result, _T("[is_initialized][%d]"),
+                            is_initialized);
+    SafeCStringAppendFormat(
+        &result, _T("[auto_update_check_period_minutes][%" _T(PRId64) "]"),
         auto_update_check_period_minutes);
-    SafeCStringAppendFormat(&result,
-        _T("[download_preference][%s]"), download_preference);
-    SafeCStringAppendFormat(&result, _T("[updates_suppressed]")
-        _T("[%" _T(PRId64) "][%" _T(PRId64) "][%" _T(PRId64) "]"),
-        updates_suppressed.start_hour,
-        updates_suppressed.start_minute,
+    SafeCStringAppendFormat(&result, _T("[download_preference][%s]"),
+                            download_preference);
+    SafeCStringAppendFormat(
+        &result,
+        _T("[updates_suppressed]") _T(
+            "[%" _T(PRId64) "][%" _T(PRId64) "][%" _T(PRId64) "]"),
+        updates_suppressed.start_hour, updates_suppressed.start_minute,
         updates_suppressed.duration_min);
     SafeCStringAppendFormat(&result, _T("[proxy_mode][%s]"), proxy_mode);
     SafeCStringAppendFormat(&result, _T("[proxy_server][%s]"), proxy_server);
     SafeCStringAppendFormat(&result, _T("[proxy_pac_url][%s]"), proxy_pac_url);
     SafeCStringAppendFormat(&result, _T("[install_default][%d]"),
-                                     install_default);
+                            install_default);
     SafeCStringAppendFormat(&result, _T("[update_default][%d]"),
-                                     update_default);
+                            update_default);
 
     for (auto elem : application_settings) {
       SafeCStringAppendFormat(&result, _T("[application_settings][%s][%s]"),
-                                       GuidToString(elem.first),
-                                       elem.second.ToString());
+                              GuidToString(elem.first), elem.second.ToString());
     }
 
     return result;
@@ -138,17 +188,20 @@ CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
 CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
                                      const CachedPolicyInfo& info);
 
+CStringA SerializePolicyValidationReportRequest(
+    const PolicyValidationResult& validation_result);
+
 HRESULT ParseDeviceRegisterResponse(const std::vector<uint8>& response,
                                     CStringA* dm_token);
 
 // Parses the policies from the DMServer, and return the PolicyFetchResponses in
 // |responses|. |responses| contains elements in the following format:
 //   {policy_type}=>{SerializeToString-PolicyFetchResponse}.
-HRESULT ParseDevicePolicyResponse(const std::vector<uint8>& dm_response_array,
-                                  const CachedPolicyInfo& info,
-                                  const CString& dm_token,
-                                  const CString& device_id,
-                                  PolicyResponses* responses_out);
+HRESULT ParseDevicePolicyResponse(
+    const std::vector<uint8>& dm_response_array, const CachedPolicyInfo& info,
+    const CString& dm_token, const CString& device_id,
+    PolicyResponses* responses_out,
+    std::vector<PolicyValidationResult>* validation_results);
 
 HRESULT ParseDeviceManagementResponseError(const std::vector<uint8>& response,
                                            CStringA* error_message);
