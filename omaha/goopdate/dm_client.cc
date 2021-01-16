@@ -238,6 +238,25 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
   return S_OK;
 }
 
+HRESULT SendPolicyValidationResultReportIfNeeded(
+    HttpRequestInterface* http_request, const CString& dm_token,
+    const CString& device_id, const PolicyValidationResult& validation_result) {
+  const CStringA payload =
+      SerializePolicyValidationReportRequest(validation_result);
+  if (payload.IsEmpty()) return S_OK;
+
+  std::vector<std::pair<CString, CString>> query_params = {
+      {_T("request"), _T("policy_validation_report")},
+  };
+
+  std::vector<uint8> response;
+  HRESULT hr = SendDeviceManagementRequest(
+      http_request, payload, FormatDMTokenAuthorizationHeader(dm_token),
+      device_id, std::move(query_params), &response);
+  REPORT_LOG(L1, (_T("[SendPolicyValidationResultReportIfNeeded][%#x]"), hr));
+  return hr;
+}
+
 HRESULT FetchPolicies(HttpRequestInterface* http_request,
                       const CString& dm_token,
                       const CString& device_id,
@@ -272,11 +291,14 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
     return hr;
   }
 
-  hr = ParseDevicePolicyResponse(response,
-                                 info,
-                                 dm_token,
-                                 device_id,
-                                 responses);
+  std::vector<PolicyValidationResult> validation_results;
+  hr = ParseDevicePolicyResponse(response, info, dm_token, device_id, responses,
+                                 &validation_results);
+  for (const PolicyValidationResult& validation_result : validation_results) {
+    SendPolicyValidationResultReportIfNeeded(http_request, dm_token, device_id,
+                                             validation_result);
+  }
+
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[ParseDevicePolicyResponse failed][%#x]"), hr));
     return hr;

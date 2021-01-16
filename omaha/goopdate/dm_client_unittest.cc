@@ -313,6 +313,84 @@ class IsRegisterBrowserRequestMatcher
 };
 
 // A Google Mock matcher that returns true if a buffer contains a valid
+// serialized PolicyValidationReportRequest message. Field values are checked
+// against the expected values when possible.
+class IsPolicyValidationReportRequestMatcher
+    : public ::testing::MatcherInterface<
+          const ::testing::tuple<const void*, size_t>&> {
+ public:
+  explicit IsPolicyValidationReportRequestMatcher(
+      const PolicyValidationResult& expected_validation_result)
+      : expected_validation_result_(expected_validation_result) {}
+  virtual bool MatchAndExplain(
+      const ::testing::tuple<const void*, size_t>& buffer,
+      ::testing::MatchResultListener* listener) const {
+    enterprise_management::DeviceManagementRequest request;
+    if (!request.ParseFromArray(::testing::get<0>(buffer),
+                                static_cast<int>(::testing::get<1>(buffer)))) {
+      *listener << "parse failure";
+      return false;
+    }
+    if (!request.has_policy_validation_report_request()) {
+      *listener << "missing policy_validation_report_request";
+      return false;
+    }
+    const enterprise_management::PolicyValidationReportRequest&
+        error_report_request = request.policy_validation_report_request();
+    if (!error_report_request.has_validation_result_type()) {
+      *listener << "unexpected error_report_request.validation_result_type";
+      return false;
+    }
+    if (!error_report_request.has_policy_type() ||
+        error_report_request.policy_type() !=
+            expected_validation_result_.policy_type) {
+      *listener << "unexpected error_report_request.policy_type";
+      return false;
+    }
+    if (!error_report_request.has_policy_token() ||
+        error_report_request.policy_token() !=
+            expected_validation_result_.policy_token) {
+      *listener << "missing error_report_request.policy_token";
+      return false;
+    }
+    if (expected_validation_result_.issues.size() !=
+        error_report_request.policy_value_validation_issues_size()) {
+      *listener << "unexpected number of issues in error_report_request";
+      return false;
+    }
+
+    for (size_t i = 0; i < expected_validation_result_.issues.size(); ++i) {
+      auto expected_issue = expected_validation_result_.issues[i];
+      auto issue_in_request =
+          error_report_request.policy_value_validation_issues(i);
+      if (!issue_in_request.has_policy_name() ||
+          issue_in_request.policy_name() != expected_issue.policy_name) {
+        *listener << "unexpected issue policy name";
+        return false;
+      }
+      if (!issue_in_request.has_severity()) {
+        *listener << "unexpected issue severity";
+        return false;
+      }
+      if (!issue_in_request.has_debug_message() ||
+          issue_in_request.debug_message() != expected_issue.message) {
+        *listener << "unexpected issue message";
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  virtual void DescribeTo(std::ostream* os) const {
+    *os << "buffer contains a valid serialized PolicyValidationReportRequest";
+  }
+
+ private:
+  const PolicyValidationResult expected_validation_result_;
+};
+
+// A Google Mock matcher that returns true if a buffer contains a valid
 // serialized DevicePolicyRequest message. While the presence of each field
 // in the request is checked, the exact value of each is not.
 class IsFetchPoliciesRequestMatcher
@@ -365,6 +443,15 @@ class IsFetchPoliciesRequestMatcher
 ::testing::Matcher<const ::testing::tuple<const void*, size_t>& >
 IsRegisterBrowserRequest() {
   return ::testing::MakeMatcher(new IsRegisterBrowserRequestMatcher);
+}
+
+// Returns an IsPolicyValidationReportRequest matcher, which takes a tuple of a
+// pointer to a buffer and a buffer size.
+::testing::Matcher<const ::testing::tuple<const void*, size_t>&>
+IsPolicyValidationReportRequest(
+    const PolicyValidationResult& expected_validation_result) {
+  return ::testing::MakeMatcher(
+      new IsPolicyValidationReportRequestMatcher(expected_validation_result));
 }
 
 // Returns an IsFetchPoliciesRequest matcher, which takes a tuple of a pointer
@@ -474,12 +561,12 @@ class DmClientRequestTest : public ::testing::Test {
     ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest(fetch_input,
                                                    &mock_http_request));
 
-    std::vector<std::pair<CString, CString>> query_params = {
-      {_T("request"), _T("policy")},
-      {_T("agent"), internal::GetAgent()},
-      {_T("apptype"), _T("Chrome")},
-      {_T("deviceid"), kDeviceId},
-      {_T("platform"), internal::GetPlatform()},
+    const std::vector<std::pair<CString, CString>> query_params = {
+        {_T("request"), _T("policy")},
+        {_T("agent"), internal::GetAgent()},
+        {_T("apptype"), _T("Chrome")},
+        {_T("deviceid"), kDeviceId},
+        {_T("platform"), internal::GetPlatform()},
     };
 
     // Expect the proper URL with query params.
@@ -663,12 +750,12 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
   MockHttpRequest* mock_http_request = nullptr;
   ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest(kDmToken, &mock_http_request));
 
-  std::vector<std::pair<CString, CString>> query_params = {
-    {_T("request"), _T("register_policy_agent")},
-    {_T("agent"), internal::GetAgent()},
-    {_T("apptype"), _T("Chrome")},
-    {_T("deviceid"), kDeviceId},
-    {_T("platform"), internal::GetPlatform()},
+  const std::vector<std::pair<CString, CString>> query_params = {
+      {_T("request"), _T("register_policy_agent")},
+      {_T("agent"), internal::GetAgent()},
+      {_T("apptype"), _T("Chrome")},
+      {_T("deviceid"), kDeviceId},
+      {_T("platform"), internal::GetPlatform()},
   };
 
   // Expect the proper URL with query params.
@@ -710,6 +797,48 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
                 kDeviceId,
                 &dm_token),
             HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
+}
+
+TEST_F(DmClientRequestTest, SendPolicyValidationResultReportIfNeeded) {
+  PolicyValidationResult validation_result;
+  validation_result.policy_type = "google/chrome/machine-level-user";
+  validation_result.policy_token = "some_token";
+  validation_result.status =
+      PolicyValidationResult::Status::kValidationBadSignature;
+  validation_result.issues.push_back(
+      {"test_policy1", PolicyValueValidationIssue::Severity::kError,
+       "test_policy1 value has error"});
+  validation_result.issues.push_back(
+      {"test_policy2", PolicyValueValidationIssue::Severity::kWarning,
+       "test_policy2 value has warning"});
+
+  MockHttpRequest* mock_http_request = nullptr;
+  ASSERT_NO_FATAL_FAILURE(MakeSuccessHttpRequest("", &mock_http_request));
+
+  const std::vector<std::pair<CString, CString>> query_params = {
+      {_T("request"), _T("policy_validation_report")},
+      {_T("agent"), internal::GetAgent()},
+      {_T("apptype"), _T("Chrome")},
+      {_T("deviceid"), kDeviceId},
+      {_T("platform"), internal::GetPlatform()},
+  };
+  EXPECT_CALL(*mock_http_request,
+              set_url(IsValidRequestUrl(std::move(query_params))));
+
+  // Expect that the request headers contain the DMToken.
+  EXPECT_CALL(*mock_http_request, set_additional_headers(CStringHasSubstr(
+                                      _T("Content-Type: application/protobuf")
+                                      _T("\r\nAuthorization: GoogleDMToken ")
+                                      _T("token=dm_token"))));
+
+  // Expect that the body of the request contains a well-formed policy
+  // validation result report request.
+  EXPECT_CALL(*mock_http_request, set_request_buffer(_, _))
+      .With(AllArgs(IsPolicyValidationReportRequest(validation_result)));
+
+  internal::SendPolicyValidationResultReportIfNeeded(
+      mock_http_request, CString(kDmToken), CString(kDeviceId),
+      validation_result);
 }
 
 // Test that DmClient can send a reasonable DevicePolicyRequest and handle a
