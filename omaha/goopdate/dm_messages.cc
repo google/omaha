@@ -337,7 +337,8 @@ bool ValidatePolicyFetchResponse(
 enterprise_management::PolicyValidationReportRequest::ValidationResultType
 TranslatePolicyValidationResult(PolicyValidationResult::Status status) {
   using Report = enterprise_management::PolicyValidationReportRequest;
-  const std::map<PolicyValidationResult::Status, Report::ValidationResultType>
+  const static std::map<PolicyValidationResult::Status,
+                        Report::ValidationResultType>
       kValidationStatusMap = {
           {PolicyValidationResult::Status::kValidationOK,
            Report::VALIDATION_RESULT_TYPE_SUCCESS},
