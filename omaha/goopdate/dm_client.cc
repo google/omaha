@@ -295,8 +295,9 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
   hr = ParseDevicePolicyResponse(response, info, dm_token, device_id, responses,
                                  &validation_results);
   for (const PolicyValidationResult& validation_result : validation_results) {
-    SendPolicyValidationResultReportIfNeeded(http_request, dm_token, device_id,
-                                             validation_result);
+    // SendPolicyValidationResultReportIfNeeded owns the created SimpleRequest.
+    SendPolicyValidationResultReportIfNeeded(new SimpleRequest, dm_token,
+                                             device_id, validation_result);
   }
 
   if (FAILED(hr)) {
