@@ -121,6 +121,7 @@ def _GetMetainstallerPayloadFilenames(prefix,
       'GoogleUpdate.exe',
       '%s.exe' % _CRASH_HANDLER_NAME,
       '%sgoopdate.dll' % (prefix),
+      'GoogleUpdateHelper.msi',
       'GoogleUpdateBroker.exe',
       'GoogleUpdateOnDemand.exe',
       'GoogleUpdateComRegisterShell64.exe',
@@ -156,6 +157,13 @@ def _GetMetainstallerPayloadFilenames(prefix,
       (omaha_version[2] >= 32)):
     # added with 1.3.32.1 and later
     payload_files.append('GoogleUpdateCore.exe')
+
+  if (omaha_version[0] >= 1 and
+      omaha_version[1] >= 3 and
+      (omaha_version[2] > 36 or
+       (omaha_version[2] == 36 and omaha_version[3] >= 61))):
+    # GoogleUpdateHelper.msi was removed with version 1.3.36.61.
+    payload_files.remove('GoogleUpdateHelper.msi')
 
   for language in languages:
     payload_files += ['%sgoopdateres_%s.dll' % (prefix, language)]
@@ -313,4 +321,3 @@ class SignedFileInfo(object):
 
     self.unsigned_filename_base = '%s_unsigned' % base_name
     self.unsigned_filename = '%s.%s' % (self.unsigned_filename_base, extension)
-
