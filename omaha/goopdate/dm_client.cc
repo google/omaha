@@ -102,10 +102,9 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage, bool is_foreground) {
   }
 
   // RegisterWithRequest owns the SimpleRequest being created here.
-  HRESULT hr = internal::RegisterWithRequest(new SimpleRequest,
-                                             enrollment_token,
-                                             device_id,
-                                             &dm_token);
+  HRESULT hr =
+      internal::RegisterWithRequest(std::make_unique<SimpleRequest>(),
+                                    enrollment_token, device_id, &dm_token);
   if (FAILED(hr)) {
     internal::HandleDMResponseError(
         hr, ConfigManager::Instance()->GetPolicyResponsesDir());
@@ -158,13 +157,9 @@ HRESULT RefreshPolicies() {
     // Not fatal, continue.
   }
 
-  // FetchPolicies owns the SimpleRequest being created here.
   PolicyResponses responses;
-  hr = internal::FetchPolicies(new SimpleRequest,
-                               dm_token,
-                               device_id,
-                               info,
-                               &responses);
+  hr = internal::FetchPolicies(std::make_unique<SimpleRequest>(), dm_token,
+                               device_id, info, &responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[FetchPolicies failed][%#x]"), hr));
 
@@ -195,11 +190,10 @@ HRESULT RefreshPolicies() {
 
 namespace internal {
 
-HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
+HRESULT RegisterWithRequest(std::unique_ptr<HttpRequestInterface> http_request,
                             const CString& enrollment_token,
-                            const CString& device_id,
-                            CStringA* dm_token) {
-  ASSERT1(http_request);
+                            const CString& device_id, CStringA* dm_token) {
+  ASSERT1(http_request.get());
   ASSERT1(dm_token);
 
   std::vector<std::pair<CString, CString>> query_params = {
@@ -218,12 +212,9 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
 
   std::vector<uint8> response;
   HRESULT hr = SendDeviceManagementRequest(
-    http_request,
-    payload,
-    internal::FormatEnrollmentTokenAuthorizationHeader(enrollment_token),
-    device_id,
-    std::move(query_params),
-    &response);
+      std::move(http_request), payload,
+      internal::FormatEnrollmentTokenAuthorizationHeader(enrollment_token),
+      device_id, std::move(query_params), &response);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[SendDeviceManagementRequest failed][%#x]"), hr));
     return hr;
@@ -239,7 +230,7 @@ HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
 }
 
 HRESULT SendPolicyValidationResultReportIfNeeded(
-    HttpRequestInterface* http_request, const CString& dm_token,
+    std::unique_ptr<HttpRequestInterface> http_request, const CString& dm_token,
     const CString& device_id, const PolicyValidationResult& validation_result) {
   const CStringA payload =
       SerializePolicyValidationReportRequest(validation_result);
@@ -251,18 +242,18 @@ HRESULT SendPolicyValidationResultReportIfNeeded(
 
   std::vector<uint8> response;
   HRESULT hr = SendDeviceManagementRequest(
-      http_request, payload, FormatDMTokenAuthorizationHeader(dm_token),
-      device_id, std::move(query_params), &response);
+      std::move(http_request), payload,
+      FormatDMTokenAuthorizationHeader(dm_token), device_id,
+      std::move(query_params), &response);
   REPORT_LOG(L1, (_T("[SendPolicyValidationResultReportIfNeeded][%#x]"), hr));
   return hr;
 }
 
-HRESULT FetchPolicies(HttpRequestInterface* http_request,
-                      const CString& dm_token,
-                      const CString& device_id,
+HRESULT FetchPolicies(std::unique_ptr<HttpRequestInterface> http_request,
+                      const CString& dm_token, const CString& device_id,
                       const CachedPolicyInfo& info,
                       PolicyResponses* responses) {
-  ASSERT1(http_request);
+  ASSERT1(http_request.get());
   ASSERT1(!dm_token.IsEmpty());
   ASSERT1(responses);
 
@@ -280,12 +271,9 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
 
   std::vector<uint8> response;
   HRESULT hr = SendDeviceManagementRequest(
-      http_request,
-      payload,
-      FormatDMTokenAuthorizationHeader(dm_token),
-      device_id,
-      std::move(query_params),
-      &response);
+      std::move(http_request), payload,
+      FormatDMTokenAuthorizationHeader(dm_token), device_id,
+      std::move(query_params), &response);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[SendDeviceManagementRequest failed][%#x]"), hr));
     return hr;
@@ -295,9 +283,9 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
   hr = ParseDevicePolicyResponse(response, info, dm_token, device_id, responses,
                                  &validation_results);
   for (const PolicyValidationResult& validation_result : validation_results) {
-    // SendPolicyValidationResultReportIfNeeded owns the created SimpleRequest.
-    SendPolicyValidationResultReportIfNeeded(new SimpleRequest, dm_token,
-                                             device_id, validation_result);
+    SendPolicyValidationResultReportIfNeeded(std::make_unique<SimpleRequest>(),
+                                             dm_token, device_id,
+                                             validation_result);
   }
 
   if (FAILED(hr)) {
@@ -309,13 +297,11 @@ HRESULT FetchPolicies(HttpRequestInterface* http_request,
 }
 
 HRESULT SendDeviceManagementRequest(
-    HttpRequestInterface* http_request,
-    const CStringA& payload,
-    const CString& authorization_header,
-    const CString& device_id,
+    std::unique_ptr<HttpRequestInterface> http_request, const CStringA& payload,
+    const CString& authorization_header, const CString& device_id,
     std::vector<std::pair<CString, CString>> query_params,
     std::vector<uint8>* response) {
-  ASSERT1(http_request);
+  ASSERT1(http_request.get());
   ASSERT1(response);
 
   // Get the network configuration.
@@ -335,7 +321,7 @@ HRESULT SendDeviceManagementRequest(
   request->AddHeader(_T("Authorization"), authorization_header);
 
   // Set it up
-  request->AddHttpRequest(http_request);
+  request->AddHttpRequest(http_request.release());
 
   // Form the request URL with query params.
   CString url;

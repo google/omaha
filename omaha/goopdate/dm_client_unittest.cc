@@ -545,9 +545,9 @@ class DmClientRequestTest : public ::testing::Test {
     ASSERT_TRUE(info);
 
     PolicyResponsesMap expected_responses = {
-      {"google/chrome/machine-level-user", "test-data-chrome"},
-      {"google/drive/machine-level-user", "test-data-drive"},
-      {"google/earth/machine-level-user", "test-data-earth"},
+        {"google/chrome/machine-level-user", "test-data-chrome"},
+        {"google/drive/machine-level-user", "test-data-drive"},
+        {"google/earth/machine-level-user", "test-data-earth"},
     };
 
     enterprise_management::PublicKeyVerificationData signed_data;
@@ -587,11 +587,9 @@ class DmClientRequestTest : public ::testing::Test {
 
     // Fetch Policies should succeed, providing the expected PolicyResponses.
     PolicyResponses responses;
-    ASSERT_HRESULT_SUCCEEDED(internal::FetchPolicies(mock_http_request,
-                                                     CString(kDmToken),
-                                                     kDeviceId,
-                                                     *info,
-                                                     &responses));
+    ASSERT_HRESULT_SUCCEEDED(internal::FetchPolicies(
+        std::move(std::unique_ptr<HttpRequestInterface>(mock_http_request)),
+        CString(kDmToken), kDeviceId, *info, &responses));
     ASSERT_TRUE(!responses.policy_info.empty());
     ASSERT_HRESULT_SUCCEEDED(GetCachedPolicyInfo(responses.policy_info, info));
 
@@ -778,10 +776,8 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
   // Registration should succeed, providing the expected DMToken.
   CStringA dm_token;
   ASSERT_HRESULT_SUCCEEDED(internal::RegisterWithRequest(
-      mock_http_request,
-      _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"),
-      kDeviceId,
-      &dm_token));
+      std::move(std::unique_ptr<HttpRequestInterface>(mock_http_request)),
+      _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"), kDeviceId, &dm_token));
   EXPECT_STREQ(dm_token.GetString(), kDmToken);
 
   // Test DM Token invalidation.
@@ -791,12 +787,11 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
   ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(&mock_gone_request));
 
   // Registration should fail.
-  ASSERT_EQ(internal::RegisterWithRequest(
-                mock_gone_request,
-                _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"),
-                kDeviceId,
-                &dm_token),
-            HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
+  ASSERT_EQ(
+      internal::RegisterWithRequest(
+          std::move(std::unique_ptr<HttpRequestInterface>(mock_gone_request)),
+          _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"), kDeviceId, &dm_token),
+      HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
 }
 
 TEST_F(DmClientRequestTest, SendPolicyValidationResultReportIfNeeded) {
@@ -837,8 +832,8 @@ TEST_F(DmClientRequestTest, SendPolicyValidationResultReportIfNeeded) {
       .With(AllArgs(IsPolicyValidationReportRequest(validation_result)));
 
   internal::SendPolicyValidationResultReportIfNeeded(
-      mock_http_request, CString(kDmToken), CString(kDeviceId),
-      validation_result);
+      std::move(std::unique_ptr<HttpRequestInterface>(mock_http_request)),
+      CString(kDmToken), CString(kDeviceId), validation_result);
 }
 
 // Test that DmClient can send a reasonable DevicePolicyRequest and handle a
@@ -894,12 +889,11 @@ TEST_F(DmClientRequestTest, FetchPolicies) {
 
   // Fetch Policies should fail.
   PolicyResponses responses;
-  ASSERT_EQ(internal::FetchPolicies(mock_gone_request,
-                                    CString(kDmToken),
-                                    kDeviceId,
-                                    info,
-                                    &responses),
-            HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
+  ASSERT_EQ(
+      internal::FetchPolicies(
+          std::move(std::unique_ptr<HttpRequestInterface>(mock_gone_request)),
+          CString(kDmToken), kDeviceId, info, &responses),
+      HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
 }
 
 // Test that we are able to successfully encode and then decode a
@@ -922,7 +916,7 @@ TEST_F(DmClientRequestTest, HandleDMResponseError) {
      "test-data-earth-foo-bar-baz-foo-bar-baz-foo-bar-baz"},
   };
 
-  PolicyResponses expected_responses = {responses, "expected data"};
+  const PolicyResponses expected_responses = {responses, "expected data"};
   ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
                                                       expected_responses));
 
