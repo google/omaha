@@ -66,30 +66,25 @@ HRESULT RefreshPolicies();
 
 namespace internal {
 
-HRESULT RegisterWithRequest(HttpRequestInterface* http_request,
+HRESULT RegisterWithRequest(std::unique_ptr<HttpRequestInterface> http_request,
                             const CString& enrollment_token,
-                            const CString& device_id,
-                            CStringA* dm_token);
+                            const CString& device_id, CStringA* dm_token);
 
 // Sends policy validation result back to DM Server.
 HRESULT SendPolicyValidationResultReportIfNeeded(
-    HttpRequestInterface* http_request, const CString& dm_token,
+    std::unique_ptr<HttpRequestInterface> http_request, const CString& dm_token,
     const CString& device_id, const PolicyValidationResult& validation_result);
 
 // Fetch policies from the DMServer. The policies are returned in |responses|
 // containing elements in the following format:
 //   {policy_type}=>{SerializeToString-PolicyFetchResponse}.
-HRESULT FetchPolicies(HttpRequestInterface* http_request,
-                      const CString& dm_token,
-                      const CString& device_id,
-                      const CachedPolicyInfo& info,
-                      PolicyResponses* responses);
+HRESULT FetchPolicies(std::unique_ptr<HttpRequestInterface> http_request,
+                      const CString& dm_token, const CString& device_id,
+                      const CachedPolicyInfo& info, PolicyResponses* responses);
 
 HRESULT SendDeviceManagementRequest(
-    HttpRequestInterface* http_request,
-    const CStringA& payload,
-    const CString& authorization_header,
-    const CString& device_id,
+    std::unique_ptr<HttpRequestInterface> http_request, const CStringA& payload,
+    const CString& authorization_header, const CString& device_id,
     std::vector<std::pair<CString, CString>> query_params,
     std::vector<uint8>* response);
 
