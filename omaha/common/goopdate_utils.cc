@@ -378,7 +378,11 @@ HRESULT StartGoogleUpdateWithArgs(bool is_machine,
   }
 
   if (start_mode != StartMode::kForeground) {
-    *process = pi.hProcess;
+    if (process) {
+      *process = pi.hProcess;
+    } else {
+      ::CloseHandle(pi.hProcess);
+    }
     ::CloseHandle(pi.hThread);
   }
 
