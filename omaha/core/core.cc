@@ -110,7 +110,13 @@ bool Core::AreScheduledTasksHealthy() const {
   HRESULT ua_task_last_exit_code =
       scheduled_task_utils::GetExitCodeGoopdateTaskUA(is_system_);
 
-  if (ua_task_last_exit_code == SCHED_S_TASK_HAS_NOT_RUN &&
+  // On Windows 10, we can rely on the last exit code to be SCHED_S_TASK_HAS_NOT_RUN.
+  // On Windows 7, we cannot, so we fallback to checking the last run time.
+  const bool ua_task_has_not_run =
+    ua_task_last_exit_code == SCHED_S_TASK_HAS_NOT_RUN ||
+    !scheduled_task_utils::HasGoopdateTaskEverRunUA(is_system_);
+
+  if (ua_task_has_not_run &&
       !ConfigManager::Is24HoursSinceLastUpdate(is_system_)) {
     // Not 24 hours yet since install or update. Let us give the UA task the
     // benefit of the doubt, and assume all is well for right now.

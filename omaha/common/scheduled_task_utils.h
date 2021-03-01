@@ -41,6 +41,8 @@ HRESULT UninstallLegacyGoopdateTasks(bool is_machine);
 HRESULT StartGoopdateTaskCore(bool is_machine);
 bool IsInstalledGoopdateTaskUA(bool is_machine);
 bool IsDisabledGoopdateTaskUA(bool is_machine);
+bool HasGoopdateTaskEverRunUA(bool is_machine);
+
 HRESULT GetExitCodeGoopdateTaskUA(bool is_machine);
 bool IsUATaskHealthy(bool is_machine);
 
