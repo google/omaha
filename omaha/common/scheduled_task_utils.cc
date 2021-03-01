@@ -1232,6 +1232,11 @@ bool IsDisabledGoopdateTaskUA(bool is_machine) {
   return internal::Instance().IsDisabledScheduledTask(task_name);
 }
 
+bool HasGoopdateTaskEverRunUA(bool is_machine) {
+  const CString& task_name(internal::GetCurrentTaskNameUA(is_machine));
+  return internal::Instance().HasScheduledTaskEverRun(task_name);
+}
+
 HRESULT GetExitCodeGoopdateTaskUA(bool is_machine) {
   const CString& task_name(internal::GetCurrentTaskNameUA(is_machine));
   return internal::Instance().GetScheduledTaskExitCode(task_name);
