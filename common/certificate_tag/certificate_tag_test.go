@@ -37,12 +37,11 @@ import (
 //
 // Here is an example of testing the 32-bit version on Windows 10.
 //
-// $ go build -o C:/tmp/certificate_tag.exe common/certificate_tag/certificate_tag.go
-// $ go test common/certificate_tag/certificate_tag_test.go common/certificate_tag/certificate_tag.go -tag-binary-dir "C:/tmp" -tag-binary-name "certificate_tag.exe"
+// $ go build -o C:/tmp/certificate_tag common/certificate_tag/certificate_tag.go
+// $ go test common/certificate_tag/certificate_tag_test.go common/certificate_tag/certificate_tag.go -tag-binary-dir "C:/tmp"
 
 var (
-	tagBinaryDir  *string = flag.String("tag-binary-dir", "/tmp", "Path to directory with the tag binary.")
-	tagBinaryName *string = flag.String("tag-binary-name", "certificate_tag", "Name of the tag binary file.")
+	tagBinaryDir *string = flag.String("tag-binary-dir", "/tmp", "Path to directory with the tag binary.")
 	// tagBinary contains the path to the certificate_tag program.
 	tagBinary string
 	// sourceExe contains the path to a Chrome installer exe file.
@@ -58,7 +57,7 @@ const existingTagSubstring = ".....Gact.?omah"
 func TestMain(m *testing.M) {
 	flag.Parse()
 
-	tagBinary = filepath.Join(*tagBinaryDir, *tagBinaryName)
+	tagBinary = filepath.Join(*tagBinaryDir, "certificate_tag")
 	sourceExe = filepath.Join("testdata/ChromeSetup.exe")
 	sourceMSI1 = filepath.Join("testdata/googlechromestandaloneenterprise.msi")
 	sourceMSI2 = filepath.Join("testdata/test7zSigned.msi")
