@@ -110,7 +110,8 @@ bool Core::AreScheduledTasksHealthy() const {
   HRESULT ua_task_last_exit_code =
       scheduled_task_utils::GetExitCodeGoopdateTaskUA(is_system_);
 
-  // On Windows 10, we can rely on the last exit code to be SCHED_S_TASK_HAS_NOT_RUN.
+  // On Windows 10, we can rely on the last exit code to be
+  // SCHED_S_TASK_HAS_NOT_RUN.
   // On Windows 7, we cannot, so we fallback to checking the last run time.
   const bool ua_task_has_not_run =
     ua_task_last_exit_code == SCHED_S_TASK_HAS_NOT_RUN ||
