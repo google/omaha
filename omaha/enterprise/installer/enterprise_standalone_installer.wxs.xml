@@ -73,7 +73,8 @@
                       Name='UninstallArguments'
                       Win64='no'/>
     </Property>
-    <Property Id='AllowDowngradeSubstitution'>false</Property>
+    <Property Id='AllowDowngradeSubstitution' Value='false' />
+    <Property Id='ProgramFilesDirSubstitution' />
 
     <!-- Eliminates "warning LGHT1076 : ICE71: The Media table has no entries."
     -->
@@ -240,6 +241,13 @@
       Execute='immediate'
       Return='check'/>
 
+    <!-- Set [ProgramFilesDirSubstitution] to [PROGRAMFILESDIR]. -->
+    <CustomAction Id='DoProgramFilesDirSubstitution'
+      Property='ProgramFilesDirSubstitution'
+      Value='[PROGRAMFILESDIR]'
+      Execute='immediate'
+      Return='check'/>
+
     <InstallExecuteSequence>
       <RemoveExistingProducts After='InstallValidate' />
 
@@ -308,6 +316,11 @@
       <!-- Set [AllowDowngradeSubstitution] to true if downgrades are allowed. -->
       <Custom Action='DoAllowDowngradeSubstitution' Before='BuildInstallCommand'>
         (((?ProductClientState=2) AND ($ProductClientState=3)) OR ((?ProductClientState=3) AND REINSTALL)) AND (ALLOWDOWNGRADE &lt;&gt; "")
+      </Custom>
+
+      <!-- Set [ProgramFilesDirSubstitution] to [PROGRAMFILES] if specified. -->
+      <Custom Action='DoProgramFilesDirSubstitution' Before='BuildInstallCommand'>
+        (((?ProductClientState=2) AND ($ProductClientState=3)) OR ((?ProductClientState=3) AND REINSTALL)) AND (PROGRAMFILESDIR &lt;&gt; "")
       </Custom>
 
       <Custom Action='BuildInstallCommand'
