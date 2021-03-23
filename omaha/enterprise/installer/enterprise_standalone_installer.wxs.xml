@@ -74,7 +74,7 @@
                       Win64='no'/>
     </Property>
     <Property Id='AllowDowngradeSubstitution' Value='false' />
-    <Property Id='ProgramFilesDirSubstitution' />
+    <Property Id='ProgramFilesDirSubstitution' Value='ProgramFilesDirSubstitution' />
 
     <!-- Eliminates "warning LGHT1076 : ICE71: The Media table has no entries."
     -->
@@ -241,6 +241,12 @@
       Execute='immediate'
       Return='check'/>
 
+    <!-- Clears the value of [ProgramFilesDirSubstitution]. -->
+    <CustomAction Id='ResetProgramFilesDirSubstitution'
+      Property='ProgramFilesDirSubstitution'
+      Value=''
+      Execute='immediate'
+      Return='check'/>
     <!-- Set [ProgramFilesDirSubstitution] to [PROGRAMFILESDIR]. -->
     <CustomAction Id='DoProgramFilesDirSubstitution'
       Property='ProgramFilesDirSubstitution'
@@ -319,8 +325,9 @@
       </Custom>
 
       <!-- Set [ProgramFilesDirSubstitution] to [PROGRAMFILES] if specified. -->
+      <Custom Action='ResetProgramFilesDirSubstitution' Before='DoProgramFilesDirSubstitution' />
       <Custom Action='DoProgramFilesDirSubstitution' Before='BuildInstallCommand'>
-        (((?ProductClientState=2) AND ($ProductClientState=3)) OR ((?ProductClientState=3) AND REINSTALL)) AND (PROGRAMFILESDIR &lt;&gt; "")
+        (((?ProductClientState=2) AND ($ProductClientState=3)) OR ((?ProductClientState=3) AND REINSTALL))
       </Custom>
 
       <Custom Action='BuildInstallCommand'
