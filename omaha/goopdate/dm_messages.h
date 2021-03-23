@@ -48,6 +48,16 @@ struct PolicyValueValidationIssue {
   PolicyValueValidationIssue(const std::string& policy_name, Severity severity,
                              const std::string& message)
       : policy_name(policy_name), severity(severity), message(message) {}
+
+  CString ToString() const {
+    CString result;
+    SafeCStringAppendFormat(&result,
+                            _T("[PolicyValueValidationIssue][policy_name][%s]")
+                            _T("[severity][%d][message][%s]"),
+                            CString(policy_name.c_str()), severity,
+                            CString(message.c_str()));
+    return result;
+  }
 };
 
 struct PolicyValidationResult {
@@ -96,6 +106,20 @@ struct PolicyValidationResult {
              return issue.severity ==
                     PolicyValueValidationIssue::Severity::kError;
            }) == issues.end();
+  }
+
+  CString ToString() const {
+    CString result;
+    SafeCStringAppendFormat(&result,
+                            _T("[PolicyValidationResult][status][%d]")
+                            _T("[policy_type][%s][policy_token][%s]"),
+                            status, CString(policy_type.c_str()),
+                            CString(policy_token.c_str()));
+
+    for (const PolicyValueValidationIssue& issue : issues) {
+      SafeCStringAppendFormat(&result, _T("\n\t[%s]"), issue.ToString());
+    }
+    return result;
   }
 };
 

@@ -73,7 +73,7 @@ class DmMessagesTest : public ::testing::Test {
     omaha_settings.mutable_updates_suppressed()->set_start_minute(-1);
     omaha_settings.mutable_updates_suppressed()->set_duration_min(1000);
     omaha_settings.set_proxy_mode("weird_proxy_mode");
-    omaha_settings.set_proxy_server("proxy_server");
+    omaha_settings.set_proxy_server("unexpected_proxy");
     omaha_settings.set_proxy_pac_url("foo.c/proxy.pa");
     omaha_settings.set_install_default(
         wireless_android_enterprise_devicemanagement::INSTALL_DISABLED);
@@ -195,17 +195,17 @@ TEST_F(DmMessagesTest, ValidateOmahaPolicyResponse_ErrorPolicyValues) {
   EXPECT_EQ(validation_result.issues[6].severity,
             PolicyValueValidationIssue::Severity::kWarning);
   EXPECT_STREQ(validation_result.issues[6].message.c_str(),
-               "Proxy server setting is ignored because proxy mode is not "
-               "fixed_servers");
+               "Proxy server setting [unexpected_proxy] is ignored because "
+               "proxy mode is not fixed_servers");
 
   // proxy_pac_url
   EXPECT_STREQ(validation_result.issues[7].policy_name.c_str(),
                "proxy_pac_url");
   EXPECT_EQ(validation_result.issues[7].severity,
             PolicyValueValidationIssue::Severity::kWarning);
-  EXPECT_STREQ(
-      validation_result.issues[7].message.c_str(),
-      "Proxy Pac URL setting is ignored because proxy mode is not pac_script");
+  EXPECT_STREQ(validation_result.issues[7].message.c_str(),
+               "Proxy Pac URL setting [foo.c/proxy.pa] is ignored because "
+               "proxy mode is not pac_script");
 
   // Chrome's target_version_prefix
   EXPECT_STREQ(validation_result.issues[8].policy_name.c_str(),

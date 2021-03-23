@@ -33,6 +33,8 @@ namespace omaha {
 
 namespace {
 
+namespace edm = ::wireless_android_enterprise_devicemanagement;
+
 // Request signed policy blobs. kPolicyVerificationKeyHash and
 // kPolicyVerificationKey need to be kept in sync with the corresponding values
 // in Chromium's cloud_policy_constants.cc.
@@ -374,40 +376,37 @@ TranslatePolicyValidationResultSeverity(
   }
 }
 
-}  // namespace
-
-bool ValidateOmahaPolicyResponse(
+bool ExtractOmahaSettingsFromPolicyResponse(
     const enterprise_management::PolicyFetchResponse& response,
+    edm::OmahaSettingsClientProto* omaha_settings,
     PolicyValidationResult* validation_result) {
+  ASSERT1(omaha_settings);
   ASSERT1(validation_result);
 
   enterprise_management::PolicyData policy_data;
-  wireless_android_enterprise_devicemanagement::OmahaSettingsClientProto
-      omaha_settings;
   if (!policy_data.ParseFromString(response.policy_data()) ||
       !policy_data.has_policy_value()) {
-    REPORT_LOG(
-        LE, (_T("[ValidateOmahaPolicyResponse] failed to parse policy data")));
     validation_result->status =
         PolicyValidationResult::Status::kValidationPayloadParseError;
     return false;
   }
 
-  if (!omaha_settings.ParseFromString(policy_data.policy_value())) {
-    REPORT_LOG(
-        LE, (_T("[ValidateOmahaPolicyResponse] failed to parse policy value")));
+  if (!omaha_settings->ParseFromString(policy_data.policy_value())) {
     validation_result->status =
         PolicyValidationResult::Status::kValidationPolicyParseError;
     return false;
   }
 
+  return true;
+}
+
+void ValidateAutoUpdateCheckPeriodPolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
   if (omaha_settings.has_auto_update_check_period_minutes() &&
       (omaha_settings.auto_update_check_period_minutes() < 0 ||
        omaha_settings.auto_update_check_period_minutes() >
            kMaxAutoUpdateCheckPeriodMinutes)) {
-    REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] ")
-                    _T("auto_update_check_period_minutes out of range [%d]"),
-                    omaha_settings.auto_update_check_period_minutes()));
     validation_result->issues.emplace_back(
         "auto_update_check_period_minutes",
         PolicyValueValidationIssue::Severity::kError,
@@ -415,68 +414,61 @@ bool ValidateOmahaPolicyResponse(
             std::to_string(kMaxAutoUpdateCheckPeriodMinutes) + "): " +
             std::to_string(omaha_settings.auto_update_check_period_minutes()));
   }
+}
 
-  if (omaha_settings.has_download_preference()) {
-    const CString download_preference(
-        omaha_settings.download_preference().c_str());
-    if (download_preference.CompareNoCase(kDownloadPreferenceCacheable) != 0) {
-      REPORT_LOG(
-          LW,
-          (_T("[ValidateOmahaPolicyResponse] unknown download preference [%s]"),
-           download_preference));
-      validation_result->issues.emplace_back(
-          "download_preference", PolicyValueValidationIssue::Severity::kWarning,
-          "Unrecognized download preference: " +
-              omaha_settings.download_preference());
-    }
+void ValidateDownloadPreferencePolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  if (!omaha_settings.has_download_preference()) return;
+
+  const CString download_preference(
+      omaha_settings.download_preference().c_str());
+  if (download_preference.CompareNoCase(kDownloadPreferenceCacheable) != 0) {
+    validation_result->issues.emplace_back(
+        "download_preference", PolicyValueValidationIssue::Severity::kWarning,
+        "Unrecognized download preference: " +
+            omaha_settings.download_preference());
   }
+}
 
-  if (omaha_settings.has_updates_suppressed()) {
-    if (omaha_settings.updates_suppressed().start_hour() < 0 ||
-        omaha_settings.updates_suppressed().start_hour() >= 24) {
-      REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] bad update supressed ")
-                      _T("start hour [%d]"),
-                      omaha_settings.updates_suppressed().start_hour()));
-      validation_result->issues.emplace_back(
-          "updates_suppressed.start_hour",
-          PolicyValueValidationIssue::Severity::kError,
-          "Value out of range(0 - 23) : " +
-              std::to_string(omaha_settings.updates_suppressed().start_hour()));
-    }
-    if (omaha_settings.updates_suppressed().start_minute() < 0 ||
-        omaha_settings.updates_suppressed().start_minute() >= 60) {
-      REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] bad update supressed ")
-                      _T("start minute [%d]"),
-                      omaha_settings.updates_suppressed().start_minute()));
-      validation_result->issues.emplace_back(
-          "updates_suppressed.start_minute",
-          PolicyValueValidationIssue::Severity::kError,
-          "Value out of range(0 - 59) : " +
-              std::to_string(
-                  omaha_settings.updates_suppressed().start_minute()));
-    }
-    if (omaha_settings.updates_suppressed().duration_min() < 0 ||
-        omaha_settings.updates_suppressed().duration_min() >
-            kMaxUpdatesSuppressedDurationMin) {
-      REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] bad update supressed ")
-                      _T("duration minute [%d]"),
-                      omaha_settings.updates_suppressed().duration_min()));
-      validation_result->issues.emplace_back(
-          "updates_suppressed.duration_min",
-          PolicyValueValidationIssue::Severity::kError,
-          "Value out of range(0 - " +
-              std::to_string(kMaxUpdatesSuppressedDurationMin) + ") : " +
-              std::to_string(
-                  omaha_settings.updates_suppressed().duration_min()));
-    }
+void ValidateUpdatesSuppressedPolicies(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  if (!omaha_settings.has_updates_suppressed()) return;
+
+  if (omaha_settings.updates_suppressed().start_hour() < 0 ||
+      omaha_settings.updates_suppressed().start_hour() >= 24) {
+    validation_result->issues.emplace_back(
+        "updates_suppressed.start_hour",
+        PolicyValueValidationIssue::Severity::kError,
+        "Value out of range(0 - 23) : " +
+            std::to_string(omaha_settings.updates_suppressed().start_hour()));
   }
+  if (omaha_settings.updates_suppressed().start_minute() < 0 ||
+      omaha_settings.updates_suppressed().start_minute() >= 60) {
+    validation_result->issues.emplace_back(
+        "updates_suppressed.start_minute",
+        PolicyValueValidationIssue::Severity::kError,
+        "Value out of range(0 - 59) : " +
+            std::to_string(omaha_settings.updates_suppressed().start_minute()));
+  }
+  if (omaha_settings.updates_suppressed().duration_min() < 0 ||
+      omaha_settings.updates_suppressed().duration_min() >
+          kMaxUpdatesSuppressedDurationMin) {
+    validation_result->issues.emplace_back(
+        "updates_suppressed.duration_min",
+        PolicyValueValidationIssue::Severity::kError,
+        "Value out of range(0 - " +
+            std::to_string(kMaxUpdatesSuppressedDurationMin) + ") : " +
+            std::to_string(omaha_settings.updates_suppressed().duration_min()));
+  }
+}
 
+void ValidateProxyPolicies(const edm::OmahaSettingsClientProto& omaha_settings,
+                           PolicyValidationResult* validation_result) {
   if (omaha_settings.has_proxy_mode()) {
     const CString proxy_mode(omaha_settings.proxy_mode().c_str());
     if (!ContainsStringNoCase(kProxyModeValidValues, proxy_mode)) {
-      REPORT_LOG(LE,
-                 (_T("[ValidateOmahaPolicyResponse] Unknown proxy mode [%s]"),
-                  proxy_mode));
       validation_result->issues.emplace_back(
           "proxy_mode", PolicyValueValidationIssue::Severity::kError,
           "Unrecognized proxy mode: " + omaha_settings.proxy_mode());
@@ -485,23 +477,17 @@ bool ValidateOmahaPolicyResponse(
 
   if (omaha_settings.has_proxy_server()) {
     if (!omaha_settings.has_proxy_mode()) {
-      REPORT_LOG(LW, (_T("[ValidateOmahaPolicyResponse] Proxy server is set ")
-                      _T("without proxy mode.")));
       validation_result->issues.emplace_back(
           "proxy_server", PolicyValueValidationIssue::Severity::kWarning,
           "Proxy server setting is ignored because proxy mode is not set.");
     } else {
       const CString proxy_mode(omaha_settings.proxy_mode().c_str());
-      const CString proxy_server(omaha_settings.proxy_server().c_str());
       if (proxy_mode.CompareNoCase(kProxyModeFixedServers) != 0) {
-        REPORT_LOG(LW,
-                   (_T("[ValidateOmahaPolicyResponse] Proxy server value ")
-                    _T("[%s] ignored, proxy mode [%s] is not fixed_servers"),
-                    proxy_server, proxy_mode));
         validation_result->issues.emplace_back(
             "proxy_server", PolicyValueValidationIssue::Severity::kWarning,
-            "Proxy server setting is ignored because proxy mode is not "
-            "fixed_servers");
+            "Proxy server setting [" + omaha_settings.proxy_server() +
+                "] is ignored because proxy mode is not "
+                "fixed_servers");
       }
     }
   }
@@ -514,109 +500,148 @@ bool ValidateOmahaPolicyResponse(
           "set.");
     } else {
       const CString proxy_mode(omaha_settings.proxy_mode().c_str());
-      const CString proxy_pac_url(omaha_settings.proxy_pac_url().c_str());
       if (proxy_mode.CompareNoCase(kProxyModePacScript) != 0) {
-        REPORT_LOG(LW, (_T("[ValidateOmahaPolicyResponse] Proxy PAC URL value ")
-                        _T("[%s] ignored, proxy mode [%s] is not pac_script"),
-                        proxy_pac_url, proxy_mode));
         validation_result->issues.emplace_back(
             "proxy_pac_url", PolicyValueValidationIssue::Severity::kWarning,
-            "Proxy Pac URL setting is ignored because proxy mode is not "
-            "pac_script");
+            "Proxy Pac URL setting [" + omaha_settings.proxy_pac_url() +
+                "] is ignored because proxy mode is not "
+                "pac_script");
       }
     }
   }
+}
 
+void ValidateInstallDefaultPolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
   if (omaha_settings.has_install_default() &&
       !Contains(kInstallPolicyValidValues, omaha_settings.install_default())) {
-    REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] unexpectd install ")
-                    _T("default policy [%d]"),
-                    omaha_settings.install_default()));
     validation_result->issues.emplace_back(
         "install_default", PolicyValueValidationIssue::Severity::kError,
         "Invalid install default value: " +
             std::to_string(omaha_settings.install_default()));
   }
+}
 
+void ValidateUpdateDefaultPolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
   if (omaha_settings.has_update_default() &&
       !Contains(kUpdatePolicyValidValues, omaha_settings.update_default())) {
-    REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] unexpectd update ")
-                    _T("default policy [%d]"),
-                    omaha_settings.update_default()));
     validation_result->issues.emplace_back(
         "update_default", PolicyValueValidationIssue::Severity::kError,
         "Invalid update default value: " +
             std::to_string(omaha_settings.update_default()));
   }
+}
 
-  const auto& repeated_app_settings = omaha_settings.application_settings();
-  for (const auto& app_settings_proto : repeated_app_settings) {
-    if (!app_settings_proto.has_app_guid()) continue;
+void ValidateGlobalPolicies(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  ValidateAutoUpdateCheckPeriodPolicy(omaha_settings, validation_result);
+  ValidateDownloadPreferencePolicy(omaha_settings, validation_result);
+  ValidateUpdatesSuppressedPolicies(omaha_settings, validation_result);
+  ValidateProxyPolicies(omaha_settings, validation_result);
+  ValidateInstallDefaultPolicy(omaha_settings, validation_result);
+  ValidateUpdateDefaultPolicy(omaha_settings, validation_result);
+}
 
-    GUID app_guid = {};
-    CString app_guid_str(app_settings_proto.app_guid().c_str());
-    if (FAILED(StringToGuidSafe(app_guid_str, &app_guid))) {
-      continue;
-    }
+void ValidateAppInstallPolicy(const edm::ApplicationSettings& app_settings,
+                              PolicyValidationResult* validation_result) {
+  if (app_settings.has_install() &&
+      !Contains(kInstallPolicyValidValues, app_settings.install())) {
+    validation_result->issues.emplace_back(
+        "install", PolicyValueValidationIssue::Severity::kError,
+        app_settings.app_guid() + " invalid install policy: " +
+            std::to_string(app_settings.install()));
+  }
+}
 
-    if (app_settings_proto.has_install() &&
-        !Contains(kInstallPolicyValidValues, app_settings_proto.install())) {
-      REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] unexpectd app [%s] ")
-                      _T("install policy [%d]"),
-                      app_guid_str, app_settings_proto.install()));
-      validation_result->issues.emplace_back(
-          "install", PolicyValueValidationIssue::Severity::kError,
-          app_settings_proto.app_guid() + " invalid install policy: " +
-              std::to_string(app_settings_proto.install()));
-    }
+void ValidateAppUpdatePolicy(const edm::ApplicationSettings& app_settings,
+                             PolicyValidationResult* validation_result) {
+  if (app_settings.has_update() &&
+      !Contains(kUpdatePolicyValidValues, app_settings.update())) {
+    validation_result->issues.emplace_back(
+        "update", PolicyValueValidationIssue::Severity::kError,
+        app_settings.app_guid() +
+            " invalid update policy: " + std::to_string(app_settings.update()));
+  }
+}
 
-    if (app_settings_proto.has_update() &&
-        !Contains(kUpdatePolicyValidValues, app_settings_proto.update())) {
-      REPORT_LOG(LE, (_T("[ValidateOmahaPolicyResponse] unexpectd app [%s] ")
-                      _T("update policy [%d]"),
-                      app_guid_str, app_settings_proto.update()));
-      validation_result->issues.emplace_back(
-          "update", PolicyValueValidationIssue::Severity::kError,
-          app_settings_proto.app_guid() + " invalid update policy: " +
-              std::to_string(app_settings_proto.update()));
-    }
+void ValidateAppTargetChannelPolicy(
+    const edm::ApplicationSettings& app_settings,
+    PolicyValidationResult* validation_result) {
+  if (app_settings.has_target_channel() &&
+      app_settings.target_channel().empty()) {
+    validation_result->issues.emplace_back(
+        "target_channel", PolicyValueValidationIssue::Severity::kWarning,
+        app_settings.app_guid() + " empty policy value");
+  }
+}
 
-    if (app_settings_proto.has_target_channel() &&
-        app_settings_proto.target_channel().empty()) {
-      REPORT_LOG(LW, (_T("[ValidateOmahaPolicyResponse] app [%s] has empty ")
-                      _T("target channel"),
-                      app_guid_str));
-      validation_result->issues.emplace_back(
-          "target_channel", PolicyValueValidationIssue::Severity::kWarning,
-          app_settings_proto.app_guid() + " empty policy value");
-    }
+void ValidateAppRollbackToTargetVersionPolicies(
+    const edm::ApplicationSettings& app_settings,
+    PolicyValidationResult* validation_result) {
+  const bool has_target_version_prefix =
+      (app_settings.has_target_version_prefix() &&
+       !app_settings.target_version_prefix().empty());
+  const bool rollback_allowed =
+      (app_settings.has_rollback_to_target_version() &&
+       app_settings.rollback_to_target_version() ==
+           edm::ROLLBACK_TO_TARGET_VERSION_ENABLED);
 
-    if (app_settings_proto.has_target_version_prefix()) {
-      if (!app_settings_proto.has_rollback_to_target_version() ||
-          !app_settings_proto.rollback_to_target_version()) {
-        CString target_version_prefix(
-            app_settings_proto.target_version_prefix().c_str());
-        REPORT_LOG(LW, (_T("[ValidateOmahaPolicyResponse] app [%s] has target ")
-                        _T("version [%s] but rollback is not allowed"),
-                        app_guid_str, target_version_prefix));
-        validation_result->issues.emplace_back(
-            "target_version_prefix",
-            PolicyValueValidationIssue::Severity::kWarning,
-            app_settings_proto.app_guid() +
-                " target_version_prefix has value but "
-                "rollback_to_target_version is not allowed.");
-      } else if (app_settings_proto.target_version_prefix().empty()) {
-        REPORT_LOG(LW, (_T("[ValidateOmahaPolicyResponse] app [%s] has empty ")
-                        _T("target version"),
-                        app_guid_str));
-        validation_result->issues.emplace_back(
-            "target_version_prefix",
-            PolicyValueValidationIssue::Severity::kWarning,
-            app_settings_proto.app_guid() + " empty policy value");
-      }
-    }
+  if (rollback_allowed && !has_target_version_prefix) {
+    validation_result->issues.emplace_back(
+        "target_version_prefix", PolicyValueValidationIssue::Severity::kWarning,
+        app_settings.app_guid() + " empty policy value");
   }
 
+  if (!rollback_allowed && has_target_version_prefix) {
+    validation_result->issues.emplace_back(
+        "target_version_prefix", PolicyValueValidationIssue::Severity::kWarning,
+        app_settings.app_guid() +
+            " target_version_prefix has value but "
+            "rollback_to_target_version is not allowed.");
+  }
+}
+
+void ValidateAppPolicies(const edm::ApplicationSettings& app_settings,
+                         PolicyValidationResult* validation_result) {
+  if (!app_settings.has_app_guid()) return;
+
+  GUID app_guid = {};
+  CString app_guid_str(app_settings.app_guid().c_str());
+  if (FAILED(StringToGuidSafe(app_guid_str, &app_guid))) return;
+
+  ValidateAppInstallPolicy(app_settings, validation_result);
+  ValidateAppUpdatePolicy(app_settings, validation_result);
+  ValidateAppTargetChannelPolicy(app_settings, validation_result);
+  ValidateAppRollbackToTargetVersionPolicies(app_settings, validation_result);
+}
+
+}  // namespace
+
+bool ValidateOmahaPolicyResponse(
+    const enterprise_management::PolicyFetchResponse& response,
+    PolicyValidationResult* validation_result) {
+  ASSERT1(validation_result);
+
+  edm::OmahaSettingsClientProto omaha_settings;
+  if (!ExtractOmahaSettingsFromPolicyResponse(response, &omaha_settings,
+                                              validation_result)) {
+    REPORT_LOG(LE, (_T("[ExtractOmahaSettingsFromPolicyResponse]: %s"),
+                    validation_result->ToString()));
+    return false;
+  }
+
+  ValidateGlobalPolicies(omaha_settings, validation_result);
+
+  const auto& repeated_app_settings = omaha_settings.application_settings();
+  for (const auto& app_settings : repeated_app_settings)
+    ValidateAppPolicies(app_settings, validation_result);
+
+  REPORT_LOG(L1, (_T("[ValidateOmahaPolicyResponse]: %s"),
+                  validation_result->ToString()));
   return validation_result->HasErrorIssue();
 }
 
@@ -710,8 +735,7 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
 
   enterprise_management::PolicyFetchResponse response;
   enterprise_management::PolicyData policy_data;
-  wireless_android_enterprise_devicemanagement::OmahaSettingsClientProto
-      omaha_settings;
+  edm::OmahaSettingsClientProto omaha_settings;
   if (raw_response.empty() || !response.ParseFromString(raw_response) ||
       !policy_data.ParseFromString(response.policy_data()) ||
       !policy_data.has_policy_value() ||
