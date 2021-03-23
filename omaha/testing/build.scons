@@ -571,6 +571,7 @@ omaha_unittest_inputs = [
 if omaha_unittest_env.Bit('has_device_management'):
   omaha_unittest_inputs += [
       '../goopdate/dm_client_unittest.cc',
+      '../goopdate/dm_messages_unittest.cc',
       '../goopdate/dm_storage_test_utils.cc',
       '../goopdate/dm_storage_unittest.cc',
   ]
