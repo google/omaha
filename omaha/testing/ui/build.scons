@@ -53,7 +53,6 @@ local_env.Append(
         'comctl32.lib',
         'crypt32.lib',
         'iphlpapi.lib',
-        'msi.lib',
         'mstask.lib',
         'netapi32.lib',
         'psapi.lib',

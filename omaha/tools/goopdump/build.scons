@@ -83,7 +83,6 @@ exe_env.Append(
         'crypt32.lib',
         'delayimp.lib',
         'Iphlpapi.lib',
-        'msi.lib',
         'mstask.lib',
         'netapi32.lib',
         'ole32.lib',

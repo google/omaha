@@ -486,7 +486,6 @@ for omaha_version_info in env['omaha_versions_info']:
           'delayimp.lib',
           'imagehlp.lib',
           'iphlpapi.lib',
-          'msi.lib',
           'msimg32.lib',
           'mstask.lib',
           'netapi32.lib',

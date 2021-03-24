@@ -14,7 +14,6 @@
 // ========================================================================
 
 #include <windows.h>
-#include <msi.h>
 #include <atlpath.h>
 #include "omaha/base/app_util.h"
 #include "omaha/base/atlregmapex.h"

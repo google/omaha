@@ -245,7 +245,6 @@ omaha_unittest_libs = [
     'delayimp.lib',       # For delay loading
     'imagehlp.lib',
     'iphlpapi.lib',
-    'msi.lib',
     'mstask.lib',
     'netapi32.lib',
     'ole32.lib',

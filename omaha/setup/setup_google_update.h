@@ -75,9 +75,6 @@ class SetupGoogleUpdate {
   // Register COM classes and interfaces.
   HRESULT RegisterOrUnregisterCOMLocalServer(bool register_server);
 
-  // Uninstalls the legacy MSI helper if it exists.
-  HRESULT UninstallLegacyMsiHelper();
-
   // Build the install file path for support files. For example,
   CString BuildSupportFileInstallPath(const CString& filename) const;
 
