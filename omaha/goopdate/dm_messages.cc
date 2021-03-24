@@ -971,12 +971,15 @@ HRESULT ParseDevicePolicyResponse(
       continue;
     }
 
-    if (should_update_cached_info) {
-      // Use one of the policy responses as the cached info for future
-      // validations. Any response would do but for simplicity just use
-      // the first valid one.
+    if (should_update_cached_info &&
+        response.has_new_public_key_verification_data()) {
+      // Cache this policy response for future validations. At the moment, we
+      // only use the public key information within the cached policy response.
       std::string policy_info;
-      if (!response.SerializeToString(&policy_info)) return E_UNEXPECTED;
+      if (!response.SerializeToString(&policy_info)) {
+        return E_UNEXPECTED;
+      }
+
       responses_out->policy_info = std::move(policy_info);
       should_update_cached_info = false;
     }
