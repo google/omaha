@@ -102,10 +102,10 @@ struct PolicyValidationResult {
   std::vector<PolicyValueValidationIssue> issues;
 
   bool HasErrorIssue() const {
-    return std::find_if(issues.begin(), issues.end(), [](const auto& issue) {
+    return std::any_of(issues.begin(), issues.end(), [](const auto& issue) {
              return issue.severity ==
                     PolicyValueValidationIssue::Severity::kError;
-           }) == issues.end();
+           });
   }
 
   CString ToString() const {

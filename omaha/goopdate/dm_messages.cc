@@ -627,7 +627,7 @@ bool ValidateOmahaPolicyResponse(
 
   REPORT_LOG(L1, (_T("[ValidateOmahaPolicyResponse]: %s"),
                   validation_result->ToString()));
-  return validation_result->HasErrorIssue();
+  return !validation_result->HasErrorIssue();
 }
 
 bool ValidatePolicyFetchResponse(
@@ -849,7 +849,7 @@ CStringA SerializePolicyValidationReportRequest(
             PolicyValidationResult::Status::kValidationValueError;
         break;
       } else if (issue.severity ==
-                 PolicyValueValidationIssue::Severity::kError) {
+                 PolicyValueValidationIssue::Severity::kWarning) {
         aggregated_status =
             PolicyValidationResult::Status::kValidationValueWarning;
       }
