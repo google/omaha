@@ -182,13 +182,6 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
     extra_code1_ = hr;
   }
 
-  // Reset kRegValueIsMSIHelperRegistered so that the MSI helper is registered
-  // on the next UA run.
-  const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  VERIFY_SUCCEEDED(RegKey::SetValue(key_name,
-                                     kRegValueIsMSIHelperRegistered,
-                                     static_cast<DWORD>(0)));
-
   hr = RegisterOrUnregisterCOMLocalServer(true);
   if (FAILED(hr)) {
     OPT_LOG(LW, (_T("[RegisterOrUnregisterCOMLocalServer failed][0x%x]"), hr));

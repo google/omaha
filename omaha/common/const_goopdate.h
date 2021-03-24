@@ -239,7 +239,6 @@ const TCHAR* const kRegValueSelfUpdateExtraCode1  = _T("UpdateCode1");
 const TCHAR* const kRegValueSelfUpdateErrorCode   = _T("UpdateError");
 const TCHAR* const kRegValueSelfUpdateVersion     = _T("UpdateVersion");
 const TCHAR* const kRegValueInstalledVersion      = _T("version");
-const TCHAR* const kRegValueIsMSIHelperRegistered = _T("IsMSIHelperRegistered");
 const TCHAR* const kRegValueLastOSVersion         = _T("LastOSVersion");
 
 // Indicates the time when it is safe for the client to connect to the server
