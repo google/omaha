@@ -791,16 +791,17 @@ def GenerateGroupPolicyTemplateAdml(apps):
 
     app_rollback_to_target_version_explanation = (
         'Explain_RollbackToTargetVersion' + app_legal_id,
-        'Specifies that Google Update should roll installations of %s back to '
-        'the version indicated by "Target version prefix override".\n\n'
-        'This policy setting has no effect unless "Target version prefix '
-        'override" is set.\n\n'
+        'Specifies that Google Update should roll installations of %s back if '
+        'the client has a higher version than that available.\n\n'
         'If this policy is not configured or is disabled, installs that have a '
-        'version higher than that specified by "Target version prefix '
-        'override" will be left as-is.\n\n'
+        'version higher than that available will be left as-is. This could be '
+        'the case if "Target channel override" is set to a Channel with a '
+        'lower version, if "Target version prefix override" matches a lower '
+        'version on the Channel, or if a user had installed a higher '
+        'version.\n\n'
         'If this policy is enabled, installs that have a version higher than '
-        'that specified by "Target version prefix override" will be downgraded '
-        'to the highest available version that matches the target version.\n\n'
+        'that available will be downgraded to the highest available version, '
+        'respecting any configured target Channel and target version.\n\n'
         '%s\n\n'
         '%s' % (app_name, rollback_disclaimer, ADML_DOMAIN_REQUIREMENT_EN))
     string_definition_list.append(app_rollback_to_target_version_explanation)

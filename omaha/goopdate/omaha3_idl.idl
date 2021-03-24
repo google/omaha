@@ -587,8 +587,15 @@ interface IPolicyStatus : IDispatch {
                                         [out, retval] BSTR* prefix);
 
   // Returns whether the RollbackToTargetVersion policy has been set for the
-  // app. If RollbackToTargetVersion is set, the TargetVersionPrefix policy
-  // governs the version to rollback clients with higher versions to.
+  // app. Setting RollbackToTargetVersion will result in a version downgrade if
+  // the app version on the client is higher than the version on the server.
+  // This could happen under circumstances such as:
+  // - TargetVersionPrefix is used to pick an older version on the channel.
+  // - TargetChannel is used to move the client to a channel with a lower
+  //   version (e.g., Dev/Beta to Beta/Stable).
+  // - A user somehow installed a newer version on the client.
+  // When not set, a client will not receive updates until the app version on
+  // the server passes the version on the client.
   [propget] HRESULT isRollbackToTargetVersionAllowed(
       [in] BSTR app_id,
       [out, retval] VARIANT_BOOL* rollback_allowed);

@@ -88,11 +88,7 @@ class DmMessagesTest : public ::testing::Test {
     app.set_update(
         wireless_android_enterprise_devicemanagement::AUTOMATIC_UPDATES_ONLY);
     app.set_target_channel("");
-    app.set_target_version_prefix("3.6.55");
-    app.set_rollback_to_target_version(
-        wireless_android_enterprise_devicemanagement::
-            ROLLBACK_TO_TARGET_VERSION_DISABLED);
-    app.set_target_channel("beta");
+    app.set_target_version_prefix("");
 
     auto repeated_app_settings = omaha_settings.mutable_application_settings();
     repeated_app_settings->Add(std::move(app));
@@ -141,7 +137,7 @@ TEST_F(DmMessagesTest, ValidateOmahaPolicyResponse_ErrorPolicyValues) {
   EXPECT_FALSE(ValidateOmahaPolicyResponse(response, &validation_result));
   EXPECT_EQ(validation_result.status,
             PolicyValidationResult::Status::kValidationOK);
-  EXPECT_EQ(validation_result.issues.size(), 9);
+  EXPECT_EQ(validation_result.issues.size(), 10);
 
   // auto_update_check_period_minutes
   EXPECT_STREQ(validation_result.issues[0].policy_name.c_str(),
@@ -207,14 +203,21 @@ TEST_F(DmMessagesTest, ValidateOmahaPolicyResponse_ErrorPolicyValues) {
                "Proxy Pac URL setting [foo.c/proxy.pa] is ignored because "
                "proxy mode is not pac_script");
 
-  // Chrome's target_version_prefix
+  // target_channel
   EXPECT_STREQ(validation_result.issues[8].policy_name.c_str(),
-               "target_version_prefix");
+               "target_channel");
   EXPECT_EQ(validation_result.issues[8].severity,
             PolicyValueValidationIssue::Severity::kWarning);
   EXPECT_STREQ(validation_result.issues[8].message.c_str(),
-               "{8A69D345-D564-463C-AFF1-A69D9E530F96} target_version_prefix "
-               "has value but rollback_to_target_version is not allowed.");
+               "{8A69D345-D564-463C-AFF1-A69D9E530F96} empty policy value");
+
+  // target_version_prefix
+  EXPECT_STREQ(validation_result.issues[9].policy_name.c_str(),
+               "target_version_prefix");
+  EXPECT_EQ(validation_result.issues[9].severity,
+            PolicyValueValidationIssue::Severity::kWarning);
+  EXPECT_STREQ(validation_result.issues[9].message.c_str(),
+               "{8A69D345-D564-463C-AFF1-A69D9E530F96} empty policy value");
 }
 
 }  // namespace omaha

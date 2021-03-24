@@ -579,29 +579,14 @@ void ValidateAppTargetChannelPolicy(
   }
 }
 
-void ValidateAppRollbackToTargetVersionPolicies(
+void ValidateAppTargetVersionPrefixPolicy(
     const edm::ApplicationSettings& app_settings,
     PolicyValidationResult* validation_result) {
-  const bool has_target_version_prefix =
-      (app_settings.has_target_version_prefix() &&
-       !app_settings.target_version_prefix().empty());
-  const bool rollback_allowed =
-      (app_settings.has_rollback_to_target_version() &&
-       app_settings.rollback_to_target_version() ==
-           edm::ROLLBACK_TO_TARGET_VERSION_ENABLED);
-
-  if (rollback_allowed && !has_target_version_prefix) {
+  if (app_settings.has_target_version_prefix() &&
+      app_settings.target_version_prefix().empty()) {
     validation_result->issues.emplace_back(
         "target_version_prefix", PolicyValueValidationIssue::Severity::kWarning,
         app_settings.app_guid() + " empty policy value");
-  }
-
-  if (!rollback_allowed && has_target_version_prefix) {
-    validation_result->issues.emplace_back(
-        "target_version_prefix", PolicyValueValidationIssue::Severity::kWarning,
-        app_settings.app_guid() +
-            " target_version_prefix has value but "
-            "rollback_to_target_version is not allowed.");
   }
 }
 
@@ -616,7 +601,7 @@ void ValidateAppPolicies(const edm::ApplicationSettings& app_settings,
   ValidateAppInstallPolicy(app_settings, validation_result);
   ValidateAppUpdatePolicy(app_settings, validation_result);
   ValidateAppTargetChannelPolicy(app_settings, validation_result);
-  ValidateAppRollbackToTargetVersionPolicies(app_settings, validation_result);
+  ValidateAppTargetVersionPrefixPolicy(app_settings, validation_result);
 }
 
 }  // namespace

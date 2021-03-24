@@ -473,10 +473,9 @@ Explain_TargetVersionPrefix$AppLegalId$=Specifies which version $AppName$ should
     4) Policy value is "55.24.34": the app will be updated to this specific version only.\\
     \\n\\n%(domain_requirement)s
 
-Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should roll installations of $AppName$ back to the version indicated by \"""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} + TARGET_VERSION_POLICY + """\".\\
-    \\n\\nThis policy setting has no effect unless \"""" + TARGET_VERSION_POLICY + """\" is set.\\
-    \\n\\nIf this policy is not configured or is disabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be left as-is.\\
-    \\n\\nIf this policy is enabled, installs that have a version higher than that specified by \"""" + TARGET_VERSION_POLICY + """\" will be downgraded to the highest available version that matches the target version.\\
+Explain_RollbackToTargetVersion$AppLegalId$=Specifies that Google Update should roll installations of $AppName$ back if the client has a higher version than that available.\\
+    \\n\\nIf this policy is not configured or is disabled, installs that have a version higher than that available will be left as-is. This could be the case if \"""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} + TARGET_CHANNEL_POLICY + """\" is set to a Channel with a lower version, if \"""" + TARGET_VERSION_POLICY + """\" matches a lower version on the Channel, or if a user had installed a higher version.\\
+    \\n\\nIf this policy is enabled, installs that have a version higher than that available will be downgraded to the highest available version, respecting any configured target Channel and target version.\\
     \\n\\n$AppRollbackDisclaimer$\\
     \\n\\n%(domain_requirement)s
 """ % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN}
