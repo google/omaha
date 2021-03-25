@@ -94,7 +94,7 @@ struct CommandLineExtraArgs {
       : installation_id(GUID_NULL),
         browser_type(BROWSER_UNKNOWN),
         usage_stats_enable(TRISTATE_NONE),
-        runtime_only(false) {}
+        runtime_mode(RUNTIME_MODE_NOT_SET) {}
 
   CString bundle_name;
   GUID installation_id;
@@ -108,7 +108,7 @@ struct CommandLineExtraArgs {
 #endif
   BrowserType browser_type;
   Tristate usage_stats_enable;
-  bool runtime_only;
+  RuntimeMode runtime_mode;
 
   std::vector<CommandLineAppArgs> apps;
 };

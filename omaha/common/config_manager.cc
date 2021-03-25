@@ -198,6 +198,38 @@ CString PolicyValue<bool>::GetConflictValueString() const {
 }
 
 template <>
+CString PolicyValue<std::vector<CString>>::GetValueString() const {
+  if (value_.empty()) {
+    return CString();
+  }
+
+  CString result;
+  for (const auto& app_id : value_) {
+    result += app_id;
+    result += ";";
+  }
+  result.Delete(result.GetLength() - 1);
+
+  return result;
+}
+
+template <>
+CString PolicyValue<std::vector<CString>>::GetConflictValueString() const {
+  if (conflict_value_.empty()) {
+    return CString();
+  }
+
+  CString result;
+  for (const auto& app_id : conflict_value_) {
+    result += app_id;
+    result += ";";
+  }
+  result.Delete(result.GetLength() - 1);
+
+  return result;
+}
+
+template <>
 CString PolicyValue<UpdatesSuppressedTimes>::GetValueString() const {
   CString result;
   SafeCStringFormat(&result, _T("%d, %d, %d"), value_.start_hour,
@@ -313,6 +345,55 @@ HRESULT GroupPolicyManager::GetProxyServer(CString* proxy_server) {
   return RegKey::GetValue(kRegKeyGoopdateGroupPolicy,
                           kRegValueProxyServer,
                           proxy_server);
+}
+
+HRESULT GroupPolicyManager::GetForceInstallApps(std::vector<CString>* app_ids) {
+  ASSERT1(app_ids);
+  ASSERT1(app_ids->empty());
+
+  RegKey group_policy_key;
+  HRESULT hr = group_policy_key.Open(kRegKeyGoopdateGroupPolicy, KEY_READ);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  static const int kGuidLen = 38;
+  static const int kLenInstallAppPrefix =
+      static_cast<int>(_tcslen(kRegValueInstallAppPrefix));
+  static const int kInstallAppIdValueTotalLength =
+      kGuidLen + kLenInstallAppPrefix;
+
+  int value_count = group_policy_key.GetValueCount();
+  for (int i = 0; i < value_count; ++i) {
+    CString value_name;
+    DWORD type = 0;
+    hr = group_policy_key.GetValueNameAt(i, &value_name, &type);
+    if (FAILED(hr)) {
+      continue;
+    }
+
+    if (value_name.GetLength() != kInstallAppIdValueTotalLength ||
+        !String_StartsWith(value_name, kRegValueInstallAppPrefix, true)) {
+      continue;
+    }
+
+    DWORD install_policy = 0;
+    if (FAILED(group_policy_key.GetValue(value_name, &install_policy)) ||
+        install_policy != kPolicyForceInstall) {
+      continue;
+    }
+
+    CString app_id_string = value_name.Mid(kLenInstallAppPrefix);
+    GUID app_id = {};
+    hr = StringToGuidSafe(app_id_string, &app_id);
+    if (FAILED(hr) || GUID_NULL == app_id) {
+      continue;
+    }
+
+    app_ids->push_back(app_id_string);
+  }
+
+  return !app_ids->empty() ? S_OK : E_FAIL;
 }
 
 HRESULT GroupPolicyManager::GetEffectivePolicyForAppInstalls(
@@ -471,6 +552,14 @@ HRESULT DMPolicyManager::GetProxyServer(CString* proxy_server) {
 
   *proxy_server = dm_policy_.proxy_server;
   return S_OK;
+}
+
+HRESULT DMPolicyManager::GetForceInstallApps(std::vector<CString>* app_ids) {
+  ASSERT1(app_ids);
+  ASSERT1(app_ids->empty());
+  UNREFERENCED_PARAMETER(app_ids);
+
+  return E_FAIL;
 }
 
 HRESULT DMPolicyManager::GetEffectivePolicyForAppInstalls(
@@ -859,6 +948,35 @@ HRESULT ConfigManager::GetProxyServer(
   OPT_LOG(L5, (_T("[GetProxyServer][%s]"), v.ToString()));
 
   *proxy_server = v.value();
+  return S_OK;
+}
+
+HRESULT ConfigManager::GetForceInstallApps(
+    std::vector<CString>* app_ids,
+    IPolicyStatusValue** policy_status_value) const {
+  ASSERT1(app_ids);
+
+  PolicyValue<std::vector<CString>> v;
+
+  for (size_t i = 0; i != policies_.size(); ++i) {
+    std::vector<CString> t;
+    HRESULT hr = policies_[i]->GetForceInstallApps(&t);
+    if (SUCCEEDED(hr)) {
+      v.Update(policies_[i]->IsManaged(), policies_[i]->source(), t);
+    }
+  }
+
+  if (v.source().IsEmpty()) {
+    // No managed source had a value set for this policy. There is no local
+    // default value for this policy. So we return failure.
+    return E_FAIL;
+  }
+
+  v.UpdateFinal(std::vector<CString>(), policy_status_value);
+
+  OPT_LOG(L5, (_T("[GetForceInstallApps][%s]"), v.ToString()));
+
+  *app_ids = v.value();
   return S_OK;
 }
 

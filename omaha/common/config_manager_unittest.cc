@@ -139,6 +139,10 @@ class ConfigManagerNoOverrideTest : public testing::Test {
     return cm_->AreUpdatesSuppressedNow();
   }
 
+  DWORD GetForceInstallApps(std::vector<CString>* app_ids) {
+    return cm_->GetForceInstallApps(app_ids, NULL);
+  }
+
   ConfigManager* cm_;
 };
 
@@ -1229,6 +1233,24 @@ TEST_P(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
       _T("ImageState"),
       _T("IMAGE_STATE_SPECIALIZE_RESEAL_TO_AUDIT")));
   EXPECT_TRUE(cm_->IsWindowsInstalling());
+}
+
+TEST_P(ConfigManagerTest, GetForceInstallApps_NoGroupPolicy) {
+  std::vector<CString> app_ids;
+  EXPECT_FAILED(GetForceInstallApps(&app_ids));
+}
+
+TEST_P(ConfigManagerTest, GetForceInstallApps_GroupPolicy) {
+  if (!IsDomainPredominant()) {
+    return;
+  }
+
+  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, kPolicyForceInstall));
+  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, kPolicyForceInstall));
+
+  std::vector<CString> app_ids;
+  EXPECT_SUCCEEDED(GetForceInstallApps(&app_ids));
+  EXPECT_EQ(2, app_ids.size());
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {

@@ -152,6 +152,26 @@ HRESULT StringToNeedsAdmin(const TCHAR* str, NeedsAdmin* value) {
   return S_OK;
 }
 
+HRESULT StringToRuntimeMode(const TCHAR* str, RuntimeMode* value) {
+  ASSERT1(str);
+  ASSERT1(value);
+
+  const TCHAR* const kFalse   = _T("false");
+  const TCHAR* const kTrue    = _T("true");
+  const TCHAR* const kPersist = _T("persist");
+
+  if (!_tcsicmp(kFalse, str)) {
+    *value = RUNTIME_MODE_FALSE;
+  } else if (!_tcsicmp(kTrue, str)) {
+    *value = RUNTIME_MODE_TRUE;
+  } else if (!_tcsicmp(kPersist, str)) {
+    *value = RUNTIME_MODE_PERSIST;
+  } else {
+    return E_INVALIDARG;
+  }
+  return S_OK;
+}
+
 }  // namespace
 
 // If no bundle name is specified, the first app's name is used.
@@ -200,7 +220,8 @@ HRESULT ExtraArgsParser::ParseExtraArgs(const TCHAR* extra_args,
   // Save the arguments for the last application.
   args->apps.push_back(cur_extra_app_args_);
 
-  ASSERT1(!(args->runtime_only && args->apps[0].app_guid != GUID_NULL));
+  ASSERT1(args->runtime_mode == RUNTIME_MODE_NOT_SET ||
+          args->apps[0].app_guid == GUID_NULL);
 
   if (args->bundle_name.IsEmpty()) {
     ASSERT1(!args->apps.empty());
@@ -266,11 +287,14 @@ HRESULT ExtraArgsParser::HandleToken(const CString& token,
     if (!String_StringToTristate(value, &args->usage_stats_enable)) {
       return E_INVALIDARG;
     }
-  } else if (name.CompareNoCase(kExtraArgRuntime) == 0) {
+  } else if (name.CompareNoCase(kExtraArgRuntimeMode) == 0) {
     if (!args->apps.empty() || cur_extra_app_args_.app_guid != GUID_NULL) {
       return E_INVALIDARG;
     }
-    args->runtime_only = true;
+
+    if (FAILED(StringToRuntimeMode(value, &args->runtime_mode))) {
+      return E_INVALIDARG;
+    }
 #if defined(HAS_DEVICE_MANAGEMENT)
   } else if (name.CompareNoCase(kExtraArgEnrollmentToken) == 0) {
     if (!IsUuid(value)) {
@@ -302,7 +326,8 @@ HRESULT ExtraArgsParser::HandleToken(const CString& token,
     if (FAILED(hr)) {
       return hr;
     }
-    if (cur_extra_app_args_.app_guid == GUID_NULL || args->runtime_only) {
+    if (cur_extra_app_args_.app_guid == GUID_NULL ||
+        args->runtime_mode != RUNTIME_MODE_NOT_SET) {
       return E_INVALIDARG;
     }
     first_app_ = false;

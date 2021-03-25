@@ -206,7 +206,7 @@ Setup::~Setup() {
 // * Shutdown Event - Tells existing other instances and any instances that may
 // start during Setup to exit.
 // Setup-related operations do not include installation of the app.
-HRESULT Setup::Install(bool set_keepalive) {
+HRESULT Setup::Install(RuntimeMode runtime_mode) {
   SETUP_LOG(L3,
       (_T("[Admin=%d, NEAdmin=%d, Update3Svc=%d, MedSvc=%d, Machine=%d"),
        vista_util::IsUserAdmin(),
@@ -237,7 +237,7 @@ HRESULT Setup::Install(bool set_keepalive) {
   metric_setup_lock_acquire_ms.AddSample(lock_metrics_timer.GetElapsedMs());
   SETUP_LOG(L1, (_T("[Setup Locks acquired]")));
 
-  HRESULT hr = DoProtectedInstall(set_keepalive);
+  HRESULT hr = DoProtectedInstall(runtime_mode);
   if (FAILED(hr)) {
     SETUP_LOG(LE, (_T("[Setup::DoProtectedInstall failed][0x%08x]"), hr));
   }
@@ -343,7 +343,7 @@ HRESULT Setup::HandleLockFailed(int lock_version) {
 }
 
 // Assumes the necessary locks have been acquired.
-HRESULT Setup::DoProtectedInstall(bool set_keepalive) {
+HRESULT Setup::DoProtectedInstall(RuntimeMode runtime_mode) {
   SETUP_LOG(L2, (_T("[Setup::DoProtectedInstall]")));
 
   SetupFiles setup_files(is_machine_);
@@ -385,15 +385,13 @@ HRESULT Setup::DoProtectedInstall(bool set_keepalive) {
       return hr;
     }
 
-    // If we've been asked to defer uninstall (typically because we're doing
-    // an Omaha-only install to expose the COM API to a later process), set
-    // it on a successful install.
-    if (set_keepalive) {
-      SetDelayUninstall(true);
-    }
-
     ++metric_setup_do_self_install_succeeded;
   }
+
+  // We set or reset the Runtime mode here, regardless of whether Omaha was
+  // already installed or we just installed it. This is to allow for turning
+  // on/off the Runtime mode independent of Omaha installation.
+  SetRuntimeMode(runtime_mode);
 
   return S_OK;
 }
@@ -1267,18 +1265,23 @@ bool Setup::CanUninstallGoogleUpdate() const {
     CORE_LOG(L2, (_T("[Found install workers. Not uninstalling]")));
     return false;
   }
-  if (ShouldDelayUninstall()) {
-    // If the DelayUninstall flag is set, that implies that someone has
+
+  RuntimeMode runtime_mode = GetRuntimeMode();
+  if (runtime_mode == RUNTIME_MODE_PERSIST) {
+    OPT_LOG(L1, (_T("[RUNTIME_MODE_PERSIST is set. Not uninstalling.]")));
+    return false;
+  } else if (runtime_mode == RUNTIME_MODE_TRUE) {
+    // If the RUNTIME_MODE_TRUE flag is set, that implies that someone has
     // installed us with the runtime=true flag, expecting that they can
     // use our API later from another process.  If 24 hours have passed
     // since that initial Omaha install, we clear the flag but still
     // return false for this check.  (That way, if a machine has been
     // suspended in mid-install, they still have a grace period until
     // the next /ua to get something installed.)
-    CORE_LOG(L3, (_T("[DelayUninstall is set. Not uninstalling.]")));
+    CORE_LOG(L3, (_T("[RUNTIME_MODE_TRUE is set. Not uninstalling.]")));
     if (ConfigManager::Instance()->Is24HoursSinceLastUpdate(is_machine_)) {
-      CORE_LOG(L4, (_T("[24 hours elapsed; clearing DelayUninstall.]")));
-      SetDelayUninstall(false);
+      CORE_LOG(L4, (_T("[24 hours elapsed; clearing RUNTIME_MODE_TRUE.]")));
+      SetRuntimeMode(RUNTIME_MODE_FALSE);
     }
     return false;
   }
@@ -1292,26 +1295,37 @@ bool Setup::CanUninstallGoogleUpdate() const {
   return true;
 }
 
-bool Setup::ShouldDelayUninstall() const {
+RuntimeMode Setup::GetRuntimeMode() const {
   const TCHAR* key = ConfigManager::Instance()->registry_update(is_machine_);
-  if (!RegKey::HasValue(key, kRegValueDelayOmahaUninstall)) {
-    return false;
+  if (!RegKey::HasValue(key, kRegValueRuntimeMode)) {
+    return RUNTIME_MODE_NOT_SET;
   }
-  DWORD should_delay = 0;
-  if (FAILED(RegKey::GetValue(key,
-                              kRegValueDelayOmahaUninstall,
-                              &should_delay))) {
-    return false;
+  DWORD runtime_mode = static_cast<DWORD>(RUNTIME_MODE_NOT_SET);
+  if (FAILED(RegKey::GetValue(key, kRegValueRuntimeMode, &runtime_mode))) {
+    return RUNTIME_MODE_NOT_SET;
   }
-  return should_delay != 0;
+
+  if (runtime_mode != RUNTIME_MODE_TRUE &&
+      runtime_mode != RUNTIME_MODE_PERSIST) {
+    return RUNTIME_MODE_NOT_SET;
+  }
+
+  return static_cast<RuntimeMode>(runtime_mode);
 }
 
-HRESULT Setup::SetDelayUninstall(bool should_delay) const {
+HRESULT Setup::SetRuntimeMode(RuntimeMode runtime_mode) const {
+  if (runtime_mode == RUNTIME_MODE_NOT_SET) {
+    return S_FALSE;
+  }
+
   const TCHAR* key = ConfigManager::Instance()->registry_update(is_machine_);
-  if (should_delay) {
-    return RegKey::SetValue(key, kRegValueDelayOmahaUninstall, 1UL);
+  if (runtime_mode == RUNTIME_MODE_TRUE ||
+      runtime_mode == RUNTIME_MODE_PERSIST) {
+    return RegKey::SetValue(key,
+                            kRegValueRuntimeMode,
+                            static_cast<DWORD>(runtime_mode));
   } else {
-    return RegKey::DeleteValue(key, kRegValueDelayOmahaUninstall);
+    return RegKey::DeleteValue(key, kRegValueRuntimeMode);
   }
 }
 

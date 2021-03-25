@@ -52,6 +52,17 @@ HRESULT CreateFromCommandLine(bool is_machine,
                               bool send_pings,
                               IAppBundle** app_bundle);
 
+// Creates app bundle interface by finding apps that need to be force-installed
+// according to policy set by a domain administrator and that are not already
+// installed.
+HRESULT CreateForceInstallBundle(bool is_machine,
+                                 const CString& display_language,
+                                 const CString& install_source,
+                                 const CString& session_id,
+                                 bool is_interactive,
+                                 bool send_pings,
+                                 IAppBundle** app_bundle);
+
 // Creates app bundle interface that contains the given app (app_id).
 HRESULT CreateForOnDemand(bool is_machine,
                           const CString& app_id,

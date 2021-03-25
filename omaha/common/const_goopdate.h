@@ -88,6 +88,15 @@ enum NeedsAdmin {
                         // permissions allow, else will install per-user.
 };
 
+// Represents the values that are used by the application to indicate the
+// Runtime Mode.
+enum RuntimeMode {
+  RUNTIME_MODE_NOT_SET = -1,
+  RUNTIME_MODE_FALSE = 0,     // Omaha will uninstall if no registered apps.
+  RUNTIME_MODE_TRUE = 1,      // Omaha will remain around for 24 hours.
+  RUNTIME_MODE_PERSIST = 2,   // Omaha will remain around indefinitely.
+};
+
 // Using extern or intern linkage for these strings yields the same code size
 // for the executable DLL.
 
@@ -218,7 +227,7 @@ const TCHAR* const kRegValueCohortHint            = _T("hint");
 const TCHAR* const kRegValueCohortName            = _T("name");
 
 // Registry values stored in the Update key.
-const TCHAR* const kRegValueDelayOmahaUninstall   = _T("DelayUninstall");
+const TCHAR* const kRegValueRuntimeMode           = _T("RuntimeMode");
 const TCHAR* const kRegValueOmahaEulaAccepted     = _T("eulaaccepted");
 // TODO(omaha3): Consider renaming these if there is not a upgrade problem.
 // If we can't consider moving all "gupdate" values to the customization file.

@@ -62,6 +62,13 @@ HRESULT InstallApps(bool is_machine,
                     const CString& session_id,
                     bool* has_ui_been_displayed);
 
+HRESULT InstallForceInstallApps(bool is_machine,
+                                bool is_interactive,
+                                const CString& install_source,
+                                const CString& display_language,
+                                const CString& session_id,
+                                bool* has_ui_been_displayed);
+
 HRESULT UpdateAllApps(bool is_machine,
                       bool is_interactive,
                       const CString& install_source,

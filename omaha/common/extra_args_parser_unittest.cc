@@ -51,7 +51,7 @@ void VerifyExtraArgsHaveSpecificValues(
          const CString& expected_untrusted_data,
          NeedsAdmin expected_needs_admin,
          Tristate expected_usage_stats_enable,
-         bool expected_runtime_only,
+         RuntimeMode expected_runtime_mode,
          const CString& expected_bundle_name,
          const GUID& expected_installation_id,
          const CString& expected_brand_code,
@@ -82,7 +82,7 @@ void VerifyExtraArgsHaveSpecificValues(
   expected.experiment_labels = expected_omaha_experiment_labels;
   expected.referral_id = expected_referral_id;
   expected.usage_stats_enable = expected_usage_stats_enable;
-  expected.runtime_only = expected_runtime_only;
+  expected.runtime_mode = expected_runtime_mode;
 
   VerifyCommandLineExtraArgs(expected, args);
 }
@@ -484,7 +484,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsHaveDoubleAmpersand) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -512,7 +512,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsAmpersandOnly) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -541,7 +541,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsBeginInAmpersand) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -570,7 +570,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsEndInAmpersand) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -645,7 +645,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsOneValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -673,7 +673,7 @@ TEST(ExtraArgsParserTest, ExtraArgumentsTwoValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -838,7 +838,7 @@ TEST(ExtraArgsParserTest, UsageStatsOn) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -866,7 +866,7 @@ TEST(ExtraArgsParserTest, UsageStatsOff) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_FALSE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -895,7 +895,7 @@ TEST(ExtraArgsParserTest, UsageStatsNone) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -947,7 +947,7 @@ TEST(ExtraArgsParserTest, BundleNameValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T("Google Bundle"),
       GUID_NULL,
       _T(""),
@@ -975,7 +975,7 @@ TEST(ExtraArgsParserTest, BundleNameNotPresentButAppNameIs) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T("Google Chrome"),
       GUID_NULL,
       _T(""),
@@ -1001,7 +1001,7 @@ TEST(ExtraArgsParserTest, BundleNameNorAppNamePresent) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1028,7 +1028,7 @@ TEST(ExtraArgsParserTest, BundleNameNotPresentAndNoApp) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1058,7 +1058,7 @@ TEST(ExtraArgsParserTest, InstallationGuidValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       expected_guid,
       _T(""),
@@ -1118,7 +1118,7 @@ TEST(ExtraArgsParserTest, BrandCodeValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T("GOOG"),
@@ -1155,7 +1155,7 @@ TEST(ExtraArgsParserTest, ClientIdValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1183,7 +1183,7 @@ TEST(ExtraArgsParserTest, OmahaExperimentIdValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1211,7 +1211,7 @@ TEST(ExtraArgsParserTest, AppExperimentIdValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1239,7 +1239,7 @@ TEST(ExtraArgsParserTest, ReferralIdValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1267,7 +1267,7 @@ TEST(ExtraArgsParserTest, ApValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1295,7 +1295,7 @@ TEST(ExtraArgsParserTest, TTValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1326,7 +1326,7 @@ TEST(ExtraArgsParserTest, AppArgsValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1389,7 +1389,7 @@ TEST(ExtraArgsParserTest, InstallDataIndexValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      false,
+      RUNTIME_MODE_NOT_SET,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1529,7 +1529,7 @@ TEST(ExtraArgsParserTest, RuntimeValid) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_NONE,
-      true,
+      RUNTIME_MODE_TRUE,
       _T(""),
       GUID_NULL,
       _T(""),
@@ -1559,7 +1559,7 @@ TEST(ExtraArgsParserTest, RuntimeWithExtraArgs) {
       _T(""),
       NEEDS_ADMIN_NO,
       TRISTATE_TRUE,
-      true,
+      RUNTIME_MODE_TRUE,
       _T("Google Bundle"),
       GUID_NULL,
       _T("GOOG"),
@@ -1572,6 +1572,59 @@ TEST(ExtraArgsParserTest, RuntimeWithExtraArgs) {
       _T(""));
 }
 
+TEST(ExtraArgsParserTest, RuntimePersist) {
+  CommandLineExtraArgs args;
+  ExtraArgsParser parser;
+  CString extra_args = _T("runtime=persist");
+
+  EXPECT_SUCCEEDED(parser.Parse(extra_args, NULL, &args));
+  VerifyExtraArgsHaveSpecificValues(
+      args,
+      _T("{00000000-0000-0000-0000-000000000000}"),
+      _T(""),
+      _T(""),
+      _T(""),
+      NEEDS_ADMIN_NO,
+      TRISTATE_NONE,
+      RUNTIME_MODE_PERSIST,
+      _T(""),
+      GUID_NULL,
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""));
+}
+
+TEST(ExtraArgsParserTest, RuntimeFalse) {
+  CommandLineExtraArgs args;
+  ExtraArgsParser parser;
+  CString extra_args = _T("runtime=false");
+
+  EXPECT_SUCCEEDED(parser.Parse(extra_args, NULL, &args));
+  VerifyExtraArgsHaveSpecificValues(
+      args,
+      _T("{00000000-0000-0000-0000-000000000000}"),
+      _T(""),
+      _T(""),
+      _T(""),
+      NEEDS_ADMIN_NO,
+      TRISTATE_NONE,
+      RUNTIME_MODE_FALSE,
+      _T(""),
+      GUID_NULL,
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""),
+      _T(""));
+}
 
 TEST(ExtraArgsParserTest, RuntimeBeforeAppGuid) {
   CommandLineExtraArgs args;

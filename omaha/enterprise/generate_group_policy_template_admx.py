@@ -287,6 +287,11 @@ ADMX_APP_POLICY_TEMPLATE = '''\
               <decimal value="0" />
             </value>
           </item>
+          <item displayName="$(string.Name_ForceInstalls)">
+            <value>
+              <decimal value="5" />
+            </value>
+          </item>
         </enum>
       </elements>
     </policy>
@@ -521,6 +526,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Name_InstallsEnabledMachineOnly',
      'Always allow Machine-Wide Installs, but not Per-User Installs.'),
     ('Name_InstallsDisabled', 'Installs disabled'),
+    ('Name_ForceInstalls', 'Force Installs'),
     ('Part_UpdatePolicy', 'Policy'),
     ('Part_TargetChannel', 'Target Channel'),
     ('Part_TargetVersionPrefix', 'Target version prefix'),

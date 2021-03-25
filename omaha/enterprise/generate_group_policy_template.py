@@ -167,16 +167,29 @@ APPLICATIONS_HEADER = """
         EXPLAIN !!Explain_Applications
 """
 
-INSTALL_POLICY_ITEMLIST = """\
+INSTALL_POLICY_ITEMLIST_BEGIN = """\
             ITEMLIST
               NAME  !!Name_InstallsEnabled
               VALUE NUMERIC 1
               NAME  !!Name_InstallsEnabledMachineOnly
               VALUE NUMERIC 4
               NAME  !!Name_InstallsDisabled
-              VALUE NUMERIC 0
+              VALUE NUMERIC 0"""
+
+INSTALL_POLICY_ITEMLIST_APP_SPECIFIC = """\
+              NAME  !!Name_ForceInstalls
+              VALUE NUMERIC 5"""
+
+INSTALL_POLICY_ITEMLIST_END = """\
             END ITEMLIST
             REQUIRED"""
+
+INSTALL_POLICY_ITEMLIST = INSTALL_POLICY_ITEMLIST_BEGIN + \
+                          INSTALL_POLICY_ITEMLIST_END
+
+INSTALL_POLICY_ITEMLIST_APP_SPECIFIC = INSTALL_POLICY_ITEMLIST_BEGIN + \
+                                       INSTALL_POLICY_ITEMLIST_APP_SPECIFIC + \
+                                       INSTALL_POLICY_ITEMLIST_END
 
 UPDATE_POLICY_ITEMLIST = """\
             ITEMLIST
@@ -229,7 +242,8 @@ APP_POLICIES_TEMPLATE = ("""
             PART !!Part_InstallPolicy DROPDOWNLIST
               VALUENAME Install$AppGuid$
 """ +
-INSTALL_POLICY_ITEMLIST.replace('            ', '              ') + """
+INSTALL_POLICY_ITEMLIST_APP_SPECIFIC.replace('            ', '              ') +
+"""
             END PART
           END POLICY
 
@@ -358,6 +372,7 @@ Part_TargetVersionPrefix=Target version prefix
 Name_InstallsEnabled=Always allow Installs (recommended)
 Name_InstallsEnabledMachineOnly=Always allow Machine-Wide Installs, but not Per-User Installs
 Name_InstallsDisabled=Installs disabled
+Name_ForceInstalls=Force Installs
 
 Name_UpdatesEnabled=""" + UPDATES_ENABLED + """ (recommended)
 Name_ManualUpdatesOnly=""" + MANUAL_UPDATES_ONLY + """

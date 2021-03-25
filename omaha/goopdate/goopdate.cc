@@ -1172,7 +1172,7 @@ HRESULT GoopdateImpl::DoInstall(bool* has_ui_been_displayed) {
 
   if (args_.is_oem_set) {
     hr = OemInstall(!args_.is_silent_set,       // is_interactive
-                    !args_.extra.runtime_only,  // is_app_install
+                    args_.extra.runtime_mode == RUNTIME_MODE_NOT_SET,
                     args_.is_eula_required_set,
                     args_.is_install_elevated,
                     install_command_line,
@@ -1181,7 +1181,7 @@ HRESULT GoopdateImpl::DoInstall(bool* has_ui_been_displayed) {
                     has_ui_been_displayed);
   } else {
     hr = Install(!args_.is_silent_set,          // is_interactive
-                 !args_.extra.runtime_only,     // is_app_install
+                 args_.extra.runtime_mode == RUNTIME_MODE_NOT_SET,
                  args_.is_eula_required_set,
                  false,
                  args_.is_enterprise_set,

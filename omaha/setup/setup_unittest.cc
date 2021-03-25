@@ -185,7 +185,8 @@ class SetupTest : public testing::Test {
     thread.Start(&hold_lock);
     hold_lock.WaitForLockToBeAcquired();
 
-    EXPECT_EQ(GOOPDATE_E_FAILED_TO_GET_LOCK, setup_->Install(false));
+    EXPECT_EQ(GOOPDATE_E_FAILED_TO_GET_LOCK,
+              setup_->Install(RUNTIME_MODE_NOT_SET));
 
     hold_lock.Stop();
     thread.WaitTillExit(1000);
@@ -619,42 +620,46 @@ class SetupTest : public testing::Test {
         _T("Last Error: ") << ::GetLastError() << std::endl;
   }
 
-  void TestShouldDelayUninstall() {
-    EXPECT_FALSE(setup_->ShouldDelayUninstall());
+  void TestGetRuntimeMode() {
+    EXPECT_EQ(RUNTIME_MODE_NOT_SET, setup_->GetRuntimeMode());
 
     const TCHAR* key = ConfigManager::Instance()->registry_update(is_machine_);
 
-    DWORD value = 1;
     EXPECT_SUCCEEDED(RegKey::SetValue(key,
-                                      kRegValueDelayOmahaUninstall,
-                                      value));
-    EXPECT_TRUE(setup_->ShouldDelayUninstall());
+                                      kRegValueRuntimeMode,
+                                      static_cast<DWORD>(RUNTIME_MODE_TRUE)));
+    EXPECT_EQ(RUNTIME_MODE_TRUE, setup_->GetRuntimeMode());
 
-    value = 0;
+    EXPECT_SUCCEEDED(RegKey::SetValue(
+        key, kRegValueRuntimeMode, static_cast<DWORD>(RUNTIME_MODE_PERSIST)));
+    EXPECT_EQ(RUNTIME_MODE_PERSIST, setup_->GetRuntimeMode());
+
     EXPECT_SUCCEEDED(RegKey::SetValue(key,
-                                      kRegValueDelayOmahaUninstall,
-                                      value));
-    EXPECT_FALSE(setup_->ShouldDelayUninstall());
+                                      kRegValueRuntimeMode,
+                                      static_cast<DWORD>(RUNTIME_MODE_FALSE)));
+    EXPECT_EQ(RUNTIME_MODE_NOT_SET, setup_->GetRuntimeMode());
 
-    EXPECT_SUCCEEDED(RegKey::DeleteValue(key,
-                                         kRegValueDelayOmahaUninstall));
-    EXPECT_FALSE(setup_->ShouldDelayUninstall());
+    EXPECT_SUCCEEDED(RegKey::SetValue(key, kRegValueRuntimeMode, 999UL));
+    EXPECT_EQ(RUNTIME_MODE_NOT_SET, setup_->GetRuntimeMode());
+
+    EXPECT_SUCCEEDED(RegKey::DeleteValue(key, kRegValueRuntimeMode));
+    EXPECT_EQ(RUNTIME_MODE_NOT_SET, setup_->GetRuntimeMode());
   }
 
-  void TestSetDelayUninstall() {
-    EXPECT_FALSE(setup_->ShouldDelayUninstall());
+  void TestSetRuntimeMode() {
+    EXPECT_EQ(RUNTIME_MODE_NOT_SET, setup_->GetRuntimeMode());
 
-    EXPECT_SUCCEEDED(setup_->SetDelayUninstall(true));
-    EXPECT_TRUE(setup_->ShouldDelayUninstall());
+    EXPECT_SUCCEEDED(setup_->SetRuntimeMode(RUNTIME_MODE_TRUE));
+    EXPECT_EQ(RUNTIME_MODE_TRUE, setup_->GetRuntimeMode());
 
-    EXPECT_SUCCEEDED(setup_->SetDelayUninstall(true));
-    EXPECT_TRUE(setup_->ShouldDelayUninstall());
+    EXPECT_SUCCEEDED(setup_->SetRuntimeMode(RUNTIME_MODE_PERSIST));
+    EXPECT_EQ(RUNTIME_MODE_PERSIST, setup_->GetRuntimeMode());
 
-    EXPECT_SUCCEEDED(setup_->SetDelayUninstall(false));
-    EXPECT_FALSE(setup_->ShouldDelayUninstall());
+    EXPECT_SUCCEEDED(setup_->SetRuntimeMode(RUNTIME_MODE_NOT_SET));
+    EXPECT_EQ(RUNTIME_MODE_PERSIST, setup_->GetRuntimeMode());
 
-    EXPECT_SUCCEEDED(setup_->SetDelayUninstall(false));
-    EXPECT_FALSE(setup_->ShouldDelayUninstall());
+    EXPECT_SUCCEEDED(setup_->SetRuntimeMode(RUNTIME_MODE_FALSE));
+    EXPECT_EQ(RUNTIME_MODE_NOT_SET, setup_->GetRuntimeMode());
   }
 
   const bool is_machine_;
@@ -815,7 +820,7 @@ TEST_F(SetupFutureVersionInstalledUserTest, DISABLED_Install_NoRunKey) {
   ASSERT_FALSE(File::Exists(dll_path));
 
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND),
-            setup_->Install(false));
+            setup_->Install(RUNTIME_MODE_NOT_SET));
   EXPECT_EQ(0, setup_->extra_code1());
 
   RestoreRegistryHives();
@@ -843,7 +848,7 @@ TEST_F(SetupFutureVersionInstalledUserTest, Install_ValidRunKey) {
   ASSERT_SUCCEEDED(File::Remove(dll_path));
   ASSERT_FALSE(File::Exists(dll_path));
 
-  EXPECT_SUCCEEDED(setup_->Install(false));
+  EXPECT_SUCCEEDED(setup_->Install(RUNTIME_MODE_NOT_SET));
   EXPECT_EQ(0, setup_->extra_code1());
 
   RestoreRegistryHives();
@@ -1068,23 +1073,23 @@ TEST_F(SetupRegistryProtectedUserTest, ShouldInstall_SameVersionShellMissing) {
 }
 
 //
-// ShouldDelayUninstall/SetDelayUninstall tests.
+// GetRuntimeMode/SetRuntimeMode tests.
 //
 
-TEST_F(SetupRegistryProtectedUserTest, ShouldDelayUninstall) {
-  TestShouldDelayUninstall();
+TEST_F(SetupRegistryProtectedUserTest, GetRuntimeMode) {
+  TestGetRuntimeMode();
 }
 
-TEST_F(SetupRegistryProtectedUserTest, SetDelayUninstall) {
-  TestSetDelayUninstall();
+TEST_F(SetupRegistryProtectedUserTest, SetRuntimeMode) {
+  TestSetRuntimeMode();
 }
 
-TEST_F(SetupRegistryProtectedMachineTest, ShouldDelayUninstall) {
-  TestShouldDelayUninstall();
+TEST_F(SetupRegistryProtectedMachineTest, GetRuntimeMode) {
+  TestGetRuntimeMode();
 }
 
-TEST_F(SetupRegistryProtectedMachineTest, SetDelayUninstall) {
-  TestSetDelayUninstall();
+TEST_F(SetupRegistryProtectedMachineTest, SetRuntimeMode) {
+  TestSetRuntimeMode();
 }
 
 //

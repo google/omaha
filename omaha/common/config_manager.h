@@ -27,6 +27,7 @@
 #include <atlpath.h>
 #include <atlstr.h>
 #include <memory>
+#include <vector>
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/synchronized.h"
@@ -60,6 +61,7 @@ class PolicyManagerInterface {
   virtual HRESULT GetProxyMode(CString* proxy_mode) = 0;
   virtual HRESULT GetProxyPacUrl(CString* proxy_pac_url) = 0;
   virtual HRESULT GetProxyServer(CString* proxy_server) = 0;
+  virtual HRESULT GetForceInstallApps(std::vector<CString>* app_ids) = 0;
 
   virtual HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                                    DWORD* install_policy) = 0;
@@ -91,6 +93,7 @@ class GroupPolicyManager : public PolicyManagerInterface {
   HRESULT GetProxyMode(CString* proxy_mode) override;
   HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
   HRESULT GetProxyServer(CString* proxy_server) override;
+  HRESULT GetForceInstallApps(std::vector<CString>* app_ids) override;
 
   HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                            DWORD* install_policy) override;
@@ -125,6 +128,7 @@ class DMPolicyManager : public PolicyManagerInterface {
   HRESULT GetProxyMode(CString* proxy_mode) override;
   HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
   HRESULT GetProxyServer(CString* proxy_server) override;
+  HRESULT GetForceInstallApps(std::vector<CString>* app_ids) override;
 
   HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                            DWORD* install_policy) override;
@@ -222,6 +226,8 @@ class ConfigManager {
                          IPolicyStatusValue** policy_status_value) const;
   HRESULT GetProxyServer(CString* proxy_server,
                          IPolicyStatusValue** policy_status_value) const;
+  HRESULT GetForceInstallApps(std::vector<CString>* app_ids,
+                              IPolicyStatusValue** policy_status_value) const;
 
   // Creates download data dir:
   // %UserProfile%/Application Data/Google/Update/Download
