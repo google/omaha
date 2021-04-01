@@ -1258,7 +1258,7 @@ TEST_P(ConfigManagerTest, GetForceInstallApps_GroupPolicy) {
 }
 
 TEST_P(ConfigManagerTest, GetForceInstallApps_DMPolicy) {
-  if (IsD()) {
+  if (!IsDM()) {
     return;
   }
 
