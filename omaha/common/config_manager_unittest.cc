@@ -240,14 +240,18 @@ class ConfigManagerTest
     info.install_default = kPolicyEnabled;
     info.update_default = kPolicyEnabled;
 
-    ApplicationSettings app;
-    app.install = kPolicyDisabled;
-    app.update = kPolicyAutomaticUpdatesOnly;
-    app.target_channel = _T("dev");
-    app.target_version_prefix = _T("3.6.55");
-    app.rollback_to_target_version = true;
+    ApplicationSettings chrome_app;
+    chrome_app.install = kPolicyDisabled;
+    chrome_app.update = kPolicyAutomaticUpdatesOnly;
+    chrome_app.target_channel = _T("dev");
+    chrome_app.target_version_prefix = _T("3.6.55");
+    chrome_app.rollback_to_target_version = true;
     info.application_settings.insert(std::make_pair(StringToGuid(kChromeAppId),
-                                                    app));
+                                                    chrome_app));
+    ApplicationSettings app1;
+    app1.install = kPolicyForceInstall;
+    info.application_settings.insert(std::make_pair(StringToGuid(kAppGuid1),
+                                                    app1));
     cm_->SetOmahaDMPolicies(info);
   }
 
@@ -1237,7 +1241,7 @@ TEST_P(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
 
 TEST_P(ConfigManagerTest, GetForceInstallApps_NoGroupPolicy) {
   std::vector<CString> app_ids;
-  EXPECT_FAILED(GetForceInstallApps(&app_ids));
+  EXPECT_EQ(IsDM() ? S_OK : E_FAIL, GetForceInstallApps(&app_ids));
 }
 
 TEST_P(ConfigManagerTest, GetForceInstallApps_GroupPolicy) {
@@ -1251,6 +1255,16 @@ TEST_P(ConfigManagerTest, GetForceInstallApps_GroupPolicy) {
   std::vector<CString> app_ids;
   EXPECT_SUCCEEDED(GetForceInstallApps(&app_ids));
   EXPECT_EQ(2, app_ids.size());
+}
+
+TEST_P(ConfigManagerTest, GetForceInstallApps_DMPolicy) {
+  if (IsD()) {
+    return;
+  }
+
+  std::vector<CString> app_ids;
+  EXPECT_SUCCEEDED(GetForceInstallApps(&app_ids));
+  EXPECT_EQ(1, app_ids.size());
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {

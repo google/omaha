@@ -557,9 +557,21 @@ HRESULT DMPolicyManager::GetProxyServer(CString* proxy_server) {
 HRESULT DMPolicyManager::GetForceInstallApps(std::vector<CString>* app_ids) {
   ASSERT1(app_ids);
   ASSERT1(app_ids->empty());
-  UNREFERENCED_PARAMETER(app_ids);
 
-  return E_FAIL;
+  if (!dm_policy_.is_initialized) {
+    return E_FAIL;
+  }
+
+  for (const auto& app_settings : dm_policy_.application_settings) {
+    if (app_settings.second.install != kPolicyForceInstall) {
+      continue;
+    }
+
+    CString app_id_string = GuidToString(app_settings.first);
+    app_ids->push_back(app_id_string);
+  }
+
+  return !app_ids->empty() ? S_OK : E_FAIL;
 }
 
 HRESULT DMPolicyManager::GetEffectivePolicyForAppInstalls(
