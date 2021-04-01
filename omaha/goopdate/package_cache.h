@@ -25,6 +25,8 @@
 
 namespace omaha {
 
+class File;
+
 class PackageCache {
  public:
   // Defines the key that uniquely identifies the packages in the cache.
@@ -64,7 +66,7 @@ class PackageCache {
   HRESULT Initialize(const CString& cache_root);
 
   HRESULT Put(const Key& key,
-              const CString& source_file,
+              File* source_file,
               const CString& hash);
 
   HRESULT Get(const Key& key,

@@ -94,15 +94,15 @@ HRESULT CreateNetworkRequest(NetworkRequest** network_request_ptr) {
 }
 
 // TODO(omaha): Unit test this method.
-HRESULT ValidateSize(const CString& file_path, uint64 expected_size) {
-  CORE_LOG(L3, (_T("[ValidateSize][%s][%lld]"), file_path, expected_size));
-  ASSERT1(File::Exists(file_path));
+HRESULT ValidateSize(File* source_file, uint64 expected_size) {
+  CORE_LOG(L3, (_T("[ValidateSize][%lld]"), expected_size));
+  ASSERT1(source_file);
   ASSERT1(expected_size != 0);
   ASSERT(expected_size <= UINT_MAX,
          (_T("TODO(omaha): Add uint64 support to GetFileSizeUnopen().")));
 
   uint32 file_size(0);
-  HRESULT hr = File::GetFileSizeUnopen(file_path, &file_size);
+  HRESULT hr = source_file->GetLength(&file_size);
   ASSERT1(SUCCEEDED(hr));
   if (FAILED(hr)) {
     return hr;
@@ -463,10 +463,22 @@ HRESULT DownloadManager::DoDownloadPackageFromUrl(const CString& url,
 
   // A file has been successfully downloaded from current url. Validate the file
   // and cache it.
+
+  // We open the downloaded file as the current (impersonated) user. This
+  // ensures that we are not reading any privileged files that are otherwise
+  // inaccessible to the impersonated user.
+  File source_file;
+  hr = source_file.OpenShareMode(filename, false, false, FILE_SHARE_READ);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  // We copy the file to the Package Cache unimpersonated, since the package
+  // cache is in a privileged location.
   hr = CallAsSelfAndImpersonate2(this,
                                  &DownloadManager::CachePackage,
                                  static_cast<const Package*>(package),
-                                 static_cast<const CString*>(&filename));
+                                 &source_file);
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[DownloadManager::CachePackage failed][%#x]"), hr));
   }
@@ -509,9 +521,9 @@ HRESULT DownloadManager::PurgeAppLowerVersions(const CString& app_id,
 }
 
 HRESULT DownloadManager::CachePackage(const Package* package,
-                                      const CString* filename_path) {
+                                      File* source_file) {
   ASSERT1(package);
-  ASSERT1(filename_path);
+  ASSERT1(source_file);
 
   const CString app_id(package->app_version()->app()->app_guid_string());
   const CString version(package->app_version()->version());
@@ -519,7 +531,7 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   PackageCache::Key key(app_id, version, package_name);
 
   HRESULT hr = package_cache()->Put(
-      key, *filename_path, package->expected_hash());
+      key, source_file, package->expected_hash());
   if (hr != SIGS_E_INVALID_SIGNATURE) {
     if (FAILED(hr)) {
       set_error_extra_code1(static_cast<int>(hr));
@@ -532,7 +544,7 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   // TODO(omaha): It would be nice to detect that we downloaded a proxy
   // page and tell the user this. It would be even better if we could
   // display it; that would require a lot more plumbing.
-  HRESULT size_hr = ValidateSize(*filename_path, package->expected_size());
+  HRESULT size_hr = ValidateSize(source_file, package->expected_size());
   if (FAILED(size_hr)) {
     hr = size_hr;
   }
@@ -553,8 +565,12 @@ HRESULT DownloadManager::BuildUniqueFileName(const CString& filename,
     return hr;
   }
 
-  // Format of the unique file name is: <temp_download_dir>/<guid>-<filename>.
   const CString temp_dir(ConfigManager::Instance()->GetTempDownloadDir());
+  if (temp_dir.IsEmpty()) {
+    return E_UNEXPECTED;
+  }
+
+  // Format of the unique file name is: <temp_download_dir>/<guid>-<filename>.
   CString temp_filename;
   SafeCStringFormat(&temp_filename, _T("%s-%s"), GuidToString(guid), filename);
   *unique_filename = ConcatenatePath(temp_dir, temp_filename);

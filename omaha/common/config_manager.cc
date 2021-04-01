@@ -811,7 +811,10 @@ CString ConfigManager::GetMachineSecureOfflineStorageDir() const {
 
 CString ConfigManager::GetTempDownloadDir() const {
   CString temp_download_dir(app_util::GetTempDirForImpersonatedOrCurrentUser());
-  ASSERT1(temp_download_dir);
+  if (temp_download_dir.IsEmpty()) {
+    return temp_download_dir;
+  }
+
   HRESULT hr = CreateDir(temp_download_dir, NULL);
   if (FAILED(hr)) {
     CORE_LOG(LW, (_T("[CreateDir failed][%s][0x%08x]"),
