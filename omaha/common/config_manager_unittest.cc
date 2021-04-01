@@ -1269,13 +1269,15 @@ TEST_P(ConfigManagerTest, GetForceInstallApps_DMPolicy) {
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
+  EXPECT_EQ(IsDM() ? kPolicyForceInstall : kPolicyEnabled,
+            GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DifferentAppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, 0));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
+  EXPECT_EQ(IsDM() ? kPolicyForceInstall : kPolicyEnabled,
+            GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppDisabled) {
@@ -1288,7 +1290,9 @@ TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppDisabled) {
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
+  EXPECT_EQ(
+      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+      GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppInvalid) {
@@ -1316,7 +1320,9 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
+  EXPECT_EQ(
+      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+      GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 // Invalid value defaulting to true overrides the InstallDefault disable.
@@ -1330,7 +1336,9 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppInvalid) {
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
+  EXPECT_EQ(
+      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+      GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppDisabled) {
@@ -1346,7 +1354,9 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, false));
-  EXPECT_EQ(kPolicyEnabled, GetEffectivePolicyForAppInstalls(kAppGuid1));
+  EXPECT_EQ(
+      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+      GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppInvalid) {
