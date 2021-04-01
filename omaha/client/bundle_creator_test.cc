@@ -390,6 +390,10 @@ TEST_F(BundleCreatorTest, CreateForceInstallBundle) {
     CString app_id(app_id_bstr);
     EXPECT_TRUE(!app_id.CompareNoCase(APP_ID1) ||
                 !app_id.CompareNoCase(APP_ID2));
+
+    CComBSTR app_name;
+    EXPECT_SUCCEEDED(app->get_displayName(&app_name));
+    EXPECT_STREQ(client_utils::GetDefaultApplicationName(), app_name);
   }
 
   RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);

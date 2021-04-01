@@ -540,6 +540,12 @@ HRESULT CreateForceInstallBundle(bool is_machine,
       return hr;
     }
 
+    hr = app->put_displayName(
+        CComBSTR(client_utils::GetDefaultApplicationName()));
+    if (FAILED(hr)) {
+      return hr;
+    }
+
     const bool is_eula_accepted =
           app_registry_utils::IsAppEulaAccepted(is_machine,
                                                 app_id_string,
