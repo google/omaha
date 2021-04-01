@@ -36,7 +36,7 @@ class DmMessagesTest : public ::testing::Test {
     omaha_settings.set_proxy_mode(CStringA("PAC_script"));
     omaha_settings.set_proxy_pac_url("foo.c/proxy.pa");
     omaha_settings.set_install_default(
-        wireless_android_enterprise_devicemanagement::INSTALL_DISABLED);
+        wireless_android_enterprise_devicemanagement::INSTALL_DEFAULT_DISABLED);
     omaha_settings.set_update_default(
         wireless_android_enterprise_devicemanagement::MANUAL_UPDATES_ONLY);
 
@@ -76,7 +76,7 @@ class DmMessagesTest : public ::testing::Test {
     omaha_settings.set_proxy_server("unexpected_proxy");
     omaha_settings.set_proxy_pac_url("foo.c/proxy.pa");
     omaha_settings.set_install_default(
-        wireless_android_enterprise_devicemanagement::INSTALL_DISABLED);
+        wireless_android_enterprise_devicemanagement::INSTALL_DEFAULT_DISABLED);
     omaha_settings.set_update_default(
         wireless_android_enterprise_devicemanagement::MANUAL_UPDATES_ONLY);
 
