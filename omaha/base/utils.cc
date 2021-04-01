@@ -777,11 +777,13 @@ HRESULT DeleteBeforeOrAfterReboot(const TCHAR* targetname) {
   }
 
   HRESULT hr = E_FAIL;
+  bool is_reparse_point = true;
   if (File::IsDirectory(targetname)) {
     // DeleteDirectory will schedule deletion at next reboot if it cannot delete
     // immediately.
     hr = DeleteDirectory(targetname);
-  } else if (!File::IsReparsePoint(targetname)) {
+  } else if (SUCCEEDED(File::IsReparsePoint(targetname, &is_reparse_point)) &&
+             !is_reparse_point) {
     hr = File::Remove(targetname);
     // If failed, schedule deletion at next reboot
     if (FAILED(hr)) {

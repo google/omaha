@@ -19,8 +19,8 @@
 #ifndef OMAHA_BASE_FILE_H_
 #define OMAHA_BASE_FILE_H_
 
-#include <cstdint>
 #include <windows.h>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <vector>
@@ -33,7 +33,6 @@ namespace omaha {
 
 class File {
  public:
-
     File();
     ~File();
 
@@ -47,7 +46,8 @@ class File {
 
     static bool Exists(const TCHAR* file_name);
     static bool IsDirectory(const TCHAR *file_name);
-    static bool IsReparsePoint(const TCHAR* file_name);
+    static HRESULT IsReparsePoint(const TCHAR* file_name,
+                                  bool* is_reparse_point);
     static HRESULT GetWildcards(const TCHAR* dir, const TCHAR* wildcard,
                                 std::vector<CString>* matching_paths);
     // returns S_OK on successful removal or if not existing
