@@ -128,7 +128,8 @@ def BuildMSI(version, namespace, exe_name, wxs_template, msi_base_name,
 
   wix_env.Depends(unsigned_msi, additional_dependencies)
 
-  signed_output = env.DualSignedBinary(
+  # Single-signed here because it is not possible to dual-sign an msi.
+  signed_output = env.SignedBinary(
       target=msi_base_name + '.msi',
       source=unsigned_msi,
   )
