@@ -33,7 +33,7 @@ class MsiTagExtractorTest : public testing::Test {
   virtual void SetUp() {
     unittest_file_path_ = app_util::GetModuleDirectory(NULL);
     EXPECT_TRUE(::PathAppend(CStrBuf(unittest_file_path_, MAX_PATH),
-                             _T("..\\staging\\unittest_support\\tagged_msi")));
+                             _T("unittest_support\\tagged_msi")));
     EXPECT_TRUE(File::Exists(unittest_file_path_));
   }
 
