@@ -176,18 +176,18 @@ INSTALL_POLICY_ITEMLIST_BEGIN = """\
               NAME  !!Name_InstallsDisabled
               VALUE NUMERIC 0"""
 
-INSTALL_POLICY_FORCE_INSTALL_MACHINE = """\
-              NAME  !!Name_ForceInstallsMachine
-              VALUE NUMERIC 5"""
+INSTALL_POLICY_FORCE_INSTALL_MACHINE = r"""
+                NAME  !!Name_ForceInstallsMachine
+                VALUE NUMERIC 5"""
 
-INSTALL_POLICY_FORCE_INSTALL_USER = """\
-              NAME  !!Name_ForceInstallsUser
-              VALUE NUMERIC 6"""
+INSTALL_POLICY_FORCE_INSTALL_USER = r"""
+                NAME  !!Name_ForceInstallsUser
+                VALUE NUMERIC 6"""
 
 INSTALL_POLICY_ITEMLIST_APP_SPECIFIC = """\
-              $ForceInstalls$"""
+$ForceInstalls$"""
 
-INSTALL_POLICY_ITEMLIST_END = """\
+INSTALL_POLICY_ITEMLIST_END = r"""
             END ITEMLIST
             REQUIRED"""
 

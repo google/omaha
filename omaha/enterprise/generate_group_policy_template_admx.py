@@ -266,16 +266,14 @@ INSTALL_POLICY_FORCE_INSTALL_MACHINE = r'''
             <value>
               <decimal value="5" />
             </value>
-          </item>
-'''
+          </item>'''
 
 INSTALL_POLICY_FORCE_INSTALL_USER = r'''
           <item displayName="$(string.Name_ForceInstallsUser)">
             <value>
               <decimal value="6" />
             </value>
-          </item>
-'''
+          </item>'''
 
 ADMX_APP_POLICY_TEMPLATE = '''\
     <policy name="Pol_AllowInstallation%(AppLegalId)s" class="Machine"
@@ -302,8 +300,7 @@ ADMX_APP_POLICY_TEMPLATE = '''\
             <value>
               <decimal value="0" />
             </value>
-          </item>
-          %(ForceInstalls)s
+          </item>%(ForceInstalls)s
         </enum>
       </elements>
     </policy>
