@@ -803,6 +803,7 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
 }
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
+                                         const CStringA& serial_number,
                                          const CStringA& os_platform,
                                          const CStringA& os_version) {
   enterprise_management::DeviceManagementRequest dm_request;
@@ -812,6 +813,11 @@ CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
   request->set_machine_name(machine_name, machine_name.GetLength());
   request->set_os_platform(os_platform, os_platform.GetLength());
   request->set_os_version(os_version, os_version.GetLength());
+
+  ::enterprise_management::BrowserDeviceIdentifier* device_identifier =
+      request->mutable_browser_device_identifier();
+  device_identifier->set_computer_name(machine_name);
+  device_identifier->set_serial_number(serial_number);
 
   CStringA result;
   SerializeToCStringA(dm_request, &result);

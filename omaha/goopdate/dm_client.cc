@@ -203,6 +203,7 @@ HRESULT RegisterWithRequest(std::unique_ptr<HttpRequestInterface> http_request,
   // Make the request payload.
   CStringA payload = SerializeRegisterBrowserRequest(
       WideToUtf8(app_util::GetHostName()),
+      WideToUtf8(SystemInfo::GetSerialNumber()),
       CStringA("Windows"),
       internal::GetOsVersion());
   if (payload.IsEmpty()) {

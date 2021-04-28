@@ -229,6 +229,7 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
                              CachedOmahaPolicy* info);
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
+                                         const CStringA& serial_number,
                                          const CStringA& os_platform,
                                          const CStringA& os_version);
 

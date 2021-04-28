@@ -181,5 +181,8 @@ TEST(SystemInfoTest, GetOSVersionType) {
   EXPECT_LT(SystemInfo::GetOSVersionType(), SUITE_LAST);
 }
 
-}  // namespace omaha
+TEST(SystemInfoTest, GetSerialNumber) {
+  EXPECT_FALSE(SystemInfo::GetSerialNumber().IsEmpty());
+}
 
+}  // namespace omaha
