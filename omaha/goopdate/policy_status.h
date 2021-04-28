@@ -59,8 +59,8 @@ class ATL_NO_VTABLE PolicyStatus
                            &CAtlModule::m_libid,
                            kMajorTypeLibVersion,
                            kMinorTypeLibVersion>,
-      public IDispatchImpl<IPolicyStatus2,
-                           &__uuidof(IPolicyStatus2),
+      public IDispatchImpl<IPolicyStatus3,
+                           &__uuidof(IPolicyStatus3),
                            &CAtlModule::m_libid,
                            kMajorTypeLibVersion,
                            kMinorTypeLibVersion>,
@@ -86,6 +86,7 @@ class ATL_NO_VTABLE PolicyStatus
   BEGIN_COM_MAP(PolicyStatus)
     COM_INTERFACE_ENTRY(IPolicyStatus)
     COM_INTERFACE_ENTRY(IPolicyStatus2)
+    COM_INTERFACE_ENTRY(IPolicyStatus3)
     COM_INTERFACE_ENTRY(IStdMarshalInfo)
   END_COM_MAP()
 
@@ -441,6 +442,22 @@ class ATL_NO_VTABLE PolicyStatus
     }
 
     ConfigManager::Instance()->GetTargetChannel(app_guid, value);
+
+    ASSERT1(*value);
+    return S_OK;
+  }
+
+  STDMETHODIMP get_forceInstallApps(VARIANT_BOOL is_machine,
+                                    IPolicyStatusValue** value) {
+    ASSERT1(value);
+
+    std::vector<CString> app_ids;
+    HRESULT hr = ConfigManager::Instance()->GetForceInstallApps(!!is_machine,
+                                                                &app_ids,
+                                                                value);
+    if (FAILED(hr)) {
+      return hr;
+    }
 
     ASSERT1(*value);
     return S_OK;
