@@ -472,7 +472,9 @@ HRESULT CreateForceInstallBundle(bool is_machine,
 
   std::vector<CString> force_install_app_ids;
   HRESULT hr = ConfigManager::Instance()->GetForceInstallApps(
-      &force_install_app_ids, NULL);
+      is_machine,
+      &force_install_app_ids,
+      NULL);
   if (FAILED(hr)) {
     return S_FALSE;
   }

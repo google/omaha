@@ -125,7 +125,8 @@ const int kPolicyEnabled               = 1;
 const int kPolicyEnabledMachineOnly    = 4;
 const int kPolicyManualUpdatesOnly     = 2;
 const int kPolicyAutomaticUpdatesOnly  = 3;
-const int kPolicyForceInstall          = 5;
+const int kPolicyForceInstallMachine   = 5;
+const int kPolicyForceInstallUser      = 6;
 
 const bool kInstallPolicyDefault    = kPolicyEnabled;
 const bool kUpdatePolicyDefault     = kPolicyEnabled;

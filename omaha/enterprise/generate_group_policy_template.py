@@ -176,9 +176,16 @@ INSTALL_POLICY_ITEMLIST_BEGIN = """\
               NAME  !!Name_InstallsDisabled
               VALUE NUMERIC 0"""
 
-INSTALL_POLICY_ITEMLIST_APP_SPECIFIC = """\
-              NAME  !!Name_ForceInstalls
+INSTALL_POLICY_FORCE_INSTALL_MACHINE = """\
+              NAME  !!Name_ForceInstallsMachine
               VALUE NUMERIC 5"""
+
+INSTALL_POLICY_FORCE_INSTALL_USER = """\
+              NAME  !!Name_ForceInstallsUser
+              VALUE NUMERIC 6"""
+
+INSTALL_POLICY_ITEMLIST_APP_SPECIFIC = """\
+              $ForceInstalls$"""
 
 INSTALL_POLICY_ITEMLIST_END = """\
             END ITEMLIST
@@ -372,7 +379,8 @@ Part_TargetVersionPrefix=Target version prefix
 Name_InstallsEnabled=Always allow Installs (recommended)
 Name_InstallsEnabledMachineOnly=Always allow Machine-Wide Installs, but not Per-User Installs
 Name_InstallsDisabled=Installs disabled
-Name_ForceInstalls=Force Installs
+Name_ForceInstallsMachine=Force Installs (Machine-Wide)
+Name_ForceInstallsUser=Force Installs (Per-User)
 
 Name_UpdatesEnabled=""" + UPDATES_ENABLED + """ (recommended)
 Name_ManualUpdatesOnly=""" + MANUAL_UPDATES_ONLY + """
@@ -458,11 +466,14 @@ HORIZONTAL_RULE)
 
 DEFAULT_ROLLBACK_DISCLAIMER = """This policy is meant to serve as temporary measure when Enterprise Administrators need to downgrade for business reasons. To ensure users are protected by the latest security updates, the most recent version should be used. When versions are downgraded to older versions, there could be incompatibilities."""
 
+FORCE_INSTALLS_MACHINE_EXPLAIN = """Force Installs (Machine-Wide): Allows Deploying $AppName$ to all machines where Google Update is pre-installed. Requires Google Update 1.3.36.82 or higher.\\n\\n"""
+FORCE_INSTALLS_USER_EXPLAIN = """Force Installs (Per-User): Allows Deploying $AppName$ on a Per-User basis to all machines where Google Update is pre-installed Per-User. Requires Google Update 1.3.36.82 or higher.\\n\\n"""
+
 STRINGS_APP_POLICY_EXPLANATIONS_TEMPLATE = ("""
 ; $AppName$
 Explain_Install$AppLegalId$=Specifies whether $AppName$ can be installed using Google Update/Google Installer.\\
     \\n\\nIf this policy is not configured, $AppName$ can be installed as specified by \"""" + DEFAULT_ALLOW_INSTALLATION_POLICY + """\".\\
-    \\n\\n%(domain_requirement)s
+    \\n\\n$ForceInstallsExplain$%(domain_requirement)s
 
 Explain_AutoUpdate$AppLegalId$=Specifies how Google Update handles available $AppName$ updates from Google.\\
     \\n\\nIf this policy is not configured, Google Update handles available updates as specified by \"""" % {"domain_requirement": ADM_DOMAIN_REQUIREMENT_EN} + DEFAULT_UPDATE_POLICY + """\".\\
@@ -583,12 +594,26 @@ def GenerateGroupPolicyTemplate(apps):
       strings.
     """
 
-    (app_name, app_guid, update_explain_extra, rollback_disclaimer) = app
+    (app_name, app_guid, update_explain_extra, rollback_disclaimer,
+     force_install_machine, force_install_user) = app
+
     if not rollback_disclaimer:
       rollback_disclaimer = DEFAULT_ROLLBACK_DISCLAIMER
     rollback_disclaimer = string.replace(rollback_disclaimer, '\n', '\\n')
+
+    force_installs = ''
+    force_installs_explain = ''
+    if force_install_machine:
+      force_installs += INSTALL_POLICY_FORCE_INSTALL_MACHINE
+      force_installs_explain += FORCE_INSTALLS_MACHINE_EXPLAIN
+    if force_install_user:
+      force_installs += INSTALL_POLICY_FORCE_INSTALL_USER
+      force_installs_explain += FORCE_INSTALLS_USER_EXPLAIN
+
     # pylint: disable-msg=C6004
-    return (template.replace('$AppName$', app_name)
+    return (template.replace('$ForceInstalls$', force_installs)
+                    .replace('$ForceInstallsExplain$', force_installs_explain)
+                    .replace('$AppName$', app_name)
                     .replace('$AppLegalId$', _CreateLegalIdentifier(app_name))
                     .replace('$AppGuid$', app_guid)
                     .replace('$AppUpdateExplainExtra$', update_explain_extra)
@@ -654,11 +679,15 @@ if __name__ == '__main__':
       ('Google Test Foo',
        '{D6B08267-B440-4c85-9F79-E195E80D9937}',
        ' Check http://www.google.com/test_foo/.',
-       'Disclaimer'),
+       'Disclaimer',
+       True,
+       True),
       (u'Google User Test Foo\u00a9\u00ae\u2122',
        '{104844D6-7DDA-460b-89F0-FBF8AFDD0A67}',
        ' Check http://www.google.com/user_test_foo/.',
-       ''),
+       '',
+       False,
+       True),
       ]
   TEST_GOLD_FILENAME = 'test_gold.adm'
   TEST_OUTPUT_FILENAME = 'test_out.adm'

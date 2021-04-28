@@ -139,8 +139,8 @@ class ConfigManagerNoOverrideTest : public testing::Test {
     return cm_->AreUpdatesSuppressedNow();
   }
 
-  DWORD GetForceInstallApps(std::vector<CString>* app_ids) {
-    return cm_->GetForceInstallApps(app_ids, NULL);
+  DWORD GetForceInstallApps(bool is_machine, std::vector<CString>* app_ids) {
+    return cm_->GetForceInstallApps(is_machine, app_ids, NULL);
   }
 
   ConfigManager* cm_;
@@ -249,9 +249,14 @@ class ConfigManagerTest
     info.application_settings.insert(std::make_pair(StringToGuid(kChromeAppId),
                                                     chrome_app));
     ApplicationSettings app1;
-    app1.install = kPolicyForceInstall;
+    app1.install = kPolicyForceInstallMachine;
     info.application_settings.insert(std::make_pair(StringToGuid(kAppGuid1),
                                                     app1));
+
+    ApplicationSettings app2;
+    app2.install = kPolicyForceInstallUser;
+    info.application_settings.insert(std::make_pair(StringToGuid(kAppGuid2),
+                                                    app2));
     cm_->SetOmahaDMPolicies(info);
   }
 
@@ -1241,7 +1246,8 @@ TEST_P(ConfigManagerTest, IsWindowsInstalling_Installing_Vista_ValidStates) {
 
 TEST_P(ConfigManagerTest, GetForceInstallApps_NoGroupPolicy) {
   std::vector<CString> app_ids;
-  EXPECT_EQ(IsDM() ? S_OK : E_FAIL, GetForceInstallApps(&app_ids));
+  EXPECT_EQ(IsDM() ? S_OK : E_FAIL, GetForceInstallApps(true, &app_ids));
+  EXPECT_EQ(IsDM() ? S_OK : E_FAIL, GetForceInstallApps(false, &app_ids));
 }
 
 TEST_P(ConfigManagerTest, GetForceInstallApps_GroupPolicy) {
@@ -1249,12 +1255,16 @@ TEST_P(ConfigManagerTest, GetForceInstallApps_GroupPolicy) {
     return;
   }
 
-  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, kPolicyForceInstall));
-  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, kPolicyForceInstall));
+  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, kPolicyForceInstallMachine));
+  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, kPolicyForceInstallUser));
 
-  std::vector<CString> app_ids;
-  EXPECT_SUCCEEDED(GetForceInstallApps(&app_ids));
-  EXPECT_EQ(2, app_ids.size());
+  std::vector<CString> app_ids_machine;
+  EXPECT_SUCCEEDED(GetForceInstallApps(true, &app_ids_machine));
+  EXPECT_EQ(1, app_ids_machine.size());
+
+  std::vector<CString> app_ids_user;
+  EXPECT_SUCCEEDED(GetForceInstallApps(false, &app_ids_user));
+  EXPECT_EQ(1, app_ids_user.size());
 }
 
 TEST_P(ConfigManagerTest, GetForceInstallApps_DMPolicy) {
@@ -1262,21 +1272,25 @@ TEST_P(ConfigManagerTest, GetForceInstallApps_DMPolicy) {
     return;
   }
 
-  std::vector<CString> app_ids;
-  EXPECT_SUCCEEDED(GetForceInstallApps(&app_ids));
-  EXPECT_EQ(1, app_ids.size());
+  std::vector<CString> app_ids_machine;
+  EXPECT_SUCCEEDED(GetForceInstallApps(true, &app_ids_machine));
+  EXPECT_EQ(1, app_ids_machine.size());
+
+  std::vector<CString> app_ids_user;
+  EXPECT_SUCCEEDED(GetForceInstallApps(false, &app_ids_user));
+  EXPECT_EQ(1, app_ids_user.size());
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_NoGroupPolicy) {
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(IsDM() ? kPolicyForceInstall : kPolicyEnabled,
+  EXPECT_EQ(IsDM() ? kPolicyForceInstallMachine : kPolicyEnabled,
             GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
 TEST_P(ConfigManagerTest, CanInstallApp_DifferentAppDisabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, 0));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(IsDM() ? kPolicyForceInstall : kPolicyEnabled,
+  EXPECT_EQ(IsDM() ? kPolicyForceInstallMachine : kPolicyEnabled,
             GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
@@ -1290,8 +1304,8 @@ TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppDisabled) {
 TEST_P(ConfigManagerTest, CanInstallApp_NoDefaultValue_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(
-      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+  EXPECT_EQ(IsDomainPredominant() || !IsDM() ? kPolicyEnabled
+                                             : kPolicyForceInstallMachine,
       GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
@@ -1320,8 +1334,8 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 0));
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(
-      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+  EXPECT_EQ(IsDomainPredominant() || !IsDM() ? kPolicyEnabled
+                                             : kPolicyForceInstallMachine,
       GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
@@ -1336,8 +1350,8 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultDisabled_AppInvalid) {
 TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_NoAppValue) {
   EXPECT_SUCCEEDED(SetPolicy(_T("InstallDefault"), 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
-  EXPECT_EQ(
-      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+  EXPECT_EQ(IsDomainPredominant() || !IsDM() ? kPolicyEnabled
+                                             : kPolicyForceInstallMachine,
       GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 
@@ -1354,8 +1368,8 @@ TEST_P(ConfigManagerTest, CanInstallApp_DefaultEnabled_AppEnabled) {
   EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, 1));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, true));
   EXPECT_TRUE(CanInstallApp(kAppGuid1, false));
-  EXPECT_EQ(
-      IsDomainPredominant() || !IsDM() ? kPolicyEnabled : kPolicyForceInstall,
+  EXPECT_EQ(IsDomainPredominant() || !IsDM() ? kPolicyEnabled
+                                             : kPolicyForceInstallMachine,
       GetEffectivePolicyForAppInstalls(kAppGuid1));
 }
 

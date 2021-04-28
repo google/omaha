@@ -347,7 +347,8 @@ HRESULT GroupPolicyManager::GetProxyServer(CString* proxy_server) {
                           proxy_server);
 }
 
-HRESULT GroupPolicyManager::GetForceInstallApps(std::vector<CString>* app_ids) {
+HRESULT GroupPolicyManager::GetForceInstallApps(bool is_machine,
+                                                std::vector<CString>* app_ids) {
   ASSERT1(app_ids);
   ASSERT1(app_ids->empty());
 
@@ -378,8 +379,10 @@ HRESULT GroupPolicyManager::GetForceInstallApps(std::vector<CString>* app_ids) {
     }
 
     DWORD install_policy = 0;
+    const DWORD expected = is_machine ? kPolicyForceInstallMachine :
+                                        kPolicyForceInstallUser;
     if (FAILED(group_policy_key.GetValue(value_name, &install_policy)) ||
-        install_policy != kPolicyForceInstall) {
+        install_policy != expected) {
       continue;
     }
 
@@ -554,7 +557,8 @@ HRESULT DMPolicyManager::GetProxyServer(CString* proxy_server) {
   return S_OK;
 }
 
-HRESULT DMPolicyManager::GetForceInstallApps(std::vector<CString>* app_ids) {
+HRESULT DMPolicyManager::GetForceInstallApps(bool is_machine,
+                                             std::vector<CString>* app_ids) {
   ASSERT1(app_ids);
   ASSERT1(app_ids->empty());
 
@@ -563,7 +567,9 @@ HRESULT DMPolicyManager::GetForceInstallApps(std::vector<CString>* app_ids) {
   }
 
   for (const auto& app_settings : dm_policy_.application_settings) {
-    if (app_settings.second.install != kPolicyForceInstall) {
+    const DWORD expected = is_machine ? kPolicyForceInstallMachine :
+                                        kPolicyForceInstallUser;
+    if (static_cast<DWORD>(app_settings.second.install) != expected) {
       continue;
     }
 
@@ -967,6 +973,7 @@ HRESULT ConfigManager::GetProxyServer(
 }
 
 HRESULT ConfigManager::GetForceInstallApps(
+    bool is_machine,
     std::vector<CString>* app_ids,
     IPolicyStatusValue** policy_status_value) const {
   ASSERT1(app_ids);
@@ -975,7 +982,7 @@ HRESULT ConfigManager::GetForceInstallApps(
 
   for (size_t i = 0; i != policies_.size(); ++i) {
     std::vector<CString> t;
-    HRESULT hr = policies_[i]->GetForceInstallApps(&t);
+    HRESULT hr = policies_[i]->GetForceInstallApps(is_machine, &t);
     if (SUCCEEDED(hr)) {
       v.Update(policies_[i]->IsManaged(), policies_[i]->source(), t);
     }
@@ -989,7 +996,8 @@ HRESULT ConfigManager::GetForceInstallApps(
 
   v.UpdateFinal(std::vector<CString>(), policy_status_value);
 
-  OPT_LOG(L5, (_T("[GetForceInstallApps][%s]"), v.ToString()));
+  OPT_LOG(L5, (_T("[GetForceInstallApps][is_machine][%d][%s]"), is_machine,
+               v.ToString()));
 
   *app_ids = v.value();
   return S_OK;
