@@ -249,7 +249,8 @@ def OmahaBuildTestMsi(env, version, namespace, exe_name, wxs_template, msi_base_
   unsigned_msi = wix_env.WiX('unsigned_%s.msi' % msi_base_name, wix_inputs)
   # Force a rebuild when the exe file changes.
   wix_env.Depends(unsigned_msi, [exe_name])
-  signed_output = env.DualSignedBinary(
+  # Single-signed here because it is not possible to dual-sign an msi.
+  signed_output = env.SignedBinary(
       target=msi_base_name + '.msi',
       source=unsigned_msi,
   )
