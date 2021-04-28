@@ -325,6 +325,84 @@ TEST_F(BundleCreatorTest, CreateFromCommandLine) {
   }
 }
 
+TEST_F(BundleCreatorTest, CreateForceInstallBundle) {
+  const CString kDisplayLanguage = _T("en");
+  const CString kInstallSource = _T("TestInstallSourceForceInstallBundle");
+  const CString kSessionId = _T("{6cb069db-b073-4a40-9983-846a3819876a}");
+  const bool is_machine = true;
+  const bool is_interactive = true;
+  const bool send_pings = true;
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueIsEnrolledToDomain,
+                                    1UL));
+  EXPECT_SUCCEEDED(RegKey::CreateKey(kRegKeyGoopdateGroupPolicy));
+
+  #define APP_ID1 _T("{D9F05AEA-BEDA-4f91-B216-BE45DAE330CB}")
+  const TCHAR* const kInstallPolicyApp1 = _T("Install") APP_ID1;
+  #define APP_ID2 _T("{EF3CACD4-89EB-46b7-B9BF-B16B15F08584}")
+  const TCHAR* const kInstallPolicyApp2 = _T("Install") APP_ID2;
+
+  RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                   kInstallPolicyApp1,
+                   static_cast<DWORD>(kPolicyForceInstallMachine));
+  RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
+                   kInstallPolicyApp2,
+                   static_cast<DWORD>(kPolicyForceInstallMachine));
+
+  CComPtr<IAppBundle> app_bundle;
+  ASSERT_EQ(S_OK, bundle_creator::CreateForceInstallBundle(is_machine,
+                                                           kDisplayLanguage,
+                                                           kInstallSource,
+                                                           kSessionId,
+                                                           is_interactive,
+                                                           send_pings,
+                                                           &app_bundle));
+
+  CComBSTR display_name;
+  EXPECT_SUCCEEDED(app_bundle->get_displayName(&display_name));
+  EXPECT_STREQ(client_utils::GetDefaultBundleName(), display_name);
+
+  CComBSTR install_source;
+  EXPECT_SUCCEEDED(app_bundle->get_installSource(&install_source));
+  EXPECT_STREQ(kInstallSource, install_source);
+
+  CComBSTR session_id;
+  EXPECT_SUCCEEDED(app_bundle->get_sessionId(&session_id));
+  EXPECT_STREQ(kSessionId, session_id);
+
+  long priority = INSTALL_PRIORITY_LOW;  // NOLINT(runtime/int)
+  EXPECT_SUCCEEDED(app_bundle->get_priority(&priority));
+  EXPECT_EQ(INSTALL_PRIORITY_HIGH, priority);
+
+  CComBSTR display_language;
+  EXPECT_SUCCEEDED(app_bundle->get_displayLanguage(&display_language));
+  EXPECT_STREQ(kDisplayLanguage, display_language);
+
+  long num_apps = 0;  // NOLINT(runtime/int)
+  EXPECT_SUCCEEDED(app_bundle->get_Count(&num_apps));
+  EXPECT_EQ(2, num_apps);
+
+  for (long i = 0; i < num_apps; ++i) {  // NOLINT(runtime/int)
+    CComPtr<IApp> app;
+    EXPECT_SUCCEEDED(update3_utils::GetApp(app_bundle, i, &app));
+
+    CComBSTR app_id_bstr;
+    EXPECT_SUCCEEDED(app->get_appId(&app_id_bstr));
+    CString app_id(app_id_bstr);
+    EXPECT_TRUE(!app_id.CompareNoCase(APP_ID1) ||
+                !app_id.CompareNoCase(APP_ID2));
+
+    CComBSTR app_name;
+    EXPECT_SUCCEEDED(app->get_displayName(&app_name));
+    EXPECT_STREQ(client_utils::GetDefaultApplicationName(), app_name);
+  }
+
+  RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueIsEnrolledToDomain));
+}
+
 TEST_F(BundleCreatorTest, CreateForOnDemand) {
   const CString& kAppId = _T("{5dace97e-9d8f-430b-acc7-ef04708b4725}");
   const CString kInstallSource = _T("TestInstallSourceOnDemand");

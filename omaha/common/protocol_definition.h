@@ -72,7 +72,10 @@ struct OS {
 };
 
 struct UpdateCheck {
-  UpdateCheck() : is_valid(false), is_update_disabled(false) {}
+  UpdateCheck()
+      : is_valid(false),
+        is_update_disabled(false),
+        is_rollback_allowed(false) {}
 
   // TODO(omaha): this member is not serialized. Use pointers to indicate
   // optional elements instead of is_valid.

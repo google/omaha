@@ -18,6 +18,7 @@
 #include <atlstr.h>
 #include <inttypes.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -29,13 +30,34 @@
 #include "omaha/base/utils.h"
 #include "omaha/common/const_group_policy.h"
 
+namespace enterprise_management {
+class PolicyFetchResponse;
+}  // namespace enterprise_management
+
 namespace omaha {
+
+// The policy type for Omaha policy settings.
+constexpr char kGoogleUpdatePolicyType[] = "google/machine-level-omaha";
 
 struct PolicyValueValidationIssue {
   enum class Severity { kWarning, kError };
   std::string policy_name;
   Severity severity = Severity::kWarning;
   std::string message;
+
+  PolicyValueValidationIssue(const std::string& policy_name, Severity severity,
+                             const std::string& message)
+      : policy_name(policy_name), severity(severity), message(message) {}
+
+  CString ToString() const {
+    CString result;
+    SafeCStringAppendFormat(&result,
+                            _T("[PolicyValueValidationIssue][policy_name][%s]")
+                            _T("[severity][%d][message][%s]"),
+                            CString(policy_name.c_str()), severity,
+                            CString(message.c_str()));
+    return result;
+  }
 };
 
 struct PolicyValidationResult {
@@ -78,6 +100,27 @@ struct PolicyValidationResult {
 
   Status status = Status::kValidationOK;
   std::vector<PolicyValueValidationIssue> issues;
+
+  bool HasErrorIssue() const {
+    return std::any_of(issues.begin(), issues.end(), [](const auto& issue) {
+             return issue.severity ==
+                    PolicyValueValidationIssue::Severity::kError;
+           });
+  }
+
+  CString ToString() const {
+    CString result;
+    SafeCStringAppendFormat(&result,
+                            _T("[PolicyValidationResult][status][%d]")
+                            _T("[policy_type][%s][policy_token][%s]"),
+                            status, CString(policy_type.c_str()),
+                            CString(policy_token.c_str()));
+
+    for (const PolicyValueValidationIssue& issue : issues) {
+      SafeCStringAppendFormat(&result, _T("\n\t[%s]"), issue.ToString());
+    }
+    return result;
+  }
 };
 
 // Maps policy types to their corresponding serialized PolicyFetchResponses.
@@ -172,6 +215,10 @@ struct CachedOmahaPolicy {
     return result;
   }
 };
+
+bool ValidateOmahaPolicyResponse(
+    const enterprise_management::PolicyFetchResponse& response,
+    PolicyValidationResult* validation_result);
 
 HRESULT GetCachedPolicyInfo(const std::string& raw_response,
                             CachedPolicyInfo* info);

@@ -141,6 +141,46 @@ void SortPackageInfoByTime(std::vector<PackageInfo>* packages_info) {
             PackageSortByTimePredicate);
 }
 
+HRESULT FileCopy(File* source_file, const CString& destination) {
+  ASSERT1(source_file);
+
+  File destination_file;
+  HRESULT hr = destination_file.Open(destination, true, false);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = source_file->SeekToBegin();
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  byte buffer[4096] = {};
+  uint32 bytes_read = 0;
+  do {
+    hr = source_file->Read(arraysize(buffer), buffer, &bytes_read);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    if (!bytes_read) {
+      return S_OK;
+    }
+
+    uint32 bytes_written(0);
+    hr = destination_file.Write(buffer, bytes_read, &bytes_written);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    if (bytes_written != bytes_read) {
+      return E_UNEXPECTED;
+    }
+  } while (bytes_read > 0);
+
+  return S_OK;
+}
+
 }  // namespace internal
 
 PackageCache::PackageCache() {
@@ -190,11 +230,13 @@ bool PackageCache::IsCached(const Key& key, const CString& hash) const {
 }
 
 HRESULT PackageCache::Put(const Key& key,
-                          const CString& source_file,
+                          File* source_file,
                           const CString& hash) {
+  ASSERT1(source_file);
+
   ++metric_worker_package_cache_put_total;
-  CORE_LOG(L3, (_T("[PackageCache::Put][key '%s'][source_file '%s'][hash %s]"),
-                key.ToString(), source_file, hash));
+  CORE_LOG(L3, (_T("[PackageCache::Put][key '%s'][hash %s]"),
+                key.ToString(), hash));
 
   __mutexScope(cache_lock_);
 
@@ -220,9 +262,7 @@ HRESULT PackageCache::Put(const Key& key,
   // TODO(omaha): consider not overwriting the file if the file is
   // in the cache and it is valid.
 
-  // When not impersonated, File::Copy resets the ownership of the destination
-  // file and it inherits ACEs from the new parent directory.
-  hr = File::Copy(source_file, destination_file, true);
+  hr = internal::FileCopy(source_file, destination_file);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[failed to copy file to cache][0x%08x][%s]"),
                   hr, destination_file));

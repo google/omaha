@@ -56,7 +56,11 @@ HRESULT DoSelfUpdate(bool is_machine, int* extra_code1) {
 
   *extra_code1 = 0;
 
-  HRESULT hr = DoInstallSelf(is_machine, true, false, false, extra_code1);
+  HRESULT hr = DoInstallSelf(is_machine,
+                             true,
+                             false,
+                             RUNTIME_MODE_NOT_SET,
+                             extra_code1);
   if (FAILED(hr)) {
     PersistUpdateErrorInfo(is_machine, hr, *extra_code1, GetVersionString());
     return hr;
@@ -66,11 +70,11 @@ HRESULT DoSelfUpdate(bool is_machine, int* extra_code1) {
 }
 
 // Does not need to update the UI during Omaha install. This should be quick
-// with a simple throbbing UI. UI will transition when product install begins.
+// with a simple UI. UI will transition when product install begins.
 HRESULT DoInstallSelf(bool is_machine,
                       bool is_self_update,
                       bool is_eula_required,
-                      bool set_keepalive,
+                      RuntimeMode runtime_mode,
                       int* extra_code1) {
   ASSERT1(extra_code1);
   ASSERT1(!is_self_update || !is_eula_required);
@@ -104,7 +108,7 @@ HRESULT DoInstallSelf(bool is_machine,
 
   Setup setup(is_machine);
   setup.set_is_self_update(is_self_update);
-  hr = setup.Install(set_keepalive);
+  hr = setup.Install(runtime_mode);
   *extra_code1 = setup.extra_code1();
 
   if (FAILED(hr)) {
@@ -278,7 +282,7 @@ HRESULT InstallSelf(bool is_machine,
   HRESULT hr = internal::DoInstallSelf(is_machine,
                                        false,
                                        is_eula_required,
-                                       extra_args.runtime_only,
+                                       extra_args.runtime_mode,
                                        extra_code1);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[DoInstallSelf failed][0x%08x]"), hr));

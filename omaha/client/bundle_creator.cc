@@ -460,6 +460,109 @@ HRESULT CreateFromCommandLine(bool is_machine,
   return S_OK;
 }
 
+HRESULT CreateForceInstallBundle(bool is_machine,
+                                 const CString& display_language,
+                                 const CString& install_source,
+                                 const CString& session_id,
+                                 bool is_interactive,
+                                 bool send_pings,
+                                 IAppBundle** app_bundle) {
+  CORE_LOG(L2, (_T("[bundle_creator::CreateForceInstallBundle]")));
+  ASSERT1(app_bundle);
+
+  std::vector<CString> force_install_app_ids;
+  HRESULT hr = ConfigManager::Instance()->GetForceInstallApps(
+      is_machine,
+      &force_install_app_ids,
+      NULL);
+  if (FAILED(hr)) {
+    return S_FALSE;
+  }
+
+  std::vector<CString> app_ids;
+  for (const auto& app_id : force_install_app_ids) {
+    const CString app_id_key =
+          app_registry_utils::GetAppClientsKey(is_machine, app_id);
+
+    if (!RegKey::HasKey(app_id_key)) {
+      app_ids.push_back(app_id);
+    }
+  }
+
+  if (app_ids.empty()) {
+    return S_FALSE;
+  }
+
+  CComPtr<IGoogleUpdate3> server;
+  hr = update3_utils::CreateGoogleUpdate3Class(is_machine, &server);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[CreateGoogleUpdate3Class][%#x]"), hr));
+    return hr;
+  }
+
+  CComPtr<IAppBundle> app_bundle_ptr;
+  hr = update3_utils::CreateAppBundle(server, &app_bundle_ptr);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[CreateAppBundle failed][%#x]"), hr));
+    return hr;
+  }
+
+  hr = internal::SetBundleProperties(display_language,
+                                     client_utils::GetDefaultBundleName(),
+                                     install_source,
+                                     session_id,
+                                     send_pings,
+                                     app_bundle_ptr);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = internal::SetAltTokens(is_machine, app_bundle_ptr);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = app_bundle_ptr->put_priority(is_interactive ?
+                                        INSTALL_PRIORITY_HIGH :
+                                        INSTALL_PRIORITY_LOW);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  hr = app_bundle_ptr->initialize();
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  for (const auto& app_id_string : app_ids) {
+    CComBSTR app_id(app_id_string);
+    CComPtr<IApp> app;
+    hr = update3_utils::CreateApp(app_id, app_bundle_ptr, &app);
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    hr = app->put_displayName(
+        CComBSTR(client_utils::GetDefaultApplicationName()));
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    const bool is_eula_accepted =
+          app_registry_utils::IsAppEulaAccepted(is_machine,
+                                                app_id_string,
+                                                false);
+    hr = app->put_isEulaAccepted(is_eula_accepted ? VARIANT_TRUE :
+                                                    VARIANT_FALSE);
+    if (FAILED(hr)) {
+      return hr;
+    }
+  }
+
+  *app_bundle = app_bundle_ptr.Detach();
+  return S_OK;
+}
+
 HRESULT CreateForOnDemand(bool is_machine,
                           const CString& app_id,
                           const CString& install_source,

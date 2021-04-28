@@ -261,6 +261,20 @@ ADMX_POLICIES = r'''
   </policies>
 '''
 
+INSTALL_POLICY_FORCE_INSTALL_MACHINE = r'''
+          <item displayName="$(string.Name_ForceInstallsMachine)">
+            <value>
+              <decimal value="5" />
+            </value>
+          </item>'''
+
+INSTALL_POLICY_FORCE_INSTALL_USER = r'''
+          <item displayName="$(string.Name_ForceInstallsUser)">
+            <value>
+              <decimal value="6" />
+            </value>
+          </item>'''
+
 ADMX_APP_POLICY_TEMPLATE = '''\
     <policy name="Pol_AllowInstallation%(AppLegalId)s" class="Machine"
         displayName="$(string.Pol_AllowInstallation)"
@@ -286,7 +300,7 @@ ADMX_APP_POLICY_TEMPLATE = '''\
             <value>
               <decimal value="0" />
             </value>
-          </item>
+          </item>%(ForceInstalls)s
         </enum>
       </elements>
     </policy>
@@ -435,11 +449,19 @@ def GenerateGroupPolicyTemplateAdmx(apps):
 
     app_policy_list = []
     for app in apps:
-      app_name, app_guid, _, _ = app
+      app_name, app_guid, _, _, force_install_machine, force_install_user = app
+
+      force_installs = ''
+      if force_install_machine:
+        force_installs += INSTALL_POLICY_FORCE_INSTALL_MACHINE
+      if force_install_user:
+        force_installs += INSTALL_POLICY_FORCE_INSTALL_USER
+
       app_policy_list.append(ADMX_APP_POLICY_TEMPLATE % {
           'AppLegalId': _CreateLegalIdentifier(app_name),
           'AppGuid': app_guid,
           'RootPolicyKey': MAIN_POLICY_KEY,
+          'ForceInstalls': force_installs,
       })
 
     return ADMX_POLICIES % {
@@ -475,6 +497,13 @@ ADML_DEFAULT_ROLLBACK_DISCLAIMER = (
     'users are protected by the latest security updates, the most recent '
     'version should be used. When versions are downgraded to older '
     'versions, there could be incompatibilities.')
+
+FORCE_INSTALLS_MACHINE_EXPLAIN = (
+    'Force Installs (Machine-Wide): Allows Deploying %s to all machines where Google Update is pre-installed. Requires Google Update 1.3.36.82 or higher.\n\n'
+)
+FORCE_INSTALLS_USER_EXPLAIN = (
+    'Force Installs (Per-User): Allows Deploying %s on a Per-User basis to all machines where Google Update is pre-installed Per-User. Requires Google Update 1.3.36.82 or higher.\n\n'
+)
 
 ADML_DOMAIN_REQUIREMENT_EN = (
     'This policy is available only on Windows instances that are joined to a '
@@ -521,6 +550,8 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Name_InstallsEnabledMachineOnly',
      'Always allow Machine-Wide Installs, but not Per-User Installs.'),
     ('Name_InstallsDisabled', 'Installs disabled'),
+    ('Name_ForceInstallsMachine', 'Force Installs (Machine-Wide)'),
+    ('Name_ForceInstallsUser', 'Force Installs (Per-User)'),
     ('Part_UpdatePolicy', 'Policy'),
     ('Part_TargetChannel', 'Target Channel'),
     ('Part_TargetVersionPrefix', 'Target version prefix'),
@@ -722,6 +753,14 @@ def GenerateGroupPolicyTemplateAdml(apps):
     if not rollback_disclaimer:
       rollback_disclaimer = ADML_DEFAULT_ROLLBACK_DISCLAIMER
 
+    force_install_machine = app[4]
+    force_install_user = app[5]
+    force_installs_explain = ''
+    if force_install_machine:
+      force_installs_explain += FORCE_INSTALLS_MACHINE_EXPLAIN % app_name
+    if force_install_user:
+      force_installs_explain += FORCE_INSTALLS_USER_EXPLAIN % app_name
+
     app_category = ('Cat_' + app_legal_id, app_name)
     string_definition_list.append(app_category)
 
@@ -731,7 +770,12 @@ def GenerateGroupPolicyTemplateAdml(apps):
         'Installer.\n\n'
         'If this policy is not configured, %s can be installed as specified '
         'by "Allow installation default".\n\n'
-        '%s' % (app_name, app_name, ADML_DOMAIN_REQUIREMENT_EN))
+        '%s'
+        '%s' % (app_name,
+                app_name,
+                force_installs_explain,
+                ADML_DOMAIN_REQUIREMENT_EN))
+
     string_definition_list.append(app_install_policy_explanation)
 
     app_auto_update_policy_explanation = (
@@ -791,16 +835,17 @@ def GenerateGroupPolicyTemplateAdml(apps):
 
     app_rollback_to_target_version_explanation = (
         'Explain_RollbackToTargetVersion' + app_legal_id,
-        'Specifies that Google Update should roll installations of %s back to '
-        'the version indicated by "Target version prefix override".\n\n'
-        'This policy setting has no effect unless "Target version prefix '
-        'override" is set.\n\n'
+        'Specifies that Google Update should roll installations of %s back if '
+        'the client has a higher version than that available.\n\n'
         'If this policy is not configured or is disabled, installs that have a '
-        'version higher than that specified by "Target version prefix '
-        'override" will be left as-is.\n\n'
+        'version higher than that available will be left as-is. This could be '
+        'the case if "Target channel override" is set to a Channel with a '
+        'lower version, if "Target version prefix override" matches a lower '
+        'version on the Channel, or if a user had installed a higher '
+        'version.\n\n'
         'If this policy is enabled, installs that have a version higher than '
-        'that specified by "Target version prefix override" will be downgraded '
-        'to the highest available version that matches the target version.\n\n'
+        'that available will be downgraded to the highest available version, '
+        'respecting any configured target Channel and target version.\n\n'
         '%s\n\n'
         '%s' % (app_name, rollback_disclaimer, ADML_DOMAIN_REQUIREMENT_EN))
     string_definition_list.append(app_rollback_to_target_version_explanation)
@@ -867,13 +912,18 @@ def WriteGroupPolicyTemplateAdml(target_path, apps):
 # Run a unit test when the module is run directly.
 if __name__ == '__main__':
   TEST_APPS = [
-      ('Google Test Foo', '{D6B08267-B440-4c85-9F79-E195E80D9937}',
+      ('Google Test Foo',
+       '{D6B08267-B440-4c85-9F79-E195E80D9937}',
        ' Check http://www.google.com/test_foo/.',
-       'Disclaimer'),
+       'Disclaimer',
+       True,
+       True),
       (u'Google User Test Foo\u00a9\u00ae\u2122',
        '{104844D6-7DDA-460b-89F0-FBF8AFDD0A67}',
        ' Check http://www.google.com/user_test_foo/.',
-       ''),
+       '',
+       False,
+       True),
   ]
   module_dir = os.path.abspath(os.path.dirname(__file__))
   gold_path = os.path.join(module_dir, 'test_gold.admx')

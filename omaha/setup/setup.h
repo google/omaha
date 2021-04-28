@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
+#include "omaha/common/const_goopdate.h"
 #include "omaha/third_party/smartany/scoped_any.h"
 
 namespace omaha {
@@ -47,7 +48,7 @@ class Setup {
   ~Setup();
 
   // Installs Omaha if necessary.
-  HRESULT Install(bool set_keepalive);
+  HRESULT Install(RuntimeMode runtime_mode);
 
   // Acquires the Setup Lock and uninstalls all Omaha versions if Omaha can be
   // uninstalled.
@@ -75,7 +76,7 @@ class Setup {
 
   // Does the install work within all necessary locks, which have already been
   // acquired.
-  HRESULT DoProtectedInstall(bool set_keepalive);
+  HRESULT DoProtectedInstall(RuntimeMode runtime_mode);
 
   // Uninstalls all Google Update versions after checking if Google Update can
   // be uninstalled.
@@ -173,10 +174,9 @@ class Setup {
   // Returns true if GoogleUpdate can be uninstalled now.
   bool CanUninstallGoogleUpdate() const;
 
-  // Control the state of the DelayUninstall flag.  If set, uninstall will
-  // be delayed for at least 24 hours after initial install.
-  bool ShouldDelayUninstall() const;
-  HRESULT SetDelayUninstall(bool should_delay) const;
+  // The state of the RuntimeMode in the registry.
+  RuntimeMode GetRuntimeMode() const;
+  HRESULT SetRuntimeMode(RuntimeMode runtime_mode) const;
 
   // Sends the uninstall ping and waits for the ping to be sent.
   HRESULT SendUninstallPing();

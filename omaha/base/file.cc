@@ -183,19 +183,23 @@ bool File::IsDirectory(const TCHAR* file_name) {
   return (attrs.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
-bool File::IsReparsePoint(const TCHAR* file_name) {
+HRESULT File::IsReparsePoint(const TCHAR* file_name, bool* is_reparse_point) {
   ASSERT1(file_name && *file_name);
+  ASSERT1(is_reparse_point);
 
-  WIN32_FILE_ATTRIBUTE_DATA attrs;
-  SetZero(attrs);
+  WIN32_FILE_ATTRIBUTE_DATA attrs = {};
   if (!::GetFileAttributesEx(file_name, ::GetFileExInfoStandard, &attrs)) {
-    UTIL_LOG(LEVEL_ERROR,
-             (_T("[File::IsDirectory - GetFileAttributesEx failed][%s][0x%x]"),
-              file_name, HRESULTFromLastError()));
-    return false;
+    HRESULT hr = HRESULTFromLastError();
+    UTIL_LOG(
+        LE,
+        (_T("[File::IsReparsePoint][::GetFileAttributesEx failed][%s][%#x]"),
+         file_name, hr));
+    return hr;
   }
 
-  return (attrs.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+  *is_reparse_point =
+      ((attrs.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0);
+  return S_OK;
 }
 
 HRESULT File::GetWildcards(const TCHAR* dir,

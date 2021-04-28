@@ -27,6 +27,7 @@ namespace omaha {
 
 class App;
 struct ErrorContext;
+class File;
 class HttpClient;
 struct Lockable;        // TODO(omaha): make Lockable a class.
 class NetworkRequest;
@@ -41,7 +42,7 @@ class DownloadManagerInterface {
   virtual HRESULT PurgeAppLowerVersions(const CString& app_id,
                                         const CString& version) = 0;
   virtual HRESULT CachePackage(const Package* package,
-                               const CString* filename_path) = 0;
+                               File* source_file) = 0;
   virtual HRESULT DownloadApp(App* app) = 0;
   virtual HRESULT GetPackage(const Package* package,
                              const CString& dir) const = 0;
@@ -61,8 +62,7 @@ class DownloadManager : public DownloadManagerInterface {
   virtual HRESULT PurgeAppLowerVersions(const CString& app_id,
                                         const CString& version);
 
-  virtual HRESULT CachePackage(const Package* package,
-                               const CString* filename_path);
+  virtual HRESULT CachePackage(const Package* package, File* source_file);
 
   // Downloads the specified app and stores its packages in the package cache.
   //

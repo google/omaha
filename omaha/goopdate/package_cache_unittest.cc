@@ -62,6 +62,15 @@ class PackageCacheTest : public testing::TestWithParam<bool> {
 
     EXPECT_TRUE(File::Exists(source_file1_));
     EXPECT_TRUE(File::Exists(source_file2_));
+
+    EXPECT_SUCCEEDED(source_file1_file_.OpenShareMode(source_file1_,
+                                                      false,
+                                                      false,
+                                                      FILE_SHARE_READ));
+    EXPECT_SUCCEEDED(source_file2_file_.OpenShareMode(source_file2_,
+                                                      false,
+                                                      false,
+                                                      FILE_SHARE_READ));
   }
 
   virtual void SetUp() {
@@ -110,10 +119,12 @@ class PackageCacheTest : public testing::TestWithParam<bool> {
 
   const CString cache_root_;
   CString source_file1_;
+  File source_file1_file_;
   CString hash_file1_;
   uint64  size_file1_;
 
   CString source_file2_;
+  File source_file2_file_;
   CString hash_file2_;
   uint64  size_file2_;
 
@@ -168,7 +179,7 @@ TEST_F(PackageCacheTest, BasicTest) {
   EXPECT_FALSE(package_cache_.IsCached(key1, hash_file1_));
 
   // Cache one file.
-  EXPECT_SUCCEEDED(package_cache_.Put(key1, source_file1_, hash_file1_));
+  EXPECT_SUCCEEDED(package_cache_.Put(key1, &source_file1_file_, hash_file1_));
   EXPECT_EQ(size_file1_, package_cache_.Size());
 
   // Check the file is in the cache.
@@ -197,12 +208,12 @@ TEST_F(PackageCacheTest, BasicTest) {
   // Cache another file.
   Key key2(_T("app2"), _T("ver2"), _T("package2"));
 
-  EXPECT_SUCCEEDED(package_cache_.Put(key2, source_file2_, hash_file2_));
+  EXPECT_SUCCEEDED(package_cache_.Put(key2, &source_file2_file_, hash_file2_));
   EXPECT_EQ(size_file1_ + size_file2_, package_cache_.Size());
   EXPECT_TRUE(package_cache_.IsCached(key2, hash_file2_));
 
   // Cache the same file again. It should be idempotent.
-  EXPECT_SUCCEEDED(package_cache_.Put(key2, source_file2_, hash_file2_));
+  EXPECT_SUCCEEDED(package_cache_.Put(key2, &source_file2_file_, hash_file2_));
   EXPECT_EQ(size_file1_ + size_file2_, package_cache_.Size());
 
   EXPECT_TRUE(package_cache_.IsCached(key2, hash_file2_));
@@ -240,7 +251,7 @@ TEST_F(PackageCacheTest, PutBadHashTest) {
   CString bad_hash =
       _T("0000bad0000364f6c33161d781b49d840ed792b8b10668c4180b9e6e128d0bc9");
   EXPECT_EQ(SIGS_E_INVALID_SIGNATURE, package_cache_.Put(key1,
-                                                         source_file1_,
+                                                         &source_file1_file_,
                                                          bad_hash));
   // Check the file is not the cache.
   EXPECT_FALSE(package_cache_.IsCached(key1, hash_file1_));
@@ -258,9 +269,12 @@ TEST_F(PackageCacheTest, BadKeyTest) {
   EXPECT_EQ(E_INVALIDARG,
       package_cache_.Get(key_empty_name, _T("a"), bad_hash));
 
-  EXPECT_EQ(E_INVALIDARG, package_cache_.Put(key_empty_app, _T("a"), bad_hash));
-  EXPECT_EQ(E_INVALIDARG,
-      package_cache_.Put(key_empty_name, _T("a"), bad_hash));
+  EXPECT_EQ(E_INVALIDARG, package_cache_.Put(key_empty_app,
+                                             &source_file1_file_,
+                                             bad_hash));
+  EXPECT_EQ(E_INVALIDARG, package_cache_.Put(key_empty_name,
+                                             &source_file1_file_,
+                                             bad_hash));
 }
 
 TEST_F(PackageCacheTest, PurgeVersionTest) {
@@ -271,16 +285,16 @@ TEST_F(PackageCacheTest, PurgeVersionTest) {
   Key key22(_T("app1"), _T("ver2"), _T("package2"));
 
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key11,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key12,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key21,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key22,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
 
   EXPECT_TRUE(package_cache_.IsCached(key11, hash_file1_));
@@ -317,16 +331,16 @@ TEST_F(PackageCacheTest, PurgeAppTest) {
   Key key22(_T("app2"), _T("ver2"), _T("package2"));
 
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key11,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key12,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key21,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key22,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
 
   EXPECT_TRUE(package_cache_.IsCached(key11, hash_file1_));
@@ -365,16 +379,16 @@ TEST_F(PackageCacheTest, PurgeAppLowerVersionsTest) {
   Key key_21_2(_T("app1"), _T("2.1.0.0"), _T("package2"));
 
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key_10_1,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key_10_2,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key_11_1,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key_21_2,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
 
   EXPECT_HRESULT_SUCCEEDED(package_cache_.PurgeAppLowerVersions(_T("app1"),
@@ -411,16 +425,16 @@ TEST_F(PackageCacheTest, PurgeAll) {
   Key key22(_T("app2"), _T("ver2"), _T("package2"));
 
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key11,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key12,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key21,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key22,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
 
   EXPECT_TRUE(package_cache_.IsCached(key11, hash_file1_));
@@ -461,7 +475,7 @@ TEST_F(PackageCacheTest, PurgeOldPackagesIfOverSizeLimit) {
     version.Format(_T("version%d"), i);
     package.Format(_T("package%d"), i);
     EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(Key(app, version, package),
-                                                source_file1_,
+                                                &source_file1_file_,
                                                 hash_file1_));
     current_size += size_file1_;
     EXPECT_EQ(current_size, package_cache_.Size());
@@ -493,10 +507,10 @@ TEST_F(PackageCacheTest, PurgeExpiredCacheFiles) {
   Key key1(_T("app1"), _T("version1"), _T("package1"));
   Key key2(_T("app2"), _T("version2"), _T("package2"));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key1,
-                                              source_file1_,
+                                              &source_file1_file_,
                                               hash_file1_));
   EXPECT_HRESULT_SUCCEEDED(package_cache_.Put(key2,
-                                              source_file2_,
+                                              &source_file2_file_,
                                               hash_file2_));
   EXPECT_TRUE(package_cache_.IsCached(key1, hash_file1_));
   EXPECT_TRUE(package_cache_.IsCached(key2, hash_file2_));

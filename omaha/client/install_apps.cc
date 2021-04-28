@@ -629,6 +629,56 @@ HRESULT InstallApps(bool is_machine,
                                  has_ui_been_displayed);
 }
 
+HRESULT InstallForceInstallApps(bool is_machine,
+                                bool is_interactive,
+                                const CString& install_source,
+                                const CString& display_language,
+                                const CString& session_id,
+                                bool* has_ui_been_displayed) {
+  CORE_LOG(L2, (_T("[InstallForceInstallApps][%u][%u]"),
+                is_machine, is_interactive));
+  ASSERT1(has_ui_been_displayed);
+
+  BundleAtlModule atl_module;
+  const bool send_pings = true;
+
+  CComPtr<IAppBundle> app_bundle;
+  HRESULT hr = bundle_creator::CreateForceInstallBundle(is_machine,
+                                                        display_language,
+                                                        install_source,
+                                                        session_id,
+                                                        is_interactive,
+                                                        send_pings,
+                                                        &app_bundle);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[bundle_creator::CreateForceInstallBundle][%#x]"), hr));
+    return hr;
+  } else if (hr == S_FALSE) {
+    CORE_LOG(L3, (_T("[No apps to force install]")));
+    return hr;
+  }
+
+  BundleInstaller installer(new HelpUrlBuilder(is_machine,
+                                               display_language,
+                                               GUID_NULL,
+                                               CString()),
+                            false,  //  is_update_all_apps
+                            false,  //  is_update_check_only
+                            BROWSER_UNKNOWN);
+  hr = installer.Initialize();
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  atl_module.enable_quit();
+  return internal::DoInstallApps(&installer,
+                                 app_bundle.Detach(),
+                                 is_machine,
+                                 is_interactive,
+                                 BROWSER_UNKNOWN,
+                                 has_ui_been_displayed);
+}
+
 HRESULT UpdateAllApps(bool is_machine,
                       bool is_interactive,
                       const CString& install_source,

@@ -53,6 +53,12 @@ const TCHAR* const kRegValueUpdatesSuppressedDurationMin =
 const TCHAR* const kRegValueCloudPolicyOverridesPlatformPolicy =
     _T("CloudPolicyOverridesPlatformPolicy");
 
+// The maximum value allowed for policy AutoUpdateCheckPeriodMinutes.
+const int kMaxAutoUpdateCheckPeriodMinutes = 43200;
+
+// The maximum value allowed for policy UpdatesSuppressedDurationMin.
+const int kMaxUpdatesSuppressedDurationMin = 960;
+
 // This policy specifies what kind of download URLs could be returned to the
 // client in the update response and in which order of priority. The client
 // provides this information in the update request as a hint for the server.
@@ -119,6 +125,8 @@ const int kPolicyEnabled               = 1;
 const int kPolicyEnabledMachineOnly    = 4;
 const int kPolicyManualUpdatesOnly     = 2;
 const int kPolicyAutomaticUpdatesOnly  = 3;
+const int kPolicyForceInstallMachine   = 5;
+const int kPolicyForceInstallUser      = 6;
 
 const bool kInstallPolicyDefault    = kPolicyEnabled;
 const bool kUpdatePolicyDefault     = kPolicyEnabled;

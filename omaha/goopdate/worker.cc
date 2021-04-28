@@ -863,8 +863,16 @@ HRESULT Worker::CacheOfflinePackages(AppBundle* app_bundle) {
         }
       }
 
-      HRESULT hr = download_manager_->CachePackage(package,
-                                                   &offline_package_path);
+      File offline_package_file;
+      HRESULT hr = offline_package_file.OpenShareMode(offline_package_path,
+                                                      false,
+                                                      false,
+                                                      FILE_SHARE_READ);
+      if (FAILED(hr)) {
+        return hr;
+      }
+
+      hr = download_manager_->CachePackage(package, &offline_package_file);
       if (FAILED(hr)) {
         CORE_LOG(LE, (_T("[CachePackage failed][%s][%s][0x%x][%Iu]"),
                       app->app_guid_string(), offline_package_path, hr, j));

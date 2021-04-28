@@ -30,7 +30,6 @@ exe_env.Append(
         'imagehlp.lib',
         'iphlpapi.lib',
         'kernel32.lib',
-        'msi.lib',
         'msimg32.lib',
         'mstask.lib',
         'netapi32.lib',

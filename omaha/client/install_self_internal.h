@@ -19,6 +19,8 @@
 #include <windows.h>
 #include <atlstr.h>
 
+#include "omaha/common/const_goopdate.h"
+
 namespace omaha {
 
 namespace install_self {
@@ -32,7 +34,7 @@ HRESULT DoSelfUpdate(bool is_machine, int* extra_code1);
 HRESULT DoInstallSelf(bool is_machine,
                       bool is_self_update,
                       bool is_eula_required,
-                      bool set_keepalive,
+                      RuntimeMode runtime_mode,
                       int* extra_code1);
 
 // Checks that the Omaha system requirements are met. Returns an error if not.

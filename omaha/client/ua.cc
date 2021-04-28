@@ -246,6 +246,25 @@ HRESULT UpdateApps(bool is_machine,
     return goopdate_utils::LaunchUninstallProcess(is_machine);
   }
 
+  // We first install any apps that need to be force-installed according to
+  // policy set by a domain administrator.
+  HRESULT hr = InstallForceInstallApps(is_machine,
+                                       is_interactive,
+                                       install_source,
+                                       display_language,
+                                       session_id,
+                                       has_ui_been_displayed);
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[InstallForceInstallApps failed][%#x]"), hr));
+  }
+
+  // InstallForceInstallApps creates a BundleAtlModule instance on the stack, so
+  // we reset the _pAtlModule to allow for a fresh ATL module for UpdateAllApps.
+  _pAtlModule = NULL;
+
+  // Generate a new session ID for UpdateAllApps.
+  VERIFY_SUCCEEDED(GetGuid(&session_id));
+
   const bool should_check_for_updates = ShouldCheckForUpdates(is_machine);
   if (!(is_on_demand || should_check_for_updates)) {
     OPT_LOG(L1, (_T("[Update check not needed at this time]")));
@@ -260,12 +279,12 @@ HRESULT UpdateApps(bool is_machine,
     ::Sleep(au_jitter_ms);
   }
 
-  HRESULT hr = UpdateAllApps(is_machine,
-                             is_interactive,
-                             install_source,
-                             display_language,
-                             session_id,
-                             has_ui_been_displayed);
+  hr = UpdateAllApps(is_machine,
+                     is_interactive,
+                     install_source,
+                     display_language,
+                     session_id,
+                     has_ui_been_displayed);
   if (FAILED(hr)) {
     CORE_LOG(LW, (_T("[UpdateAllApps failed][0x%08x]"), hr));
   }

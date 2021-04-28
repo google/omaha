@@ -73,7 +73,7 @@
                       Name='UninstallArguments'
                       Win64='no'/>
     </Property>
-    <Property Id='AllowDowngradeSubstitution'>false</Property>
+    <Property Id='AllowDowngradeSubstitution' Value='false' />
 
     <!-- Eliminates "warning LGHT1076 : ICE71: The Media table has no entries."
     -->

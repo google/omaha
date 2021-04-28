@@ -27,6 +27,7 @@
 #include <atlpath.h>
 #include <atlstr.h>
 #include <memory>
+#include <vector>
 #include "base/basictypes.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/synchronized.h"
@@ -60,6 +61,8 @@ class PolicyManagerInterface {
   virtual HRESULT GetProxyMode(CString* proxy_mode) = 0;
   virtual HRESULT GetProxyPacUrl(CString* proxy_pac_url) = 0;
   virtual HRESULT GetProxyServer(CString* proxy_server) = 0;
+  virtual HRESULT GetForceInstallApps(bool is_machine,
+                                      std::vector<CString>* app_ids) = 0;
 
   virtual HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                                    DWORD* install_policy) = 0;
@@ -91,6 +94,8 @@ class GroupPolicyManager : public PolicyManagerInterface {
   HRESULT GetProxyMode(CString* proxy_mode) override;
   HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
   HRESULT GetProxyServer(CString* proxy_server) override;
+  HRESULT GetForceInstallApps(bool is_machine,
+                              std::vector<CString>* app_ids) override;
 
   HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                            DWORD* install_policy) override;
@@ -125,6 +130,8 @@ class DMPolicyManager : public PolicyManagerInterface {
   HRESULT GetProxyMode(CString* proxy_mode) override;
   HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
   HRESULT GetProxyServer(CString* proxy_server) override;
+  HRESULT GetForceInstallApps(bool is_machine,
+                              std::vector<CString>* app_ids) override;
 
   HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
                                            DWORD* install_policy) override;
@@ -222,6 +229,9 @@ class ConfigManager {
                          IPolicyStatusValue** policy_status_value) const;
   HRESULT GetProxyServer(CString* proxy_server,
                          IPolicyStatusValue** policy_status_value) const;
+  HRESULT GetForceInstallApps(bool is_machine,
+                              std::vector<CString>* app_ids,
+                              IPolicyStatusValue** policy_status_value) const;
 
   // Creates download data dir:
   // %UserProfile%/Application Data/Google/Update/Download
@@ -413,8 +423,15 @@ class ConfigManager {
       const GUID& app_guid, IPolicyStatusValue** policy_status_value) const;
 
   // Returns whether the RollbackToTargetVersion policy has been set for the
-  // app. If RollbackToTargetVersion is set, the TargetVersionPrefix policy
-  // governs the version to rollback clients with higher versions to.
+  // app. Setting RollbackToTargetVersion will result in a version downgrade if
+  // the app version on the client is higher than the version on the server.
+  // This could happen under circumstances such as:
+  // - TargetVersionPrefix is used to pick an older version on the channel.
+  // - TargetChannel is used to move the client to a channel with a lower
+  //   version (e.g., Dev/Beta to Beta/Stable).
+  // - A user somehow installed a newer version on the client.
+  // When not set, a client will not receive updates until the app version on
+  // the server passes the version on the client.
   bool IsRollbackToTargetVersionAllowed(
       const GUID& app_guid, IPolicyStatusValue** policy_status_value) const;
 

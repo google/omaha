@@ -59,7 +59,7 @@ TEST_F(RegistryProtectedTest, DISABLED_InstallOmaha_XmlParserNotPresent) {
             install_self::internal::DoInstallSelf(false,
                                                   false,
                                                   false,
-                                                  false,
+                                                  RUNTIME_MODE_NOT_SET,
                                                   &extra_code1));
   EXPECT_EQ(0, extra_code1);
   EXPECT_FALSE(RegKey::HasKey(USER_REG_GOOGLE));

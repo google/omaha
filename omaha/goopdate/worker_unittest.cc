@@ -158,7 +158,7 @@ class MockDownloadManager : public DownloadManagerInterface {
   MOCK_METHOD2(PurgeAppLowerVersions,
       HRESULT(const CString&, const CString&));
   MOCK_METHOD2(CachePackage,
-      HRESULT(const Package*, const CString*));
+      HRESULT(const Package*, File*));
   MOCK_METHOD1(DownloadApp,
       HRESULT(App* app));
   MOCK_METHOD1(DownloadPackage,

@@ -14,12 +14,18 @@
 
 #include "omaha/goopdate/dm_messages.h"
 
+#include <atlstr.h>
+
+#include <algorithm>
+#include <array>
 #include <limits>
 #include <utility>
+#include <vector>
 
 #include "crypto/signature_verifier_win.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/logging.h"
+#include "omaha/common/const_group_policy.h"
 #include "wireless/android/enterprise/devicemanagement/proto/dm_api.pb.h"
 #include "wireless/android/enterprise/devicemanagement/proto/omaha_settings.pb.h"
 
@@ -27,11 +33,13 @@ namespace omaha {
 
 namespace {
 
+namespace edm = ::wireless_android_enterprise_devicemanagement;
+
 // Request signed policy blobs. kPolicyVerificationKeyHash and
 // kPolicyVerificationKey need to be kept in sync with the corresponding values
 // in Chromium's cloud_policy_constants.cc.
 constexpr char kPolicyVerificationKeyHash[] = "1:356l7w";
-const uint8_t kPolicyVerificationKey[] = {
+constexpr uint8_t kPolicyVerificationKey[] = {
     0x30, 0x82, 0x01, 0x22, 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86,
     0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0F, 0x00,
     0x30, 0x82, 0x01, 0x0A, 0x02, 0x82, 0x01, 0x01, 0x00, 0xA7, 0xB3, 0xF9,
@@ -57,6 +65,33 @@ const uint8_t kPolicyVerificationKey[] = {
     0xC1, 0x23, 0xDA, 0x23, 0x45, 0x36, 0x6E, 0x25, 0xF3, 0xC7, 0xC0, 0x61,
     0xFC, 0xEC, 0x66, 0x9D, 0x31, 0xD4, 0xD6, 0xB6, 0x36, 0xE3, 0x7F, 0x81,
     0x87, 0x02, 0x03, 0x01, 0x00, 0x01};
+
+constexpr std::array<int64, 3> kInstallPolicyValidValues = {
+    kPolicyDisabled, kPolicyEnabled, kPolicyEnabledMachineOnly};
+
+constexpr std::array<int64, 4> kUpdatePolicyValidValues = {
+    kPolicyDisabled, kPolicyEnabled, kPolicyManualUpdatesOnly,
+    kPolicyAutomaticUpdatesOnly};
+
+constexpr std::array<const TCHAR*, 5> kProxyModeValidValues = {
+    kProxyModeDirect,       kProxyModeAutoDetect, kProxyModePacScript,
+    kProxyModeFixedServers, kProxyModeSystem,
+};
+
+template <typename Container, typename Value>
+bool Contains(const Container& container, const Value& value) {
+  return std::find(std::begin(container), std::end(container), value) !=
+         std::end(container);
+}
+
+template <typename Container>
+bool ContainsStringNoCase(const Container& container,
+                          const CString& string_to_find) {
+  return std::find_if(std::begin(container), std::end(container),
+                      [&](const auto& value) {
+                        return string_to_find.CompareNoCase(value) == 0;
+                      }) != std::end(container);
+}
 
 void SerializeToCStringA(const ::google::protobuf_opensource::Message& message,
                          CStringA* output) {
@@ -282,62 +317,10 @@ bool ValidatePolicySignature(
   return true;
 }
 
-bool ValidatePolicyFetchResponse(
-    const enterprise_management::PolicyFetchResponse& fetch_response,
-    const CString& expected_dm_token, const CString& expected_device_id,
-    const CachedPolicyInfo& info, PolicyValidationResult* validation_result) {
-  enterprise_management::PolicyData fetch_policy_data;
-  if (!fetch_policy_data.ParseFromString(fetch_response.policy_data())) {
-    REPORT_LOG(LW, (_T("[ParseDevicePolicyResponse][Invalid PolicyData]")));
-    validation_result->status =
-        PolicyValidationResult::Status::kValidationPolicyParseError;
-    return false;
-  }
-
-  if (fetch_policy_data.has_policy_token())
-    validation_result->policy_token = fetch_policy_data.policy_token();
-
-  if (!ValidateDMToken(fetch_policy_data, expected_dm_token,
-                       validation_result) ||
-      !ValidateDeviceId(fetch_policy_data, expected_device_id,
-                        validation_result) ||
-      !ValidateTimestamp(fetch_policy_data, info.timestamp,
-                         validation_result)) {
-    return false;
-  }
-
-  std::string signature_key;
-  if (!ValidateNewPublicKey(fetch_response, info.key, &signature_key,
-                            validation_result))
-    return false;
-
-  validation_result->policy_type = PolicyTypeFromResponse(fetch_response);
-  if (validation_result->policy_type.empty()) {
-    REPORT_LOG(LW, (_T("[ParseDevicePolicyResponse][Missing PolicyType]")
-                    _T("[%d]"),
-                    info.version));
-    validation_result->status =
-        PolicyValidationResult::Status::kValidationWrongPolicyType;
-    return false;
-  }
-
-  if (!ValidatePolicySignature(fetch_response, signature_key,
-                               validation_result)) {
-    REPORT_LOG(LE, (_T("[ValidatePolicySignature]")
-                    _T("[Failed to verify the signature for policy type %s]"),
-                    validation_result->policy_type.c_str()));
-    return false;
-  }
-
-  // TODO (xiaolingbao): Further validate Omaha policy values.
-
-  return true;
-}
-
 enterprise_management::PolicyValidationReportRequest::ValidationResultType
 TranslatePolicyValidationResult(PolicyValidationResult::Status status) {
   using Report = enterprise_management::PolicyValidationReportRequest;
-  const static std::map<PolicyValidationResult::Status,
+  static const std::map<PolicyValidationResult::Status,
                         Report::ValidationResultType>
       kValidationStatusMap = {
           {PolicyValidationResult::Status::kValidationOK,
@@ -393,7 +376,313 @@ TranslatePolicyValidationResultSeverity(
   }
 }
 
+bool ExtractOmahaSettingsFromPolicyResponse(
+    const enterprise_management::PolicyFetchResponse& response,
+    edm::OmahaSettingsClientProto* omaha_settings,
+    PolicyValidationResult* validation_result) {
+  ASSERT1(omaha_settings);
+  ASSERT1(validation_result);
+
+  enterprise_management::PolicyData policy_data;
+  if (!policy_data.ParseFromString(response.policy_data()) ||
+      !policy_data.has_policy_value()) {
+    validation_result->status =
+        PolicyValidationResult::Status::kValidationPayloadParseError;
+    return false;
+  }
+
+  if (!omaha_settings->ParseFromString(policy_data.policy_value())) {
+    validation_result->status =
+        PolicyValidationResult::Status::kValidationPolicyParseError;
+    return false;
+  }
+
+  return true;
+}
+
+void ValidateAutoUpdateCheckPeriodPolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  if (omaha_settings.has_auto_update_check_period_minutes() &&
+      (omaha_settings.auto_update_check_period_minutes() < 0 ||
+       omaha_settings.auto_update_check_period_minutes() >
+           kMaxAutoUpdateCheckPeriodMinutes)) {
+    validation_result->issues.emplace_back(
+        "auto_update_check_period_minutes",
+        PolicyValueValidationIssue::Severity::kError,
+        "Value out of range (0 - " +
+            std::to_string(kMaxAutoUpdateCheckPeriodMinutes) + "): " +
+            std::to_string(omaha_settings.auto_update_check_period_minutes()));
+  }
+}
+
+void ValidateDownloadPreferencePolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  if (!omaha_settings.has_download_preference()) return;
+
+  const CString download_preference(
+      omaha_settings.download_preference().c_str());
+  if (download_preference.CompareNoCase(kDownloadPreferenceCacheable) != 0) {
+    validation_result->issues.emplace_back(
+        "download_preference", PolicyValueValidationIssue::Severity::kWarning,
+        "Unrecognized download preference: " +
+            omaha_settings.download_preference());
+  }
+}
+
+void ValidateUpdatesSuppressedPolicies(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  if (!omaha_settings.has_updates_suppressed()) return;
+
+  if (omaha_settings.updates_suppressed().start_hour() < 0 ||
+      omaha_settings.updates_suppressed().start_hour() >= 24) {
+    validation_result->issues.emplace_back(
+        "updates_suppressed.start_hour",
+        PolicyValueValidationIssue::Severity::kError,
+        "Value out of range(0 - 23) : " +
+            std::to_string(omaha_settings.updates_suppressed().start_hour()));
+  }
+  if (omaha_settings.updates_suppressed().start_minute() < 0 ||
+      omaha_settings.updates_suppressed().start_minute() >= 60) {
+    validation_result->issues.emplace_back(
+        "updates_suppressed.start_minute",
+        PolicyValueValidationIssue::Severity::kError,
+        "Value out of range(0 - 59) : " +
+            std::to_string(omaha_settings.updates_suppressed().start_minute()));
+  }
+  if (omaha_settings.updates_suppressed().duration_min() < 0 ||
+      omaha_settings.updates_suppressed().duration_min() >
+          kMaxUpdatesSuppressedDurationMin) {
+    validation_result->issues.emplace_back(
+        "updates_suppressed.duration_min",
+        PolicyValueValidationIssue::Severity::kError,
+        "Value out of range(0 - " +
+            std::to_string(kMaxUpdatesSuppressedDurationMin) + ") : " +
+            std::to_string(omaha_settings.updates_suppressed().duration_min()));
+  }
+}
+
+void ValidateProxyPolicies(const edm::OmahaSettingsClientProto& omaha_settings,
+                           PolicyValidationResult* validation_result) {
+  if (omaha_settings.has_proxy_mode()) {
+    const CString proxy_mode(omaha_settings.proxy_mode().c_str());
+    if (!ContainsStringNoCase(kProxyModeValidValues, proxy_mode)) {
+      validation_result->issues.emplace_back(
+          "proxy_mode", PolicyValueValidationIssue::Severity::kError,
+          "Unrecognized proxy mode: " + omaha_settings.proxy_mode());
+    }
+  }
+
+  if (omaha_settings.has_proxy_server()) {
+    if (!omaha_settings.has_proxy_mode()) {
+      validation_result->issues.emplace_back(
+          "proxy_server", PolicyValueValidationIssue::Severity::kWarning,
+          "Proxy server setting is ignored because proxy mode is not set.");
+    } else {
+      const CString proxy_mode(omaha_settings.proxy_mode().c_str());
+      if (proxy_mode.CompareNoCase(kProxyModeFixedServers) != 0) {
+        validation_result->issues.emplace_back(
+            "proxy_server", PolicyValueValidationIssue::Severity::kWarning,
+            "Proxy server setting [" + omaha_settings.proxy_server() +
+                "] is ignored because proxy mode is not "
+                "fixed_servers");
+      }
+    }
+  }
+
+  if (omaha_settings.has_proxy_pac_url()) {
+    if (!omaha_settings.has_proxy_mode()) {
+      validation_result->issues.emplace_back(
+          "proxy_pac_url", PolicyValueValidationIssue::Severity::kWarning,
+          "Proxy Pac URL setting is ignored because proxy mode is not "
+          "set.");
+    } else {
+      const CString proxy_mode(omaha_settings.proxy_mode().c_str());
+      if (proxy_mode.CompareNoCase(kProxyModePacScript) != 0) {
+        validation_result->issues.emplace_back(
+            "proxy_pac_url", PolicyValueValidationIssue::Severity::kWarning,
+            "Proxy Pac URL setting [" + omaha_settings.proxy_pac_url() +
+                "] is ignored because proxy mode is not "
+                "pac_script");
+      }
+    }
+  }
+}
+
+void ValidateInstallDefaultPolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  if (omaha_settings.has_install_default() &&
+      !Contains(kInstallPolicyValidValues, omaha_settings.install_default())) {
+    validation_result->issues.emplace_back(
+        "install_default", PolicyValueValidationIssue::Severity::kError,
+        "Invalid install default value: " +
+            std::to_string(omaha_settings.install_default()));
+  }
+}
+
+void ValidateUpdateDefaultPolicy(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  if (omaha_settings.has_update_default() &&
+      !Contains(kUpdatePolicyValidValues, omaha_settings.update_default())) {
+    validation_result->issues.emplace_back(
+        "update_default", PolicyValueValidationIssue::Severity::kError,
+        "Invalid update default value: " +
+            std::to_string(omaha_settings.update_default()));
+  }
+}
+
+void ValidateGlobalPolicies(
+    const edm::OmahaSettingsClientProto& omaha_settings,
+    PolicyValidationResult* validation_result) {
+  ValidateAutoUpdateCheckPeriodPolicy(omaha_settings, validation_result);
+  ValidateDownloadPreferencePolicy(omaha_settings, validation_result);
+  ValidateUpdatesSuppressedPolicies(omaha_settings, validation_result);
+  ValidateProxyPolicies(omaha_settings, validation_result);
+  ValidateInstallDefaultPolicy(omaha_settings, validation_result);
+  ValidateUpdateDefaultPolicy(omaha_settings, validation_result);
+}
+
+void ValidateAppInstallPolicy(const edm::ApplicationSettings& app_settings,
+                              PolicyValidationResult* validation_result) {
+  if (app_settings.has_install() &&
+      !Contains(kInstallPolicyValidValues, app_settings.install())) {
+    validation_result->issues.emplace_back(
+        "install", PolicyValueValidationIssue::Severity::kError,
+        app_settings.app_guid() + " invalid install policy: " +
+            std::to_string(app_settings.install()));
+  }
+}
+
+void ValidateAppUpdatePolicy(const edm::ApplicationSettings& app_settings,
+                             PolicyValidationResult* validation_result) {
+  if (app_settings.has_update() &&
+      !Contains(kUpdatePolicyValidValues, app_settings.update())) {
+    validation_result->issues.emplace_back(
+        "update", PolicyValueValidationIssue::Severity::kError,
+        app_settings.app_guid() +
+            " invalid update policy: " + std::to_string(app_settings.update()));
+  }
+}
+
+void ValidateAppTargetChannelPolicy(
+    const edm::ApplicationSettings& app_settings,
+    PolicyValidationResult* validation_result) {
+  if (app_settings.has_target_channel() &&
+      app_settings.target_channel().empty()) {
+    validation_result->issues.emplace_back(
+        "target_channel", PolicyValueValidationIssue::Severity::kWarning,
+        app_settings.app_guid() + " empty policy value");
+  }
+}
+
+void ValidateAppTargetVersionPrefixPolicy(
+    const edm::ApplicationSettings& app_settings,
+    PolicyValidationResult* validation_result) {
+  if (app_settings.has_target_version_prefix() &&
+      app_settings.target_version_prefix().empty()) {
+    validation_result->issues.emplace_back(
+        "target_version_prefix", PolicyValueValidationIssue::Severity::kWarning,
+        app_settings.app_guid() + " empty policy value");
+  }
+}
+
+void ValidateAppPolicies(const edm::ApplicationSettings& app_settings,
+                         PolicyValidationResult* validation_result) {
+  if (!app_settings.has_app_guid()) return;
+
+  GUID app_guid = {};
+  CString app_guid_str(app_settings.app_guid().c_str());
+  if (FAILED(StringToGuidSafe(app_guid_str, &app_guid))) return;
+
+  ValidateAppInstallPolicy(app_settings, validation_result);
+  ValidateAppUpdatePolicy(app_settings, validation_result);
+  ValidateAppTargetChannelPolicy(app_settings, validation_result);
+  ValidateAppTargetVersionPrefixPolicy(app_settings, validation_result);
+}
+
 }  // namespace
+
+bool ValidateOmahaPolicyResponse(
+    const enterprise_management::PolicyFetchResponse& response,
+    PolicyValidationResult* validation_result) {
+  ASSERT1(validation_result);
+
+  edm::OmahaSettingsClientProto omaha_settings;
+  if (!ExtractOmahaSettingsFromPolicyResponse(response, &omaha_settings,
+                                              validation_result)) {
+    REPORT_LOG(LE, (_T("[ExtractOmahaSettingsFromPolicyResponse]: %s"),
+                    validation_result->ToString()));
+    return false;
+  }
+
+  ValidateGlobalPolicies(omaha_settings, validation_result);
+
+  const auto& repeated_app_settings = omaha_settings.application_settings();
+  for (const auto& app_settings : repeated_app_settings)
+    ValidateAppPolicies(app_settings, validation_result);
+
+  REPORT_LOG(L1, (_T("[ValidateOmahaPolicyResponse]: %s"),
+                  validation_result->ToString()));
+  return !validation_result->HasErrorIssue();
+}
+
+bool ValidatePolicyFetchResponse(
+    const enterprise_management::PolicyFetchResponse& fetch_response,
+    const CString& expected_dm_token, const CString& expected_device_id,
+    const CachedPolicyInfo& info, PolicyValidationResult* validation_result) {
+  enterprise_management::PolicyData fetch_policy_data;
+  if (!fetch_policy_data.ParseFromString(fetch_response.policy_data())) {
+    REPORT_LOG(LW, (_T("[ValidatePolicyFetchResponse][Invalid PolicyData]")));
+    validation_result->status =
+        PolicyValidationResult::Status::kValidationPolicyParseError;
+    return false;
+  }
+
+  if (fetch_policy_data.has_policy_token())
+    validation_result->policy_token = fetch_policy_data.policy_token();
+
+  if (!ValidateDMToken(fetch_policy_data, expected_dm_token,
+                       validation_result) ||
+      !ValidateDeviceId(fetch_policy_data, expected_device_id,
+                        validation_result) ||
+      !ValidateTimestamp(fetch_policy_data, info.timestamp,
+                         validation_result)) {
+    return false;
+  }
+
+  std::string signature_key;
+  if (!ValidateNewPublicKey(fetch_response, info.key, &signature_key,
+                            validation_result))
+    return false;
+
+  validation_result->policy_type = PolicyTypeFromResponse(fetch_response);
+  if (validation_result->policy_type.empty()) {
+    REPORT_LOG(LW, (_T("[ValidatePolicyFetchResponse][Missing PolicyType]")
+                    _T("[%d]"),
+                    info.version));
+    validation_result->status =
+        PolicyValidationResult::Status::kValidationWrongPolicyType;
+    return false;
+  }
+
+  if (!ValidatePolicySignature(fetch_response, signature_key,
+                               validation_result)) {
+    REPORT_LOG(LE, (_T("[ValidatePolicySignature]")
+                    _T("[Failed to verify the signature for policy type %s]"),
+                    validation_result->policy_type.c_str()));
+    return false;
+  }
+
+  if (validation_result->policy_type == kGoogleUpdatePolicyType &&
+      !ValidateOmahaPolicyResponse(fetch_response, validation_result)) {
+    return false;
+  }
+  return true;
+}
 
 HRESULT GetCachedPolicyInfo(const std::string& raw_response,
                             CachedPolicyInfo* info) {
@@ -431,8 +720,7 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
 
   enterprise_management::PolicyFetchResponse response;
   enterprise_management::PolicyData policy_data;
-  wireless_android_enterprise_devicemanagement::OmahaSettingsClientProto
-      omaha_settings;
+  edm::OmahaSettingsClientProto omaha_settings;
   if (raw_response.empty() || !response.ParseFromString(raw_response) ||
       !policy_data.ParseFromString(response.policy_data()) ||
       !policy_data.has_policy_value() ||
@@ -561,7 +849,7 @@ CStringA SerializePolicyValidationReportRequest(
             PolicyValidationResult::Status::kValidationValueError;
         break;
       } else if (issue.severity ==
-                 PolicyValueValidationIssue::Severity::kError) {
+                 PolicyValueValidationIssue::Severity::kWarning) {
         aggregated_status =
             PolicyValidationResult::Status::kValidationValueWarning;
       }
@@ -668,12 +956,15 @@ HRESULT ParseDevicePolicyResponse(
       continue;
     }
 
-    if (should_update_cached_info) {
-      // Use one of the policy responses as the cached info for future
-      // validations. Any response would do but for simplicity just use
-      // the first valid one.
+    if (should_update_cached_info &&
+        response.has_new_public_key_verification_data()) {
+      // Cache this policy response for future validations. At the moment, we
+      // only use the public key information within the cached policy response.
       std::string policy_info;
-      if (!response.SerializeToString(&policy_info)) return E_UNEXPECTED;
+      if (!response.SerializeToString(&policy_info)) {
+        return E_UNEXPECTED;
+      }
+
       responses_out->policy_info = std::move(policy_info);
       should_update_cached_info = false;
     }

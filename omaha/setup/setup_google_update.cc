@@ -15,7 +15,6 @@
 
 #include "omaha/setup/setup_google_update.h"
 
-#include <msi.h>
 #include <atlpath.h>
 #include <vector>
 #include "base/basictypes.h"
@@ -181,13 +180,6 @@ HRESULT SetupGoogleUpdate::FinishInstall() {
     // install failure.
     extra_code1_ = hr;
   }
-
-  // Reset kRegValueIsMSIHelperRegistered so that the MSI helper is registered
-  // on the next UA run.
-  const TCHAR* key_name = is_machine_ ? MACHINE_REG_UPDATE : USER_REG_UPDATE;
-  VERIFY_SUCCEEDED(RegKey::SetValue(key_name,
-                                     kRegValueIsMSIHelperRegistered,
-                                     static_cast<DWORD>(0)));
 
   hr = RegisterOrUnregisterCOMLocalServer(true);
   if (FAILED(hr)) {
@@ -531,52 +523,6 @@ HRESULT SetupGoogleUpdate::RegisterOrUnregisterCOMLocalServer(bool reg) {
   return S_OK;
 }
 
-HRESULT SetupGoogleUpdate::UninstallLegacyMsiHelper() {
-  SETUP_LOG(L3, (_T("[SetupGoogleUpdate::UninstallLegacyMsiHelper]")));
-  if (!is_machine_) {
-    return S_OK;
-  }
-
-  bool is_msi_installed = (ERROR_SUCCESS == ::MsiEnumProductsEx(
-                                                kLegacyHelperInstallerGuid,
-                                                NULL,
-                                                MSIINSTALLCONTEXT_MACHINE,
-                                                0,
-                                                NULL,
-                                                NULL,
-                                                NULL,
-                                                NULL));
-  if (!is_msi_installed) {
-    return S_OK;
-  }
-
-  // Setting INSTALLUILEVEL_NONE causes installation to be silent and not
-  // create a restore point.
-  ::MsiSetInternalUI(INSTALLUILEVEL_NONE, NULL);
-
-  // MSDN says that eInstallState must be INSTALLSTATE_DEFAULT in order for the
-  // command line to be used. Therefore, instead of using INSTALLSTATE_ABSENT
-  // to uninstall, we must pass REMOVE=ALL in the command line.
-  CString uninstall_cmd_line;
-  SafeCStringFormat(&uninstall_cmd_line, _T("REMOVE=ALL %s"),
-                    kMsiSuppressAllRebootsCmdLine);
-  UINT res = ::MsiConfigureProductEx(kLegacyHelperInstallerGuid,
-                                     INSTALLLEVEL_DEFAULT,
-                                     INSTALLSTATE_DEFAULT,
-                                     uninstall_cmd_line);
-
-  // Ignore the product not currently installed result.
-  if ((ERROR_SUCCESS != res) && (ERROR_UNKNOWN_PRODUCT != res)) {
-    HRESULT hr = HRESULT_FROM_WIN32(res);
-    if (FAILED(hr)) {
-      SETUP_LOG(L1, (_T("[MsiInstallProduct failed][0x%08x][%u]"), hr, res));
-      return hr;
-    }
-  }
-
-  return S_OK;
-}
-
 CString SetupGoogleUpdate::BuildSupportFileInstallPath(
     const CString& filename) const {
   SETUP_LOG(L3, (_T("[SetupGoogleUpdate::BuildSupportFileInstallPath][%s]"),
@@ -602,8 +548,6 @@ HRESULT SetupGoogleUpdate::UninstallPreviousVersions() {
 #ifdef _DEBUG
   have_called_uninstall_previous_versions_ = true;
 #endif
-
-  UninstallLegacyMsiHelper();
 
   VERIFY_SUCCEEDED(
       scheduled_task_utils::UninstallLegacyGoopdateTasks(is_machine_));

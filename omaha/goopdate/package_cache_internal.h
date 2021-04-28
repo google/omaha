@@ -77,6 +77,8 @@ HRESULT FindDirectoryPackagesInfo(const CString& dir_path,
 
 void SortPackageInfoByTime(std::vector<PackageInfo>* packages_info);
 
+HRESULT FileCopy(File* source_file, const CString& destination);
+
 }  // namespace internal
 
 }  // namespace omaha

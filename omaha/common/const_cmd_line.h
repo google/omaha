@@ -284,11 +284,22 @@ const TCHAR* const kExtraArgTTToken = _T("tttoken");
 // successful install.
 const TCHAR* const kExtraArgBrowserType = _T("browser");
 
-// "runtime" extra argument tells Omaha to only install itself, staying on
-// the system without any associated application for at least 24 hours.
+// Runtime Mode:
+// * "runtime" extra argument of "true" tells Omaha to only install itself,
+// staying on the system without any associated application for at least 24
+// hours.
 // This is used to expose our COM API to a process that will install
 // applications via that API after the meta-installer exits.
-const TCHAR* const kExtraArgRuntime = _T("runtime");
+//
+// * "runtime" extra argument of "persist" tells Omaha to only install itself,
+// staying persisted indefinitely on the system without any associated
+// application.
+// This is used to allow Enterprises to Push application installs to individual
+// machines using Policy.
+//
+// * "runtime" extra argument of "false" tells Omaha that it can uninstall
+// itself if there are no registered apps.
+const TCHAR* const kExtraArgRuntimeMode = _T("runtime");
 
 #if defined(HAS_DEVICE_MANAGEMENT)
 

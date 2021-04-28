@@ -135,6 +135,10 @@ TEST_F(PingTest, BuildOmahaPing) {
 
   EXPECT_NE(-1, actual_ping_request.Find(expected_shell_version_substring));
   EXPECT_NE(-1, actual_ping_request.Find(expected_ping_request_substring));
+
+  // Clean up after ourselves, since we copied the test exe into this path
+  // earlier in this test.
+  EXPECT_SUCCEEDED(File::Remove(goopdate_utils::BuildGoogleUpdateExePath(false)));
 }
 
 TEST_F(PingTest, BuildAppsPing) {

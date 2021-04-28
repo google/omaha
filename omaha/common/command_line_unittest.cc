@@ -113,7 +113,7 @@ void VerifyCommandLineExtraArgs(const CommandLineExtraArgs& expected_val,
 #endif
   EXPECT_EQ(expected_val.browser_type, actual_val.browser_type);
   EXPECT_EQ(expected_val.usage_stats_enable, actual_val.usage_stats_enable);
-  EXPECT_EQ(expected_val.runtime_only, actual_val.runtime_only);
+  EXPECT_EQ(expected_val.runtime_mode, actual_val.runtime_mode);
 
   EXPECT_EQ(expected_val.apps.size(), actual_val.apps.size());
 
@@ -300,9 +300,9 @@ TEST_F(CommandLineTest, ParseCommandLine_Install) {
                              _T("{C7A9A2F5-C4F9-42d3-8A8B-55086A205468}&")
                              _T("appname=TestApp&needsadmin=true&lang=en")
 #if defined(HAS_DEVICE_MANAGEMENT)
-                            _T("&etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2")
+                             _T("&etoken=f6f767ba-8cfb-4d95-a26a-b3d714ddf1a2")
 #endif
-                             ;
+                             _T("");
   CommandLineAppArgs app_args;
   const GUID expected_guid = {0xA4F7B07B, 0xB9BD, 0x4A33,
                               {0xB1, 0x36, 0x96, 0xD2, 0xAD, 0xFB, 0x60, 0xCB}};
