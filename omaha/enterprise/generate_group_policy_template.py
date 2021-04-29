@@ -53,7 +53,7 @@ PREFERENCES = """
           EXPLAIN !!Explain_AutoUpdateCheckPeriod
           PART !!Part_AutoUpdateCheckPeriod NUMERIC
             VALUENAME AutoUpdateCheckPeriodMinutes
-            DEFAULT 1400  ; 23 hours 20 minutes.
+            DEFAULT 295   ; 4 hours 55 minutes.
             MIN 0
             MAX 43200     ; 30 days.
             SPIN 60       ; Increment in hour chunks.

@@ -648,7 +648,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
 
 ADML_PRESENTATIONS = '''\
       <presentation id="Pol_AutoUpdateCheckPeriod">
-        <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="1400"
+        <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="295"
             spinStep="60">Minutes between update checks</decimalTextBox>
       </presentation>
       <presentation id="Pol_UpdateCheckSuppressedPeriod">
