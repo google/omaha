@@ -376,6 +376,11 @@ void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir) {
   // Invalidate the DM token and delete cached policies.
   VERIFY_SUCCEEDED(DmStorage::Instance()->InvalidateDMToken());
   DeleteBeforeOrAfterReboot(policy_responses_dir);
+
+  // Set the Omaha DM Policies to an empty CachedOmahaPolicy so that the
+  // currently-running process forgets about the policies loaded in
+  // GoopdateImpl::InitializeGoopdateAndLoadResources.
+  ConfigManager::Instance()->SetOmahaDMPolicies(CachedOmahaPolicy());
 }
 
 CString GetAgent() {
