@@ -1298,7 +1298,16 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
   OPT_LOG(L1, (_T("[GoopdateImpl::DoUpdateAllApps]")));
   ASSERT1(has_ui_been_displayed);
 
-  HRESULT hr = S_OK;
+  bool is_interactive_update = !args_.is_silent_set;
+
+  // TODO(omaha): Consider moving InitializeClientSecurity calls inside
+  // install_apps.cc or maybe to update3_utils::CreateGoogleUpdate3Class().
+  HRESULT hr = InitializeClientSecurity();
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[InitializeClientSecurity failed][%#x]"), hr));
+    return is_interactive_update ? hr : S_OK;
+  }
+
 #if defined(HAS_DEVICE_MANAGEMENT)
   // Make a best-effort attempt to register during UA processing to handle the
   // following cases:
@@ -1331,8 +1340,6 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
   }
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
 
-  bool is_interactive_update = !args_.is_silent_set;
-
   // TODO(omaha3): Interactive is used as an indication of an on-demand request.
   // It might also be useful to allow on-demand silent update requests.
   // This was a request when we added the ability to disable updates.
@@ -1345,14 +1352,6 @@ HRESULT GoopdateImpl::DoUpdateAllApps(bool* has_ui_been_displayed ) {
   if (is_on_demand && install_source.IsEmpty()) {
     // Set an install source for interactive/on-demand update all apps.
     install_source = kCmdLineInstallSource_OnDemandUA;
-  }
-
-  // TODO(omaha): Consider moving InitializeClientSecurity calls inside
-  // install_apps.cc or maybe to update3_utils::CreateGoogleUpdate3Class().
-  hr = InitializeClientSecurity();
-  if (FAILED(hr)) {
-    ASSERT1(false);
-    return is_interactive_update ? hr : S_OK;
   }
 
   hr = UpdateApps(is_machine_,
