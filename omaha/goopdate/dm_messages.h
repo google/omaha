@@ -233,7 +233,9 @@ CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
                                          const CStringA& os_platform,
                                          const CStringA& os_version);
 
-CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
+CStringA SerializePolicyFetchRequest(const CStringA& machine_name,
+                                     const CStringA& serial_number,
+                                     const CStringA& policy_type,
                                      const CachedPolicyInfo& info);
 
 CStringA SerializePolicyValidationReportRequest(
