@@ -377,8 +377,10 @@ HRESULT ExperimentLabels::WriteRegistry(bool is_machine,
   if (is_machine) {
     const CString med_state_key(
         app_registry_utils::GetAppClientStateMediumKey(is_machine, app_id));
-    VERIFY_SUCCEEDED(RegKey::DeleteValue(med_state_key,
-                                          kRegValueExperimentLabels));
+    if (RegKey::HasValue(med_state_key, kRegValueExperimentLabels)) {
+      VERIFY_SUCCEEDED(
+          RegKey::DeleteValue(med_state_key, kRegValueExperimentLabels));
+    }
   }
 
   return hr;
