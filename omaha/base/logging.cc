@@ -69,6 +69,27 @@
 
 namespace omaha {
 
+namespace {
+
+// Checks an open file handle to see if it is a reparse point.
+bool IsReparsePoint(HANDLE file) {
+  if (!file) {
+    return true;
+  }
+
+  BY_HANDLE_FILE_INFORMATION file_info = {};
+  if (!::GetFileInformationByHandle(file, &file_info)) {
+    ::OutputDebugString(SPRINTF(L"LOG_SYSTEM: ERROR - "
+                                L"[::GetFileInformationByHandle failed][%d]",
+                                ::GetLastError()));
+    return true;
+  }
+
+  return (file_info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+}
+
+}  // namespace
+
 // enforce ban on ASSERT/REPORT
 #undef ASSERT
 #undef REPORT
@@ -182,7 +203,6 @@ Logging::Logging()
       force_show_time_(false),
       show_time_(true),
       log_to_file_(true),
-      log_file_name_(kDefaultLogFileName),
       log_to_debug_out_(true),
       append_to_file_(true),
       logging_shutdown_(false),
@@ -286,20 +306,12 @@ void Logging::ReadLoggingSettings() {
         kConfigAttrAppendToFile,
         kDefaultAppendToFile,
         config_file) == 0 ? false : true;
-
-    ::GetPrivateProfileString(kConfigSectionLoggingSettings,
-                              kConfigAttrLogFilePath,
-                              kDefaultLogFileName,
-                              CStrBuf(log_file_name_, MAX_PATH),
-                              MAX_PATH,
-                              config_file);
   } else {
     logging_enabled_ = kDefaultLoggingEnabled;
     show_time_ = kDefaultShowTime;
     log_to_file_ = kDefaultLogToFile;
     log_to_debug_out_ = kDefaultLogToOutputDebug;
     append_to_file_ = kDefaultAppendToFile;
-    log_file_name_ = kDefaultLogFileName;
   }
 
   if (force_show_time_) {
@@ -337,20 +349,12 @@ CString Logging::GetDefaultLogDirectory() const {
 }
 
 CString Logging::GetLogFilePath() const {
-  if (log_file_name_.IsEmpty()) {
-    return CString();
-  }
-
-  if (!ATLPath::IsRelative(log_file_name_)) {
-    return log_file_name_;
-  }
-
   CString path = GetDefaultLogDirectory();
   if (path.IsEmpty()) {
     return CString();
   }
 
-  if (!::PathAppend(CStrBuf(path, MAX_PATH), log_file_name_)) {
+  if (!::PathAppend(CStrBuf(path, MAX_PATH), kDefaultLogFileName)) {
     return CString();
   }
 
@@ -386,8 +390,7 @@ void Logging::ConfigureFileLogWriter() {
       return;
     }
 
-    // Extract the final target directory which will not be what
-    // GetDefaultLogDirectory() returns if log_file_name_ is an absolute path.
+    // Extract the final target directory.
     CString log_file_dir = GetDirectoryFromPath(path);
     if (!File::Exists(log_file_dir)) {
       if (FAILED(CreateDir(log_file_dir, NULL))) {
@@ -1080,6 +1083,30 @@ bool FileLogWriter::CreateLoggingFile() {
     // The code in this file is written with the assumption that log_file_ is
     // NULL on creation errors. The easy fix is to set it to NULL here. The
     // long term fix should be implementing it in terms of a smart handle.
+    log_file_ = NULL;
+    return false;
+  }
+
+  // As a defense in depth measure, we check to make sure the parent directory
+  // has not been redirected. i.e., the %LocalAppData%\Google\Update directory.
+  // We do not check %LocalAppData%\Google and above for reparse points, since
+  // an attacker would need to reuse an existing directory structure which has
+  // "\Update", which narrows the attack surface considerably, and in addition,
+  // we only write to a "GoogleUpdate.log" file within, which is unlikely to
+  // affect most applications (such as GoogleUpdate, which has that directory
+  // structure under %ProgramFiles (x86)%).
+  const CString log_file_dir = GetDirectoryFromPath(file_name_);
+  bool is_log_file_dir_reparse_point = true;
+  File::IsReparsePoint(log_file_dir, &is_log_file_dir_reparse_point);
+
+  // Check whether the file or the parent directory are reparse points after
+  // opening the file. The checks are made after opening the file, so that the
+  // attacker does not get a chance to substitute a reparse point.
+  if (is_log_file_dir_reparse_point || IsReparsePoint(log_file_)) {
+    ::OutputDebugString(SPRINTF(L"LOG_SYSTEM: [%s]: ERROR - "
+                              L"Log path %s has a reparse point",
+                              proc_name_, file_name_));
+    ::CloseHandle(log_file_);
     log_file_ = NULL;
     return false;
   }
