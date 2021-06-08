@@ -1143,7 +1143,7 @@ It is important the same binary works the same way on different operating system
 </h3>
 <p>
 <blockquote>The Google Update server is not part of the Omaha open source project. Providing updates for applications requires a server that implements the
-<a href=http://github.com/google/omaha/blob/master/doc/ServerProtocolV3.md target=_self>Omaha Server Protocol</a>.</blockquote>
+<a href=https://github.com/google/omaha/blob/master/doc/ServerProtocolV3.md target=_self>Omaha Server Protocol</a>.</blockquote>
 </p>
 <p>
   Omaha has two server components: autoupdate and download. This separation of server responsibilities is desirable because the requirements are different: downloading large binaries takes high bandwidth and can tolerate relatively high latency, whereas small transactions such as update pings may be much more frequent but require extremely low bandwidth per transaction. These differences allow Google to provision the two servers appropriately.

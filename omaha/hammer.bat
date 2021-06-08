@@ -49,13 +49,13 @@ goto set_env_variables
 set GOROOT=C:\go
 
 :: This directory is needed to find protoc.exe, which is the protocol buffer
-:: compiler. From the release page https://github.com/google/protobuf/releases,
+:: compiler. From the release page https://github.com/protocolbuffers/protobuf/releases,
 :: download the zip file protoc-$VERSION-win32.zip. It contains the protoc
 :: binary. Unzip the contents under C:\protobuf.
 set OMAHA_PROTOBUF_BIN_DIR=C:\protobuf\bin
 
 :: This directory is needed to find the protocol buffer source files. From the
-:: release page https://github.com/google/protobuf/releases, download the zip
+:: release page https://github.com/protocolbuffers/protobuf/releases, download the zip
 :: file protobuf-cpp-$VERSION.zip. Unzip the "src" sub-directory contents to
 :: C:\protobuf\src.
 set OMAHA_PROTOBUF_SRC_DIR=C:\protobuf\src
