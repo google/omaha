@@ -208,6 +208,12 @@ class AppManager {
   // Omaha will not send day_of_install if it is 0.
   uint32 GetDayOfInstall(const GUID& app_guid) const;
 
+  // Returns a Tristate of whether usage stats are enabled.
+  //   Returns TRISTATE_NONE for unregistered apps.
+  //   Returns TRISTATE_TRUE if usage stats consent is true.
+  //   Returns TRISTATE_FALSE if usage stats consent is false or is unset.
+  Tristate GetAppUsageStatsEnabled(const GUID& app_guid) const;
+
   bool IsAppRegistered(const CString& app_id) const;
   bool IsAppUninstalled(const CString& app_id) const;
   bool IsAppOemInstalledAndEulaAccepted(const CString& app_id) const;

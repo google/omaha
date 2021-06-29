@@ -552,6 +552,7 @@ HRESULT AppManager::ReadAppDefinedAttributeSubkeys(
 //    ping_freshness
 //  ClientState and ClientStateMedium key
 //    eulaaccepted
+//    usagestats
 //  ClientState key in HKCU/HKLM/Low integrity
 //    did run
 //
@@ -731,6 +732,8 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
                                           &ping_freshness))) {
     app->ping_freshness_ = ping_freshness;
   }
+
+  app->usage_stats_enable_ = GetAppUsageStatsEnabled(app_guid);
 
   return S_OK;
 }
@@ -1429,6 +1432,19 @@ uint32 AppManager::GetDayOfInstall(const GUID& app_guid) const {
   // No DayOfInstall is present. This app is probably installed before
   // DayOfInstall was implemented. Do not send DayOfInstall in this case.
   return kUnknownDayOfInstall;
+}
+
+Tristate AppManager::GetAppUsageStatsEnabled(const GUID& app_guid) const {
+  if (!IsAppRegistered(app_guid) && !IsAppUninstalled(app_guid)) {
+    return TRISTATE_NONE;
+  }
+
+  if (app_registry_utils::AreAppUsageStatsEnabled(is_machine_,
+                                                  GuidToString(app_guid))) {
+    return TRISTATE_TRUE;
+  }
+
+  return TRISTATE_FALSE;
 }
 
 // Clear the Installation ID if at least one of the conditions is true:

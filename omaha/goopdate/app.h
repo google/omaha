@@ -468,7 +468,7 @@ class App : public ModelObject {
   int day_of_install_;
   int day_of_last_response_;
 
-  // This value is stored in ClientState but not currently populated from there.
+  // This value is stored in ClientState.
   Tristate usage_stats_enable_;
 
   // This value is stored by the clients in one of several registry locations.
