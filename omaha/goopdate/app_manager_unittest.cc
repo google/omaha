@@ -258,6 +258,9 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
           kRegValueDayOfLastRollCall,
           static_cast<DWORD>(num_days_since)));
     }
+
+    ASSERT_SUCCEEDED(app_registry_utils::SetUsageStatsEnable(
+        is_machine, app.app_guid_string(), app.usage_stats_enable()));
   }
 
   // App will be cleaned up when bundle is destroyed.
@@ -303,6 +306,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     expected_app->did_run_ = ACTIVE_RUN;
     expected_app->set_days_since_last_active_ping(3);
     expected_app->set_days_since_last_roll_call(1);
+    expected_app->usage_stats_enable_ = TRISTATE_TRUE;
   }
 
   static void PopulateExpectedApp2(App* expected_app) {
@@ -318,6 +322,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     expected_app->did_run_ = ACTIVE_NOTRUN;
     expected_app->set_days_since_last_active_ping(100);
     expected_app->set_days_since_last_roll_call(1);
+    expected_app->usage_stats_enable_ = TRISTATE_FALSE;
   }
 
   static void PopulateExpectedUninstalledApp(const CString& uninstalled_version,
@@ -2131,6 +2136,11 @@ TEST_F(AppManagerReadAppPersistentDataUserTest,
   EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
 
   SetDisplayName(kDefaultAppName, expected_app);
+
+  // This is an unregistered app, and |AppManager::GetAppUsageStatsEnabled|
+  // returns TRISTATE_NONE for unregistered apps.
+  EXPECT_SUCCEEDED(expected_app->put_usageStatsEnable(TRISTATE_NONE));
+
   EXPECT_SUCCEEDED(expected_app->put_isEulaAccepted(VARIANT_TRUE));
   ValidateExpectedValues(*expected_app, *app_);
 }
@@ -2151,6 +2161,11 @@ TEST_F(AppManagerReadAppPersistentDataMachineTest,
   EXPECT_SUCCEEDED(app_manager_->ReadAppPersistentData(app_));
 
   SetDisplayName(kDefaultAppName, expected_app);
+
+  // This is an unregistered app, and |AppManager::GetAppUsageStatsEnabled|
+  // returns TRISTATE_NONE for unregistered apps.
+  EXPECT_SUCCEEDED(expected_app->put_usageStatsEnable(TRISTATE_NONE));
+
   EXPECT_SUCCEEDED(expected_app->put_isEulaAccepted(VARIANT_TRUE));
   ValidateExpectedValues(*expected_app, *app_);
 }
