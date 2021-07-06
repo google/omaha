@@ -16,6 +16,7 @@
 // TODO(omaha): why so many dependencies for this unit test?
 
 #include <atlstr.h>
+#include <vector>
 #include <windows.h>
 
 #include "omaha/base/app_util.h"
@@ -87,6 +88,9 @@ class DownloadManagerTest : public AppTestBase {
     AppTestBase::SetUp();
 
     CleanupFiles();
+    RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                     kRegValueAlwaysVerifyAuthenticodeSignatures,
+                     &verify_file_signatures_);
 
     download_manager_.reset(new DownloadManager(is_machine_));
     EXPECT_SUCCEEDED(download_manager_->Initialize());
@@ -95,6 +99,16 @@ class DownloadManagerTest : public AppTestBase {
   virtual void TearDown() {
     download_manager_.reset();
     CleanupFiles();
+    if (verify_file_signatures_) {
+      EXPECT_SUCCEEDED(RegKey::SetValue(
+          MACHINE_REG_UPDATE_DEV,
+          kRegValueAlwaysVerifyAuthenticodeSignatures,
+          verify_file_signatures_));
+    } else {
+      EXPECT_SUCCEEDED(
+          RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                              kRegValueAlwaysVerifyAuthenticodeSignatures));
+    }
 
     AppTestBase::TearDown();
   }
@@ -111,6 +125,7 @@ class DownloadManagerTest : public AppTestBase {
 
   const CString cache_path_;
   std::unique_ptr<DownloadManager> download_manager_;
+  DWORD verify_file_signatures_ = 0; // Saved from registry
 };
 
 
@@ -1175,6 +1190,53 @@ TEST_F(DownloadManagerUserTest, GetPackage) {
   EXPECT_SUCCEEDED(download_manager_->GetPackage(package, dir));
 
   EXPECT_SUCCEEDED(DeleteDirectory(dir));
+}
+
+TEST_F(DownloadManagerUserTest, CachePackage) {
+  ASSERT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueAlwaysVerifyAuthenticodeSignatures,
+                                    (DWORD)1));
+
+  const TCHAR* kFiles[] = {_T("SaveArguments.exe"),
+                           _T("old_google_certificate.dll"),
+                           _T("sha2_0c15be4a15bb0903c901b1d6c265302f.msi")};
+  HRESULT kExpected[] =   {S_OK,
+                           SIGS_E_INVALID_SIGNATURE,
+                           S_OK};
+
+  ASSERT_EQ(arraysize(kFiles), arraysize(kExpected));
+
+  App* app = NULL;
+  ASSERT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kAppGuid1), &app));
+
+  for (size_t i = 0; i < arraysize(kFiles); ++i) {
+    CString file_path(app_util::GetCurrentModuleDirectory());
+    ASSERT_TRUE(::PathAppend(CStrBuf(file_path, MAX_PATH),
+                             _T("unittest_support")));
+    ASSERT_TRUE(::PathAppend(CStrBuf(file_path, MAX_PATH), kFiles[i]));
+    ASSERT_TRUE(File::Exists(file_path));
+
+    File file;
+    HRESULT hr = file.OpenShareMode(file_path, false, false, FILE_SHARE_READ);
+    ASSERT_SUCCEEDED(hr);
+
+    uint32 file_size(0);
+    ASSERT_SUCCEEDED(file.GetLength(&file_size));
+
+    CryptoHash crypto;
+    std::vector<byte> hash_out;
+    ASSERT_HRESULT_SUCCEEDED(crypto.Compute(file_path, 0, &hash_out));
+    std::string hash;
+    b2a_hex(&hash_out[0], &hash, hash_out.size());
+
+    ASSERT_SUCCEEDED(app->next_version()->AddPackage(kFiles[i],
+                                                     file_size,
+                                                     CString(hash.c_str())));
+
+    Package* package = app->next_version()->GetPackage(i);
+    hr = download_manager_->CachePackage(package, &file, &file_path);
+    EXPECT_EQ(kExpected[i], hr) << kFiles[i];
+  }
 }
 
 TEST_F(DownloadManagerUserTest, GetPackage_NotPresent) {

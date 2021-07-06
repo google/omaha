@@ -1807,6 +1807,14 @@ bool ConfigManager::AlwaysAllowCrashUploads() const {
   return always_allow_crash_uploads != 0;
 }
 
+bool ConfigManager::AlwaysVerifyAuthenticodeSignatures() const {
+  DWORD always_verify_file_signatures = 0;
+  RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                   kRegValueAlwaysVerifyAuthenticodeSignatures,
+                   &always_verify_file_signatures);
+  return always_verify_file_signatures != 0;
+}
+
 int ConfigManager::MaxCrashUploadsPerDay() const {
   DWORD num_uploads = 0;
   if (FAILED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
