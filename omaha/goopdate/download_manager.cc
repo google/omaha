@@ -41,6 +41,7 @@
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
+#include "omaha/common/google_signaturevalidator.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/package_cache.h"
 #include "omaha/goopdate/server_resource.h"
@@ -475,10 +476,11 @@ HRESULT DownloadManager::DoDownloadPackageFromUrl(const CString& url,
 
   // We copy the file to the Package Cache unimpersonated, since the package
   // cache is in a privileged location.
-  hr = CallAsSelfAndImpersonate2(this,
+  hr = CallAsSelfAndImpersonate3(this,
                                  &DownloadManager::CachePackage,
                                  static_cast<const Package*>(package),
-                                 &source_file);
+                                 &source_file,
+                                 &filename);
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[DownloadManager::CachePackage failed][%#x]"), hr));
   }
@@ -521,7 +523,8 @@ HRESULT DownloadManager::PurgeAppLowerVersions(const CString& app_id,
 }
 
 HRESULT DownloadManager::CachePackage(const Package* package,
-                                      File* source_file) {
+                                      File* source_file,
+                                      const CString* source_file_path) {
   ASSERT1(package);
   ASSERT1(source_file);
 
@@ -530,7 +533,17 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   const CString package_name(package->filename());
   PackageCache::Key key(app_id, version, package_name);
 
-  HRESULT hr = package_cache()->Put(
+  HRESULT hr;
+  if (ConfigManager::Instance()->AlwaysVerifyAuthenticodeSignatures()) {
+    hr = EnsureSignatureIsValid(*source_file_path);
+    if (FAILED(hr)) {
+      CORE_LOG(LE, (_T("[EnsureSignatureIsValid failed][%s][0x%08x]"),
+                    package->filename(), hr));
+      return SIGS_E_INVALID_SIGNATURE;
+    }
+  }
+
+  hr = package_cache()->Put(
       key, source_file, package->expected_hash());
   if (hr != SIGS_E_INVALID_SIGNATURE) {
     if (FAILED(hr)) {
@@ -550,6 +563,22 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   }
 
   return hr;
+}
+
+HRESULT DownloadManager::EnsureSignatureIsValid(const CString& file_path) {
+  const TCHAR* ext = ::PathFindExtension(file_path);
+  ASSERT1(ext);
+  if (*ext != _T('\0')) {
+    ext++;  // Skip the dot.
+    CString ext_lower(ext);
+    ext_lower.MakeLower();
+    const TCHAR* delim = _T(" ");
+    CString extensions = delim + CString(kAuthenticodeSignedExtensions) + delim;
+    if (extensions.Find(delim + ext_lower + delim) != -1) {
+      return VerifyGoogleAuthenticodeSignature(file_path, true);
+    }
+  }
+  return S_OK;
 }
 
 // The file is initially downloaded to a temporary unique name, to account
