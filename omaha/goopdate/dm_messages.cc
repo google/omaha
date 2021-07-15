@@ -716,6 +716,7 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
                              CachedOmahaPolicy* info) {
   ASSERT1(info);
 
+  info->is_managed = false;
   info->is_initialized = false;
 
   enterprise_management::PolicyFetchResponse response;
@@ -728,6 +729,7 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
     return E_UNEXPECTED;
   }
 
+  info->is_managed = true;
   info->is_initialized = true;
 
   if (omaha_settings.has_auto_update_check_period_minutes()) {

@@ -343,12 +343,8 @@ TEST_F(BundleCreatorTest, CreateForceInstallBundle) {
   #define APP_ID2 _T("{EF3CACD4-89EB-46b7-B9BF-B16B15F08584}")
   const TCHAR* const kInstallPolicyApp2 = _T("Install") APP_ID2;
 
-  RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                   kInstallPolicyApp1,
-                   static_cast<DWORD>(kPolicyForceInstallMachine));
-  RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                   kInstallPolicyApp2,
-                   static_cast<DWORD>(kPolicyForceInstallMachine));
+  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp1, kPolicyForceInstallMachine));
+  EXPECT_SUCCEEDED(SetPolicy(kInstallPolicyApp2, kPolicyForceInstallMachine));
 
   CComPtr<IAppBundle> app_bundle;
   ASSERT_EQ(S_OK, bundle_creator::CreateForceInstallBundle(is_machine,

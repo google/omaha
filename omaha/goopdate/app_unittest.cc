@@ -151,7 +151,7 @@ class AppAutoUpdateTest : public AppManualUpdateTest  {
     EXPECT_SUCCEEDED(app_bundle_->updateAllApps());
     EXPECT_TRUE(app_bundle_->is_auto_update());
 
-    app_= app_bundle_->GetApp(0);
+    app_ = app_bundle_->GetApp(0);
     ASSERT_TRUE(app_);
   }
 };
@@ -177,67 +177,67 @@ TEST_F(AppAutoUpdateTest, CheckGroupPolicy_NoPolicy) {
 }
 
 TEST_P(AppInstallTest, CheckGroupPolicy_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_INSTALL_DISABLED_BY_POLICY : S_OK,
             app_->CheckGroupPolicy());
 }
 
 TEST_P(AppManualUpdateTest, CheckGroupPolicy_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
 TEST_P(AppAutoUpdateTest, CheckGroupPolicy_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
 TEST_P(AppInstallTest, CheckGroupPolicy_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
 TEST_P(AppManualUpdateTest, CheckGroupPolicy_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
             app_->CheckGroupPolicy());
 }
 
 TEST_P(AppAutoUpdateTest, CheckGroupPolicy_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
             app_->CheckGroupPolicy());
 }
 
 TEST_P(AppInstallTest, CheckGroupPolicy_AutoUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
 TEST_P(AppManualUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
 TEST_P(AppAutoUpdateTest, CheckGroupPolicy_AutoUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY : S_OK,
             app_->CheckGroupPolicy());
 }
 
 TEST_P(AppInstallTest, CheckGroupPolicy_ManualUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
 TEST_P(AppManualUpdateTest, CheckGroupPolicy_ManualUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
   EXPECT_EQ(IsDomain() ? GOOPDATE_E_APP_UPDATE_DISABLED_BY_POLICY_MANUAL : S_OK,
             app_->CheckGroupPolicy());
 }
 
 TEST_P(AppAutoUpdateTest, CheckGroupPolicy_ManualUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyAutomaticUpdatesOnly);
   EXPECT_SUCCEEDED(app_->CheckGroupPolicy());
 }
 
@@ -267,7 +267,7 @@ TEST_F(AppInstallTest, PostUpdateCheck_UpdateAvailable) {
 
 // Policy is not checked by this function.
 TEST_P(AppInstallTest, PostUpdateCheck_UpdateAvailable_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
   AddAppResponse(xml::response::kStatusOkValue,
                  std::vector<xml::response::Data>());
@@ -300,7 +300,7 @@ TEST_F(AppManualUpdateTest, PostUpdateCheck_UpdateAvailable) {
 // Policy is not checked by this function.
 TEST_P(AppManualUpdateTest,
        PostUpdateCheck_UpdateAvailable_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
   AddAppResponse(xml::response::kStatusOkValue,
                  std::vector<xml::response::Data>());
@@ -332,7 +332,7 @@ TEST_F(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable) {
 
 // Policy is not checked by this function.
 TEST_P(AppAutoUpdateTest, PostUpdateCheck_UpdateAvailable_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateCheckingForUpdate);
   AddAppResponse(xml::response::kStatusOkValue,
                  std::vector<xml::response::Data>());
@@ -385,7 +385,7 @@ TEST_F(AppInstallTest, QueueDownload_NoPolicy) {
 }
 
 TEST_P(AppInstallTest, QueueDownload_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -400,7 +400,7 @@ TEST_P(AppInstallTest, QueueDownload_InstallDisabled) {
 
 TEST_P(AppInstallTest,
        QueueDownload_InstallDisabledForDifferentApp) {
-  SetPolicy(kInstallPolicyApp2, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -409,7 +409,7 @@ TEST_P(AppInstallTest,
 }
 
 TEST_P(AppInstallTest, QueueDownload_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -426,7 +426,7 @@ TEST_F(AppManualUpdateTest, QueueDownload_NoPolicy) {
 }
 
 TEST_P(AppManualUpdateTest, QueueDownload_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -441,7 +441,7 @@ TEST_P(AppManualUpdateTest, QueueDownload_AllUpdatesDisabled) {
 
 TEST_P(AppManualUpdateTest,
        QueueDownload_AllUpdatesDisabledForDifferentApp) {
-  SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -450,7 +450,7 @@ TEST_P(AppManualUpdateTest,
 }
 
 TEST_P(AppManualUpdateTest, QueueDownload_AutoUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -459,7 +459,7 @@ TEST_P(AppManualUpdateTest, QueueDownload_AutoUpdatesDisabled) {
 }
 
 TEST_P(AppManualUpdateTest, QueueDownload_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -476,7 +476,7 @@ TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled_NoPolicy) {
 }
 
 TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -490,7 +490,7 @@ TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabled) {
 }
 
 TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabledForDifferentApp) {
-  SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -499,7 +499,7 @@ TEST_P(AppAutoUpdateTest, QueueDownload_AllUpdatesDisabledForDifferentApp) {
 }
 
 TEST_P(AppAutoUpdateTest, QueueDownload_AutoUpdatesDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -513,7 +513,7 @@ TEST_P(AppAutoUpdateTest, QueueDownload_AutoUpdatesDisabled) {
 }
 
 TEST_P(AppAutoUpdateTest, QueueDownload_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateUpdateAvailable);
 
   app_->QueueDownload();
@@ -613,7 +613,7 @@ TEST_F(AppAutoUpdateTest, PreUpdateCheck_EulaNotAccepted) {
 }
 
 TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -633,7 +633,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabled) {
 }
 
 TEST_P(AppManualUpdateTest, PreUpdateCheck_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -653,7 +653,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_InstallDisabled) {
 }
 
 TEST_P(AppAutoUpdateTest, PreUpdateCheck_InstallDisabled) {
-  SetPolicy(kInstallPolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -673,7 +673,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_InstallDisabled) {
 }
 
 TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabledForDifferentApp) {
-  SetPolicy(kInstallPolicyApp2, kPolicyDisabled);
+  SetEnrolledPolicy(kInstallPolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -691,7 +691,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_InstallDisabledForDifferentApp) {
 }
 
 TEST_P(AppInstallTest, PreUpdateCheck_UpdateDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -709,7 +709,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_UpdateDisabled) {
 }
 
 TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -733,7 +733,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabled) {
 }
 
 TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabled) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -753,7 +753,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabled) {
 }
 
 TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
-  SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -773,7 +773,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
 }
 
 TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
-  SetPolicy(kUpdatePolicyApp2, kPolicyDisabled);
+  SetEnrolledPolicy(kUpdatePolicyApp2, kPolicyDisabled);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -793,7 +793,7 @@ TEST_P(AppAutoUpdateTest, PreUpdateCheck_UpdateDisabledForDifferentApp) {
 }
 
 TEST_P(AppInstallTest, PreUpdateCheck_ManualUpdatesOnly) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -811,7 +811,7 @@ TEST_P(AppInstallTest, PreUpdateCheck_ManualUpdatesOnly) {
 }
 
 TEST_P(AppManualUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 
@@ -831,7 +831,7 @@ TEST_P(AppManualUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
 }
 
 TEST_P(AppAutoUpdateTest, PreUpdateCheck_ManualUpdatesOnly) {
-  SetPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
+  SetEnrolledPolicy(kUpdatePolicyApp1, kPolicyManualUpdatesOnly);
   SetAppStateForUnitTest(app_, new fsm::AppStateWaitingToCheckForUpdate);
   EXPECT_SUCCEEDED(app_->put_isEulaAccepted(VARIANT_TRUE));
 

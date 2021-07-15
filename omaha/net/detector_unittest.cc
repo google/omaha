@@ -84,14 +84,14 @@ class PolicyProxyDetectorTest
       return;
     }
 
-    EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy, entry, val));
+    EXPECT_SUCCEEDED(SetPolicyString(entry, val));
   }
 
-  void SetPolicy(const CString& proxy_mode,
-                 const CString& proxy_pac_url,
-                 const CString& proxy_server) {
+  void SetProxyPolicies(const CString& proxy_mode, const CString& proxy_pac_url,
+                        const CString& proxy_server) {
     if (IsManaged() && IsUsingDMProxyDetection()) {
       CachedOmahaPolicy info;
+      info.is_managed = true;
       info.is_initialized = true;
       info.proxy_mode = proxy_mode;
       info.proxy_pac_url = proxy_pac_url;
@@ -126,14 +126,14 @@ TEST_P(PolicyProxyDetectorTest, NoPolicy) {
 }
 
 TEST_P(PolicyProxyDetectorTest, InvalidPolicyString) {
-  SetPolicy(_T("this_is_never_a_real_policy"), CString(), CString());
+  SetProxyPolicies(_T("this_is_never_a_real_policy"), CString(), CString());
 
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
 }
 
 TEST_P(PolicyProxyDetectorTest, PolicyDirect) {
-  SetPolicy(kProxyModeDirect, CString(), CString());
+  SetProxyPolicies(kProxyModeDirect, CString(), CString());
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
@@ -144,7 +144,7 @@ TEST_P(PolicyProxyDetectorTest, PolicyDirect) {
 }
 
 TEST_P(PolicyProxyDetectorTest, PolicyAutoDetect) {
-  SetPolicy(kProxyModeAutoDetect, CString(), CString());
+  SetProxyPolicies(kProxyModeAutoDetect, CString(), CString());
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
@@ -155,7 +155,7 @@ TEST_P(PolicyProxyDetectorTest, PolicyAutoDetect) {
 }
 
 TEST_P(PolicyProxyDetectorTest, PolicyPacUrlNoData) {
-  SetPolicy(kProxyModePacScript, CString(), CString());
+  SetProxyPolicies(kProxyModePacScript, CString(), CString());
 
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
@@ -164,7 +164,7 @@ TEST_P(PolicyProxyDetectorTest, PolicyPacUrlNoData) {
 TEST_P(PolicyProxyDetectorTest, PolicyPacUrlHasData) {
   const TCHAR* const kUnitTestPacUrl = _T("http://unittest/testurl.pac");
 
-  SetPolicy(kProxyModePacScript, kUnitTestPacUrl, CString());
+  SetProxyPolicies(kProxyModePacScript, kUnitTestPacUrl, CString());
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
@@ -175,7 +175,7 @@ TEST_P(PolicyProxyDetectorTest, PolicyPacUrlHasData) {
 }
 
 TEST_P(PolicyProxyDetectorTest, PolicyFixedNoData) {
-  SetPolicy(kProxyModeFixedServers, CString(), CString());
+  SetProxyPolicies(kProxyModeFixedServers, CString(), CString());
 
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
@@ -184,7 +184,7 @@ TEST_P(PolicyProxyDetectorTest, PolicyFixedNoData) {
 TEST_P(PolicyProxyDetectorTest, PolicyFixedHasData) {
   const TCHAR* const kUnitTestFixedServer = _T("unittest_fixedserver:8080");
 
-  SetPolicy(kProxyModeFixedServers, CString(), kUnitTestFixedServer);
+  SetProxyPolicies(kProxyModeFixedServers, CString(), kUnitTestFixedServer);
 
   ProxyConfig config;
   EXPECT_EQ(IsManaged() ? S_OK : E_FAIL, detector_->Detect(&config));
@@ -195,11 +195,10 @@ TEST_P(PolicyProxyDetectorTest, PolicyFixedHasData) {
 }
 
 TEST_P(PolicyProxyDetectorTest, PolicySystem) {
-  SetPolicy(kProxyModeSystem, CString(), CString());
+  SetProxyPolicies(kProxyModeSystem, CString(), CString());
 
   ProxyConfig config;
   EXPECT_FAILED(detector_->Detect(&config));
 }
 
 }  // namespace omaha
-

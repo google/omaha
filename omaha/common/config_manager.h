@@ -47,7 +47,7 @@ class PolicyManagerInterface {
  public:
   virtual ~PolicyManagerInterface() {}
 
-  virtual const TCHAR* source() = 0;
+  virtual CString source() = 0;
 
   virtual bool IsManaged() = 0;
 
@@ -76,12 +76,11 @@ class PolicyManagerInterface {
                                                    bool* rollback_allowed) = 0;
 };
 
-// A version that picks up policy information from Group Policy.
-class GroupPolicyManager : public PolicyManagerInterface {
+class OmahaPolicyManager : public PolicyManagerInterface {
  public:
-  GroupPolicyManager() {}
+  OmahaPolicyManager(const CString& source) : source_(source) {}
 
-  const TCHAR* source() override { return _T("Group Policy"); }
+  CString source() override { return source_; }
 
   bool IsManaged() override;
 
@@ -108,51 +107,14 @@ class GroupPolicyManager : public PolicyManagerInterface {
   HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
                                            bool* rollback_allowed) override;
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(GroupPolicyManager);
-};
-
-// A version that picks up policy information from a Device Management (DM).
-class DMPolicyManager : public PolicyManagerInterface {
- public:
-  DMPolicyManager() {}
-
-  const TCHAR* source() override { return _T("Device Management"); }
-
-  bool IsManaged() override;
-
-  HRESULT GetLastCheckPeriodMinutes(DWORD* minutes) override;
-  HRESULT GetUpdatesSuppressedTimes(UpdatesSuppressedTimes* times) override;
-  HRESULT GetDownloadPreferenceGroupPolicy(
-      CString* download_preference) override;
-  HRESULT GetPackageCacheSizeLimitMBytes(DWORD* cache_size_limit) override;
-  HRESULT GetPackageCacheExpirationTimeDays(DWORD* cache_life_limit) override;
-  HRESULT GetProxyMode(CString* proxy_mode) override;
-  HRESULT GetProxyPacUrl(CString* proxy_pac_url) override;
-  HRESULT GetProxyServer(CString* proxy_server) override;
-  HRESULT GetForceInstallApps(bool is_machine,
-                              std::vector<CString>* app_ids) override;
-
-  HRESULT GetEffectivePolicyForAppInstalls(const GUID& app_guid,
-                                           DWORD* install_policy) override;
-  HRESULT GetEffectivePolicyForAppUpdates(const GUID& app_guid,
-                                          DWORD* update_policy) override;
-  HRESULT GetTargetChannel(const GUID& app_guid,
-                           CString* target_channel) override;
-  HRESULT GetTargetVersionPrefix(const GUID& app_guid,
-                                 CString* target_version_prefix) override;
-  HRESULT IsRollbackToTargetVersionAllowed(const GUID& app_guid,
-                                           bool* rollback_allowed) override;
-
-  void set_dm_policy(const CachedOmahaPolicy& dm_policy) {
-    dm_policy_ = dm_policy;
-  }
-  CachedOmahaPolicy dm_policy() { return dm_policy_; }
+  void set_policy(const CachedOmahaPolicy& policy);
+  CachedOmahaPolicy policy() { return policy_; }
 
  private:
-  CachedOmahaPolicy dm_policy_;
+  CString source_;
+  CachedOmahaPolicy policy_;
 
-  DISALLOW_COPY_AND_ASSIGN(DMPolicyManager);
+  DISALLOW_COPY_AND_ASSIGN(OmahaPolicyManager);
 };
 
 class ConfigManager {
@@ -317,11 +279,16 @@ class ConfigManager {
   CPath GetPolicyResponsesDir() const;
 #endif
 
+  // Loads the Group policies from the registry and sets it up on the
+  // ConfigManager instance, which is used by the ConfigManager for subsequent
+  // config queries.
+  HRESULT LoadGroupPolicies();
+
   // Sets the DM policies on the ConfigManager instance, which is used by the
   // ConfigManager for subsequent config queries.
   void SetOmahaDMPolicies(const CachedOmahaPolicy& dm_policy);
 
-  CachedOmahaPolicy dm_policy() { return dm_policy_manager_->dm_policy(); }
+  CachedOmahaPolicy dm_policy() { return dm_policy_manager_->policy(); }
 
   // Returns the time interval between update checks in seconds.
   // 0 indicates updates are disabled.
@@ -503,7 +470,9 @@ class ConfigManager {
   bool is_running_from_official_user_dir_;
   bool is_running_from_official_machine_dir_;
   std::vector<std::shared_ptr<PolicyManagerInterface>> policies_;  // NOLINT
-  std::shared_ptr<DMPolicyManager> dm_policy_manager_;  // NOLINT
+  std::shared_ptr<OmahaPolicyManager> group_policy_manager_;       // NOLINT
+  std::shared_ptr<OmahaPolicyManager> dm_policy_manager_;          // NOLINT
+  bool are_cloud_policies_preferred_;
 
   DISALLOW_COPY_AND_ASSIGN(ConfigManager);
 };

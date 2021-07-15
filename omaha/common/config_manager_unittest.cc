@@ -56,21 +56,10 @@ const TCHAR* const kAppMachineClientStatePath2 =
 const TCHAR* const kAppUserClientStatePath2 =
     _T("HKCU\\") OMAHA_KEY_REL _T("\\ClientState\\") APP_GUID2;
 
-const TCHAR* const kPolicyKey =
-    _T("HKLM\\Software\\Policies\\")
-    SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\");
 const TCHAR* const kInstallPolicyApp1 = _T("Install") APP_GUID1;
 const TCHAR* const kInstallPolicyApp2 = _T("Install") APP_GUID2;
 const TCHAR* const kUpdatePolicyApp1 = _T("Update") APP_GUID1;
 const TCHAR* const kUpdatePolicyApp2 = _T("Update") APP_GUID2;
-
-HRESULT SetPolicy(const TCHAR* policy_name, DWORD value) {
-  return RegKey::SetValue(kPolicyKey, policy_name, value);
-}
-
-HRESULT SetPolicyString(const TCHAR* policy_name, const CString& value) {
-  return RegKey::SetValue(kPolicyKey, policy_name, value);
-}
 
 #if defined(HAS_DEVICE_MANAGEMENT)
 
@@ -230,6 +219,7 @@ class ConfigManagerTest
 
   void SetCannedCachedOmahaPolicy() {
     CachedOmahaPolicy info;
+    info.is_managed = true;
     info.is_initialized = true;
     info.auto_update_check_period_minutes = 111;
     info.download_preference = kDownloadPreferenceCacheable;

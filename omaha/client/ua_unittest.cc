@@ -118,10 +118,7 @@ TEST_P(UATest, ShouldCheckForUpdates_LastCheckedInFuture) {
 }
 
 TEST_P(UATest, ShouldCheckForUpdates_PeriodZero) {
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                       static_cast<DWORD>(0)));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueAutoUpdateCheckPeriodOverrideMinutes, 0));
 
   EXPECT_EQ(!is_domain_, ShouldCheckForUpdates(is_machine_));
 }
@@ -131,10 +128,8 @@ TEST_P(UATest, ShouldCheckForUpdates_PeriodOverride) {
   const DWORD kOverrideSeconds = kOverrideMinutes * 60;
   const uint32 now = Time64ToInt32(GetCurrent100NSTime());
 
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                       kOverrideMinutes));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                             kOverrideMinutes));
 
   ConfigManager::Instance()->SetLastCheckedTime(is_machine_, now - 10);
   EXPECT_FALSE(ShouldCheckForUpdates(is_machine_));
@@ -175,10 +170,8 @@ TEST_P(UATest, ShouldCheckForUpdates_SkipUpdate) {
 
   // Verify the overriding the update check period is not causing skips.
   const DWORD kOverrideMinutes = last_check_period_sec_ / 60;
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueAutoUpdateCheckPeriodOverrideMinutes,
-                       kOverrideMinutes));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueAutoUpdateCheckPeriodOverrideMinutes,
+                             kOverrideMinutes));
 
   EXPECT_TRUE(ShouldCheckForUpdates(is_machine_));
 }
@@ -204,25 +197,15 @@ TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed) {
   now.GetLocalTm(&local);
 
   EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartHour,
-                       static_cast<DWORD>(local.tm_hour)));
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartMin,
-                       static_cast<DWORD>(0)));
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedDurationMin,
-                       static_cast<DWORD>(60)));
+      SetPolicy(kRegValueUpdatesSuppressedStartHour, local.tm_hour));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartMin, 0));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedDurationMin, 60));
 
   EXPECT_EQ(!is_domain_, ShouldCheckForUpdates(is_machine_));
 
   if (local.tm_min) {
     EXPECT_SUCCEEDED(
-        RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                         kRegValueUpdatesSuppressedDurationMin,
-                         static_cast<DWORD>(local.tm_min - 1)));
+        SetPolicy(kRegValueUpdatesSuppressedDurationMin, local.tm_min - 1));
 
     EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
   }
@@ -233,18 +216,9 @@ TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed_InvalidHour) {
   tm local = {};
   now.GetLocalTm(&local);
 
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartHour,
-                       static_cast<DWORD>(26)));
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartMin,
-                       static_cast<DWORD>(0)));
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedDurationMin,
-                       static_cast<DWORD>(60)));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartHour, 26));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartMin, 0));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedDurationMin, 60));
 
   EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
 }
@@ -255,17 +229,9 @@ TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed_InvalidMin) {
   now.GetLocalTm(&local);
 
   EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartHour,
-                       static_cast<DWORD>(local.tm_hour)));
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartMin,
-                       static_cast<DWORD>(456)));
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedDurationMin,
-                       static_cast<DWORD>(60)));
+      SetPolicy(kRegValueUpdatesSuppressedStartHour, local.tm_hour));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartMin, 456));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedDurationMin, 60));
 
   EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
 }
@@ -276,17 +242,10 @@ TEST_P(UATest, ShouldCheckForUpdates_UpdatesSuppressed_InvalidDuration) {
   now.GetLocalTm(&local);
 
   EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartHour,
-                       static_cast<DWORD>(local.tm_hour)));
+      SetPolicy(kRegValueUpdatesSuppressedStartHour, local.tm_hour));
+  EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartMin, 0));
   EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedStartMin,
-                       static_cast<DWORD>(0)));
-  EXPECT_SUCCEEDED(
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueUpdatesSuppressedDurationMin,
-                       static_cast<DWORD>(200 * kMinPerHour)));
+      SetPolicy(kRegValueUpdatesSuppressedDurationMin, 200 * kMinPerHour));
 
   EXPECT_EQ(true, ShouldCheckForUpdates(is_machine_));
 }
