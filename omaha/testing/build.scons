@@ -88,6 +88,11 @@ unittest_support = env.Replicate('$STAGING_DIR/unittest_support/', [
     # serial=0c15be4a15bb0903c901b1d6c265302f
     'unittest_support/sha2_0c15be4a15bb0903c901b1d6c265302f.msi',
 
+    # Google LLC certificate sha256 valid from 07-01-2021 to 07-10-2024.
+    # thumbprint=2673ea6cc23beffda49ac715b121544098a1284c.
+    # serial=0e4418e2dede36dd2974c3443afb5ce5.
+    'unittest_support/sha2_0e4418e2dede36dd2974c3443afb5ce5.msi',
+
     # The actual Chrome setup signed with sha256 (11/06/2018 to 11/17/2021).
     # serial=0c15be4a15bb0903c901b1d6c265302f
     'unittest_support/chrome_setup.exe',
