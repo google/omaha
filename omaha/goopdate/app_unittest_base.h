@@ -23,6 +23,7 @@
 
 #include "omaha/base/app_util.h"
 #include "omaha/base/xml_utils.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/goopdate/app_bundle_state_initialized.h"
 #include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/goopdate.h"
@@ -157,6 +158,8 @@ class AppTestBaseWithRegistryOverride
 
     RestoreRegistryHives();
     RegKey::DeleteKey(hive_override_key_name_);
+
+    ConfigManager::DeleteInstance();
 
     AppTestBase::TearDown();
   }

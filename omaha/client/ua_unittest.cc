@@ -64,6 +64,8 @@ class UATest : public testing::TestWithParam<std::tuple<bool, bool> > {
 
     RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
     RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueLastCheckPeriodSec);
+
+    ConfigManager::DeleteInstance();
   }
 
   DISALLOW_COPY_AND_ASSIGN(UATest);
