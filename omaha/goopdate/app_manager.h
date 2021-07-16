@@ -98,6 +98,10 @@ class AppManager {
   // Populates the app object with the persisted state stored in the registry.
   HRESULT ReadAppPersistentData(App* app);
 
+  // Populates the app object with the pv value stored in the registry if it
+  // exists for the app.
+  void ReadAppVersion(App* app);
+
   // Populates the app object with the install time diff based on the install
   // time stored in the registry.
   // If the app is registered or has pv value, app's install time diff will be

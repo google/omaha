@@ -735,6 +735,14 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
   return S_OK;
 }
 
+void AppManager::ReadAppVersion(App* app) {
+  ASSERT1(app);
+
+  CString pv;
+  app_registry_utils::GetAppVersion(is_machine_, app->app_guid_string(), &pv);
+  app->current_version()->set_version(pv);
+}
+
 void AppManager::ReadAppInstallTimeDiff(App* app) {
   ASSERT1(app);
   app->install_time_diff_sec_ = GetInstallTimeDiffSec(app->app_guid());

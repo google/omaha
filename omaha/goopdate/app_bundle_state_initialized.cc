@@ -106,9 +106,10 @@ HRESULT AppBundleStateInitialized::CreateApp(AppBundle* app_bundle,
     return hr;
   }
 
-  // When overinstalling, we want the install age for the existing install, so
-  // explicitly get it here. These are the only values read from the registry
-  // for installs.
+  // When overinstalling, we want the pv and install age for the existing
+  // install, so explicitly get it here. These are the only values read from the
+  // registry for installs.
+  AppManager::Instance()->ReadAppVersion(local_app.get());
   AppManager::Instance()->ReadAppInstallTimeDiff(local_app.get());
   AppManager::Instance()->ReadDayOfInstall(local_app.get());
 
