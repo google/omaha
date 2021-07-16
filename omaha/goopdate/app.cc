@@ -633,7 +633,6 @@ CurrentState App::state() const {
 
 bool App::is_update() const {
   __mutexScope(model()->lock());
-  ASSERT1(current_version_->version().IsEmpty() != is_update_);
   return is_update_;
 }
 
