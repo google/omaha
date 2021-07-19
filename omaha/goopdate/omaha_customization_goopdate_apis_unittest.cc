@@ -305,6 +305,16 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatus2) {
   EXPECT_TRUE(!help_file_);
 }
 
+TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IPolicyStatus3) {
+  EXPECT_GU_ID_EQ(_T("{05A30352-EB25-45B6-8449-BCA7B0542CE5}"),
+                  __uuidof(IPolicyStatus3));
+
+  EXPECT_SUCCEEDED(GetDocumentation(_T("IPolicyStatus3")));
+  EXPECT_STREQ(_T("IPolicyStatus3 Interface"), item_doc_string_);
+  EXPECT_EQ(0, help_context_);
+  EXPECT_TRUE(!help_file_);
+}
+
 TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest, IGoogleUpdate3Web) {
   EXPECT_GU_ID_EQ(_T("{494B20CF-282E-4BDD-9F5D-B70CB09D351E}"),
                   __uuidof(IGoogleUpdate3Web));
@@ -670,7 +680,7 @@ TEST_GU_INT_F(OmahaCustomizationGoopdateComInterfaceTest,
 
 // Verifies there are no new interfaces in the TypeLib.
 TEST_F(OmahaCustomizationGoopdateComInterfaceTest, VerifyNoNewInterfaces) {
-  EXPECT_EQ(45, type_lib_->GetTypeInfoCount())
+  EXPECT_EQ(46, type_lib_->GetTypeInfoCount())
       << _T("A new interface may have been added. If so, add the interface to ")
       << _T("to kIIDsToRegister, and add test(s) for new interface(s).");
 }
@@ -716,4 +726,3 @@ TEST_F(OmahaCustomizationGoopdateComInterfaceNoTypeLibTest,
   EXPECT_GU_ID_EQ(_T("{909489C2-85A6-4322-AA56-D25278649D67}"),
                   __uuidof(IGoogleUpdateCore));
 }
-

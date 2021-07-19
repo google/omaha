@@ -22,6 +22,7 @@
 #include "omaha/base/process.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
+#include "omaha/base/wmi_query.h"
 
 namespace omaha {
 
@@ -288,6 +289,33 @@ bool SystemInfo::CompareOSVersions(OSVERSIONINFOEX* os, BYTE oper) {
   return CompareOSVersionsInternal(os, os_sp_type_mask, VER_EQUAL) ?
          CompareOSVersionsInternal(os, build_number_type_mask, oper) :
          CompareOSVersionsInternal(os, os_sp_type_mask, oper);
+}
+
+CString SystemInfo::GetSerialNumber() {
+  const TCHAR kWmiLocal[]            = _T("ROOT\\CIMV2");
+  const TCHAR kWmiQueryBios[]        =
+      _T("SELECT SerialNumber FROM Win32_Bios");
+  const TCHAR kWmiPropSerialNumber[] = _T("SerialNumber");
+
+  CString serial_number;
+  WmiQuery wmi_query;
+  HRESULT hr = wmi_query.Connect(kWmiLocal);
+  if (FAILED(hr)) {
+    return CString();
+  }
+  hr = wmi_query.Query(kWmiQueryBios);
+  if (FAILED(hr)) {
+    return CString();
+  }
+  if (wmi_query.AtEnd()) {
+    return CString();
+  }
+  hr = wmi_query.GetValue(kWmiPropSerialNumber, &serial_number);
+  if (FAILED(hr)) {
+    return CString();
+  }
+
+  return serial_number;
 }
 
 }  // namespace omaha

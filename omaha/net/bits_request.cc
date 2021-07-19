@@ -356,9 +356,11 @@ HRESULT BitsRequest::SetJobProperties() {
     }
   }
 
-  // Always set no_progress_timeout to 0 for foreground jobs which means the
-  // jobs in transient error state will be immediately moved to error state.
-  int no_progress_timeout = low_priority_ ? no_progress_timeout_ : 0;
+  // This sets `no_progress_timeout` to 0 for all jobs to prevent retries and
+  // forces the jobs into the BG_JOB_STATE_ERROR state immediately if any errors
+  // are encountered.
+  // This also implies that the `MinimumRetryDelay` set above will be ignored.
+  int no_progress_timeout = 0;
 
   if (no_progress_timeout != -1) {
     ASSERT1(no_progress_timeout >= 0);
@@ -560,7 +562,7 @@ HRESULT BitsRequest::DoSend() {
       return hr;
     }
 
-    NET_LOG(L3, (_T("[job %s][state %s]"),
+    OPT_LOG(L3, (_T("[BitsRequest::DoSend][url %s][job %s][state %s]"), url_,
                  GuidToString(request_state_->bits_job_id),
                  JobStateToString(job_state)));
 
@@ -637,7 +639,7 @@ HRESULT BitsRequest::DoSend() {
 
       case BG_JOB_STATE_CANCELLED:
         return GOOPDATE_E_CANCELLED;
-    };
+    }
 
     // Check to see if we've been redirected to a different URL.
     CString current_url;

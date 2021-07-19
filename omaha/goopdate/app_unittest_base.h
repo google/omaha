@@ -23,14 +23,14 @@
 
 #include "omaha/base/app_util.h"
 #include "omaha/base/xml_utils.h"
-#include "omaha/common/const_group_policy.h"
-#include "omaha/goopdate/app_manager.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/goopdate/app_bundle_state_initialized.h"
+#include "omaha/goopdate/app_manager.h"
 #include "omaha/goopdate/goopdate.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/resource_manager.h"
-#include "omaha/goopdate/worker_mock.h"
 #include "omaha/goopdate/update_response_utils.h"
+#include "omaha/goopdate/worker_mock.h"
 #include "omaha/testing/unit_test.h"
 
 using ::testing::Return;
@@ -159,6 +159,8 @@ class AppTestBaseWithRegistryOverride
     RestoreRegistryHives();
     RegKey::DeleteKey(hive_override_key_name_);
 
+    ConfigManager::DeleteInstance();
+
     AppTestBase::TearDown();
   }
 
@@ -166,14 +168,11 @@ class AppTestBaseWithRegistryOverride
     return GetParam();
   }
 
-  void SetPolicy(const CString& policy, DWORD value) {
+  void SetEnrolledPolicy(const CString& policy, DWORD value) {
     EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
                                       kRegValueIsEnrolledToDomain,
                                       IsDomain() ? 1UL : 0UL));
-
-    EXPECT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                                      policy,
-                                      value));
+    EXPECT_SUCCEEDED(SetPolicy(policy, value));
   }
 
   CString hive_override_key_name_;

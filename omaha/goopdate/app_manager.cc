@@ -735,6 +735,21 @@ HRESULT AppManager::ReadAppPersistentData(App* app) {
   return S_OK;
 }
 
+void AppManager::ReadFirstInstallAppVersion(App* app) {
+  ASSERT1(app);
+
+  CString pv;
+  app_registry_utils::GetAppVersion(is_machine_, app->app_guid_string(), &pv);
+
+  if (!pv.IsEmpty()) {
+    // Because this is an overinstall, we always want the latest version served
+    // back from the server, so prefix a negative sign to allow the server to
+    // ignore the version for comparisons.
+    pv.Insert(0, _T('-'));
+    app->current_version()->set_version(pv);
+  }
+}
+
 void AppManager::ReadAppInstallTimeDiff(App* app) {
   ASSERT1(app);
   app->install_time_diff_sec_ = GetInstallTimeDiffSec(app->app_guid());

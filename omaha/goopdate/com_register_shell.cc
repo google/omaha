@@ -17,14 +17,12 @@
 #include <tchar.h>
 #include <strsafe.h>
 #include <windows.h>
-#include "base/basictypes.h"
 #include "omaha/base/app_util.h"
 #include "omaha/base/command_line_parser.h"
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
-#include "omaha/base/path.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/utils.h"
 #include "omaha/common/const_cmd_line.h"

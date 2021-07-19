@@ -53,7 +53,7 @@ PREFERENCES = """
           EXPLAIN !!Explain_AutoUpdateCheckPeriod
           PART !!Part_AutoUpdateCheckPeriod NUMERIC
             VALUENAME AutoUpdateCheckPeriodMinutes
-            DEFAULT 1400  ; 23 hours 20 minutes.
+            DEFAULT 295   ; 4 hours 55 minutes.
             MIN 0
             MAX 43200     ; 30 days.
             SPIN 60       ; Increment in hour chunks.
@@ -367,7 +367,7 @@ Part_DownloadPreference=Type of download URL to request
 Part_UpdateCheckSuppressedStartHour=Hour in a day that start to suppress update check
 Part_UpdateCheckSuppressedStartMin=Minute in hour that starts to suppress update check
 Part_UpdateCheckSuppressedDurationMin=Number of minutes to suppress update check each day
-Part_DisableAllAutoUpdateChecks=Disable all auto-update checks (not recommended)
+Part_DisableAllAutoUpdateChecks=Disable all periodic network traffic (not recommended)
 Part_ProxyMode=Choose how to specify proxy server settings
 Part_ProxyServer=Address or URL of proxy server
 Part_ProxyPacUrl=URL to a proxy .pac file
@@ -426,7 +426,7 @@ HORIZONTAL_RULE +
 HORIZONTAL_RULE + """
 Explain_Preferences=General policies for Google Update.
 
-Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.\\n\\n%(domain_requirement)s
+Explain_AutoUpdateCheckPeriod=Minimum number of minutes between automatic update checks.\\n\\nSet this policy to the value 0 to disable all periodic network traffic by Google Update. This is not recommended, as it prevents Google Update itself from receiving stability and security updates.\\n\\nThe "Update policy override default" and per-application "Update policy override" settings should be used to manage application updates rather than this setting.\\n\\n%(domain_requirement)s
 
 Explain_UpdateCheckSuppressedPeriod=If this setting is enabled, update checks will be suppressed during each day starting from Hour:Minute for a period of Duration (in minutes). Duration does not account for daylight savings time. So for instance, if the start time is 22:00, and with a duration of 480 minutes, the updates will be suppressed for 8 hours regardless of whether daylight savings time changes happen in between.\\n\\n%(domain_requirement)s
 

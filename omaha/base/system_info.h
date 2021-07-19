@@ -106,6 +106,9 @@ class SystemInfo {
   // a machine running Windows 7 or later yields true.
   static bool CompareOSVersions(OSVERSIONINFOEX* os, BYTE oper);
 
+  // Gets the Serial Number of the machine from the BIOS via WMI.
+  static CString GetSerialNumber();
+
  private:
   static bool CompareOSVersionsInternal(OSVERSIONINFOEX* os,
                                         DWORD type_mask,

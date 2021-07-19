@@ -493,9 +493,8 @@ TEST_P(XmlParserTest, DlPref) {
                                     kRegValueIsEnrolledToDomain,
                                     IsDomain() ? 1UL : 0UL));
 
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                                            kRegValueDownloadPreference,
-                                            kDownloadPreferenceCacheable));
+  EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
+                                   kDownloadPreferenceCacheable));
 
   std::unique_ptr<UpdateRequest> update_request(
         UpdateRequest::Create(false, _T(""), _T("is"), _T("")));
@@ -541,9 +540,8 @@ TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
                                     IsDomain() ? 1UL : 0UL));
 
   // If a policy different than "cacheable" is set, then the policy is ignored.
-  EXPECT_HRESULT_SUCCEEDED(RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                                            kRegValueDownloadPreference,
-                                            _T("unknown policy")));
+  EXPECT_SUCCEEDED(
+      SetPolicyString(kRegValueDownloadPreference, _T("unknown policy")));
 
   std::unique_ptr<UpdateRequest> update_request(
          UpdateRequest::Create(false, _T(""), _T("is"), _T("")));

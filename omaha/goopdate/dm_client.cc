@@ -203,6 +203,7 @@ HRESULT RegisterWithRequest(std::unique_ptr<HttpRequestInterface> http_request,
   // Make the request payload.
   CStringA payload = SerializeRegisterBrowserRequest(
       WideToUtf8(app_util::GetHostName()),
+      WideToUtf8(SystemInfo::GetSerialNumber()),
       CStringA("Windows"),
       internal::GetOsVersion());
   if (payload.IsEmpty()) {
@@ -262,6 +263,8 @@ HRESULT FetchPolicies(std::unique_ptr<HttpRequestInterface> http_request,
   };
 
   CStringA payload = SerializePolicyFetchRequest(
+      WideToUtf8(app_util::GetHostName()),
+      WideToUtf8(SystemInfo::GetSerialNumber()),
       CStringA(kGoogleUpdateMachineLevelApps),
       info);
   if (payload.IsEmpty()) {
@@ -373,6 +376,11 @@ void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir) {
   // Invalidate the DM token and delete cached policies.
   VERIFY_SUCCEEDED(DmStorage::Instance()->InvalidateDMToken());
   DeleteBeforeOrAfterReboot(policy_responses_dir);
+
+  // Set the Omaha DM Policies to an empty CachedOmahaPolicy so that the
+  // currently-running process forgets about the policies loaded in
+  // GoopdateImpl::InitializeGoopdateAndLoadResources.
+  ConfigManager::Instance()->SetOmahaDMPolicies(CachedOmahaPolicy());
 }
 
 CString GetAgent() {

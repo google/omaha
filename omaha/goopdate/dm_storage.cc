@@ -371,6 +371,12 @@ HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
 
   if (!DmStorage::Instance()->IsValidDMToken()) {
     REPORT_LOG(L1, (_T("[Skip ReadCachedOmahaPolicy DMToken not valid]")));
+
+    if (File::Exists(policy_responses_dir)) {
+      REPORT_LOG(L1, (_T("[ReadCachedOmahaPolicy: deleting policy cache]")));
+      DeleteBeforeOrAfterReboot(policy_responses_dir);
+    }
+
     return E_FAIL;
   }
 

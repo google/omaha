@@ -727,6 +727,22 @@ interface IPolicyStatus2 : IDispatch {
                                   [out, retval] IPolicyStatusValue** value);
 };
 
+// IPolicyStatus3 exposes everything IPolicyStatus2 does, and in addition,
+// exposes the forceInstallApps policy.
+[
+  object,
+  dual,
+  uuid(60355531-5BFD-45AB-942C-7912628752C7),
+  helpstring("IPolicyStatus3 Interface"),
+  pointer_default(unique)
+]
+interface IPolicyStatus3 : IPolicyStatus2 {
+  // Global Update Policies
+
+  [propget] HRESULT forceInstallApps([in] VARIANT_BOOL is_machine,
+                                     [out, retval] IPolicyStatusValue** value);
+};
+
 // BEGIN gupdatem interfaces.
 
 // The following interfaces are exposed as a narrower version of the
@@ -1119,6 +1135,7 @@ library GoogleUpdate3Lib {
 
   interface IPolicyStatus;
   interface IPolicyStatus2;
+  interface IPolicyStatus3;
   interface IPolicyStatusValue;
   interface IGoogleUpdate3Web;
   interface IAppBundleWeb;

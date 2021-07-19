@@ -94,13 +94,11 @@ def BuildCOMRegisterShell64():
           '$LIB_DIR/common_64.lib',
           '$LIB_DIR/logging_64.lib',
           '$LIB_DIR/goopdate_lib_64.lib',
-          '$LIB_DIR/security_64.lib',
           com_register_shell_env['atls_libs'][
               com_register_shell_env.Bit('debug')
           ],
           com_register_shell_env['crt_libs'][
               com_register_shell_env.Bit('debug')],
-          'crypt32.lib',
           'delayimp.lib',
           'netapi32.lib',
           'psapi.lib',

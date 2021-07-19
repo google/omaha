@@ -1386,7 +1386,17 @@ TEST_F(AppBundlePopulatedRegistryUserTest,
                                         kRegValueProductVersion,
                                         &value_type));
   EXPECT_NE(REG_SZ, value_type);
-  App* invalid_pv_app = CreateExpectedApp(kInvalidPvTypeAppId);
+  App* invalid_pv_app = NULL;
+  {
+    // An assert occurs when reading the invalid pv value type.
+    ExpectAsserts expect_asserts;
+    invalid_pv_app = CreateExpectedApp(kInvalidPvTypeAppId);
+  }
+
+  // CreateExpectedApp uses AppBundle::createApp, which prefixes a '-' in front
+  // of the `current_version` to distinguish it from an update. So we explicitly
+  // set the `current_version` to how AppBundle::createAllInstalledApps expects
+  // it, i.e., `kInvalidPvDwordAsString`.
   invalid_pv_app->current_version()->set_version(kInvalidPvDwordAsString);
   invalid_pv_app->set_days_since_last_active_ping(-1);
   invalid_pv_app->set_days_since_last_roll_call(-1);

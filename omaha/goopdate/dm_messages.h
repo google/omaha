@@ -171,10 +171,13 @@ struct GUIDCompare {
 };
 
 struct CachedOmahaPolicy {
+  bool is_managed = false;
   bool is_initialized = false;
 
   int64_t auto_update_check_period_minutes = -1;
   CString download_preference;
+  int64_t cache_size_limit = -1;
+  int64_t cache_life_limit = -1;
   UpdatesSuppressed updates_suppressed;
   CString proxy_mode;
   CString proxy_server;
@@ -188,11 +191,16 @@ struct CachedOmahaPolicy {
     CString result(_T("[CachedOmahaPolicy]"));
     SafeCStringAppendFormat(&result, _T("[is_initialized][%d]"),
                             is_initialized);
+    SafeCStringAppendFormat(&result, _T("[is_managed][%d]"), is_managed);
     SafeCStringAppendFormat(
         &result, _T("[auto_update_check_period_minutes][%" _T(PRId64) "]"),
         auto_update_check_period_minutes);
     SafeCStringAppendFormat(&result, _T("[download_preference][%s]"),
                             download_preference);
+    SafeCStringAppendFormat(&result, _T("[cache_size_limit][%" _T(PRId64) "]"),
+                            cache_size_limit);
+    SafeCStringAppendFormat(&result, _T("[cache_life_limit][%" _T(PRId64) "]"),
+                            cache_life_limit);
     SafeCStringAppendFormat(
         &result,
         _T("[updates_suppressed]") _T(
@@ -229,10 +237,13 @@ HRESULT GetCachedOmahaPolicy(const std::string& raw_response,
                              CachedOmahaPolicy* info);
 
 CStringA SerializeRegisterBrowserRequest(const CStringA& machine_name,
+                                         const CStringA& serial_number,
                                          const CStringA& os_platform,
                                          const CStringA& os_version);
 
-CStringA SerializePolicyFetchRequest(const CStringA& policy_type,
+CStringA SerializePolicyFetchRequest(const CStringA& machine_name,
+                                     const CStringA& serial_number,
+                                     const CStringA& policy_type,
                                      const CachedPolicyInfo& info);
 
 CStringA SerializePolicyValidationReportRequest(

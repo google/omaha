@@ -80,7 +80,6 @@ namespace omaha {
 #define kConfigAttrEnableLogging        L"EnableLogging"
 #define kConfigAttrShowTime             L"ShowTime"
 #define kConfigAttrLogToFile            L"LogToFile"
-#define kConfigAttrLogFilePath          L"LogFilePath"
 #define kConfigAttrLogFileWide          L"LogFileWide"
 #define kConfigAttrLogToOutputDebug     L"LogToOutputDebug"
 #define kConfigAttrAppendToFile         L"AppendToFile"
@@ -442,7 +441,6 @@ class Logging {
   bool force_show_time_;
   bool show_time_;
   bool log_to_file_;
-  CString log_file_name_;
   bool log_to_debug_out_;
   bool append_to_file_;
 

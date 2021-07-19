@@ -242,15 +242,11 @@ class NetworkConfigPolicyTest :
                                       kRegValueIsEnrolledToDomain,
                                       IsDomain() ? 1UL : 0UL));
     if (IsDomain()) {
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueProxyMode,
-                       kProxyModeAutoDetect);
+      SetPolicyString(kRegValueProxyMode, kProxyModeAutoDetect);
     }
 
     if (IsCloudPolicyOverridesPlatformPolicy()) {
-      RegKey::SetValue(kRegKeyGoopdateGroupPolicy,
-                       kRegValueCloudPolicyOverridesPlatformPolicy,
-                       1UL);
+      SetPolicy(kRegValueCloudPolicyOverridesPlatformPolicy, 1UL);
     }
 
     // Delete the ConfigManager instance so it is recreated, since the registry
@@ -260,6 +256,7 @@ class NetworkConfigPolicyTest :
 
     if (IsDM()) {
       CachedOmahaPolicy info;
+      info.is_managed = true;
       info.is_initialized = true;
       info.proxy_mode = kProxyModePacScript;
       info.proxy_pac_url = _T("https://PS/");

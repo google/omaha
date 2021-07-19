@@ -15,7 +15,7 @@
 
 // Microsoft Visual C++ generated resource script.
 //
-#include "test/test_foo_resource.h"
+#include "testing/test_foo_resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////

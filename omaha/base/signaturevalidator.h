@@ -179,11 +179,12 @@ class CertList {
   CertInfoList cert_list_;
 };
 
-
 // ExtractAllCertificatesFromSignature() takes in a signed file, extracts all
 // the certificates related to its signature and returns them in a CertList
-// object.
+// object. `subject_name` can be used to narrow the list of certificates to only
+// those that match the given subject string.
 void ExtractAllCertificatesFromSignature(const wchar_t* signed_file,
+                                         const wchar_t* subject_name,
                                          CertList* cert_list);
 
 // Returns true if the subject of the certificate exactly matches the first CN

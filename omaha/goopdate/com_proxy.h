@@ -64,6 +64,7 @@ const IID kIIDsToRegister[] = {
   __uuidof(ICredentialDialog),
   __uuidof(IPolicyStatus),
   __uuidof(IPolicyStatus2),
+  __uuidof(IPolicyStatus3),
   __uuidof(IPolicyStatusValue),
 
   __uuidof(IProcessLauncher2),
@@ -229,4 +230,3 @@ class StdMarshalInfo : public IStdMarshalInfo {
 }  // namespace omaha
 
 #endif  // OMAHA_GOOPDATE_COM_PROXY_H_
-

@@ -570,8 +570,12 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
     ('Explain_Preferences', 'General policies for Google Update.'),
     ('Explain_AutoUpdateCheckPeriod',
      'Minimum number of minutes between automatic update checks.\n\n'
-     'Set the value to 0 if you want to disable all auto-update checks '
-     '(not recommended).\n\n'
+     'Set this policy to the value 0 to disable all periodic network traffic '
+     'by Google Update. This is not recommended, as it prevents Google Update '
+     'itself from receiving stability and security updates.\n\nThe "Update '
+     'policy override default" and per-application "Update policy override" '
+     'settings should be used to manage application updates rather than this '
+     'setting.\n\n'
      '%s' % ADML_DOMAIN_REQUIREMENT_EN),
     ('Explain_DownloadPreference',
      'If enabled, the Google Update server will attempt to provide '
@@ -648,7 +652,7 @@ ADML_PREDEFINED_STRINGS_TABLE_EN = [
 
 ADML_PRESENTATIONS = '''\
       <presentation id="Pol_AutoUpdateCheckPeriod">
-        <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="1400"
+        <decimalTextBox refId="Part_AutoUpdateCheckPeriod" defaultValue="295"
             spinStep="60">Minutes between update checks</decimalTextBox>
       </presentation>
       <presentation id="Pol_UpdateCheckSuppressedPeriod">
