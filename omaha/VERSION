@@ -5,4 +5,4 @@
 version_major = 1    # 1-65535
 version_minor = 3    # 0-65535
 version_build = 36   # 1-65535
-version_patch = 81    # 0-65535
+version_patch = 91    # 0-65535
