@@ -384,6 +384,11 @@ HRESULT SetPolicyString(const TCHAR* policy_name, const CString& value) {
   return RegKey::SetValue(kRegKeyGoopdateGroupPolicy, policy_name, value);
 }
 
+void ClearGroupPolicies() {
+  RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
+  ConfigManager::Instance()->LoadGroupPolicies();
+}
+
 }  // namespace omaha
 
 std::ostream& operator<<(std::ostream& os, const CString& str) {

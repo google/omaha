@@ -31,6 +31,15 @@ class UpdateRequestTest : public ::testing::TestWithParam<bool> {
   bool IsDomain() {
     return GetParam();
   }
+
+  void SetUp() override {
+    ClearGroupPolicies();
+  }
+
+  void TearDown() override {
+    ClearGroupPolicies();
+  }
+
 };
 
 INSTANTIATE_TEST_CASE_P(IsDomain, UpdateRequestTest, ::testing::Bool());
@@ -97,7 +106,6 @@ TEST_P(UpdateRequestTest, DlPref) {
                update_request->request().dlpref);
 
   RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueIsEnrolledToDomain);
-  RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
 }
 
 }  // namespace xml
