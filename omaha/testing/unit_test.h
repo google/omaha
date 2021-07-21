@@ -202,6 +202,10 @@ void CreateFiles(const TCHAR* parent_dir,
 HRESULT SetPolicy(const TCHAR* policy_name, DWORD value);
 HRESULT SetPolicyString(const TCHAR* policy_name, const CString& value);
 
+// Deletes the group policy registry keys for Omaha and reloads the
+// ConfigManager policies to reset them.
+void ClearGroupPolicies();
+
 }  // namespace omaha
 
 // TODO(omaha): Replace custom predicates with EXPECT_HRESULT_SUCCEEDED/FAILED.

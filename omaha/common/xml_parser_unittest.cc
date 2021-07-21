@@ -48,8 +48,12 @@ class XmlParserTest : public ::testing::TestWithParam<bool> {
     return GetParam();
   }
 
-  virtual void SetUp() {
-    RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
+  void SetUp() override {
+    ClearGroupPolicies();
+  }
+
+  void TearDown() override {
+    ClearGroupPolicies();
   }
 
   // Allows test fixtures access to implementation details of UpdateRequest.
@@ -531,7 +535,6 @@ TEST_P(XmlParserTest, DlPref) {
   EXPECT_STREQ(expected_buffer, actual_buffer);
 
   RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueIsEnrolledToDomain);
-  RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
 }
 
 TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
@@ -575,7 +578,6 @@ TEST_P(XmlParserTest, DlPrefUnknownPolicy) {
   EXPECT_STREQ(expected_buffer, actual_buffer);
 
   RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV, kRegValueIsEnrolledToDomain);
-  RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
 }
 
 TEST_F(XmlParserTest, PingFreshness) {
