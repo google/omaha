@@ -971,13 +971,13 @@ HRESULT ConfigManager::LoadGroupPolicies() {
   if (IsEnterpriseManaged()) {
     group_policies.is_managed = true;
 
-    policy_critical_section = ::EnterCriticalPolicySection(TRUE);
+    // We would like to call ::EnterCriticalPolicySection(TRUE) here. However,
+    // it appears that when the install is pushed via GPO, GPO takes the
+    // critical section, and we hang at the ::EnterCriticalPolicySection(TRUE)
+    // call. So, for now, we are going to just dismiss the guard.
+    guard_policy_critical_section.Dismiss();
+    // Fall through to read the policies.
 
-    // Not getting the policy critical section is a fatal error. So we will
-    // crash here if `policy_critical_section` is NULL.
-    if (!policy_critical_section) {
-      __debugbreak();
-    }
   } else {
     guard_policy_critical_section.Dismiss();
     OPT_LOG(L1, (_T("[ConfigManager::LoadGroupPolicies][Machine is not ")
