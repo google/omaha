@@ -1200,9 +1200,9 @@ TEST_F(DownloadManagerUserTest, CachePackage) {
   const TCHAR* kFiles[] = {_T("SaveArguments.exe"),
                            _T("old_google_certificate.dll"),
                            _T("sha2_0c15be4a15bb0903c901b1d6c265302f.msi")};
-  HRESULT kExpected[] =   {S_OK,
-                           SIGS_E_INVALID_SIGNATURE,
-                           S_OK};
+  HRESULT kExpected[] = {S_OK,
+                         SIGS_E_INVALID_SIGNATURE,
+                         S_OK};
 
   ASSERT_EQ(arraysize(kFiles), arraysize(kExpected));
 
