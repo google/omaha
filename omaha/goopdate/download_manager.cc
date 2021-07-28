@@ -533,7 +533,7 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   const CString package_name(package->filename());
   PackageCache::Key key(app_id, version, package_name);
 
-  HRESULT hr;
+  HRESULT hr = E_UNEXPECTED;
   if (ConfigManager::Instance()->VerifyPayloadAuthenticodeSignature()) {
     hr = EnsureSignatureIsValid(*source_file_path);
     if (FAILED(hr)) {
