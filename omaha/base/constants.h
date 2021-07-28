@@ -281,10 +281,10 @@ const TCHAR* const kRegValueAutoUpdateJitterMs      = _T("AutoUpdateJitterMs");
 const TCHAR* const kRegValueProxyHost               = _T("ProxyHost");
 const TCHAR* const kRegValueProxyPort               = _T("ProxyPort");
 const TCHAR* const kRegValueMID                     = _T("mid");
-const TCHAR* const kRegValueAlwaysVerifyAuthenticodeSignatures =
-    _T("AlwaysVerifyAuthenticodeSignatures");
+const TCHAR* const kRegValueVerifyPayloadAuthenticodeSignature =
+    _T("VerifyPayloadAuthenticodeSignature");
 
-// If AlwaysVerifyAuthenticodeSignatures is non-zero in registry (see above),
+// If VerifyPayloadAuthenticodeSignature is non-zero in registry (see above),
 // then update binaries with the following extensions are Authenticode-verified:
 const TCHAR* const kAuthenticodeSignedExtensions =
     _T("exe msi dll sys cab ocx xpi xap cat jar ps1 psm1 psd1 ps1xml psc1 acm ")

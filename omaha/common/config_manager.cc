@@ -1807,12 +1807,12 @@ bool ConfigManager::AlwaysAllowCrashUploads() const {
   return always_allow_crash_uploads != 0;
 }
 
-bool ConfigManager::AlwaysVerifyAuthenticodeSignatures() const {
-  DWORD always_verify_file_signatures = 0;
+bool ConfigManager::VerifyPayloadAuthenticodeSignature() const {
+  DWORD result_from_registry = 0;
   RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
-                   kRegValueAlwaysVerifyAuthenticodeSignatures,
-                   &always_verify_file_signatures);
-  return always_verify_file_signatures != 0;
+                   kRegValueVerifyPayloadAuthenticodeSignature,
+                   &result_from_registry);
+  return result_from_registry != 0;
 }
 
 int ConfigManager::MaxCrashUploadsPerDay() const {

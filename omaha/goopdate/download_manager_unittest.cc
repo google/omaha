@@ -89,7 +89,7 @@ class DownloadManagerTest : public AppTestBase {
 
     CleanupFiles();
     RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
-                     kRegValueAlwaysVerifyAuthenticodeSignatures,
+                     kRegValueVerifyPayloadAuthenticodeSignature,
                      &verify_file_signatures_);
 
     download_manager_.reset(new DownloadManager(is_machine_));
@@ -102,12 +102,12 @@ class DownloadManagerTest : public AppTestBase {
     if (verify_file_signatures_) {
       EXPECT_SUCCEEDED(RegKey::SetValue(
           MACHINE_REG_UPDATE_DEV,
-          kRegValueAlwaysVerifyAuthenticodeSignatures,
+          kRegValueVerifyPayloadAuthenticodeSignature,
           verify_file_signatures_));
     } else {
       EXPECT_SUCCEEDED(
           RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
-                              kRegValueAlwaysVerifyAuthenticodeSignatures));
+                              kRegValueVerifyPayloadAuthenticodeSignature));
     }
 
     AppTestBase::TearDown();
@@ -1194,7 +1194,7 @@ TEST_F(DownloadManagerUserTest, GetPackage) {
 
 TEST_F(DownloadManagerUserTest, CachePackage) {
   ASSERT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
-                                    kRegValueAlwaysVerifyAuthenticodeSignatures,
+                                    kRegValueVerifyPayloadAuthenticodeSignature,
                                     (DWORD)1));
 
   const TCHAR* kFiles[] = {_T("SaveArguments.exe"),

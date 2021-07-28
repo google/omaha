@@ -463,7 +463,7 @@ class ConfigManager {
   // Returns true if Authenticode signatures of update binaries should always be
   // verified. If this is false (the default), then signatures are only verified
   // in code red scenarios and in app commands.
-  bool AlwaysVerifyAuthenticodeSignatures() const;
+  bool VerifyPayloadAuthenticodeSignature() const;
 
   // Returns the number of crashes to upload per day.
   int MaxCrashUploadsPerDay() const;
