@@ -37,13 +37,13 @@ const TCHAR* const kSha256CertificateSubjectName = _T("Google LLC");
 const TCHAR* const kCertificateThumbprint =
     _T("a3958ae522f3c54b878b20d7b0f63711e08666b2");
 const TCHAR* const kSha256CertificateThumbprint =
-    _T("cb7e84887f3c6015fe7edfb4f8f36df7dc10590e");
+    _T("2673ea6cc23beffda49ac715b121544098a1284c");
 
 // The SHA256 hash of the Omaha certificate RSA public key.
 const TCHAR* const kCertificatePublicKeyHash =
     _T("6cb128676c6d0b49d3e8918bd835888694333da7540a0994261c0ec0b3516f9d");
 const TCHAR* const kSha256CertificatePublicKeyHash =
-    _T("03e27c19d222043a8f0c64181c23c9339cc84a7ec4ebff8a19adb7caefb0c709");
+    _T("3e9d92dfb3a046d49f53bab836f387177ac1ec075e8e3dd306b7c1764432f276");
 
 // The hash of public keys that we pin the code signing certificates to.
 // For quick identification, the date and thumbprint of the certificates are
@@ -101,13 +101,13 @@ const TCHAR* const kPublicKeyHashes[] = {
     // serial=0c15be4a15bb0903c901b1d6c265302f
     // SHA1
     // Fingerprint=CB:7E:84:88:7F:3C:60:15:FE:7E:DF:B4:F8:F3:6D:F7:DC:10:59:0E
-    kSha256CertificatePublicKeyHash,
+    _T("03e27c19d222043a8f0c64181c23c9339cc84a7ec4ebff8a19adb7caefb0c709"),
 
     // Google LLC sha256 certificate valid from 07-01-2021 to 07-10-2024.
     // Issued by DigiCert Trusted G4 Code Signing RSA4096 SHA384 2021 CA1.
     // thumbprint=2673ea6cc23beffda49ac715b121544098a1284c.
     // serial=0e4418e2dede36dd2974c3443afb5ce5.
-    _T("3e9d92dfb3a046d49f53bab836f387177ac1ec075e8e3dd306b7c1764432f276"),
+    kSha256CertificatePublicKeyHash,
 };
 
 }  // namespace omaha
