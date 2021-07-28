@@ -286,9 +286,12 @@ const TCHAR* const kRegValueVerifyPayloadAuthenticodeSignature =
 
 // If VerifyPayloadAuthenticodeSignature is non-zero in registry (see above),
 // then update binaries with the following extensions are Authenticode-verified:
-const TCHAR* const kAuthenticodeSignedExtensions =
-    _T("exe msi dll sys cab ocx xpi xap cat jar ps1 psm1 psd1 ps1xml psc1 acm ")
-    _T("ax cpl drv efi mui scr sys tsp");
+const TCHAR* const kAuthenticodeSignedExtensions[] = {
+  _T("exe"),  _T("msi"),    _T("dll"),  _T("sys"),  _T("cab"), _T("ocx"),
+  _T("xpi"),  _T("xap"),    _T("cat"),  _T("jar"),  _T("ps1"), _T("psm1"),
+  _T("psd1"), _T("ps1xml"), _T("psc1"), _T("acm "), _T("ax"),  _T("cpl"),
+  _T("drv"),  _T("efi"),    _T("mui"),  _T("scr"),  _T("sys"), _T("tsp")
+};
 
 #if defined(HAS_DEVICE_MANAGEMENT)
 const TCHAR* const kRegValueNameDeviceManagementUrl = _T("DeviceManagementUrl");

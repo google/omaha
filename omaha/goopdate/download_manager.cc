@@ -570,12 +570,11 @@ HRESULT DownloadManager::EnsureSignatureIsValid(const CString& file_path) {
   ASSERT1(ext);
   if (*ext != _T('\0')) {
     ext++;  // Skip the dot.
-    CString ext_lower(ext);
-    ext_lower.MakeLower();
-    const TCHAR* delim = _T(" ");
-    CString extensions = delim + CString(kAuthenticodeSignedExtensions) + delim;
-    if (extensions.Find(delim + ext_lower + delim) != -1) {
-      return VerifyGoogleAuthenticodeSignature(file_path, true);
+    for (size_t i = 0; i != arraysize(kAuthenticodeSignedExtensions); ++i) {
+      CString candidate(kAuthenticodeSignedExtensions[i]);
+      if (candidate.CompareNoCase(ext) == 0) {
+        return VerifyGoogleAuthenticodeSignature(file_path, true);
+      }
     }
   }
   return S_OK;
