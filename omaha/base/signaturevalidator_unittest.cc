@@ -29,11 +29,6 @@ namespace {
 
 const TCHAR* const kTestCertificateSubjectName = _T("Google Inc (TEST)");
 
-const TCHAR* const kSha256CertificateThumbprint_Expires_07102024 =
-    _T("2673ea6cc23beffda49ac715b121544098a1284c");
-const TCHAR* const kSha256CertificatePublicKeyHash_Expires_07102024 =
-    _T("3e9d92dfb3a046d49f53bab836f387177ac1ec075e8e3dd306b7c1764432f276");
-
 bool VerifySigneeIs(const wchar_t* subject_name,
                     const wchar_t* signed_file) {
   std::vector<CString> subject;
@@ -76,17 +71,12 @@ INSTANTIATE_TEST_CASE_P(
             _T("unittest_support\\sha1_06aea76bac46a9e8cfe6d29e45aaf033.sys"),
             kSha1CertificateSubjectName, kCertificateThumbprint,
             kCertificatePublicKeyHash),
-        // Chrome certificate sha256 (11/06/2018 to 11/17/2021).
-        PathSubjectThumbprintHash(_T("unittest_support\\chrome_setup.exe"),
-                                  kSha256CertificateSubjectName,
-                                  kSha256CertificateThumbprint,
-                                  kSha256CertificatePublicKeyHash),
         // Google LLC sha256 certificate valid from 07-01-2021 to 07-10-2024.
         PathSubjectThumbprintHash(
             _T("unittest_support\\sha2_0e4418e2dede36dd2974c3443afb5ce5.msi"),
             kSha256CertificateSubjectName,
-            kSha256CertificateThumbprint_Expires_07102024,
-            kSha256CertificatePublicKeyHash_Expires_07102024)));
+            kSha256CertificateThumbprint,
+            kSha256CertificatePublicKeyHash)));
 
 TEST_P(CertInfoTest, CertInfo) {
   CString binary_full_path(app_util::GetCurrentModuleDirectory());
