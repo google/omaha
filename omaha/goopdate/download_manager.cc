@@ -218,6 +218,7 @@ CString DownloadManager::GetMessageForError(const ErrorContext& error_context,
     case GOOPDATEDOWNLOAD_E_FILE_SIZE_ZERO:
     case GOOPDATEDOWNLOAD_E_FILE_SIZE_SMALLER:
     case GOOPDATEDOWNLOAD_E_FILE_SIZE_LARGER:
+    case GOOPDATEDOWNLOAD_E_AUTHENTICODE_VERIFICATION_FAILED:
       VERIFY_SUCCEEDED(formatter.LoadString(IDS_DOWNLOAD_HASH_MISMATCH,
                                              &message));
       break;
@@ -539,7 +540,7 @@ HRESULT DownloadManager::CachePackage(const Package* package,
     if (FAILED(hr)) {
       CORE_LOG(LE, (_T("[EnsureSignatureIsValid failed][%s][0x%08x]"),
                     package->filename(), hr));
-      return SIGS_E_INVALID_SIGNATURE;
+      return GOOPDATEDOWNLOAD_E_AUTHENTICODE_VERIFICATION_FAILED;
     }
   }
 

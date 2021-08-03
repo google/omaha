@@ -1203,7 +1203,7 @@ TEST_F(DownloadManagerUserTest, CachePackage) {
                            // Ensure unexpected extensions don't crash:
                            _T("declaration.txt")};
   HRESULT kExpected[] = {S_OK,
-                         SIGS_E_INVALID_SIGNATURE,
+                         GOOPDATEDOWNLOAD_E_AUTHENTICODE_VERIFICATION_FAILED,
                          S_OK,
                          S_OK};
 
