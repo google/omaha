@@ -78,7 +78,7 @@ class JobObserverCOMDecorator
   STDMETHOD(DoLaunchBrowser)(const WCHAR* url);
 
  private:
-  OnDemandEventsInterface* on_demand_events() {
+  OnDemandEventsInterface* GetOnDemandEvents() {
     return on_demand_events_;
   }
 

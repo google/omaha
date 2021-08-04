@@ -507,6 +507,8 @@ win_env.AppendUnique(
         '/wd5032',  # detected #pragma warning(push) with no corresponding
                     # #pragma warning(pop) - due to a WinSDK bug in winioctl.h.
         '/wd5038',  # data member '' will be initialized after data member ''
+        '/wd5041',  # out-of-line definition for constexpr static data member is
+                    # not needed and is deprecated in C++17'.
         '/wd5042',  # function declarations at block scope cannot be specified
                     # 'inline' in standard C++
         '/wd5045',  # Compiler will insert Spectre mitigation for memory load
