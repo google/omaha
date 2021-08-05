@@ -1808,11 +1808,11 @@ bool ConfigManager::AlwaysAllowCrashUploads() const {
 }
 
 bool ConfigManager::VerifyPayloadAuthenticodeSignature() const {
-  DWORD result_from_registry = 0;
+  DWORD disabled_in_registry = 0;
   RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
-                   kRegValueVerifyPayloadAuthenticodeSignature,
-                   &result_from_registry);
-  return result_from_registry != 0;
+                   kRegValueDisablePayloadAuthenticodeVerification,
+                   &disabled_in_registry);
+  return disabled_in_registry == 0;
 }
 
 int ConfigManager::MaxCrashUploadsPerDay() const {
