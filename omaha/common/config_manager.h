@@ -462,7 +462,7 @@ class ConfigManager {
 
   // Returns whether the Authenticode signature of update payloads should be
   // verified.
-  bool VerifyPayloadAuthenticodeSignature() const;
+  bool ShouldVerifyPayloadAuthenticodeSignature() const;
 
   // Returns the number of crashes to upload per day.
   int MaxCrashUploadsPerDay() const;

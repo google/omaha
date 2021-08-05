@@ -1807,7 +1807,7 @@ bool ConfigManager::AlwaysAllowCrashUploads() const {
   return always_allow_crash_uploads != 0;
 }
 
-bool ConfigManager::VerifyPayloadAuthenticodeSignature() const {
+bool ConfigManager::ShouldVerifyPayloadAuthenticodeSignature() const {
   DWORD disabled_in_registry = 0;
   RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
                    kRegValueDisablePayloadAuthenticodeVerification,
