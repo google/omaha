@@ -281,9 +281,10 @@ const TCHAR* const kRegValueAutoUpdateJitterMs      = _T("AutoUpdateJitterMs");
 const TCHAR* const kRegValueProxyHost               = _T("ProxyHost");
 const TCHAR* const kRegValueProxyPort               = _T("ProxyPort");
 const TCHAR* const kRegValueMID                     = _T("mid");
+
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 const TCHAR* const kRegValueDisablePayloadAuthenticodeVerification =
     _T("DisablePayloadAuthenticodeVerification");
-
 // Update binaries with the following extensions are Authenticode-verified
 // unless DisablePayloadAuthenticodeVerification above is non-zero in registry.
 const TCHAR* const kAuthenticodeSignedExtensions[] = {
@@ -292,6 +293,7 @@ const TCHAR* const kAuthenticodeSignedExtensions[] = {
   _T("psd1"), _T("ps1xml"), _T("psc1"), _T("acm "), _T("ax"),  _T("cpl"),
   _T("drv"),  _T("efi"),    _T("mui"),  _T("scr"),  _T("sys"), _T("tsp")
 };
+#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
 #if defined(HAS_DEVICE_MANAGEMENT)
 const TCHAR* const kRegValueNameDeviceManagementUrl = _T("DeviceManagementUrl");

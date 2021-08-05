@@ -1807,6 +1807,8 @@ bool ConfigManager::AlwaysAllowCrashUploads() const {
   return always_allow_crash_uploads != 0;
 }
 
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+
 bool ConfigManager::ShouldVerifyPayloadAuthenticodeSignature() const {
   DWORD disabled_in_registry = 0;
   RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
@@ -1814,6 +1816,8 @@ bool ConfigManager::ShouldVerifyPayloadAuthenticodeSignature() const {
                    &disabled_in_registry);
   return disabled_in_registry == 0;
 }
+
+#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
 int ConfigManager::MaxCrashUploadsPerDay() const {
   DWORD num_uploads = 0;

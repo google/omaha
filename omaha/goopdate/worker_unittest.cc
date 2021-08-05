@@ -157,8 +157,13 @@ class MockDownloadManager : public DownloadManagerInterface {
       HRESULT());
   MOCK_METHOD2(PurgeAppLowerVersions,
       HRESULT(const CString&, const CString&));
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   MOCK_METHOD3(CachePackage,
       HRESULT(const Package*, File*, const CString*));
+#else
+  MOCK_METHOD2(CachePackage,
+               HRESULT(const Package*, File*));
+#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   MOCK_METHOD1(DownloadApp,
       HRESULT(App* app));
   MOCK_METHOD1(DownloadPackage,

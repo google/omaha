@@ -460,9 +460,11 @@ class ConfigManager {
   // build flavor or other configuration parameters.
   bool AlwaysAllowCrashUploads() const;
 
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   // Returns whether the Authenticode signature of update payloads should be
   // verified.
   bool ShouldVerifyPayloadAuthenticodeSignature() const;
+#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
   // Returns the number of crashes to upload per day.
   int MaxCrashUploadsPerDay() const;

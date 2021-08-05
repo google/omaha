@@ -41,7 +41,6 @@
 #include "omaha/base/utils.h"
 #include "omaha/common/config_manager.h"
 #include "omaha/common/const_goopdate.h"
-#include "omaha/common/google_signaturevalidator.h"
 #include "omaha/goopdate/model.h"
 #include "omaha/goopdate/package_cache.h"
 #include "omaha/goopdate/server_resource.h"
@@ -53,6 +52,10 @@
 #include "omaha/net/network_request.h"
 #include "omaha/net/net_utils.h"
 #include "omaha/net/simple_request.h"
+
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+#include "omaha/common/google_signaturevalidator.h"
+#endif
 
 namespace omaha {
 
@@ -477,11 +480,20 @@ HRESULT DownloadManager::DoDownloadPackageFromUrl(const CString& url,
 
   // We copy the file to the Package Cache unimpersonated, since the package
   // cache is in a privileged location.
-  hr = CallAsSelfAndImpersonate3(this,
-                                 &DownloadManager::CachePackage,
-                                 static_cast<const Package*>(package),
-                                 &source_file,
-                                 &filename);
+  hr =
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+  CallAsSelfAndImpersonate3
+#else
+  CallAsSelfAndImpersonate2
+#endif
+    (this,
+     &DownloadManager::CachePackage,
+     static_cast<const Package*>(package),
+     &source_file
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+     , &filename
+#endif
+     );
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[DownloadManager::CachePackage failed][%#x]"), hr));
   }
@@ -524,8 +536,11 @@ HRESULT DownloadManager::PurgeAppLowerVersions(const CString& app_id,
 }
 
 HRESULT DownloadManager::CachePackage(const Package* package,
-                                      File* source_file,
-                                      const CString* source_file_path) {
+                                      File* source_file
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+                                      , const CString* source_file_path
+#endif
+                                      ) {
   ASSERT1(package);
   ASSERT1(source_file);
 
@@ -535,6 +550,8 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   PackageCache::Key key(app_id, version, package_name);
 
   HRESULT hr = E_UNEXPECTED;
+
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   if (ConfigManager::Instance()->ShouldVerifyPayloadAuthenticodeSignature()) {
     hr = EnsureSignatureIsValid(*source_file_path);
     if (FAILED(hr)) {
@@ -543,6 +560,7 @@ HRESULT DownloadManager::CachePackage(const Package* package,
       return GOOPDATEDOWNLOAD_E_AUTHENTICODE_VERIFICATION_FAILED;
     }
   }
+#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
   hr = package_cache()->Put(
       key, source_file, package->expected_hash());
@@ -566,6 +584,8 @@ HRESULT DownloadManager::CachePackage(const Package* package,
   return hr;
 }
 
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+
 HRESULT DownloadManager::EnsureSignatureIsValid(const CString& file_path) {
   const TCHAR* ext = ::PathFindExtension(file_path);
   ASSERT1(ext);
@@ -579,6 +599,8 @@ HRESULT DownloadManager::EnsureSignatureIsValid(const CString& file_path) {
   }
   return S_OK;
 }
+
+#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
 // The file is initially downloaded to a temporary unique name, to account
 // for the case where the same file is downloaded by multiple callers.

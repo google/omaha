@@ -873,8 +873,11 @@ HRESULT Worker::CacheOfflinePackages(AppBundle* app_bundle) {
       }
 
       hr = download_manager_->CachePackage(package,
-                                           &offline_package_file,
-                                           &offline_package_path);
+                                           &offline_package_file
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+                                           , &offline_package_path
+#endif
+                                           );
       if (FAILED(hr)) {
         CORE_LOG(LE, (_T("[CachePackage failed][%s][%s][0x%x][%Iu]"),
                       app->app_guid_string(), offline_package_path, hr, j));
