@@ -162,7 +162,7 @@ class MockDownloadManager : public DownloadManagerInterface {
       HRESULT(const Package*, File*, const CString*));
 #else
   MOCK_METHOD2(CachePackage,
-               HRESULT(const Package*, File*));
+      HRESULT(const Package*, File*));
 #endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   MOCK_METHOD1(DownloadApp,
       HRESULT(App* app));
