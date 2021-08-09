@@ -42,7 +42,8 @@ class DownloadManagerInterface {
   virtual HRESULT PurgeAppLowerVersions(const CString& app_id,
                                         const CString& version) = 0;
   virtual HRESULT CachePackage(const Package* package,
-                               File* source_file) = 0;
+                               File* source_file,
+                               const CString* source_file_path) = 0;
   virtual HRESULT DownloadApp(App* app) = 0;
   virtual HRESULT GetPackage(const Package* package,
                              const CString& dir) const = 0;
@@ -62,7 +63,9 @@ class DownloadManager : public DownloadManagerInterface {
   virtual HRESULT PurgeAppLowerVersions(const CString& app_id,
                                         const CString& version);
 
-  virtual HRESULT CachePackage(const Package* package, File* source_file);
+  virtual HRESULT CachePackage(const Package* package,
+                               File* source_file,
+                               const CString* source_file_path);
 
   // Downloads the specified app and stores its packages in the package cache.
   //
@@ -127,6 +130,8 @@ class DownloadManager : public DownloadManagerInterface {
                                    const CString& filename,
                                    Package* package,
                                    State* state);
+
+  HRESULT EnsureSignatureIsValid(const CString& file_path);
 
   bool is_machine() const;
 

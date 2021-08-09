@@ -1800,6 +1800,18 @@ bool ConfigManager::AlwaysAllowCrashUploads() const {
   return always_allow_crash_uploads != 0;
 }
 
+bool ConfigManager::ShouldVerifyPayloadAuthenticodeSignature() const {
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+  DWORD disabled_in_registry = 0;
+  RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                   kRegValueDisablePayloadAuthenticodeVerification,
+                   &disabled_in_registry);
+  return disabled_in_registry == 0;
+#else
+  return false;
+#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+}
+
 int ConfigManager::MaxCrashUploadsPerDay() const {
   DWORD num_uploads = 0;
   if (FAILED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
