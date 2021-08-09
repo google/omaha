@@ -286,6 +286,8 @@ DeclareBit('analysis', 'Turns on static analysis')
 DeclareBit('suppress_light_validation', 'Suppress WiX Linker ICE validation')
 DeclareBit('has_device_management',
            'True if including cloud-based device management')
+DeclareBit('verify_payload_authenticode_signature',
+           'Whether to verify the Authenticode signature of payloads')
 
 # Build official installers if --official_installers is on the command line.
 win_env.SetBitFromOption('official_installers', False)
@@ -365,6 +367,9 @@ win_env.SetBitFromOption('analysis', False)
 # non-interactive account or a non-Admin account: http://goo.gl/UyDzeP.
 win_env.SetBitFromOption('suppress_light_validation', False)
 
+# Whether the Authenticode signature of update payloads should be verified.
+win_env.SetBitFromOption('verify_payload_authenticode_signature', False)
+
 #
 # Set up version info.
 #
@@ -412,6 +417,11 @@ if win_env.Bit('has_device_management'):
         win_env.Append(
             CPPDEFINES = ['HAS_LEGACY_DM_CLIENT'],
         )
+
+if win_env.Bit('verify_payload_authenticode_signature'):
+    win_env.Append(
+        CPPDEFINES = ['VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE'],
+    )
 
 # Make sure python.exe can be located.
 win_env.AppendENVPath('PATH', os.environ['OMAHA_PYTHON_DIR'])

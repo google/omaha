@@ -282,6 +282,17 @@ const TCHAR* const kRegValueProxyHost               = _T("ProxyHost");
 const TCHAR* const kRegValueProxyPort               = _T("ProxyPort");
 const TCHAR* const kRegValueMID                     = _T("mid");
 
+const TCHAR* const kRegValueDisablePayloadAuthenticodeVerification =
+    _T("DisablePayloadAuthenticodeVerification");
+
+// File extensions that can be verified with an Authenticode signature.
+const TCHAR* const kAuthenticodeVerifiableExtensions[] = {
+  _T("exe"),  _T("msi"),    _T("dll"),  _T("sys"),  _T("cab"), _T("ocx"),
+  _T("xpi"),  _T("xap"),    _T("cat"),  _T("jar"),  _T("ps1"), _T("psm1"),
+  _T("psd1"), _T("ps1xml"), _T("psc1"), _T("acm "), _T("ax"),  _T("cpl"),
+  _T("drv"),  _T("efi"),    _T("mui"),  _T("scr"),  _T("sys"), _T("tsp")
+};
+
 #if defined(HAS_DEVICE_MANAGEMENT)
 const TCHAR* const kRegValueNameDeviceManagementUrl = _T("DeviceManagementUrl");
 #endif
