@@ -16,6 +16,7 @@
 // TODO(omaha): why so many dependencies for this unit test?
 
 #include <atlstr.h>
+#include <vector>
 #include <windows.h>
 
 #include "omaha/base/app_util.h"
@@ -36,10 +37,6 @@
 #include "omaha/goopdate/download_manager.h"
 #include "omaha/testing/unit_test.h"
 #include "omaha/third_party/smartany/scoped_any.h"
-
-#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
-#include <vector>
-#endif
 
 using ::testing::_;
 using ::testing::Return;
@@ -92,17 +89,15 @@ class DownloadManagerTest : public AppTestBase {
 
     CleanupFiles();
 
-#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
     RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
                      kRegValueDisablePayloadAuthenticodeVerification,
                      &disable_payload_authenticode_verification_);
     if (disable_payload_authenticode_verification_) {
-      // Make sure Payload verification is enabled (the default).
+      // Ensure the registry is in a clean state w.r.t. payload verification.
       EXPECT_SUCCEEDED(RegKey::DeleteValue(
           MACHINE_REG_UPDATE_DEV,
           kRegValueDisablePayloadAuthenticodeVerification));
     }
-#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
     download_manager_.reset(new DownloadManager(is_machine_));
     EXPECT_SUCCEEDED(download_manager_->Initialize());
@@ -112,7 +107,6 @@ class DownloadManagerTest : public AppTestBase {
     download_manager_.reset();
     CleanupFiles();
 
-#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
     if (disable_payload_authenticode_verification_) {
       EXPECT_SUCCEEDED(RegKey::SetValue(
           MACHINE_REG_UPDATE_DEV,
@@ -123,14 +117,12 @@ class DownloadManagerTest : public AppTestBase {
           MACHINE_REG_UPDATE_DEV,
           kRegValueDisablePayloadAuthenticodeVerification));
     }
-#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
     AppTestBase::TearDown();
   }
 
   virtual void CleanupFiles() = 0;
 
-#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   void TestCachePackage(App* app,
                         const TCHAR* unittest_support_file_name,
                         HRESULT expected_result) {
@@ -163,7 +155,6 @@ class DownloadManagerTest : public AppTestBase {
     hr = download_manager_->CachePackage(package, &file, &file_path);
     EXPECT_EQ(expected_result, hr) << unittest_support_file_name;
   }
-#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 
   static void SetAppStateCheckingForUpdate(App* app) {
     SetAppStateForUnitTest(app, new fsm::AppStateCheckingForUpdate);
@@ -175,9 +166,7 @@ class DownloadManagerTest : public AppTestBase {
 
   const CString cache_path_;
   std::unique_ptr<DownloadManager> download_manager_;
-#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   DWORD disable_payload_authenticode_verification_ = 0; // Saved from registry
-#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 };
 
 
@@ -1244,31 +1233,28 @@ TEST_F(DownloadManagerUserTest, GetPackage) {
   EXPECT_SUCCEEDED(DeleteDirectory(dir));
 }
 
-#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
-
 TEST_F(DownloadManagerUserTest, CachePackage) {
   App* app = NULL;
   ASSERT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kAppGuid1), &app));
 
   TestCachePackage(app, _T("SaveArguments.exe"), S_OK);
+  TestCachePackage(app, _T("sha2_0c15be4a15bb0903c901b1d6c265302f.msi"), S_OK);
+  // Make sure that unexpected file extensions are handled gracefully:
+  TestCachePackage(app, _T("declaration.txt"), S_OK);
+
+#ifdef VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
   const TCHAR* kFileWithOldCertificate = _T("old_google_certificate.dll");
   TestCachePackage(app,
                    kFileWithOldCertificate,
                    GOOPDATEDOWNLOAD_E_AUTHENTICODE_VERIFICATION_FAILED);
-  TestCachePackage(app, _T("sha2_0c15be4a15bb0903c901b1d6c265302f.msi"), S_OK);
-
-  // Make sure that unexpected file extensions are handled gracefully:
-  TestCachePackage(app, _T("declaration.txt"), S_OK);
-
-  // Test that disabling verification makes a previously failing file succeed:
+  // Test that disabling verification makes the previously failing file succeed:
   EXPECT_SUCCEEDED(RegKey::SetValue(
       MACHINE_REG_UPDATE_DEV,
       kRegValueDisablePayloadAuthenticodeVerification,
       1UL));
   TestCachePackage(app, kFileWithOldCertificate, S_OK);
-}
-
 #endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+}
 
 TEST_F(DownloadManagerUserTest, GetPackage_NotPresent) {
   App* app = NULL;
