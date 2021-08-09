@@ -572,8 +572,9 @@ HRESULT DownloadManager::EnsureSignatureIsValid(const CString& file_path) {
   ASSERT1(ext);
   if (*ext != _T('\0')) {
     ext++;  // Skip the dot.
-    for (size_t i = 0; i < arraysize(kAuthenticodeSignedExtensions); ++i) {
-      if (CString(kAuthenticodeSignedExtensions[i]).CompareNoCase(ext) == 0) {
+    for (size_t i = 0; i < arraysize(kAuthenticodeVerifiableExtensions); ++i) {
+      if (CString(kAuthenticodeVerifiableExtensions[i]).CompareNoCase(ext)
+          == 0) {
         return VerifyGoogleAuthenticodeSignature(file_path, true);
       }
     }
