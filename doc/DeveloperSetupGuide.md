@@ -43,7 +43,8 @@ The following packages are required to build Omaha:
   * Third-party dependencies:
     * breakpad. Download [here](https://github.com/google/breakpad/archive/refs/heads/main.zip). Tested with commit [bc7dda](https://github.com/google/breakpad/commit/bc7ddae23425cee8999e4e8ed61f77a62f058cbf) from Aug 9, 2021.
       - Unzip everything inside `breakpad-master.zip\breakpad-master` to `third_party\breakpad`.
-    * googletest. Download [here](https://codeload.github.com/google/googletest/zip/master). This includes both gtest and gmock frameworks.
+    * googletest. Download [here](https://github.com/google/googletest/archive/refs/heads/master.zip). Tested with commit [47f819c
+](https://github.com/google/googletest/commit/47f819c3ca54fb602f432904443e00a0a1fe2f42) from Aug 10, 2021. This includes both gtest and gmock frameworks.
       - Unzip everything inside `googletest-master.zip\googletest-master` to `third_party\googletest`.
     * libzip 1.7.3. Source code [here](https://libzip.org/download/libzip-1.7.3.tar.xz). Unzip the contents of `libzip-1.7.3.tar.gz\libzip-1.7.3.tar\libzip-1.7.3\` into the directory `third_party\libzip`. The Omaha repository contains two generated configuration files in `base\libzip`, or one could build the libzip library and generate the files. A change has been made to config.h to disable zip crypto `#undef HAVE_CRYPTO`, or else the zip code won't build because of a compile time bug.
     * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of `zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\` into the directory `third_party\zlib\v1_2_11`.       
