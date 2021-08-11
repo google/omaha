@@ -211,6 +211,7 @@ cc_files = [
     'protobuf/compiler/importer.cc',
     'protobuf/compiler/parser.cc',
     'protobuf/any.cc',
+    'protobuf/arenastring.cc',
     'protobuf/descriptor.cc',
     'protobuf/descriptor.pb.cc',
     'protobuf/descriptor_database.cc',
