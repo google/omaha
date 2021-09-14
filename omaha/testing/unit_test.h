@@ -87,7 +87,7 @@ CString GetSzValue(const CString& full_key_name, const CString& value_name);
 GUID StringToGuid(const CString& str);
 
 const TCHAR* const kRegistryHiveOverrideRoot =
-    _T("HKCU\\Software\\") _T(SHORT_COMPANY_NAME_ANSI)
+    _T("HKCU\\Software\\") _T(REG_KEY_NAME_ANSI)
     _T("\\") _T(PRODUCT_NAME_ANSI)
     _T("\\UnitTest\\");
 const TCHAR* const kCsidlSystemIdsRegKey =

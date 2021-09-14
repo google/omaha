@@ -353,12 +353,12 @@ TEST(OmahaCustomizationTest, IsInternalUser) {
 //
 
 TEST(OmahaCustomizationTest, GetGoogleUserPath) {
-  EXPECT_STREQ(GetLocalAppDataPath() + SHORT_COMPANY_NAME + _T("\\"),
+  EXPECT_STREQ(GetLocalAppDataPath() + REG_KEY_NAME + _T("\\"),
                GetGoogleUserPath());
 }
 
 TEST(OmahaCustomizationTest, GetGoogleUpdateUserPath) {
-  EXPECT_STREQ(GetLocalAppDataPath() + SHORT_COMPANY_NAME + _T("\\")
+  EXPECT_STREQ(GetLocalAppDataPath() + REG_KEY_NAME + _T("\\")
                                      + PRODUCT_NAME + _T("\\"),
                GetGoogleUpdateUserPath());
 }
@@ -368,7 +368,7 @@ TEST(OmahaCustomizationTest, GetGoogleUpdateMachinePath) {
   CString expected_machine_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES | CSIDL_FLAG_DONT_VERIFY,
                                  &expected_machine_path));
-  expected_machine_path.Append(_T("\\") SHORT_COMPANY_NAME
+  expected_machine_path.Append(_T("\\") REG_KEY_NAME
                                _T("\\") PRODUCT_NAME);
   EXPECT_STREQ(expected_machine_path, GetGoogleUpdateMachinePath());
 }

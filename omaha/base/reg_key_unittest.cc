@@ -22,7 +22,7 @@
 
 namespace omaha {
 
-#define kStTestRkeyRelativeBase   _T("Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UnitTest")
+#define kStTestRkeyRelativeBase   _T("Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME _T("\\UnitTest")
 #define kStTestRkeyBase   _T("HKCU\\") kStTestRkeyRelativeBase
 #define kStRkey1Name      _T("TEST")
 #define kStRkey1          kStTestRkeyBase _T("\\") kStRkey1Name

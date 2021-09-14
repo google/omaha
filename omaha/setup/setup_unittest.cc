@@ -49,23 +49,23 @@ const int kProcessesCleanupWait = 30000;
 const TCHAR* const kFutureVersionString = _T("9.8.7.6");
 
 const TCHAR* const kAppMachineClientsPath =
-    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\{50DA5C89-FF97-4536-BF3F-DF54C2F02EA8}\\");
 const TCHAR* const kAppMachineClientStatePath =
-    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{50DA5C89-FF97-4536-BF3F-DF54C2F02EA8}\\");
 const TCHAR* const kApp2MachineClientsPath =
-    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\{CB8E8A3C-7295-4529-B083-D5F76DCD4CC2}\\");
 
 const TCHAR* const kAppUserClientsPath =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\{50DA5C89-FF97-4536-BF3F-DF54C2F02EA8}\\");
 const TCHAR* const kAppUserClientStatePath =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{50DA5C89-FF97-4536-BF3F-DF54C2F02EA8}\\");
 const TCHAR* const kApp2UserClientsPath =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\{CB8E8A3C-7295-4529-B083-D5F76DCD4CC2}\\");
 
 
