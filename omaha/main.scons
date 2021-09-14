@@ -537,6 +537,10 @@ win_env.AppendUnique(
                     # longer implies that compiler generated copy/move
                     # constructors and copy/move assignment operators are non
                     # trivial
+        '/wd5245',  # 'function': unreferenced function with internal linkage
+                    # has been removed
+        '/wd5246',  # 'member': the initialization of a subobject should be
+                    # wrapped in braces
         #
         # Disable static analysis warnings.
         #
