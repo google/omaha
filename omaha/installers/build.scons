@@ -59,7 +59,7 @@ def _BuildSetupRepairVersion(omaha_version_info,
   merged_output = env.Command(
       target='%smi_exe_stub_repair.exe' % (prefix),
       source=[source_binary, '$OBJ_ROOT/installers/' + _RECOVERY_MARKUP_DLL],
-      action='@$MAIN_DIR/tools/resmerge --copyappend $SOURCES $TARGET',
+      action='@"$MAIN_DIR/tools/resmerge" --copyappend $SOURCES $TARGET',
   )
 
   build_metainstaller.BuildMetaInstaller(

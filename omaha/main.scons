@@ -110,7 +110,7 @@ if (_sdk_dir is None):
 
 _sdk_version = os.getenv('OMAHA_WINDOWS_SDK_10_0_VERSION', None)
 _wtl_dir = os.getenv('OMAHA_WTL_DIR', '$GOOGLE3/third_party/wtl/files')
-_signtool_path = ('python $MAIN_DIR/tools/retry.py 10 5 \"%s/%s\"' %
+_signtool_path = ('python "$MAIN_DIR/tools/retry.py" 10 5 \"%s/%s\"' %
                   (os.getenv('OMAHA_SIGNTOOL_SDK_DIR'), 'signtool.exe'))
 
 # Windows is the only environment we bulid for, so create a specialized base
@@ -703,7 +703,7 @@ if not win_env.Bit('official_installers'):
   import proxy_clsid_utils
 
   # Generate uniqe proxy CLSIDs for each build.
-  win_env.Execute('python $MAIN_DIR\\tools\\proxy_clsid_utils.py')
+  win_env.Execute('python "$MAIN_DIR\\tools\\proxy_clsid_utils.py"')
   win_env.Append(
       CPPDEFINES = [
         'PROXY_CLSID_IS_MACHINE=%s' % proxy_clsid_utils.GetMachineProxyClsid(),
