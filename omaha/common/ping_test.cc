@@ -143,7 +143,7 @@ TEST_F(PingTest, BuildOmahaPing) {
 
 TEST_F(PingTest, BuildAppsPing) {
   const TCHAR* const kOmahaUserClientStatePath =
-      _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+      _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
       _T("\\ClientState\\") GOOPDATE_APP_ID;
 
   const CString expected_pv           = _T("1.3.99.0");

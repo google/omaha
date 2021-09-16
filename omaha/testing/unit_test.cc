@@ -68,7 +68,7 @@ CString GetLocalAppDataPath() {
 }
 
 CString GetGoogleUserPath() {
-  return GetLocalAppDataPath() + REG_KEY_NAME + _T("\\");
+  return GetLocalAppDataPath() + PATH_COMPANY_NAME + _T("\\");
 }
 
 // TODO(omaha): make GetGoogleUpdateUserPath and GetGoogleUpdateMachinePath
@@ -80,7 +80,7 @@ CString GetGoogleUpdateUserPath() {
 CString GetGoogleUpdateMachinePath() {
   CString program_files;
   GetFolderPath(CSIDL_PROGRAM_FILES, &program_files);
-  return program_files + _T("\\") + REG_KEY_NAME
+  return program_files + _T("\\") + PATH_COMPANY_NAME
                         + _T("\\") + PRODUCT_NAME;
 }
 

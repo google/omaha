@@ -476,7 +476,7 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallRegistryValues) {
 
   CString expected_shell_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &expected_shell_path));
-  expected_shell_path.Append(_T("\\") REG_KEY_NAME
+  expected_shell_path.Append(_T("\\") PATH_COMPANY_NAME
                              _T("\\") PRODUCT_NAME
                              _T("\\GoogleUpdate.exe"));
   CString shell_path;

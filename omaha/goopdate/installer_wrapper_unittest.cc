@@ -47,16 +47,16 @@ const GUID kAppGuid = {0xB18BC01B, 0xE0BD, 0x4BF0,
                        {0xA3, 0x3E, 0x11, 0x33, 0x05, 0x5E, 0x5F, 0xDE}};
 
 const TCHAR kFullAppClientsKeyPath[] =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\")
     PRODUCT_NAME _T("\\Clients\\{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE}");
 const TCHAR kFullAppClientStateKeyPath[] =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\")
     PRODUCT_NAME _T("\\ClientState\\{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE}");
 const TCHAR kFullFooAppClientKeyPath[] =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\")
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\")
     PRODUCT_NAME _T("\\Clients\\{D6B08267-B440-4C85-9F79-E195E80D9937}");
 const TCHAR kFullFooAppClientStateKeyPath[] =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\")
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\")
     PRODUCT_NAME _T("\\ClientState\\{D6B08267-B440-4C85-9F79-E195E80D9937}");
 
 const TCHAR kSetupFooV1RelativeLocation[] =
@@ -125,7 +125,7 @@ int GetNumMsiTries() {
 
 extern const TCHAR kRegExecutable[] = _T("reg.exe");
 extern const TCHAR kSetInstallerResultTypeMsiErrorRegCmdArgs[] =
-    _T("add HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("add HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE} ")
     _T("/v InstallerResult /t REG_DWORD /d 2 /f");
 extern const TCHAR kMsiInstallerBusyExitCodeCmd[] = _T("exit 1618");

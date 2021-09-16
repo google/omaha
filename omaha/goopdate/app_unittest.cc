@@ -40,13 +40,13 @@ const TCHAR* const kAppId1 = APP_ID1
 const TCHAR* const kInstallPolicyApp1 = _T("Install") APP_ID1;
 const TCHAR* const kUpdatePolicyApp1 = _T("Update") APP_ID1;
 const TCHAR* const kAppId1ClientsKeyPathUser =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\")
                            PRODUCT_NAME _T("\\Clients\\") APP_ID1;
 const TCHAR* const kGuid1ClientStateKeyPathUser =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\")
                            PRODUCT_NAME _T("\\ClientState\\") APP_ID1;
 const TCHAR* const kChromeClientStateKeyPathUser =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\")
                            PRODUCT_NAME _T("\\ClientState\\") CHROME_APP_ID;
 
 #define APP_ID2 _T("{EF3CACD4-89EB-46b7-B9BF-B16B15F08584}");

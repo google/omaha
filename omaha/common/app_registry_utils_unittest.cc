@@ -26,34 +26,34 @@ namespace {
 #define APP_GUID _T("{B7BAF788-9D64-49c3-AFDC-B336AB12F332}")
 const TCHAR* const kAppGuid = APP_GUID;
 const TCHAR* const kAppMachineClientStatePath =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\") APP_GUID;
 const TCHAR* const kAppUserClientStatePath =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\") APP_GUID;
 const TCHAR* const kAppMachineClientStateMediumPath =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientStateMedium\\") APP_GUID;
 
 // This should never exist. This contant is only used to verify it is not used.
 const TCHAR* const kAppUserClientStateMediumPath =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientStateMedium\\") APP_GUID;
 
 const TCHAR* const kOmahaMachineClientsPath =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\") GOOPDATE_APP_ID;
 
 const TCHAR* const kOmahaUserClientsPath =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\") GOOPDATE_APP_ID;
 
 const TCHAR* const kOmahaMachineClientStatePath =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\") GOOPDATE_APP_ID;
 
 const TCHAR* const kOmahaUserClientStatePath =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\") GOOPDATE_APP_ID;
 
 int GetFirstDayOfWeek(int day) {
@@ -72,11 +72,11 @@ namespace app_registry_utils {
 TEST(AppRegistryUtilsTest, GetAppClientsKey) {
   const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
 
-  EXPECT_STREQ(_T("HKCU\\Software\\") REG_KEY_NAME
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\Clients\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
                GetAppClientsKey(false, kAppGuid1));
-  EXPECT_STREQ(_T("HKLM\\Software\\") REG_KEY_NAME
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\Clients\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
                GetAppClientsKey(true, kAppGuid1));
@@ -85,11 +85,11 @@ TEST(AppRegistryUtilsTest, GetAppClientsKey) {
 TEST(AppRegistryUtilsTest, GetAppClientStateKey) {
   const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
 
-  EXPECT_STREQ(_T("HKCU\\Software\\") REG_KEY_NAME
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientState\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
                GetAppClientStateKey(false, kAppGuid1));
-  EXPECT_STREQ(_T("HKLM\\Software\\") REG_KEY_NAME
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientState\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
                GetAppClientStateKey(true, kAppGuid1));
@@ -99,7 +99,7 @@ TEST(AppRegistryUtilsTest, GetAppClientStateKey) {
 TEST(AppRegistryUtilsTest, GetAppClientStateMediumKey_User) {
   const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
   ExpectAsserts expect_asserts;
-  EXPECT_STREQ(_T("HKLM\\Software\\") REG_KEY_NAME
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientStateMedium\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
                GetAppClientStateMediumKey(false, kAppGuid1));
@@ -107,7 +107,7 @@ TEST(AppRegistryUtilsTest, GetAppClientStateMediumKey_User) {
 
 TEST(AppRegistryUtilsTest, GetAppClientStateMediumKey_Machine) {
   const TCHAR kAppGuid1[] = _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}");
-  EXPECT_STREQ(_T("HKLM\\Software\\") REG_KEY_NAME
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME
                _T("\\") PRODUCT_NAME _T("\\ClientStateMedium\\")
                _T("{F998D7E0-0CD3-434e-96B9-B8D3A295C3FB}"),
                GetAppClientStateMediumKey(true, kAppGuid1));

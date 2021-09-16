@@ -24,20 +24,20 @@ namespace omaha {
 namespace {
 
 const TCHAR* const kAppMachineClientStatePath =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 const TCHAR* const kApp2MachineClientStatePath =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{553B2D8C-E6A7-43ed-ACC9-A8BA5D34395F}\\");
 const TCHAR* const kAppUserClientStatePath =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 const TCHAR* const kApp2UserClientStatePath =
-    _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{553B2D8C-E6A7-43ed-ACC9-A8BA5D34395F}\\");
 
 const TCHAR* const kAppMachineClientStateMediumPath =
-    _T("HKLM\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientStateMedium\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 
 // Update this when new modes are added.
@@ -630,7 +630,7 @@ TEST_F(GoopdateRegistryProtectedTest,
 TEST_F(GoopdateRegistryProtectedTest,
        PromoteAppEulaAccepted_User_UpdateZero_MediumAppValueOneAndStateKey) {
   const TCHAR* const kAppUserClientStateMediumPath =
-      _T("HKCU\\Software\\") REG_KEY_NAME _T("\\") PRODUCT_NAME
+      _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
       _T("\\ClientStateMedium\\{19BE47E4-CF32-48c1-94C4-046507F6A8A6}\\");
 
   EXPECT_SUCCEEDED(RegKey::CreateKey(kAppUserClientStatePath));
