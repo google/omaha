@@ -403,13 +403,13 @@ TEST_F(ConfigManagerNoOverrideTest, RegistryKeys) {
   EXPECT_STREQ(_T("HKLM\\") OMAHA_KEY_REL _T("\\"),
                cm_->registry_update(true));
 
-  EXPECT_STREQ(_T("HKCU\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->user_registry_google());
-  EXPECT_STREQ(_T("HKLM\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->machine_registry_google());
-  EXPECT_STREQ(_T("HKCU\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->registry_google(false));
-  EXPECT_STREQ(_T("HKLM\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->registry_google(true));
 }
 
