@@ -125,8 +125,8 @@ int GetNumMsiTries() {
 
 extern const TCHAR kRegExecutable[] = _T("reg.exe");
 extern const TCHAR kSetInstallerResultTypeMsiErrorRegCmdArgs[] =
-    _T("add HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
-    _T("\\ClientState\\{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE} ")
+    _T("add \"HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("\\ClientState\\{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE}\" ")
     _T("/v InstallerResult /t REG_DWORD /d 2 /f");
 extern const TCHAR kMsiInstallerBusyExitCodeCmd[] = _T("exit 1618");
 
