@@ -39,7 +39,7 @@ The server publishes an elliptic curve field/equation and a public key curve poi
 For each request, the client assembles three components:
 
   * The message body (the update request to be sent to the server).
-  * A small random number to be used as a client nonce for freshness (at least 32 bits).
+  * A small random number to be used as a client nonce for freshness (at least 256 bits).
   * A code to identify the public key the client will use to verify this request.
 
 The client converts the public key id and nonce to a string: the public key is converted to decimal, and the nonce to hexadecimal (lowercase a-f).
