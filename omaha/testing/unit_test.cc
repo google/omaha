@@ -374,19 +374,21 @@ void CreateFiles(const TCHAR* parent_dir,
 
 HRESULT SetPolicy(const TCHAR* policy_name, DWORD value) {
   ON_SCOPE_EXIT_OBJ(*ConfigManager::Instance(),
-                    &ConfigManager::LoadGroupPolicies);
+                    &ConfigManager::LoadPolicies,
+                    true);
   return RegKey::SetValue(kRegKeyGoopdateGroupPolicy, policy_name, value);
 }
 
 HRESULT SetPolicyString(const TCHAR* policy_name, const CString& value) {
   ON_SCOPE_EXIT_OBJ(*ConfigManager::Instance(),
-                    &ConfigManager::LoadGroupPolicies);
+                    &ConfigManager::LoadPolicies,
+                    true);
   return RegKey::SetValue(kRegKeyGoopdateGroupPolicy, policy_name, value);
 }
 
 void ClearGroupPolicies() {
   RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
-  ConfigManager::Instance()->LoadGroupPolicies();
+  ConfigManager::Instance()->LoadPolicies(true);
 }
 
 }  // namespace omaha

@@ -106,6 +106,19 @@ HRESULT AppBundleStateInitialized::CreateApp(AppBundle* app_bundle,
     return hr;
   }
 
+  // For fresh installs, for User installs only, we reload the policies with the
+  // Group Policy critical section.
+  // For Machine installs, we do not reload policies for fresh installs, because
+  // there is the possibility that we are running under GPO, and because GPO
+  // takes the critical section itself, this can result in a deadlock. Also,
+  // Machine installs require Admin, and an Admin can bypass Group Policy if
+  // they wish to, so we are ok with sacrificing some accuracy in terms of
+  // policy correctness in return for not having deadlocks.
+  if (!has_reloaded_policy_managers_ && !app_bundle->is_machine()) {
+    has_reloaded_policy_managers_ =
+        SUCCEEDED(ConfigManager::Instance()->LoadPolicies(true));
+  }
+
   // When overinstalling, we want the install age for the existing install, so
   // explicitly get it here. These are the only values read from the registry
   // for installs.
@@ -141,6 +154,13 @@ HRESULT AppBundleStateInitialized::CreateInstalledApp(AppBundle* app_bundle,
   hr = AddInstalledApp(app_bundle, app_id, app);
   if (FAILED(hr)) {
     return hr;
+  }
+
+  // Updates do not run under GPO, so it is safe to reload the policies with the
+  // Group Policy critical section for both User and Machine updates.
+  if (!has_reloaded_policy_managers_) {
+    has_reloaded_policy_managers_ =
+        SUCCEEDED(ConfigManager::Instance()->LoadPolicies(true));
   }
 
   return S_OK;
@@ -191,6 +211,13 @@ HRESULT AppBundleStateInitialized::CreateAllInstalledApps(
     if (FAILED(hr)) {
       CORE_LOG(LW, (_T("[AddInstalledApp failed processing app][%s]"), app_id));
     }
+  }
+
+  // Updates do not run under GPO, so it is safe to reload the policies with the
+  // Group Policy critical section for both User and Machine updates.
+  if (!has_reloaded_policy_managers_) {
+    has_reloaded_policy_managers_ =
+        SUCCEEDED(ConfigManager::Instance()->LoadPolicies(true));
   }
 
   return S_OK;

@@ -28,7 +28,8 @@ class AppBundleStateInitialized : public AppBundleState {
   AppBundleStateInitialized()
       : AppBundleState(STATE_INITIALIZED),
         has_new_app_(false),
-        has_installed_app_(false) {}
+        has_installed_app_(false),
+        has_reloaded_policy_managers_(false) {}
   virtual ~AppBundleStateInitialized() {}
 
   virtual HRESULT Stop(AppBundle* app_bundle);
@@ -59,6 +60,8 @@ class AppBundleStateInitialized : public AppBundleState {
 
   bool has_new_app_;
   bool has_installed_app_;
+
+  bool has_reloaded_policy_managers_;
 
   DISALLOW_COPY_AND_ASSIGN(AppBundleStateInitialized);
 };
