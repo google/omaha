@@ -100,7 +100,7 @@ TEST(UnitTestHelpersTest, ClearGroupPolicies) {
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
                                    kDownloadPreferenceCacheable));
   ConfigManager* cm = ConfigManager::Instance();
-  cm->LoadGroupPolicies();
+  cm->LoadPolicies(true);
   EXPECT_STREQ(cm->GetDownloadPreferenceGroupPolicy(nullptr), _T("cacheable"));
   ClearGroupPolicies();
   EXPECT_STREQ(cm->GetDownloadPreferenceGroupPolicy(nullptr), _T(""));

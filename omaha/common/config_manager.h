@@ -78,7 +78,7 @@ class PolicyManagerInterface {
 
 class OmahaPolicyManager : public PolicyManagerInterface {
  public:
-  OmahaPolicyManager(const CString& source) : source_(source) {}
+  explicit OmahaPolicyManager(const CString& source) : source_(source) {}
 
   CString source() override { return source_; }
 
@@ -279,10 +279,17 @@ class ConfigManager {
   CPath GetPolicyResponsesDir() const;
 #endif
 
-  // Loads the Group policies from the registry and sets it up on the
-  // ConfigManager instance, which is used by the ConfigManager for subsequent
-  // config queries.
-  HRESULT LoadGroupPolicies();
+  // Loads policies for all the policy managers and sets up the policy managers
+  // in order of priority on the ConfigManager instance, which is used by the
+  // ConfigManager for subsequent config queries.
+  // This function can be called multiple times to reload policies.
+  // `should_acquire_critical_section` indicates whether the Group Policy
+  // critical section should be acquired before initializing the Group Policy
+  // manager. The caller should only set `should_acquire_critical_section` when
+  // not running under GPO, because GPO takes the critical section itself, and
+  // this can therefore result in a deadlock when this function tries to take
+  // the critical section.
+  HRESULT LoadPolicies(bool should_acquire_critical_section);
 
   // Sets the DM policies on the ConfigManager instance, which is used by the
   // ConfigManager for subsequent config queries.
@@ -466,6 +473,11 @@ class ConfigManager {
   static void DeleteInstance();
 
  private:
+  // Loads the Group policies from the registry and sets it up on the
+  // ConfigManager instance, which is used by the ConfigManager for subsequent
+  // config queries.
+  HRESULT LoadGroupPolicies(bool should_acquire_critical_section);
+
   static LLock lock_;
   static ConfigManager* config_manager_;
 

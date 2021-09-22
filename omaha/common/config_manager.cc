@@ -546,14 +546,12 @@ ConfigManager::ConfigManager()
                                       true) == 0) :
                       false;
 
-  VERIFY1(SUCCEEDED(LoadGroupPolicies()));
-  if (are_cloud_policies_preferred_) {
-    policies_.push_back(dm_policy_manager_);
-    policies_.push_back(group_policy_manager_);
-  } else {
-    policies_.push_back(group_policy_manager_);
-    policies_.push_back(dm_policy_manager_);
-  }
+  // We initialize the policy managers without taking the Group Policy critical
+  // section. Later, once we know the exact scenario that we are operating
+  // under, we may reload the policies with the critical section lock. At the
+  // moment, we reload the policies with the critical section lock for all User
+  // installs and updates, as well as all Machine updates.
+  VERIFY1(SUCCEEDED(LoadPolicies(false)));
 }
 
 CString ConfigManager::GetUserDownloadStorageDir() const {
@@ -957,7 +955,25 @@ CPath ConfigManager::GetPolicyResponsesDir() const {
 
 #endif  // defined(HAS_DEVICE_MANAGEMENT)
 
-HRESULT ConfigManager::LoadGroupPolicies() {
+HRESULT ConfigManager::LoadPolicies(bool should_acquire_critical_section) {
+  HRESULT hr = LoadGroupPolicies(should_acquire_critical_section);
+  if (FAILED(hr)) {
+    return hr;
+  }
+
+  policies_.clear();
+  if (are_cloud_policies_preferred_) {
+    policies_.push_back(dm_policy_manager_);
+    policies_.push_back(group_policy_manager_);
+  } else {
+    policies_.push_back(group_policy_manager_);
+    policies_.push_back(dm_policy_manager_);
+  }
+
+  return hr;
+}
+
+HRESULT ConfigManager::LoadGroupPolicies(bool should_acquire_critical_section) {
   CachedOmahaPolicy group_policies;
   ON_SCOPE_EXIT_OBJ(*group_policy_manager_, &OmahaPolicyManager::set_policy,
                     ByRef(group_policies));
@@ -967,16 +983,21 @@ HRESULT ConfigManager::LoadGroupPolicies() {
       MakeGuard(::LeaveCriticalPolicySection, ByRef(policy_critical_section));
 
   // The Policy critical section will only be taken if the machine is
-  // Enterprise-joined.
+  // Enterprise-joined and `should_acquire_critical_section` is true.
   if (IsEnterpriseManaged()) {
     group_policies.is_managed = true;
 
-    // We would like to call ::EnterCriticalPolicySection(TRUE) here. However,
-    // it appears that when the install is pushed via GPO, GPO takes the
-    // critical section, and we hang at the ::EnterCriticalPolicySection(TRUE)
-    // call. So, for now, we are going to just dismiss the guard.
-    guard_policy_critical_section.Dismiss();
-    // Fall through to read the policies.
+    if (should_acquire_critical_section) {
+      policy_critical_section = ::EnterCriticalPolicySection(TRUE);
+      // Not getting the policy critical section is a fatal error. So we will
+      // crash here if `policy_critical_section` is NULL.
+      if (!policy_critical_section) {
+        __debugbreak();
+      }
+    } else {
+      guard_policy_critical_section.Dismiss();
+      // Fall through to read the policies.
+    }
 
   } else {
     guard_policy_critical_section.Dismiss();
@@ -1809,7 +1830,7 @@ bool ConfigManager::ShouldVerifyPayloadAuthenticodeSignature() const {
   return disabled_in_registry == 0;
 #else
   return false;
-#endif // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
+#endif  // VERIFY_PAYLOAD_AUTHENTICODE_SIGNATURE
 }
 
 int ConfigManager::MaxCrashUploadsPerDay() const {
