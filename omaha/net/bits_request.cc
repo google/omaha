@@ -551,6 +551,7 @@ HRESULT BitsRequest::DoSend() {
   // we resume the job. There is an assumption, so far true, that calling
   // Resume on a job, the state changes right away from SUSPENDED to QUEUED.
 
+  bool job_reached_transfering_once = false;
   for (;;) {
     if (is_canceled_) {
       return GOOPDATE_E_CANCELLED;
@@ -568,6 +569,18 @@ HRESULT BitsRequest::DoSend() {
 
     switch (job_state) {
       case BG_JOB_STATE_QUEUED:
+      if (job_reached_transfering_once) {
+          // BITS moves a job from transferring to queued if the user being
+          // impersonated logs off while the job is transferring. This is not
+          // desired for system level Omaha as the job will not make progress
+          // until that same user logs back in. If this happens, let the
+          // operation fallback to other downloaders instead of blocking.
+          OPT_LOG(LW, (L"[BITS job %s moved from transferring to queued][fail "
+                       L"the job to fallback]",
+                       GuidToString(request_state_->bits_job_id)));
+          return CI_E_BITS_REQUEUED;
+
+        }
         break;
 
       case BG_JOB_STATE_CONNECTING:
@@ -581,6 +594,7 @@ HRESULT BitsRequest::DoSend() {
 
       case BG_JOB_STATE_TRANSFERRING:
         OnStateTransferring();
+        job_reached_transfering_once = true;
         break;
 
       case BG_JOB_STATE_TRANSIENT_ERROR:
