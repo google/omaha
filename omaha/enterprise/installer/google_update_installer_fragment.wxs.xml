@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-  <?define UpdateKeyPath = 'SOFTWARE\Google\Update' ?>
+  <?define UpdateKeyPath = 'SOFTWARE\$(var.CompanyName)\Update' ?>
 
   <!-- This fragment assumes machine install (ALLUSER=1). -->
 

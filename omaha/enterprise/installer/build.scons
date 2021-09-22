@@ -108,6 +108,7 @@ def _BuildSampleForTest():
 
         build_enterprise_installer.BuildEnterpriseInstaller(
             env,
+            'Google',
             product_name, product_version, product_guid,
             product_custom_params,
             product_installer_path,

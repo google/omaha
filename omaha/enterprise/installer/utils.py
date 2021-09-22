@@ -120,6 +120,7 @@ def GenerateNameBasedGUID(namespace, name):
 def GetWixCandleFlags(
     product_name, product_name_legal_identifier, msi_product_version,
     product_version, product_guid,
+    company_name=None,
     custom_action_dll_path=None,
     product_uninstaller_additional_args=None,
     msi_product_id=None,
@@ -142,6 +143,9 @@ def GetWixCandleFlags(
       '-dProductBuildYear=' + str(date.today().year),
       '-dProductGuid=' + product_guid,
       ]
+
+  if company_name:
+    flags.append('-dCompanyName=' + company_name)
 
   if custom_action_dll_path:
     flags.append('-dMsiInstallerCADll=' + custom_action_dll_path)
