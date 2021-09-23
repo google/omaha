@@ -35,7 +35,7 @@ def GenerateUpdateResponseFile(target, sources, version_list, has_x64_binaries):
     arch_requirement = 'x64'
 
   manifest_content_list = [xml_header, response_header]
-  for file_index in xrange(0, len(sources), 2):
+  for file_index in range(0, len(sources), 2):
     source_manifest_path = sources[file_index]
     binary_path = sources[file_index + 1]
     size = os.stat(os.path.abspath(binary_path)).st_size
