@@ -595,6 +595,7 @@ win_env.AppendUnique(
 
         'FULL_COMPANY_NAME_ANSI=\\"%s\\"' % _FULL_COMPANY_NAME,
         'SHORT_COMPANY_NAME_ANSI=\\"%s\\"' % _SHORT_COMPANY_NAME,
+        'PATH_COMPANY_NAME_ANSI=\\"%s\\"' % _PATH_COMPANY_NAME,
         'PRODUCT_NAME_ANSI=\\"%s\\"' % _PRODUCT_NAME,
         'COMPANY_DOMAIN_BASE_ANSI=\\"%s\\"' % _COMPANY_DOMAIN_BASE,
         'COMPANY_DOMAIN_ANSI=\\"%s\\"' % _COMPANY_DOMAIN,
@@ -610,7 +611,6 @@ win_env.AppendUnique(
             omaha_version_utils.GetUPDATE_PLUGIN_NAME()),
         'CRASH_HANDLER_NAME=_T(\\"%s\\")' %
             omaha_version_utils.GetCRASH_HANDLER_NAME(),
-        'PATH_COMPANY_NAME_ANSI=\\"%s\\"' % _PATH_COMPANY_NAME,
         ],
 
     LIBS = [
