@@ -66,7 +66,7 @@ def GenerateUpdateResponseFile(target, sources, version_list, has_x64_binaries):
     resp = manifest_content[response_body_start_index:response_body_end_index]
     resp = resp.replace('${INSTALLER_SIZE}', str(size))
     resp = resp.replace('${INSTALLER_HASH_SHA256}', hash_value)
-    resp = resp.replace('${INSTALLER_VERSION}', version_list[file_index/2])
+    resp = resp.replace('${INSTALLER_VERSION}', version_list[int(file_index/2)])
     resp = resp.replace('${ARCH_REQUIREMENT}', arch_requirement)
     manifest_content_list.append(resp)
   manifest_content_list.append(response_footer)
