@@ -91,30 +91,32 @@ def GenerateNameBasedGUID(namespace, name):
   # Generate 128 unique bits.
   mymd5 = md5.new()
   mymd5.update(namespace + name)
-  md5_hash = mymd5.digest()
+  md5_hex_digest = mymd5.hexdigest()
+  md5_hex_digits = [md5_hex_digest[x:x+2].upper()
+                    for x in range(0, len(md5_hex_digest), 2)]
 
   # Set various reserved bits to make this a valid GUID.
 
   # "Set the four most significant bits (bits 12 through 15) of the
   # time_hi_and_version field to the appropriate 4-bit version number
   # from Section 4.1.3."
-  version = ord(md5_hash[6])
+  version = int(md5_hex_digits[6], 16)
   version = 0x30 | (version & 0x0f)
 
   # "Set the two most significant bits (bits 6 and 7) of the
   # clock_seq_hi_and_reserved to zero and one, respectively."
-  clock_seq_hi_and_reserved = ord(md5_hash[8])
+  clock_seq_hi_and_reserved = int(md5_hex_digits[8], 16)
   clock_seq_hi_and_reserved = 0x80 | (clock_seq_hi_and_reserved & 0x3f)
 
   return (
-      '%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X' % (
-          ord(md5_hash[0]), ord(md5_hash[1]), ord(md5_hash[2]),
-          ord(md5_hash[3]),
-          ord(md5_hash[4]), ord(md5_hash[5]),
-          version, ord(md5_hash[7]),
-          clock_seq_hi_and_reserved, ord(md5_hash[9]),
-          ord(md5_hash[10]), ord(md5_hash[11]), ord(md5_hash[12]),
-          ord(md5_hash[13]), ord(md5_hash[14]), ord(md5_hash[15])))
+      '%s-%s-%02X%s-%02X%s-%s' % (
+          ''.join(md5_hex_digits[0:4]),
+          ''.join(md5_hex_digits[4:6]),
+          version,
+          md5_hex_digits[7],
+          clock_seq_hi_and_reserved,
+          md5_hex_digits[9],
+          ''.join(md5_hex_digits[10:])))
 
 
 def GetWixCandleFlags(
