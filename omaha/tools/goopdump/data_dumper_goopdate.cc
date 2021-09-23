@@ -364,7 +364,9 @@ void DataDumperGoopdate::DumpGoogleUpdateProcessInfo(const DumpLog& dump_log) {
     CString exe_file_name = process_entry32.szExeFile;
     exe_file_name.MakeLower();
 
-    if (exe_file_name.Find(_T("googleupdate.exe")) >= 0) {
+    CString main_exe_file_name(MAIN_EXE_BASE_NAME _T(".exe"));
+    main_exe_file_name.MakeLower();
+    if (exe_file_name.Find(main_exe_file_name) >= 0) {
       if (first) {
         first = false;
       } else {
