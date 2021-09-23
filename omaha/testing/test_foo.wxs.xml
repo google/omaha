@@ -1,5 +1,6 @@
 <?xml version='1.0'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <?define CompanyName = 'OmahaCompanyName' ?>
   <?define UpgradeCode='96E1371A-A5A1-45cc-8E67-2EF6ABDE054D' ?>
 
    <Product Id='$(var.FooProductGuid)' Name='!!! Test Foo' Language='1033'
@@ -86,11 +87,11 @@
               </Directory>
               <Component Id='FooReg' Guid='$(var.FooComponentGuidRegistry)'>
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\Clients\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\Clients\[UPDATE2_ID]'
                   Name='name' Value="test_foo"
                   Action='write' Type='string' />
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\Clients\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\Clients\[UPDATE2_ID]'
                   Name='pv' Value="$(var.FooVersion)"
                   Action='write' Type='string' />
               </Component>
@@ -98,11 +99,11 @@
                 <!-- Controls whether to notify success. -->
                 <Condition>NOT NOTIFY_FAILURE AND NOT DO_NOT_NOTIFY_SUCCESS</Condition>
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\ClientState\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\ClientState\[UPDATE2_ID]'
                   Name='InstallerResult' Value="0"
                   Action='write' Type='integer' />
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\ClientState\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\ClientState\[UPDATE2_ID]'
                   Name='InstallerError' Value="1234"
                   Action='write' Type='integer' />
               </Component>
@@ -111,7 +112,7 @@
                 <!-- Controls whether to notify success. -->
                 <Condition>REGISTER_LAUNCH_COMMAND AND NOT DO_NOT_NOTIFY_SUCCESS</Condition>
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\ClientState\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\ClientState\[UPDATE2_ID]'
                   Name='InstallerSuccessLaunchCmdLine' Value="&quot;[#test_foo]&quot;"
                   Action='write' Type='string' />
               </Component>
@@ -128,15 +129,15 @@
                 <!-- Controls whether to notify failure. -->
                 <Condition>NOTIFY_FAILURE</Condition>
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\ClientState\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\ClientState\[UPDATE2_ID]'
                   Name='InstallerResult' Value="1"
                   Action='write' Type='integer' />
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\ClientState\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\ClientState\[UPDATE2_ID]'
                   Name='InstallerError' Value="99"
                   Action='write' Type='integer' />
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\ClientState\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\ClientState\[UPDATE2_ID]'
                   Name='InstallerResultUIString' Value="&lt;b&gt;Test Foo&lt;/b&gt; installation failed because it wanted to! For more information visit &lt;a=http://labs.google.com/&gt;http://labs.google.com/&lt;/a&gt;."
                   Action='write' Type='string' />
               </Component>
@@ -144,7 +145,7 @@
                 <!-- Controls whether to write propbar. -->
                 <Condition>PROPBAR=7</Condition>
                 <RegistryValue Root='HKLM'
-                  Key='Software\OmahaCompanyName\Update\ClientState\[UPDATE2_ID]'
+                  Key='Software\$(var.CompanyName)\Update\ClientState\[UPDATE2_ID]'
                   Name='propbar' Value="7"
                   Action='write' Type='integer' />
               </Component>
