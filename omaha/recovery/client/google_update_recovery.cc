@@ -52,9 +52,9 @@ const TCHAR* const kQueryStringFormat =
 // Information about where to obtain Omaha info.
 // This must never change in Omaha.
 const TCHAR* const kRegValueProductVersion  = _T("pv");
-const TCHAR* const kRelativeGoopdateRegPath = _T("Software\\Google\\Update\\");
+const TCHAR* const kRelativeGoopdateRegPath = _T("Software\\") PATH_COMPANY_NAME _T("\\Update\\");
 const TCHAR* const kRelativeClientsGoopdateRegPath =
-    _T("Software\\Google\\Update\\Clients\\")
+    _T("Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     _T("{430FD4D0-B729-4F61-AA34-91526481799D}");
 
 // The UpdateDev registry value to override the Code Red url.
@@ -436,7 +436,7 @@ HRESULT GetDownloadTargetPath(CPath* download_target_path,
   }
 
   *download_target_path = *parent_dir;
-  *download_target_path += _T("GoogleUpdateSetup.crx3");
+  *download_target_path += MAIN_EXE_BASE_NAME _T("Setup.crx3");
   return S_OK;
 }
 
@@ -456,7 +456,7 @@ HRESULT DownloadRepairFile(const CString& download_target_path,
 
   CString url;
   HRESULT hr = GetRegStringValue(true,
-                                 _T("SOFTWARE\\Google\\UpdateDev"),
+                                 _T("SOFTWARE\\") PATH_COMPANY_NAME _T("\\UpdateDev"),
                                  kRegValueNameCodeRedUrl,
                                  &url);
   if (FAILED(hr)) {
@@ -589,7 +589,7 @@ HRESULT ValidateAndUnpackCRX(const CPath& from_crx_path,
   }
 
   CPath exe = unpack_under_path;
-  exe += _T("GoogleUpdateSetup.exe");
+  exe += MAIN_EXE_BASE_NAME _T("Setup.exe");
   if (!exe.FileExists()) {
     return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
   }

@@ -533,7 +533,7 @@ TEST(UtilsTest, AddAllowedAce) {
 
   EXPECT_SUCCEEDED(File::Copy(
       ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                      _T("GoogleUpdate.exe")),
+                      MAIN_EXE_BASE_NAME _T(".exe")),
       test_file_path,
       false));
 

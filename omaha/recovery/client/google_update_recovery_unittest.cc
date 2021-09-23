@@ -67,14 +67,14 @@ const TCHAR kDummyAppLang[] = _T("en-us");
 const TCHAR kTempDirectory[] = _T("C:\\WINDOWS\\Temp");
 
 const TCHAR kFullMachineOmahaMainKeyPath[] =
-    _T("HKLM\\Software\\Google\\Update\\");
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\");
 const TCHAR kFullUserOmahaMainKeyPath[] =
-    _T("HKCU\\Software\\Google\\Update\\");
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\");
 const TCHAR kFullMachineOmahaClientKeyPath[] =
-    _T("HKLM\\Software\\Google\\Update\\Clients\\")
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     _T("{430FD4D0-B729-4f61-AA34-91526481799D}");
 const TCHAR kFullUserOmahaClientKeyPath[] =
-    _T("HKCU\\Software\\Google\\Update\\Clients\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     _T("{430FD4D0-B729-4f61-AA34-91526481799D}");
 
 const HRESULT kDummyNoFileError = 0x80041234;
@@ -93,7 +93,7 @@ const TCHAR* const kInvalidFileUrl = _T("http://www.google.com/robots.txt");
 
 // These methods were copied from omaha/testing/omaha_unittest.cpp.
 const TCHAR kRegistryHiveOverrideRoot[] =
-    _T("HKCU\\Software\\Google\\Update\\UnitTest\\");
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\UnitTest\\");
 
 const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("https://clients2.google.com/service/check2?crx3=true&appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
 const int kExpectedUrlForDummyAppAndNoOmahaValuesLength =
@@ -740,7 +740,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedValid) {
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotSigned) {
   const CString executable_full_path(MakeTestFilepath(
-      _T("GoogleUpdate_unsigned.exe")));
+      MAIN_EXE_BASE_NAME _T("_unsigned.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_NOSIGNATURE, VerifyFileSignature(executable_full_path));
 }
@@ -748,7 +748,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotSigned) {
 // The file is signed with an old cerificate not present in the pin list.
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotTrusted) {
   const CString executable_full_path(MakeTestFilepath(
-      _T("unittest_support\\GoogleUpdate_old_signature.exe")));
+      _T("unittest_support\\") MAIN_EXE_BASE_NAME _T("_old_signature.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(GOOPDATE_E_SIGNATURE_NOT_TRUSTED_PIN,
             VerifyFileSignature(executable_full_path));
@@ -763,7 +763,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_UntrustedChain) {
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_HashFails) {
   const CString executable_full_path(MakeTestFilepath(
-      _T("unittest_support\\GoogleUpdate_corrupted.exe")));
+      _T("unittest_support\\") MAIN_EXE_BASE_NAME _T("_corrupted.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_BAD_DIGEST, VerifyFileSignature(executable_full_path));
 }
@@ -808,7 +808,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_InvalidMarkups) {
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_DATA_NOT_FOUND),
             VerifyRepairFileMarkup(MakeTestFilepath(kNoResourcesExecutable)));
 
-  const TCHAR kResourcesButNoMarkupExecutable[] = _T("GoogleUpdate.exe");
+  const TCHAR kResourcesButNoMarkupExecutable[] = MAIN_EXE_BASE_NAME _T(".exe");
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_TYPE_NOT_FOUND),
             VerifyRepairFileMarkup(MakeTestFilepath(
                 kResourcesButNoMarkupExecutable)));

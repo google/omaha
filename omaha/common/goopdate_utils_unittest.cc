@@ -1108,8 +1108,8 @@ TEST_F(GoopdateUtilsRegistryProtectedWithMachineFolderPathsTest,
   CString path = BuildGoogleUpdateExePath(true);
   CString program_files_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files_path));
-  EXPECT_STREQ(program_files_path + _T("\\") + PATH_COMPANY_NAME +
-               _T("\\") + PRODUCT_NAME + _T("\\GoogleUpdate.exe"),
+  EXPECT_STREQ(program_files_path + (_T("\\") PATH_COMPANY_NAME
+               _T("\\") PRODUCT_NAME _T("\\") MAIN_EXE_BASE_NAME _T(".exe")),
                path);
 }
 
@@ -1119,15 +1119,15 @@ TEST_F(GoopdateUtilsRegistryProtectedWithMachineFolderPathsTest,
   CString path = BuildGoogleUpdateExePath(true);
   CString program_files_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files_path));
-  EXPECT_STREQ(program_files_path + _T("\\") + PATH_COMPANY_NAME +
-               _T("\\") + PRODUCT_NAME + _T("\\GoogleUpdate.exe"),
+  EXPECT_STREQ(program_files_path + (_T("\\") PATH_COMPANY_NAME
+               _T("\\") PRODUCT_NAME _T("\\") MAIN_EXE_BASE_NAME _T(".exe")),
                path);
 
   // Test when the key exists but the value doesn't.
   ASSERT_SUCCEEDED(RegKey::CreateKey(MACHINE_REG_CLIENTS_GOOPDATE));
   path = BuildGoogleUpdateExePath(true);
-  EXPECT_STREQ(program_files_path + _T("\\") + PATH_COMPANY_NAME +
-               _T("\\") + PRODUCT_NAME + _T("\\GoogleUpdate.exe"),
+  EXPECT_STREQ(program_files_path + (_T("\\") PATH_COMPANY_NAME
+               _T("\\") PRODUCT_NAME _T("\\") MAIN_EXE_BASE_NAME _T(".exe")),
                path);
 }
 
@@ -1144,7 +1144,7 @@ TEST_F(GoopdateUtilsRegistryProtectedWithUserFolderPathsTest,
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_LOCAL_APPDATA, &user_appdata));
   CString expected_path;
   expected_path.Format(_T("%s\\") PATH_COMPANY_NAME _T("\\")
-                       PRODUCT_NAME _T("\\GoogleUpdate.exe"),
+                       PRODUCT_NAME _T("\\") MAIN_EXE_BASE_NAME _T(".exe"),
                        user_appdata);
   EXPECT_STREQ(expected_path, path);
 }
@@ -1155,7 +1155,7 @@ TEST_F(GoopdateUtilsRegistryProtectedWithUserFolderPathsTest,
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_LOCAL_APPDATA, &user_appdata));
   CString expected_path;
   expected_path.Format(_T("%s\\") PATH_COMPANY_NAME _T("\\")
-                       PRODUCT_NAME _T("\\GoogleUpdate.exe"),
+                       PRODUCT_NAME _T("\\") MAIN_EXE_BASE_NAME _T(".exe"),
                        user_appdata);
 
   // Test when the key doesn't exist.

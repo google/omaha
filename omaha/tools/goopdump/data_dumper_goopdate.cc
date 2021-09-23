@@ -204,7 +204,7 @@ HRESULT DataDumperGoopdate::GetDllDir(bool is_machine, CString* dll_path) {
 }
 
 void DataDumperGoopdate::DumpGoogleUpdateIniFile(const DumpLog& dump_log) {
-  DumpHeader header(dump_log, _T("GoogleUpdate.ini File Contents"));
+  DumpHeader header(dump_log, MAIN_EXE_BASE_NAME _T(".ini File Contents"));
   DumpFileContents(dump_log, _T("c:\\googleupdate.ini"), 0);
 }
 
@@ -229,7 +229,7 @@ void DataDumperGoopdate::DumpHostsFile(const DumpLog& dump_log) {
 void DataDumperGoopdate::DumpUpdateDevKeys(const DumpLog& dump_log) {
   DumpHeader header(dump_log, _T("UpdateDev Keys"));
 
-  DumpRegistryKeyData(dump_log, _T("HKLM\\Software\\Google\\UpdateDev"));
+  DumpRegistryKeyData(dump_log, _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\UpdateDev"));
 }
 
 void DataDumperGoopdate::DumpLogFile(const DumpLog& dump_log) {
@@ -340,7 +340,7 @@ void DataDumperGoopdate::DumpEventLog(const DumpLog& dump_log) {
 }
 
 void DataDumperGoopdate::DumpGoogleUpdateProcessInfo(const DumpLog& dump_log) {
-  DumpHeader header(dump_log, _T("GoogleUpdate.exe Process Info"));
+  DumpHeader header(dump_log, MAIN_EXE_BASE_NAME _T(".exe Process Info"));
 
   EnableDebugPrivilege();
 

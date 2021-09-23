@@ -46,7 +46,8 @@ namespace omaha {
 
 // Full company name.
 // FULL_COMPANY_NAME == "Google LLC"
-const TCHAR* const kFullCompanyName = _T(FULL_COMPANY_NAME_ANSI);
+#define FULL_COMPANY_NAME _T(FULL_COMPANY_NAME_ANSI)
+const TCHAR* const kFullCompanyName = FULL_COMPANY_NAME;
 
 // Short company name (for use in messages and to combine with product name).
 // Does not include "Inc." and similar formal parts of the company name.

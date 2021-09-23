@@ -77,7 +77,7 @@ class BreakpadConnection {
 
     if (!eh_->IsOutOfProcess()) {
       _tprintf(_T("*** ExceptionHandler tried to run in-process!  Aborting.")
-               _T(" (Check that GoogleCrashHandler.exe is running.)\n"));
+               _T(" (Check that ") CRASH_HANDLER_NAME _T(".exe is running.)\n"));
       Disconnect();
       return E_UNEXPECTED;
     }
