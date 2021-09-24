@@ -49,7 +49,7 @@ def OmahaCertificateTag(env, target, source):
 
   certificate_tag = ('"' + env['ENV']['GOROOT'] + '/bin/go.exe' + '"' +
                      ' run ' +
-                     '$MAIN_DIR/../common/certificate_tag/certificate_tag.go')
+                     '"$MAIN_DIR/../common/certificate_tag/certificate_tag.go"')
   magic_bytes = 'Gact2.0Omaha'
   padded_length = len(magic_bytes) + 2 + 8192
   certificate_tag_cmd = env.Command(
@@ -89,7 +89,7 @@ def OmahaCertificateTagForTesting(env,
 
   certificate_tag = ('"' + env['ENV']['GOROOT'] + '/bin/go.exe' + '"' +
                      ' run ' +
-                     '$MAIN_DIR/../common/certificate_tag/certificate_tag.go')
+                     '"$MAIN_DIR/../common/certificate_tag/certificate_tag.go"')
   if magic_bytes is None:
     magic_bytes = 'Gact2.0Omaha'
   if tag_length is None:
@@ -129,8 +129,7 @@ def OmahaTagExe(env, target, source, tag):
   tag_cmd = env.Command(
       target=target,
       source=source,
-      action=tag_exe + ' $SOURCES $TARGET ' +
-      '%s append' % tag,
+      action='"%s" $SOURCES $TARGET %s append' % (tag_exe, tag),
   )
 
   return tag_cmd
@@ -536,7 +535,7 @@ def CompileProtoBuf(env, input_proto_files):
   Returns:
     Output node list of generated .cc files.
   """
-  proto_compiler_path = '%s/protoc.exe' % os.getenv('OMAHA_PROTOBUF_BIN_DIR',
+  proto_compiler_path = '"%s/protoc.exe"' % os.getenv('OMAHA_PROTOBUF_BIN_DIR',
                                                     '$OBJ_ROOT/base/Default')
   proto_path = env['PROTO_PATH']
   cpp_out = env['CPP_OUT']
@@ -545,10 +544,10 @@ def CompileProtoBuf(env, input_proto_files):
              for base in [RelativePath(in_file, proto_path)
                           for in_file in input_proto_files]
              for ext in ('.pb.cc', '.pb.h')]
-  proto_arguments = (' --proto_path=%s --cpp_out=%s %s ' %
+  proto_arguments = (' --proto_path="%s" --cpp_out="%s" %s ' %
                      (proto_path,
                       cpp_out,
-                      ' '.join(input_proto_files)))
+                      ' '.join('"{0}"'.format(w) for w in input_proto_files)))
   proto_cmd_line = proto_compiler_path + proto_arguments
   compile_proto_buf = env.Command(
       target=targets,
