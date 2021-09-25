@@ -14,6 +14,7 @@
 // ========================================================================
 
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "omaha/base/app_util.h"
@@ -174,74 +175,151 @@ class SetupFilesTest : public testing::Test {
     EXPECT_SUCCEEDED(FindFiles(version_path, _T("*.*"), &files));
     ASSERT_EQ(kExpectedFilesReturnedByFindFiles, files.size());
     int file_index = kExtraFilesReturnedByFindFiles;
-    EXPECT_STREQ(kCrashHandlerFileName, files[file_index++]);
-    EXPECT_STREQ(kCrashHandler64FileName, files[file_index++]);
-    EXPECT_STREQ(kOmahaShellFileName, files[file_index++]);
-    EXPECT_STREQ(kOmahaBrokerFileName, files[file_index++]);
-    EXPECT_STREQ(kOmahaCOMRegisterShell64, files[file_index++]);
-    EXPECT_STREQ(kOmahaCoreFileName, files[file_index++]);
-    EXPECT_STREQ(kOmahaOnDemandFileName, files[file_index++]);
-    EXPECT_STREQ(kOmahaMetainstallerFileName, files[file_index++]);
-    EXPECT_STREQ(kOmahaDllName, files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_am.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ar.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_bg.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_bn.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ca.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_cs.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_da.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_de.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_el.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_en-GB.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_en.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_es-419.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_es.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_et.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_fa.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_fi.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_fil.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_fr.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_gu.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_hi.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_hr.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_hu.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_id.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_is.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_it.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_iw.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ja.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_kn.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ko.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_lt.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_lv.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ml.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_mr.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ms.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_nl.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_no.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_pl.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_pt-BR.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_pt-PT.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ro.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ru.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_sk.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_sl.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_sr.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_sv.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_sw.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ta.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_te.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_th.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_tr.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_uk.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_ur.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_vi.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_zh-CN.dll"), files[file_index++]);
-    EXPECT_STREQ(_T("goopdateres_zh-TW.dll"), files[file_index++]);
-    EXPECT_STREQ(kPSFileNameMachine, files[file_index++]);
-    EXPECT_STREQ(kPSFileNameMachine64, files[file_index++]);
-    EXPECT_STREQ(kPSFileNameUser, files[file_index++]);
-    EXPECT_STREQ(kPSFileNameUser64, files[file_index++]);
+
+    std::set<CString> extra_files;
+    for (int i = file_index; i < kExpectedFilesReturnedByFindFiles; ++i) {
+      extra_files.insert(files[i]);
+    }
+    EXPECT_EQ(
+        extra_files.size(),
+        kExpectedFilesReturnedByFindFiles - kExtraFilesReturnedByFindFiles);
+
+    EXPECT_NE(
+        extra_files.find(kCrashHandlerFileName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kCrashHandler64FileName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kOmahaShellFileName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kOmahaBrokerFileName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kOmahaCOMRegisterShell64), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kOmahaCoreFileName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kOmahaOnDemandFileName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kOmahaMetainstallerFileName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kOmahaDllName), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_am.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ar.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_bg.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_bn.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ca.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_cs.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_da.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_de.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_el.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_en-GB.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_en.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_es-419.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_es.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_et.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_fa.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_fi.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_fil.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_fr.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_gu.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_hi.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_hr.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_hu.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_id.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_is.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_it.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_iw.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ja.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_kn.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ko.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_lt.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_lv.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ml.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_mr.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ms.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_nl.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_no.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_pl.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_pt-BR.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_pt-PT.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ro.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ru.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_sk.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_sl.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_sr.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_sv.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_sw.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ta.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_te.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_th.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_tr.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_uk.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_ur.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_vi.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_zh-CN.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(_T("goopdateres_zh-TW.dll")), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kPSFileNameMachine), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kPSFileNameMachine64), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kPSFileNameUser), extra_files.end());
+    EXPECT_NE(
+        extra_files.find(kPSFileNameUser64), extra_files.end());
 
     EXPECT_SUCCEEDED(DeleteDirectory(version_path));
   }
