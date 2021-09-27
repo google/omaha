@@ -1,9 +1,5 @@
 @echo off
 
-:: Hammer does not need this variable but the unit
-:: tests do.
-set OMAHA_PSEXEC_DIR=%ProgramFiles(x86)%\pstools
-
 setlocal
 
 rem -- Set all environment variables used by Hammer and Omaha. --
@@ -45,48 +41,89 @@ goto set_env_variables
 
 :: Change these variables to match the local build environment.
 
+:: Hammer does not need this variable but the unit tests do.
+if not defined OMAHA_PSEXEC_DIR (
+  set "OMAHA_PSEXEC_DIR=%ProgramFiles(x86)%\pstools"
+)
+echo OMAHA_PSEXEC_DIR: %OMAHA_PSEXEC_DIR%
+
 :: Directory where the Go programming language toolchain is installed.
-set GOROOT=C:\go
+if not defined GOROOT (
+  set "GOROOT=C:\go"
+)
+echo GOROOT: %GOROOT%
 
 :: This directory is needed to find protoc.exe, which is the protocol buffer
 :: compiler. From the release page https://github.com/google/protobuf/releases,
 :: download the zip file protoc-$VERSION-win32.zip. It contains the protoc
 :: binary. Unzip the contents under C:\protobuf.
-set OMAHA_PROTOBUF_BIN_DIR=C:\protobuf\bin
+if not defined OMAHA_PROTOBUF_BIN_DIR (
+  set OMAHA_PROTOBUF_BIN_DIR=C:\protobuf\bin
+)
+echo OMAHA_PROTOBUF_BIN_DIR: %OMAHA_PROTOBUF_BIN_DIR%
 
 :: This directory is needed to find the protocol buffer source files. From the
 :: release page https://github.com/google/protobuf/releases, download the zip
 :: file protobuf-cpp-$VERSION.zip. Unzip the "src" sub-directory contents to
 :: C:\protobuf\src.
-set OMAHA_PROTOBUF_SRC_DIR=C:\protobuf\src
+if not defined OMAHA_PROTOBUF_SRC_DIR (
+  set OMAHA_PROTOBUF_SRC_DIR=C:\protobuf\src
+)
+echo OMAHA_PROTOBUF_SRC_DIR: %OMAHA_PROTOBUF_SRC_DIR%
 
 :: Directory where Python (python.exe) is installed.
-set OMAHA_PYTHON_DIR=C:\Python27
+if not defined OMAHA_PYTHON_DIR (
+  set OMAHA_PYTHON_DIR=C:\Python27
+)
+echo OMAHA_PYTHON_DIR: %OMAHA_PYTHON_DIR%
 
 :: Directory in WiX where candle.exe and light.exe are installed.
-set OMAHA_WIX_DIR=%WIX%\bin
+if not defined OMAHA_WIX_DIR (
+  set "OMAHA_WIX_DIR=%WIX%\bin"
+)
+echo OMAHA_WIX_DIR: %OMAHA_WIX_DIR%
 
 :: Root directory of the WTL installation.
-set OMAHA_WTL_DIR=C:\wtl\files
+if not defined OMAHA_WTL_DIR (
+  set OMAHA_WTL_DIR=C:\wtl\files
+)
+echo OMAHA_WTL_DIR: %OMAHA_WTL_DIR%
 
-set OMAHA_PLATFORM_SDK_DIR=%WindowsSdkDir%\
-set OMAHA_WINDOWS_SDK_10_0_VERSION=%WindowsSDKVersion:~0,-1%
+if not defined OMAHA_PLATFORM_SDK_DIR (
+  set "OMAHA_PLATFORM_SDK_DIR=%WindowsSdkDir%\"
+)
+echo OMAHA_PLATFORM_SDK_DIR: %OMAHA_PLATFORM_SDK_DIR%
+
+if not defined OMAHA_WINDOWS_SDK_10_0_VERSION (
+  set "OMAHA_WINDOWS_SDK_10_0_VERSION=%WindowsSDKVersion:~0,-1%"
+)
+echo OMAHA_WINDOWS_SDK_10_0_VERSION: %OMAHA_WINDOWS_SDK_10_0_VERSION%
 
 :: Directory which includes the sign.exe tool for Authenticode signing.
-set OMAHA_SIGNTOOL_SDK_DIR="%WindowsSdkVerBinPath%\x86"
-set PYTHONPATH=%OMAHA_PYTHON_DIR%
+if not defined OMAHA_SIGNTOOL_SDK_DIR (
+  set OMAHA_SIGNTOOL_SDK_DIR="%WindowsSdkVerBinPath%\x86"
+)
+echo OMAHA_SIGNTOOL_SDK_DIR: %OMAHA_SIGNTOOL_SDK_DIR%
 
 :: Directory of Scons (http://www.scons.org/).
-set SCONS_DIR=C:\Python27\Lib\site-packages\scons-1.3.1
+if not defined SCONS_DIR (
+  set "SCONS_DIR=%OMAHA_PYTHON_DIR%\scons-1.3.1"
+)
+echo SCONS_DIR: %SCONS_DIR%
 
 :: Directory of the Google's Software Construction Toolkit.
-set SCT_DIR=C:\swtoolkit
+if not defined SCT_DIR (
+  set SCT_DIR=C:\swtoolkit
+)
+echo SCT_DIR: %SCT_DIR%
 
-set PROXY_CLSID_TARGET=%~dp0proxy_clsids.txt
-set CUSTOMIZATION_UT_TARGET=%~dp0common\omaha_customization_proxy_clsid.h
+set "PROXY_CLSID_TARGET=%~dp0proxy_clsids.txt"
+set "CUSTOMIZATION_UT_TARGET=%~dp0common\omaha_customization_proxy_clsid.h"
 
 rem Force Hammer to use Python 2.7
 set PYTHON_TO_USE=python_27
+set "PYTHONPATH=%OMAHA_PYTHON_DIR%"
+
 call "%SCT_DIR%\hammer.bat" %*
 
 if /i {%1} == {-c} (
