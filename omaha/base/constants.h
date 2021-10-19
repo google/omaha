@@ -300,6 +300,9 @@ const TCHAR* const kRegValueNameDeviceManagementUrl = _T("DeviceManagementUrl");
 // The values below can be overriden in unofficial builds.
 const TCHAR* const kRegValueNameWindowsInstalling = _T("WindowsInstalling");
 
+// Allows Omaha to log to %ALLUSERSPROFILE%\Google\Update\Log\GoogleUpdate.log.
+const TCHAR* const kRegValueIsEnabledLogToFile    = _T("IsEnabledLogToFile");
+
 // Allows Omaha to log events in the Windows Event Log. This is
 // a DWORD value 0: Log nothing, 1: Log warnings and errors, 2: Log everything.
 const TCHAR* const kRegValueEventLogLevel      = _T("LogEventLevel");

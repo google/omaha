@@ -58,7 +58,7 @@ namespace omaha {
 
 #ifdef _DEBUG
 #define kDefaultMaxLogFileSize          0xFFFFFFFF  // 4GB
-#define kDefaultLogToFile               1
+#define kDefaultLogToFile               0
 #define kDefaultLogToOutputDebug        1
 #define kDefaultLogLevel                L3
 #else
@@ -213,6 +213,7 @@ class LogWriter {
  protected:
   LogWriter();
   virtual void Cleanup();
+
  public:
   virtual ~LogWriter();
 
@@ -367,6 +368,7 @@ class Logging {
   const CString& proc_name() const { return proc_name_; }
 
   bool IsCategoryEnabledForBuffering(LogCategory cat);
+
  private:
   bool InternalInitialize();
   void InternalLogMessageMaskedVA(DWORD writer_mask,
@@ -409,7 +411,6 @@ class Logging {
   CString GetAltConfigurationFilePath() const;
 
  public:
-
   // Passes the messages along to other OutputMessage()
   void OutputMessage(DWORD writer_mask, LogCategory cat, LogLevel level,
                      const wchar_t* msg1, const wchar_t* msg2);
@@ -421,7 +422,6 @@ class Logging {
   void OutputMessage(DWORD writer_mask, const OutputInfo* output_info);
 
  private:
-
   CategoryInfo category_list_[LC_MAX_CAT];
 
   // Checks if logging is initialized.
