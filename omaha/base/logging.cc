@@ -300,6 +300,8 @@ void Logging::UpdateCatAndLevel(const wchar_t* cat_name, LogCategory cat) {
 }
 
 void Logging::ReadLoggingSettings() {
+  log_to_file_ = IsEnabledLogToFile();
+
   CString config_file = GetCurrentConfigurationFilePath();
   if (!config_file.IsEmpty()) {
     logging_enabled_ = ::GetPrivateProfileInt(
@@ -313,8 +315,6 @@ void Logging::ReadLoggingSettings() {
         kConfigAttrShowTime,
         kDefaultShowTime,
         config_file) == 0 ? false : true;
-
-    log_to_file_ = IsEnabledLogToFile();
 
     log_to_debug_out_ = ::GetPrivateProfileInt(
         kConfigSectionLoggingSettings,
@@ -330,7 +330,6 @@ void Logging::ReadLoggingSettings() {
   } else {
     logging_enabled_ = kDefaultLoggingEnabled;
     show_time_ = kDefaultShowTime;
-    log_to_file_ = kDefaultLogToFile;
     log_to_debug_out_ = kDefaultLogToOutputDebug;
     append_to_file_ = kDefaultAppendToFile;
   }
