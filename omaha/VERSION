@@ -4,5 +4,5 @@
 # REMEMBER TO INCREMENT BUILD BY TWO! BUILD SHOULD ALWAYS BE ODD!
 version_major = 1    # 1-65535
 version_minor = 3    # 0-65535
-version_build = 99   # 1-65535
-version_patch = 101    # 0-65535
+version_build = 36   # 1-65535
+version_patch = 111    # 0-65535
