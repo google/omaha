@@ -1254,6 +1254,8 @@ TEST_P(InstallManagerTest, InstallDir_ReadOnlyFiles) {
   FakeGLock fake_glock;
   InstallManager install_manager(&fake_glock, IsMachine());
 
+  ::Sleep(10);
+
   EXPECT_TRUE(File::Exists(install_dir));
   EXPECT_TRUE(::PathIsDirectoryEmpty(install_dir));
 
