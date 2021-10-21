@@ -65,9 +65,11 @@ TEST(OmahaCustomizationTest, Constants_BuildFiles) {
   EXPECT_TRUE(::IsEqualGUID(kProxyClsidIsUserGuid,
                             kActualProxyClsidIsUserGuid));
 
+#ifdef GOOGLE_UPDATE_BUILD
   // Primary omaha_version_utils values.
-  EXPECT_STREQ(_T("np") SHORT_COMPANY_NAME _T("OneClick"), ONECLICK_PLUGIN_NAME);
-  EXPECT_STREQ(_T("np") SHORT_COMPANY_NAME _T("Update"), UPDATE_PLUGIN_NAME);
+  EXPECT_STREQ(_T("npGoogleOneClick"), ONECLICK_PLUGIN_NAME);
+  EXPECT_STREQ(_T("npGoogleUpdate"), UPDATE_PLUGIN_NAME);
+#endif  // GOOGLE_UPDATE_BUILD
 }
 
 TEST(OmahaCustomizationTest, Constants_Names) {
