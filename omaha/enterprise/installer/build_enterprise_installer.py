@@ -34,6 +34,7 @@ import enterprise.installer.utils as ei_utils
 
 def BuildGoogleUpdateFragment(env,
                               metainstaller_path,
+                              company_name,
                               product_name,
                               product_version,
                               product_guid,
@@ -48,6 +49,7 @@ def BuildGoogleUpdateFragment(env,
   Args:
     env: environment to build with
     metainstaller_path: path to the Omaha metainstaller to include
+    company_name: name of the company the fragment is being built for
     product_name: name of the product the fragment is being built for
     product_version: product version to be installed
     product_guid: Omaha application ID of the product the fragment is being
@@ -81,6 +83,7 @@ def BuildGoogleUpdateFragment(env,
       msi_product_version,
       product_version,
       '"%s"' % product_guid,
+      '"%s"' % company_name,
       product_custom_params=product_custom_params,
       metainstaller_path=str(env.File(metainstaller_path).abspath))
 
@@ -225,6 +228,7 @@ def _BuildMsiForExe(env,
 
 
 def BuildEnterpriseInstaller(env,
+                             company_name,
                              product_name,
                              product_version,
                              product_guid,
@@ -245,6 +249,7 @@ def BuildEnterpriseInstaller(env,
 
   Args:
     env: environment to build with
+    company_name: name of the company for whom the product is being built
     product_name: name of the product being built
     product_version: product version to be installed
     product_guid: product's Omaha application ID
@@ -280,6 +285,7 @@ def BuildEnterpriseInstaller(env,
   google_update_wixobj_output = BuildGoogleUpdateFragment(
       env,
       metainstaller_path,
+      company_name,
       product_name,
       product_version,
       product_guid,
