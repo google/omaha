@@ -52,9 +52,9 @@ namespace omaha {
 namespace {
 
 // Private object namespaces for Vista processes.
-const TCHAR* const kGoopdateBoundaryDescriptor = _T("GoogleUpdate_BD");
-const TCHAR* const kGoopdatePrivateNamespace = _T("GoogleUpdate");
-const TCHAR* const kGoopdatePrivateNamespacePrefix = _T("GoogleUpdate\\");
+const TCHAR* const kGoopdateBoundaryDescriptor = MAIN_EXE_BASE_NAME _T("_BD");
+const TCHAR* const kGoopdatePrivateNamespace = MAIN_EXE_BASE_NAME;
+const TCHAR* const kGoopdatePrivateNamespacePrefix = MAIN_EXE_BASE_NAME _T("\\");
 
 // Helper for IsPrivateNamespaceAvailable().
 // For simplicity, the handles opened here are leaked. We need these until

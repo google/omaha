@@ -740,7 +740,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_SignedValid) {
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotSigned) {
   const CString executable_full_path(MakeTestFilepath(
-      _T("GoogleUpdate_unsigned.exe")));
+      MAIN_EXE_BASE_NAME _T("_unsigned.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_NOSIGNATURE, VerifyFileSignature(executable_full_path));
 }
@@ -748,7 +748,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotSigned) {
 // The file is signed with an old cerificate not present in the pin list.
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_NotTrusted) {
   const CString executable_full_path(MakeTestFilepath(
-      _T("unittest_support\\GoogleUpdate_old_signature.exe")));
+      _T("unittest_support\\") MAIN_EXE_BASE_NAME _T("_old_signature.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(GOOPDATE_E_SIGNATURE_NOT_TRUSTED_PIN,
             VerifyFileSignature(executable_full_path));
@@ -763,7 +763,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_UntrustedChain) {
 
 TEST_F(GoogleUpdateRecoveryTest, VerifyFileSignature_HashFails) {
   const CString executable_full_path(MakeTestFilepath(
-      _T("unittest_support\\GoogleUpdate_corrupted.exe")));
+      _T("unittest_support\\") MAIN_EXE_BASE_NAME _T("_corrupted.exe")));
   EXPECT_TRUE(File::Exists(executable_full_path));
   EXPECT_EQ(TRUST_E_BAD_DIGEST, VerifyFileSignature(executable_full_path));
 }
@@ -808,7 +808,7 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_InvalidMarkups) {
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_DATA_NOT_FOUND),
             VerifyRepairFileMarkup(MakeTestFilepath(kNoResourcesExecutable)));
 
-  const TCHAR kResourcesButNoMarkupExecutable[] = _T("GoogleUpdate.exe");
+  const TCHAR kResourcesButNoMarkupExecutable[] = MAIN_EXE_BASE_NAME _T(".exe");
   EXPECT_EQ(HRESULT_FROM_WIN32(ERROR_RESOURCE_TYPE_NOT_FOUND),
             VerifyRepairFileMarkup(MakeTestFilepath(
                 kResourcesButNoMarkupExecutable)));

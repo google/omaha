@@ -830,7 +830,7 @@ HRESULT Setup::WaitForOtherInstancesToExit(const Pids& pids,
       SETUP_LOG(LE, (_T("[::WaitForMultipleObjects failed][%u]"), error));
       hr = HRESULT_FROM_WIN32(error);
     } else if (WAIT_OBJECT_0 != res) {
-      OPT_LOG(LEVEL_ERROR, (_T("[Other GoogleUpdate.exe instances failed to ")
+      OPT_LOG(LEVEL_ERROR, (_T("[Other ") MAIN_EXE_BASE_NAME _T(".exe instances failed to ")
                             _T("shutdown in time][%u]"), res));
 
       extra_code1_ = COMMANDLINE_MODE_UNKNOWN;

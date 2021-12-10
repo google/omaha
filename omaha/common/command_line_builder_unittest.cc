@@ -224,16 +224,16 @@ TEST(CommandLineBuilder, BuildUpdateWithSessionId) {
 // The /update builder works when not used with GoogleUpdate.exe.
 TEST(CommandLineBuilder, BuildUpdateAndGetCommandLineWithNonGoogleUpdateExe) {
   CommandLineBuilder builder(COMMANDLINE_MODE_UPDATE);
-  CString cmd_line = builder.GetCommandLine(_T("C:\\GoogleUpdateSetup_en.exe"));
-  EXPECT_STREQ(_T("\"C:\\GoogleUpdateSetup_en.exe\" /update"), cmd_line);
+  CString cmd_line = builder.GetCommandLine(_T("C:\\") MAIN_EXE_BASE_NAME _T("Setup_en.exe"));
+  EXPECT_STREQ(_T("\"C:\\") MAIN_EXE_BASE_NAME _T("Setup_en.exe\" /update"), cmd_line);
 }
 
 // The /update builder should not be used with GoogleUpdate.exe directly.
 TEST(CommandLineBuilder, BuildUpdateAndGetCommandLineWithGoogleUpdateExe) {
   CommandLineBuilder builder(COMMANDLINE_MODE_UPDATE);
   ExpectAsserts expect_asserts;
-  CString cmd_line = builder.GetCommandLine(_T("C:\\GoogleUpdate.exe"));
-  EXPECT_STREQ(_T("\"C:\\GoogleUpdate.exe\" /update"), cmd_line);
+  CString cmd_line = builder.GetCommandLine(_T("C:\\") MAIN_EXE_BASE_NAME _T(".exe"));
+  EXPECT_STREQ(_T("\"C:\\") MAIN_EXE_BASE_NAME _T(".exe\" /update"), cmd_line);
 }
 
 TEST(CommandLineBuilder, BuildComServer) {

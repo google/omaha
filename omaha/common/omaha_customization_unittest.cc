@@ -103,16 +103,16 @@ TEST(OmahaCustomizationTest, Constants_Names) {
 }
 
 TEST(OmahaCustomizationTest, Constants_Filenames) {
-  EXPECT_STREQ(_T("GoogleUpdate.exe"), kOmahaShellFileName);
-  EXPECT_STREQ(_T("GoogleCrashHandler.exe"), kCrashHandlerFileName);
-  EXPECT_STREQ(_T("GoogleCrashHandler64.exe"), kCrashHandler64FileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T(".exe"), kOmahaShellFileName);
+  EXPECT_STREQ(CRASH_HANDLER_NAME _T(".exe"), kCrashHandlerFileName);
+  EXPECT_STREQ(CRASH_HANDLER_NAME _T("64.exe"), kCrashHandler64FileName);
   EXPECT_STREQ(_T("goopdate.dll"), kOmahaDllName);
   EXPECT_STREQ(_T("goopdateres_%s.dll"), kOmahaResourceDllNameFormat);
-  EXPECT_STREQ(_T("GoogleUpdateBroker.exe"), kOmahaBrokerFileName);
-  EXPECT_STREQ(_T("GoogleUpdateCore.exe"), kOmahaCoreFileName);
-  EXPECT_STREQ(_T("GoogleUpdateOnDemand.exe"), kOmahaOnDemandFileName);
-  EXPECT_STREQ(_T("GoogleUpdateSetup.exe"), kOmahaMetainstallerFileName);
-  EXPECT_STREQ(_T("GoogleUpdateComRegisterShell64.exe"),
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T("Broker.exe"), kOmahaBrokerFileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T("Core.exe"), kOmahaCoreFileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T("OnDemand.exe"), kOmahaOnDemandFileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T("Setup.exe"), kOmahaMetainstallerFileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T("ComRegisterShell64.exe"),
                kOmahaCOMRegisterShell64);
   EXPECT_STREQ(_T("psmachine.dll"), kPSFileNameMachine);
   EXPECT_STREQ(_T("psmachine_64.dll"), kPSFileNameMachine64);
@@ -238,8 +238,8 @@ TEST(OmahaCustomizationTest, Constants_Debug) {
 }
 
 TEST(OmahaCustomizationTest, Constants_Logging) {
-  EXPECT_STREQ(_T("GoogleUpdate.ini"), kLogConfigFileName);
-  EXPECT_STREQ(_T("GoogleUpdate.log"), kDefaultLogFileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T(".ini"), kLogConfigFileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T(".log"), kDefaultLogFileName);
 }
 
 // These should not change during customization.
@@ -286,7 +286,7 @@ TEST(OmahaCustomizationTest, Constants_Services) {
   EXPECT_GU_STREQ(_T("gupdate"), kServicePrefix);
   EXPECT_GU_STREQ(_T("gupdatem"), kMediumServicePrefix);
 
-  EXPECT_STREQ(_T("GoogleUpdate.exe"), kServiceFileName);
+  EXPECT_STREQ(MAIN_EXE_BASE_NAME _T(".exe"), kServiceFileName);
 }
 
 TEST(OmahaCustomizationTest, Constants_ScheduledTasks) {

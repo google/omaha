@@ -149,7 +149,7 @@ TEST_F(MsiTagExtractorTest, NoTagString) {
 
 TEST_F(MsiTagExtractorTest, NoTag) {
   // The original MSI is in parent folder.
-  std::wstring tagged_msi(GetMsiFilePath(_T("..\\GoogleUpdateHelper.msi")));
+  std::wstring tagged_msi(GetMsiFilePath(_T("..\\") MAIN_EXE_BASE_NAME _T("Helper.msi")));
   custom_action::MsiTagExtractor tag_extractor;
   EXPECT_FALSE(tag_extractor.ReadTagFromFile(tagged_msi.c_str()));
 }
