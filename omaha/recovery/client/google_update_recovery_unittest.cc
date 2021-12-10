@@ -67,14 +67,14 @@ const TCHAR kDummyAppLang[] = _T("en-us");
 const TCHAR kTempDirectory[] = _T("C:\\WINDOWS\\Temp");
 
 const TCHAR kFullMachineOmahaMainKeyPath[] =
-    _T("HKLM\\Software\\Google\\Update\\");
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\");
 const TCHAR kFullUserOmahaMainKeyPath[] =
-    _T("HKCU\\Software\\Google\\Update\\");
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\");
 const TCHAR kFullMachineOmahaClientKeyPath[] =
-    _T("HKLM\\Software\\Google\\Update\\Clients\\")
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     _T("{430FD4D0-B729-4f61-AA34-91526481799D}");
 const TCHAR kFullUserOmahaClientKeyPath[] =
-    _T("HKCU\\Software\\Google\\Update\\Clients\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     _T("{430FD4D0-B729-4f61-AA34-91526481799D}");
 
 const HRESULT kDummyNoFileError = 0x80041234;
@@ -93,7 +93,7 @@ const TCHAR* const kInvalidFileUrl = _T("http://www.google.com/robots.txt");
 
 // These methods were copied from omaha/testing/omaha_unittest.cpp.
 const TCHAR kRegistryHiveOverrideRoot[] =
-    _T("HKCU\\Software\\Google\\Update\\UnitTest\\");
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\UnitTest\\");
 
 const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("https://clients2.google.com/service/check2?crx3=true&appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
 const int kExpectedUrlForDummyAppAndNoOmahaValuesLength =
