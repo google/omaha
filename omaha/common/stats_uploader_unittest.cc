@@ -125,7 +125,7 @@ class StatsUploaderTest : public testing::Test {
 };
 
 const TCHAR StatsUploaderTest::key_name_[] =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME
     _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\");
 const TCHAR StatsUploaderTest::metric_name_[] =  _T("test_bool");
 
@@ -204,10 +204,10 @@ TEST_F(StatsUploaderTest, AggregateAndReportMetrics) {
 
 TEST_F(StatsUploaderTest, ResetPersistentMetricsTest) {
   const TCHAR* keys[] = {
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Timings"),  // NOLINT
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Counts"),   // NOLINT
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Integers"), // NOLINT
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Booleans"), // NOLINT
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Timings"),  // NOLINT
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Counts"),   // NOLINT
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Integers"), // NOLINT
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\UsageStats\\Daily\\Booleans"), // NOLINT
   };
   EXPECT_HRESULT_SUCCEEDED(RegKey::CreateKeys(keys, arraysize(keys)));
   EXPECT_HRESULT_SUCCEEDED(ResetMetrics(false));    // User.

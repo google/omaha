@@ -46,13 +46,20 @@ namespace omaha {
 
 // Full company name.
 // FULL_COMPANY_NAME == "Google LLC"
-const TCHAR* const kFullCompanyName = _T(FULL_COMPANY_NAME_ANSI);
+#define FULL_COMPANY_NAME _T(FULL_COMPANY_NAME_ANSI)
+const TCHAR* const kFullCompanyName = FULL_COMPANY_NAME;
 
-// Short company name (for use in paths and messages and to combine with product
-// name). Does not include "Inc." and similar formal parts of the company name.
+// Short company name (for use in messages and to combine with product name).
+// Does not include "Inc." and similar formal parts of the company name.
+// If the company name can be abbreviated, it will be here.
 // SHORT_COMPANY_NAME == "Google"
 #define SHORT_COMPANY_NAME _T(SHORT_COMPANY_NAME_ANSI)
 const TCHAR* const kShortCompanyName = SHORT_COMPANY_NAME;
+
+// The company name to use in file and registry paths.
+// PATH_COMPANY_NAME == "Google"
+#define PATH_COMPANY_NAME _T(PATH_COMPANY_NAME_ANSI)
+const TCHAR* const kPathCompanyName = PATH_COMPANY_NAME;
 
 // Product name.
 // PRODUCT_NAME == "Update"
@@ -174,7 +181,7 @@ const TCHAR* const kChromeAppId = CHROME_APP_ID;
 #define INSTALL_WORKING_DIR_NAME  _T("Install")
 
 // Directories relative to \Google
-#define OMAHA_REL_COMPANY_DIR SHORT_COMPANY_NAME
+#define OMAHA_REL_COMPANY_DIR PATH_COMPANY_NAME
 #define OMAHA_REL_CRASH_DIR OMAHA_REL_COMPANY_DIR _T("\\CrashReports")
 #define OMAHA_REL_POLICY_RESPONSES_DIR OMAHA_REL_COMPANY_DIR _T("\\Policies")
 
@@ -201,14 +208,14 @@ const TCHAR* const kChromeAppId = CHROME_APP_ID;
 #define USER_KEY_NAME _T("HKCU")
 #define USER_KEY USER_KEY_NAME _T("\\")
 #define USERS_KEY _T("HKU\\")
-#define COMPANY_MAIN_KEY _T("Software\\") SHORT_COMPANY_NAME _T("\\")
+#define COMPANY_MAIN_KEY _T("Software\\") PATH_COMPANY_NAME _T("\\")
 #define GOOPDATE_MAIN_KEY COMPANY_MAIN_KEY PRODUCT_NAME _T("\\")
 #define GOOPDATE_REG_RELATIVE_CLIENTS GOOPDATE_MAIN_KEY _T("Clients\\")
 #define GOOPDATE_REG_RELATIVE_CLIENT_STATE GOOPDATE_MAIN_KEY _T("ClientState\\")
 #define GOOPDATE_REG_RELATIVE_CLIENT_STATE_MEDIUM \
     GOOPDATE_MAIN_KEY _T("ClientStateMedium\\")
 #define COMPANY_POLICIES_MAIN_KEY \
-    _T("Software\\Policies\\") SHORT_COMPANY_NAME _T("\\")
+    _T("Software\\Policies\\") PATH_COMPANY_NAME _T("\\")
 #define GOOPDATE_POLICIES_RELATIVE COMPANY_POLICIES_MAIN_KEY \
     PRODUCT_NAME _T("\\")
 #define CLOUD_MANAGEMENT_POLICIES_RELATIVE COMPANY_POLICIES_MAIN_KEY \
