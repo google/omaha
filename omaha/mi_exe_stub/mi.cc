@@ -350,7 +350,7 @@ class MetaInstaller {
     }
 
     CPath google_update_temp_dir(program_files_dir);
-    google_update_temp_dir.Append(kShortCompanyName);
+    google_update_temp_dir.Append(kPathCompanyName);
     if (!::CreateDirectory(google_update_temp_dir, NULL) &&
         ::GetLastError() != ERROR_ALREADY_EXISTS) {
       return false;

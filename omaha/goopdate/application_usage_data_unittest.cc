@@ -26,17 +26,17 @@ namespace omaha {
 
 const TCHAR kAppDidRunValueName[] = _T("dr");
 const TCHAR kHKCUClientStateKeyName[] =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{6ACB7D4D-E5BA-48b0-85FE-A4051500A1BD}");
 const TCHAR kMachineClientState[] =
-    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{6ACB7D4D-E5BA-48b0-85FE-A4051500A1BD}");
 const TCHAR kLowIntegrityIEHKCU[] =
     _T("HKCU\\Software\\Microsoft\\Internet Explorer\\")
     _T("InternetRegistry\\REGISTRY\\USER\\");
 const TCHAR kAppGuid[] = _T("{6ACB7D4D-E5BA-48b0-85FE-A4051500A1BD}");
 const TCHAR kRelativeClientState[] =
-    _T("Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{6ACB7D4D-E5BA-48b0-85FE-A4051500A1BD}");
 
 // TODO(omaha): Expected and actual are reversed throughout this file. Fix.

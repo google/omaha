@@ -31,7 +31,7 @@ namespace update_request_utils {
 namespace {
 
 #define USER_UPDATE_KEY \
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\")
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\")
 #define APP_ID1 _T("{DDE97E2B-A82C-4790-A630-FCA02F64E8BE}");
 const TCHAR* const kAppId1 = APP_ID1
 const TCHAR* const kAppId1ClientsKeyPathUser =

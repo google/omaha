@@ -25,7 +25,7 @@ const wchar_t kCountsKeyName[] = L"Counts";
 const wchar_t kIntegersKeyName[] = L"Integers";
 const wchar_t kBooleansKeyName[] = L"Booleans";
 const wchar_t kStatsKeyFormatString[] = L"Software\\"
-                                        _T(SHORT_COMPANY_NAME_ANSI)
+                                        _T(PATH_COMPANY_NAME_ANSI)
                                         L"\\%ws\\UsageStats\\Daily";
 const wchar_t kLastTransmissionTimeValueName[] = L"LastTransmission";
 

@@ -27,11 +27,11 @@ namespace install_self {
 namespace {
 
 const TCHAR* const kAppMachineClientStatePath =
-    _T("HKLM\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{50DA5C89-FF97-4536-BF3F-DF54C2F02EA8}\\");
 
 const TCHAR* const kAppUserClientStatePath =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{50DA5C89-FF97-4536-BF3F-DF54C2F02EA8}\\");
 
 }  // namespace
