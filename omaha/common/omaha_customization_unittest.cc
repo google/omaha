@@ -65,9 +65,11 @@ TEST(OmahaCustomizationTest, Constants_BuildFiles) {
   EXPECT_TRUE(::IsEqualGUID(kProxyClsidIsUserGuid,
                             kActualProxyClsidIsUserGuid));
 
+#ifdef GOOGLE_UPDATE_BUILD
   // Primary omaha_version_utils values.
   EXPECT_STREQ(_T("npGoogleOneClick"), ONECLICK_PLUGIN_NAME);
   EXPECT_STREQ(_T("npGoogleUpdate"), UPDATE_PLUGIN_NAME);
+#endif  // GOOGLE_UPDATE_BUILD
 }
 
 TEST(OmahaCustomizationTest, Constants_Names) {
@@ -95,10 +97,10 @@ TEST(OmahaCustomizationTest, Constants_Names) {
 
   // Other values based on the app name.
   EXPECT_STREQ(_T("_Google_Update_"), kLockPrefix);
-#endif  // GOOGLE_UPDATE_BUILD
 
   // Filename bases
   EXPECT_STREQ(_T("GoogleUpdate"), MAIN_EXE_BASE_NAME);
+#endif  // GOOGLE_UPDATE_BUILD
   EXPECT_STREQ(_T("goopdate"), MAIN_DLL_BASE_NAME);
 }
 
@@ -126,18 +128,22 @@ TEST(OmahaCustomizationTest, Constants_Certificate) {
 }
 
 TEST(OmahaCustomizationTest, Constants_OmahaAppId_String) {
+#ifdef GOOGLE_UPDATE_BUILD
   EXPECT_STREQ(_T("{430FD4D0-B729-4F61-AA34-91526481799D}"), GOOPDATE_APP_ID);
   EXPECT_STREQ(_T("{430FD4D0-B729-4F61-AA34-91526481799D}"),
                kGoogleUpdateAppId);
+#endif
 }
 
 TEST(OmahaCustomizationTest, Constants_OmahaAppId_GUID) {
+#ifdef GOOGLE_UPDATE_BUILD
   const GUID kExpectedGoogleUpdateGuid =
       {0x430FD4D0, 0xB729, 0x4F61,
        {0xAA, 0x34, 0x91, 0x52, 0x64, 0x81, 0x79, 0x9D}};
   EXPECT_TRUE(::IsEqualGUID(kExpectedGoogleUpdateGuid, kGoopdateGuid));
   EXPECT_STREQ(_T("{430FD4D0-B729-4F61-AA34-91526481799D}"),
                GuidToString(kGoopdateGuid));
+#endif
 }
 
 TEST(OmahaCustomizationTest, Constants_OmahaAppId_GUIDAndStringMatch) {
@@ -216,6 +222,7 @@ TEST(OmahaCustomizationTest, Constants_BrandCode) {
 }
 
 TEST(OmahaCustomizationTest, Constants_Addresses) {
+#ifdef GOOGLE_UPDATE_BUILD
   EXPECT_STREQ(_T("www.google.com"), kGoogleHttpServer);
   EXPECT_STREQ(_T("tools.google.com"), kGoopdateServer);
   EXPECT_STREQ(_T("https://update.googleapis.com/service/update2"),
@@ -227,6 +234,7 @@ TEST(OmahaCustomizationTest, Constants_Addresses) {
                kUrlCodeRedCheck);
   EXPECT_STREQ(_T("https://clients5.google.com/tbproxy/usagestats"),
                kUrlUsageStatsReport);
+#endif
 }
 
 TEST(OmahaCustomizationTest, Constants_Config) {
@@ -252,6 +260,7 @@ TEST(OmahaCustomizationTest, Constants_ObjectNames_Pipes) {
 }
 
 TEST(OmahaCustomizationTest, Constants_ObjectNames_MutexesAndEvents) {
+#ifdef GOOGLE_UPDATE_BUILD
   EXPECT_STREQ(_T("{A9A86B93-B54E-4570-BE89-42418507707B}"), kSetupMutex);
   EXPECT_STREQ(_T("{A0C1F415-D2CE-4ddc-9B48-14E56FD55162}"), kShutdownEvent);
   EXPECT_STREQ(_T("{B5665124-2B19-40e2-A7BC-B44321E72C4B}"),
@@ -268,6 +277,7 @@ TEST(OmahaCustomizationTest, Constants_ObjectNames_MutexesAndEvents) {
                kMetricsSerializer);
   EXPECT_STREQ(_T("{66CC0160-ABB3-4066-AE47-1CA6AD5065C8}"),
                kRegistryAccessMutex);
+#endif
 }
 
 TEST(OmahaCustomizationTest, Constants_ObjectNames_SharedMemory) {
