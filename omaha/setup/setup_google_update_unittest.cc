@@ -476,7 +476,7 @@ TEST_F(SetupGoogleUpdateMachineTest, InstallRegistryValues) {
 
   CString expected_shell_path;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &expected_shell_path));
-  expected_shell_path.Append(_T("\\") SHORT_COMPANY_NAME
+  expected_shell_path.Append(_T("\\") PATH_COMPANY_NAME
                              _T("\\") PRODUCT_NAME
                              _T("\\") MAIN_EXE_BASE_NAME _T(".exe"));
   CString shell_path;

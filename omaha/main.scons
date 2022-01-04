@@ -67,6 +67,7 @@ _is_google_update_build = False
 # *generated_resources_*.rc files with localized strings.
 _FULL_COMPANY_NAME = 'OmahaCompanyName Inc.'
 _SHORT_COMPANY_NAME = 'OmahaCompanyName'
+_PATH_COMPANY_NAME = 'OmahaCompanyName'
 _PRODUCT_NAME = 'Update'
 _COMPANY_DOMAIN_BASE = 'google'
 _COMPANY_DOMAIN = _COMPANY_DOMAIN_BASE + '.com'
@@ -598,6 +599,7 @@ win_env.AppendUnique(
 
         'FULL_COMPANY_NAME_ANSI=\\"%s\\"' % _FULL_COMPANY_NAME,
         'SHORT_COMPANY_NAME_ANSI=\\"%s\\"' % _SHORT_COMPANY_NAME,
+        'PATH_COMPANY_NAME_ANSI=\\"%s\\"' % _PATH_COMPANY_NAME,
         'PRODUCT_NAME_ANSI=\\"%s\\"' % _PRODUCT_NAME,
         'COMPANY_DOMAIN_BASE_ANSI=\\"%s\\"' % _COMPANY_DOMAIN_BASE,
         'COMPANY_DOMAIN_ANSI=\\"%s\\"' % _COMPANY_DOMAIN,

@@ -395,9 +395,9 @@ GoopdateImpl::~GoopdateImpl() {
   // Bug 994348 does not repro anymore.
   // If the assert fires, clean up the key, and fix the code if we have unit
   // tests or application code that create the key.
-  ASSERT(!RegKey::HasKey(_T("HKEY_USERS\\.DEFAULT\\Software\\Google\\Update")),
+  ASSERT(!RegKey::HasKey(_T("HKEY_USERS\\.DEFAULT\\Software\\") PATH_COMPANY_NAME _T("\\Update")),
          (_T("This assert has fired because it has found the registry key at ")
-          _T("'HKEY_USERS\\.DEFAULT\\Software\\Google\\Update'. ")
+          _T("'HKEY_USERS\\.DEFAULT\\Software\\") PATH_COMPANY_NAME _T("\\Update'. ")
           _T("Please delete the key and report to omaha-core team if ")
           _T("the assert fires again.")));
 
