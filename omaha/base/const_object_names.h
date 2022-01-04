@@ -24,12 +24,12 @@
 namespace omaha {
 
 // The prefix to use for global names in the win32 API's.
-const TCHAR* const kGlobalPrefix = _T("Global\\Omaha");
+const TCHAR* const kGlobalPrefix = _T("Global\\") SHORT_COMPANY_NAME;
 
 const TCHAR* const kObjectName64Suffix = _T("-x64");
 
 const TCHAR* const kCrashPipeNamePrefix =
-    _T("\\\\.\\pipe\\") SHORT_COMPANY_NAME _T("CrashServices");
+    _T("\\\\.\\pipe\\") PATH_COMPANY_NAME _T("CrashServices");
 
 // Ensures that only one instance of machine or user Omaha is trying to setup at
 // a time.

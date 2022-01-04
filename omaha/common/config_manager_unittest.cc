@@ -37,7 +37,7 @@ namespace {
 
 // OMAHA_KEY_REL == "Software\Google\Update"
 #define OMAHA_KEY_REL \
-    _T("Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
 
 
 #define APP_GUID1 _T("{6762F466-8863-424f-817C-5757931F346E}")
@@ -64,7 +64,7 @@ const TCHAR* const kUpdatePolicyApp2 = _T("Update") APP_GUID2;
 #if defined(HAS_DEVICE_MANAGEMENT)
 
 const TCHAR* const kCloudManagementPolicyKey =
-    _T("HKLM\\Software\\Policies\\") SHORT_COMPANY_NAME
+    _T("HKLM\\Software\\Policies\\") PATH_COMPANY_NAME
     _T("\\CloudManagement\\");
 
 HRESULT SetCloudManagementPolicy(const TCHAR* policy_name, DWORD value) {
@@ -403,13 +403,13 @@ TEST_F(ConfigManagerNoOverrideTest, RegistryKeys) {
   EXPECT_STREQ(_T("HKLM\\") OMAHA_KEY_REL _T("\\"),
                cm_->registry_update(true));
 
-  EXPECT_STREQ(_T("HKCU\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->user_registry_google());
-  EXPECT_STREQ(_T("HKLM\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->machine_registry_google());
-  EXPECT_STREQ(_T("HKCU\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->registry_google(false));
-  EXPECT_STREQ(_T("HKLM\\Software\\") COMPANY_NAME_IDENTIFIER _T("\\"),
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\"),
                cm_->registry_google(true));
 }
 
@@ -463,7 +463,7 @@ TEST_F(ConfigManagerNoOverrideTest, GetMachineCrashReportsDir) {
   CString program_files;
   EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files));
   const CString expected_path =
-      program_files + _T("\\") + SHORT_COMPANY_NAME + _T("\\CrashReports");
+      program_files + _T("\\") + PATH_COMPANY_NAME + _T("\\CrashReports");
   EXPECT_SUCCEEDED(DeleteTestDirectory(expected_path));
   EXPECT_STREQ(expected_path, cm_->GetMachineCrashReportsDir());
   EXPECT_TRUE(File::Exists(expected_path) || !vista_util::IsUserAdmin());

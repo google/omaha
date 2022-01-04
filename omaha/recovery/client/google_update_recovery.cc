@@ -52,9 +52,9 @@ const TCHAR* const kQueryStringFormat =
 // Information about where to obtain Omaha info.
 // This must never change in Omaha.
 const TCHAR* const kRegValueProductVersion  = _T("pv");
-const TCHAR* const kRelativeGoopdateRegPath = _T("Software\\Google\\Update\\");
+const TCHAR* const kRelativeGoopdateRegPath = _T("Software\\") PATH_COMPANY_NAME _T("\\Update\\");
 const TCHAR* const kRelativeClientsGoopdateRegPath =
-    _T("Software\\Google\\Update\\Clients\\")
+    _T("Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     GOOPDATE_APP_ID;
 
 // The UpdateDev registry value to override the Code Red url.
@@ -456,7 +456,7 @@ HRESULT DownloadRepairFile(const CString& download_target_path,
 
   CString url;
   HRESULT hr = GetRegStringValue(true,
-                                 _T("SOFTWARE\\Google\\UpdateDev"),
+                                 _T("SOFTWARE\\") PATH_COMPANY_NAME _T("\\UpdateDev"),
                                  kRegValueNameCodeRedUrl,
                                  &url);
   if (FAILED(hr)) {
