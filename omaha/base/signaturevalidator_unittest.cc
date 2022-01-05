@@ -191,7 +191,7 @@ TEST(SignatureValidatorTest, VerifySigneeIsGoogle_DualSigned_Sha1AndSha256) {
 // since expired.
 TEST(SignatureValidatorTest, VerifySigneeIsGoogle_SignedWithNowExpiredCert) {
   const TCHAR kRelativePath[] =
-      _T("unittest_support\\GoogleUpdate_now_expired_cert.exe");
+      _T("unittest_support\\") MAIN_EXE_BASE_NAME _T("_now_expired_cert.exe");
 
   CString executable_full_path(app_util::GetCurrentModuleDirectory());
   ASSERT_TRUE(::PathAppend(CStrBuf(executable_full_path, MAX_PATH),
@@ -227,8 +227,8 @@ TEST(SignatureValidatorTest, VerifySigneeIsGoogle_TestSigned_WrongCN) {
 
 TEST(SignatureValidatorTest, VerifyAuthenticodeSignature) {
   const TCHAR* kFileNamesToVerify[] = {
-    _T("GoogleUpdate_now_expired_cert.exe"),
-    _T("GoogleUpdate_old_signature.exe"),
+    MAIN_EXE_BASE_NAME _T("_now_expired_cert.exe"),
+    MAIN_EXE_BASE_NAME _T("_old_signature.exe"),
     _T("SaveArguments.exe"),
     _T("chrome_setup.exe"),
     _T("sha2_0c15be4a15bb0903c901b1d6c265302f.msi"),

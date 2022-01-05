@@ -154,7 +154,7 @@ class SetupTest : public testing::Test {
         not_listening_exe_opposite_path_(!is_machine ?
                                          not_listening_machine_exe_path_ :
                                          not_listening_user_exe_path_) {
-    omaha_exe_path_ = ConcatenatePath(omaha_path_, _T("GoogleUpdate.exe"));
+    omaha_exe_path_ = ConcatenatePath(omaha_path_, MAIN_EXE_BASE_NAME _T(".exe"));
   }
 
   virtual void SetUp() {

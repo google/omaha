@@ -146,9 +146,9 @@ TEST(PathTest, EnclosePathIfExe) {
   new_path = EnclosePathIfExe(original_path);
   EXPECT_STREQ(original_path, new_path);
 
-  original_path = _T("c:\\Prog F\\Googl\\Update\\GoogleUpdate.exe");
+  original_path = _T("c:\\Prog F\\Googl\\Update\\") MAIN_EXE_BASE_NAME _T(".exe");
   new_path = EnclosePathIfExe(original_path);
-  EXPECT_STREQ(_T("\"c:\\Prog F\\Googl\\Update\\GoogleUpdate.exe\""), new_path);
+  EXPECT_STREQ(_T("\"c:\\Prog F\\Googl\\Update\\") MAIN_EXE_BASE_NAME _T(".exe\""), new_path);
 }
 
 TEST(PathTest, ConcatenatePath) {

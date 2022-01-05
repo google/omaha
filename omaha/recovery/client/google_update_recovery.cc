@@ -436,7 +436,7 @@ HRESULT GetDownloadTargetPath(CPath* download_target_path,
   }
 
   *download_target_path = *parent_dir;
-  *download_target_path += _T("GoogleUpdateSetup.crx3");
+  *download_target_path += MAIN_EXE_BASE_NAME _T("Setup.crx3");
   return S_OK;
 }
 
@@ -589,7 +589,7 @@ HRESULT ValidateAndUnpackCRX(const CPath& from_crx_path,
   }
 
   CPath exe = unpack_under_path;
-  exe += _T("GoogleUpdateSetup.exe");
+  exe += MAIN_EXE_BASE_NAME _T("Setup.exe");
   if (!exe.FileExists()) {
     return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
   }
