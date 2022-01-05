@@ -184,16 +184,16 @@ TEST(OmahaCustomizationTest, Constants_RegistryKeys) {
   EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\"), USER_REG_GOOGLE);
   EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\"), USER_REG_UPDATE);
   EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\"), USER_REG_CLIENTS);  // NOLINT
-  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\{430FD4D0-B729-4F61-AA34-91526481799D}"), USER_REG_CLIENTS_GOOPDATE);  // NOLINT
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\" GOOPDATE_APP_ID), USER_REG_CLIENTS_GOOPDATE);  // NOLINT
   EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\"), USER_REG_CLIENT_STATE);  // NOLINT
-  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\{430FD4D0-B729-4F61-AA34-91526481799D}"), USER_REG_CLIENT_STATE_GOOPDATE);  // NOLINT
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\" GOOPDATE_APP_ID), USER_REG_CLIENT_STATE_GOOPDATE);  // NOLINT
 
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\"), MACHINE_REG_GOOGLE);
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\"), MACHINE_REG_UPDATE);
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\"), MACHINE_REG_CLIENTS);  // NOLINT
-  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\{430FD4D0-B729-4F61-AA34-91526481799D}"), MACHINE_REG_CLIENTS_GOOPDATE);  // NOLINT
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\" GOOPDATE_APP_ID), MACHINE_REG_CLIENTS_GOOPDATE);  // NOLINT
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\"), MACHINE_REG_CLIENT_STATE);  // NOLINT
-  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\{430FD4D0-B729-4F61-AA34-91526481799D}"), MACHINE_REG_CLIENT_STATE_GOOPDATE);  // NOLINT
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\" GOOPDATE_APP_ID), MACHINE_REG_CLIENT_STATE_GOOPDATE);  // NOLINT
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientStateMedium\\"), MACHINE_REG_CLIENT_STATE_MEDIUM);  // NOLINT
 
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\UpdateDev\\"), MACHINE_REG_UPDATE_DEV);  // NOLINT
@@ -316,20 +316,20 @@ TEST(OmahaCustomizationTest, ConfigManager_RegistryKeys) {
   EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\"), cm.registry_clients(false));  // NOLINT
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\"), cm.registry_clients(true));  // NOLINT
 
-  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.user_registry_clients_goopdate());  // NOLINT
-  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.machine_registry_clients_goopdate());  // NOLINT
-  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.registry_clients_goopdate(false));  // NOLINT
-  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.registry_clients_goopdate(true));  // NOLINT
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\" GOOPDATE_APP_ID), cm.user_registry_clients_goopdate());  // NOLINT
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\" GOOPDATE_APP_ID), cm.machine_registry_clients_goopdate());  // NOLINT
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\" GOOPDATE_APP_ID), cm.registry_clients_goopdate(false));  // NOLINT
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\" GOOPDATE_APP_ID), cm.registry_clients_goopdate(true));  // NOLINT
 
   EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\"), cm.user_registry_client_state());  // NOLINT
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\"), cm.machine_registry_client_state());  // NOLINT
   EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\"), cm.registry_client_state(false));  // NOLINT
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\"), cm.registry_client_state(true));  // NOLINT
 
-  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.user_registry_client_state_goopdate());  // NOLINT
-  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.machine_registry_client_state_goopdate());  // NOLINT
-  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.registry_client_state_goopdate(false));  // NOLINT
-  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\{430FD4D0-B729-4F61-AA34-91526481799D}"), cm.registry_client_state_goopdate(true));  // NOLINT
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\" GOOPDATE_APP_ID), cm.user_registry_client_state_goopdate());  // NOLINT
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\" GOOPDATE_APP_ID), cm.machine_registry_client_state_goopdate());  // NOLINT
+  EXPECT_STREQ(_T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\" GOOPDATE_APP_ID), cm.registry_client_state_goopdate(false));  // NOLINT
+  EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientState\\" GOOPDATE_APP_ID), cm.registry_client_state_goopdate(true));  // NOLINT
 
   EXPECT_STREQ(_T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\ClientStateMedium\\"), cm.machine_registry_client_state_medium());  // NOLINT
 
