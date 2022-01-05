@@ -162,22 +162,21 @@ ScheduledTasksInterface& Instance();
 // value if there is no registration.
 CString GetCurrentTaskNameCore(bool is_machine);
 
-// Creates a unique name, say "GoogleUpdateTaskMachineCore1c9b3d6baf90df3", of
-// the GoogleUpdateCore scheduled task, and stores it in the registry.
-// Subsequent invocations of GetCurrentTaskNameCore() will return this new
-// value.
-HRESULT CreateAndSetVersionedTaskNameCoreInRegistry(bool machine);
-
 // Gets the current name, say "GoogleUpdateTaskMachineUA", of the
 // GoogleUpdateUA scheduled task, either from the registry, or a default value
 // if there is no registration.
 CString GetCurrentTaskNameUA(bool is_machine);
 
-// Creates a unique name, say "GoogleUpdateTaskMachineUA1c9b3d6baf90df3", of
-// the GoogleUpdateUA scheduled task, and stores it in the registry.
-// Subsequent invocations of GetCurrentTaskNameUA() will return this new
-// value.
-HRESULT CreateAndSetVersionedTaskNameUAInRegistry(bool machine);
+// Creates a unique name, say "GoogleUpdateTaskMachineCore1c9b3d6baf90df3", or
+// "GoogleUpdateTaskMachineUA1c9b3d6baf90df3", of the GoogleUpdateCore/UA
+// scheduled task.
+CString CreateRandomTaskName(bool is_machine, CommandLineMode mode);
+
+// Stores the name of the GoogleUpdateCore/UA scheduled task in the registry.
+// Subsequent invocations of GetCurrentTaskNameCore/UA() will return this value.
+HRESULT SetTaskNameInRegistry(bool is_machine,
+                              CommandLineMode mode,
+                              const CString& name);
 
 // Waits for the task to change its status to the specified status value and
 // returns the status of the task. If the status did not change within the

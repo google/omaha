@@ -308,7 +308,6 @@ TEST_P(ScheduledTaskUtilsV2Test, InstallScheduledTask) {
 
 
 TEST(ScheduledTaskUtilsTest, GoopdateTasks) {
-  const CString task_name = GetCurrentTaskNameCore(IsUserAdmin());
   const CString task_path = GetLongRunningProcessPath();
 
   // Install/uninstall.
@@ -316,6 +315,7 @@ TEST(ScheduledTaskUtilsTest, GoopdateTasks) {
   EXPECT_SUCCEEDED(UninstallGoopdateTasks(IsUserAdmin()));
 
   EXPECT_SUCCEEDED(InstallGoopdateTasks(task_path, IsUserAdmin()));
+  const CString task_name = GetCurrentTaskNameCore(IsUserAdmin());
   EXPECT_FALSE(Instance().HasScheduledTaskEverRun(task_name));
 
   // Start and stop.
@@ -377,12 +377,12 @@ TEST(ScheduledTaskUtilsTest, V1OnlyGoopdateTaskInUseOverinstall) {
 }
 
 TEST(ScheduledTaskUtilsTest, GetExitCodeGoopdateTaskUA) {
-  const CString task_name = GetCurrentTaskNameUA(IsUserAdmin());
   const CString task_path = ConcatenatePath(
                                 app_util::GetCurrentModuleDirectory(),
                                 _T("unittest_support\\SaveArguments.exe"));
 
   EXPECT_SUCCEEDED(InstallGoopdateTasks(task_path, IsUserAdmin()));
+  const CString task_name = GetCurrentTaskNameUA(IsUserAdmin());
   EXPECT_EQ(SCHED_S_TASK_HAS_NOT_RUN,
             GetExitCodeGoopdateTaskUA(IsUserAdmin()));
   EXPECT_FALSE(Instance().HasScheduledTaskEverRun(task_name));
