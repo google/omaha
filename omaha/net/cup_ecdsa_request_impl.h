@@ -76,7 +76,6 @@ class CupEcdsaRequestImpl {
   struct TransientCupState {
     TransientCupState();
 
-    uint32 nonce;                      // Random nonce for request freshness.
     std::vector<uint8> request_hash;   // SHA-256 hash of the request body.
 
     CString cup2key;                   // Query parameter: key id and nonce

@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+
 #include "base/rand_util.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -181,11 +182,15 @@ void CupEcdsaRequestImpl::set_proxy_auth_config(const ProxyAuthConfig& config) {
 }
 
 HRESULT CupEcdsaRequestImpl::BuildRequest() {
-  // Generate a random nonce.
-  if (!RandUint32(&cup_->nonce)) {
+  // Generate a random nonce of 256 bits.
+  char nonce[32] = {0};
+  if (!RandBytes(&nonce, sizeof(nonce))) {
     metric_cup_ecdsa_other_errors++;
     return OMAHA_NET_E_CUP_NO_ENTROPY;
   }
+
+  CStringA nonce_string;
+  WebSafeBase64Escape(nonce, sizeof(nonce), &nonce_string, false);
 
   // Compute the SHA-256 hash of the request body; we need it to verify the
   // response, and we can optionally send it to the server as well.
@@ -193,9 +198,9 @@ HRESULT CupEcdsaRequestImpl::BuildRequest() {
                          &cup_->request_hash));
 
   // Generate the values of our query parameters, cup2key and (opt) cup2hreq.
-  SafeCStringFormat(&cup_->cup2key, _T("%d:%u"),
+  SafeCStringFormat(&cup_->cup2key, _T("%d:%S"),
                     static_cast<int>(public_key_.version()),
-                    cup_->nonce);
+                    nonce_string);
   cup_->cup2hreq = BytesToHex(cup_->request_hash);
 
   // Compute the url of the CUP request -- append a query string, or append to
@@ -401,8 +406,7 @@ bool CupEcdsaRequestImpl::ParseServerETag(const CString& etag_in,
   return true;
 }
 
-CupEcdsaRequestImpl::TransientCupState::TransientCupState() : nonce(0) {
-}
+CupEcdsaRequestImpl::TransientCupState::TransientCupState() {}
 
 }   // namespace internal
 
