@@ -86,7 +86,7 @@ class ATL_NO_VTABLE CredentialDialog
     REGMAP_ENTRY(_T("HKROOT"), T::hk_root())
     REGMAP_ENTRY(_T("VERSION"), _T("1.0"))
     REGMAP_ENTRY(_T("PROGID"), T::prog_id())
-    REGMAP_ENTRY(_T("DESCRIPTION"), _T("GoogleUpdate CredentialDialog"))
+    REGMAP_ENTRY(_T("DESCRIPTION"), MAIN_EXE_BASE_NAME _T(" CredentialDialog"))
     REGMAP_ENTRY(_T("CLSID"), T::class_id())
     REGMAP_MODULE2(_T("MODULE"), kOmahaOnDemandFileName)
   END_REGISTRY_MAP()

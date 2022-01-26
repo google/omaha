@@ -31,7 +31,7 @@ The following packages are required to build Omaha:
     * The `OMAHA_PYTHON_DIR` is set to `C:\Python27`. Change this if you installed to a different location.
   * SCons 1.3.x (Be sure to use **1.3**, the 2.0 series is not backwards-compatible!)
     * Download SCons [here](http://sourceforge.net/projects/scons/files/scons/1.3.1/).
-    * Change this line in hammer.bat if you installed to a different location: `SCONS_DIR=C:\Python27\Lib\site-packages\scons-1.3.1`.
+    * Change this line in hammer.bat if you installed to a different location: `SCONS_DIR=C:\Python27\scons-1.3.1`.
   * Google Software Construction Toolkit
     * Get the SCT source [here](https://code.google.com/archive/p/swtoolkit/downloads), either via direct download or via SVN checkout.
     * Change this line in hammer.bat if you installed to a different location: `set SCT_DIR=C:\swtoolkit`.
@@ -47,7 +47,7 @@ The following packages are required to build Omaha:
 ](https://github.com/google/googletest/commit/47f819c3ca54fb602f432904443e00a0a1fe2f42) from Aug 10, 2021. This includes both gtest and gmock frameworks.
       - Unzip everything inside `googletest-master.zip\googletest-master` to `third_party\googletest`.
     * libzip 1.7.3. Source code [here](https://libzip.org/download/libzip-1.7.3.tar.xz). Unzip the contents of `libzip-1.7.3.tar.gz\libzip-1.7.3.tar\libzip-1.7.3\` into the directory `third_party\libzip`. The Omaha repository contains two generated configuration files in `base\libzip`, or one could build the libzip library and generate the files. A change has been made to config.h to disable zip crypto `#undef HAVE_CRYPTO`, or else the zip code won't build because of a compile time bug.
-    * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of `zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\` into the directory `third_party\zlib\v1_2_11`.       
+    * zlib 1.2.11. Source code [here](https://zlib.net/zlib-1.2.11.tar.gz). Unzip the contents of `zlib-1.2.11.tar.gz\zlib-1.2.11.tar\zlib-1.2.11\` into the directory `third_party\zlib`.
 
 To run the unit tests, one more package is needed. Download the Windows Sysinternals PSTools suite [here](https://technet.microsoft.com/en-us/sysinternals/bb897553) and save psexec.exe somewhere. Then, set a system environment variable named OMAHA_PSEXEC_DIR to the directory containing psexec.exe.
 

@@ -66,23 +66,23 @@ const uint64 kApp1GuidUpper = 0x0C480772AC73418f;
 const uint64 kApp2GuidUpper = 0x89906BCD4D124c9b;
 
 const TCHAR* const kApp1ClientsKeyPathUser =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\{0C480772-AC73-418f-9603-66303DA4C7AA}");
 const TCHAR* const kApp2ClientsKeyPathUser =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\{89906BCD-4D12-4c9b-B5BA-8286051CB8D9}");
 const TCHAR* const kApp3ClientsKeyPathUser =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\Clients\\{F5A1FE97-CF5A-47b8-8B28-2A72F9A57A45}");
 
 const TCHAR* const kApp1ClientStateKeyPathUser =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{0C480772-AC73-418f-9603-66303DA4C7AA}");
 const TCHAR* const kApp2ClientStateKeyPathUser =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{89906BCD-4D12-4c9b-B5BA-8286051CB8D9}");
 const TCHAR* const kApp3ClientStateKeyPathUser =
-    _T("HKCU\\Software\\") SHORT_COMPANY_NAME _T("\\") PRODUCT_NAME
+    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME
     _T("\\ClientState\\{F5A1FE97-CF5A-47b8-8B28-2A72F9A57A45}");
 
 void SetAppStateUpdateAvailable(App* app) {

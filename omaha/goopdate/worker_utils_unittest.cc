@@ -37,7 +37,7 @@ TEST(WorkerUtilsTest, FormatMessageForNetworkError) {
                                                &message));
   EXPECT_STREQ(
       _T("Unable to connect to the Internet. If you use a firewall, please ")
-      _T("whitelist GoogleUpdate.exe."),
+      _T("whitelist ") MAIN_EXE_BASE_NAME _T(".exe."),
       message);
 
   EXPECT_EQ(true, FormatMessageForNetworkError(GOOPDATE_E_NETWORK_UNAUTHORIZED,
@@ -68,7 +68,7 @@ TEST(WorkerUtilsTest, FormatMessageForNetworkError) {
   EXPECT_EQ(false, FormatMessageForNetworkError(E_FAIL, kEnglish, &message));
   EXPECT_STREQ(
       _T("Unable to connect to the Internet. If you use a firewall, please ")
-      _T("whitelist GoogleUpdate.exe."),
+      _T("whitelist ") MAIN_EXE_BASE_NAME _T(".exe."),
       message);
 
   ResourceManager::Delete();

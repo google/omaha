@@ -32,7 +32,7 @@
 namespace omaha {
 
 const TCHAR kFilePath[] = _T(".");
-const TCHAR kFileName[] = _T("GoogleUpdateSetup_repair.exe");
+const TCHAR kFileName[] = MAIN_EXE_BASE_NAME _T("Setup_repair.exe");
 const char kTagString[] = "1234567890abcdefg";
 const char kAppendTagString[] = "..AppendedStr";
 

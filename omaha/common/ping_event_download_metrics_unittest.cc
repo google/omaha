@@ -35,7 +35,7 @@ class PingEventDownloadMetricsTest : public testing::Test {
  protected:
   void SetUpRegistry() {
     const TCHAR* const kOmahaUserClientStatePath =
-        _T("HKCU\\Software\\") SHORT_COMPANY_NAME
+        _T("HKCU\\Software\\") PATH_COMPANY_NAME
         _T("\\") PRODUCT_NAME
         _T("\\ClientState\\") GOOPDATE_APP_ID;
 
@@ -82,7 +82,7 @@ TEST_F(PingEventDownloadMetricsTest, BuildPing) {
 
   CString expected_ping_request_substring;
   expected_ping_request_substring =
-      _T("<app appid=\"{430FD4D0-B729-4F61-AA34-91526481799D}\" ")
+      _T("<app appid=\"") GOOPDATE_APP_ID _T("\" ")
       _T("version=\"1.3.99.0\" nextversion=\"\" lang=\"en\" brand=\"GOOG\" ")
       _T("client=\"testclientid\" ")
       _T("iid=\"{7C0B6E56-B24B-436b-A960-A6EA201E886D}\">")

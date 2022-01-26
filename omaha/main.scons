@@ -67,6 +67,7 @@ _is_google_update_build = False
 # *generated_resources_*.rc files with localized strings.
 _FULL_COMPANY_NAME = 'OmahaCompanyName Inc.'
 _SHORT_COMPANY_NAME = 'OmahaCompanyName'
+_PATH_COMPANY_NAME = 'OmahaCompanyName'
 _PRODUCT_NAME = 'Update'
 _COMPANY_DOMAIN_BASE = 'google'
 _COMPANY_DOMAIN = _COMPANY_DOMAIN_BASE + '.com'
@@ -110,7 +111,7 @@ if (_sdk_dir is None):
 
 _sdk_version = os.getenv('OMAHA_WINDOWS_SDK_10_0_VERSION', None)
 _wtl_dir = os.getenv('OMAHA_WTL_DIR', '$GOOGLE3/third_party/wtl/files')
-_signtool_path = ('python $MAIN_DIR/tools/retry.py 10 5 \"%s/%s\"' %
+_signtool_path = ('python "$MAIN_DIR/tools/retry.py" 10 5 \"%s/%s\"' %
                   (os.getenv('OMAHA_SIGNTOOL_SDK_DIR'), 'signtool.exe'))
 
 # Windows is the only environment we bulid for, so create a specialized base
@@ -537,6 +538,10 @@ win_env.AppendUnique(
                     # longer implies that compiler generated copy/move
                     # constructors and copy/move assignment operators are non
                     # trivial
+        '/wd5245',  # 'function': unreferenced function with internal linkage
+                    # has been removed
+        '/wd5246',  # 'member': the initialization of a subobject should be
+                    # wrapped in braces
         #
         # Disable static analysis warnings.
         #
@@ -594,6 +599,7 @@ win_env.AppendUnique(
 
         'FULL_COMPANY_NAME_ANSI=\\"%s\\"' % _FULL_COMPANY_NAME,
         'SHORT_COMPANY_NAME_ANSI=\\"%s\\"' % _SHORT_COMPANY_NAME,
+        'PATH_COMPANY_NAME_ANSI=\\"%s\\"' % _PATH_COMPANY_NAME,
         'PRODUCT_NAME_ANSI=\\"%s\\"' % _PRODUCT_NAME,
         'COMPANY_DOMAIN_BASE_ANSI=\\"%s\\"' % _COMPANY_DOMAIN_BASE,
         'COMPANY_DOMAIN_ANSI=\\"%s\\"' % _COMPANY_DOMAIN,
@@ -703,7 +709,7 @@ if not win_env.Bit('official_installers'):
   import proxy_clsid_utils
 
   # Generate uniqe proxy CLSIDs for each build.
-  win_env.Execute('python $MAIN_DIR\\tools\\proxy_clsid_utils.py')
+  win_env.Execute('python "$MAIN_DIR\\tools\\proxy_clsid_utils.py"')
   win_env.Append(
       CPPDEFINES = [
         'PROXY_CLSID_IS_MACHINE=%s' % proxy_clsid_utils.GetMachineProxyClsid(),

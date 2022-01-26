@@ -35,7 +35,7 @@ class PingEventCancelTest : public testing::Test {
  protected:
   void SetUpRegistry() {
     const TCHAR* const kOmahaUserClientStatePath =
-        _T("HKCU\\Software\\") SHORT_COMPANY_NAME
+        _T("HKCU\\Software\\") PATH_COMPANY_NAME
         _T("\\") PRODUCT_NAME
         _T("\\ClientState\\") GOOPDATE_APP_ID;
 

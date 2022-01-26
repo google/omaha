@@ -395,9 +395,9 @@ GoopdateImpl::~GoopdateImpl() {
   // Bug 994348 does not repro anymore.
   // If the assert fires, clean up the key, and fix the code if we have unit
   // tests or application code that create the key.
-  ASSERT(!RegKey::HasKey(_T("HKEY_USERS\\.DEFAULT\\Software\\Google\\Update")),
+  ASSERT(!RegKey::HasKey(_T("HKEY_USERS\\.DEFAULT\\Software\\") PATH_COMPANY_NAME _T("\\Update")),
          (_T("This assert has fired because it has found the registry key at ")
-          _T("'HKEY_USERS\\.DEFAULT\\Software\\Google\\Update'. ")
+          _T("'HKEY_USERS\\.DEFAULT\\Software\\") PATH_COMPANY_NAME _T("\\Update'. ")
           _T("Please delete the key and report to omaha-core team if ")
           _T("the assert fires again.")));
 
@@ -647,7 +647,7 @@ HRESULT GoopdateImpl::DoMain(HINSTANCE instance,
   bool has_ui_been_displayed = false;
 
   if (!is_machine_ && vista_util::IsElevatedWithEnableLUAOn()) {
-    CORE_LOG(LW, (_T("User GoogleUpdate is possibly running in an unsupported ")
+    CORE_LOG(LW, (_T("User ") MAIN_EXE_BASE_NAME _T(" is possibly running in an unsupported ")
                   _T("way, at High integrity with UAC possibly enabled.")));
   }
 
@@ -1769,7 +1769,7 @@ bool IsMachineProcess(CommandLineMode mode,
       ASSERT1(goopdate_utils::IsRunningFromOfficialGoopdateDir(false) ||
               goopdate_utils::IsRunningFromOfficialGoopdateDir(true) ||
               _T("omaha_unittest.exe") == app_util::GetCurrentModuleName() ||
-              _T("GoogleUpdate_unsigned.exe") ==
+              MAIN_EXE_BASE_NAME _T("_unsigned.exe") ==
                   app_util::GetModuleName(NULL));  // Running in debugger.
       return is_running_from_official_machine_directory;
 

@@ -282,7 +282,7 @@ cc_files += [
 ]
 
 """ Add zlib library files."""
-zlib_src_path = '$GOOGLE3/third_party/zlib/v1_2_11/'
+zlib_src_path = '$GOOGLE3/third_party/zlib/'
 zlib_src_path_dir = local_env.Dir(zlib_src_path)
 local_env.Dir('zlib').addRepository(zlib_src_path_dir)
 cc_files += ['zlib/' +

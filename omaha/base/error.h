@@ -96,6 +96,11 @@ const ULONG kFacilityOmaha = 67;
 #define CI_E_BITS_DISABLED                        \
     MAKE_HRESULT(SEVERITY_ERROR, kFacilityOmaha, 0x0030)
 
+// CI_E_BITS_REQUEUED is returned by a BITS request if a job is moved back from
+// transmitting state to queued state due to a user session switch or logoff.
+#define CI_E_BITS_REQUEUED                        \
+    MAKE_HRESULT(SEVERITY_ERROR, kFacilityOmaha, 0x0031)
+
 // CI_E_HTTPS_CERT_FAILURE is returned when the https connection fails.
 // One cause of this is when the system clock is off by a significant
 // amount which makes the server certificate appear invalid.

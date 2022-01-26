@@ -139,7 +139,7 @@ def GenerateOmaha3IDLFile():
   return env.Command(
       target='omaha3_idl.idl',
       source='$MAIN_DIR/goopdate/omaha3_idl.idl',
-      action=('python %s/tools/generate_omaha3_idl.py --idl_template_file '
+      action=('python "%s/tools/generate_omaha3_idl.py" --idl_template_file '
           '$SOURCE --idl_output_file $TARGET' % env['MAIN_DIR'])
   )
 

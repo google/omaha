@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-  <?define UpdateKeyPath = 'SOFTWARE\Google\Update' ?>
+  <?define UpdateKeyPath = 'SOFTWARE\$(var.CompanyName)\Update' ?>
 
   <!-- This fragment assumes machine install (ALLUSER=1). -->
 
@@ -25,7 +25,7 @@
       <Directory Id='GoogleProgramDir' Name='Google'>
         <Directory Id='UpdateDir' Name='Update'>
 
-          <Component Id='ComponentGoogleUpdate'
+          <Component Id='ComponentGoogleUpdate' Win64='no'
                      Guid='6B528A57-0CD8-4b26-85F8-1CA05523B8F1'>
             <!-- Clear the last UI string before running the installer so we know
                  that any value present upon rollback is fresh. -->

@@ -145,7 +145,7 @@ TEST(UtilsTest, ReadEntireFile) {
   ASSERT_FAILED(ReadEntireFile(L"C:\\F00Bar\\ImaginaryFile", 0, &buffer));
 
   ASSERT_SUCCEEDED(ReadEntireFile(file_name, 0, &buffer));
-  ASSERT_EQ(9405, buffer.size());
+  ASSERT_TRUE(9405 == buffer.size() /*LF*/ || 9514 == buffer.size() /*CRLF*/);
   buffer.resize(0);
   ASSERT_FAILED(ReadEntireFile(L"C:\\WINDOWS\\Greenstone.bmp", 1000, &buffer));
 }
@@ -533,7 +533,7 @@ TEST(UtilsTest, AddAllowedAce) {
 
   EXPECT_SUCCEEDED(File::Copy(
       ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                      _T("GoogleUpdate.exe")),
+                      MAIN_EXE_BASE_NAME _T(".exe")),
       test_file_path,
       false));
 

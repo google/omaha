@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='windows-1252'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <?define CompanyName = 'Google'?>
   <?define CompanyFullName = 'Google LLC'?>
   <?define Copyright = 'Copyright 2007-2010 Google LLC'?>
 
@@ -57,14 +58,14 @@
       <RegistrySearch Id='UninstallCmdSearch'
                       Root='HKLM'
                       Type='raw'
-                      Key='Software\Google\Update\ClientState\$(var.ProductGuid)'
+                      Key='Software\$(var.CompanyName)\Update\ClientState\$(var.ProductGuid)'
                       Name='UninstallString'/>
     </Property>
     <Property Id='UNINSTALLCMDARGS'>
       <RegistrySearch Id='UninstallArgSearch'
                       Root='HKLM'
                       Type='raw'
-                      Key='Software\Google\Update\ClientState\$(var.ProductGuid)'
+                      Key='Software\$(var.CompanyName)\Update\ClientState\$(var.ProductGuid)'
                       Name='UninstallArguments'/>
     </Property>
 

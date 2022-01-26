@@ -100,7 +100,7 @@ class ATL_NO_VTABLE Update3Web
     REGMAP_ENTRY(_T("HKROOT"), T::hk_root())
     REGMAP_ENTRY(_T("VERSION"), _T("1.0"))
     REGMAP_ENTRY(_T("PROGID"), T::prog_id())
-    REGMAP_ENTRY(_T("DESCRIPTION"), _T("GoogleUpdate Update3Web"))
+    REGMAP_ENTRY(_T("DESCRIPTION"), MAIN_EXE_BASE_NAME _T(" Update3Web"))
     REGMAP_ENTRY(_T("CLSID"), T::class_id())
     REGMAP_MODULE2(_T("MODULE"), kOmahaOnDemandFileName)
     REGMAP_ENTRY(_T("ICONRESID"), PP_STRINGIZE(IDI_ELEVATION_MONIKER_ICON))

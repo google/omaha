@@ -138,17 +138,17 @@ TEST(PathTest, EnclosePathIfExe) {
   new_path = EnclosePathIfExe(original_path);
   EXPECT_STREQ(_T("\"c:\\Windows\\notepad.exe\""), new_path);
 
-  original_path = _T("c:\\Program Files\\Google\\Update");
+  original_path = _T("c:\\Program Files\\") PATH_COMPANY_NAME _T("\\Update");
   new_path = EnclosePathIfExe(original_path);
   EXPECT_STREQ(original_path, new_path);
 
-  original_path = _T("c:\\Progra Files\\Google\\Update\\1.1.1.1\\goopdate.dll");
+  original_path = _T("c:\\Progra Files\\") PATH_COMPANY_NAME _T("\\Update\\1.1.1.1\\goopdate.dll");
   new_path = EnclosePathIfExe(original_path);
   EXPECT_STREQ(original_path, new_path);
 
-  original_path = _T("c:\\Prog F\\Googl\\Update\\GoogleUpdate.exe");
+  original_path = _T("c:\\Prog F\\Googl\\Update\\") MAIN_EXE_BASE_NAME _T(".exe");
   new_path = EnclosePathIfExe(original_path);
-  EXPECT_STREQ(_T("\"c:\\Prog F\\Googl\\Update\\GoogleUpdate.exe\""), new_path);
+  EXPECT_STREQ(_T("\"c:\\Prog F\\Googl\\Update\\") MAIN_EXE_BASE_NAME _T(".exe\""), new_path);
 }
 
 TEST(PathTest, ConcatenatePath) {
