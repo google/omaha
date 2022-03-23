@@ -128,9 +128,7 @@ if 'OMAHA_PROTOBUF_BIN_DIR' not in os.environ:
       file to generate the specified target file.
     """
 
-    # We use the googleclient gyp since the google3 gyp does not work well with
-    # python 2.7.
-    gyp_bat_file = '$GOOGLECLIENT\\third_party\\gyp\\files\\gyp.bat'
+    gyp_bat_file = 'base\\gyp.bat'
 
     # Explicitly using 'cd', since using the chdir option to env.Command() is
     # not compatible with parallel builds using the -j option.
