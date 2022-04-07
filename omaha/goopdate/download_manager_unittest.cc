@@ -1316,7 +1316,7 @@ TEST(DownloadManagerTest, GetMessageForError) {
 
   EXPECT_STREQ(
       _T("Unable to connect to the Internet. If you use a firewall, please ")
-      _T("whitelist ") MAIN_EXE_BASE_NAME _T(".exe."),
+      _T("allowlist ") MAIN_EXE_BASE_NAME _T(".exe."),
       DownloadManager::GetMessageForError(
           ErrorContext(GOOPDATE_E_NO_NETWORK), kEnglish));
 
