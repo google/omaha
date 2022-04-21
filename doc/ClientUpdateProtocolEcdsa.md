@@ -50,9 +50,13 @@ The server receives an update request XML, public key id, and nonce; it performs
 
 The server attempts to find a matching ECDSA private key for the specified public key id, returning an HTTP error if no such private key exists. Finally, it assembles the update response.
 
-Before sending, the server stores the update response XML (also in UTF-8) in a buffer. It appends the computed SHA-256 hash of the request body+keyid+nonce to the buffer. It then calculates an ECDSA signature over that combined buffer, using the server’s private key. It sends the ECDSA signature and the response body + client hash back to the user.
+Before sending, the server stores the SHA-256 hash of the request body in a buffer. It appends the SHA-256 hash of the response body, then the cup2key query value (%d:%u, where the first parameter is the keypair id, and the second is the client freshness nonce). It then calculates an ECDSA signature over the SHA-256 hash of that buffer, using the server's private key. It sends the ECDSA signature and the client hash (i.e. hash of the request body) back to the user.
 
-The client receives the response XML, observed client hash, and ECDSA signature.  It concatenates its copy of the request hash to the response XML, and attempts to verify the ECDSA signature using its public key.  If the signature does not match, the client recognizes that the server response has been tampered in transit, and rejects the exchange.
+<img src="https://render.githubusercontent.com/render/math?math=S := \text{Encrypt}_{K_R}\left[\text{Hash}\left(\text{Hash}(\text{request\_body}) %2b \text{Hash}(\text{response\_body}) %2b \text{cup2key\_value}\right)\right]">
+
+The client receives the response XML, observed client hash, and ECDSA signature. It creates a buffer containing the SHA-256 hash of the request body. It then appends the SHA-256 hash of the response body, then the cup2key query value (see above). It then tests whether the received ECDSA signature can be verified to match the SHA-256 hash of this buffer using the public key. If the signature does not match, the client recognizes that the server response has been tampered in transit, and rejects the exchange.
+
+<img src="https://render.githubusercontent.com/render/math?math=\text{Decrypt}_{K_U}[S] \stackrel{?}{=} \text{Hash}\left(\text{Hash}(\text{request\_body}) %2b \text{Hash}(\text{response\_body}) %2b \text{cup2key\_value}\right)">
 
 The client then compares the SHA-256 hash in the response to the original hash of the request.  If the hashes do not match, the client recognizes that the request has been tampered in transit, and rejects the exchange.
 
