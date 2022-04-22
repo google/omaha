@@ -578,6 +578,8 @@ win_env.AppendUnique(
         '_SECURE_ATL=1',
         '_WTL_NO_CSTRING',  # WTL uses ATL CString instead.
 
+        'GUNIT_NO_GOOGLE3',
+
         'ARCH_CPU_X86_FAMILY',  # For Chromium code.
         'LOGGING',   # Logging is enabled in all modes for diagnostics purposes.
 
