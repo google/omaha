@@ -271,8 +271,13 @@ HRESULT SetupFiles::ShouldCopyShell(const CString& shell_install_path,
 }
 
 HRESULT SetupFiles::SaveShellForRollback(const CString& shell_install_path) {
+  const CString temp_dir = ConfigManager::Instance()->GetTempDir();
+  if (temp_dir.IsEmpty()) {
+    return E_UNEXPECTED;
+  }
+
   // Copy existing file to a temporary file in case we need to roll back.
-  CString temp_file = GetTempFilename(_T("gsh"));
+  CString temp_file = GetTempFilenameAt(temp_dir, _T("gsh"));
   if (temp_file.IsEmpty()) {
     const DWORD error = ::GetLastError();
     SETUP_LOG(LEVEL_WARNING, (_T("[::GetTempFilename failed][%d]"), error));

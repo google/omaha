@@ -247,10 +247,11 @@ HRESULT WriteNameValuePairsToHandle(const HANDLE file_handle,
 bool IsAppInstallWorkerRunning(bool is_machine);
 
 // Converts the installer_data value to UTF8. Then writes this UTF8 data
-// prefixed with the UTF8 BOM of EF BB BF to a temp file. Returns the path to
-// temp file that was created.  The returned path will be quote-enclosed by
-// EnclosePath().
-HRESULT WriteInstallerDataToTempFile(const CString& installer_data,
+// prefixed with the UTF8 BOM of EF BB BF to a temp file in `directory`. Returns
+// the path to temp file that was created.  The returned path will be
+// quote-enclosed by EnclosePath().
+HRESULT WriteInstallerDataToTempFile(const CPath& directory,
+                                     const CString& installer_data,
                                      CString* installer_data_file_path);
 
 // Updates LastChecked to now. Call after successful update check for all apps.

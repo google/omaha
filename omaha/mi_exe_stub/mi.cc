@@ -335,10 +335,6 @@ class MetaInstaller {
   // issues with anti-malware heuristics, this function returns early and does
   // not try to create a directory if the user is not an admin.
   bool CreateProgramFilesTempDir() {
-    if (!::IsUserAnAdmin()) {
-      return false;
-    }
-
     CString program_files_dir;
     HRESULT hr = ::SHGetFolderPath(NULL,
                                    CSIDL_PROGRAM_FILES | CSIDL_FLAG_CREATE,
@@ -387,7 +383,10 @@ class MetaInstaller {
   // creating the directory under %ProgramFiles%, and if that fails, creates
   // under the user's %TMP% directory.
   int CreateUniqueTempDirectory() {
-    return CreateProgramFilesTempDir() || CreateUserTempDir() ? 0 : -1;
+    return (::IsUserAnAdmin() ? CreateProgramFilesTempDir()
+                              : CreateUserTempDir())
+               ? 0
+               : -1;
   }
 
   HANDLE ExtractTarballToTempLocation() {

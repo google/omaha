@@ -184,6 +184,7 @@ const TCHAR* const kChromeAppId = CHROME_APP_ID;
 #define OMAHA_REL_COMPANY_DIR PATH_COMPANY_NAME
 #define OMAHA_REL_CRASH_DIR OMAHA_REL_COMPANY_DIR _T("\\CrashReports")
 #define OMAHA_REL_POLICY_RESPONSES_DIR OMAHA_REL_COMPANY_DIR _T("\\Policies")
+#define OMAHA_REL_TEMP_DIR OMAHA_REL_COMPANY_DIR _T("\\Temp")
 
 // Directories relative to \Google\Update
 #define OMAHA_REL_GOOPDATE_INSTALL_DIR \

@@ -251,6 +251,11 @@ class ConfigManager {
   // %ProgramFiles%/Google/Update
   CString GetMachineGoopdateInstallDir() const;
 
+  // Creates and returns a secure directory, %ProgramFiles%/Google/Temp, if
+  // running as Admin. Otherwise, returns the %TMP% for the impersonated or
+  // current user.
+  CString GetTempDir() const;
+
   // Checks if the running program is executing from the User Goopdate dir.
   bool IsRunningFromMachineGoopdateInstallDir() const;
 

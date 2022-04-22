@@ -497,6 +497,23 @@ TEST_F(ConfigManagerNoOverrideTest, GetMachineSecureOfflineStorageDir) {
   EXPECT_TRUE(File::Exists(expected_path) || !vista_util::IsUserAdmin());
 }
 
+TEST_F(ConfigManagerNoOverrideTest, GetTempDir) {
+  CString expected_path;
+
+  if (::IsUserAnAdmin()) {
+    CString program_files;
+    EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files));
+    expected_path = program_files + _T("\\") + PATH_COMPANY_NAME + _T("\\Temp");
+    EXPECT_SUCCEEDED(DeleteTestDirectory(expected_path));
+  } else {
+    expected_path = app_util::GetTempDirForImpersonatedOrCurrentUser();
+  }
+
+  ASSERT_FALSE(expected_path.IsEmpty());
+  EXPECT_STREQ(expected_path, cm_->GetTempDir());
+  EXPECT_TRUE(File::Exists(expected_path));
+}
+
 TEST_F(ConfigManagerNoOverrideTest, IsRunningFromMachineGoopdateInstallDir) {
   EXPECT_FALSE(cm_->IsRunningFromMachineGoopdateInstallDir());
 }

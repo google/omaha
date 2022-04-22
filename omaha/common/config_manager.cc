@@ -854,6 +854,19 @@ CString ConfigManager::GetMachineGoopdateInstallDir() const {
   return path;
 }
 
+CString ConfigManager::GetTempDir() const {
+  if (::IsUserAnAdmin()) {
+    CString path;
+    VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
+                              CString(OMAHA_REL_TEMP_DIR),
+                              true,
+                              &path));
+    return path;
+  }
+
+  return app_util::GetTempDirForImpersonatedOrCurrentUser();
+}
+
 bool ConfigManager::IsRunningFromMachineGoopdateInstallDir() const {
   return is_running_from_official_machine_dir_;
 }
