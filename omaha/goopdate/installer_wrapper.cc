@@ -277,7 +277,10 @@ HRESULT InstallerWrapper::BuildCommandLineFromFilename(
 
   // We use the App Installer's directory for the InstallerData file.
   CPath app_installer_directory(file_path);
-  VERIFY1(app_installer_directory.RemoveFileSpec());
+  if (!app_installer_directory.RemoveFileSpec()) {
+    OPT_LOG(LE, (_T("[Does not appear to be a filename '%s']"), file_path));
+    return GOOPDATEINSTALL_E_FILENAME_INVALID;
+  }
 
   VERIFY_SUCCEEDED(goopdate_utils::WriteInstallerDataToTempFile(
       app_installer_directory,
