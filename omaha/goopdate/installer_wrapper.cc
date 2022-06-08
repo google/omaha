@@ -13,7 +13,10 @@
 // limitations under the License.
 // ========================================================================
 
+#include <atlpath.h>
+
 #include <vector>
+
 #include "goopdate/omaha3_idl.h"
 #include "omaha/goopdate/installer_wrapper.h"
 #include "omaha/base/const_object_names.h"
@@ -272,7 +275,15 @@ HRESULT InstallerWrapper::BuildCommandLineFromFilename(
   // created, so Omaha does not delete it.
   CString enclosed_installer_data_file_path;
 
+  // We use the App Installer's directory for the InstallerData file.
+  CPath app_installer_directory(file_path);
+  if (!app_installer_directory.RemoveFileSpec()) {
+    OPT_LOG(LE, (_T("[Does not appear to be a filename '%s']"), file_path));
+    return GOOPDATEINSTALL_E_FILENAME_INVALID;
+  }
+
   VERIFY_SUCCEEDED(goopdate_utils::WriteInstallerDataToTempFile(
+      app_installer_directory,
       installer_data,
       &enclosed_installer_data_file_path));
   if (!enclosed_installer_data_file_path.IsEmpty()) {

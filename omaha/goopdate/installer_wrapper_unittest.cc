@@ -711,7 +711,7 @@ TEST_F(InstallerWrapperUserTest,
   EXPECT_EQ(POST_INSTALL_ACTION_DEFAULT, result_info_.post_install_action);
 }
 
-TEST_F(InstallerWrapperUserTest, InstallApp_InstallerEmtpyFilename) {
+TEST_F(InstallerWrapperUserTest, InstallApp_InstallerEmptyFilename) {
   EXPECT_EQ(GOOPDATEINSTALL_E_FILENAME_INVALID,
             iw_->InstallApp(NULL,
                             kAppGuid,

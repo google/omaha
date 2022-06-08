@@ -4,7 +4,7 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2019 Update 16.10.4 and Windows SDK 10.0.18362.0. ####
+#### Currently, the supported toolchain is Visual Studio 2019 Update 16.11.10 and Windows SDK 10.0.22000.0. ####
 
 The updater runs on Windows 7, 8, and 10. Windows XP is not supported in the current build configuration due to a number of issues, such as thread-safe initializing of static local variables, etc.
 

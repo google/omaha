@@ -440,7 +440,7 @@ TEST_F(InstallManagerInstallAppUserTest,
   EXPECT_EQ(POST_INSTALL_ACTION_DEFAULT, GetPostInstallAction(app_));
 }
 
-TEST_F(InstallManagerInstallAppUserTest, InstallApp_InstallerEmtpyFilename) {
+TEST_F(InstallManagerInstallAppUserTest, InstallApp_InstallerEmptyFilename) {
   // Package asserts that the filename and file path are not NULL.
   ExpectAsserts expect_asserts;
 

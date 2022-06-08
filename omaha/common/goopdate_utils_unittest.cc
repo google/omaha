@@ -1474,6 +1474,12 @@ TEST(GoopdateUtilsTest, ReadNameValuePairsFromFileTest_ReadManyPairs) {
 }
 
 TEST(GoopdateUtilsTest, WriteInstallerDataToTempFile) {
+  CString file_path;
+  EXPECT_EQ(S_FALSE, WriteInstallerDataToTempFile(
+                         CPath(_T("NonExistentDirectory")),
+                         CString(_T("hello\n")),
+                         &file_path));
+
   CStringA utf8_bom;
   utf8_bom.Format("%c%c%c", 0xEF, 0xBB, 0xBF);
 
@@ -1499,12 +1505,14 @@ TEST(GoopdateUtilsTest, WriteInstallerDataToTempFile) {
 
   ASSERT_EQ(expected_installer_data.size(), list_installer_data.size());
 
+  const CPath directory(app_util::GetCurrentModuleDirectory());
   for (size_t i = 0; i < list_installer_data.size(); ++i) {
     CString installer_data = list_installer_data[i];
     SCOPED_TRACE(installer_data.GetString());
 
-    CString file_path;
-    HRESULT hr = WriteInstallerDataToTempFile(installer_data, &file_path);
+    HRESULT hr = WriteInstallerDataToTempFile(directory,
+                                              installer_data,
+                                              &file_path);
     ON_SCOPE_EXIT(::DeleteFile, file_path.GetString());
     EXPECT_SUCCEEDED(hr);
 

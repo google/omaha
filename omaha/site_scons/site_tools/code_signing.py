@@ -109,7 +109,7 @@ def SignedBinaryGenerator(source, target, env, for_signature):
   # Only do signing if there is a certificate file or certificate name.
   if env.subst('$CERTIFICATE_PATH') or env.subst('$CERTIFICATE_NAME'):
     # The command used to do signing (target added on below).
-    signing_cmd = '$SIGNTOOL sign '
+    signing_cmd = '$SIGNTOOL sign /fd sha1'
     # Add in certificate file if any.
     if env.subst('$CERTIFICATE_PATH'):
       signing_cmd += ' /f "$CERTIFICATE_PATH"'
@@ -161,6 +161,7 @@ def DualSignedBinaryGenerator(source, target, env, for_signature):
     #   /t http://timestamp.globalsign.com/scripts/timstamp.dll
     #   /i "Verisign" someFile.exe
     sha1_signing_cmd = base_signing_cmd
+    sha1_signing_cmd += ' /fd sha1'
     # Add in certificate file if any.
     if env.subst('$SHA1_CERTIFICATE_PATH'):
       sha1_signing_cmd += ' /f "$SHA1_CERTIFICATE_PATH"'

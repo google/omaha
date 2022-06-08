@@ -15,6 +15,7 @@
 
 Import('env')
 
+import fnmatch
 import glob
 import operator
 import os
@@ -97,107 +98,43 @@ local_env.Append(ASFLAGS = ['/safeseh'])
 # Build these into a library.
 local_env.ComponentStaticLibraryMultiarch('base', inputs)
 
-if 'OMAHA_PROTOBUF_BIN_DIR' not in os.environ:
-  """ Build the Protocol Buffer Compiler executable protoc.exe."""
-
-  def GenerateGYPRunAction(source, target, env, for_signature):
-    """This Generator creates a command line that when executed runs gyp on the
-       specified source file to generate the specified target file.
-
-       * We explicitly change to the directory of the
-       source file before running gyp. Not doing this confuses some of the gyp
-       generators, especially the msvs generator.
-       * The |--generator-output| option is needed to generate the target in the
-       target directory. Without |--generator-output|, the target is generated
-       in the source directory, which is not desirable especially if the source
-       directory is read-only. Explicitly generating the target in a different
-       output directory also avoids other warnings.
-       * |--generator-output| needs to be specified as a
-       path relative to the source file path to be compatible with the gyp
-       generators.
-
-    Args:
-      source: A List containing a single .gyp file path.
-      target: A List containing a single target file path.
-      env: The Environment in which to build.
-      for_signature: We ignore this parameter. It indicates to the generator to
-                     just generate the command and not actually run it.
-
-    Returns:
-      A valid command line that when executed runs gyp on the specified source
-      file to generate the specified target file.
-    """
-
-    # We use the googleclient gyp since the google3 gyp does not work well with
-    # python 2.7.
-    gyp_bat_file = '$GOOGLECLIENT\\third_party\\gyp\\files\\gyp.bat'
-
-    # Explicitly using 'cd', since using the chdir option to env.Command() is
-    # not compatible with parallel builds using the -j option.
-    gyprun_action = 'cd %s' % source[0].dir.abspath
-    gyprun_action += ' && '  # Chaining the gyp generation to the 'cd' command.
-    gyprun_action += '%s %s --generator-output=%s -G msvs_version=2005' % (
-        env.File(gyp_bat_file).abspath,
-        source[0].name,
-        os.path.relpath(target[0].dir.abspath, source[0].dir.abspath))
-
-    return gyprun_action
-
-  Import('env')
-  local_env = env.Clone()
-
-  # Use gyp to generate protoc.sln, which in turn is fed to VCBuild to generate
-  # protoc.exe.
-  # gyp.
-  gyprun = Builder(generator = GenerateGYPRunAction)
-  local_env.Append( BUILDERS = {'GYPRun' : gyprun})
-  protoc_sln = local_env.GYPRun(
-    target='protoc.sln',
-    source='$GOOGLE3/net/proto2/contrib/portable/gyp/protoc.gyp')
-
-  # VCBuild.
-  vcbld = Builder(action =
-      '$GOOGLECLIENT\\third_party\\vc_80\\files\\vc\\vcpackages\\vcbuild.exe' +
-      ' /useenv $SOURCE "Default|Win32"')
-  local_env.Append( BUILDERS = {'VCBuild' : vcbld})
-  local_env.VCBuild(target='Default/protoc.exe', source=protoc_sln)
+def MultiGlobFilter(env, include, exclude=None):
+  """Glob for each pattern in `includes`, filter out patterns in `excludes`."""
+  files = set()
+  for pat in include:
+    files.update(env.Glob(pat, strings=True))
+  for exclude_pat in (exclude or []):
+    files.difference_update(fnmatch.filter(files, exclude_pat))
+  return sorted(files)
 
 """ Build libprotobuf. """
 
+proto_env = env.Clone()
+
 default_protobuf_src_dir = '$GOOGLE3/third_party/protobuf/src'
 protobuf_src_dir = os.getenv('OMAHA_PROTOBUF_SRC_DIR', default_protobuf_src_dir)
-
-proto_env = env.Clone()
 protobuf_src_path = os.path.join(protobuf_src_dir, 'google/protobuf/')
+protobuf_src_path_dir = proto_env.Dir(protobuf_src_path)
+proto_env.Dir('protobuf').addRepository(protobuf_src_path_dir)
+
+proto_env.FilterOut(CCFLAGS=['/W4', '/Wall'])
+
+proto_env.Prepend(CCFLAGS=['/W2'])
+
 proto_env.Append(
-    CPPDEFINES=['LIBPROTOBUF_EXPORTS'],
     CCFLAGS=[
-        '/wd4005',
-        '/wd4018',
-        '/wd4065',
-        '/wd4100',
-        '/wd4125',
-        '/wd4146',
-        '/wd4242',
-        '/wd4244',
-        '/wd4267',
-        '/wd4305',
-        '/wd4309',
-        '/wd4310',
-        '/wd4355',
-        '/wd4388',
-        '/wd4389',
-        '/wd4456',
-        '/wd4506',
-        '/wd4548',
-        '/wd4647',
-        '/wd4701',
-        '/wd4702',
-        '/wd4703',
-        '/wd4715',
-        '/wd4798',
-        '/wd4800',
-        '/wd4946',
+        '/wd4309',  # truncation of constant value
+        '/wd4244',  # conversion from 'T1' to 'T2', possible loss of data
+        '/wd4506',  # no definition for inline function
+    ],
+    CPPDEFINES=[
+        'LIBPROTOBUF_EXPORTS',
+        # Force the compiler to output public accessors for Google-specific
+        # ctypes.
+        'PUBLIC_UNKNOWN_CTYPES',
+        # Let the compiler silently ignore unknown options in the proto files.
+        'ALLOW_UNKNOWN_OPTIONS',
+        'PROTOBUF_INTERNAL_IGNORE_FIELD_NAME_ERRORS_=1',
     ],
     CPPPATH=[
         protobuf_src_dir,
@@ -205,54 +142,47 @@ proto_env.Append(
     ],
 )
 
-protobuf_src_path_dir = proto_env.Dir(protobuf_src_path)
-proto_env.Dir('protobuf').addRepository(protobuf_src_path_dir)
-cc_files = [
-    'protobuf/compiler/importer.cc',
-    'protobuf/compiler/parser.cc',
-    'protobuf/any.cc',
-    'protobuf/arena.cc',
-    'protobuf/arenastring.cc',
-    'protobuf/descriptor.cc',
-    'protobuf/descriptor.pb.cc',
-    'protobuf/descriptor_database.cc',
-    'protobuf/dynamic_message.cc',
-    'protobuf/extension_set.cc',
-    'protobuf/extension_set_heavy.cc',
-    'protobuf/generated_message_reflection.cc',
-    'protobuf/generated_message_util.cc',
-    'protobuf/implicit_weak_message.cc',
-    'protobuf/io/coded_stream.cc',
-    'protobuf/io/io_win32.cc',
-    'protobuf/io/printer.cc',
-    'protobuf/io/strtod.cc',
-    'protobuf/io/tokenizer.cc',
-    'protobuf/io/zero_copy_stream.cc',
-    'protobuf/io/zero_copy_stream_impl.cc',
-    'protobuf/io/zero_copy_stream_impl_lite.cc',
-    'protobuf/map_field.cc',
-    'protobuf/message.cc',
-    'protobuf/message_lite.cc',
-    'protobuf/parse_context.cc',
-    'protobuf/reflection_ops.cc',
-    'protobuf/repeated_field.cc',
-    'protobuf/service.cc',
-    'protobuf/stubs/common.cc',
-    'protobuf/stubs/int128.cc',
-    'protobuf/stubs/status.cc',
-    'protobuf/stubs/stringprintf.cc',
-    'protobuf/stubs/stringpiece.cc',
-    'protobuf/stubs/structurally_valid.cc',
-    'protobuf/stubs/strutil.cc',
-    'protobuf/stubs/substitute.cc',
-    'protobuf/text_format.cc',
-    'protobuf/unknown_field_set.cc',
-    'protobuf/wire_format.cc',
-    'protobuf/wire_format_lite.cc',
-]
+cc_files = MultiGlobFilter(
+    proto_env,
+    [
+        'protobuf/*.cc',
+        'protobuf/io/*.cc',
+        'protobuf/stubs/*.cc',
+    ],
+    exclude=['protobuf/*test*.cc'],
+)
 
 proto_env.ComponentStaticLibraryMultiarch(
     'libprotobuf', cc_files, COMPONENT_STATIC=True)
+
+if 'OMAHA_PROTOBUF_BIN_DIR' not in os.environ:
+  """ Build the Protocol Buffer Compiler executable protoc.exe."""
+
+  protoc_env = proto_env.Clone()
+
+  protoc_env.FilterOut(LINKFLAGS=['/SUBSYSTEM:WINDOWS,5.01'])
+
+  protoc_env.Append(
+      LIBS=[
+          protoc_env['crt_libs'][protoc_env.Bit('debug')],
+          'libprotobuf',
+      ],
+      LINKFLAGS=['/SUBSYSTEM:CONSOLE,5.01'],
+  )
+
+  cc_files = MultiGlobFilter(
+      protoc_env,
+      [
+          'protobuf/compiler/*.cc',
+          'protobuf/compiler/*/*.cc',
+      ],
+      exclude = [
+          'protobuf/compiler/mock_code_generator.cc',
+          'protobuf/compiler/*test*.cc',
+          'protobuf/compiler/*/*test*.cc',
+      ],
+  )
+  protoc_env.ComponentProgram('Default/protoc.exe', cc_files)
 
 """ Build the CRX Verifier libraries."""
 
@@ -290,7 +220,6 @@ cc_files += ['zlib/' +
              glob.glob(zlib_src_path_dir.path + os.sep + '*.c')]
 
 """ Add libzip library files."""
-
 libzip_src_path = '$GOOGLE3/third_party/libzip/lib/'
 libzip_src_path_dir = local_env.Dir(libzip_src_path)
 local_env.Dir('libzip').addRepository(libzip_src_path_dir)

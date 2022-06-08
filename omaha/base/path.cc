@@ -29,16 +29,6 @@
 #include "omaha/base/utils.h"
 
 namespace omaha {
-
-const TCHAR* const kRegSvr32Cmd1 = _T("regsvr32 ");
-const TCHAR* const kRegSvr32Cmd2 = _T("regsvr32.exe ");
-const TCHAR* const kRunDll32Cmd1 = _T("rundll32 ");
-const TCHAR* const kRunDll32Cmd2 = _T("rundll32.exe ");
-const TCHAR* const kMsiExecCmd1  = _T("msiexec ");
-const TCHAR* const kMsiExecCmd2  = _T("msiexec.exe ");
-const TCHAR* const kDotExe       = _T(".exe");
-
-
 namespace detail {
 
 typedef bool (*Filter)(const WIN32_FIND_DATA&);
