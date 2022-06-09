@@ -99,7 +99,7 @@ TEST_F(EventLoggerTest, ReportEvent) {
                                             strings,
                                             arraysize(buf),
                                             buf));
-  // Read the record at the top to do a brief sanity check.
+  // Read the record at the top to do a brief check.
   const size_t kBufferSize = 1024 * 64;
   byte buffer[kBufferSize] = {0};
   EVENTLOGRECORD* rec = reinterpret_cast<EVENTLOGRECORD*>(buffer);

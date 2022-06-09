@@ -215,7 +215,7 @@ TEST_F(WebServicesClientTest, SendForcingHttps) {
                _T("{E608D3AC-AA44-4754-A391-DA830AE78EA4}"),
                app_ids_header);
 
-  // Do a couple of sanity checks on the parsing of the response.
+  // Do a couple of checks on the parsing of the response.
   xml::response::Response response(update_response_->response());
   EXPECT_STREQ(_T("3.0"), response.protocol);
   ASSERT_EQ(2, response.apps.size());

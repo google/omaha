@@ -65,7 +65,8 @@ TEST(StringTest, UintToString) {
   ASSERT_STREQ(String_Uint64ToString(0x101fff, 16), L"101fff");
   ASSERT_STREQ(String_Uint64ToString(0x999999, 16), L"999999");
   ASSERT_STREQ(String_Uint64ToString(0x0, 16), L"0");
-  ASSERT_STREQ(String_Uint64ToString(0xffffffffffffffff, 16), L"ffffffffffffffff");
+  ASSERT_STREQ(String_Uint64ToString(0xffffffffffffffff, 16),
+               L"ffffffffffffffff");
 
   ASSERT_STREQ(String_Uint64ToString(01234, 8), L"1234");
   ASSERT_STREQ(String_Uint64ToString(0, 8), L"0");
@@ -511,8 +512,8 @@ void TestIsSpace (const char *s) {
 
     // used to try to clear the processor cache
     const size_t dlen = 100000;
-    char* dummy = new char [dlen];
-    RandBytes(dummy, sizeof(*dummy) * dlen);
+    char* rand_bytes = new char [dlen];
+    RandBytes(rand_bytes, sizeof(*rand_bytes) * dlen);
 
     size_t num_spaces = 0;
     size_t n = iterations * len;
@@ -524,7 +525,7 @@ void TestIsSpace (const char *s) {
         t1.Stop();
         // this cache clearing code gets optimized out in release mode
         size_t d2 = 0;
-        for (size_t j = 0; j < dlen; j++) { d2 += dummy[j]; }
+        for (size_t j = 0; j < dlen; j++) { d2 += rand_bytes[j]; }
     }
 
     num_spaces = 0;
@@ -535,7 +536,7 @@ void TestIsSpace (const char *s) {
         }
         t2.Stop();
         size_t d2 = 0;
-        for (size_t j = 0; j < dlen; j++) { d2 += dummy[j]; }
+        for (size_t j = 0; j < dlen; j++) { d2 += rand_bytes[j]; }
     }
 
     num_spaces = 0;
@@ -546,10 +547,10 @@ void TestIsSpace (const char *s) {
         }
         t3.Stop();
         size_t d2 = 0;
-        for (size_t j = 0; j < dlen; j++) { d2 += dummy[j]; }
+        for (size_t j = 0; j < dlen; j++) { d2 += rand_bytes[j]; }
     }
 
-    delete[] dummy;
+    delete[] rand_bytes;
 }
 
 TEST(StringTest, IsSpace) {

@@ -563,7 +563,7 @@ class SetupTest : public testing::Test {
                                                  kProcessesCleanupWait));
   }
 
-  // Starts dummy process that doesn't exit and assigns it to the specified job.
+  // Starts test process that doesn't exit and assigns it to the specified job.
   // The handle returned by ShellExecute does not have PROCESS_SET_QUOTA access
   // rights, so we get a new handle with the correct access rights to return to
   // the caller.

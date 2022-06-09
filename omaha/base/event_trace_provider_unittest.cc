@@ -48,10 +48,10 @@ TEST(EtwTraceProviderTest, ToleratesPreCreateInvocations) {
   provider.Log(kTestEventClass, 0, TRACE_LEVEL_FATAL, "foo");
   provider.Log(kTestEventClass, 0, TRACE_LEVEL_FATAL, L"foo");
 
-  EtwMofEvent<1> dummy(kTestEventClass, 0, TRACE_LEVEL_FATAL);
+  EtwMofEvent<1> etw_mof_event(kTestEventClass, 0, TRACE_LEVEL_FATAL);
   DWORD data = 0;
-  dummy.SetField(0, sizeof(data), &data);
-  provider.Log(dummy.get());
+  etw_mof_event.SetField(0, sizeof(data), &data);
+  provider.Log(etw_mof_event.get());
 
   // Placement-new the provider into our buffer.
   new (buf) EtwTraceProvider(kTestProvider);  // NOLINT
@@ -73,7 +73,7 @@ TEST(EtwTraceProviderTest, ToleratesPreCreateInvocations) {
   // We expect these not to crash.
   provider.Log(kTestEventClass, 0, TRACE_LEVEL_FATAL, "foo");
   provider.Log(kTestEventClass, 0, TRACE_LEVEL_FATAL, L"foo");
-  provider.Log(dummy.get());
+  provider.Log(etw_mof_event.get());
 }
 
 TEST(EtwTraceProviderTest, Initialize) {

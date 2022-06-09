@@ -153,7 +153,7 @@ void InitializeRegistryForTest(bool is_machine) {
       ConfigManager::Instance()->registry_client_state(is_machine));
 }
 
-class DummyUserWorkItem : public UserWorkItem {
+class TestUserWorkItem : public UserWorkItem {
  private:
   virtual void DoProcess() {}
 };
@@ -403,23 +403,23 @@ class AppBundlePopulatedRegistryTest : public AppBundleInitializedTest {
     EXPECT_SUCCEEDED(ResourceManager::Create(
       is_machine_, app_util::GetCurrentModuleDirectory(), _T("en")));
 
-    dummy_app_bundle_for_expected_apps_ = model_->CreateAppBundle(is_machine_);
-    ASSERT_TRUE(dummy_app_bundle_for_expected_apps_.get());
+    test_app_bundle_for_expected_apps_ = model_->CreateAppBundle(is_machine_);
+    ASSERT_TRUE(test_app_bundle_for_expected_apps_.get());
     // TODO(omaha): Address with the TODO in AppBundleInitializedTest::SetUp.
     if (is_machine_) {
-      SetAppBundleStateForUnitTest(dummy_app_bundle_for_expected_apps_.get(),
+      SetAppBundleStateForUnitTest(test_app_bundle_for_expected_apps_.get(),
                                    new fsm::AppBundleStateInitialized);
     } else {
-      EXPECT_SUCCEEDED(dummy_app_bundle_for_expected_apps_->put_displayName(
+      EXPECT_SUCCEEDED(test_app_bundle_for_expected_apps_->put_displayName(
                            CComBSTR(_T("My Bundle"))));
-      EXPECT_SUCCEEDED(dummy_app_bundle_for_expected_apps_->put_displayLanguage(
+      EXPECT_SUCCEEDED(test_app_bundle_for_expected_apps_->put_displayLanguage(
                            CComBSTR(_T("en"))));
-      EXPECT_SUCCEEDED(dummy_app_bundle_for_expected_apps_->initialize());
+      EXPECT_SUCCEEDED(test_app_bundle_for_expected_apps_->initialize());
     }
   }
 
   virtual void TearDown() {
-    dummy_app_bundle_for_expected_apps_.reset();
+    test_app_bundle_for_expected_apps_.reset();
 
     ResourceManager::Delete();
 
@@ -432,7 +432,7 @@ class AppBundlePopulatedRegistryTest : public AppBundleInitializedTest {
   App* CreateExpectedApp(const TCHAR* app_id) {
     App* app = NULL;
     EXPECT_SUCCEEDED(
-        dummy_app_bundle_for_expected_apps_->createApp(CComBSTR(app_id), &app));
+        test_app_bundle_for_expected_apps_->createApp(CComBSTR(app_id), &app));
     ASSERT1(app);
     return app;
   }
@@ -462,7 +462,7 @@ class AppBundlePopulatedRegistryTest : public AppBundleInitializedTest {
     AppManager::Instance()->ReadAppInstallTimeDiff(opposite_hive_app2);
   }
 
-  std::shared_ptr<AppBundle> dummy_app_bundle_for_expected_apps_;
+  std::shared_ptr<AppBundle> test_app_bundle_for_expected_apps_;
   LLock lock_;
 
  private:
@@ -625,9 +625,9 @@ TEST_F(AppBundleInitializedUserTest, createApp_SameAppTwice) {
 }
 
 TEST_F(AppBundleInitializedUserTest, createApp_AfterUpdateCheck) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app0_created = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app0_created));
@@ -659,9 +659,9 @@ TEST_F(AppBundleInitializedUserTest, checkForUpdate_NoApps) {
 
 // Does not verify the update check occurs.
 TEST_F(AppBundleInitializedUserTest, checkForUpdate_OneApp) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app));
@@ -673,9 +673,9 @@ TEST_F(AppBundleInitializedUserTest, checkForUpdate_OneApp) {
 
 // Does not verify the update check occurs.
 TEST_F(AppBundleInitializedUserTest, checkForUpdate_TwoApps) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app0 = NULL;
   App* app1 = NULL;
@@ -688,9 +688,9 @@ TEST_F(AppBundleInitializedUserTest, checkForUpdate_TwoApps) {
 }
 
 TEST_F(AppBundleInitializedUserTest, checkForUpdate_Twice) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app));
@@ -702,9 +702,9 @@ TEST_F(AppBundleInitializedUserTest, checkForUpdate_Twice) {
 }
 
 TEST_F(AppBundleInitializedUserTest, checkForUpdate_WhileBundleIsBusy) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app));
@@ -717,9 +717,9 @@ TEST_F(AppBundleInitializedUserTest, checkForUpdate_WhileBundleIsBusy) {
 
 // Does not verify the update check occurs.
 TEST_F(AppBundleInitializedMachineTest, checkForUpdate_OneApp) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app));
@@ -735,15 +735,15 @@ TEST_F(AppBundleInitializedUserTest, download_WithoutUpdateCheck) {
 
 // The AppBundle does not prevent this, but the apps may enter the error state.
 TEST_F(AppBundleInitializedUserTest, download_AfterInstall) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAndInstallAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -761,14 +761,14 @@ TEST_F(AppBundleInitializedUserTest, download_AfterInstall) {
 
 // The AppBundle does not prevent this, but the apps may enter the error state.
 TEST_F(AppBundleInitializedUserTest, download_Twice) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAsync(_))
         .Times(2)
-        .WillRepeatedly(SetWorkItem(&dummy_work_item));
+        .WillRepeatedly(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -786,9 +786,9 @@ TEST_F(AppBundleInitializedUserTest, download_Twice) {
 
 // Simulates the update check still in progress when download() is called.
 TEST_F(AppBundleInitializedUserTest, download_WhileBundleIsBusy) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app));
@@ -802,14 +802,14 @@ TEST_F(AppBundleInitializedUserTest, download_WhileBundleIsBusy) {
 
 // The AppBundle does not prevent this, but the apps may enter the error state.
 TEST_F(AppBundleInitializedMachineTest, download_Twice) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAsync(_))
         .Times(2)
-        .WillRepeatedly(SetWorkItem(&dummy_work_item));
+        .WillRepeatedly(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -830,13 +830,13 @@ TEST_F(AppBundleInitializedUserTest, install_WithoutUpdateCheck) {
 }
 
 TEST_F(AppBundleInitializedUserTest, install_WithoutDownload) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAndInstallAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -851,15 +851,15 @@ TEST_F(AppBundleInitializedUserTest, install_WithoutDownload) {
 }
 
 TEST_F(AppBundleInitializedUserTest, install_AfterDownload) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAndInstallAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -877,14 +877,14 @@ TEST_F(AppBundleInitializedUserTest, install_AfterDownload) {
 
 // The AppBundle does not prevent this, but the apps may enter the error state.
 TEST_F(AppBundleInitializedUserTest, install_Twice) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAndInstallAsync(_))
         .Times(2)
-        .WillRepeatedly(SetWorkItem(&dummy_work_item));
+        .WillRepeatedly(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -904,13 +904,13 @@ TEST_F(AppBundleInitializedUserTest, install_Twice) {
 // fails. We could move this to AppBundleWrapper, but we would need to expose
 // some functions to AppBundleWrapper.
 TEST_F(AppBundleInitializedMachineTest, DISABLED_install_WithoutDownload) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAndInstallAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -925,15 +925,15 @@ TEST_F(AppBundleInitializedMachineTest, DISABLED_install_WithoutDownload) {
 }
 
 TEST_F(AppBundleInitializedMachineTest, DISABLED_install_AfterDownload) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence seq;
     EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
     EXPECT_CALL(*worker_, DownloadAndInstallAsync(_))
-        .WillOnce(SetWorkItem(&dummy_work_item));
+        .WillOnce(SetWorkItem(&test_work_item));
   }
 
   App* app = NULL;
@@ -951,9 +951,9 @@ TEST_F(AppBundleInitializedMachineTest, DISABLED_install_AfterDownload) {
 
 // Simulates the update check still in progress when install is called.
 TEST_F(AppBundleInitializedUserTest, install_WhileBundleIsBusy) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app));
@@ -1255,9 +1255,9 @@ TEST_F(AppBundlePopulatedRegistryUserTest,
                                                               &expected_app1,
                                                               &expected_app2);
 
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   App* app0_created = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createInstalledApp(CComBSTR(kGuid1),
@@ -1457,9 +1457,9 @@ TEST_F(AppBundlePopulatedRegistryUserTest,
   EXPECT_HRESULT_SUCCEEDED(RegKey::CreateKey(
       AppendRegKeyPath(USER_REG_CLIENT_STATE, kGuid4)));  // Avoid assert.
 
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   EXPECT_SUCCEEDED(app_bundle_->createAllInstalledApps());
 
@@ -1704,8 +1704,8 @@ class AppBundleStateBusyUserTest : public AppBundleStateUserTest {
   virtual void SetUp() {
     AppBundleStateUserTest::SetUp();
 
-    DummyUserWorkItem dummy_work_item;
-    app_bundle_->set_user_work_item(&dummy_work_item);
+    TestUserWorkItem test_work_item;
+    app_bundle_->set_user_work_item(&test_work_item);
 
     SetAppBundleStateForUnitTest(app_bundle_.get(),
                                  new fsm::AppBundleStateBusy);
@@ -1941,9 +1941,9 @@ TEST_F(AppBundleStateInitializedUserTest, createAllInstalledApps) {
 TEST_F(AppBundleStateInitializedUserTest, checkForUpdate) {
   App* app = NULL;
   EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app));
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, CheckForUpdateAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   EXPECT_SUCCEEDED(app_bundle_->checkForUpdate());
   EXPECT_EQ(STATE_BUSY, GetBundleState());
@@ -1966,9 +1966,9 @@ TEST_F(AppBundleStateInitializedUserTest, updateAllApps) {
   EXPECT_HRESULT_SUCCEEDED(RegKey::CreateKey(
       AppendRegKeyPath(USER_REG_CLIENT_STATE, kGuid1)));  // Avoid assert.
 
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, UpdateAllAppsAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   EXPECT_SUCCEEDED(app_bundle_->updateAllApps());
   EXPECT_EQ(STATE_BUSY, GetBundleState());
@@ -2228,9 +2228,9 @@ TEST_F(AppBundleStateReadyUserTest, checkForUpdate) {
 }
 
 TEST_F(AppBundleStateReadyUserTest, download) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, DownloadAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   EXPECT_SUCCEEDED(app_bundle_->download());
   EXPECT_EQ(STATE_BUSY, GetBundleState());
@@ -2239,9 +2239,9 @@ TEST_F(AppBundleStateReadyUserTest, download) {
 }
 
 TEST_F(AppBundleStateReadyUserTest, install) {
-  DummyUserWorkItem dummy_work_item;
+  TestUserWorkItem test_work_item;
   EXPECT_CALL(*worker_, DownloadAndInstallAsync(_))
-      .WillOnce(SetWorkItem(&dummy_work_item));
+      .WillOnce(SetWorkItem(&test_work_item));
 
   EXPECT_SUCCEEDED(app_bundle_->install());
   EXPECT_EQ(STATE_BUSY, GetBundleState());
@@ -2396,8 +2396,8 @@ TEST_F(AppBundleStatePausedUserTest, resume_Succeeds_AsyncCallNotCompleted) {
 }
 
 TEST_F(AppBundleStatePausedUserTest, resume_Succeeds_AsyncCallCompleted) {
-  DummyUserWorkItem dummy_work_item;
-  app_bundle_->set_user_work_item(&dummy_work_item);
+  TestUserWorkItem test_work_item;
+  app_bundle_->set_user_work_item(&test_work_item);
   app_bundle_->CompleteAsyncCall();
 
   EXPECT_CALL(*worker_, Resume(app_bundle_.get()))
@@ -2416,8 +2416,8 @@ TEST_F(AppBundleStatePausedUserTest, resume_Fails_AsyncCallNotCompleted) {
 }
 
 TEST_F(AppBundleStatePausedUserTest, resume_Fails_AsyncCallCompleted) {
-  DummyUserWorkItem dummy_work_item;
-  app_bundle_->set_user_work_item(&dummy_work_item);
+  TestUserWorkItem test_work_item;
+  app_bundle_->set_user_work_item(&test_work_item);
   app_bundle_->CompleteAsyncCall();
 
   EXPECT_CALL(*worker_, Resume(app_bundle_.get()))
@@ -2450,8 +2450,8 @@ TEST_F(AppBundleStatePausedUserTest, get_currentState) {
 
 // Remains Paused until resumed.
 TEST_F(AppBundleStatePausedUserTest, CompleteAsyncCall) {
-  DummyUserWorkItem dummy_work_item;
-  app_bundle_->set_user_work_item(&dummy_work_item);
+  TestUserWorkItem test_work_item;
+  app_bundle_->set_user_work_item(&test_work_item);
   SetAppBundleStateForUnitTest(app_bundle_.get(),
                                new fsm::AppBundleStatePaused);
 
@@ -2574,8 +2574,8 @@ TEST_F(AppBundleStateStoppedUserTest, get_currentState) {
 }
 
 TEST_F(AppBundleStateStoppedUserTest, CompleteAsyncCall) {
-  DummyUserWorkItem dummy_work_item;
-  app_bundle_->set_user_work_item(&dummy_work_item);
+  TestUserWorkItem test_work_item;
+  app_bundle_->set_user_work_item(&test_work_item);
 
   app_bundle_->CompleteAsyncCall();
 

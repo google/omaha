@@ -529,7 +529,7 @@ HRESULT NetworkRequestImpl::DoSendHttpRequest(
   }
 
   // The algorithm is very rough meaning it does not look at the error
-  // returned by the Send and it blindly retries the call. For some errors
+  // returned by the Send and it always retries the call. For some errors
   // it may not make sense to retry at all, for example, let's say the
   // error is ERROR_DISK_FULL.
   NET_LOG(L3, (_T("[%s]"), url_));

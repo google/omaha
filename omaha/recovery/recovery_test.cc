@@ -86,9 +86,9 @@ HRESULT DownloadFile(const TCHAR* url, const TCHAR* file_path, void*) {
 }  // namespace
 
 int main() {
-  const TCHAR* const kDummyGuid = _T("{20F8FA32-8E16-4046-834B-88661E021AFC}");
+  const TCHAR* const kTestGuid = _T("{20F8FA32-8E16-4046-834B-88661E021AFC}");
 
-  HRESULT hr = FixGoogleUpdate(kDummyGuid,
+  HRESULT hr = FixGoogleUpdate(kTestGuid,
                                _T("1.0.555.0"),
                                _T("en-us"),
                                true,

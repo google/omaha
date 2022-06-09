@@ -424,7 +424,7 @@ TEST_F(WorkerMockedManagersTest, DownloadAsync) {
   SetAppStateUpdateAvailable(app2_);
 
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence order_is_guaranteed;
     EXPECT_CALL(*mock_download_manager_, DownloadApp(app1_))
         .WillOnce(SimulateDownloadAppStateTransition());
     EXPECT_CALL(*mock_download_manager_, DownloadApp(app2_))
@@ -457,7 +457,7 @@ TEST_F(WorkerMockedManagersTest, DownloadAndInstallAsync_AlreadyDownloaded) {
       .WillRepeatedly(Return(app_util::GetTempDir()));
 
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence order_is_guaranteed;
     EXPECT_CALL(*mock_install_manager_, InstallApp(app1_, _))
         .WillOnce(SimulateInstallAppStateTransition());
     EXPECT_CALL(*mock_install_manager_, InstallApp(app2_, _))
@@ -488,7 +488,7 @@ TEST_F(WorkerMockedManagersTest, DownloadAndInstallAsync_NotAlreadyDownloaded) {
       .WillRepeatedly(Return(app_util::GetTempDir()));
 
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence order_is_guaranteed;
     EXPECT_CALL(*mock_download_manager_, DownloadApp(app1_))
         .WillOnce(SimulateDownloadAppStateTransition());
     EXPECT_CALL(*mock_install_manager_, InstallApp(app1_, _))
@@ -520,7 +520,7 @@ TEST_F(WorkerMockedManagersTest, DownloadAsync_Then_DownloadAndInstallAsync) {
   SetAppStateUpdateAvailable(app2_);
 
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence order_is_guaranteed;
     EXPECT_CALL(*mock_download_manager_, DownloadApp(app1_))
         .WillOnce(SimulateDownloadAppStateTransition());
     EXPECT_CALL(*mock_download_manager_, DownloadApp(app2_))
@@ -546,7 +546,7 @@ TEST_F(WorkerMockedManagersTest, DownloadAsync_Then_DownloadAndInstallAsync) {
       .WillRepeatedly(Return(app_util::GetTempDir()));
 
   {
-    ::testing::InSequence dummy;
+    ::testing::InSequence order_is_guaranteed;
     EXPECT_CALL(*mock_install_manager_, InstallApp(app1_, _))
         .WillOnce(SimulateInstallAppStateTransition());
     EXPECT_CALL(*mock_install_manager_, InstallApp(app2_, _))

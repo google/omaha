@@ -60,9 +60,9 @@ namespace omaha {
 
 namespace {
 
-const TCHAR kDummyAppGuid[] = _T("{8E472B0D-3E8B-43b1-B89A-E8506AAF1F16}");
-const TCHAR kDummyAppVersion[] = _T("3.4.5.6");
-const TCHAR kDummyAppLang[] = _T("en-us");
+const TCHAR kTestAppGuid[] = _T("{8E472B0D-3E8B-43b1-B89A-E8506AAF1F16}");
+const TCHAR kTestAppVersion[] = _T("3.4.5.6");
+const TCHAR kTestAppLang[] = _T("en-us");
 
 const TCHAR kTempDirectory[] = _T("C:\\WINDOWS\\Temp");
 
@@ -77,7 +77,7 @@ const TCHAR kFullUserOmahaClientKeyPath[] =
     _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     _T("{430FD4D0-B729-4f61-AA34-91526481799D}");
 
-const HRESULT kDummyNoFileError = 0x80041234;
+const HRESULT kTestNoFileError = 0x80041234;
 
 const TCHAR kArgumentSavingExecutableRelativePath[] =
     _T("unittest_support\\SaveArguments.exe");
@@ -95,9 +95,9 @@ const TCHAR* const kInvalidFileUrl = _T("http://www.google.com/robots.txt");
 const TCHAR kRegistryHiveOverrideRoot[] =
     _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\UnitTest\\");
 
-const TCHAR kExpectedUrlForDummyAppAndNoOmahaValues[] = _T("https://clients2.") COMPANY_DOMAIN _T("/service/check2?crx3=true&appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
-const int kExpectedUrlForDummyAppAndNoOmahaValuesLength =
-    arraysize(kExpectedUrlForDummyAppAndNoOmahaValues) - 1;
+const TCHAR kExpectedUrlForTestAppAndNoOmahaValues[] = _T("https://clients2.") COMPANY_DOMAIN _T("/service/check2?crx3=true&appid=%7B8E472B0D-3E8B-43b1-B89A-E8506AAF1F16%7D&appversion=3.4.5.6&applang=en-us&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
+const int kExpectedUrlForTestAppAndNoOmahaValuesLength =
+    arraysize(kExpectedUrlForTestAppAndNoOmahaValues) - 1;
 
 // Overrides the HKLM and HKCU registry hives so that accesses go to the
 // specified registry key instead.
@@ -255,7 +255,7 @@ class GoogleUpdateRecoveryTest : public testing::Test {
     return S_OK;
   }
 
-  // Returns kDummyNoFileError, simulating no file to download.
+  // Returns kTestNoFileError, simulating no file to download.
   static HRESULT DownloadFileNoFile(const TCHAR* url,
                                     const TCHAR* file_path,
                                     void* context) {
@@ -266,7 +266,7 @@ class GoogleUpdateRecoveryTest : public testing::Test {
     GoogleUpdateRecoveryTest::set_saved_file_path(file_path);
     GoogleUpdateRecoveryTest::set_saved_context(context);
 
-    return kDummyNoFileError;
+    return kTestNoFileError;
   }
 
   // Overrides the address to cause a file to be downloaded via HTTP.
@@ -325,7 +325,7 @@ class GoogleUpdateRecoveryTest : public testing::Test {
     if (HTTP_STATUS_OK == status_code) {
       return S_OK;
     } else if (HTTP_STATUS_NO_CONTENT == status_code) {
-      return kDummyNoFileError;
+      return kTestNoFileError;
     } else {
       // Apps would not have this assumption.
       ASSERT(false, (_T("Status code %i received. Expected 200 or 204."),
@@ -398,9 +398,9 @@ class GoogleUpdateRecoveryRegistryProtectedTest
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_UseRealHttpClient) {
   EXPECT_EQ(CRYPT_E_NO_MATCH,
-            FixGoogleUpdate(kDummyAppGuid,
-                            kDummyAppVersion,
-                            kDummyAppLang,
+            FixGoogleUpdate(kTestAppGuid,
+                            kTestAppVersion,
+                            kTestAppLang,
                             true,
                             DownloadFileInvalidFile,
                             NULL));
@@ -408,9 +408,9 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_UseRealHttpClient) {
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_Machine) {
   CString context_string(_T("some context"));
-  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
-                                           kDummyAppVersion,
-                                           kDummyAppLang,
+  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kTestAppGuid,
+                                           kTestAppVersion,
+                                           kTestAppLang,
                                            true,
                                            DownloadArgumentSavingCrx3,
                                            &context_string));
@@ -424,9 +424,9 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_Machine) {
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_User) {
   CString context_string(_T("more context"));
-  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
-                                           kDummyAppVersion,
-                                           kDummyAppLang,
+  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kTestAppGuid,
+                                           kTestAppVersion,
+                                           kTestAppLang,
                                            false,
                                            DownloadArgumentSavingCrx3,
                                            &context_string));
@@ -439,9 +439,9 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileReturned_User) {
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_Machine) {
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
@@ -451,9 +451,9 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_Machine) {
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_NoFile_User) {
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                false,
                                                DownloadFileNoFile,
                                                NULL));
@@ -475,9 +475,9 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                                             _T("pv"),
                                             _T("5.6.78.1")));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
@@ -497,9 +497,9 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                                             _T("pv"),
                                             _T("5.6.78.1")));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                false,
                                                DownloadFileNoFile,
                                                NULL));
@@ -512,14 +512,14 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
 
 TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_NoOmahaRegKeys) {
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -527,7 +527,7 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_EmptyAppInfo) {
   const TCHAR kExpectedUrl[] = _T("https://clients2.") COMPANY_DOMAIN _T("/service/check2?crx3=true&appid=&appversion=&applang=&machine=1&version=0.0.0.0&userid=&osversion=");  // NOLINT
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(_T(""),
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(_T(""),
                                                _T(""),
                                                _T(""),
                                                true,
@@ -572,14 +572,14 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                        kRegValueAutoUpdateCheckPeriodOverrideMinutes,
                        static_cast<DWORD>(0)));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -590,14 +590,14 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                        kRegValueAutoUpdateCheckPeriodOverrideMinutes,
                        static_cast<DWORD>(1400)));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -608,14 +608,14 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                        kRegValueAutoUpdateCheckPeriodOverrideMinutes,
                        static_cast<DWORD64>(0)));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -626,14 +626,14 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                        kRegValueAutoUpdateCheckPeriodOverrideMinutes,
                        static_cast<DWORD64>(1400)));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -644,14 +644,14 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                        kRegValueAutoUpdateCheckPeriodOverrideMinutes,
                        _T("0")));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -664,14 +664,14 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
                        &zero,
                        sizeof(zero)));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
@@ -679,21 +679,21 @@ TEST_P(GoogleUpdateRecoveryRegistryProtectedTest,
        FixGoogleUpdate_GroupPolicyKeyExistsButNoAutoUpdateCheckPeriodMinutes) {
   EXPECT_HRESULT_SUCCEEDED(RegKey::CreateKey(kRegKeyGoopdateGroupPolicy));
 
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileNoFile,
                                                NULL));
-  EXPECT_STREQ(kExpectedUrlForDummyAppAndNoOmahaValues,
-               saved_url_.Left(kExpectedUrlForDummyAppAndNoOmahaValuesLength));
+  EXPECT_STREQ(kExpectedUrlForTestAppAndNoOmahaValues,
+               saved_url_.Left(kExpectedUrlForTestAppAndNoOmahaValuesLength));
   CheckSavedUrlOSFragment();
 }
 
 TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
-  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
-                                           kDummyAppVersion,
-                                           kDummyAppLang,
+  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kTestAppGuid,
+                                           kTestAppVersion,
+                                           kTestAppLang,
                                            false,
                                            DownloadArgumentSavingCrx3,
                                            NULL));
@@ -706,9 +706,9 @@ TEST_F(GoogleUpdateRecoveryTest, FixGoogleUpdate_FileCollision) {
   FileLock lock;
   EXPECT_HRESULT_SUCCEEDED(lock.Lock(first_saved_file_path));
 
-  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kDummyAppGuid,
-                                           kDummyAppVersion,
-                                           kDummyAppLang,
+  EXPECT_HRESULT_SUCCEEDED(FixGoogleUpdate(kTestAppGuid,
+                                           kTestAppVersion,
+                                           kTestAppLang,
                                            false,
                                            DownloadArgumentSavingCrx3,
                                            NULL));
@@ -849,9 +849,9 @@ TEST_F(GoogleUpdateRecoveryTest, VerifyRepairFileMarkup_BadFilenames) {
 // Production Server Response Tests Tests
 //
 TEST_F(GoogleUpdateRecoveryTest, ProductionServerResponseTest) {
-  EXPECT_EQ(kDummyNoFileError, FixGoogleUpdate(kDummyAppGuid,
-                                               kDummyAppVersion,
-                                               kDummyAppLang,
+  EXPECT_EQ(kTestNoFileError, FixGoogleUpdate(kTestAppGuid,
+                                               kTestAppVersion,
+                                               kTestAppLang,
                                                true,
                                                DownloadFileFromServer,
                                                NULL)) <<

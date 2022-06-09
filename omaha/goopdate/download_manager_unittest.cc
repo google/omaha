@@ -252,7 +252,7 @@ TEST_F(DownloadManagerUserTest, DownloadApp_MultiplePackagesInOneApp) {
   EXPECT_TRUE(download_manager_->IsPackageAvailable(package));
   EXPECT_LT(0, app->GetDownloadTimeMs());
 
-  // Sanity check the pings, including the two download metrics pings.
+  // Check the pings, including the two download metrics pings.
   CString actual_pings;
   const PingEventVector& pings(app->ping_events());
   for (size_t i = 0; i != pings.size(); ++i) {

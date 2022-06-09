@@ -43,7 +43,7 @@ namespace custom_action {
 // |    ..............................   |
 // |    Other parts of MSI file          |
 // +-------------------------------------+
-// | Start of the dummy certficate       |
+// | Start of the certificate             |
 // ~    ..............................   ~
 // ~    ..............................   ~
 // | Magic number 'Gact2.0Omaha'         | Tag starts

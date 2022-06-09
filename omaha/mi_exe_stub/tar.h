@@ -43,7 +43,7 @@ typedef struct {
   char devmajor[8];
   char devminor[8];
   char prefix[155];
-  char dummy[12];  // make it exactly 512 bytes
+  char padding[12];  // make it exactly 512 bytes
 } USTARHeader;
 
 // Supports untarring of files from a tar-format archive. Pretty minimal;
