@@ -73,6 +73,8 @@ class DmStorage {
     return enrollment_token_source_;
   }
 
+  CPath policy_responses_dir() const { return policy_responses_dir_; }
+
   // Writes the instance's enrollment token if it was provided at runtime into
   // Omaha's ClientState key so that it is available for subsequent runs.
   // Returns S_FALSE if the instance's enrollment token was not provided at
@@ -89,6 +91,9 @@ class DmStorage {
 
   // Writes |kInvalidTokenValue| into the registry.
   HRESULT InvalidateDMToken();
+
+  // Deletes DM token from the registry.
+  HRESULT DeleteDmToken();
 
   // Returns true if the DM Token has been invalidated.
   bool IsInvalidDMToken();
@@ -120,24 +125,26 @@ class DmStorage {
   // To minimize the number of notifications for existing PolicyFetchResponse
   // files, the files are first modified in-place if the response includes them,
   // and then the files that do not have a corresponding response are deleted.
-  static HRESULT PersistPolicies(const CPath& policy_responses_dir,
-                                 const PolicyResponses& responses);
+  HRESULT PersistPolicies(const PolicyResponses& responses);
 
   // Returns the public key information within the PolicyFetchResponse in
-  // |policy_responses_dir|\CachedPolicyInfo.
-  static HRESULT ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
-                                          CachedPolicyInfo* info);
+  // |policy_responses_dir_|\CachedPolicyInfo.
+  HRESULT ReadCachedPolicyInfoFile(CachedPolicyInfo* info);
 
   // Reads the information within the PolicyFetchResponse file within the
-  // |policy_responses_dir|\{Base64Encoded{kGoogleUpdatePolicyType}} directory.
+  // |policy_responses_dir_|\{Base64Encoded{kGoogleUpdatePolicyType}} directory.
   // Then calls on GetCachedOmahaPolicy() to populate |info|.
-  static HRESULT ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
-                                       CachedOmahaPolicy* info);
+  HRESULT ReadCachedOmahaPolicy(CachedOmahaPolicy* info);
+
+  // For testing purpose only.
+  static std::unique_ptr<DmStorage> CreateTestInstance(
+      const CPath& policy_cache_dir, const CString& enrollment_token);
 
  private:
   // Constructs an instance with a runtime-provided enrollment token (e.g., one
   // obtained via the etoken extra arg).
-  explicit DmStorage(const CString& runtime_enrollment_token);
+  DmStorage(const CPath& policy_responses_dir,
+            const CString& runtime_enrollment_token);
 
   // The possible sources of a device management token, sorted by decreasing
   // precedence.
@@ -170,6 +177,8 @@ class DmStorage {
 
   // The origin of the current device management token.
   DmTokenSource dm_token_source_;
+
+  const CPath policy_responses_dir_;
 
   static DmStorage* instance_;
 

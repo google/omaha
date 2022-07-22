@@ -720,9 +720,7 @@ HRESULT GoopdateImpl::InitializeGoopdateAndLoadResources() {
 #if defined(HAS_DEVICE_MANAGEMENT)
 
   CachedOmahaPolicy dm_policy;
-  hr = DmStorage::ReadCachedOmahaPolicy(
-      ConfigManager::Instance()->GetPolicyResponsesDir(),
-      &dm_policy);
+  hr = DmStorage::Instance()->ReadCachedOmahaPolicy(&dm_policy);
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[ReadCachedOmahaPolicy failed][%#x]"), hr));
   } else {

@@ -1033,4 +1033,19 @@ HRESULT ParseDeviceManagementResponseError(const std::vector<uint8>& response,
   return S_OK;
 }
 
+bool ShouldDeleteDmToken(const std::vector<uint8>& response) {
+  enterprise_management::DeviceManagementResponse dm_response;
+  if (response.size() > std::numeric_limits<size_t>::max() ||
+      !dm_response.ParseFromArray(response.data(),
+                                  static_cast<int>(response.size()))) {
+    return false;
+  }
+
+  return std::find(dm_response.error_detail().begin(),
+                   dm_response.error_detail().end(),
+                   enterprise_management::
+                       CBCM_DELETION_POLICY_PREFERENCE_DELETE_TOKEN) !=
+         dm_response.error_detail().end();
+}
+
 }  // namespace omaha

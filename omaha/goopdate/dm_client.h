@@ -66,9 +66,10 @@ HRESULT RefreshPolicies();
 
 namespace internal {
 
-HRESULT RegisterWithRequest(std::unique_ptr<HttpRequestInterface> http_request,
+HRESULT RegisterWithRequest(DmStorage* dm_storage,
+                            std::unique_ptr<HttpRequestInterface> http_request,
                             const CString& enrollment_token,
-                            const CString& device_id, CStringA* dm_token);
+                            const CString& device_id);
 
 // Sends policy validation result back to DM Server.
 HRESULT SendPolicyValidationResultReportIfNeeded(
@@ -78,7 +79,8 @@ HRESULT SendPolicyValidationResultReportIfNeeded(
 // Fetch policies from the DMServer. The policies are returned in |responses|
 // containing elements in the following format:
 //   {policy_type}=>{SerializeToString-PolicyFetchResponse}.
-HRESULT FetchPolicies(std::unique_ptr<HttpRequestInterface> http_request,
+HRESULT FetchPolicies(DmStorage* dm_storage,
+                      std::unique_ptr<HttpRequestInterface> http_request,
                       const CString& dm_token, const CString& device_id,
                       const CachedPolicyInfo& info, PolicyResponses* responses);
 
@@ -88,7 +90,8 @@ HRESULT SendDeviceManagementRequest(
     std::vector<std::pair<CString, CString>> query_params,
     std::vector<uint8>* response);
 
-void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir);
+void HandleDMResponseError(DmStorage* dm_storage, HRESULT hr,
+                           const std::vector<uint8>& response);
 
 CString GetAgent();
 CString GetPlatform();
