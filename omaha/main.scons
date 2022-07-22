@@ -242,25 +242,6 @@ AddOption(
     default=None
 )
 
-# Declare option for specifying the set of official app installers to build.
-# The value describes the name of the directory containing the official
-# installer manifests and definitions.
-AddOption(
-    '--official_installer_app',
-    action='store',
-    nargs=1,
-    type='string',
-    default=None
-)
-
-AddOption(
-    '--official_installer_file',
-    action='store',
-    nargs=1,
-    type='string',
-    default=None
-)
-
 AddOption(
     '--build_number',
     action='store',
