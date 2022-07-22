@@ -63,10 +63,10 @@ def ReadLinesFromFile(txt_filename):
     A list of string.
   """
   try:
-     installers_txt_file = codecs.open(installers_txt_filename, 'r', 'utf16')
+     installers_txt_file = codecs.open(txt_filename, 'r', 'utf16')
      return installers_txt_file.readlines();
   except UnicodeError:
-    installers_txt_file = codecs.open(installers_txt_filename)
+    installers_txt_file = codecs.open(txt_filename)
     return installers_txt_file.readlines();
   except:
     return []
