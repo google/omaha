@@ -344,6 +344,7 @@ None.
   * `tttoken`: An opaque access token that can be used to identify the requesting client as a member of a trusted-tester group. If non-empty, the request SHOULD be sent over SSL or another. Default: "".
   * `updatedisabled`: An indication of whether the client will honor an update response, if it recieves one. Legal values are "true" (indicating that the client will ignore any update instruction) and "false" (indicating that the client will attempt an update if one is instructed). Default: "false".
   * `targetversionprefix`: A component-wise prefix of a version number, or a complete version number suffixed with the `$` character. The server SHOULD NOT return an update instruction to a version number that does not match the prefix or complete version number. The prefix is interpreted a dotted-tuple that specifies the exactly-matching elements; it is not a lexical prefix. (For example, "1.2.3" MUST match "1.2.3.4" but MUST NOT match "1.2.34".) Default: "".
+  * `sameversionupdate`: An indication of whether an update should be offered if the client has the same version as the update. Legal values are "true" (indicating that same version update should be offered) and "false" (indicating that same version update should not be offered). Default: "false".
 
 ##### Legal Child Elements #####
 None.
