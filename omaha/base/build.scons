@@ -228,6 +228,7 @@ libzip_gladman_src_path = '$GOOGLE3/third_party/libzip/lib/gladman-fcrypt'
 local_env.Append(
     CPPDEFINES=[
         'HAVE_CONFIG_H',
+        'ZLIB_COMPAT',  # we do not need zlib ng, classic zlib is good enough.
     ],
     CPPPATH=[
         'libzip/',
@@ -255,6 +256,9 @@ local_env.Append(
         '/wd4389',
         '/wd4647',
         '/wd4548',
+        '/FIstdint.h'  # zlib/src/fallback_builtins.h does not include stdint.h,
+                       # which is required for the definition of `uint32_t`. So
+                       # we force-include <stdint.h> here.
     ],
 )
 

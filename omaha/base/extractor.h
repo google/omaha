@@ -47,7 +47,7 @@ class TagExtractor {
     *
     * Logic:
     *
-    *   - Sanity-check that we're a PEF image.
+    *   - Check that we're a PEF image.
     *   - Find the signature, which should be stored in the PE "Certificates
     *     Directory" (dumpbin.exe /headers "Firefox Setup 1.0.7.exe") in a
     *     WIN_CERTIFICATE structure.

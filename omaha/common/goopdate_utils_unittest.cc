@@ -57,10 +57,10 @@ namespace omaha {
 
 namespace {
 
-#define DUMMY_CLSID  _T("{6FC94136-0D4C-450e-99C2-BCDA72A9C8F0}")
-const TCHAR* hkcr_key_name = _T("HKCR\\CLSID\\") DUMMY_CLSID;
-const TCHAR* hklm_key_name = _T("HKLM\\Software\\Classes\\CLSID\\") DUMMY_CLSID;
-const TCHAR* hkcu_key_name = _T("HKCU\\Software\\Classes\\CLSID\\") DUMMY_CLSID;
+#define TEST_CLSID  _T("{6FC94136-0D4C-450e-99C2-BCDA72A9C8F0}")
+const TCHAR* hkcr_key_name = _T("HKCR\\CLSID\\") TEST_CLSID;
+const TCHAR* hklm_key_name = _T("HKLM\\Software\\Classes\\CLSID\\") TEST_CLSID;
+const TCHAR* hkcu_key_name = _T("HKCU\\Software\\Classes\\CLSID\\") TEST_CLSID;
 
 const TCHAR* kAppId = _T("{3DAE8C13-C394-481E-8163-4E7A7699084F}");
 

@@ -56,7 +56,7 @@ TEST(ProcessTest, StartOneProcess) {
   EXPECT_EQ(kExpectedExitCode, exit_code);
 }
 
-// Dummy process to spin off and then find.  The numeric argument will make
+// Test process to spin off and then find.  The numeric argument will make
 // ping.exe run until it's killed by the ScopedProcess destructor.
 const TCHAR kTestExecutable[] = _T("ping.exe");
 const TCHAR kTestArguments[] = _T("-w 10000 2.2.2.2");

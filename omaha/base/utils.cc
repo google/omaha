@@ -54,7 +54,8 @@ namespace {
 // Private object namespaces for Vista processes.
 const TCHAR* const kGoopdateBoundaryDescriptor = MAIN_EXE_BASE_NAME _T("_BD");
 const TCHAR* const kGoopdatePrivateNamespace = MAIN_EXE_BASE_NAME;
-const TCHAR* const kGoopdatePrivateNamespacePrefix = MAIN_EXE_BASE_NAME _T("\\");
+const TCHAR* const kGoopdatePrivateNamespacePrefix =
+    MAIN_EXE_BASE_NAME _T("\\");
 
 // Helper for IsPrivateNamespaceAvailable().
 // For simplicity, the handles opened here are leaked. We need these until
@@ -1852,7 +1853,7 @@ bool ShellExecuteExEnsureParent(LPSHELLEXECUTEINFO shell_exec_info) {
 
       if (!hwnd_parent) {
         last_error = ::GetLastError();
-        UTIL_LOG(LE, (_T("[CreateDummyOverlappedWindow failed]")));
+        UTIL_LOG(LE, (_T("[CreateForegroundParentWindowForUAC failed]")));
         // Restore last error in case the logging reset it.
         ::SetLastError(last_error);
         return false;

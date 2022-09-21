@@ -26,7 +26,6 @@ namespace omaha {
 void WriteInstallToken(const TCHAR* enrollment_token);
 void WriteCompanyPolicyToken(const TCHAR* enrollment_token);
 void WriteCompanyDmToken(const char* dm_token);
-void DeleteDmToken();
 
 #if defined(HAS_LEGACY_DM_CLIENT)
 void WriteLegacyPolicyToken(const TCHAR* enrollment_token);

@@ -122,7 +122,7 @@ char* ReadTag(TagExtractor* extractor) {
     return NULL;
   }
 
-  // Do a sanity check of the tag string. The double quote '"'
+  // Do a check of the tag string. The double quote '"'
   // is a special character that should not be included in the tag string.
   for (const char* tag_char = tag_buffer.get(); *tag_char; ++tag_char) {
     if (*tag_char == '"') {

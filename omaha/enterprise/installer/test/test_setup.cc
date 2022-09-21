@@ -15,7 +15,7 @@
 //
 // Author: grt
 //
-// A dummy app installer that does nothing more than write error information to
+// An app installer that does nothing more than write error information to
 // the registry as per the Google Update Installer Result API and return 1.
 
 #include <windows.h>

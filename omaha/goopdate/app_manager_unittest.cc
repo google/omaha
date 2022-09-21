@@ -269,7 +269,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
   App* CreateAppForRegistryPopulation(const TCHAR* app_id) {
     App* app = NULL;
     EXPECT_SUCCEEDED(
-        dummy_app_bundle_for_app_creation_->createApp(CComBSTR(app_id), &app));
+        test_app_bundle_for_app_creation_->createApp(CComBSTR(app_id), &app));
     ASSERT1(app);
 
     // install_time_diff_sec_ is -1 day for new app. After that, the app
@@ -352,21 +352,21 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
     ASSERT_TRUE(app_manager_);
 
     // Initialize the second bundle.
-    dummy_app_bundle_for_app_creation_ = model_->CreateAppBundle(is_machine_);
-    ASSERT_TRUE(dummy_app_bundle_for_app_creation_.get());
+    test_app_bundle_for_app_creation_ = model_->CreateAppBundle(is_machine_);
+    ASSERT_TRUE(test_app_bundle_for_app_creation_.get());
 
-    EXPECT_SUCCEEDED(dummy_app_bundle_for_app_creation_->put_displayName(
+    EXPECT_SUCCEEDED(test_app_bundle_for_app_creation_->put_displayName(
                          CComBSTR(_T("My Bundle"))));
-    EXPECT_SUCCEEDED(dummy_app_bundle_for_app_creation_->put_displayLanguage(
+    EXPECT_SUCCEEDED(test_app_bundle_for_app_creation_->put_displayLanguage(
                          CComBSTR(_T("en"))));
-    EXPECT_SUCCEEDED(dummy_app_bundle_for_app_creation_->put_installSource(
+    EXPECT_SUCCEEDED(test_app_bundle_for_app_creation_->put_installSource(
                          CComBSTR(_T("unittest"))));
     // TODO(omaha3): Address with the TODO in AppBundleInitializedTest::SetUp().
     if (is_machine_) {
-      SetAppBundleStateForUnitTest(dummy_app_bundle_for_app_creation_.get(),
+      SetAppBundleStateForUnitTest(test_app_bundle_for_app_creation_.get(),
                                    new fsm::AppBundleStateInitialized);
     } else {
-      EXPECT_SUCCEEDED(dummy_app_bundle_for_app_creation_->initialize());
+      EXPECT_SUCCEEDED(test_app_bundle_for_app_creation_->initialize());
     }
 
     EXPECT_SUCCEEDED(app_bundle_->createApp(CComBSTR(kGuid1), &app_));
@@ -1248,7 +1248,7 @@ class AppManagerTestBase : public AppTestBaseWithRegistryOverride {
   // A second bundle is necessary because the same bundle cannot have the same
   // app in it more than once and many of these tests create an app to populate
   // the registry and another to read it.
-  std::shared_ptr<AppBundle> dummy_app_bundle_for_app_creation_;
+  std::shared_ptr<AppBundle> test_app_bundle_for_app_creation_;
 
   const GUID guid1_;
 

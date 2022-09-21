@@ -82,8 +82,8 @@ void CopyFilesRequiredByFinishInstall(bool is_machine, const CString& version) {
 // RegisterOrUnregisterCOMLocalServer() called from FinishInstall() runs in a
 // separate process. When using registry redirection in the test, the new
 // process writes to the real registry, so the unit test fails. This function
-// creates dummy entries that VerifyCOMLocalServerRegistration() verifies, and
-// is happy about.
+// creates test entries that VerifyCOMLocalServerRegistration() verifies, and is
+// happy about.
 void SetupCOMLocalServerRegistration(bool is_machine) {
   // Setup the following for the unit test:
   // * LocalServer32 under CLSID_OnDemandMachineAppsClass or

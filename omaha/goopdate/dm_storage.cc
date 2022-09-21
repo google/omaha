@@ -186,7 +186,8 @@ DmStorage* DmStorage::instance_ = NULL;
 HRESULT DmStorage::CreateInstance(const CString& enrollment_token) {
   ASSERT1(!instance_);
 
-  DmStorage* instance = new DmStorage(enrollment_token);
+  DmStorage* instance = new DmStorage(
+      ConfigManager::Instance()->GetPolicyResponsesDir(), enrollment_token);
   if (!instance) {
     return E_OUTOFMEMORY;
   }
@@ -250,6 +251,19 @@ HRESULT DmStorage::InvalidateDMToken() {
   return StoreDmToken(kInvalidTokenValue);
 }
 
+HRESULT DmStorage::DeleteDmToken() {
+  HRESULT hr = RegKey::DeleteKey(kRegKeyCompanyEnrollment, true);
+
+  if (SUCCEEDED(hr)) {
+    dm_token_ = CStringA();
+    dm_token_source_ = kDmTokenSourceNone;
+#if defined(HAS_LEGACY_DM_CLIENT)
+    hr = RegKey::DeleteKey(kRegKeyLegacyEnrollment, true);
+#endif
+  }
+  return hr;
+}
+
 bool DmStorage::IsInvalidDMToken() {
   return GetDmToken() == kInvalidTokenValue;
 }
@@ -273,14 +287,19 @@ CString DmStorage::GetDeviceId() {
   return device_id_;
 }
 
-HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
-                                   const PolicyResponses& responses) {
+HRESULT DmStorage::PersistPolicies(const PolicyResponses& responses) {
+  HRESULT hr = CreateDir(policy_responses_dir_, NULL);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[PersistPolicies][Failed to create folder][%s][%#x]"),
+                    policy_responses_dir_, hr));
+    return hr;
+  }
+
   if (!responses.policy_info.empty()) {
-    CPath policy_info_file(policy_responses_dir);
+    CPath policy_info_file(policy_responses_dir_);
     policy_info_file.Append(kCachedPolicyInfoFileName);
-    HRESULT hr = WriteToFile(policy_info_file,
-                             responses.policy_info.c_str(),
-                             responses.policy_info.length());
+    hr = WriteToFile(policy_info_file, responses.policy_info.c_str(),
+                     responses.policy_info.length());
     if (FAILED(hr)) {
       REPORT_LOG(LW, (_T("[PersistPolicies][WriteToFile failed][%s][%#x]"),
                       policy_info_file, hr));
@@ -298,9 +317,9 @@ HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
 
     CString dirname(encoded_policy_response_dirname);
     policy_types_base64.emplace(dirname);
-    CPath policy_response_dir(policy_responses_dir);
+    CPath policy_response_dir(policy_responses_dir_);
     policy_response_dir.Append(dirname);
-    HRESULT hr = CreateDir(policy_response_dir, NULL);
+    hr = CreateDir(policy_response_dir, NULL);
     if (FAILED(hr)) {
       REPORT_LOG(LW, (_T("[PersistPolicies][Failed to create dir][%s][%#x]"),
                       policy_response_dir, hr));
@@ -320,21 +339,20 @@ HRESULT DmStorage::PersistPolicies(const CPath& policy_responses_dir,
     }
   }
 
-  VERIFY_SUCCEEDED(DeleteObsoletePolicies(policy_responses_dir,
-                                           policy_types_base64));
+  VERIFY_SUCCEEDED(
+      DeleteObsoletePolicies(policy_responses_dir_, policy_types_base64));
   return S_OK;
 }
 
-HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
-                                            CachedPolicyInfo* info) {
+HRESULT DmStorage::ReadCachedPolicyInfoFile(CachedPolicyInfo* info) {
   ASSERT1(info);
 
-  if (!DmStorage::Instance()->IsValidDMToken()) {
+  if (!IsValidDMToken()) {
     REPORT_LOG(L1, (_T("[Skip ReadCachedPolicyInfoFile DMToken not valid]")));
     return E_FAIL;
   }
 
-  CPath policy_info_file(policy_responses_dir);
+  CPath policy_info_file(policy_responses_dir_);
   policy_info_file.Append(kCachedPolicyInfoFileName);
 
   if (!File::Exists(policy_info_file)) {
@@ -365,16 +383,15 @@ HRESULT DmStorage::ReadCachedPolicyInfoFile(const CPath& policy_responses_dir,
   return S_OK;
 }
 
-HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
-                                         CachedOmahaPolicy* info) {
+HRESULT DmStorage::ReadCachedOmahaPolicy(CachedOmahaPolicy* info) {
   ASSERT1(info);
 
-  if (!DmStorage::Instance()->IsValidDMToken()) {
+  if (!IsValidDMToken()) {
     REPORT_LOG(L1, (_T("[Skip ReadCachedOmahaPolicy DMToken not valid]")));
 
-    if (File::Exists(policy_responses_dir)) {
+    if (File::Exists(policy_responses_dir_)) {
       REPORT_LOG(L1, (_T("[ReadCachedOmahaPolicy: deleting policy cache]")));
-      DeleteBeforeOrAfterReboot(policy_responses_dir);
+      DeleteBeforeOrAfterReboot(policy_responses_dir_);
     }
 
     return E_FAIL;
@@ -387,7 +404,7 @@ HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
                true);
 
   CString dirname(encoded_policy_response_dirname);
-  CPath policy_response_file(policy_responses_dir);
+  CPath policy_response_file(policy_responses_dir_);
   policy_response_file.Append(dirname);
   policy_response_file.Append(kPolicyResponseFileName);
   if (!File::Exists(policy_response_file)) {
@@ -418,10 +435,12 @@ HRESULT DmStorage::ReadCachedOmahaPolicy(const CPath& policy_responses_dir,
   return S_OK;
 }
 
-DmStorage::DmStorage(const CString& runtime_enrollment_token)
-    : runtime_enrollment_token_(IsUuid(runtime_enrollment_token) ?
-                                runtime_enrollment_token :
-                                CString()),
+DmStorage::DmStorage(const CPath& policy_responses_dir,
+                     const CString& runtime_enrollment_token)
+    : policy_responses_dir_(policy_responses_dir),
+      runtime_enrollment_token_(IsUuid(runtime_enrollment_token)
+                                    ? runtime_enrollment_token
+                                    : CString()),
       enrollment_token_source_(kETokenSourceNone),
       dm_token_source_(kDmTokenSourceNone) {
   if (!runtime_enrollment_token.IsEmpty() &&
@@ -491,6 +510,13 @@ void DmStorage::LoadDeviceIdFromStorage() {
   if (FAILED(hr)) {
     device_id_.Empty();
   }
+}
+
+std::unique_ptr<DmStorage> DmStorage::CreateTestInstance(
+    const CPath& policy_cache_dir, const CString& enrollment_token) {
+  // Cannot use std::make_unique here because the constructor is private.
+  return std::unique_ptr<DmStorage>(
+      new DmStorage(policy_cache_dir, enrollment_token));
 }
 
 }  // namespace omaha

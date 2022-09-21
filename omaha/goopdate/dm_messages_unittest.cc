@@ -220,4 +220,34 @@ TEST_F(DmMessagesTest, ValidateOmahaPolicyResponse_ErrorPolicyValues) {
                "{8A69D345-D564-463C-AFF1-A69D9E530F96} empty policy value");
 }
 
+TEST_F(DmMessagesTest, ShouldDeleteDmToken) {
+  EXPECT_FALSE(ShouldDeleteDmToken(std::vector<uint8>()));
+
+  std::vector<uint8> response;
+  std::string response_string("unparseable string");
+  response.assign(response_string.begin(), response_string.end());
+  EXPECT_FALSE(ShouldDeleteDmToken(response));
+
+  enterprise_management::DeviceManagementResponse dm_response;
+  enterprise_management::PolicyFetchResponse* policy_response =
+      dm_response.mutable_policy_response()->add_responses();
+  enterprise_management::PolicyData policy_data;
+  policy_data.set_policy_type("test_policy_type");
+  policy_data.set_policy_value("test policy value");
+  policy_data.set_username("user");
+  policy_data.set_request_token("TestToken");
+  policy_data.set_device_id(CStringA("TestDeviceId"));
+  policy_data.set_timestamp(time(NULL));
+  policy_response->set_policy_data(policy_data.SerializeAsString());
+  ASSERT_TRUE(dm_response.SerializeToString(&response_string));
+  response.assign(response_string.begin(), response_string.end());
+  EXPECT_FALSE(ShouldDeleteDmToken(response));
+
+  dm_response.add_error_detail(
+      enterprise_management::CBCM_DELETION_POLICY_PREFERENCE_DELETE_TOKEN);
+  ASSERT_TRUE(dm_response.SerializeToString(&response_string));
+  response.assign(response_string.begin(), response_string.end());
+  EXPECT_TRUE(ShouldDeleteDmToken(response));
+}
+
 }  // namespace omaha

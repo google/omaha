@@ -173,7 +173,7 @@ void SimpleRequestTest::SimpleGet(const CString& url,
       &user_agent);
   EXPECT_STREQ(simple_request.user_agent(), user_agent);
 
-  // Sanity check of some of the download metrics.
+  // Check of some of the download metrics.
   DownloadMetrics dm;
   EXPECT_TRUE(simple_request.download_metrics(&dm));
   EXPECT_STREQ(url, dm.url);

@@ -32,7 +32,7 @@
 // loop, which causes application messages to be processed and potentially
 // dispatched to existing application windows. Since the application is in a
 // bad state when this assertion dialog is displayed, these messages may not
-// get processed and hang the dialog, or the application might go crazy.
+// get processed and hang the dialog, or the application might crash.
 //
 // Therefore, it can be beneficial to display the error dialog in a separate
 // process from the main application. When the logging system needs to display

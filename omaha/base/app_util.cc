@@ -220,7 +220,7 @@ DWORD DllGetVersion(const CString& dll_path)  {
     HRESULT hr = (*pfn)(&dvi);
     if (SUCCEEDED(hr)) {
       // Since we're fitting both the major and minor versions into a DWORD,
-      // let's sanity check that we're not in an overflow situation here
+      // check that we're not in an overflow situation here
       ASSERT1(dvi.dwMajorVersion <= 0xFFFF);
       ASSERT1(dvi.dwMinorVersion <= 0xFFFF);
       dwVersion = MAKELONG(dvi.dwMinorVersion, dvi.dwMajorVersion);

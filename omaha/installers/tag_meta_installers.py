@@ -54,6 +54,23 @@ def UrlEncodeString(name):
   utf8_str = name.encode('utf8')
   return urllib.quote(utf8_str)
 
+def ReadLinesFromFile(txt_filename):
+  """Read all lines from a file encoded as utf8 or utf16.
+  Args:
+    txt_filename: A text file.
+
+  Returns:
+    A list of string.
+  """
+  try:
+     installers_txt_file = codecs.open(txt_filename, 'r', 'utf16')
+     return installers_txt_file.readlines();
+  except UnicodeError:
+    installers_txt_file = codecs.open(txt_filename)
+    return installers_txt_file.readlines();
+  except:
+    return []
+
 def ReadBundleInstallerFile(installers_txt_filename):
   """Read the installation file and return a list of the values.
      Only reads information from bundle installer files. The filename
@@ -67,8 +84,7 @@ def ReadBundleInstallerFile(installers_txt_filename):
     A dictionary of Bundles key=language, value=[Bundle]
   """
   bundles = {}
-  installers_txt_file = codecs.open(installers_txt_filename, 'r', 'utf16')
-  for line in installers_txt_file.readlines():
+  for line in ReadLinesFromFile(installers_txt_filename):
     line = line.strip()
     if len(line) and not line.startswith('#'):
       (exe_name, needs_admin, language, browser, usage,

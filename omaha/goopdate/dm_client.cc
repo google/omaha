@@ -102,21 +102,9 @@ HRESULT RegisterIfNeeded(DmStorage* dm_storage, bool is_foreground) {
   }
 
   // RegisterWithRequest owns the SimpleRequest being created here.
-  HRESULT hr =
-      internal::RegisterWithRequest(std::make_unique<SimpleRequest>(),
-                                    enrollment_token, device_id, &dm_token);
-  if (FAILED(hr)) {
-    internal::HandleDMResponseError(
-        hr, ConfigManager::Instance()->GetPolicyResponsesDir());
-    return hr;
-  }
-
-  hr = dm_storage->StoreDmToken(dm_token);
-  if (FAILED(hr)) {
-    REPORT_LOG(LE, (_T("[StoreDmToken failed][%#x]"), hr));
-    return hr;
-  }
-
+  HRESULT hr = internal::RegisterWithRequest(dm_storage,
+                                             std::make_unique<SimpleRequest>(),
+                                             enrollment_token, device_id);
   OPT_LOG(L1, (_T("[Registration complete]")));
 
   return S_OK;
@@ -148,35 +136,29 @@ HRESULT RefreshPolicies() {
     return E_FAIL;
   }
 
-  const CPath policy_responses_dir(
-      ConfigManager::Instance()->GetPolicyResponsesDir());
   CachedPolicyInfo info;
-  HRESULT hr = DmStorage::ReadCachedPolicyInfoFile(policy_responses_dir, &info);
+  HRESULT hr = dm_storage->ReadCachedPolicyInfoFile(&info);
   if (FAILED(hr)) {
     REPORT_LOG(LW, (_T("[ReadCachedPolicyInfoFile failed][%#x]"), hr));
     // Not fatal, continue.
   }
 
   PolicyResponses responses;
-  hr = internal::FetchPolicies(std::make_unique<SimpleRequest>(), dm_token,
-                               device_id, info, &responses);
+  hr = internal::FetchPolicies(dm_storage, std::make_unique<SimpleRequest>(),
+                               dm_token, device_id, info, &responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[FetchPolicies failed][%#x]"), hr));
-
-    internal::HandleDMResponseError(hr, policy_responses_dir);
     return hr;
   }
 
-  hr = DmStorage::PersistPolicies(policy_responses_dir, responses);
+  hr = dm_storage->PersistPolicies(responses);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[PersistPolicies failed][%#x]"), hr));
     return hr;
   }
 
   CachedOmahaPolicy dm_policy;
-  hr = DmStorage::ReadCachedOmahaPolicy(
-      ConfigManager::Instance()->GetPolicyResponsesDir(),
-      &dm_policy);
+  hr = dm_storage->ReadCachedOmahaPolicy(&dm_policy);
   if (FAILED(hr)) {
     OPT_LOG(LE, (_T("[ReadCachedOmahaPolicy failed][%#x]"), hr));
   } else {
@@ -190,11 +172,12 @@ HRESULT RefreshPolicies() {
 
 namespace internal {
 
-HRESULT RegisterWithRequest(std::unique_ptr<HttpRequestInterface> http_request,
+HRESULT RegisterWithRequest(DmStorage* dm_storage,
+                            std::unique_ptr<HttpRequestInterface> http_request,
                             const CString& enrollment_token,
-                            const CString& device_id, CStringA* dm_token) {
+                            const CString& device_id) {
+  ASSERT1(dm_storage);
   ASSERT1(http_request.get());
-  ASSERT1(dm_token);
 
   std::vector<std::pair<CString, CString>> query_params = {
     {_T("request"), _T("register_policy_agent")},
@@ -216,14 +199,23 @@ HRESULT RegisterWithRequest(std::unique_ptr<HttpRequestInterface> http_request,
       std::move(http_request), payload,
       internal::FormatEnrollmentTokenAuthorizationHeader(enrollment_token),
       device_id, std::move(query_params), &response);
+
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[SendDeviceManagementRequest failed][%#x]"), hr));
+    internal::HandleDMResponseError(dm_storage, hr, response);
     return hr;
   }
 
-  hr = ParseDeviceRegisterResponse(response, dm_token);
+  CStringA dm_token;
+  hr = ParseDeviceRegisterResponse(response, &dm_token);
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[ParseDeviceRegisterResponse failed][%#x]"), hr));
+    return hr;
+  }
+
+  hr = dm_storage->StoreDmToken(dm_token);
+  if (FAILED(hr)) {
+    REPORT_LOG(LE, (_T("[StoreDmToken failed][%#x]"), hr));
     return hr;
   }
 
@@ -250,10 +242,12 @@ HRESULT SendPolicyValidationResultReportIfNeeded(
   return hr;
 }
 
-HRESULT FetchPolicies(std::unique_ptr<HttpRequestInterface> http_request,
+HRESULT FetchPolicies(DmStorage* dm_storage,
+                      std::unique_ptr<HttpRequestInterface> http_request,
                       const CString& dm_token, const CString& device_id,
                       const CachedPolicyInfo& info,
                       PolicyResponses* responses) {
+  ASSERT1(dm_storage);
   ASSERT1(http_request.get());
   ASSERT1(!dm_token.IsEmpty());
   ASSERT1(responses);
@@ -277,8 +271,10 @@ HRESULT FetchPolicies(std::unique_ptr<HttpRequestInterface> http_request,
       std::move(http_request), payload,
       FormatDMTokenAuthorizationHeader(dm_token), device_id,
       std::move(query_params), &response);
+
   if (FAILED(hr)) {
     REPORT_LOG(LE, (_T("[SendDeviceManagementRequest failed][%#x]"), hr));
+    internal::HandleDMResponseError(dm_storage, hr, response);
     return hr;
   }
 
@@ -366,16 +362,26 @@ HRESULT SendDeviceManagementRequest(
   return S_OK;
 }
 
-void HandleDMResponseError(HRESULT hr, const CPath& policy_responses_dir) {
+void HandleDMResponseError(DmStorage* dm_storage, HRESULT hr,
+                           const std::vector<uint8>& response) {
+  ASSERT1(dm_storage);
+
   if (hr != HRESULTFromHttpStatusCode(HTTP_STATUS_GONE)) {
     REPORT_LOG(LE, (_T("Unexpected HTTP error from the DM Server[%#x]"), hr));
     return;
   }
 
   // HTTP_STATUS_GONE implies that the device has been unenrolled.
-  // Invalidate the DM token and delete cached policies.
-  VERIFY_SUCCEEDED(DmStorage::Instance()->InvalidateDMToken());
-  DeleteBeforeOrAfterReboot(policy_responses_dir);
+  // Update the DM token and delete cached policies.
+  if (ShouldDeleteDmToken(response)) {
+    REPORT_LOG(L1, (_T("Remove DM token based on server's response.")));
+    dm_storage->DeleteDmToken();
+  } else {
+    REPORT_LOG(L1, (_T("Invalidate DM token based on server's response.")));
+    dm_storage->InvalidateDMToken();
+  }
+
+  DeleteBeforeOrAfterReboot(dm_storage->policy_responses_dir());
 
   // Set the Omaha DM Policies to an empty CachedOmahaPolicy so that the
   // currently-running process forgets about the policies loaded in

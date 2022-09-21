@@ -20,6 +20,7 @@
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
 #include "omaha/base/utils.h"
+#include "omaha/common/config_manager.h"
 #include "omaha/goopdate/dm_messages.h"
 #include "omaha/goopdate/dm_storage_test_utils.h"
 #include "omaha/testing/unit_test.h"
@@ -42,7 +43,8 @@ class DmStorageTest : public RegistryProtectedTest {
 #endif  // defined(HAS_LEGACY_DM_CLIENT)
 
   DmStorage* NewDmStorage(const CString& enrollment_token) {
-    return new DmStorage(enrollment_token);
+    return new DmStorage(ConfigManager::Instance()->GetPolicyResponsesDir(),
+                         enrollment_token);
   }
 
   CPath GetPolicyResponseFilePath(const CPath& policy_responses_dir,
@@ -135,8 +137,9 @@ class DmStorageTest : public RegistryProtectedTest {
     EXPECT_STREQ(_T("beta"), app.target_channel);
   }
 
-  void VerifyPolicies(const CPath& policy_responses_dir,
+  void VerifyPolicies(DmStorage* dm_storage,
                       const PolicyResponses& expected_responses) {
+    const CPath policy_responses_dir(dm_storage->policy_responses_dir());
     if (!expected_responses.policy_info.empty()) {
       CPath policy_info_file(policy_responses_dir);
       policy_info_file.Append(kCachedPolicyInfoFileName);
@@ -151,8 +154,7 @@ class DmStorageTest : public RegistryProtectedTest {
 
       if (expected_response.first == kGoogleUpdatePolicyType) {
         CachedOmahaPolicy info;
-        EXPECT_EQ(S_OK,
-            DmStorage::ReadCachedOmahaPolicy(policy_responses_dir, &info));
+        EXPECT_EQ(S_OK, dm_storage->ReadCachedOmahaPolicy(&info));
         CheckCannedCachedOmahaPolicy(info);
       }
     }
@@ -331,9 +333,12 @@ TEST_F(DmStorageTest, DmTokenPrecedence) {
 }
 
 TEST_F(DmStorageTest, PersistPolicies) {
-  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
-  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
-  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+  const CPath policy_responses_dir = CPath(
+      ConcatenatePath(app_util::GetCurrentModuleDirectory(), _T("Policies")));
+
+  std::unique_ptr<DmStorage> dm_storage =
+      DmStorage::CreateTestInstance(policy_responses_dir, CString());
+  EXPECT_HRESULT_SUCCEEDED(dm_storage->StoreDmToken("dm_token"));
 
   PolicyResponsesMap old_responses = {
     {"google/chrome/machine-level-user", "test-data-chrome"},
@@ -341,14 +346,10 @@ TEST_F(DmStorageTest, PersistPolicies) {
     {"google/earth/machine-level-user", "test-data-earth"},
   };
 
-  const CPath policy_responses_dir = CPath(ConcatenatePath(
-      app_util::GetCurrentModuleDirectory(),
-      _T("Policies")));
 
   PolicyResponses expected_old_responses = {old_responses, ""};
-  ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
-                                                      expected_old_responses));
-  VerifyPolicies(policy_responses_dir, expected_old_responses);
+  ASSERT_HRESULT_SUCCEEDED(dm_storage->PersistPolicies(expected_old_responses));
+  VerifyPolicies(dm_storage.get(), expected_old_responses);
 
   PolicyResponsesMap new_responses = {
     {"google/chrome/machine-level-user", "test-data-chr"},  // Shorter data.
@@ -360,35 +361,34 @@ TEST_F(DmStorageTest, PersistPolicies) {
   };
 
   PolicyResponses expected_new_responses = {new_responses, "expected data"};
-  ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
-                                                      expected_new_responses));
-  VerifyPolicies(policy_responses_dir, expected_new_responses);
+  ASSERT_HRESULT_SUCCEEDED(dm_storage->PersistPolicies(expected_new_responses));
+  VerifyPolicies(dm_storage.get(), expected_new_responses);
   EXPECT_FALSE(GetPolicyResponseFilePath(
       policy_responses_dir, "google/drive/machine-level-user").FileExists());
 
   EXPECT_HRESULT_SUCCEEDED(DeleteDirectory(policy_responses_dir));
-  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  EXPECT_HRESULT_SUCCEEDED(dm_storage->DeleteDmToken());
 }
 
 TEST_F(DmStorageTest, IsValidDMToken) {
   EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
   ON_SCOPE_EXIT(DmStorage::DeleteInstance);
 
-  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->DeleteDmToken());
 
   EXPECT_FALSE(DmStorage::Instance()->IsValidDMToken());
 
   EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
   EXPECT_TRUE(DmStorage::Instance()->IsValidDMToken());
 
-  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->DeleteDmToken());
 }
 
 TEST_F(DmStorageTest, IsInvalidDMToken) {
   EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
   ON_SCOPE_EXIT(DmStorage::DeleteInstance);
 
-  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->DeleteDmToken());
   EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
   EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
   EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
@@ -396,7 +396,7 @@ TEST_F(DmStorageTest, IsInvalidDMToken) {
   EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->InvalidateDMToken());
   EXPECT_TRUE(DmStorage::Instance()->IsInvalidDMToken());
 
-  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->DeleteDmToken());
 }
 
 // This test must access the true registry, so it doesn't use the DmStorageTest
@@ -405,6 +405,18 @@ TEST(DmStorageDeviceIdTest, GetDeviceId) {
   EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
   ON_SCOPE_EXIT(DmStorage::DeleteInstance);
   EXPECT_FALSE(DmStorage::Instance()->GetDeviceId().IsEmpty());
+}
+
+TEST_F(DmStorageTest, DeleteDmToken) {
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  EXPECT_EQ(DmStorage::Instance()->GetDmToken(), CStringA());
+
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
+  EXPECT_TRUE(DmStorage::Instance()->IsValidDMToken());
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->DeleteDmToken());
+  EXPECT_FALSE(DmStorage::Instance()->IsValidDMToken());
+  EXPECT_EQ(DmStorage::Instance()->GetDmToken(), CStringA());
 }
 
 }  // namespace omaha

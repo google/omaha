@@ -46,7 +46,7 @@ HRESULT Shell::Execute(const TCHAR* file) {
               SEE_MASK_NOZONECHECKS   |  // Do not perform a zone check.
               SEE_MASK_NOASYNC;          // Wait to complete before returning.
   // Pass NULL for hwnd. This will have ShellExecuteExEnsureParent()
-  // create a dummy parent window for us.
+  // create a default parent window for us.
   // sei.hwnd = NULL;
   sei.lpVerb = _T("open");
   sei.lpFile = file;

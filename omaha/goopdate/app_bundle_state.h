@@ -83,7 +83,7 @@ class AppBundleState {
   explicit AppBundleState(BundleState state) : state_(state) {}
 
   // These functions provide pass-through access to private AppBundle members.
-  // TODO(omaha): remove paranoid asserts and implement inline.
+  // TODO(omaha): remove asserts and implement inline.
   void AddAppToBundle(AppBundle* app_bundle, App* app);
   bool IsPendingNonBlockingCall(AppBundle* app_bundle);
 

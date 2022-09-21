@@ -33,7 +33,7 @@ namespace omaha {
 
 const TCHAR* const kTestId = _T("{8260D23D-D23B-427F-AF1A-2CE36E6F073B}");
 
-class IDummyUnknownImpl : public IUnknown {
+class ITestUnknownImpl : public IUnknown {
  public:
   virtual ULONG STDMETHODCALLTYPE AddRef() {
     return 1;
@@ -52,10 +52,10 @@ class AppVersionTest : public testing::Test {
 };
 
 TEST_F(AppVersionTest, TestReadOnly) {
-  IDummyUnknownImpl dummy_unknown;
+  ITestUnknownImpl test_unknown;
   std::unique_ptr<AppVersion> app_version;
   EXPECT_SUCCEEDED(AppVersion::Create(&lock_,
-                                      &dummy_unknown,
+                                      &test_unknown,
                                       true,
                                       address(app_version)));
 
@@ -88,10 +88,10 @@ TEST_F(AppVersionTest, TestReadOnly) {
 }
 
 TEST_F(AppVersionTest, TestReadWrite) {
-  IDummyUnknownImpl dummy_unknown;
+  ITestUnknownImpl test_unknown;
   std::unique_ptr<AppVersion> app_version;
   EXPECT_SUCCEEDED(AppVersion::Create(&lock_,
-                                      &dummy_unknown,
+                                      &test_unknown,
                                       false,
                                       address(app_version)));
 

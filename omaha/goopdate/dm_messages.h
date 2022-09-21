@@ -264,6 +264,10 @@ HRESULT ParseDevicePolicyResponse(
 HRESULT ParseDeviceManagementResponseError(const std::vector<uint8>& response,
                                            CStringA* error_message);
 
+// Determines whether the DMToken is expected to be deleted based on the
+// DMServer response contents.
+bool ShouldDeleteDmToken(const std::vector<uint8>& response);
+
 }  // namespace omaha
 
 #endif  // OMAHA_GOOPDATE_DM_MESSAGES_H__

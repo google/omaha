@@ -520,12 +520,18 @@ class DmClientRequestTest : public ::testing::Test {
   // Populates |request| with a mock HttpRequest that behaves as if the server
   // returned a 410 HTTP response.
   // Note: always wrap calls to this with ASSERT_NO_FATAL_FAILURE.
-  void MakeGoneHttpRequest(MockHttpRequest** request) {
+  void MakeGoneHttpRequest(bool delete_dm_token, MockHttpRequest** request) {
     *request = new ::testing::NiceMock<MockHttpRequest>();
 
     // The server responds with 410.
     ON_CALL(**request, GetHttpStatusCode())
         .WillByDefault(Return(HTTP_STATUS_GONE));
+
+    // And response data guiding how to update DM token.
+    std::vector<uint8> response;
+    ASSERT_NO_FATAL_FAILURE(
+        MakeHTTPGoneResponseBody(delete_dm_token, &response));
+    ON_CALL(**request, GetResponse()).WillByDefault(Return(response));
   }
 
   struct KeyInfo {
@@ -585,9 +591,14 @@ class DmClientRequestTest : public ::testing::Test {
     EXPECT_CALL(*mock_http_request, set_request_buffer(_, _))
         .With(AllArgs(IsFetchPoliciesRequest()));
 
+    EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+    ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+    DmStorage::Instance()->StoreDmToken(kDmToken);
+
     // Fetch Policies should succeed, providing the expected PolicyResponses.
     PolicyResponses responses;
     ASSERT_HRESULT_SUCCEEDED(internal::FetchPolicies(
+        DmStorage::Instance(),
         std::move(std::unique_ptr<HttpRequestInterface>(mock_http_request)),
         CString(kDmToken), kDeviceId, *info, &responses));
     ASSERT_TRUE(!responses.policy_info.empty());
@@ -739,6 +750,20 @@ class DmClientRequestTest : public ::testing::Test {
     body->assign(response_string.begin(), response_string.end());
   }
 
+  // Populates |body| with a serialized DevicePolicyResponse for HTTP Gone.
+  // Note: always wrap calls to this with ASSERT_NO_FATAL_FAILURE.
+  void MakeHTTPGoneResponseBody(bool delete_dm_token,
+                                std::vector<uint8>* body) {
+    if (!delete_dm_token) return;
+
+    enterprise_management::DeviceManagementResponse dm_response;
+    dm_response.add_error_detail(
+        enterprise_management::CBCM_DELETION_POLICY_PREFERENCE_DELETE_TOKEN);
+    std::string response_string;
+    ASSERT_TRUE(dm_response.SerializeToString(&response_string));
+    body->assign(response_string.begin(), response_string.end());
+  }
+
   DISALLOW_COPY_AND_ASSIGN(DmClientRequestTest);
 };
 
@@ -774,24 +799,37 @@ TEST_F(DmClientRequestTest, RegisterWithRequest) {
       .With(AllArgs(IsRegisterBrowserRequest()));
 
   // Registration should succeed, providing the expected DMToken.
-  CStringA dm_token;
-  ASSERT_HRESULT_SUCCEEDED(internal::RegisterWithRequest(
-      std::move(std::unique_ptr<HttpRequestInterface>(mock_http_request)),
-      _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"), kDeviceId, &dm_token));
-  EXPECT_STREQ(dm_token.GetString(), kDmToken);
-
-  // Test DM Token invalidation.
   EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
   ON_SCOPE_EXIT(DmStorage::DeleteInstance);
-  MockHttpRequest* mock_gone_request = nullptr;
-  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(&mock_gone_request));
 
-  // Registration should fail.
+  // Test successful registration.
+  ASSERT_HRESULT_SUCCEEDED(internal::RegisterWithRequest(
+      DmStorage::Instance(),
+      std::move(std::unique_ptr<HttpRequestInterface>(mock_http_request)),
+      _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"), kDeviceId));
+  EXPECT_EQ(DmStorage::Instance()->GetDmToken(), kDmToken);
+
+  // Test DM Token deletion.
+  MockHttpRequest* mock_gone_request = nullptr;
+  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(true, &mock_gone_request));
   ASSERT_EQ(
       internal::RegisterWithRequest(
+          DmStorage::Instance(),
           std::move(std::unique_ptr<HttpRequestInterface>(mock_gone_request)),
-          _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"), kDeviceId, &dm_token),
+          _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"), kDeviceId),
       HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
+  EXPECT_TRUE(DmStorage::Instance()->GetDmToken().IsEmpty());
+
+  // Test DM Token invalidation.
+  mock_gone_request = nullptr;
+  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(false, &mock_gone_request));
+  ASSERT_EQ(
+      internal::RegisterWithRequest(
+          DmStorage::Instance(),
+          std::move(std::unique_ptr<HttpRequestInterface>(mock_gone_request)),
+          _T("57FEBE8F-48D0-487B-A788-CF1019DCD452"), kDeviceId),
+      HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
+  EXPECT_TRUE(DmStorage::Instance()->IsInvalidDMToken());
 }
 
 TEST_F(DmClientRequestTest, SendPolicyValidationResultReportIfNeeded) {
@@ -884,16 +922,74 @@ TEST_F(DmClientRequestTest, FetchPolicies) {
   // Test DM Token invalidation.
   EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
   ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  DmStorage::Instance()->StoreDmToken(kDmToken);
   MockHttpRequest* mock_gone_request = nullptr;
-  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(&mock_gone_request));
+  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(false, &mock_gone_request));
 
   // Fetch Policies should fail.
   PolicyResponses responses;
   ASSERT_EQ(
       internal::FetchPolicies(
+          DmStorage::Instance(),
           std::move(std::unique_ptr<HttpRequestInterface>(mock_gone_request)),
           CString(kDmToken), kDeviceId, info, &responses),
       HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
+  EXPECT_TRUE(DmStorage::Instance()->IsInvalidDMToken());
+}
+
+// Test that DmClient can delete DM token per server request.
+TEST_F(DmClientRequestTest, DmTokenDeletionInPolicyFetch) {
+  std::string signing_public_key;
+  const std::unique_ptr<crypto::RSAPrivateKey> signing_private_key(
+      std::move(CreateKey(kSigningPrivateKey, sizeof(kSigningPrivateKey),
+                          &signing_public_key)));
+  const std::string signing_public_key_signature(
+      reinterpret_cast<const char*>(kSigningPublicKeySignature),
+      sizeof(kSigningPublicKeySignature));
+  const std::unique_ptr<KeyInfo> signing_key_info(std::make_unique<KeyInfo>(
+      KeyInfo{signing_private_key, signing_public_key,
+              signing_public_key_signature, nullptr}));
+
+  std::string new_signing_public_key;
+  const std::unique_ptr<crypto::RSAPrivateKey> new_signing_private_key(
+      std::move(CreateKey(kNewSigningPrivateKey, sizeof(kNewSigningPrivateKey),
+                          &new_signing_public_key)));
+  const std::string new_signing_public_key_signature(
+      reinterpret_cast<const char*>(kNewSigningPublicKeySignature),
+      sizeof(kNewSigningPublicKeySignature));
+  const std::unique_ptr<KeyInfo> new_signing_key_info(std::make_unique<KeyInfo>(
+      KeyInfo{new_signing_private_key, new_signing_public_key,
+              new_signing_public_key_signature, signing_private_key}));
+
+  CachedPolicyInfo info;
+
+  // The mock server will return PolicyData signed with kSigningPrivateKey, and
+  // a new public key corresponding to kSigningPrivateKey, signed with the
+  // hard-coded verification key.
+  RunFetchPolicies(signing_key_info, &info);
+
+  // |info| was initialized in the previous run with the signing public key. Now
+  // the mock server will return PolicyData signed with kNewSigningPrivateKey,
+  // and a new public key corresponding to kNewSigningPrivateKey, signed with
+  // both the hard-coded verification key as well as with the previous private
+  // key kSigningPrivateKey.
+  RunFetchPolicies(new_signing_key_info, &info);
+
+  // Test DM Token deletion.
+  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
+  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
+  DmStorage::Instance()->StoreDmToken(kDmToken);
+  MockHttpRequest* mock_gone_request = nullptr;
+  ASSERT_NO_FATAL_FAILURE(MakeGoneHttpRequest(true, &mock_gone_request));
+  // Fetch Policies should fail.
+  PolicyResponses responses;
+  ASSERT_EQ(
+      internal::FetchPolicies(
+          DmStorage::Instance(),
+          std::move(std::unique_ptr<HttpRequestInterface>(mock_gone_request)),
+          CString(kDmToken), kDeviceId, info, &responses),
+      HRESULTFromHttpStatusCode(HTTP_STATUS_GONE));
+  EXPECT_TRUE(DmStorage::Instance()->GetDmToken().IsEmpty());
 }
 
 // Test that we are able to successfully encode and then decode a
@@ -903,13 +999,14 @@ TEST_F(DmClientRequestTest, DecodePolicies) {
 }
 
 TEST_F(DmClientRequestTest, HandleDMResponseError) {
-  EXPECT_HRESULT_SUCCEEDED(DmStorage::CreateInstance(CString()));
-  ON_SCOPE_EXIT(DmStorage::DeleteInstance);
-  EXPECT_HRESULT_SUCCEEDED(DmStorage::Instance()->StoreDmToken("dm_token"));
-
   const CPath policy_responses_dir = CPath(ConcatenatePath(
       app_util::GetCurrentModuleDirectory(),
       _T("Policies")));
+
+  std::unique_ptr<DmStorage> dm_storage =
+      DmStorage::CreateTestInstance(policy_responses_dir, CString());
+  EXPECT_HRESULT_SUCCEEDED(dm_storage->StoreDmToken("dm_token"));
+
   PolicyResponsesMap responses = {
     {"google/chrome/machine-level-user", "test-data-chr"},
     {"google/earth/machine-level-user",
@@ -917,17 +1014,27 @@ TEST_F(DmClientRequestTest, HandleDMResponseError) {
   };
 
   const PolicyResponses expected_responses = {responses, "expected data"};
-  ASSERT_HRESULT_SUCCEEDED(DmStorage::PersistPolicies(policy_responses_dir,
-                                                      expected_responses));
+  ASSERT_HRESULT_SUCCEEDED(dm_storage->PersistPolicies(expected_responses));
 
+  std::vector<uint8> response;
   EXPECT_TRUE(policy_responses_dir.FileExists());
-  EXPECT_FALSE(DmStorage::Instance()->IsInvalidDMToken());
+  EXPECT_TRUE(dm_storage->IsValidDMToken());
   internal::HandleDMResponseError(
-      HRESULTFromHttpStatusCode(HTTP_STATUS_GONE), policy_responses_dir);
+      dm_storage.get(), HRESULTFromHttpStatusCode(HTTP_STATUS_GONE), response);
+  EXPECT_TRUE(dm_storage->IsInvalidDMToken());
   EXPECT_FALSE(policy_responses_dir.FileExists());
-  EXPECT_TRUE(DmStorage::Instance()->IsInvalidDMToken());
 
-  ASSERT_NO_FATAL_FAILURE(DeleteDmToken());
+  ASSERT_HRESULT_SUCCEEDED(dm_storage->PersistPolicies(expected_responses));
+  enterprise_management::DeviceManagementResponse dm_response;
+  dm_response.add_error_detail(
+      enterprise_management::CBCM_DELETION_POLICY_PREFERENCE_DELETE_TOKEN);
+  std::string response_string;
+  ASSERT_TRUE(dm_response.SerializeToString(&response_string));
+  response.assign(response_string.begin(), response_string.end());
+  internal::HandleDMResponseError(
+      dm_storage.get(), HRESULTFromHttpStatusCode(HTTP_STATUS_GONE), response);
+  EXPECT_TRUE(dm_storage->GetDmToken().IsEmpty());
+  EXPECT_HRESULT_SUCCEEDED(dm_storage->DeleteDmToken());
 }
 
 class DmClientRegistryTest : public RegistryProtectedTest {

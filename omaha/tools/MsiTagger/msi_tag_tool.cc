@@ -13,8 +13,8 @@
 // limitations under the License.
 // ========================================================================
 //
-// This is a naive tool to write tags to MSI packages. It just blindly adds
-// tags without checking:
+// This is a tool to write tags to MSI packages. It just adds tags without
+// checking:
 //   1. Whether the input file is a valid MSI package.
 //   2. Whether the file is tagged already.
 
@@ -84,7 +84,7 @@ int WriteMsiTag(
   // Actual tag.
   // Formerly: std::string tag_ansi(tag, tag + tag_length);
 
-  // That code converted UTF-16 to iso-8859-1 (Latin1) via blindly
+  // That code converted UTF-16 to iso-8859-1 (Latin1) via
   // chopping all but the lowest eight bits.  This is not utf-8; it's
   // Latin1, with garbage for anything outside that repertoire.  Newer
   // compilers rightly complain about data loss.  Apparently that is
