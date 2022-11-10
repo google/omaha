@@ -57,7 +57,7 @@ To run the unit tests, one more package is needed. Download the Windows Sysinter
 
  * Install each of the above software packages that comes with an installer.
  * Make sure you add the installed Python directory to your path environment variable.
- * Follow the Software Construction Toolkit [installation instructions](http://code.google.com/p/swtoolkit/wiki/Introduction). Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
+ * Follow the Software Construction Toolkit [installation instructions](https://code.google.com/archive/p/swtoolkit/wikis/Introduction.wiki). Make sure you don't miss the part about setting up the SCONS_DIR environment variable.
  * Get the source code for the packages that don't have an installer.
  * Clone the Omaha repository to a location of your choice. The structure should look similar to:
 ```
