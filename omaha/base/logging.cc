@@ -965,7 +965,7 @@ bool LogWriter::Register() {
 bool LogWriter::Unregister() {
   Logging* logger = GetLogging();
   if (logger) {
-    return logger->RegisterWriter(this);
+    return logger->UnregisterWriter(this);
   } else {
     return false;
   }
