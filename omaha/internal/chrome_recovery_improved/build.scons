@@ -100,7 +100,7 @@ unsigned_exe = exe_env.ComponentProgram(
     prog_name='%s_unsigned.exe' % exe_name,
     source=exe_inputs,
 )
-signed_exe = exe_env.DualSignedBinary(
+signed_exe = exe_env.SignedBinary(
     target='%s.exe' % exe_name,
     source=unsigned_exe,
 )

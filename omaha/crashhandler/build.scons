@@ -119,7 +119,7 @@ def BuildCrashHandler(local_env):
       source=gch_inputs,
   )
 
-  signed_crash_handler = gch_env.DualSignedBinary(
+  signed_crash_handler = gch_env.SignedBinary(
       target='%s.exe' % exe_name,
       source=unsigned_crash_handler,
   )

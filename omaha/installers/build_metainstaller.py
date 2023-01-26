@@ -169,10 +169,10 @@ def BuildMetaInstaller(
       action='"%s" --copyappend $SOURCES $TARGET' % resmerge_path)
 
   authenticode_signed_target_prefix = 'authenticode_'
-  authenticode_signed_exe = env.DualSignedBinary(
+  authenticode_signed_exe = env.SignedBinary(
       target=authenticode_signed_target_prefix + target_name,
       source=merged_output,
-      )
+  )
 
   ready_for_tagging_exe = env.OmahaCertificateTag(
       target=target_name,

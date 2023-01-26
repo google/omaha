@@ -715,7 +715,7 @@ if env.Bit('all'):
       COMPONENT_TEST_RUNNABLE=False
   )
 
-  signed_output = save_args_env.DualSignedBinary(
+  signed_output = save_args_env.SignedBinary(
       target='SaveArguments.exe',
       source=unsigned_output,
   )

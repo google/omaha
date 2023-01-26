@@ -93,7 +93,7 @@ unsigned_core = core_env.ComponentProgram(
     source=google_core_inputs,
 )
 
-signed_core = core_env.DualSignedBinary(
+signed_core = core_env.SignedBinary(
     target='%s.exe' % exe_name,
     source=unsigned_core,
 )

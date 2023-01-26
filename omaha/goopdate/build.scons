@@ -66,7 +66,7 @@ def BuildCOMForwarder(cmd_line_switch,
       prog_name='%s_unsigned' % signed_exe_name,
       source=com_forwarder_inputs,
   )
-  signed_broker = com_forwarder_env.DualSignedBinary(
+  signed_broker = com_forwarder_env.SignedBinary(
       target='%s.exe' % signed_exe_name,
       source=unsigned_broker,
   )
@@ -122,7 +122,7 @@ def BuildCOMRegisterShell64():
           'com_register_shell.cc',
           ]
   )
-  signed_exe = com_register_shell_env.DualSignedBinary(
+  signed_exe = com_register_shell_env.SignedBinary(
       target='GoogleUpdateComRegisterShell64.exe',
       source=unsigned_exe,
   )
@@ -277,7 +277,7 @@ def BuildGoogleUpdateHandlerDll(handler_env,
       source=inputs,
   )
 
-  signed_dll = handler_env.DualSignedBinary(
+  signed_dll = handler_env.SignedBinary(
       target='%s%s%s.dll' % (prefix, psname, suffix),
       source=unsigned_dll,
   )
@@ -572,7 +572,7 @@ for omaha_version_info in env['omaha_versions_info']:
       source=inputs,
   )
 
-  signed_dll = temp_env.DualSignedBinary(
+  signed_dll = temp_env.SignedBinary(
       target=prefix + 'goopdate.dll',
       source=unsigned_dll,
   )
@@ -642,7 +642,7 @@ unsigned_test_installer = test_installer_env.ComponentProgram(
     prog_name='TestOmahaExeInstaller_unsigned',
     source=test_installer_inputs,
 )
-signed_test_installer = test_installer_env.DualSignedBinary(
+signed_test_installer = test_installer_env.SignedBinary(
     target='TestOmahaExeInstaller.exe',
     source=unsigned_test_installer,
 )
