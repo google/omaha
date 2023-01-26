@@ -33,9 +33,6 @@ namespace omaha {
 void LogEventHelper(WORD type, DWORD id, size_t count, const TCHAR** strings,
                     const TCHAR* ctx) {
   ASSERT1(count <= static_cast<size_t>(std::numeric_limits<int16_t>::max()));
-  if (!ConfigManager::Instance()->CanLogEvents(type)) {
-    return;
-  }
 
   // Include the circular logging buffer in the event log if the type is a
   // warning or an error.
@@ -43,6 +40,16 @@ void LogEventHelper(WORD type, DWORD id, size_t count, const TCHAR** strings,
   CString context = GetLogging()->GetHistory();
   if (!context.IsEmpty()) {
     SafeCStringAAppendFormat(&data, "\n[More context: %S]", context);
+  }
+
+  CString joined_strings;
+  for (size_t i = 0; i < count; ++i) {
+    SafeCStringAppendFormat(&joined_strings, L"[%s]", strings[i]);
+  }
+  OPT_LOG(L1, (_T("[LogEventHelper][%d][%d][%d][%s][%S]"), type, id, count,
+               joined_strings, data));
+  if (!ConfigManager::Instance()->CanLogEvents(type)) {
+    return;
   }
 
   HRESULT hr = EventLogger::ReportEvent(EventLogger::kSourceName,

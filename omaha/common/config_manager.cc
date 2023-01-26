@@ -1202,7 +1202,7 @@ int ConfigManager::GetLastCheckPeriodSec(
                                          kLastCheckPeriodSec;
   v.UpdateFinal({policy_period_sec}, status_value_minutes);
 
-  OPT_LOG(L5, (_T("[GetLastCheckPeriodSec][%s]"), v.ToString()));
+  OPT_LOG(L5, (_T("[GetLastCheckPeriodMinutes][%s]"), v.ToString()));
 
   return v.value().seconds;
 }
