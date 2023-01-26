@@ -16,16 +16,25 @@
 #include "omaha/client/install_apps.h"
 
 #include <atlsafe.h>
+#include <ocidl.h>
+#include <olectl.h>
+#include <windows.h>
 
+#include <memory>
+
+#include "goopdate/omaha3_idl.h"
+#include "omaha/base/const_addresses.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reactor.h"
+#include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/shutdown_callback.h"
 #include "omaha/base/shutdown_handler.h"
 #include "omaha/base/string.h"
+#include "omaha/base/thread_pool_callback.h"
 #include "omaha/base/time.h"
 #include "omaha/base/utils.h"
 #include "omaha/base/vista_utils.h"
@@ -44,7 +53,7 @@
 #include "omaha/common/lang.h"
 #include "omaha/common/ping.h"
 #include "omaha/common/update3_utils.h"
-#include "goopdate/omaha3_idl.h"
+#include "omaha/goopdate/goopdate.h"
 #include "omaha/ui/progress_wnd.h"
 
 namespace omaha {
@@ -219,6 +228,15 @@ class BundleAtlModule : public CAtlExeModuleT<BundleAtlModule> {
 
 namespace internal {
 
+struct LoadLogoParameters {
+ public:
+  LoadLogoParameters(const CString& appid, HWND wnd)
+      : app_id(appid), logo_wnd(wnd) {}
+
+  CString app_id;
+  HWND logo_wnd;
+};
+
 bool IsBrowserRestartSupported(BrowserType browser_type) {
   return (browser_type != BROWSER_UNKNOWN &&
           browser_type != BROWSER_DEFAULT &&
@@ -334,6 +352,89 @@ CString GetBundleDisplayName(IAppBundle* app_bundle) {
       CString(bundle_name) : client_utils::GetDefaultBundleName();
 }
 
+// The app logo is expected to be hosted at `{kUrlAppLogo}{url escaped
+// app_id}.bmp`. If `{url escaped app_id}.bmp` exists, a logo is shown in
+// the updater UI for that app install.
+//
+// For example, if `app_id` is `{8A69D345-D564-463C-AFF1-A69D9E530F96}`,
+// the `{url escaped app_id}.bmp` is
+// `%7b8A69D345-D564-463C-AFF1-A69D9E530F96%7d.bmp`.
+//
+// `kUrlAppLogo` is specified in omaha/base/const_addresses.h.
+void LoadLogo(LoadLogoParameters params) {
+  CString escaped_app_id;
+  HRESULT hr = StringEscape(params.app_id, false, &escaped_app_id);
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[StringEscape failed][%#x]"), hr));
+    return;
+  }
+
+  CString url;
+  SafeCStringFormat(&url, _T("%s%s.bmp"), kUrlAppLogo, escaped_app_id);
+  CORE_LOG(L1, (_T("[Attempting to load logo from][%s]"), url));
+
+  // Load the logo in BMP format if it exists at the provided `url`, and set the
+  // resultant image onto the app bitmap for the logo window.
+  CComPtr<IPicture> picture;
+  hr = ::OleLoadPicturePath(const_cast<TCHAR*>(url.GetString()), nullptr, 0, 0,
+                            IID_PPV_ARGS(&picture));
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[::OleLoadPicturePath failed][%#x]"), hr));
+    return;
+  }
+
+  HBITMAP bitmap = nullptr;
+  hr = picture->get_Handle(reinterpret_cast<UINT*>(&bitmap));
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[picture->get_Handle failed][%#x]"), hr));
+    return;
+  }
+
+  if (!::IsWindow(params.logo_wnd)) {
+    CORE_LOG(LW, (_T("[logo_wnd not valid anymore][%d]"), params.logo_wnd));
+    return;
+  }
+
+  ::SendDlgItemMessage(params.logo_wnd, IDC_APP_BITMAP, STM_SETIMAGE,
+                       IMAGE_BITMAP,
+                       reinterpret_cast<LPARAM>(::CopyImage(
+                           bitmap, IMAGE_BITMAP, 0, 0, LR_COPYRETURNORG)));
+}
+
+// Loads the logo for the first app in `app_bundle`, and shows it in `logo_wnd`.
+HRESULT LoadLogoAsync(IAppBundle* app_bundle, HWND logo_wnd) {
+  ASSERT1(app_bundle);
+  ASSERT1(logo_wnd);
+
+  CComPtr<IApp> app;
+  HRESULT hr = update3_utils::GetApp(app_bundle, 0, &app);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[update3_utils::GetApp failed][%#x]"), hr));
+    return hr;
+  }
+
+  CComBSTR primary_app_id;
+  hr = app->get_appId(&primary_app_id);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[app->get_appId failed][%#x]"), hr));
+    return hr;
+  }
+
+  // Create a thread pool work item for deferred execution of loading the logo.
+  // The thread pool owns this call back object.
+  using Callback = StaticThreadPoolCallBack1<LoadLogoParameters>;
+  hr = Goopdate::Instance().QueueUserWorkItem(
+      std::make_unique<Callback>(
+          &LoadLogo, LoadLogoParameters(CString(primary_app_id), logo_wnd)),
+      COINIT_APARTMENTTHREADED, WT_EXECUTELONGFUNCTION);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[QueueUserWorkItem failed][0x%x]"), hr));
+    return hr;
+  }
+
+  return S_OK;
+}
+
 HRESULT CreateClientUI(bool is_machine,
                        BrowserType browser_type,
                        BundleInstaller* installer,
@@ -363,6 +464,13 @@ HRESULT CreateClientUI(bool is_machine,
 
   progress_wnd->Show();
   installer->SetBundleParentWindow(progress_wnd->m_hWnd);
+
+  // Load the logo.
+  hr = LoadLogoAsync(app_bundle, progress_wnd->m_hWnd);
+  if (FAILED(hr)) {
+    CORE_LOG(LE, (_T("[LoadLogoAsync failed][%#x]"), hr));
+    return hr;
+  }
 
   destroy_window_guard.Dismiss();
   observer->reset(progress_wnd.release());
