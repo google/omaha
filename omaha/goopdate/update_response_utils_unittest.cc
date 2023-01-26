@@ -353,9 +353,52 @@ TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_Archx64) {
   SetResponseForUnitTest(update_response_.get(), response);
 
   EXPECT_TRUE(
-      (SystemInfo::GetProcessorArchitecture() == PROCESSOR_ARCHITECTURE_AMD64 ?
-                                                 kOk : kOsNotSupported)
-      == CheckSystemRequirements(update_response_.get(), _T("en")));
+      (SystemInfo::GetArchitecture() == kArchAmd64 ? kOk : kOsNotSupported) ==
+      CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_NotArchx64) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("-x64");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(
+      (SystemInfo::GetArchitecture() != kArchAmd64 ? kOk : kOsNotSupported) ==
+      CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest,
+       SystemRequirementsElement_Archx86Notx64) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("x86,-x64");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(
+      (SystemInfo::GetArchitecture() != kArchAmd64 ? kOk : kOsNotSupported) ==
+      CheckSystemRequirements(update_response_.get(), _T("en")));
+}
+
+TEST_F(UpdateResponseUtilsGetResultTest,
+       SystemRequirementsElement_Archx86x64NotArm64) {
+  xml::response::Response response;
+  xml::response::SystemRequirements& sys_req = response.sys_req;
+  sys_req.platform = _T("win");
+  sys_req.arch = _T("x86,x64,-arm64");
+  sys_req.min_os_version = _T("6.0");
+
+  SetResponseForUnitTest(update_response_.get(), response);
+
+  EXPECT_TRUE(
+      (SystemInfo::GetArchitecture() != kArchArm64 ? kOk : kOsNotSupported) ==
+      CheckSystemRequirements(update_response_.get(), _T("en")));
 }
 
 TEST_F(UpdateResponseUtilsGetResultTest,

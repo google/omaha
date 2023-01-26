@@ -35,22 +35,25 @@ TEST(SystemInfoTest, GetSystemVersion) {
 }
 
 TEST(SystemInfoTest, Is64BitWindows) {
-  DWORD arch(SystemInfo::GetProcessorArchitecture());
+  const CString arch = SystemInfo::GetArchitecture();
 
-  if (arch == PROCESSOR_ARCHITECTURE_INTEL) {
+  if (arch == kArchIntel) {
     EXPECT_FALSE(SystemInfo::Is64BitWindows());
   } else {
     EXPECT_TRUE(SystemInfo::Is64BitWindows());
   }
 }
 
-TEST(SystemInfoTest, GetProcessorArchitecture) {
-  DWORD arch(SystemInfo::GetProcessorArchitecture());
+TEST(SystemInfoTest, GetArchitecture) {
+  const CString arch = SystemInfo::GetArchitecture();
 
-  // TODO(omaha3): Maybe we could look for the presence of a wow6432 key in the
-  // registry to detect.
-  EXPECT_TRUE(arch == PROCESSOR_ARCHITECTURE_INTEL ||
-              arch == PROCESSOR_ARCHITECTURE_AMD64);
+  EXPECT_TRUE(arch == kArchIntel || arch == kArchAmd64) << arch;
+}
+
+TEST(SystemInfoTest, IsArchitectureSupported) {
+  const CString arch = SystemInfo::GetArchitecture();
+
+  EXPECT_TRUE(SystemInfo::IsArchitectureSupported(arch)) << arch;
 }
 
 TEST(SystemInfoTest, CompareOSVersions_SameAsCurrent) {

@@ -156,9 +156,6 @@ const TCHAR* const kAppDefinedPrefix = _T("_");
 
 namespace value {
 
-const TCHAR* const kArchAmd64 = _T("x64");
-const TCHAR* const kArchIntel = _T("x86");
-const TCHAR* const kArchUnknown = _T("unknown");
 const TCHAR* const kBits = _T("bits");
 const TCHAR* const kCacheable = _T("cacheable");
 const TCHAR* const kClientRegulated = _T("cr");

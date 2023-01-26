@@ -156,9 +156,6 @@ extern const TCHAR* const kAppDefinedPrefix;
 
 namespace value {
 
-extern const TCHAR* const kArchAmd64;
-extern const TCHAR* const kArchIntel;
-extern const TCHAR* const kArchUnknown;
 extern const TCHAR* const kBits;
 extern const TCHAR* const kCacheable;
 extern const TCHAR* const kClientRegulated;

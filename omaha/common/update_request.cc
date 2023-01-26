@@ -106,8 +106,7 @@ UpdateRequest* UpdateRequest::Create(bool is_machine,
   request.os.platform = kPlatformWin;
   VERIFY_SUCCEEDED(goopdate_utils::GetOSInfo(&request.os.version,
                                               &request.os.service_pack));
-  request.os.arch = xml::ConvertProcessorArchitectureToString(
-      SystemInfo::GetProcessorArchitecture());
+  request.os.arch = SystemInfo::GetArchitecture();
 
   return update_request.release();
 }
