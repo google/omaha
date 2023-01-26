@@ -210,8 +210,12 @@ TEST_P(ScheduledTaskUtilsV2Test, CreateScheduledTaskXml) {
     principal_attributes = _T("<LogonType>InteractiveToken</LogonType>\n");
   }
 
+  CString quoted_task_path(task_path);
+  EnclosePath(&quoted_task_path);
+
   CString expected_task_xml;
-  SafeCStringFormat(&expected_task_xml,
+  SafeCStringFormat(
+      &expected_task_xml,
       _T("<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n")
       _T("<Task version=\"1.2\"\n")
       _T("  xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n")
@@ -259,7 +263,7 @@ TEST_P(ScheduledTaskUtilsV2Test, CreateScheduledTaskXml) {
       hourly_trigger,
       user_id,
       principal_attributes,
-      task_path,
+      quoted_task_path,
       kScheduledTaskParameters);
 
   CString task_xml;
