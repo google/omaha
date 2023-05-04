@@ -476,7 +476,7 @@ HRESULT CreateClientUI(bool is_machine,
   hr = LoadLogoAsync(app_bundle, progress_wnd->m_hWnd);
   if (FAILED(hr)) {
     CORE_LOG(LE, (_T("[LoadLogoAsync failed][%#x]"), hr));
-    return hr;
+    // Ignore error and fall through.
   }
 
   destroy_window_guard.Dismiss();
