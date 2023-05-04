@@ -31,5 +31,3 @@ IDR_GOOGLE_UPDATE3_SERVICE_APPID  REGISTRY "omaha/base/generic_reg_file_appid.rg
 
 1 TYPELIB "goopdate\\omaha3_idl.tlb"
 
-IDB_CHROME              BITMAP  "omaha/goopdate/resources/chrome.bmp"
-
