@@ -98,6 +98,8 @@ bool Bcj2Encode(const std::string& input,
     return false;
   }
 
+  main_output->reserve(input.size());
+
   size_t input_position = 0;
 
   static const int kNumberOfMoveBits = 5;

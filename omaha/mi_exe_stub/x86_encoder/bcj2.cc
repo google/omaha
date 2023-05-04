@@ -45,9 +45,9 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   }
 
   DWORD file_size = static_cast<DWORD>(file_size_data.QuadPart);
-  std::unique_ptr<uint8[]> buffer(new uint8[file_size]);
+  std::string buffer(file_size, '\0');
   DWORD bytes_read = 0;
-  if (!::ReadFile(get(file), buffer.get(), file_size, &bytes_read, NULL) ||
+  if (!::ReadFile(get(file), buffer.data(), file_size, &bytes_read, NULL) ||
       bytes_read != file_size) {
     return 4;
   }
@@ -56,9 +56,7 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   std::string out2;
   std::string out3;
   std::string out4;
-  if (!omaha::Bcj2Encode(std::string(reinterpret_cast<char*>(buffer.get()),
-                                     file_size),
-                         &out1, &out2, &out3, &out4)) {
+  if (!omaha::Bcj2Encode(buffer, &out1, &out2, &out3, &out4)) {
     return 5;
   }
 
