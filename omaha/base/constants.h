@@ -282,6 +282,7 @@ const TCHAR* const kRegValueNamePingUrl             = _T("PingUrl");
 const TCHAR* const kRegValueNameCrashReportUrl      = _T("CrashReportUrl");
 const TCHAR* const kRegValueNameGetMoreInfoUrl      = _T("MoreInfoUrl");
 const TCHAR* const kRegValueNameUsageStatsReportUrl = _T("UsageStatsReportUrl");
+const TCHAR* const kRegValueNameAppLogoUrl          = _T("AppLogoUrl");
 const TCHAR* const kRegValueTestSource              = _T("TestSource");
 const TCHAR* const kRegValueAuCheckPeriodMs         = _T("AuCheckPeriodMs");
 const TCHAR* const kRegValueCrCheckPeriodMs         = _T("CrCheckPeriodMs");

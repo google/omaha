@@ -941,6 +941,20 @@ HRESULT ConfigManager::GetUsageStatsReportUrl(CString* url) const {
   return S_OK;
 }
 
+HRESULT ConfigManager::GetAppLogoUrl(CString* url) const {
+  ASSERT1(url);
+
+  if (SUCCEEDED(RegKey::GetValue(MACHINE_REG_UPDATE_DEV,
+                                 kRegValueNameAppLogoUrl,
+                                 url))) {
+    CORE_LOG(L5, (_T("['app logo url' override %s]"), *url));
+    return S_OK;
+  }
+
+  *url = kUrlAppLogo;
+  return S_OK;
+}
+
 #if defined(HAS_DEVICE_MANAGEMENT)
 
 HRESULT ConfigManager::GetDeviceManagementUrl(CString* url) const {

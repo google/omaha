@@ -369,8 +369,15 @@ void LoadLogo(LoadLogoParameters params) {
     return;
   }
 
+  CString app_logo_url;
+  hr = ConfigManager::Instance()->GetAppLogoUrl(&app_logo_url);
+  if (FAILED(hr)) {
+    CORE_LOG(LW, (_T("[GetAppLogoUrl failed][%#x]"), hr));
+    return;
+  }
+
   CString url;
-  SafeCStringFormat(&url, _T("%s%s.bmp"), kUrlAppLogo, escaped_app_id);
+  SafeCStringFormat(&url, _T("%s%s.bmp"), app_logo_url, escaped_app_id);
   CORE_LOG(L1, (_T("[Attempting to load logo from][%s]"), url));
 
   // Load the logo in BMP format if it exists at the provided `url`, and set the
