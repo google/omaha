@@ -247,11 +247,10 @@ HRESULT ElevateAndWait(const CString& cmd_line, DWORD* exit_code) {
   SafeCStringAppendFormat(&cmd_line_elevated, _T(" /%s"),
                           kCmdLineInstallElevated);
 
-  HRESULT hr = goopdate_utils::StartElevatedSelfWithArgsAndWait(
-      cmd_line_elevated, exit_code);
+  HRESULT hr = goopdate_utils::StartElevatedMetainstaller(cmd_line_elevated,
+                                                          exit_code);
   if (FAILED(hr)) {
-    OPT_LOG(LE,
-            (_T("[Elevated GoogleUpdate.exe failed][%s][%#x]"), cmd_line, hr));
+    OPT_LOG(LE, (_T("[Elevated metainstaller failed][%s][%#x]"), cmd_line, hr));
 
     // TODO(omaha3): Report hr somehow. Was reported in extra code in Omaha 2.
     if (vista_util::IsUserNonElevatedAdmin()) {

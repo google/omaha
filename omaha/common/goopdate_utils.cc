@@ -308,29 +308,39 @@ CString BuildGoogleUpdateServicesEnclosedPath(bool is_machine, bool use64bit) {
   return path;
 }
 
-HRESULT StartElevatedSelfWithArgsAndWait(const TCHAR* args, DWORD* exit_code) {
+HRESULT StartElevatedMetainstaller(const TCHAR* args, DWORD* exit_code) {
   ASSERT1(args);
   ASSERT1(exit_code);
+  CORE_LOG(L3, (_T("[StartElevatedMetainstaller]")));
 
-  CORE_LOG(L3, (_T("[StartElevatedSelfWithArgsAndWait]")));
+  CPath metainstaller_path(app_util::GetCurrentModuleDirectory());
+  VERIFY1(metainstaller_path.Append(kOmahaMetainstallerFileName));
+  if (!File::Exists(metainstaller_path)) {
+    return GOOPDATE_E_METAINSTALLER_NOT_FOUND;
+  }
 
-  // Get the process executable.
-  const CString filename(app_util::GetModulePath(NULL));
+  // In case the metainstaller has been tagged, append the /no_mi_tag switch
+  // to the end of the command line to signal the MI to not append its tag.
+  // The MI will remove the switch before launching the constant shell.
+  // TODO(omaha): Once the ApplyTag library has been refactored to allow
+  // removal/truncation of tags, remove the tag as part of setup (so that the
+  // MI in the permanent install is always untagged) and eliminate this switch.
+  CString new_args;
+  SafeCStringFormat(&new_args, _T("%s /%s"), args, kCmdLineNoMetainstallerTag);
 
-  // Launch self elevated and wait.
+  // Launch metainstaller elevated and wait.
   *exit_code = 0;
-  CORE_LOG(L3, (_T("[Elevating][%s][%s]"), filename, args));
+  CORE_LOG(L3, (_T("[Elevating][%s][%s]"), metainstaller_path, new_args));
 
   // According to the MSDN documentation for ::ShowWindow: "nCmdShow. This
   // parameter is ignored the first time an application calls ShowWindow, if
   // the program that launched the application provides a STARTUPINFO
   // structure.". We want to force showing the UI window. So we pass in
   // SW_SHOWNORMAL.
-  HRESULT hr =
-      vista_util::RunElevated(filename,
-                              args,
-                              SW_SHOWNORMAL,
-                              exit_code);
+  HRESULT hr = vista_util::RunElevated(metainstaller_path,
+                                       new_args,
+                                       SW_SHOWNORMAL,
+                                       exit_code);
   CORE_LOG(L3, (_T("[elevated instance exit code][%u]"), *exit_code));
 
   if (FAILED(hr)) {

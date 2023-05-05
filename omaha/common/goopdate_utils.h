@@ -100,8 +100,9 @@ HRESULT StartGoogleUpdateWithArgs(bool is_machine,
 // if we're running on a 64-bit OS.
 HRESULT StartCrashHandler(bool is_machine);
 
-// Runs the current executable in an elevated mode using the "Runas" verb.
-HRESULT StartElevatedSelfWithArgsAndWait(const TCHAR* args, DWORD* exit_code);
+// Starts the metainstaller in the same directory as the current module in an
+// elevated mode using the "Runas" verb.
+HRESULT StartElevatedMetainstaller(const TCHAR* args, DWORD* exit_code);
 
 // Registers security and sets the security values for the GoogleUpdate
 // process when running as a COM server.
