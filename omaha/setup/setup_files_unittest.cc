@@ -37,15 +37,14 @@ namespace {
 // Eventually use the original values in the if block.
 const int kNumberOfLanguageDlls = 55;
 const int kNumberOfCoreFiles = 10;
-const int kNumberOfMetainstallerFiles = 1;
 const int kNumberOfOptionalFiles = 2;
 const int kNumberOfInstalledRequiredFiles =
     kNumberOfLanguageDlls + kNumberOfCoreFiles;
 // FindFiles returns "." and ".." in addition to the actual files.
 const int kExtraFilesReturnedByFindFiles = 2;
-const int kExpectedFilesReturnedByFindFiles =
-    kNumberOfInstalledRequiredFiles + kNumberOfMetainstallerFiles +
-    kNumberOfOptionalFiles + kExtraFilesReturnedByFindFiles;
+const int kExpectedFilesReturnedByFindFiles = kNumberOfInstalledRequiredFiles +
+                                              kNumberOfOptionalFiles +
+                                              kExtraFilesReturnedByFindFiles;
 
 const TCHAR kFutureVersionString[] = _T("9.8.7.6");
 const ULONGLONG kFutureVersion = 0x0009000800070006;
@@ -70,7 +69,6 @@ void CopyGoopdateFiles(const CString& omaha_path, const CString& version) {
                           kOmahaShellFileName,
                           kOmahaCOMRegisterShell64,
                           kOmahaDllName,
-                          kOmahaMetainstallerFileName,
                           kOmahaBrokerFileName,
                           kOmahaOnDemandFileName,
                           kPSFileNameMachine,
@@ -157,8 +155,6 @@ class SetupFilesTest : public testing::Test {
 
     ASSERT_EQ(kNumberOfInstalledRequiredFiles,
               setup_files_->core_program_files_.size());
-    ASSERT_EQ(kNumberOfMetainstallerFiles,
-              setup_files_->metainstaller_files_.size());
     ASSERT_EQ(kNumberOfOptionalFiles, setup_files_->optional_files_.size());
 
     DeleteDirectory(version_path);
@@ -198,8 +194,6 @@ class SetupFilesTest : public testing::Test {
         extra_files.find(kOmahaCoreFileName), extra_files.end());
     EXPECT_NE(
         extra_files.find(kOmahaOnDemandFileName), extra_files.end());
-    EXPECT_NE(
-        extra_files.find(kOmahaMetainstallerFileName), extra_files.end());
     EXPECT_NE(
         extra_files.find(kOmahaDllName), extra_files.end());
     EXPECT_NE(

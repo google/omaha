@@ -110,21 +110,6 @@ HRESULT SetupFiles::Install() {
     return hr;
   }
 
-  // Copy the metainstaller.  Since the metainstaller is tagged, its file size
-  // may vary; so, we always overwrite, even if it's the same version.
-  // TODO(omaha): Once we refactor our tag management functions to be capable
-  // of stripping the tag from a MI, change this so that we always copy over
-  // an untagged metainstaller instead.  Untagged metainstallers should always
-  // be the same size.
-  hr = CopyInstallFiles(metainstaller_files_, install_dir, true);
-  if (FAILED(hr)) {
-    OPT_LOG(LEVEL_ERROR, (_T("[Failed to copy metainstaller][0x%08x]"), hr));
-    if (E_ACCESSDENIED == hr) {
-      return GOOPDATE_E_ACCESSDENIED_COPYING_MI;
-    }
-    return hr;
-  }
-
   // Attempt to copy the optional files.
   hr = CopyInstallFiles(optional_files_, install_dir, should_over_install);
   if (FAILED(hr)) {
@@ -294,11 +279,9 @@ HRESULT SetupFiles::SaveShellForRollback(const CString& shell_install_path) {
 }
 
 // The list of files below needs to be kept in sync with payload_files in
-// omaha_version_utils.py. The one exception is kOmahaMetainstallerFileName,
-// which is not part of the payload.
+// omaha_version_utils.py.
 HRESULT SetupFiles::BuildFileLists() {
   ASSERT1(core_program_files_.empty());
-  ASSERT1(metainstaller_files_.empty());
   ASSERT1(optional_files_.empty());
 
   core_program_files_.clear();
@@ -317,9 +300,6 @@ HRESULT SetupFiles::BuildFileLists() {
   core_program_files_.push_back(kPSFileNameUser64);
   core_program_files_.push_back(kPSFileNameMachine);
   core_program_files_.push_back(kPSFileNameMachine64);
-
-  metainstaller_files_.clear();
-  metainstaller_files_.push_back(kOmahaMetainstallerFileName);
 
   // If files are removed from this list, unit tests such as
   // ShouldInstall_SameVersionOptionalFileMissing may need to be updated.

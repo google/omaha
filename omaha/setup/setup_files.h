@@ -81,7 +81,6 @@ class SetupFiles {
   const bool is_machine_;
   CString saved_shell_path_;  // Path of the previous shell saved for roll back.
   std::vector<CString> core_program_files_;
-  std::vector<CString> metainstaller_files_;
   std::vector<CString> optional_files_;
 
   int extra_code1_;
