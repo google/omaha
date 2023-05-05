@@ -601,7 +601,6 @@ win_env.AppendUnique(
         '/MAP',
         '/NODEFAULTLIB',
         '/DYNAMICBASE',   # Enable ASLR. See http://goo.gl/k2IE.
-        '/LARGEADDRESSAWARE',  # Enable addresses larger than 2 GB.
         '/NXCOMPAT',      # Enable NX support. See http://goo.gl/k2IE.
         '/SAFESEH',
         # '/VERBOSE:LIB', # Uncomment to get verbose link info for debugging.

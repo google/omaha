@@ -44,6 +44,9 @@ for omaha_version_info in env['omaha_versions_info']:
           'shlwapi',
           'version',
           ],
+      LINKFLAGS = [
+          '/LARGEADDRESSAWARE',  # Enable addresses larger than 2 GB.
+          ],
       RCFLAGS = [
           '/DVERSION_MAJOR=%d' % omaha_version_info.version_major,
           '/DVERSION_MINOR=%d' % omaha_version_info.version_minor,
