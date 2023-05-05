@@ -404,21 +404,6 @@ void ProgressWnd::OnUpdateAvailable(const CString& app_id,
 
   ASSERT1(thread_id() == ::GetCurrentThreadId());
 
-  if (!app_id.CompareNoCase(kChromeAppId)) {
-    HBITMAP app_bitmap = reinterpret_cast<HBITMAP>(::LoadImage(
-        app_util::GetCurrentModuleHandle(),
-        MAKEINTRESOURCE(IDB_CHROME),
-        IMAGE_BITMAP,
-        0,
-        0,
-        LR_SHARED));
-    ASSERT1(app_bitmap);
-    SendDlgItemMessage(IDC_APP_BITMAP,
-                       STM_SETIMAGE,
-                       IMAGE_BITMAP,
-                       reinterpret_cast<LPARAM>(app_bitmap));
-  }
-
   if (!IsWindow()) {
     return;
   }

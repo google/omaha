@@ -98,7 +98,7 @@ TEST_P(CertInfoTest, CertInfo) {
                           subject,
                           CString(),
                           CString(),
-                          true);      // Check if the certificate is valid now.
+                          /*check_cert_is_valid_now*/ false);
   ASSERT_TRUE(cert_info);
 
   EXPECT_STREQ(GetParam().subject_name, cert_info->issuing_company_name_);

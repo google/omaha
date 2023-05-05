@@ -146,20 +146,6 @@ HRESULT VerifyProtocolCompatibility(const CString& actual_version,
 
 }  // namespace
 
-CString ConvertProcessorArchitectureToString(DWORD arch) {
-  switch (arch) {
-    case PROCESSOR_ARCHITECTURE_INTEL:
-      return xml::value::kArchIntel;
-
-    case PROCESSOR_ARCHITECTURE_AMD64:
-      return xml::value::kArchAmd64;
-
-    default:
-      ASSERT1(false);
-      return xml::value::kArchUnknown;
-  }
-}
-
 // The ElementHandler classes should also be in an anonymous namespace but
 // the base class cannot be because it is used in the header file.
 

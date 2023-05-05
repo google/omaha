@@ -27,6 +27,11 @@
 
 namespace omaha {
 
+extern const TCHAR* const kArchAmd64;
+extern const TCHAR* const kArchIntel;
+extern const TCHAR* const kArchArm64;
+extern const TCHAR* const kArchUnknown;
+
 enum VersionType {
   SUITE_HOME = 0,
   SUITE_PROFESSIONAL,
@@ -78,12 +83,20 @@ class SystemInfo {
                                int* service_pack_major,
                                int* service_pack_minor);
 
-  // Returns the processor architecture. We use wProcessorArchitecture in
-  // SYSTEM_INFO returned by ::GetNativeSystemInfo() to detect the processor
-  // architecture of the installed operating system. Note the "Native" in the
-  // function name - this is important. See
-  // http://msdn.microsoft.com/en-us/library/ms724340.aspx.
-  static DWORD GetProcessorArchitecture();
+  // Returns a string representation of the processor architecture, or an empty
+  // string if the processor architecture is unknown. Uses `::IsWow64Process2()`
+  // if available (more accurate). If not, falls back on
+  // `::GetNativeSystemInfo()` (less accurate, but available on most systems).
+  static CString GetArchitecture();
+
+  // Returns `true` if:
+  //* `arch` is empty, or
+  // * `arch` matches the currrent architecture, or
+  // * `arch` is supported on the machine, as determined by
+  // `::IsWow64GuestMachineSupported()`.
+  //   * If `::IsWow64GuestMachineSupported()` is not available, returns `true`
+  //     if `arch` is x86.
+  static bool IsArchitectureSupported(const CString& arch);
 
   // Returns whether this is a 64-bit Windows system.
   static bool Is64BitWindows();

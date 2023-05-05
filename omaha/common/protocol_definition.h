@@ -68,7 +68,7 @@ struct OS {
   CString platform;       // "win".
   CString version;        // major.minor.
   CString service_pack;
-  CString arch;           // "x86", "x64", or "unknown".
+  CString arch;  // "x86", "x64", "ARM64", etc, or "unknown".
 };
 
 struct UpdateCheck {
@@ -300,7 +300,19 @@ struct DayStart {
 
 struct SystemRequirements {
   CString platform;        // "win".
-  CString arch;            // "x86", "x64", or "unknown".
+
+  // Expected host processor architecture that the app is compatible with.
+  // `arch` can be a single entry, or multiple entries separated with `,`.
+  // Entries prefixed with a `-` (negative entries) indicate non-compatible
+  // hosts.
+  //
+  // Examples:
+  // * `arch` == "x86".
+  // * `arch` == "x64".
+  // * `arch` == "x86,x64,-arm64": the app will fail installation if the
+  // underlying host is arm64.
+  CString arch;
+
   CString min_os_version;  // major.minor.
 };
 

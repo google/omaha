@@ -594,6 +594,20 @@ TEST_P(ConfigManagerTest, GetUsageStatsReportUrl) {
   EXPECT_STREQ(url, _T("http://usagestatsreport/"));
 }
 
+// Tests the `GetAppLogoUrl` override.
+TEST_P(ConfigManagerTest, GetAppLogoUrl) {
+  CString url;
+  EXPECT_SUCCEEDED(cm_->GetAppLogoUrl(&url));
+  EXPECT_STREQ(url, kUrlAppLogo);
+
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueNameAppLogoUrl,
+                                    _T("http://applogo/")));
+  url.Empty();
+  EXPECT_SUCCEEDED(cm_->GetAppLogoUrl(&url));
+  EXPECT_STREQ(url, _T("http://applogo/"));
+}
+
 // Tests LastCheckPeriodSec override.
 TEST_P(ConfigManagerTest, GetLastCheckPeriodSec_Default) {
   if (IsDM()) {

@@ -178,8 +178,8 @@ bool ShouldCheckForUpdates(bool is_machine) {
     should_check_for_updates = true;
   }
 
-  CORE_LOG(L3, (_T("[ShouldCheckForUpdates returned %d][%u]"),
-                should_check_for_updates, is_period_overridden));
+  OPT_LOG(L3, (_T("[ShouldCheckForUpdates returned %d][%u]"),
+               should_check_for_updates, is_period_overridden));
   return should_check_for_updates;
 }
 
@@ -286,7 +286,7 @@ HRESULT UpdateApps(bool is_machine,
                      session_id,
                      has_ui_been_displayed);
   if (FAILED(hr)) {
-    CORE_LOG(LW, (_T("[UpdateAllApps failed][0x%08x]"), hr));
+    OPT_LOG(LW, (_T("[UpdateAllApps failed][0x%08x]"), hr));
   }
   return hr;
 }

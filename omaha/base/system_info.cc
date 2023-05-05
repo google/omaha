@@ -14,6 +14,11 @@
 // ========================================================================
 
 #include "omaha/base/system_info.h"
+
+#include <windows.h>
+
+#include <map>
+
 #include "base/basictypes.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
@@ -25,6 +30,102 @@
 #include "omaha/base/wmi_query.h"
 
 namespace omaha {
+
+const TCHAR* const kArchAmd64 = _T("x64");
+const TCHAR* const kArchIntel = _T("x86");
+const TCHAR* const kArchArm64 = _T("arm64");
+const TCHAR* const kArchUnknown = _T("unknown");
+
+namespace {
+// Returns the processor architecture as returned by `::GetNativeSystemInfo()`
+// to detect the processor architecture of the installed operating system. See
+// http://msdn.microsoft.com/en-us/library/ms724340.aspx.
+//
+// If the function is called from an x86 or x64 application running on a 64-bit
+// system that does not have an Intel64 or x64 processor (such as ARM64), it
+// will return information as if the system is x86 only if x86 emulation is
+// supported (or x64 if x64 emulation is also supported).
+DWORD GetProcessorArchitecture() {
+  static DWORD processor_architecture_cached(PROCESSOR_ARCHITECTURE_UNKNOWN);
+
+  if (processor_architecture_cached == PROCESSOR_ARCHITECTURE_UNKNOWN) {
+    typedef void(WINAPI * GetSystemInfoFunc)(LPSYSTEM_INFO);
+
+    HMODULE handle = ::GetModuleHandle(_T("kernel32"));
+    ASSERT1(handle);
+    GetSystemInfoFunc get_native_system_info =
+        reinterpret_cast<GetSystemInfoFunc>(
+            ::GetProcAddress(handle, "GetNativeSystemInfo"));
+
+    if (get_native_system_info != NULL) {
+      SYSTEM_INFO sys_info = {0};
+
+      get_native_system_info(&sys_info);
+
+      processor_architecture_cached = sys_info.wProcessorArchitecture;
+    } else {
+      // If we couldn't get the _native_ system info, then we must be on OS
+      // earlier than XP, so can't be 64-bit anyway. Assume Intel.
+      processor_architecture_cached = PROCESSOR_ARCHITECTURE_INTEL;
+    }
+  }
+
+  return processor_architecture_cached;
+}
+
+// Returns a string representation of the processor architecture if one exists,
+// or an empty string if there is no match.
+CString GetProcessorArchitectureString() {
+  switch (GetProcessorArchitecture()) {
+    case PROCESSOR_ARCHITECTURE_INTEL:
+      return kArchIntel;
+
+    case PROCESSOR_ARCHITECTURE_AMD64:
+      return kArchAmd64;
+
+    default:
+      ASSERT1(false);
+      return kArchUnknown;
+  }
+}
+
+// Returns the native architecture if the current process is running under
+// WOW64 and `::IsWow64Process2()` is available. Otherwise returns
+// `IMAGE_FILE_MACHINE_UNKNOWN`.
+USHORT GetNativeArchitecture() {
+  typedef BOOL(WINAPI * IsWow64Process2Func)(HANDLE, USHORT*, USHORT*);
+  const IsWow64Process2Func is_wow64_process2 =
+      reinterpret_cast<IsWow64Process2Func>(::GetProcAddress(
+          ::GetModuleHandle(_T("kernel32.dll")), "IsWow64Process2"));
+  if (!is_wow64_process2) {
+    return IMAGE_FILE_MACHINE_UNKNOWN;
+  }
+
+  USHORT process_machine = 0;
+  USHORT native_architecture = IMAGE_FILE_MACHINE_UNKNOWN;
+  return is_wow64_process2(::GetCurrentProcess(), &process_machine,
+                           &native_architecture)
+             ? native_architecture
+             : IMAGE_FILE_MACHINE_UNKNOWN;
+}
+
+// Returns a string representation of the native architecture if one exists,
+// or an empty string if there is no match.
+CString GetNativeArchitectureString() {
+  const std::map<int, CString> kNativeArchitectureImagesToStrings = {
+      {IMAGE_FILE_MACHINE_I386, kArchIntel},
+      {IMAGE_FILE_MACHINE_AMD64, kArchAmd64},
+      {IMAGE_FILE_MACHINE_ARM64, kArchArm64},
+  };
+
+  const auto native_arch =
+      kNativeArchitectureImagesToStrings.find(GetNativeArchitecture());
+  return native_arch != kNativeArchitectureImagesToStrings.end()
+             ? native_arch->second
+             : CString(_T(""));
+}
+
+}  // namespace
 
 bool SystemInfo::IsRunningOnXPSP2OrLater() {
   return ::IsWindowsXPSP2OrGreater();
@@ -111,33 +212,46 @@ bool SystemInfo::GetSystemVersion(int* major_version,
   return true;
 }
 
-DWORD SystemInfo::GetProcessorArchitecture() {
-  static DWORD processor_architecture_cached(PROCESSOR_ARCHITECTURE_UNKNOWN);
+CString SystemInfo::GetArchitecture() {
+  const CString native_arch = GetNativeArchitectureString();
+  return !native_arch.IsEmpty() ? native_arch
+                                : GetProcessorArchitectureString();
+}
 
-  if (processor_architecture_cached == PROCESSOR_ARCHITECTURE_UNKNOWN) {
-    typedef void (WINAPI * GetSystemInfoFunc)(LPSYSTEM_INFO);
+bool SystemInfo::IsArchitectureSupported(const CString& arch) {
+  if (arch.IsEmpty()) {
+    return true;
+  }
 
-    HMODULE handle = ::GetModuleHandle(_T("kernel32"));
-    ASSERT1(handle);
-    GetSystemInfoFunc get_native_system_info =
-        reinterpret_cast<GetSystemInfoFunc>(::GetProcAddress(
-                                                handle,
-                                                "GetNativeSystemInfo"));
+  const CString current_arch = GetArchitecture().MakeLower();
+  if (arch == current_arch) {
+    return true;
+  }
 
-    if (get_native_system_info != NULL) {
-      SYSTEM_INFO sys_info = {0};
+  typedef HRESULT(WINAPI * IsWow64GuestMachineSupportedFunc)(USHORT, BOOL*);
+  const IsWow64GuestMachineSupportedFunc is_wow64_guest_machine_supported =
+      reinterpret_cast<IsWow64GuestMachineSupportedFunc>(
+          ::GetProcAddress(::GetModuleHandle(_T("kernel32.dll")),
+                           "IsWow64GuestMachineSupported"));
 
-      get_native_system_info(&sys_info);
+  if (is_wow64_guest_machine_supported) {
+    const std::map<CString, int> kNativeArchitectureStringsToImages = {
+        {kArchIntel, IMAGE_FILE_MACHINE_I386},
+        {kArchAmd64, IMAGE_FILE_MACHINE_AMD64},
+        {kArchArm64, IMAGE_FILE_MACHINE_ARM64},
+    };
 
-      processor_architecture_cached = sys_info.wProcessorArchitecture;
-    } else {
-      // If we couldn't get the _native_ system info, then we must be on OS
-      // earlier than XP, so can't be 64-bit anyway. Assume Intel.
-      processor_architecture_cached = PROCESSOR_ARCHITECTURE_INTEL;
+    const auto image = kNativeArchitectureStringsToImages.find(arch);
+    if (image != kNativeArchitectureStringsToImages.end()) {
+      BOOL is_machine_supported = false;
+      if (SUCCEEDED(is_wow64_guest_machine_supported(
+              static_cast<USHORT>(image->second), &is_machine_supported))) {
+        return is_machine_supported;
+      }
     }
   }
 
-  return processor_architecture_cached;
+  return arch == kArchIntel;
 }
 
 bool SystemInfo::Is64BitWindows() {
@@ -237,8 +351,7 @@ VersionType SystemInfo::GetOSVersionType() {
   } else if (version_info.dwMajorVersion == 5 &&
              version_info.dwMinorVersion == 2) {
     if (version_info.wProductType == VER_NT_WORKSTATION &&
-        SystemInfo::GetProcessorArchitecture() ==
-        PROCESSOR_ARCHITECTURE_AMD64) {
+        SystemInfo::GetArchitecture() == kArchAmd64) {
       return SUITE_PROFESSIONAL;
     } else if (version_info.wSuiteMask & VER_SUITE_WH_SERVER) {
       return SUITE_HOME;

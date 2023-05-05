@@ -166,7 +166,7 @@ def OmahaBuildTestExe(env, version, major, minor, build, patch):
           ],
       COMPONENT_TEST_RUNNABLE=False
   )
-  signed_output = exe_env.DualSignedBinary(
+  signed_output = exe_env.SignedBinary(
       target=signed_target_name,
       source=unsigned_exe,
   )

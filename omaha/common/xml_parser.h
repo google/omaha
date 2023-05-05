@@ -38,8 +38,6 @@ namespace xml {
 
 class ElementHandler;
 
-CString ConvertProcessorArchitectureToString(DWORD processor_architecture);
-
 // Public static methods instantiate a temporary instance of this class, which
 // then parses the specified document. This avoids reusing instances of the
 // parser and dealing with stale and dirty data.

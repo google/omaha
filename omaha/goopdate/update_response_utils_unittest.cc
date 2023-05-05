@@ -291,98 +291,46 @@ TEST_F(UpdateResponseUtilsGetResultTest, HwNotSupported) {
                                            _T("en")));
 }
 
-TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_Compatible) {
-  xml::response::Response response;
-  xml::response::SystemRequirements& sys_req = response.sys_req;
-  sys_req.platform = _T("win");
-  sys_req.arch = _T("x86");
-  sys_req.min_os_version = _T("6.0");
+TEST_F(UpdateResponseUtilsGetResultTest, CheckSystemRequirements) {
+  const CString current_arch = SystemInfo::GetArchitecture();
 
-  SetResponseForUnitTest(update_response_.get(), response);
+  const struct {
+    const TCHAR* platform;
+    const TCHAR* arch_list;
+    const TCHAR* min_os_version;
+    const xml::UpdateResponseResult& expected_result;
+  } test_cases[] = {
+      {_T("win"), _T("x86"), _T("6.0"), kOk},
+      {_T("mac"), _T("x86"), _T("6.0"), kOsNotSupported},
+      {_T("win"), _T("unknown"), _T("6.0"), kOsNotSupported},
+      {_T("win"), _T("x64"), _T("6.0"),
+       current_arch == kArchAmd64 ? kOk : kOsNotSupported},
+      {_T("win"), _T("-x64"), _T("6.0"),
+       current_arch != kArchAmd64 ? kOk : kOsNotSupported},
+      {_T("win"), _T("x86,-x64"), _T("6.0"),
+       current_arch != kArchAmd64 ? kOk : kOsNotSupported},
+      {_T("win"), _T("x86,x64,-arm64"), _T("6.0"),
+       current_arch != kArchArm64 ? kOk : kOsNotSupported},
+      {_T("win"), _T("x86"), _T("60.0"), kOsNotSupported},
+      {_T("win"), _T("x86"), _T("0.01"), kOk},
+  };
 
-  EXPECT_TRUE(kOk == CheckSystemRequirements(update_response_.get(), _T("en")));
-}
+  for (const auto& test_case : test_cases) {
+    xml::response::Response response;
+    xml::response::SystemRequirements& sys_req = response.sys_req;
+    sys_req.platform = test_case.platform;
+    sys_req.arch = test_case.arch_list;
+    sys_req.min_os_version = test_case.min_os_version;
 
-TEST_F(UpdateResponseUtilsGetResultTest,
-       SystemRequirementsElement_PlatformMismatch) {
-  xml::response::Response response;
-  xml::response::SystemRequirements& sys_req = response.sys_req;
-  sys_req.platform = _T("mac");
-  sys_req.arch = _T("x86");
-  sys_req.min_os_version = _T("6.0");
+    SetResponseForUnitTest(update_response_.get(), response);
 
-  SetResponseForUnitTest(update_response_.get(), response);
-
-  EXPECT_TRUE(kOsNotSupported ==
-              CheckSystemRequirements(update_response_.get(), _T("en")));
-}
-
-TEST_F(UpdateResponseUtilsGetResultTest,
-       SystemRequirementsElement_ArchUnknown) {
-  xml::response::Response response;
-  xml::response::SystemRequirements& sys_req = response.sys_req;
-  sys_req.platform = _T("win");
-  sys_req.arch = _T("unknown");
-  sys_req.min_os_version = _T("6.0");
-
-  SetResponseForUnitTest(update_response_.get(), response);
-
-  EXPECT_TRUE(kOsNotSupported ==
-              CheckSystemRequirements(update_response_.get(), _T("en")));
-}
-
-TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_Archx86) {
-  xml::response::Response response;
-  xml::response::SystemRequirements& sys_req = response.sys_req;
-  sys_req.platform = _T("win");
-  sys_req.arch = _T("x86");
-  sys_req.min_os_version = _T("6.0");
-
-  SetResponseForUnitTest(update_response_.get(), response);
-
-  EXPECT_TRUE(kOk == CheckSystemRequirements(update_response_.get(), _T("en")));
-}
-
-TEST_F(UpdateResponseUtilsGetResultTest, SystemRequirementsElement_Archx64) {
-  xml::response::Response response;
-  xml::response::SystemRequirements& sys_req = response.sys_req;
-  sys_req.platform = _T("win");
-  sys_req.arch = _T("x64");
-  sys_req.min_os_version = _T("6.0");
-
-  SetResponseForUnitTest(update_response_.get(), response);
-
-  EXPECT_TRUE(
-      (SystemInfo::GetProcessorArchitecture() == PROCESSOR_ARCHITECTURE_AMD64 ?
-                                                 kOk : kOsNotSupported)
-      == CheckSystemRequirements(update_response_.get(), _T("en")));
-}
-
-TEST_F(UpdateResponseUtilsGetResultTest,
-       SystemRequirementsElement_ReallyHighSystemRequirementsVersion) {
-  xml::response::Response response;
-  xml::response::SystemRequirements& sys_req = response.sys_req;
-  sys_req.platform = _T("win");
-  sys_req.arch = _T("x86");
-  sys_req.min_os_version = _T("60.0");
-
-  SetResponseForUnitTest(update_response_.get(), response);
-
-  EXPECT_TRUE(kOsNotSupported ==
-              CheckSystemRequirements(update_response_.get(), _T("en")));
-}
-
-TEST_F(UpdateResponseUtilsGetResultTest,
-       SystemRequirementsElement_ReallyLowSystemRequirementsVersion) {
-  xml::response::Response response;
-  xml::response::SystemRequirements& sys_req = response.sys_req;
-  sys_req.platform = _T("win");
-  sys_req.arch = _T("x86");
-  sys_req.min_os_version = _T("0.01");
-
-  SetResponseForUnitTest(update_response_.get(), response);
-
-  EXPECT_TRUE(kOk == CheckSystemRequirements(update_response_.get(), _T("en")));
+    EXPECT_EQ(CheckSystemRequirements(update_response_.get(), _T("en")),
+              test_case.expected_result)
+        << test_case.platform << ": " << test_case.arch_list << ": "
+        << test_case.min_os_version << ": " << current_arch << ": "
+        << test_case.expected_result.first << ": "
+        << test_case.expected_result.second;
+  }
 }
 
 INSTANTIATE_TEST_CASE_P(IsMachine, UpdateResponseUtilsTest, ::testing::Bool());

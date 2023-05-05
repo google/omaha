@@ -396,7 +396,7 @@ CString GetAgent() {
 }
 
 CString GetPlatform() {
-  const DWORD architecture = SystemInfo::GetProcessorArchitecture();
+  const CString architecture = SystemInfo::GetArchitecture();
 
   int major_version = 0;
   int minor_version = 0;
@@ -410,11 +410,7 @@ CString GetPlatform() {
 
   CString platform;
   SafeCStringFormat(&platform, _T("Windows NT|%s|%d.%d.0"),
-                    architecture == PROCESSOR_ARCHITECTURE_AMD64 ?
-                        _T("x86_64") :
-                        (architecture == PROCESSOR_ARCHITECTURE_INTEL ?
-                             _T("x86") :
-                             _T("")),
+                    architecture == kArchAmd64 ? _T("x86_64") : architecture,
                     major_version, minor_version);
   return platform;
 }

@@ -14,14 +14,17 @@
 
 #include "omaha/common/scheduled_task_utils.h"
 #include "omaha/common/scheduled_task_utils_internal.h"
-#include <lmcons.h>
-#include <lmsname.h>
+
 #include <atlsecurity.h>
 #include <atltime.h>
+#include <lmcons.h>
+#include <lmsname.h>
+
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/omaha_version.h"
+#include "omaha/base/path.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scoped_ptr_cotask.h"
 #include "omaha/base/service_utils.h"
@@ -349,7 +352,10 @@ HRESULT V1ScheduledTasks::CreateScheduledTask(ITask* task,
   UTIL_LOG(L3, (_T("[CreateScheduledTask][%s][%s][%d]"),
                 task_path, task_parameters, is_machine));
 
-  HRESULT hr = task->SetApplicationName(task_path);
+  CString quoted_task_path(task_path);
+  EnclosePath(&quoted_task_path);
+
+  HRESULT hr = task->SetApplicationName(quoted_task_path);
   if (FAILED(hr)) {
     UTIL_LOG(LE, (_T("[ITask.SetApplicationName failed][0x%x]"), hr));
     return hr;
@@ -770,8 +776,12 @@ HRESULT V2ScheduledTasks::CreateScheduledTaskXml(
     principal_attributes = _T("<LogonType>InteractiveToken</LogonType>\n");
   }
 
+  CString quoted_task_path(task_path);
+  EnclosePath(&quoted_task_path);
+
   CString task_xml;
-  SafeCStringFormat(&task_xml,
+  SafeCStringFormat(
+      &task_xml,
       _T("<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n")
       _T("<Task version=\"1.2\"\n")
       _T("  xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n")
@@ -798,8 +808,12 @@ HRESULT V2ScheduledTasks::CreateScheduledTaskXml(
       _T("  <Settings>\n")
       _T("    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n")
       _T("    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n")
+      _T("    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n")
       _T("    <StartWhenAvailable>true</StartWhenAvailable>\n")
       _T("    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>\n")
+      _T("    <IdleSettings>\n")
+      _T("      <StopOnIdleEnd>false</StopOnIdleEnd>\n")
+      _T("    </IdleSettings>\n")
       _T("    <Enabled>true</Enabled>\n")
       _T("    <RunOnlyIfIdle>false</RunOnlyIfIdle>\n")
       _T("    <WakeToRun>false</WakeToRun>\n")
@@ -819,7 +833,7 @@ HRESULT V2ScheduledTasks::CreateScheduledTaskXml(
       hourly_trigger,
       user_id,
       principal_attributes,
-      task_path,
+      quoted_task_path,
       task_parameters);
 
   *scheduled_task_xml = task_xml;

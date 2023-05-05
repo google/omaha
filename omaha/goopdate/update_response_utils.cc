@@ -18,13 +18,14 @@
 #include <algorithm>
 #include <regex>
 #include <string>
+#include <vector>
 
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/system_info.h"
-#include "omaha/common/lang.h"
 #include "omaha/common/experiment_labels.h"
+#include "omaha/common/lang.h"
 #include "omaha/common/xml_const.h"
 #include "omaha/common/xml_parser.h"
 #include "omaha/goopdate/model.h"
@@ -58,13 +59,59 @@ bool IsPlatformCompatible(const CString& platform) {
   return platform.IsEmpty() || !platform.CompareNoCase(kPlatformWin);
 }
 
-bool IsArchCompatible(const CString& arch) {
-  const CString current_arch(xml::ConvertProcessorArchitectureToString(
-                                 SystemInfo::GetProcessorArchitecture()));
-  return arch.IsEmpty() ||
-         !arch.CompareNoCase(current_arch) ||
-         (arch == xml::value::kArchIntel &&
-         current_arch == xml::value::kArchAmd64);
+// Checks if the current architecture is compatible with the entries in
+// `arch_list`. `arch_list` can be a single entry, or multiple entries separated
+// with `,`. Entries prefixed with `-` (negative entries) indicate
+// non-compatible hosts. Non-prefixed entries indicate compatible guests.
+//
+// Returns `true` if:
+// * `arch_list` is empty, or
+// * none of the negative entries within `arch_list` match the current host
+//   architecture exactly, and there are no non-negative entries, or
+// * one of the non-negative entries within `arch_list` matches the current
+//   architecture, or is compatible with the current architecture (i.e., it is a
+//   compatible guest for the current host) as determined by
+//   `::IsWow64GuestMachineSupported()`.
+//   * If `::IsWow64GuestMachineSupported()` is not available, returns `true`
+//     if `arch` is x86.
+//
+// Examples:
+// * `arch_list` == "x86": returns `true` if run on all systems, because Omaha3
+//   is x86, and is running the logic to determine compatibility).
+// * `arch_list` == "x64": returns `true` if run on x64 or many arm64 systems.
+// * `arch_list` == "x86,x64,-arm64": returns `false` if the underlying host is
+// arm64.
+// * `arch_list` == "-arm64": returns `false` if the underlying host is arm64.
+bool IsArchCompatible(const CString& arch_list) {
+  std::vector<CString> architectures;
+  int pos = 0;
+  do {
+    const CString arch = arch_list.Tokenize(_T(","), pos).Trim().MakeLower();
+    if (!arch.IsEmpty()) {
+      architectures.push_back(arch);
+    }
+  } while (pos != -1);
+
+  if (architectures.empty()) {
+    return true;
+  }
+
+  std::sort(architectures.begin(), architectures.end());
+  if (std::find(architectures.begin(), architectures.end(),
+                _T('-') + SystemInfo::GetArchitecture().MakeLower()) !=
+      architectures.end()) {
+    return false;
+  }
+
+  architectures.erase(
+      std::remove_if(architectures.begin(), architectures.end(),
+                     [](const CString& arch) { return arch[0] == '-'; }),
+      architectures.end());
+
+  return architectures.empty() ||
+         std::find_if(architectures.begin(), architectures.end(),
+                      SystemInfo::IsArchitectureSupported) !=
+             architectures.end();
 }
 
 bool IsOSVersionCompatible(const CString& min_os_version) {

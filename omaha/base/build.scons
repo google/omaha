@@ -265,6 +265,7 @@ local_env.Append(
 cc_files_exclusions = [
     '*unix*.c',
     'zip_algorithm_xz.c',
+    'zip_algorithm_zstd.c',
     'zip_crypto_win.c',
     'zip_crypto_[cgmo]*.c',
     'zip_mkstempm.c',

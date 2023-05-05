@@ -275,6 +275,9 @@ class ConfigManager {
   // Returns the service endpoint where the usage stats requests are sent.
   HRESULT GetUsageStatsReportUrl(CString* url) const;
 
+  // Returns the url base for the app logos.
+  HRESULT GetAppLogoUrl(CString* url) const;
+
 #if defined(HAS_DEVICE_MANAGEMENT)
   // Returns the Device Management API url.
   HRESULT GetDeviceManagementUrl(CString* url) const;
