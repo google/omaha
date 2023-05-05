@@ -49,19 +49,23 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   }
 
   DWORD file_size = static_cast<DWORD>(file_size_data.QuadPart);
-  std::string buffer(file_size, '\0');
   DWORD bytes_read = 0;
-  if (!::ReadFile(get(file), buffer.data(), file_size, &bytes_read, NULL) ||
-      bytes_read != file_size) {
-    return 4;
-  }
 
   std::string out1;
   std::string out2;
   std::string out3;
   std::string out4;
-  if (!omaha::Bcj2Encode(buffer, &out1, &out2, &out3, &out4)) {
-    return 5;
+
+  {
+    std::string buffer(file_size, '\0');
+    if (!::ReadFile(get(file), buffer.data(), file_size, &bytes_read, NULL) ||
+        bytes_read != file_size) {
+      return 4;
+    }
+
+    if (!omaha::Bcj2Encode(buffer, &out1, &out2, &out3, &out4)) {
+      return 5;
+    }
   }
 
   // The format of BCJ2 file is very primitive.
