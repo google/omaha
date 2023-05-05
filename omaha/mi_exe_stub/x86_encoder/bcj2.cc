@@ -72,28 +72,28 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
   //   size of stream 3
   //   size of stream 4
   const size_t output_buffer_header[] = {
-      bytes_read,
-      out1.size(),
-      out2.size(),
-      out3.size(),
-      out4.size(),
+    bytes_read,
+    out1.size(),
+    out2.size(),
+    out3.size(),
+    out4.size(),
   };
 
   std::string out0(sizeof(output_buffer_header), '\0');
   if (0 != memcpy_s(out0.data(),
-    out0.size(),
-    &output_buffer_header[0],
-    sizeof(output_buffer_header))) {
+                    out0.size(),
+                    &output_buffer_header[0],
+                    sizeof(output_buffer_header))) {
     return 6;
   }
 
   if ((out0.size() + out1.size() + out2.size() + out3.size() + out4.size()) >
-    DWORD_MAX) {
+      DWORD_MAX) {
     return 7;
   }
 
   reset(file,
-    ::CreateFile(argv[2], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL));
+        ::CreateFile(argv[2], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL));
   if (!valid(file)) {
     return 8;
   }
@@ -109,11 +109,11 @@ int wmain(int argc, WCHAR* argv[], WCHAR* env[]) {
 
     DWORD bytes_written = 0;
     if (!::WriteFile(get(file),
-      out.data(),
-      out.size(),
-      &bytes_written,
-      NULL) ||
-      bytes_written != out.size()) {
+                     out.data(),
+                     out.size(),
+                     &bytes_written,
+                     NULL) ||
+        bytes_written != out.size()) {
       return 9;
     }
   }
