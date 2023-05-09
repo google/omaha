@@ -1,5 +1,6 @@
-# Ignore reason: These artifacts are used in unit tests or there are tools
-# that are used by the build.
+# Ignore reason: These artifacts are used in unit tests or they are tools
+# used by the build. It's impractical to make changes at this stage of the
+# project to generate the tools from source.
 ignorePaths:
 - omaha/internal/tools/ApplyTag.exe
 - omaha/recovery/lib/bin/dbg/google_update_recovery.lib
