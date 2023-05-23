@@ -527,15 +527,7 @@ TEST(UtilsTest, GetCurrentUserDefaultSecurityAttributes) {
 }
 
 TEST(UtilsTest, AddAllowedAce) {
-  CString test_file_path = ConcatenatePath(
-      app_util::GetCurrentModuleDirectory(), _T("TestAddAllowedAce.exe"));
-  EXPECT_SUCCEEDED(File::Remove(test_file_path));
-
-  EXPECT_SUCCEEDED(File::Copy(
-      ConcatenatePath(app_util::GetCurrentModuleDirectory(),
-                      MAIN_EXE_BASE_NAME _T(".exe")),
-      test_file_path,
-      false));
+  const CString test_file_path(GetTempFilename(_T("AddAllowedAce_")));
 
   CDacl dacl;
   EXPECT_TRUE(AtlGetDacl(test_file_path, SE_FILE_OBJECT, &dacl));
