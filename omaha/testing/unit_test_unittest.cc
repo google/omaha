@@ -97,6 +97,9 @@ TEST(UnitTestHelpersTest, StringToGuid_ValidString) {
 }
 
 TEST(UnitTestHelpersTest, ClearGroupPolicies) {
+  EXPECT_SUCCEEDED(RegKey::SetValue(MACHINE_REG_UPDATE_DEV,
+                                    kRegValueIsEnrolledToDomain,
+                                    1UL));
   EXPECT_SUCCEEDED(SetPolicyString(kRegValueDownloadPreference,
                                    kDownloadPreferenceCacheable));
   ConfigManager* cm = ConfigManager::Instance();
@@ -104,6 +107,9 @@ TEST(UnitTestHelpersTest, ClearGroupPolicies) {
   EXPECT_STREQ(cm->GetDownloadPreferenceGroupPolicy(nullptr), _T("cacheable"));
   ClearGroupPolicies();
   EXPECT_STREQ(cm->GetDownloadPreferenceGroupPolicy(nullptr), _T(""));
+  RegKey::DeleteKey(kRegKeyGoopdateGroupPolicy);
+  EXPECT_SUCCEEDED(RegKey::DeleteValue(MACHINE_REG_UPDATE_DEV,
+                                       kRegValueIsEnrolledToDomain));
 }
 
 }  // namespace omaha
