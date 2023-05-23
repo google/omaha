@@ -544,7 +544,7 @@ TEST(UtilsTest, AddAllowedAce) {
   EXPECT_SUCCEEDED(AddAllowedAce(test_file_path,
                                  SE_FILE_OBJECT,
                                  Sids::Dialup(),
-                                 FILE_GENERIC_READ,
+                                 FILE_GENERIC_WRITE,
                                  0));
 
   dacl.SetEmpty();
@@ -555,18 +555,18 @@ TEST(UtilsTest, AddAllowedAce) {
   EXPECT_SUCCEEDED(AddAllowedAce(test_file_path,
                                  SE_FILE_OBJECT,
                                  Sids::Dialup(),
-                                 FILE_GENERIC_READ,
+                                 FILE_GENERIC_WRITE,
                                  0));
   dacl.SetEmpty();
   EXPECT_TRUE(AtlGetDacl(test_file_path, SE_FILE_OBJECT, &dacl));
   EXPECT_EQ(original_ace_count + 1, dacl.GetAceCount());
 
   // Add a subset of the existing access. No ACE is added.
-  EXPECT_EQ(FILE_READ_ATTRIBUTES, FILE_GENERIC_READ & FILE_READ_ATTRIBUTES);
+  EXPECT_EQ(FILE_WRITE_ATTRIBUTES, FILE_GENERIC_WRITE & FILE_WRITE_ATTRIBUTES);
   EXPECT_SUCCEEDED(AddAllowedAce(test_file_path,
                                  SE_FILE_OBJECT,
                                  Sids::Dialup(),
-                                 FILE_READ_ATTRIBUTES,
+                                 FILE_WRITE_ATTRIBUTES,
                                  0));
   dacl.SetEmpty();
   EXPECT_TRUE(AtlGetDacl(test_file_path, SE_FILE_OBJECT, &dacl));
