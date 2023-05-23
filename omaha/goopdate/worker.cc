@@ -941,17 +941,17 @@ HRESULT Worker::DoUpdateCheck(AppBundle* app_bundle,
 
   ASSERT1(app_bundle->GetNumberOfApps() > 0);
 
+  if (app_bundle->is_offline_install()) {
+    return offline_utils::ParseOfflineManifest(
+        app_bundle->GetApp(0)->app_guid_string(), app_bundle->offline_dir(),
+        update_response);
+  }
+
   // The UpdateRequest could be empty if manual updates or installs are disabled
   // by Group Policy.
   if (update_request->IsEmpty()) {
     CORE_LOG(L3, (_T("[DoUpdateCheck][No apps for update check]")));
     return S_OK;
-  }
-
-  if (app_bundle->is_offline_install()) {
-    return offline_utils::ParseOfflineManifest(
-        app_bundle->GetApp(0)->app_guid_string(), app_bundle->offline_dir(),
-        update_response);
   }
 
   if (!ConfigManager::Instance()->CanUseNetwork(is_machine_)) {
