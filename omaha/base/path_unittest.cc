@@ -211,6 +211,11 @@ TEST(PathTest, ShortPathToLongPath) {
   CString expected_path("C:\\Program Files");
   CString short_path("C:\\Progra~1");
 
+  // The short path may not exist in some environments, such as windows sandbox.
+  if (!File::Exists(short_path)) {
+    return;
+  }
+
   CString long_path;
   ASSERT_SUCCEEDED(ShortPathToLongPath(short_path, &long_path));
   ASSERT_STREQ(expected_path, long_path);
