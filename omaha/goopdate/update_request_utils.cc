@@ -32,7 +32,7 @@ void BuildRequest(const App* app,
     return;
   }
 
-  if (!app->is_eula_accepted()) {
+  if (!app->is_eula_accepted() && !app->app_bundle()->is_offline_install()) {
     CORE_LOG(L3, (_T("[App EULA not accepted - not including app in ping][%s]"),
                   app->app_guid_string()));
     return;

@@ -52,7 +52,7 @@ namespace {
 const TCHAR* const kGuid1 = _T("{8A001254-1003-465e-A970-0748961C5293}");
 const TCHAR* const kGuid2 = _T("{058ADDBE-BF10-4ba1-93C0-6F4A52C03C7E}");
 #else
-const TCHAR* const kGuid1 = _T("{104844D6-7DDA-460B-89F0-FBF8AFDD0A67}");
+const TCHAR* const kGuid1 = _T("{65E60E95-0DE9-43FF-9F3F-4F7D2DFF04B5}");
 const TCHAR* const kGuid2 = _T("{8A69D345-D564-463C-AFF1-A69D9E530F96}");
 #endif
 

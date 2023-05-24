@@ -592,7 +592,7 @@ TEST_F(AppInstallTest, PreUpdateCheck_EulaNotAccepted_Offline) {
   app_->PreUpdateCheck(update_request.get());
   EXPECT_EQ(STATE_CHECKING_FOR_UPDATE, app_->state());
   EXPECT_EQ(S_OK, app_->error_code());
-  EXPECT_TRUE(update_request->IsEmpty()) << _T("Should not add request.");
+  EXPECT_FALSE(update_request->IsEmpty()) << _T("Should add request.");
 }
 
 TEST_F(AppAutoUpdateTest, PreUpdateCheck_EulaNotAccepted) {

@@ -67,7 +67,10 @@ void AppStateWaitingToCheckForUpdate::PreUpdateCheck(
   VERIFY_SUCCEEDED(app_manager->SynchronizeClientState(app->app_guid()));
 
   // Handle the normal flow and return. Abnormal cases are below.
-  if (app->is_eula_accepted()) {
+  // Offline installs do not need requests, but we add the app here to indicate
+  // to `Worker::DoUpdateCheck` that there were no validation issues with
+  // policies.
+  if (app->is_eula_accepted() || app->app_bundle()->is_offline_install()) {
     update_request_utils::BuildRequest(app, true, update_request);
     app->SetCurrentTimeAs(App::TIME_UPDATE_CHECK_START);
     ChangeState(app, new AppStateCheckingForUpdate);
@@ -76,17 +79,7 @@ void AppStateWaitingToCheckForUpdate::PreUpdateCheck(
 
   // The app's EULA has not been accepted, so do not add this app to the update
   // check. This means bundle size does not always match the request size.
-
   ASSERT1(app->app_guid() != kGoopdateGuid);
-
-  // TODO(omaha3): Is there a better way to do this such that we don't need to
-  // know about offline installs here?
-  if (app->app_bundle()->is_offline_install()) {
-    // Offline installs do not need requests, so skip building the request.
-    ChangeState(app, new AppStateCheckingForUpdate);
-    return;
-  }
-
   ASSERT1(app->is_update());
   metric_worker_apps_not_updated_eula++;
 

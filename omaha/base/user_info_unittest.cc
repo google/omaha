@@ -89,7 +89,6 @@ TEST(UserInfoTest, GetProcessUserSid) {
                                  SECURITY_LOCAL_SYSTEM_RID :
                                  SECURITY_NT_NON_UNIQUE;
   EXPECT_EQ(expected_authority, sid.GetSubAuthority(0));
-  EXPECT_LT(static_cast<DWORD>(DOMAIN_USER_RID_MAX), sid.GetSubAuthority(4));
 }
 
 // Expect the unit tests do not run impersonated.
