@@ -251,6 +251,12 @@ class ConfigManager {
   // %ProgramFiles%/Google/Update
   CString GetMachineGoopdateInstallDir() const;
 
+  // Gets the Google company directory. Does not create the directory if it does
+  // not already exist.
+  // `%LocalAppData%/Google` or `%ProgramFiles%/Google`.
+  CString GetUserCompanyDir() const;
+  CString GetMachineCompanyDir() const;
+
   // Creates and returns a secure directory, %ProgramFiles%/Google/Temp, if
   // running as Admin. Otherwise, returns the %TMP% for the impersonated or
   // current user.

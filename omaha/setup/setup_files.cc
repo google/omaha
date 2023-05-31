@@ -163,6 +163,20 @@ void SetupFiles::Uninstall() {
     SETUP_LOG(LE, (_T("[DeleteDirectory failed][%s][0x%08x]"),
                    install_dir, hr));
   }
+
+  // Best-effort attempt to delete the company directory if it is empty.
+  CString company_dir(
+      is_machine_ ? ConfigManager::Instance()->GetMachineCompanyDir() :
+                    ConfigManager::Instance()->GetUserCompanyDir());
+  if (!File::IsDirectory(company_dir) || !::PathIsDirectoryEmpty(company_dir)) {
+    return;
+  }
+
+  // `::RemoveDirectory` deletes an existing empty directory.
+  if (!::RemoveDirectory(company_dir)) {
+    hr = HRESULTFromLastError();
+    SETUP_LOG(LE, (_T("[::RemoveDirectory failed][%s][%#x]"), company_dir, hr));
+  }
 }
 
 HRESULT SetupFiles::CopyShell() {
