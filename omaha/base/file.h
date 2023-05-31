@@ -44,8 +44,34 @@ class File {
 
     HRESULT Close();
 
-    static bool Exists(const TCHAR* file_name);
-    static bool IsDirectory(const TCHAR *file_name);
+    static inline bool Exists(const TCHAR* file_name) {
+      // The path must not be enclosed in quotes. This is the Windows standard.
+      // ::GetFileAttributesEx() returns ERROR_INVALID_NAME for quoted paths.
+      _ASSERTE(file_name && *file_name);
+      _ASSERTE(lstrlen(file_name) > 0);
+
+      // NOTE: This is the fastest implementation I found.  The results were:
+      //   CreateFile           1783739 avg ticks/call
+      //   FindFirstFile         634148 avg ticks/call
+      //   GetFileAttributes     428714 avg ticks/call
+      //   GetFileAttributesEx   396324 avg ticks/call
+      WIN32_FILE_ATTRIBUTE_DATA attrs = {0};
+      return 0 != ::GetFileAttributesEx(file_name,
+                                        ::GetFileExInfoStandard,
+                                        &attrs);
+    }
+
+    static inline bool IsDirectory(const TCHAR* file_name) {
+      _ASSERTE(file_name && *file_name);
+
+      WIN32_FILE_ATTRIBUTE_DATA attrs = {};
+      if (!::GetFileAttributesEx(file_name, ::GetFileExInfoStandard, &attrs)) {
+        return false;
+      }
+
+      return (attrs.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    }
+
     static HRESULT IsReparsePoint(const TCHAR* file_name,
                                   bool* is_reparse_point);
     static HRESULT GetWildcards(const TCHAR* dir, const TCHAR* wildcard,

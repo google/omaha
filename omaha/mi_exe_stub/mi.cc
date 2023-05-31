@@ -310,15 +310,8 @@ class MetaInstaller {
       return false;
     }
 
-    // TODO(omaha3): When we refactor base into minibase, replace this with a
-    // call to GetTempFilenameAt() from utils.h. Do the same for the other call
-    // to GetTempFileName() in this module.
-    CString temp_dir;
-    DWORD result = ::GetTempFileName(parent_dir,
-                                     _T("GUM"),
-                                     0,  // form a unique filename
-                                     CStrBuf(temp_dir, MAX_PATH));
-    if (!result || (result == ERROR_BUFFER_OVERFLOW)) {
+    const CString temp_dir = GetTempFilenameAt(parent_dir, _T("GUM"));
+    if (temp_dir.IsEmpty()) {
       return false;
     }
 
@@ -334,30 +327,17 @@ class MetaInstaller {
   // Create a temp directory under %ProgramFiles%\Google\Temp. To avoid possible
   // issues with anti-malware heuristics, this function returns early and does
   // not try to create a directory if the user is not an admin.
-  bool CreateProgramFilesTempDir() {
-    CString program_files_dir;
-    HRESULT hr = ::SHGetFolderPath(NULL,
-                                   CSIDL_PROGRAM_FILES | CSIDL_FLAG_CREATE,
-                                   NULL,
-                                   SHGFP_TYPE_CURRENT,
-                                   CStrBuf(program_files_dir, MAX_PATH));
-    if (FAILED(hr)) {
+  bool CreateMachineTempDir() {
+    const CString google_update_temp_dir(GetSecureSystemTempDir());
+    if (google_update_temp_dir.IsEmpty()) {
       return false;
     }
-
-    CPath google_update_temp_dir(program_files_dir);
-    google_update_temp_dir.Append(kPathCompanyName);
-    if (!::CreateDirectory(google_update_temp_dir, NULL) &&
-        ::GetLastError() != ERROR_ALREADY_EXISTS) {
-      return false;
-    }
-    google_update_temp_dir.Append(_T("Temp"));
 
     if (!CreateTempSubdirectory(google_update_temp_dir)) {
       return false;
     }
 
-    temp_root_dir_ = static_cast<const CString&>(google_update_temp_dir);
+    temp_root_dir_ = google_update_temp_dir;
     return true;
   }
 
@@ -380,10 +360,10 @@ class MetaInstaller {
   }
 
   // Creates a temp directory to hold the embedded setup files. First attempts
-  // creating the directory under %ProgramFiles%, and if that fails, creates
+  // creating the directory under a secure path, and if that fails, creates
   // under the user's %TMP% directory.
   int CreateUniqueTempDirectory() {
-    return (::IsUserAnAdmin() ? CreateProgramFilesTempDir()
+    return (::IsUserAnAdmin() ? CreateMachineTempDir()
                               : CreateUserTempDir())
                ? 0
                : -1;
@@ -391,11 +371,9 @@ class MetaInstaller {
 
   HANDLE ExtractTarballToTempLocation() {
     HANDLE tarball_file = INVALID_HANDLE_VALUE;
-    TCHAR tarball_filename[MAX_PATH] = {0};
-    if (::GetTempFileName(temp_root_dir_,
-                          _T("GUT"),
-                          0,  // form a unique filename
-                          tarball_filename)) {
+    const CString tarball_filename =
+        GetTempFilenameAt(temp_root_dir_, _T("GUT"));
+    if (!tarball_filename.IsEmpty()) {
       files_to_delete_.Add(tarball_filename);
       HRSRC res_info = ::FindResource(NULL,
                                       MAKEINTRESOURCE(IDR_PAYLOAD),

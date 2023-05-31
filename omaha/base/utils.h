@@ -34,6 +34,7 @@
 #include "omaha/base/constants.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
+#include "omaha/base/file.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/reg_key.h"
 #include "omaha/base/static_assert.h"
@@ -249,10 +250,46 @@ bool IsPrivateNamespaceAvailable();
 //   S_OK:    Created directory
 //   S_FALSE: Directory already existed
 //   E_FAIL:  Couldn't create
-HRESULT CreateDir(const TCHAR* dirname, LPSECURITY_ATTRIBUTES security_attr);
+inline HRESULT CreateDir(const TCHAR* in_dir,
+                         LPSECURITY_ATTRIBUTES security_attr) {
+  _ASSERTE(in_dir);
+  CString path;
+  if (!PathCanonicalize(CStrBuf(path, MAX_PATH), in_dir)) {
+    return E_FAIL;
+  }
+  // Standardize path on backslash so Find works.
+  path.Replace(_T('/'), _T('\\'));
+  int next_slash = path.Find(_T('\\'));
+  while (true) {
+    int len = 0;
+    if (next_slash == -1) {
+      len = path.GetLength();
+    } else {
+      len = next_slash;
+    }
+    CString dir(path.Left(len));
+    // The check for File::Exists should not be needed. However in certain
+    // cases, i.e. when the program is run from a n/w drive or from the
+    // root drive location, the first CreateDirectory fails with an
+    // E_ACCESSDENIED instead of a ALREADY_EXISTS. Hence we protect the call
+    // with the exists.
+    if (!File::Exists(dir)) {
+      if (!::CreateDirectory(dir, security_attr)) {
+        DWORD error = ::GetLastError();
+        if (ERROR_FILE_EXISTS != error && ERROR_ALREADY_EXISTS != error) {
+          return HRESULT_FROM_WIN32(error);
+        }
+      }
+    }
+    if (next_slash == -1) {
+      break;
+    }
+    next_slash = path.Find(_T('\\'), next_slash + 1);
+  }
 
-// Gets the path for the specified special folder.
-HRESULT GetFolderPath(int csidl, CString* path);
+  return S_OK;
+}
+
 
 // Returns true if this directory name is 'safe' for deletion:
 //  - it doesn't contain ".."
@@ -898,8 +935,151 @@ HRESULT GetExePathFromCommandLine(const TCHAR* command_line,
 // Waits for MSI to complete, if MSI is busy installing or uninstalling apps.
 HRESULT WaitForMSIExecute(int timeout_ms);
 
+// Gets the full path name to a temporary file in the specified directory.
+// Returns an empty string in case of errors.
+inline CString GetTempFilenameAt(const TCHAR* dir, const TCHAR* prefix) {
+  _ASSERTE(dir);
+  _ASSERTE(prefix);
+
+  CString temp_file;
+  UINT result = ::GetTempFileName(dir, prefix, 0, CStrBuf(temp_file, MAX_PATH));
+  if (result == 0 || result == ERROR_BUFFER_OVERFLOW) {
+    temp_file.Empty();
+  }
+
+  return temp_file;
+}
+
 // Returns the value of the specified environment variable.
-CString GetEnvironmentVariableAsString(const TCHAR* name);
+inline CString GetEnvironmentVariableAsString(const TCHAR* name) {
+  CString value;
+  DWORD value_length = ::GetEnvironmentVariable(name, NULL, 0);
+  if (value_length) {
+    ::GetEnvironmentVariable(name, CStrBuf(value, value_length), value_length);
+  }
+
+  return value;
+}
+
+// Gets the path for the specified special folder.
+inline HRESULT GetFolderPath(int csidl, CString* path) {
+  if (!path) {
+    return E_INVALIDARG;
+  }
+  path->Empty();
+
+  TCHAR buffer[MAX_PATH] = {0};
+  HRESULT hr = ::SHGetFolderPath(NULL, csidl, NULL, SHGFP_TYPE_CURRENT, buffer);
+  if (FAILED(hr)) {
+    // In locked-down environments or with registry redirection,
+    // ::SHGetFolderPath can fail. We try to fall back on environment variables
+    // for the CSIDL values below.
+    csidl &= CSIDL_FLAG_MASK ^ 0xFFFF;
+    if (csidl == CSIDL_PROGRAM_FILES) {
+      *path = GetEnvironmentVariableAsString(_T("ProgramFiles"));
+    } else if (csidl == CSIDL_LOCAL_APPDATA) {
+      *path = GetEnvironmentVariableAsString(_T("LocalAppData"));
+    }
+
+    if (!path->IsEmpty()) {
+      return S_FALSE;
+    }
+
+    return hr;
+  }
+
+  *path = buffer;
+  return S_OK;
+}
+
+inline int MapCSIDLFor64Bit(int csidl) {
+  // We assume, for now, that Omaha will always be deployed in a 32-bit form.
+  // If any 64-bit components (such as the crash handler) need to query paths,
+  // they need to be directed to the 32-bit equivalents.
+
+  switch (csidl) {
+    case CSIDL_PROGRAM_FILES:
+      return CSIDL_PROGRAM_FILESX86;
+    case CSIDL_PROGRAM_FILES_COMMON:
+      return CSIDL_PROGRAM_FILES_COMMONX86;
+    case CSIDL_SYSTEM:
+      return CSIDL_SYSTEMX86;
+    default:
+      return csidl;
+  }
+}
+
+// GetDir32 is named as such because it will always look for 32-bit versions
+// of directories; i.e. on a 64-bit OS, CSIDL_PROGRAM_FILES will return
+// Program Files (x86).  If we need to genuinely find 64-bit locations on
+// 64-bit code in the future, we need to add a GetDir64() which omits the call
+// to MapCSIDLFor64Bit().
+inline HRESULT GetDir32(int csidl,
+                        const CString& path_tail,
+                        bool create_dir,
+                        CString* dir) {
+  _ASSERTE(dir);
+
+#ifdef _WIN64
+  csidl = MapCSIDLFor64Bit(csidl);
+#endif
+
+  CString path;
+  HRESULT hr = GetFolderPath(csidl | CSIDL_FLAG_DONT_VERIFY, &path);
+  if (FAILED(hr)) {
+    return hr;
+  }
+  if (!::PathAppend(CStrBuf(path, MAX_PATH), path_tail)) {
+    return GOOPDATE_E_PATH_APPEND_FAILED;
+  }
+  dir->SetString(path);
+
+  // Try to create the directory. Continue if the directory can't be created.
+  if (create_dir) {
+    CreateDir(path, NULL);
+  }
+  return S_OK;
+}
+
+// Returns a secure temp path if the caller is admin and the path is writable by
+// the caller. Returns an empty string otherwise.
+inline CString GetSecureSystemTempDir() {
+  if (!::IsUserAnAdmin()) {
+    return {};
+  }
+
+  // Retrieves the path `%windir%\SystemTemp` if available, else retrieves
+  // `%programfiles%\Google\Temp`.
+  const struct {
+    const int csidl;
+    const CString path_tail;
+    const bool create_dir;
+  } keys[] = {
+      {CSIDL_WINDOWS, _T("SystemTemp"), false},
+      {CSIDL_PROGRAM_FILES, OMAHA_REL_TEMP_DIR, true},
+  };
+
+  for (const auto& key : keys) {
+    CString secure_system_temp;
+    const HRESULT hr = GetDir32(key.csidl,
+                                key.path_tail,
+                                key.create_dir,
+                                &secure_system_temp);
+    if (FAILED(hr) || !File::IsDirectory(secure_system_temp)) {
+      continue;
+    }
+
+    const CString temp_file(GetTempFilenameAt(secure_system_temp, _T("GUM")));
+    if (temp_file.IsEmpty()) {
+      continue;
+    }
+    ::DeleteFile(temp_file);
+
+    return secure_system_temp;
+  }
+
+  return {};
+}
 
 // Returns true if the OS is installing (e.g., Audit Mode at an OEM factory).
 // NOTE: This is unreliable on Windows Vista and later. Some computers remain in
@@ -947,10 +1127,6 @@ inline T CeilingDivide(T m, T n) {
 // Gets the full path name to a temporary file in the temp dir of the user.
 // Returns an empty string in case of errors.
 CString GetTempFilename(const TCHAR* prefix);
-
-// Gets the full path name to a temporary file in the specified directory.
-// Returns an empty string in case of errors.
-CString GetTempFilenameAt(const TCHAR* dir, const TCHAR* prefix);
 
 // This function is roughly equivalent to ::WaitForMultipleObjects() with the
 // bWaitAll parameter set to TRUE; however, it supports more than 64 handles.

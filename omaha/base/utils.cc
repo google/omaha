@@ -484,78 +484,6 @@ HRESULT AddAllowedAce(const TCHAR* object_name,
   return S_OK;
 }
 
-HRESULT CreateDir(const TCHAR* in_dir,
-                  LPSECURITY_ATTRIBUTES security_attr) {
-  ASSERT1(in_dir);
-  CString path;
-  if (!PathCanonicalize(CStrBuf(path, MAX_PATH), in_dir)) {
-    return E_FAIL;
-  }
-  // Standardize path on backslash so Find works.
-  path.Replace(_T('/'), _T('\\'));
-  int next_slash = path.Find(_T('\\'));
-  while (true) {
-    int len = 0;
-    if (next_slash == -1) {
-      len = path.GetLength();
-    } else {
-      len = next_slash;
-    }
-    CString dir(path.Left(len));
-    // The check for File::Exists should not be needed. However in certain
-    // cases, i.e. when the program is run from a n/w drive or from the
-    // root drive location, the first CreateDirectory fails with an
-    // E_ACCESSDENIED instead of a ALREADY_EXISTS. Hence we protect the call
-    // with the exists.
-    if (!File::Exists(dir)) {
-      if (!::CreateDirectory(dir, security_attr)) {
-        DWORD error = ::GetLastError();
-        if (ERROR_FILE_EXISTS != error && ERROR_ALREADY_EXISTS != error) {
-          return HRESULT_FROM_WIN32(error);
-        }
-      }
-    }
-    if (next_slash == -1) {
-      break;
-    }
-    next_slash = path.Find(_T('\\'), next_slash + 1);
-  }
-
-  return S_OK;
-}
-
-HRESULT GetFolderPath(int csidl, CString* path) {
-  if (!path) {
-    return E_INVALIDARG;
-  }
-  path->Empty();
-
-  TCHAR buffer[MAX_PATH] = {0};
-  HRESULT hr = ::SHGetFolderPath(NULL, csidl, NULL, SHGFP_TYPE_CURRENT, buffer);
-  if (FAILED(hr)) {
-    UTIL_LOG(LW, (_T("SHGetFolderPath failed][%d][%#x]"), csidl, hr));
-
-    // In locked-down environments or with registry redirection,
-    // ::SHGetFolderPath can fail. We try to fall back on environment variables
-    // for the CSIDL values below.
-    csidl &= CSIDL_FLAG_MASK ^ 0xFFFF;
-    if (csidl == CSIDL_PROGRAM_FILES) {
-      *path = GetEnvironmentVariableAsString(_T("ProgramFiles"));
-    } else if (csidl == CSIDL_LOCAL_APPDATA) {
-      *path = GetEnvironmentVariableAsString(_T("LocalAppData"));
-    }
-
-    if (!path->IsEmpty()) {
-      return S_FALSE;
-    }
-
-    return hr;
-  }
-
-  *path = buffer;
-  return S_OK;
-}
-
 HRESULT DeleteDirectoryContents(const TCHAR* dir_name) {
   ASSERT1(dir_name);
 
@@ -1974,23 +1902,6 @@ HRESULT WaitForMSIExecute(int timeout_ms) {
   }
 }
 
-CString GetEnvironmentVariableAsString(const TCHAR* name) {
-  UTIL_LOG(L6, (_T("GetEnvironmentVariableAsString][%s]"), name));
-
-  CString value;
-  DWORD value_length = ::GetEnvironmentVariable(name, NULL, 0);
-  if (value_length) {
-    VERIFY1(::GetEnvironmentVariable(name,
-                                     CStrBuf(value, value_length),
-                                     value_length));
-  } else {
-    HRESULT hr = HRESULTFromLastError();
-    UTIL_LOG(LW, (_T("GetEnvironmentVariable failed][%s][%#x]"), name, hr));
-  }
-
-  return value;
-}
-
 // States are documented at
 // http://technet.microsoft.com/en-us/library/cc721913.aspx.
 bool IsWindowsInstalling() {
@@ -2081,19 +1992,6 @@ CString GetTempFilename(const TCHAR* prefix) {
   VERIFY1(!temp_dir.IsEmpty());
 
   return GetTempFilenameAt(temp_dir, prefix);
-}
-
-CString GetTempFilenameAt(const TCHAR* dir, const TCHAR* prefix) {
-  ASSERT1(dir);
-  ASSERT1(prefix);
-
-  CString temp_file;
-  UINT result = ::GetTempFileName(dir, prefix, 0, CStrBuf(temp_file, MAX_PATH));
-  if (result == 0 || result == ERROR_BUFFER_OVERFLOW) {
-    temp_file.Empty();
-  }
-
-  return temp_file;
 }
 
 DWORD WaitForAllObjects(size_t count, const HANDLE* handles, DWORD timeout) {
