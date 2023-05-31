@@ -414,8 +414,8 @@ TEST_F(ConfigManagerNoOverrideTest, RegistryKeys) {
 }
 
 TEST_F(ConfigManagerNoOverrideTest, GetUserCrashReportsDir) {
-  const CString expected_path = GetGoogleUserPath() + _T("CrashReports");
-  EXPECT_SUCCEEDED(DeleteTestDirectory(expected_path));
+  const CString expected_path = app_util::GetTempDir();
+  EXPECT_FALSE(expected_path.IsEmpty());
   EXPECT_STREQ(expected_path, cm_->GetUserCrashReportsDir());
   EXPECT_TRUE(File::Exists(expected_path));
 }
@@ -460,11 +460,18 @@ TEST_F(ConfigManagerNoOverrideTest, GetTempDownloadDir) {
 }
 
 TEST_F(ConfigManagerNoOverrideTest, GetMachineCrashReportsDir) {
-  CString program_files;
-  EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files));
-  const CString expected_path =
-      program_files + _T("\\") + PATH_COMPANY_NAME + _T("\\CrashReports");
-  EXPECT_SUCCEEDED(DeleteTestDirectory(expected_path));
+  CString windir;
+  EXPECT_SUCCEEDED(GetFolderPath(CSIDL_WINDOWS, &windir));
+  CString expected_path = windir + _T("\\SystemTemp");
+
+  if (!File::IsDirectory(expected_path)) {
+    CString program_files;
+    EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files));
+    expected_path =
+        program_files + _T("\\") + PATH_COMPANY_NAME + _T("\\Temp");
+    EXPECT_SUCCEEDED(DeleteTestDirectory(expected_path));
+  }
+
   EXPECT_STREQ(expected_path, cm_->GetMachineCrashReportsDir());
   EXPECT_TRUE(File::Exists(expected_path) || !vista_util::IsUserAdmin());
 }
@@ -501,10 +508,18 @@ TEST_F(ConfigManagerNoOverrideTest, GetTempDir) {
   CString expected_path;
 
   if (::IsUserAnAdmin()) {
-    CString program_files;
-    EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files));
-    expected_path = program_files + _T("\\") + PATH_COMPANY_NAME + _T("\\Temp");
-    EXPECT_SUCCEEDED(DeleteTestDirectory(expected_path));
+    CString windir;
+    EXPECT_SUCCEEDED(GetFolderPath(CSIDL_WINDOWS, &windir));
+    expected_path = windir + _T("\\SystemTemp");
+
+    if (!File::IsDirectory(expected_path)) {
+      CString program_files;
+      EXPECT_SUCCEEDED(GetFolderPath(CSIDL_PROGRAM_FILES, &program_files));
+      expected_path = program_files + _T("\\") +
+                      PATH_COMPANY_NAME +
+                      _T("\\Temp");
+      EXPECT_SUCCEEDED(DeleteTestDirectory(expected_path));
+    }
   } else {
     expected_path = app_util::GetTempDirForImpersonatedOrCurrentUser();
   }

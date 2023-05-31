@@ -30,6 +30,7 @@
 #include "omaha/base/const_addresses.h"
 #include "omaha/base/debug.h"
 #include "omaha/base/error.h"
+#include "omaha/base/file.h"
 #include "omaha/base/logging.h"
 #include "omaha/base/scope_guard.h"
 #include "omaha/base/string.h"
@@ -100,6 +101,46 @@ HRESULT GetDir32(int csidl,
     }
   }
   return S_OK;
+}
+
+// Returns a secure temp path if the caller is admin and the path is writable by
+// the caller. Returns an empty string otherwise.
+CString GetSecureSystemTempDir() {
+  if (!::IsUserAnAdmin()) {
+    return {};
+  }
+
+  // Retrieves the path `%windir%\SystemTemp` if available, else retrieves
+  // `%programfiles%\Google\Temp`.
+  const struct {
+    const int csidl;
+    const CString path_tail;
+    const bool create_dir;
+  } keys[] = {
+      {CSIDL_WINDOWS, _T("SystemTemp"), false},
+      {CSIDL_PROGRAM_FILES, OMAHA_REL_TEMP_DIR, true},
+  };
+
+  for (const auto& key : keys) {
+    CString secure_system_temp;
+    const HRESULT hr = GetDir32(key.csidl,
+                                key.path_tail,
+                                key.create_dir,
+                                &secure_system_temp);
+    if (FAILED(hr) || !File::IsDirectory(secure_system_temp)) {
+      continue;
+    }
+
+    const CString temp_file(GetTempFilenameAt(secure_system_temp, _T("GUM")));
+    if (temp_file.IsEmpty()) {
+      continue;
+    }
+    ::DeleteFile(temp_file);
+
+    return secure_system_temp;
+  }
+
+  return {};
 }
 
 // This class aggregates a source/value pair for a single policy value, as well
@@ -604,21 +645,11 @@ bool ConfigManager::IsRunningFromUserGoopdateInstallDir() const {
 }
 
 CString ConfigManager::GetUserCrashReportsDir() const {
-  CString path;
-  VERIFY_SUCCEEDED(GetDir32(CSIDL_LOCAL_APPDATA,
-                             CString(OMAHA_REL_CRASH_DIR),
-                             true,
-                             &path));
-  return path;
+  return app_util::GetTempDir();
 }
 
 CString ConfigManager::GetMachineCrashReportsDir() const {
-  CString path;
-  VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
-                             CString(OMAHA_REL_CRASH_DIR),
-                             true,
-                             &path));
-  return path;
+  return GetSecureSystemTempDir();
 }
 
 CString ConfigManager::GetMachineSecureDownloadStorageDir() const {
@@ -855,16 +886,8 @@ CString ConfigManager::GetMachineGoopdateInstallDir() const {
 }
 
 CString ConfigManager::GetTempDir() const {
-  if (::IsUserAnAdmin()) {
-    CString path;
-    VERIFY_SUCCEEDED(GetDir32(CSIDL_PROGRAM_FILES,
-                              CString(OMAHA_REL_TEMP_DIR),
-                              true,
-                              &path));
-    return path;
-  }
-
-  return app_util::GetTempDirForImpersonatedOrCurrentUser();
+  return ::IsUserAnAdmin() ? GetSecureSystemTempDir() :
+                             app_util::GetTempDirForImpersonatedOrCurrentUser();
 }
 
 bool ConfigManager::IsRunningFromMachineGoopdateInstallDir() const {

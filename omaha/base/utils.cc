@@ -2089,7 +2089,6 @@ CString GetTempFilenameAt(const TCHAR* dir, const TCHAR* prefix) {
 
   CString temp_file;
   UINT result = ::GetTempFileName(dir, prefix, 0, CStrBuf(temp_file, MAX_PATH));
-  ASSERT1(result != 0 && result != ERROR_BUFFER_OVERFLOW);
   if (result == 0 || result == ERROR_BUFFER_OVERFLOW) {
     temp_file.Empty();
   }

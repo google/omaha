@@ -90,14 +90,6 @@ HRESULT InitializeCrashDir(bool is_machine, CString *crash_dir_out) {
   CString dir = is_machine ? cm->GetMachineCrashReportsDir() :
                              cm->GetUserCrashReportsDir();
 
-  if (is_machine && !dir.IsEmpty()) {
-    HRESULT hr = InitializeCrashDirSecurity(&dir);
-    if (FAILED(hr)) {
-      CORE_LOG(LW, (_T("[failed to initialize crash dir security][0x%x]"), hr));
-      ::RemoveDirectory(dir);
-    }
-  }
-
   // Use the temporary directory of the process if the crash directory can't be
   // initialized for any reason. Users can't read files in other users' temp
   // directories, so the temp dir is a good option to still have crash handling.
