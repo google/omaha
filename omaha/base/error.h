@@ -36,6 +36,7 @@ namespace omaha {
 //
 #define EXCEPTION_IMPERSONATION_FAILED          0x1
 #define EXCEPTION_REVERT_IMPERSONATION_FAILED   0x2
+#define EXCEPTION_FAILED_TO_GET_THREAD_TOKEN    0x3
 
 //
 // HRESULT Functions.

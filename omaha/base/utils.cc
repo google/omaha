@@ -38,6 +38,7 @@
 #include "omaha/base/process.h"
 #include "omaha/base/safe_format.h"
 #include "omaha/base/scope_guard.h"
+#include "omaha/base/scoped_impersonation.h"
 #include "omaha/base/shell.h"
 #include "omaha/base/string.h"
 #include "omaha/base/system.h"
@@ -1768,6 +1769,13 @@ bool ShellExecuteExEnsureParent(LPSHELLEXECUTEINFO shell_exec_info) {
   UTIL_LOG(L3, (_T("[ShellExecuteExEnsureParent]")));
 
   ASSERT1(shell_exec_info);
+
+  // Prevents elevation of privilege by reverting to the process token before
+  // starting the process. Otherwise, a lower privilege token could for instance
+  // symlink `C:\` to a different folder (per-user DosDevice) and allow an
+  // elevation of privilege attack.
+  scoped_revert_to_self revert_to_self;
+
   bool shell_exec_succeeded(false);
   DWORD last_error(ERROR_SUCCESS);
 

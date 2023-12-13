@@ -94,7 +94,16 @@ struct scoped_impersonation {
 class scoped_revert_to_self {
  public:
   scoped_revert_to_self() {
-    token_.GetThreadToken(TOKEN_ALL_ACCESS);
+    if (!token_.GetThreadToken(TOKEN_ALL_ACCESS)) {
+      if (::GetLastError() != ERROR_NO_TOKEN) {
+        ::RaiseException(EXCEPTION_FAILED_TO_GET_THREAD_TOKEN,
+                         EXCEPTION_NONCONTINUABLE,
+                         0,
+                         NULL);
+      }
+      return;
+    }
+
     if (token_.GetHandle()) {
       RevertToSelfOrDie();
     }
