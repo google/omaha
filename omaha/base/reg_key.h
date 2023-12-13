@@ -28,6 +28,7 @@
 
 #include <windows.h>
 #include <memory>
+#include <tuple>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -96,7 +97,8 @@ class RegKey {
   // open an existing reg key
   HRESULT Open(HKEY hKeyParent,
                const TCHAR * key_name,
-               REGSAM sam_desired = KEY_ALL_ACCESS);
+               REGSAM sam_desired = KEY_ALL_ACCESS,
+               DWORD options = 0);
 
   // open an existing reg key, given the full key name, including the HKEY root
   // (say for example, "HKLM\\Software")
@@ -356,6 +358,11 @@ class RegKey {
 
   // delete a subkey of the current key (with no subkeys)
   HRESULT DeleteSubKey(const TCHAR * key_name);
+
+  // Returns `true, hr` if `key_name` is a symbolic link, where `true` indicates
+  // that `key_name` is a symbolic link, and `hr` is the HRESULT success/error
+  // code for the delete operation. Returns `false, hr` otherwise.
+  std::tuple<bool, HRESULT> DeleteLink(const TCHAR* key_name);
 
   // recursively delete a sub key of the current key (and all its subkeys)
   HRESULT RecurseDeleteSubKey(const TCHAR * key_name);
@@ -819,6 +826,11 @@ inline HRESULT RegKey::CopyValue(const TCHAR * full_from_key_name,
 inline HRESULT RegKey::DeleteSubKey(const TCHAR* key_name) {
   ASSERT1(key_name);
   ASSERT1(h_key_);
+
+  const std::tuple<bool, HRESULT> delete_result = DeleteLink(key_name);
+  if (std::get<0>(delete_result)) {
+    return std::get<1>(delete_result);
+  }
 
   LONG res = ::RegDeleteKey(h_key_, key_name);
   HRESULT hr = HRESULT_FROM_WIN32(res);
