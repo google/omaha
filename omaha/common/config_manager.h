@@ -26,6 +26,7 @@
 #include <windows.h>
 #include <atlpath.h>
 #include <atlstr.h>
+#include <atltime.h>
 #include <memory>
 #include <vector>
 #include "base/basictypes.h"
@@ -423,18 +424,20 @@ class ConfigManager {
   bool IsRollbackToTargetVersionAllowed(
       const GUID& app_guid, IPolicyStatusValue** policy_status_value) const;
 
-  // For domain-joined machines, checks the current time against the times that
-  // updates are suppressed. Updates are suppressed if the current time falls
+  // For domain-joined machines, checks the given `time` against the times that
+  // updates are suppressed. Updates are suppressed if the given `time` falls
   // between the start time and the duration.
   // The duration does not account for daylight savings time. For instance, if
   // the start time is 22:00 hours, and with a duration of 8 hours, the updates
   // will be suppressed for 8 hours regardless of whether daylight savings time
   // changes happen in between.
   HRESULT GetUpdatesSuppressedTimes(
+      const CTime& time,
       UpdatesSuppressedTimes* times,
       bool* are_updates_suppressed,
       IPolicyStatusValue** policy_status_value) const;
-  bool AreUpdatesSuppressedNow() const;
+  bool AreUpdatesSuppressedNow(
+      const CTime& now = CTime::GetCurrentTime()) const;
 
   // Returns true if installation of the specified app is allowed.
   bool CanInstallApp(const GUID& app_guid, bool is_machine) const;

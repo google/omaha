@@ -1687,6 +1687,7 @@ bool ConfigManager::IsRollbackToTargetVersionAllowed(
 }
 
 HRESULT ConfigManager::GetUpdatesSuppressedTimes(
+    const CTime& time,
     UpdatesSuppressedTimes* times,
     bool* are_updates_suppressed,
     IPolicyStatusValue** policy_status_value) const {
@@ -1721,36 +1722,34 @@ HRESULT ConfigManager::GetUpdatesSuppressedTimes(
   }
 
   v.UpdateFinal(UpdatesSuppressedTimes(), policy_status_value);
-
-  CTime now(CTime::GetCurrentTime());
-  tm local = {};
-  now.GetLocalTm(&local);
-
-  // tm_year is relative to 1900. tm_mon is 0-based.
-  CTime start_updates_suppressed(local.tm_year + 1900,
-                                 local.tm_mon + 1,
-                                 local.tm_mday,
-                                 v.value().start_hour,
-                                 v.value().start_min,
-                                 local.tm_sec,
-                                 local.tm_isdst);
-  CTimeSpan duration_updates_suppressed(0, 0, v.value().duration_min, 0);
-  CTime end_updates_suppressed =
-    start_updates_suppressed + duration_updates_suppressed;
-  *are_updates_suppressed = now >= start_updates_suppressed &&
-                            now <= end_updates_suppressed;
-
-  OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][%s]"), v.ToString()));
-
   *times = v.value();
+
+  tm local_time = {};
+  time.GetLocalTm(&local_time);
+  int time_diff_minutes =
+      (local_time.tm_hour - v.value().start_hour) * kMinPerHour +
+      (local_time.tm_min - v.value().start_min);
+
+  // Add 24 hours if `time_diff_minutes` is negative.
+  if (time_diff_minutes < 0) {
+    time_diff_minutes += 24 * kMinPerHour;
+  }
+
+  *are_updates_suppressed =
+      time_diff_minutes < static_cast<int>(v.value().duration_min);
+  OPT_LOG(L5, (_T("[GetUpdatesSuppressedTimes][v=%s][time=%s]")
+               _T("[time_diff_minutes=%d][are_updates_suppressed=%d]"),
+               v.ToString(), time.Format(L"%#c"),
+               time_diff_minutes, *are_updates_suppressed));
   return S_OK;
 }
 
-bool ConfigManager::AreUpdatesSuppressedNow() const {
+bool ConfigManager::AreUpdatesSuppressedNow(const CTime& now) const {
   UpdatesSuppressedTimes times;
   bool are_updates_suppressed = false;
 
-  HRESULT hr = GetUpdatesSuppressedTimes(&times,
+  HRESULT hr = GetUpdatesSuppressedTimes(now,
+                                         &times,
                                          &are_updates_suppressed,
                                          NULL);
   return SUCCEEDED(hr) && are_updates_suppressed;

@@ -124,8 +124,8 @@ class ConfigManagerNoOverrideTest : public testing::Test {
     return cm_->IsRollbackToTargetVersionAllowed(StringToGuid(guid), NULL);
   }
 
-  bool AreUpdatesSuppressedNow() {
-    return cm_->AreUpdatesSuppressedNow();
+  bool AreUpdatesSuppressedNow(const CTime& now = CTime::GetCurrentTime()) {
+    return cm_->AreUpdatesSuppressedNow(now);
   }
 
   DWORD GetForceInstallApps(bool is_machine, std::vector<CString>* app_ids) {
@@ -1961,6 +1961,49 @@ TEST_P(ConfigManagerTest, AreUpdatesSuppressedNow) {
                              now.GetMinute()));
   EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedDurationMin, 180));
   EXPECT_EQ(IsDomain() || IsDM(), AreUpdatesSuppressedNow());
+}
+
+TEST_P(ConfigManagerTest, AreUpdatesSuppressedNow_MultipleValues) {
+  const struct {
+    const DWORD suppress_start_hour;
+    const DWORD suppress_start_minute;
+    const DWORD suppress_duration_minutes;
+    const CTime now;
+    bool expect_updates_suppressed;
+  } test_cases[] = {
+      // Suppress starting 12:00 for 959 minutes. `now` is July 1, 2023, 01:15.
+      {12, 00, 959, {2023, 7, 01, 01, 15, 00}, IsDomainPredominant()},
+
+      // Suppress starting 12:00 for 959 minutes. `now` is July 1, 2023, 04:15.
+      {12, 00, 959, {2023, 7, 01, 04, 15, 00}, false},
+
+      // Suppress starting 00:00 for 959 minutes. `now` is July 1, 2023, 04:15.
+      {00, 00, 959, {2023, 7, 01, 04, 15, 00}, IsDomainPredominant()},
+
+      // Suppress starting 00:00 for 959 minutes. `now` is July 1, 2023, 16:15.
+      {00, 00, 959, {2023, 7, 01, 16, 15, 00}, false},
+
+      // Suppress starting 18:00 for 12 hours. `now` is July 1, 2023, 05:15.
+      {
+       18, 00, 12 * kMinPerHour,
+       {2023, 7, 01, 5, 15, 00},
+       IsDomainPredominant()
+      },
+
+      // Suppress starting 18:00 for 12 hours. `now` is July 1, 2023, 06:15.
+      {18, 00, 12 * kMinPerHour, {2023, 7, 01, 6, 15, 00}, false},
+  };
+
+  for (const auto& test_case : test_cases) {
+    EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartHour,
+                               test_case.suppress_start_hour));
+    EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedStartMin,
+                               test_case.suppress_start_minute));
+    EXPECT_SUCCEEDED(SetPolicy(kRegValueUpdatesSuppressedDurationMin,
+                               test_case.suppress_duration_minutes));
+    EXPECT_EQ(test_case.expect_updates_suppressed && (IsDomain() || IsDM()),
+              AreUpdatesSuppressedNow(test_case.now));
+  }
 }
 
 TEST_P(ConfigManagerTest, GetPackageCacheSizeLimitMBytes_Default) {

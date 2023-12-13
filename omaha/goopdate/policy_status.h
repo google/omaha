@@ -24,6 +24,7 @@
 #include <atlcom.h>
 #include <atlcomtime.h>
 #include <atlstr.h>
+#include <atltime.h>
 #include "omaha/base/atlregmapex.h"
 #include "omaha/base/const_object_names.h"
 #include "omaha/base/constants.h"
@@ -124,6 +125,7 @@ class ATL_NO_VTABLE PolicyStatus
     bool updates_suppressed = false;
 
     HRESULT hr = ConfigManager::Instance()->GetUpdatesSuppressedTimes(
+        CTime::GetCurrentTime(),
         &times,
         &updates_suppressed,
         NULL);
@@ -284,6 +286,7 @@ class ATL_NO_VTABLE PolicyStatus
     bool updates_suppressed = false;
 
     HRESULT hr = ConfigManager::Instance()->GetUpdatesSuppressedTimes(
+        CTime::GetCurrentTime(),
         &times,
         &updates_suppressed,
         value);
