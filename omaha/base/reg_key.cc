@@ -486,8 +486,7 @@ HRESULT RegKey::GetValueHelper(const TCHAR * value_name,
   *value = NULL;
 
   DWORD num_bytes = 0;
-  LONG res =
-      ::RegQueryValueEx(h_key_, value_name, NULL, type, NULL, &num_bytes);
+  LONG res = ::SHQueryValueEx(h_key_, value_name, NULL, type, NULL, &num_bytes);
   HRESULT hr = HRESULT_FROM_WIN32(res);
 
   if (hr == S_OK) {
@@ -495,12 +494,12 @@ HRESULT RegKey::GetValueHelper(const TCHAR * value_name,
       *value = new byte[num_bytes];
       ASSERT1(*value);
 
-      res = ::RegQueryValueEx(h_key_,
-                              value_name,
-                              NULL,
-                              type,
-                              *value,
-                              &num_bytes);
+      res = ::SHQueryValueEx(h_key_,
+                             value_name,
+                             NULL,
+                             type,
+                             *value,
+                             &num_bytes);
       hr = HRESULT_FROM_WIN32(res);
       ASSERT1(S_OK == hr);
     }
@@ -518,8 +517,7 @@ HRESULT RegKey::GetValueType(const TCHAR* value_name,
 
   *value_type = REG_NONE;
 
-  LONG res =
-      ::RegQueryValueEx(h_key_, value_name, NULL, value_type, NULL, NULL);
+  LONG res = ::SHQueryValueEx(h_key_, value_name, NULL, value_type, NULL, NULL);
   if (res != ERROR_SUCCESS) {
     return HRESULT_FROM_WIN32(res);
   }
@@ -535,12 +533,12 @@ HRESULT RegKey::GetValue(const TCHAR * value_name, DWORD * value) const {
 
   DWORD type = 0;
   DWORD byte_count = sizeof(DWORD);
-  LONG res = ::RegQueryValueEx(h_key_,
-                               value_name,
-                               NULL,
-                               &type,
-                               reinterpret_cast<byte*>(value),
-                               &byte_count);
+  LONG res = ::SHQueryValueEx(h_key_,
+                              value_name,
+                              NULL,
+                              &type,
+                              reinterpret_cast<byte*>(value),
+                              &byte_count);
   HRESULT hr = HRESULT_FROM_WIN32(res);
   ASSERT1((hr != S_OK) || (type == REG_DWORD));
   ASSERT1((hr != S_OK) || (byte_count == sizeof(DWORD)));
@@ -555,12 +553,12 @@ HRESULT RegKey::GetValue(const TCHAR * value_name, DWORD64 * value) const {
 
   DWORD type = 0;
   DWORD byte_count = sizeof(DWORD64);
-  LONG res = ::RegQueryValueEx(h_key_,
-                               value_name,
-                               NULL,
-                               &type,
-                               reinterpret_cast<byte *>(value),
-                               &byte_count);
+  LONG res = ::SHQueryValueEx(h_key_,
+                              value_name,
+                              NULL,
+                              &type,
+                              reinterpret_cast<byte *>(value),
+                              &byte_count);
   HRESULT hr = HRESULT_FROM_WIN32(res);
   ASSERT1((hr != S_OK) || (type == REG_QWORD));
   ASSERT1((hr != S_OK) || (byte_count == sizeof(DWORD64)));
@@ -587,12 +585,12 @@ HRESULT RegKey::GetValue(const TCHAR * value_name, TCHAR * * value) const {
   DWORD type = 0;
 
   // first get the size of the string buffer
-  LONG res = ::RegQueryValueEx(h_key_,
-                               value_name,
-                               NULL,
-                               &type,
-                               NULL,
-                               &byte_count);
+  LONG res = ::SHQueryValueEx(h_key_,
+                              value_name,
+                              NULL,
+                              &type,
+                              NULL,
+                              &byte_count);
   HRESULT hr = HRESULT_FROM_WIN32(res);
 
   if (hr == S_OK) {
@@ -602,8 +600,8 @@ HRESULT RegKey::GetValue(const TCHAR * value_name, TCHAR * * value) const {
     if ((*value) != NULL) {
       if (byte_count != 0) {
         // make the call again
-        res = ::RegQueryValueEx(h_key_, value_name, NULL, &type,
-                                reinterpret_cast<byte*>(*value), &byte_count);
+        res = ::SHQueryValueEx(h_key_, value_name, NULL, &type,
+                               reinterpret_cast<byte*>(*value), &byte_count);
         hr = HRESULT_FROM_WIN32(res);
       } else {
         (*value)[0] = _T('\0');
@@ -629,12 +627,12 @@ HRESULT RegKey::GetValue(const TCHAR* value_name, OUT CString* value) const {
   DWORD type = 0;
 
   // first get the size of the string buffer
-  LONG res = ::RegQueryValueEx(h_key_,
-                               value_name,
-                               NULL,
-                               &type,
-                               NULL,
-                               &byte_count);
+  LONG res = ::SHQueryValueEx(h_key_,
+                              value_name,
+                              NULL,
+                              &type,
+                              NULL,
+                              &byte_count);
   HRESULT hr = HRESULT_FROM_WIN32(res);
 
   if (hr == S_OK) {
@@ -644,8 +642,8 @@ HRESULT RegKey::GetValue(const TCHAR* value_name, OUT CString* value) const {
       if (buffer == NULL) {
         hr = E_OUTOFMEMORY;
       } else {
-        res = ::RegQueryValueEx(h_key_, value_name, NULL, &type,
-                                reinterpret_cast<byte*>(buffer), &byte_count);
+        res = ::SHQueryValueEx(h_key_, value_name, NULL, &type,
+                               reinterpret_cast<byte*>(buffer), &byte_count);
         hr = HRESULT_FROM_WIN32(res);
       }
       value->ReleaseBuffer();
