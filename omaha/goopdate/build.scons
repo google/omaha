@@ -312,6 +312,7 @@ if env.Bit('has_device_management'):
       '$GOOGLE3/privacy/private_membership/rlwe/proto/private_membership_rlwe.proto',
       '$GOOGLE3/storage/datapol/annotations/proto/semantic_annotations.proto',
       '$GOOGLE3/storage/datapol/annotations/proto/retention_annotations.proto',
+      '$GOOGLE3/storage/datapol/annotations/proto/datapol_classification.proto',
       '$GOOGLE3/third_party/rlwe/serialization.proto',
       '$GOOGLE3/wireless/android/enterprise/devicemanagement/proto/' +
           'dm_api.proto',
