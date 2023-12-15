@@ -34,9 +34,6 @@ namespace omaha {
 
 namespace {
 
-const TCHAR* const kAppGuid1 = _T("{3B1A3CCA-0525-4418-93E6-A0DB3398EC9B}");
-const TCHAR* const kAppGuid2 = _T("{81E5F427-8854-4c9a-A8D3-93F75F3D50DC}");
-
 const TCHAR* const kBadCmdLine = _T("cmd_garbeldy_gook.exe");
 const TCHAR* const kCmdLineExit0 = _T("cmd.exe /c \"exit 0\"");
 const TCHAR* const kCmdLineExit3 = _T("cmd.exe /c \"exit 3\"");
@@ -50,18 +47,6 @@ const TCHAR* const kCmdLineEchoHelloWorldUnicode =
 const TCHAR* const kCmdLineEchoWithSleep =
     _T("cmd.exe /c \"echo Hello World& ping.exe 2.2.2.2 -n 1 -w 1000 >NUL & ")
     _T("echo Goodbye World\"");
-
-const TCHAR* const kCmdId1 = _T("command 1");
-const TCHAR* const kCmdId2 = _T("command 2");
-const TCHAR* const kCmdId3 = _T("command 3");
-
-const TCHAR* const kSessionId = _T("unittest_session_id");
-
-const bool kTrue = true;
-const bool kFalse = false;
-
-const DWORD kOne = 1;
-const DWORD kTwo = 2;
 
 CString GetEchoCommandLine(CString string, CString output_file) {
   CString command_line;

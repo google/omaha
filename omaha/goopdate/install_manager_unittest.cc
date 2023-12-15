@@ -54,8 +54,6 @@ namespace omaha {
 namespace {
 
 const TCHAR kAppId[] = _T("{B18BC01B-E0BD-4BF0-A33E-1133055E5FDE}");
-const GUID kAppGuid = {0xB18BC01B, 0xE0BD, 0x4BF0,
-                       {0xA3, 0x3E, 0x11, 0x33, 0x05, 0x5E, 0x5F, 0xDE}};
 const TCHAR kApp2Id[] = _T("{85794B39-42E5-457c-B567-4A0F2A0FB272}");
 
 const TCHAR kFullAppClientsKeyPath[] =
@@ -115,7 +113,7 @@ class InstallManagerTest : public testing::TestWithParam<bool> {
   virtual void SetUp() {}
   virtual void TearDown() {}
 
-  const bool IsMachine() const {
+  bool IsMachine() const {
     return GetParam();
   }
 

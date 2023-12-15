@@ -94,7 +94,7 @@ class UpdateResponseUtilsTest : public AppTestBase,
  protected:
   UpdateResponseUtilsTest() : AppTestBase(IsMachine(), true) {}
 
-  const bool IsMachine() {
+  bool IsMachine() {
     return GetParam();
   }
 };

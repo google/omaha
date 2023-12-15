@@ -33,10 +33,6 @@
 
 namespace omaha {
 
-const TCHAR* const kGetUrl =
-    _T("https://tools.") COMPANY_DOMAIN _T("/service/update2/id");
-const TCHAR* const kGetUrlNoResponseBody =
-    _T("https://tools.") COMPANY_DOMAIN _T("/service/update2/nil");
 const TCHAR* const kPostUrl =
     _T("https://tools.") COMPANY_DOMAIN _T("/service/update2");
 const TCHAR* const kPostHttpsUrl =

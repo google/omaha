@@ -18,7 +18,8 @@
 
 #pragma warning(push)
 // C4152: nonstandard extension, function/data pointer conversion in expression
-#pragma warning(disable : 4152)
+// C2251: code_seg changed after including header
+#pragma warning(disable : 4152 5251)
 
 #define REGISTER_PROXY_DLL
 #define USE_STUBLESS_PROXY

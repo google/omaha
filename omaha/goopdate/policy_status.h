@@ -472,28 +472,28 @@ class ATL_NO_VTABLE PolicyStatus
 
 struct PolicyStatusModeUser {
   static bool is_machine() { return false; }
-  static const TCHAR* const prog_id() { return kProgIDPolicyStatusUser; }
+  static const TCHAR* prog_id() { return kProgIDPolicyStatusUser; }
   static GUID class_id() { return __uuidof(PolicyStatusUserClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVER_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKCU"); }
+  static const TCHAR* hk_root() { return _T("HKCU"); }
 };
 
 struct PolicyStatusModeMachineFallback {
   static bool is_machine() { return true; }
-  static const TCHAR* const prog_id() {
+  static const TCHAR* prog_id() {
     return kProgIDPolicyStatusMachineFallback;
   }
   static GUID class_id() { return __uuidof(PolicyStatusMachineFallbackClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVER_ELEVATION_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKLM"); }
+  static const TCHAR* hk_root() { return _T("HKLM"); }
 };
 
 struct PolicyStatusModeService {
   static bool is_machine() { return true; }
-  static const TCHAR* const prog_id() { return kProgIDPolicyStatusSvc; }
+  static const TCHAR* prog_id() { return kProgIDPolicyStatusSvc; }
   static GUID class_id() { return __uuidof(PolicyStatusMachineServiceClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVICE_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKLM"); }
+  static const TCHAR* hk_root() { return _T("HKLM"); }
 };
 
 typedef PolicyStatus<PolicyStatusModeUser> PolicyStatusUser;

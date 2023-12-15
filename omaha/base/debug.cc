@@ -662,7 +662,7 @@ ReportIds::~ReportIds() {
   }
 }
 
-const TCHAR* const GetRegKeyShared() {
+const TCHAR* GetRegKeyShared() {
   return vista_util::IsUserAdmin() ? _T("HKLM\\") kCiRegKeyShared :
                                      _T("HKCU\\") kCiRegKeyShared;
 }

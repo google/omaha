@@ -140,11 +140,11 @@ class AppRegistryUtilsRegistryProtectedTest :
     ASSERT_SUCCEEDED(RegKey::DeleteKey(hive_override_key_name_, true));
   }
 
-  const bool IsMachine() {
+  bool IsMachine() {
     return GetParam();
   }
 
-  const CString GetClientStatePath() {
+  CString GetClientStatePath() {
     return IsMachine() ? kOmahaMachineClientStatePath :
                          kOmahaUserClientStatePath;
   }

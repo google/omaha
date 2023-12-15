@@ -55,8 +55,6 @@ namespace {
 // Private object namespaces for Vista processes.
 const TCHAR* const kGoopdateBoundaryDescriptor = MAIN_EXE_BASE_NAME _T("_BD");
 const TCHAR* const kGoopdatePrivateNamespace = MAIN_EXE_BASE_NAME;
-const TCHAR* const kGoopdatePrivateNamespacePrefix =
-    MAIN_EXE_BASE_NAME _T("\\");
 
 // Helper for IsPrivateNamespaceAvailable().
 // For simplicity, the handles opened here are leaked. We need these until

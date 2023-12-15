@@ -188,7 +188,7 @@ namespace detail
         template<typename T>
         struct inner
         {
-            static T const get()
+            static T get()
             {
                 return static_init<T>::value;
             }
@@ -201,7 +201,7 @@ namespace detail
         template<typename T>
         struct inner
         {
-            static T const get()
+            static T get()
             {
                 return 0;
             }
@@ -720,7 +720,7 @@ struct null_t
 template<typename T,T value>
 struct value_const
 {
-    operator T const() const
+    operator T () const
     {
         return value;
     }

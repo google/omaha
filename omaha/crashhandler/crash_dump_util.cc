@@ -35,7 +35,6 @@ namespace {
 
 const TCHAR* const kLaunchedForMinidump = _T("CrashHandlerLaunchedForMinidump");
 const TCHAR* const kCrashInfoKey = _T("CrashHandlerEnv_CrashInfo");
-const TCHAR* const kUntrustedIntegrityLevelString = _T("S-1-16-0");
 
 HRESULT SetValueToEnvironmentBlock(EnvironmentBlockModifier* eb_mod,
                                    const TCHAR* name,

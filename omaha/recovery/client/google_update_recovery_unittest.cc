@@ -64,12 +64,6 @@ const TCHAR kTestAppGuid[] = _T("{8E472B0D-3E8B-43b1-B89A-E8506AAF1F16}");
 const TCHAR kTestAppVersion[] = _T("3.4.5.6");
 const TCHAR kTestAppLang[] = _T("en-us");
 
-const TCHAR kTempDirectory[] = _T("C:\\WINDOWS\\Temp");
-
-const TCHAR kFullMachineOmahaMainKeyPath[] =
-    _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\");
-const TCHAR kFullUserOmahaMainKeyPath[] =
-    _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\Update\\");
 const TCHAR kFullMachineOmahaClientKeyPath[] =
     _T("HKLM\\Software\\") PATH_COMPANY_NAME _T("\\Update\\Clients\\")
     _T("{430FD4D0-B729-4f61-AA34-91526481799D}");

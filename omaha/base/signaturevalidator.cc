@@ -37,7 +37,6 @@ namespace omaha {
 
 namespace {
 
-const LPCTSTR kEmptyStr = _T("");
 const DWORD kCertificateEncoding = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
 
 // Gets a handle to the certificate store and optionally the cryptographic

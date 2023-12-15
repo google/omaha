@@ -34,12 +34,9 @@ namespace {
     _T("HKCU\\Software\\") PATH_COMPANY_NAME _T("\\") PRODUCT_NAME _T("\\")
 #define APP_ID1 _T("{DDE97E2B-A82C-4790-A630-FCA02F64E8BE}");
 const TCHAR* const kAppId1 = APP_ID1
-const TCHAR* const kAppId1ClientsKeyPathUser =
-    USER_UPDATE_KEY _T("Clients\\") APP_ID1;
 const TCHAR* const kAppId1ClientStateKeyPathUser =
     USER_UPDATE_KEY _T("ClientState\\") APP_ID1;
 const TCHAR* const kInstallPolicyApp1 = _T("Install") APP_ID1;
-const TCHAR* const kUpdatePolicyApp1 = _T("Update") APP_ID1;
 const TCHAR* const kAppDidRunValueName = _T("dr");
 
 }  // namespace

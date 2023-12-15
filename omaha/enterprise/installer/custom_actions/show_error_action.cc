@@ -37,7 +37,6 @@
 
 namespace {
 
-const int kGuidStringLength = 38;  // 128/4 + 4 dashes + 2 braces.
 const DWORD kInstallerResultFailedCustomError = 1;
 const wchar_t kPropertyCustomActionData[] = L"CustomActionData";
 const wchar_t kRegKeyClientState[] = SOFTWARE_GOOGLE_UPDATE_CLIENTSTATE;

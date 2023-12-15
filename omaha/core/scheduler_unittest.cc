@@ -141,7 +141,7 @@ TEST_F(SchedulerTest, UsesDebugTimer) {
   {
     Scheduler scheduler;
     HRESULT hr = scheduler.StartWithDebugTimer(
-        kExpectedIntervalMs, [&call_count, kExpectedIntervalMs,
+        kExpectedIntervalMs, [&call_count,
                               &callback_handle](HighresTimer* debug_timer) {
           ASSERT_TRUE(debug_timer != nullptr);
           EXPECT_GE(debug_timer->GetElapsedMs(), kExpectedIntervalMs);
@@ -163,7 +163,7 @@ TEST_F(SchedulerTest, LongCallbackBlocks) {
   scoped_handle callback_end(::CreateEvent(NULL, true, false, NULL));
 
   HRESULT hr = scheduler->Start(
-      kInterval, [kCallbackDelay, &callback_start, &callback_end]() {
+      kInterval, [&callback_start, &callback_end]() {
         ::SetEvent(get(callback_start));
         Sleep(kCallbackDelay);
         ::SetEvent(get(callback_end));

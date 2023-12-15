@@ -117,30 +117,30 @@ class ATL_NO_VTABLE Update3Web
 
 struct Update3WebModeUser {
   static bool is_machine() { return false; }
-  static const TCHAR* const prog_id() { return kProgIDUpdate3WebUser; }
+  static const TCHAR* prog_id() { return kProgIDUpdate3WebUser; }
   static GUID class_id() { return __uuidof(GoogleUpdate3WebUserClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVER_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKCU"); }
+  static const TCHAR* hk_root() { return _T("HKCU"); }
 };
 
 struct Update3WebModeMachineFallback {
   static bool is_machine() { return true; }
-  static const TCHAR* const prog_id() {
+  static const TCHAR* prog_id() {
     return kProgIDUpdate3WebMachineFallback;
   }
   static GUID class_id() {
     return __uuidof(GoogleUpdate3WebMachineFallbackClass);
   }
   static UINT registry_res_id() { return IDR_LOCAL_SERVER_ELEVATION_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKLM"); }
+  static const TCHAR* hk_root() { return _T("HKLM"); }
 };
 
 struct Update3WebModeService {
   static bool is_machine() { return true; }
-  static const TCHAR* const prog_id() { return kProgIDUpdate3WebSvc; }
+  static const TCHAR* prog_id() { return kProgIDUpdate3WebSvc; }
   static GUID class_id() { return __uuidof(GoogleUpdate3WebServiceClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVICE_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKLM"); }
+  static const TCHAR* hk_root() { return _T("HKLM"); }
 };
 
 typedef Update3Web<Update3WebModeUser> Update3WebUser;

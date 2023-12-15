@@ -502,6 +502,9 @@ win_env.AppendUnique(
                     # has been removed
         '/wd5246',  # 'member': the initialization of a subobject should be
                     # wrapped in braces
+        '/wd5267',  # definition of implicit copy constructor/assignment
+                    # operator for 'type' is deprecated because it has a
+                    # user-provided assignment operator/copy constructor
         #
         # Disable static analysis warnings.
         #

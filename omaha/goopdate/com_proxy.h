@@ -98,7 +98,7 @@ struct ComProxyMode {
     }
   }
 
-  static const TCHAR* const hk_root() {
+  static const TCHAR* hk_root() {
     return is_machine() ? _T("HKLM") : _T("HKCU");
   }
 };

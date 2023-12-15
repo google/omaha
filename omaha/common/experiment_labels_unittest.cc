@@ -62,19 +62,16 @@ namespace {
 
 const TCHAR* const kLabelOneKey =      LABELONE_KEY;
 const TCHAR* const kLabelOneValue =    LABELONE_VALUE;
-const TCHAR* const kLabelOneExpStr =   LABELONE_EXP_STR;
 const time64       kLabelOneExpInt =   LABELONE_EXP_INT;
 const TCHAR* const kLabelOneCombined = LABELONE_COMBINED;
 
 const TCHAR* const kLabelTwoKey =      LABELTWO_KEY;
 const TCHAR* const kLabelTwoValue =    LABELTWO_VALUE;
-const TCHAR* const kLabelTwoExpStr =   LABELTWO_EXP_STR;
 const time64       kLabelTwoExpInt =   LABELTWO_EXP_INT;
 const TCHAR* const kLabelTwoCombined = LABELTWO_COMBINED;
 
 const TCHAR* const kLabelOldKey =      LABELOLD_KEY;
 const TCHAR* const kLabelOldValue =    LABELOLD_VALUE;
-const TCHAR* const kLabelOldExpStr =   LABELOLD_EXP_STR;
 const time64       kLabelOldExpInt =   LABELOLD_EXP_INT;
 const TCHAR* const kLabelOldCombined = LABELOLD_COMBINED;
 

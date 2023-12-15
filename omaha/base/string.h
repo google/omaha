@@ -315,7 +315,7 @@ bool String_StringToDecimalIntChecked(const TCHAR* str, int* value);
 HRESULT String_StringToBool(const TCHAR* str, bool* value);
 
 // Convert boolean to its string representation.
-const TCHAR* const String_BoolToString(bool value);
+const TCHAR* String_BoolToString(bool value);
 
 // Similar to ATL::CStringT::Replace() except that it ignores case.
 CString String_ReplaceIgnoreCase(const CString& string,

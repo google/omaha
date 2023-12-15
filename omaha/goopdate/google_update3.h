@@ -41,10 +41,10 @@ template <bool machine, const TCHAR* const progid, const GUID& clsid,
           UINT registry_resid, const TCHAR* const hkroot>
 struct Update3COMClassMode {
   static bool is_machine() { return machine; }
-  static const TCHAR* const prog_id() { return progid; }
+  static const TCHAR* prog_id() { return progid; }
   static GUID class_id() { return clsid; }
   static UINT registry_res_id() { return registry_resid; }
-  static const TCHAR* const hk_root() { return hkroot; }
+  static const TCHAR* hk_root() { return hkroot; }
 };
 
 template <typename T>

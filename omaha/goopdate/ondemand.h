@@ -253,26 +253,26 @@ class ATL_NO_VTABLE OnDemand
 
 struct OnDemandModeUser {
   static bool is_machine() { return false; }
-  static const TCHAR* const prog_id() { return kProgIDOnDemandUser; }
+  static const TCHAR* prog_id() { return kProgIDOnDemandUser; }
   static GUID class_id() { return __uuidof(OnDemandUserAppsClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVER_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKCU"); }
+  static const TCHAR* hk_root() { return _T("HKCU"); }
 };
 
 struct OnDemandModeMachineFallback {
   static bool is_machine() { return true; }
-  static const TCHAR* const prog_id() { return kProgIDOnDemandMachineFallback; }
+  static const TCHAR* prog_id() { return kProgIDOnDemandMachineFallback; }
   static GUID class_id() { return __uuidof(OnDemandMachineAppsFallbackClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVER_ELEVATION_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKLM"); }
+  static const TCHAR* hk_root() { return _T("HKLM"); }
 };
 
 struct OnDemandModeService {
   static bool is_machine() { return true; }
-  static const TCHAR* const prog_id() { return kProgIDOnDemandSvc; }
+  static const TCHAR* prog_id() { return kProgIDOnDemandSvc; }
   static GUID class_id() { return __uuidof(OnDemandMachineAppsServiceClass); }
   static UINT registry_res_id() { return IDR_LOCAL_SERVICE_RGS; }
-  static const TCHAR* const hk_root() { return _T("HKLM"); }
+  static const TCHAR* hk_root() { return _T("HKLM"); }
 };
 
 typedef OnDemand<OnDemandModeUser> OnDemandUser;

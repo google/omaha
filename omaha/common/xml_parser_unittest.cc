@@ -25,15 +25,6 @@
 #include "omaha/goopdate/update_response_utils.h"
 #include "omaha/testing/unit_test.h"
 
-namespace {
-
-const int kSeedManifestFileCount = 1;
-const int kSeedManifestResponseCount = 7;
-
-const int kExpectedRequestLength = 2048;
-
-}  // namespace
-
 namespace omaha {
 
 namespace xml {

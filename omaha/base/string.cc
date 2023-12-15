@@ -1824,7 +1824,7 @@ HRESULT String_StringToBool(const TCHAR* str, bool* value) {
   return S_OK;
 }
 
-const TCHAR* const String_BoolToString(bool value) {
+const TCHAR* String_BoolToString(bool value) {
   return value ? kTrue : kFalse;
 }
 

@@ -77,7 +77,7 @@ namespace omaha {
 // Test the private member functions of RegKey
 class RegKeyTestClass : public testing::Test {
  protected:
-  static const HKEY GetHKey(const RegKey& reg) {
+  static HKEY GetHKey(const RegKey& reg) {
     return reg.h_key_;
   }
 

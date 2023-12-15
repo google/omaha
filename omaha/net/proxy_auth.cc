@@ -34,10 +34,6 @@ using omaha::encrypt::DecryptData;
 
 namespace omaha {
 
-static const GUID kPreIE7CredTypeGuid = { 0x5e7e8100, 0x9138, 0x11d1,
-  { 0x94, 0x5a, 0x00, 0xc0, 0x4f, 0xc3, 0x08, 0xff } };
-static const GUID kPreIE7CredSubtypeGuid = { 0 };
-
 #define kIE7CredKey "abe2869f-9b47-4cd9-a358-c22904dba7f7"
 
 bool ProxyAuth::IsPromptAllowed() {

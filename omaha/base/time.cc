@@ -32,7 +32,7 @@ namespace omaha {
 #define kNumOfMonth 12
 
 static const TCHAR kRFC822_DateDelimiters[]    = _T(" ,:");
-static const TCHAR kRFC822_TimeDelimiter[]     = _T(":");
+
 SELECTANY const TCHAR* kRFC822_Day[kNumOfDays] = {
   _T("Mon"),
   _T("Tue"),

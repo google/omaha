@@ -41,13 +41,6 @@
 
 namespace omaha {
 
-namespace {
-
-const int kNumberOfCreateServiceRetries = 5;
-const int kSleepBetweenCreateServiceRetryMs = 200;
-
-}  // namespace
-
 SetupFiles::SetupFiles(bool is_machine)
 : is_machine_(is_machine) {
   SETUP_LOG(L2, (_T("[SetupFiles::SetupFiles]")));
