@@ -30,5 +30,5 @@ import windows_vc
 
 def generate(env):
   windows_vc.SetMsvcCompilerVersion(env=env,
-                                    version_num=15.0,
+                                    version_num='15.0',
                                     vc_flavor='x64_x86')

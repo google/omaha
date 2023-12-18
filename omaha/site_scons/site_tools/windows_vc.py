@@ -52,23 +52,23 @@ def SetMsvcCompilerVersion(
   Raises:
     ValueError: An error if vc_flavor is not valid.
   """
-  if version_num in (15.0, 16.0, 17.0):
+  if version_num in ('15.0', '16.0', '17.0'):
     if not vc_flavor:
       vc_flavor = 'x64_x86'
     if vc_flavor not in ['x86_x86', 'x86_x64', 'x64_x86', 'x64_x64']:
       raise ValueError('Invalid vc_flavor %s.' % str(vc_flavor))
 
-  if version_num == 17.0:
+  if version_num == '17.0':
     env.Replace(VC17_0_DIR=os.environ.get('VCToolsInstallDir'))
     _SetMsvcCompilerVersion(env,
                             vc_version='17.0',
                             vc_flavor=vc_flavor)
-  elif version_num == 16.0:
+  elif version_num == '16.0':
     env.Replace(VC16_0_DIR=os.environ.get('VCToolsInstallDir'))
     _SetMsvcCompilerVersion(env,
                             vc_version='16.0',
                             vc_flavor=vc_flavor)
-  elif version_num == 15.0:
+  elif version_num == '15.0':
     env.Replace(VC15_0_DIR=os.environ.get('VCToolsInstallDir')),
     _SetMsvcCompilerVersion(env,
                             vc_version='15.0',
