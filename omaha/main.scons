@@ -125,7 +125,8 @@ win_env = Environment(
     tools=[
         'component_setup',
         'target_platform_windows',
-        { omaha_version_utils.VC160:'windows_vc16_0_host64_x86',
+        { omaha_version_utils.VC170:'windows_vc17_0_host64_x86',
+          omaha_version_utils.VC160:'windows_vc16_0_host64_x86',
           omaha_version_utils.VC150:'windows_vc15_0_host64_x86',
           omaha_version_utils.VC140:'windows_vc14_0',
           omaha_version_utils.VC120:'windows_vc12_0',
@@ -133,7 +134,8 @@ win_env = Environment(
           omaha_version_utils.VC80:'target_platform_windows' }[_msc_ver],
         'masm',         # Use 'masm' to override the 'as' tool currently
                         # used by default in 'target_platform_windows'
-        { omaha_version_utils.VC160:'atlmfc_vc16_0',
+        { omaha_version_utils.VC170:'atlmfc_vc17_0',
+          omaha_version_utils.VC160:'atlmfc_vc16_0',
           omaha_version_utils.VC150:'atlmfc_vc15_0',
           omaha_version_utils.VC140:'atlmfc_vc14_0',
           omaha_version_utils.VC120:'atlmfc_vc12_0',

@@ -19,6 +19,7 @@ if "%VisualStudioVersion%"=="12.0" goto vc120
 if "%VisualStudioVersion%"=="14.0" goto vc140
 if "%VisualStudioVersion%"=="15.0" goto vc141
 if "%VisualStudioVersion%"=="16.0" goto vc160
+if "%VisualStudioVersion%"=="17.0" goto vc170
 goto error_vc_not_supported
 
 :vc120
@@ -37,6 +38,9 @@ goto set_env_variables
 set OMAHA_MSC_VER=1920
 goto set_env_variables
 
+:vc170
+set OMAHA_MSC_VER=1930
+goto set_env_variables
 :set_env_variables
 
 :: Change these variables to match the local build environment.
