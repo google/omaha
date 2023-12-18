@@ -4,7 +4,7 @@ These instructions are intended to assist the would-be Omaha developer with sett
 
 We are striving to make the code build with the latest Windows toolchain from Microsoft. Since there is no continuous integration for this project, the code may not build using previous versions of the toolchain.
 
-#### Currently, the supported toolchain is Visual Studio 2019 Update 16.11.10 and Windows SDK 10.0.22000.0. ####
+#### Currently, the supported toolchain is Visual Studio 2022 Update 17.8.3 and Windows SDK 10.0.22621.0. ####
 
 The updater runs on Windows 7, 8, and 10. Windows XP is not supported in the current build configuration due to a number of issues, such as thread-safe initializing of static local variables, etc.
 
@@ -12,7 +12,7 @@ The updater runs on Windows 7, 8, and 10. Windows XP is not supported in the cur
 
 The following packages are required to build Omaha:
   * A copy of the Omaha source code.  This can be done by cloning this repository.
-  * Microsoft Visual Studio 2017 or 2019. The free Visual Studio Community edition is sufficient to build.
+  * Microsoft Visual Studio 2022. The free Visual Studio Community edition is sufficient to build.
     * Download [here](https://visualstudio.microsoft.com/downloads)
   * Windows 10 SDK.
     * Visual Studio copy of Windows 10 SDK is sufficient to build with, if desired.
