@@ -17,7 +17,7 @@ The following packages are required to build Omaha:
   * Windows 10 SDK.
     * Visual Studio copy of Windows 10 SDK is sufficient to build with, if desired.
     * Optionally, download and intall Windows 10 SDK [here](https://dev.windows.com/en-us/downloads/windows-10-sdk).
-  * The Windows Template Library (WTL)
+  * The Windows Template Library (WTL) - WTL 10.0.10320 Release
     * Download WTL [here](http://sourceforge.net/projects/wtl/).
     * hammer.bat has `OMAHA_WTL_DIR` set to `C:\wtl\files`. Change this if you unpacked to a different location.
   * The Windows Install XML (WiX) Toolkit, version 3.0 or later.
