@@ -148,16 +148,19 @@ HRESULT DownloadCodeRedFileAsLoggedOnUser(const TCHAR* url,
     }
   }
 
-  const DWORD kMoveFlag = MOVEFILE_COPY_ALLOWED |
-                          MOVEFILE_REPLACE_EXISTING |
-                          MOVEFILE_WRITE_THROUGH;
-  if (!::MoveFileEx(download_target_path,
-                    file_path,
-                    kMoveFlag)) {
+  if (!::CopyFile(download_target_path, file_path, FALSE)) {
     hr = HRESULT_FROM_WIN32(::GetLastError());
   }
 
-  ::DeleteFile(download_target_path);
+  {
+    scoped_impersonation impersonate_user(get(logged_on_user_token));
+    HRESULT hr_impersonation = HRESULT_FROM_WIN32(impersonate_user.result());
+    if (FAILED(hr_impersonation)) {
+      return hr_impersonation;
+    }
+
+    ::DeleteFile(download_target_path);
+  }
   return hr;
 }
 
