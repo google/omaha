@@ -52,6 +52,7 @@ HRESULT UpdateAppOnDemand(bool is_machine,
 
 HRESULT InstallApps(bool is_machine,
                     bool is_interactive,
+                    bool always_launch_cmd,
                     bool is_eula_accepted,
                     bool is_oem_install,
                     bool is_offline,

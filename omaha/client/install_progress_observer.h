@@ -155,6 +155,9 @@ class InstallProgressObserver {
   virtual void OnComplete(const ObserverCompletionInfo& observer_info) = 0;
 };
 
+// Launches the post-install launch command lines for each app in `info`.
+bool LaunchCommandLines(const ObserverCompletionInfo& info, bool is_machine);
+
 }  // namespace omaha
 
 #endif  // OMAHA_CLIENT_INSTALL_PROGRESS_OBSERVER_H_

@@ -449,6 +449,7 @@ HRESULT LaunchHandoffProcess(bool is_machine,
   CommandLineBuilder builder(COMMANDLINE_MODE_HANDOFF_INSTALL);
 
   builder.set_is_silent_set(install_args.is_silent_set);
+  builder.set_is_always_launch_cmd_set(install_args.is_always_launch_cmd_set);
   builder.set_is_eula_required_set(install_args.is_eula_required_set);
   builder.set_is_enterprise_set(install_args.is_enterprise_set);
   builder.set_extra_args(install_args.extra_args_str);

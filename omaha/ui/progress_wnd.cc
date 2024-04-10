@@ -667,7 +667,8 @@ void ProgressWnd::OnComplete(const ObserverCompletionInfo& observer_info) {
   // TODO(omaha3): Do we want to avoid launching commands during an interactive
   // /ua update? If so, we'll need to handle that somehow. Using the observer
   // handles the silent update and install cases as well as the OnDemand case.
-  bool launch_commands_succeeded = LaunchCmdLines(observer_info);
+  bool launch_commands_succeeded = LaunchCommandLines(observer_info,
+                                                      is_machine());
 
   CString s;
   CompletionCodes overall_completion_code =
@@ -771,52 +772,6 @@ void ProgressWnd::OnComplete(const ObserverCompletionInfo& observer_info) {
   }
 
   VERIFY_SUCCEEDED(ChangeControlState());
-}
-
-HRESULT ProgressWnd::LaunchCmdLine(const AppCompletionInfo& app_info) {
-  CORE_LOG(L3, (_T("[ProgressWnd::LaunchCmdLine][%s]"),
-                app_info.post_install_launch_command_line));
-  if (app_info.post_install_launch_command_line.IsEmpty()) {
-    return S_OK;
-  }
-
-  if (app_info.completion_code != COMPLETION_CODE_LAUNCH_COMMAND &&
-      app_info.completion_code !=
-          COMPLETION_CODE_EXIT_SILENTLY_ON_LAUNCH_COMMAND) {
-    CORE_LOG(LW, (_T("Launch command line [%s] is not empty but completion ")
-                  _T("code [%d] doesn't require a launch"),
-                  app_info.post_install_launch_command_line.GetString(),
-                  app_info.completion_code));
-    return S_OK;
-  }
-
-  ASSERT1(SUCCEEDED(app_info.error_code));
-  ASSERT1(!app_info.is_noupdate);
-
-  HRESULT hr = goopdate_utils::LaunchCmdLine(
-      is_machine(), app_info.post_install_launch_command_line, NULL, NULL);
-  if (FAILED(hr)) {
-    CORE_LOG(LE, (_T("[goopdate_utils::LaunchCmdLine failed][0x%x]"), hr));
-    return hr;
-  }
-
-  return S_OK;
-}
-
-bool ProgressWnd::LaunchCmdLines(const ObserverCompletionInfo& info) {
-  bool  result = true;
-
-  CORE_LOG(L3, (_T("[ProgressWnd::LaunchCmdLines]")));
-  for (size_t i = 0; i < info.apps_info.size(); ++i) {
-    const AppCompletionInfo& app_info = info.apps_info[i];
-    if (FAILED(app_info.error_code)) {
-      continue;
-    }
-    result &= SUCCEEDED(LaunchCmdLine(app_info));
-    VERIFY1(result);
-  }
-
-  return result;
 }
 
 HRESULT ProgressWnd::ChangeControlState() {

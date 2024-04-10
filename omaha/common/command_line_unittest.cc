@@ -47,6 +47,7 @@ void VerifyCommandLineArgs(const CommandLineArgs& expected,
   EXPECT_EQ(expected.is_machine_set, actual.is_machine_set);
   EXPECT_EQ(expected.is_install_elevated, actual.is_install_elevated);
   EXPECT_EQ(expected.is_silent_set, actual.is_silent_set);
+  EXPECT_EQ(expected.is_always_launch_cmd_set, actual.is_always_launch_cmd_set);
   EXPECT_EQ(expected.is_eula_required_set, actual.is_eula_required_set);
   EXPECT_EQ(expected.is_enterprise_set, actual.is_enterprise_set);
   EXPECT_EQ(expected.is_offline_set, actual.is_offline_set);
@@ -428,6 +429,20 @@ TEST_F(CommandLineTest, ParseCommandLine_InstallWithAppArgsSilent) {
   VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, true, true);
 }
 
+// Parse <path> /install "extraargs" /appargs <appargs> /silent /alwayslaunchcmd
+TEST_F(CommandLineTest,
+       ParseCommandLine_InstallWithAppArgsSilentAlwaysLaunchCmd) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /install ") YOUTUBEUPLOADEREN_TAG
+                          _T(" /appargs ") YOUTUBEUPLOADEREN_APP_ARGS
+                          _T(" /silent /alwayslaunchcmd");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_INSTALL;
+  expected_.is_silent_set = true;
+  expected_.is_always_launch_cmd_set = true;
+  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, true, true);
+}
+
 // Parse: <path> /install "extraargs" /oem /appargs <appargs> /silent
 TEST_F(CommandLineTest, ParseCommandLine_InstallWithOemAppArgsSilent) {
   const TCHAR* kCmdLine = _T("goopdate.exe /install ") YOUTUBEUPLOADEREN_TAG
@@ -667,6 +682,18 @@ TEST_F(CommandLineTest, ParseCommandLine_HandoffSilent) {
 
   expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
   expected_.is_silent_set = true;
+  VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
+}
+
+// Parse: <path> /handoff "extraargs" /silent /alwayslaunchcmd
+TEST_F(CommandLineTest, ParseCommandLine_HandoffSilentAlwaysLaunchCmd) {
+  const TCHAR* kCmdLine = _T("goopdate.exe /handoff ") YOUTUBEUPLOADEREN_TAG
+                          _T(" /silent /alwayslaunchcmd");
+  EXPECT_SUCCEEDED(ParseCommandLine(kCmdLine, &args_));
+
+  expected_.mode = COMMANDLINE_MODE_HANDOFF_INSTALL;
+  expected_.is_silent_set = true;
+  expected_.is_always_launch_cmd_set = true;
   VerifyArgsWithSingleYouTubeUploaderEnApp(expected_, args_, false, true);
 }
 

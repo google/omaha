@@ -171,8 +171,6 @@ class ProgressWnd
   virtual bool MaybeCloseWindow();
 
   // Helpers.
-  HRESULT LaunchCmdLine(const AppCompletionInfo& app_info);
-  bool LaunchCmdLines(const ObserverCompletionInfo& info);
   HRESULT ChangeControlState();
   HRESULT SetMarqueeMode(bool is_marquee);
   void DisplayNewState(const CString& state);

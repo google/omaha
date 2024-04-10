@@ -25,6 +25,7 @@ inputs = [
     'help_url_builder.cc',
     'install.cc',
     'install_apps.cc',
+    'install_progress_observer.cc',
     'install_self.cc',
     'shutdown_events.cc',
     'ua.cc',

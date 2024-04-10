@@ -42,6 +42,9 @@ class CommandLineBuilder {
   bool is_silent_set() const { return is_silent_set_; }
   void set_is_silent_set(bool is_silent_set);
 
+  bool is_always_launch_cmd_set() const { return is_always_launch_cmd_set_; }
+  void set_is_always_launch_cmd_set(bool is_always_launch_cmd_set);
+
   bool is_eula_required_set() const { return is_eula_required_set_; }
   void set_is_eula_required_set(bool is_eula_required_set);
 
@@ -124,6 +127,7 @@ class CommandLineBuilder {
   bool is_interactive_set_;
   bool is_machine_set_;
   bool is_silent_set_;
+  bool is_always_launch_cmd_set_;
   bool is_eula_required_set_;
   bool is_enterprise_set_;
   CString extra_args_;

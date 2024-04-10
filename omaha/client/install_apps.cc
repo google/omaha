@@ -63,8 +63,12 @@ namespace {
 // Implements the UI progress window.
 class SilentProgressObserver : public InstallProgressObserver {
  public:
-  explicit SilentProgressObserver(BundleInstaller* installer)
-      : installer_(installer) {
+  SilentProgressObserver(BundleInstaller* installer,
+                         bool is_machine,
+                         bool always_launch_cmd)
+      : installer_(installer),
+        is_machine_(is_machine),
+        always_launch_cmd_(always_launch_cmd) {
     ASSERT1(installer);
   }
 
@@ -144,9 +148,12 @@ class SilentProgressObserver : public InstallProgressObserver {
 
   // Terminates the message loop.
   virtual void OnComplete(const ObserverCompletionInfo& observer_info) {
-    CORE_LOG(L3, (_T("[SilentProgressObserver::OnComplete][%s]"),
-                  observer_info.ToString()));
-    UNREFERENCED_PARAMETER(observer_info);
+    CORE_LOG(L3, (_T("[SilentProgressObserver::OnComplete][%s][%d]"),
+                  observer_info.ToString(), always_launch_cmd_));
+
+    if (always_launch_cmd_) {
+      LaunchCommandLines(observer_info, is_machine_);
+    }
 
     installer_->DoExit();
     CORE_LOG(L1, (_T("[SilentProgressObserver][DoExit() called]")));
@@ -154,6 +161,8 @@ class SilentProgressObserver : public InstallProgressObserver {
 
  private:
   BundleInstaller *const installer_;
+  const bool is_machine_;
+  const bool always_launch_cmd_;
 };
 
 class OnDemandEvents : public OnDemandEventsInterface {
@@ -494,6 +503,7 @@ HRESULT DoInstallApps(BundleInstaller* installer,
                       IAppBundle* app_bundle,
                       bool is_machine,
                       bool is_interactive,
+                      bool always_launch_cmd,
                       BrowserType browser_type,
                       bool* has_ui_been_displayed) {
   CORE_LOG(L2, (_T("[DoInstallApps]")));
@@ -520,7 +530,8 @@ HRESULT DoInstallApps(BundleInstaller* installer,
     }
     *has_ui_been_displayed = true;
   } else {
-    observer.reset(new SilentProgressObserver(installer));
+    observer.reset(
+        new SilentProgressObserver(installer, is_machine, always_launch_cmd));
   }
 
   hr = installer->InstallBundle(is_machine,
@@ -676,6 +687,7 @@ HRESULT UpdateAppOnDemand(bool is_machine,
 
 HRESULT InstallApps(bool is_machine,
                     bool is_interactive,
+                    bool always_launch_cmd,
                     bool is_eula_accepted,
                     bool is_oem_install,
                     bool is_offline,
@@ -686,10 +698,10 @@ HRESULT InstallApps(bool is_machine,
                     const CString& session_id,
                     bool* has_ui_been_displayed) {
   CORE_LOG(L2, (_T("[InstallApps][is_machine: %u][is_interactive: %u]")
-      _T("[is_eula_accepted: %u][is_oem_install: %u][is_offline: %u]")
-      _T("[is_enterprise_install: %u][offline_directory: %s]"), is_machine,
-      is_interactive, is_eula_accepted, is_oem_install, is_offline,
-      is_enterprise_install, offline_directory));
+      _T("[always_launch_cmd: %u][is_eula_accepted: %u][is_oem_install: %u]")
+      _T("[is_offline: %u][is_enterprise_install: %u][offline_directory: %s]"),
+      is_machine, is_interactive, always_launch_cmd, is_eula_accepted,
+      is_oem_install, is_offline, is_enterprise_install, offline_directory));
   ASSERT1(has_ui_been_displayed);
 
   BundleAtlModule atl_module;
@@ -740,6 +752,7 @@ HRESULT InstallApps(bool is_machine,
                                  app_bundle.Detach(),
                                  is_machine,
                                  is_interactive,
+                                 always_launch_cmd,
                                  extra_args.browser_type,
                                  has_ui_been_displayed);
 }
@@ -790,6 +803,7 @@ HRESULT InstallForceInstallApps(bool is_machine,
                                  app_bundle.Detach(),
                                  is_machine,
                                  is_interactive,
+                                 /*always_launch_cmd=*/false,
                                  BROWSER_UNKNOWN,
                                  has_ui_been_displayed);
 }
@@ -837,6 +851,7 @@ HRESULT UpdateAllApps(bool is_machine,
                                  app_bundle.Detach(),
                                  is_machine,
                                  is_interactive,
+                                 /*always_launch_cmd=*/false,
                                  BROWSER_UNKNOWN,
                                  has_ui_been_displayed);
 }

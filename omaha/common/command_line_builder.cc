@@ -32,6 +32,7 @@ CommandLineBuilder::CommandLineBuilder(CommandLineMode mode)
       is_interactive_set_(false),
       is_machine_set_(false),
       is_silent_set_(false),
+      is_always_launch_cmd_set_(false),
       is_eula_required_set_(false),
       is_enterprise_set_(false) {
 }
@@ -54,6 +55,13 @@ void CommandLineBuilder::set_is_silent_set(bool is_silent_set) {
   ASSERT1(mode_ == COMMANDLINE_MODE_INSTALL ||
           mode_ == COMMANDLINE_MODE_HANDOFF_INSTALL);
   is_silent_set_ = is_silent_set;
+}
+
+void CommandLineBuilder::set_is_always_launch_cmd_set(
+    bool is_always_launch_cmd_set) {
+  ASSERT1(mode_ == COMMANDLINE_MODE_INSTALL ||
+          mode_ == COMMANDLINE_MODE_HANDOFF_INSTALL);
+  is_always_launch_cmd_set_ = is_always_launch_cmd_set;
 }
 
 void CommandLineBuilder::set_is_eula_required_set(bool is_eula_required_set) {
@@ -360,6 +368,9 @@ CString CommandLineBuilder::GetInstall() const {
   if (is_silent_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineSilent);
   }
+  if (is_always_launch_cmd_set_) {
+    SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineAlwaysLaunchCmd);
+  }
   if (is_enterprise_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineEnterprise);
   }
@@ -395,6 +406,9 @@ CString CommandLineBuilder::GetHandoffInstall() const {
   }
   if (is_silent_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineSilent);
+  }
+  if (is_always_launch_cmd_set_) {
+    SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineAlwaysLaunchCmd);
   }
   if (is_eula_required_set_) {
     SafeCStringAppendFormat(&cmd_line, _T(" /%s"), kCmdLineEulaRequired);

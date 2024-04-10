@@ -161,6 +161,10 @@ const TCHAR* const kCmdLineCrash = _T("crash");
 // silently.
 const TCHAR* const kCmdLineSilent = _T("silent");
 
+// The "alwayslaunchcmd" switch specifies that the launch command is to be
+// executed unconditionally, even for silent modes.
+const TCHAR* const kCmdLineAlwaysLaunchCmd = _T("alwayslaunchcmd");
+
 const TCHAR* const kCmdLineLegacyOfflineInstall = _T("offlineinstall");
 const TCHAR* const kCmdLineOfflineDir = _T("offlinedir");
 

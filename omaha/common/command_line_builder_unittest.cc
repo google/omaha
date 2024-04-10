@@ -180,6 +180,20 @@ TEST(CommandLineBuilder, BuildInstallWithExtraArgsSilent) {
                cmd_line);
 }
 
+TEST(CommandLineBuilder, BuildInstallWithExtraArgsSilentAndAlwaysLaunchCmd) {
+  CommandLineBuilder builder(COMMANDLINE_MODE_INSTALL);
+  builder.set_extra_args(_T("appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
+                         _T("appname=YouTubeUploader&needsadmin=False&")
+                         _T("lang=en"));
+  builder.set_is_silent_set(true);
+  builder.set_is_always_launch_cmd_set(true);
+  CString cmd_line = builder.GetCommandLineArgs();
+  EXPECT_STREQ(_T("/install \"appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
+               _T("appname=YouTubeUploader&needsadmin=False&lang=en\" /silent ")
+               _T("/alwayslaunchcmd"),
+               cmd_line);
+}
+
 TEST(CommandLineBuilder, BuildInstallWithExtraArgsSessionId) {
   CommandLineBuilder builder(COMMANDLINE_MODE_INSTALL);
   builder.set_extra_args(_T("appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
@@ -383,6 +397,27 @@ TEST(CommandLineBuilder, BuildHandoffInstallWithExtraArgsSilentOffline) {
                _T("appname=YouTubeUploader&needsadmin=False&lang=en\"")
                _T(" /installsource offline")
                _T(" /silent")
+               _T(" /offlinedir \"{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}\""),
+               cmd_line);
+}
+
+TEST(CommandLineBuilder, 
+     BuildHandoffInstallWithExtraArgsSilentAlwaysLaunchCmd) {
+  CommandLineBuilder builder(COMMANDLINE_MODE_HANDOFF_INSTALL);
+  builder.set_extra_args(_T("appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
+                         _T("appname=YouTubeUploader&needsadmin=False&")
+                         _T("lang=en"));
+  builder.set_install_source(_T("offline"));
+  builder.set_is_silent_set(true);
+  builder.set_is_always_launch_cmd_set(true);
+  EXPECT_SUCCEEDED(
+      builder.SetOfflineDirName(_T("{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}")));
+
+  CString cmd_line = builder.GetCommandLineArgs();
+  EXPECT_STREQ(_T("/handoff \"appguid={A4F7B07B-B9BD-4a33-B136-96D2ADFB60CB}&")
+               _T("appname=YouTubeUploader&needsadmin=False&lang=en\"")
+               _T(" /installsource offline")
+               _T(" /silent /alwayslaunchcmd")
                _T(" /offlinedir \"{B851CC84-A5C4-4769-92C1-DC6B0BB368B4}\""),
                cmd_line);
 }

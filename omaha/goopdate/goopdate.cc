@@ -1275,6 +1275,7 @@ HRESULT GoopdateImpl::DoHandoff(bool* has_ui_been_displayed) {
 
   hr = InstallApps(is_machine_,
                    !args_.is_silent_set,  // is_interactive.
+                   args_.is_always_launch_cmd_set,
                    !args_.is_eula_required_set,  // is_eula_accepted.
                    args_.is_oem_set,
                    args_.is_offline_set,

@@ -92,15 +92,16 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   CreateScenario(kCmdLineOnDemand, &GoopdateCommandLineValidator::OnDemand);
 
   // gu.exe /install <extraargs> [/appargs <appargs> [/installsource source
-  //        [/silent [/eularequired [/oem [/installelevated [/sessionid <sid>
-  //        [/enterprise
+  //        [/silent [/alwayslaunchcmd [/eularequired [/oem [/installelevated
+  //        [/sessionid <sid> [/enterprise
   SafeCStringFormat(
-      &cmd_line, _T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s ")
+      &cmd_line, _T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s [/%s ")
                  _T("[/%s sid [/%s"),
                  kCmdLineInstall,
                  kCmdLineAppArgs,
                  kCmdLineInstallSource,
                  kCmdLineSilent,
+                 kCmdLineAlwaysLaunchCmd,
                  kCmdLineEulaRequired,
                  kCmdLineOem,
                  kCmdLineInstallElevated,
@@ -114,15 +115,16 @@ HRESULT GoopdateCommandLineValidator::Setup() {
   CreateScenario(cmd_line, &GoopdateCommandLineValidator::OnUpdate);
 
   // gu.exe /handoff <extraargs> [/appargs <appargs> [/installsource source
-  //        [/silent [/eularequired [/offlineinstall [/offlinedir <dir>
-  //        [/sessionid <sid> [/enterprise
+  //        [/silent [/alwayslaunchcmd [/eularequired [/offlineinstall
+  //        [/offlinedir <dir> [/sessionid <sid> [/enterprise
   SafeCStringFormat(
-      &cmd_line, _T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s dir ")
-                 _T("[/%s sid [/%s"),
+      &cmd_line, _T("/%s extra [/%s appargs [/%s src [/%s [/%s [/%s [/%s ")
+                 _T("[/%s dir [/%s sid [/%s"),
                  kCmdLineAppHandoffInstall,
                  kCmdLineAppArgs,
                  kCmdLineInstallSource,
                  kCmdLineSilent,
+                 kCmdLineAlwaysLaunchCmd,
                  kCmdLineEulaRequired,
                  kCmdLineLegacyOfflineInstall,
                  kCmdLineOfflineDir,
@@ -328,6 +330,7 @@ HRESULT GoopdateCommandLineValidator::OnInstall() {
                                   0,
                                   &args_->session_id);
   args_->is_silent_set = parser_->HasSwitch(kCmdLineSilent);
+  args_->is_always_launch_cmd_set = parser_->HasSwitch(kCmdLineAlwaysLaunchCmd);
   args_->is_enterprise_set = parser_->HasSwitch(kCmdLineEnterprise);
   args_->is_eula_required_set = parser_->HasSwitch(kCmdLineEulaRequired);
   args_->is_oem_set = parser_->HasSwitch(kCmdLineOem);
@@ -352,6 +355,7 @@ HRESULT GoopdateCommandLineValidator::OnInstallHandoffWorker() {
                                   0,
                                   &args_->session_id);
   args_->is_silent_set = parser_->HasSwitch(kCmdLineSilent);
+  args_->is_always_launch_cmd_set = parser_->HasSwitch(kCmdLineAlwaysLaunchCmd);
   args_->is_enterprise_set = parser_->HasSwitch(kCmdLineEnterprise);
   args_->is_eula_required_set = parser_->HasSwitch(kCmdLineEulaRequired);
   args_->is_offline_set = parser_->HasSwitch(kCmdLineLegacyOfflineInstall) ||

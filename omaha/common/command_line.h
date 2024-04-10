@@ -121,6 +121,7 @@ struct CommandLineArgs {
         is_crash_handler_disabled(false),
         is_install_elevated(false),
         is_silent_set(false),
+        is_always_launch_cmd_set(false),
         is_eula_required_set(false),
         is_offline_set(false),
         is_enterprise_set(false),
@@ -132,6 +133,7 @@ struct CommandLineArgs {
   bool is_crash_handler_disabled;
   bool is_install_elevated;
   bool is_silent_set;
+  bool is_always_launch_cmd_set;
   bool is_eula_required_set;
   bool is_offline_set;
   bool is_enterprise_set;
