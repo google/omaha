@@ -116,14 +116,28 @@ def BuildCOMRegisterShell64():
         ],
     )
 
+  # Add an icon, a manifest, and a version to the exe.
+  # The resource file used is the same as the one for GoogleUpdate.exe.
+  # The version resource used is the same as the one for goopdate.dll.
+  signed_exe_name = 'GoogleUpdateComRegisterShell64'
+  com_register_shell_res = com_register_shell_env.RES(
+                               '%s.res' % signed_exe_name,
+                               '../google_update/resource.rc')
+  com_register_shell_env.Depends(com_register_shell_res,
+                                 '../google_update/GoogleUpdate.manifest')
+  com_register_shell_inputs = [
+       com_register_shell_env.ComponentObject('%s.obj' % signed_exe_name,
+                                              'com_register_shell.cc'),
+       com_register_shell_res,
+       '$OBJ_ROOT/goopdate/goopdate_version.res',
+  ]
+
   unsigned_exe = com_register_shell_env.ComponentProgram(
-      prog_name='GoogleUpdateComRegisterShell64_unsigned',
-      source= [
-          'com_register_shell.cc',
-          ]
+      prog_name='%s_unsigned' % signed_exe_name,
+      source=com_register_shell_inputs
   )
   signed_exe = com_register_shell_env.SignedBinary(
-      target='GoogleUpdateComRegisterShell64.exe',
+      target='%s.exe' % signed_exe_name,
       source=unsigned_exe,
   )
   env.Replicate('$STAGING_DIR', signed_exe)
